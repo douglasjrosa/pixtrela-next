@@ -1,0 +1,18 @@
+import { describe, it, expect } from "vitest";
+import { taskFormSchema } from "./task";
+
+describe("taskFormSchema", () => {
+  it("accepts a valid task payload", () => {
+    const result = taskFormSchema.safeParse({
+      name: "Montagem A",
+      qty: 10,
+      status: "queued",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects empty name", () => {
+    const result = taskFormSchema.safeParse({ name: "", qty: 1, status: "queued" });
+    expect(result.success).toBe(false);
+  });
+});

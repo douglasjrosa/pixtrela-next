@@ -1,0 +1,300 @@
+<svg viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradiente do fundo principal -->
+    <radialGradient id="spaceGradient" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" style="stop-color:#1a237e;stop-opacity:1" />
+      <stop offset="40%" style="stop-color:#283593;stop-opacity:1" />
+      <stop offset="80%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f0f23;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Gradiente para estrelas de sucesso -->
+    <radialGradient id="goldStarGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ffd700;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ffb300;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ff8f00;stop-opacity:0.8" />
+    </radialGradient>
+    
+    <!-- Gradiente para estrelas menores -->
+    <radialGradient id="silverStarGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.9" />
+      <stop offset="70%" style="stop-color:#e3f2fd;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#bbdefb;stop-opacity:0.3" />
+    </radialGradient>
+    
+    <!-- Filtro de brilho -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Filtro de brilho suave -->
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Fundo do universo -->
+  <rect width="1920" height="1080" fill="url(#spaceGradient)"/>
+  
+  <!-- Nebulosa sutil -->
+  <ellipse cx="300" cy="200" rx="200" ry="100" fill="#3f51b5" opacity="0.1"/>
+  <ellipse cx="1600" cy="800" rx="250" ry="150" fill="#673ab7" opacity="0.08"/>
+  <ellipse cx="1200" cy="300" rx="180" ry="120" fill="#2196f3" opacity="0.06"/>
+  
+  <!-- Campo de estrelas realista e caótico -->
+  <!-- Estrelas diminutas (mais distantes) -->
+  <circle cx="47" cy="183" r="0.5" fill="#e8eaf6" opacity="0.4"/>
+  <circle cx="156" cy="67" r="0.3" fill="#f3e5f5" opacity="0.3"/>
+  <circle cx="289" cy="234" r="0.4" fill="#fff" opacity="0.5"/>
+  <circle cx="431" cy="89" r="0.3" fill="#e1f5fe" opacity="0.4"/>
+  <circle cx="578" cy="156" r="0.5" fill="#fff" opacity="0.6"/>
+  <circle cx="623" cy="45" r="0.2" fill="#f1f8e9" opacity="0.3"/>
+  <circle cx="734" cy="198" r="0.4" fill="#e8f5e8" opacity="0.5"/>
+  <circle cx="867" cy="123" r="0.3" fill="#fff" opacity="0.4"/>
+  <circle cx="923" cy="67" r="0.5" fill="#e3f2fd" opacity="0.6"/>
+  <circle cx="1045" cy="203" r="0.4" fill="#fff" opacity="0.5"/>
+  <circle cx="1189" cy="34" r="0.3" fill="#fce4ec" opacity="0.4"/>
+  <circle cx="1267" cy="178" r="0.5" fill="#fff" opacity="0.7"/>
+  <circle cx="1398" cy="89" r="0.2" fill="#e8f5e8" opacity="0.3"/>
+  <circle cx="1523" cy="223" r="0.4" fill="#fff" opacity="0.5"/>
+  <circle cx="1634" cy="145" r="0.3" fill="#e1f5fe" opacity="0.4"/>
+  <circle cx="1789" cy="67" r="0.5" fill="#fff" opacity="0.6"/>
+  <circle cx="1876" cy="189" r="0.3" fill="#f3e5f5" opacity="0.4"/>
+  
+  <!-- Estrelas pequenas -->
+  <circle cx="89" cy="345" r="0.8" fill="#fff" opacity="0.7"/>
+  <circle cx="234" cy="387" r="0.6" fill="#e3f2fd" opacity="0.5"/>
+  <circle cx="367" cy="298" r="1" fill="#fff" opacity="0.8"/>
+  <circle cx="456" cy="423" r="0.7" fill="#e8f5e8" opacity="0.6"/>
+  <circle cx="598" cy="356" r="0.9" fill="#fff" opacity="0.9"/>
+  <circle cx="712" cy="289" r="0.5" fill="#f1f8e9" opacity="0.4"/>
+  <circle cx="834" cy="445" r="0.8" fill="#fff" opacity="0.7"/>
+  <circle cx="923" cy="312" r="0.6" fill="#e1f5fe" opacity="0.5"/>
+  <circle cx="1067" cy="398" r="1" fill="#fff" opacity="0.8"/>
+  <circle cx="1156" cy="267" r="0.7" fill="#fce4ec" opacity="0.6"/>
+  <circle cx="1298" cy="434" r="0.9" fill="#fff" opacity="0.9"/>
+  <circle cx="1423" cy="323" r="0.5" fill="#e8f5e8" opacity="0.4"/>
+  <circle cx="1567" cy="389" r="0.8" fill="#fff" opacity="0.7"/>
+  <circle cx="1689" cy="278" r="0.6" fill="#e3f2fd" opacity="0.5"/>
+  <circle cx="1798" cy="423" r="1" fill="#fff" opacity="0.8"/>
+  
+  <!-- Estrelas médias -->
+  <circle cx="123" cy="567" r="1.2" fill="#fff" opacity="0.8"/>
+  <circle cx="267" cy="634" r="1.5" fill="#e3f2fd" opacity="0.9"/>
+  <circle cx="389" cy="523" r="1.1" fill="#fff" opacity="0.7"/>
+  <circle cx="534" cy="678" r="1.4" fill="#e8f5e8" opacity="0.8"/>
+  <circle cx="645" cy="589" r="1.3" fill="#fff" opacity="0.9"/>
+  <circle cx="789" cy="612" r="1" fill="#f1f8e9" opacity="0.6"/>
+  <circle cx="856" cy="545" r="1.5" fill="#fff" opacity="0.8"/>
+  <circle cx="967" cy="689" r="1.2" fill="#e1f5fe" opacity="0.7"/>
+  <circle cx="1089" cy="534" r="1.4" fill="#fff" opacity="0.9"/>
+  <circle cx="1234" cy="623" r="1.1" fill="#fce4ec" opacity="0.8"/>
+  <circle cx="1356" cy="567" r="1.3" fill="#fff" opacity="0.8"/>
+  <circle cx="1467" cy="645" r="1" fill="#e8f5e8" opacity="0.6"/>
+  <circle cx="1598" cy="578" r="1.5" fill="#fff" opacity="0.9"/>
+  <circle cx="1723" cy="612" r="1.2" fill="#e3f2fd" opacity="0.7"/>
+  <circle cx="1834" cy="534" r="1.4" fill="#fff" opacity="0.8"/>
+  
+  <!-- Estrelas maiores (mais próximas) -->
+  <circle cx="78" cy="789" r="1.8" fill="#fff" opacity="0.9"/>
+  <circle cx="198" cy="823" r="2.1" fill="#e3f2fd" opacity="0.8"/>
+  <circle cx="356" cy="756" r="1.6" fill="#fff" opacity="0.7"/>
+  <circle cx="467" cy="891" r="2.3" fill="#e8f5e8" opacity="0.9"/>
+  <circle cx="623" cy="734" r="1.9" fill="#fff" opacity="0.8"/>
+  <circle cx="745" cy="867" r="1.5" fill="#f1f8e9" opacity="0.6"/>
+  <circle cx="889" cy="798" r="2.2" fill="#fff" opacity="0.9"/>
+  <circle cx="1023" cy="823" r="1.7" fill="#e1f5fe" opacity="0.7"/>
+  <circle cx="1167" cy="756" r="2" fill="#fff" opacity="0.8"/>
+  <circle cx="1289" cy="891" r="1.4" fill="#fce4ec" opacity="0.6"/>
+  <circle cx="1434" cy="789" r="2.1" fill="#fff" opacity="0.9"/>
+  <circle cx="1567" cy="823" r="1.8" fill="#e8f5e8" opacity="0.8"/>
+  <circle cx="1698" cy="756" r="1.6" fill="#fff" opacity="0.7"/>
+  <circle cx="1823" cy="867" r="2.3" fill="#e3f2fd" opacity="0.9"/>
+  
+  <!-- Estrelas gigantes (muito próximas e brilhantes) -->
+  <circle cx="234" cy="1012" r="2.8" fill="#fff" opacity="1"/>
+  <circle cx="567" cy="978" r="3.2" fill="#e3f2fd" opacity="0.9"/>
+  <circle cx="834" cy="1034" r="2.5" fill="#fff" opacity="0.8"/>
+  <circle cx="1156" cy="967" r="3.5" fill="#e1f5fe" opacity="1"/>
+  <circle cx="1467" cy="1023" r="2.9" fill="#fff" opacity="0.9"/>
+  <circle cx="1723" cy="989" r="3.1" fill="#e8f5e8" opacity="0.8"/>
+  
+  <!-- Estrelas espalhadas aleatoriamente pela tela -->
+  <circle cx="67" cy="423" r="0.6" fill="#fff" opacity="0.5"/>
+  <circle cx="178" cy="234" r="1.3" fill="#e3f2fd" opacity="0.8"/>
+  <circle cx="345" cy="567" r="0.9" fill="#fff" opacity="0.6"/>
+  <circle cx="512" cy="123" r="1.7" fill="#e8f5e8" opacity="0.9"/>
+  <circle cx="678" cy="789" r="0.4" fill="#fff" opacity="0.4"/>
+  <circle cx="823" cy="356" r="2.1" fill="#f1f8e9" opacity="0.8"/>
+  <circle cx="967" cy="612" r="0.8" fill="#fff" opacity="0.7"/>
+  <circle cx="1134" cy="89" r="1.5" fill="#e1f5fe" opacity="0.9"/>
+  <circle cx="1289" cy="445" r="0.7" fill="#fff" opacity="0.6"/>
+  <circle cx="1445" cy="234" r="1.9" fill="#fce4ec" opacity="0.8"/>
+  <circle cx="1623" cy="678" r="0.5" fill="#fff" opacity="0.5"/>
+  <circle cx="1789" cy="356" r="2.3" fill="#e8f5e8" opacity="0.9"/>
+  <circle cx="1834" cy="789" r="1.1" fill="#fff" opacity="0.7"/>
+  <circle cx="1623" cy="123" r="0.9" fill="#e3f2fd" opacity="0.6"/>
+  <circle cx="1445" cy="567" r="1.6" fill="#fff" opacity="0.8"/>
+  <circle cx="1289" cy="890" r="0.6" fill="#e1f5fe" opacity="0.5"/>
+  <circle cx="1134" cy="234" r="2.2" fill="#fff" opacity="0.9"/>
+  <circle cx="967" cy="456" r="0.8" fill="#f1f8e9" opacity="0.6"/>
+  <circle cx="823" cy="712" r="1.4" fill="#fff" opacity="0.8"/>
+  <circle cx="678" cy="345" r="0.7" fill="#e8f5e8" opacity="0.6"/>
+  <circle cx="512" cy="823" r="1.8" fill="#fff" opacity="0.9"/>
+  <circle cx="345" cy="167" r="0.5" fill="#e3f2fd" opacity="0.5"/>
+  <circle cx="178" cy="634" r="2.1" fill="#fff" opacity="0.8"/>
+  <circle cx="67" cy="289" r="1.2" fill="#fce4ec" opacity="0.7"/>
+  
+  <!-- Estrelas de destaque realistas com efeito de cruz -->
+  <g filter="url(#softGlow)">
+    <!-- Estrelas brilhantes com raios de difração -->
+    <g opacity="0.6">
+      <circle cx="156" cy="435" r="3" fill="url(#silverStarGradient)"/>
+      <line x1="156" y1="420" x2="156" y2="450" stroke="#ffffff" stroke-width="0.8" opacity="0.8"/>
+      <line x1="141" y1="435" x2="171" y2="435" stroke="#ffffff" stroke-width="0.8" opacity="0.8"/>
+    </g>
+    
+    <g opacity="0.7">
+      <circle cx="1634" cy="190" r="3.5" fill="url(#silverStarGradient)"/>
+      <line x1="1634" y1="170" x2="1634" y2="210" stroke="#e3f2fd" stroke-width="1" opacity="0.9"/>
+      <line x1="1614" y1="190" x2="1654" y2="190" stroke="#e3f2fd" stroke-width="1" opacity="0.9"/>
+    </g>
+    
+    <g opacity="0.5">
+      <circle cx="423" cy="868" r="2.5" fill="url(#silverStarGradient)"/>
+      <line x1="423" y1="855" x2="423" y2="881" stroke="#ffffff" stroke-width="0.6" opacity="0.7"/>
+      <line x1="410" y1="868" x2="436" y2="868" stroke="#ffffff" stroke-width="0.6" opacity="0.7"/>
+    </g>
+    
+    <g opacity="0.8">
+      <circle cx="1367" cy="746" r="4" fill="url(#silverStarGradient)"/>
+      <line x1="1367" y1="725" x2="1367" y2="767" stroke="#e8f5e8" stroke-width="1.2" opacity="1"/>
+      <line x1="1346" y1="746" x2="1388" y2="746" stroke="#e8f5e8" stroke-width="1.2" opacity="1"/>
+    </g>
+             
+    <g opacity="0.6">
+      <circle cx="789" cy="246" r="2.8" fill="url(#silverStarGradient)"/>
+      <line x1="789" y1="230" x2="789" y2="262" stroke="#f1f8e9" stroke-width="0.8" opacity="0.8"/>
+      <line x1="773" y1="246" x2="805" y2="246" stroke="#f1f8e9" stroke-width="0.8" opacity="0.8"/>
+    </g>
+             
+    <g opacity="0.7">
+      <circle cx="267" cy="624" r="3.2" fill="url(#silverStarGradient)"/>
+      <line x1="267" y1="605" x2="267" y2="643" stroke="#ffffff" stroke-width="1" opacity="0.9"/>
+      <line x1="248" y1="624" x2="286" y2="624" stroke="#ffffff" stroke-width="1" opacity="0.9"/>
+    </g>
+             
+    <g opacity="0.5">
+      <circle cx="1523" cy="468" r="2.2" fill="url(#silverStarGradient)"/>
+      <line x1="1523" y1="456" x2="1523" y2="480" stroke="#e1f5fe" stroke-width="0.6" opacity="0.7"/>
+      <line x1="1511" y1="468" x2="1535" y2="468" stroke="#e1f5fe" stroke-width="0.6" opacity="0.7"/>
+    </g>
+             
+    <g opacity="0.8">
+      <circle cx="645" cy="135" r="3.8" fill="url(#silverStarGradient)"/>
+      <line x1="645" y1="115" x2="645" y2="155" stroke="#ffffff" stroke-width="1.1" opacity="1"/>
+      <line x1="625" y1="135" x2="665" y2="135" stroke="#ffffff" stroke-width="1.1" opacity="1"/>
+    </g>
+  </g>
+  
+  <!-- Estrelas de sucesso realistas com raios de difração -->
+  <g filter="url(#glow)">
+    <!-- Estrela principal dourada com efeito de cruz brilhante -->
+    <g opacity="0.9">
+      <circle cx="890" cy="445" r="8" fill="url(#goldStarGradient)"/>
+      <line x1="890" y1="415" x2="890" y2="475" stroke="#ffd700" stroke-width="2" opacity="1"/>
+      <line x1="860" y1="445" x2="920" y2="445" stroke="#ffd700" stroke-width="2" opacity="1"/>
+      <line x1="873" y1="428" x2="907" y2="462" stroke="#ffd700" stroke-width="1" opacity="0.7"/>
+      <line x1="907" y1="428" x2="873" y2="462" stroke="#ffd700" stroke-width="1" opacity="0.7"/>
+    </g>
+    
+    <!-- Estrelas douradas menores com raios -->
+    <g opacity="0.8">
+      <circle cx="1123" cy="279" r="5" fill="url(#goldStarGradient)"/>
+      <line x1="1123" y1="260" x2="1123" y2="298" stroke="#ffd700" stroke-width="1.2" opacity="0.9"/>
+      <line x1="1104" y1="279" x2="1142" y2="279" stroke="#ffd700" stroke-width="1.2" opacity="0.9"/>
+    </g>
+    
+    <g opacity="0.7">
+      <circle cx="623" cy="401" r="4.5" fill="url(#goldStarGradient)"/>
+      <line x1="623" y1="385" x2="623" y2="417" stroke="#ffb300" stroke-width="1" opacity="0.8"/>
+      <line x1="607" y1="401" x2="639" y2="401" stroke="#ffb300" stroke-width="1" opacity="0.8"/>
+    </g>
+    
+    <g opacity="0.8">
+      <circle cx="1034" cy="624" r="5.5" fill="url(#goldStarGradient)"/>
+      <line x1="1034" y1="605" x2="1034" y2="643" stroke="#ffd700" stroke-width="1.3" opacity="0.9"/>
+      <line x1="1015" y1="624" x2="1053" y2="624" stroke="#ffd700" stroke-width="1.3" opacity="0.9"/>
+    </g>
+    
+    <g opacity="0.6">
+      <circle cx="734" cy="590" r="4" fill="url(#goldStarGradient)"/>
+      <line x1="734" y1="575" x2="734" y2="605" stroke="#ffb300" stroke-width="0.9" opacity="0.7"/>
+      <line x1="719" y1="590" x2="749" y2="590" stroke="#ffb300" stroke-width="0.9" opacity="0.7"/>
+    </g>
+             
+    <g opacity="0.7">
+      <circle cx="1234" cy="546" r="4.8" fill="url(#goldStarGradient)"/>
+      <line x1="1234" y1="528" x2="1234" y2="564" stroke="#ffd700" stroke-width="1.1" opacity="0.8"/>
+      <line x1="1216" y1="546" x2="1252" y2="546" stroke="#ffd700" stroke-width="1.1" opacity="0.8"/>
+    </g>
+  </g>
+  
+  <!-- Linhas sutis conectando a constelação de forma orgânica -->
+  <line x1="890" y1="470" x2="1123" y2="317" stroke="#ffd700" stroke-width="1" opacity="0.2"/>
+  <line x1="890" y1="470" x2="623" y2="414" stroke="#ffd700" stroke-width="1" opacity="0.25"/>
+  <line x1="890" y1="470" x2="1034" y2="637" stroke="#ffd700" stroke-width="1" opacity="0.2"/>
+  <line x1="623" y1="414" x2="734" y2="603" stroke="#ffd700" stroke-width="1" opacity="0.15"/>
+  <line x1="1123" y1="317" x2="1234" y2="559" stroke="#ffd700" stroke-width="1" opacity="0.18"/>
+  
+  <!-- Partículas de luz flutuantes em posições aleatórias -->
+  <g opacity="0.6">
+    <circle cx="534" cy="267" r="1.8" fill="#ffd700">
+      <animate attributeName="opacity" values="0.2;0.9;0.2" dur="4.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1378" cy="489" r="1.2" fill="#ffffff">
+      <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.1s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="723" cy="634" r="2.1" fill="#ffb300">
+      <animate attributeName="opacity" values="0.1;0.7;0.1" dur="5.3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1167" cy="178" r="1.5" fill="#e3f2fd">
+      <animate attributeName="opacity" values="0.4;1;0.4" dur="2.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="234" cy="756" r="1.7" fill="#ffd700">
+      <animate attributeName="opacity" values="0.2;0.6;0.2" dur="4.7s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1534" cy="312" r="1.3" fill="#ffffff">
+      <animate attributeName="opacity" values="0.5;0.9;0.5" dur="3.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="456" cy="823" r="1.9" fill="#e8f5e8">
+      <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.1s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1723" cy="623" r="1.4" fill="#ffb300">
+      <animate attributeName="opacity" values="0.2;0.7;0.2" dur="3.9s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="867" cy="156" r="1.6" fill="#ffffff">
+      <animate attributeName="opacity" values="0.4;0.9;0.4" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="345" cy="445" r="2.2" fill="#e1f5fe">
+      <animate attributeName="opacity" values="0.1;0.6;0.1" dur="5.1s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Trilha de sucesso sutil (caminho ascendente) -->
+  <path d="M 100 1000 Q 400 800 700 600 T 1300 400 T 1800 200" 
+        stroke="#ffd700" stroke-width="2" fill="none" opacity="0.2"/>
+  
+  <!-- Efeito de profundidade com círculos -->
+  <circle cx="1500" cy="500" r="150" fill="none" stroke="#3f51b5" stroke-width="1" opacity="0.1"/>
+  <circle cx="400" cy="400" r="100" fill="none" stroke="#673ab7" stroke-width="1" opacity="0.08"/>
+  
+</svg>

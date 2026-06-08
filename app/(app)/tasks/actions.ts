@@ -1,0 +1,113 @@
+"use server";
+
+import { auth } from "@/auth";
+import type { Role } from "@/lib/auth/nav";
+import { canDeleteTasks, canManageTasks } from "@/lib/auth/permissions";
+import { getNextTaskIndex } from "@/lib/business/task-order";
+import { taskFormSchema, type TaskFormInput } from "@/lib/schemas/task";
+import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
+import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
+
+interface StrapiList<T> {
+  data: T[];
+}
+
+async function assertCanManage(): Promise<void> {
+  const session = await auth();
+  if (!canManageTasks(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+}
+
+function toStrapiPayload(input: TaskFormInput, index: number, active = true) {
+  const base = {
+    name: input.name,
+    qty: input.qty,
+    deliveryDate: input.deliveryDate || null,
+    index,
+    status: input.status,
+    templateTaskCode: input.templateTaskCode || null,
+    active,
+  };
+  if (input.stepDocumentId) {
+    return { ...base, step: input.stepDocumentId };
+  }
+  return base;
+}
+
+function invalidateTasks(): void {
+  revalidateStrapiTags(STRAPI_TAGS.tasks, STRAPI_TAGS.subTasks);
+}
+
+async function fetchTaskIndexes(): Promise<number[]> {
+  const res = await strapiFetch<StrapiList<{ index: number }>>(
+    "/tasks",
+    { strapiCache: { noStore: true } },
+    {
+      fields: ["index"],
+      filters: { active: { $eq: true } },
+      pagination: { pageSize: 100 },
+    },
+  );
+  return res.data.map((task) => task.index);
+}
+
+async function fetchTaskIndex(documentId: string): Promise<number> {
+  const res = await strapiFetch<{ data: { index: number } }>(
+    `/tasks/${documentId}`,
+    { strapiCache: { noStore: true } },
+    { fields: ["index"] },
+  );
+  return res.data.index;
+}
+
+export async function createTask(raw: TaskFormInput): Promise<void> {
+  await assertCanManage();
+  const data = taskFormSchema.parse(raw);
+  const indexes = await fetchTaskIndexes();
+  const index = getNextTaskIndex(indexes.map((value) => ({ index: value })));
+  await strapiFetch("/tasks", {
+    method: "POST",
+    strapiCache: { noStore: true },
+    body: JSON.stringify({ data: toStrapiPayload(data, index) }),
+  });
+  invalidateTasks();
+}
+
+export async function updateTask(
+  documentId: string,
+  raw: TaskFormInput,
+): Promise<void> {
+  await assertCanManage();
+  const data = taskFormSchema.parse(raw);
+  const index = await fetchTaskIndex(documentId);
+  await strapiFetch(`/tasks/${documentId}`, {
+    method: "PUT",
+    strapiCache: { noStore: true },
+    body: JSON.stringify({ data: toStrapiPayload(data, index) }),
+  });
+  invalidateTasks();
+}
+
+export async function deactivateTask(documentId: string): Promise<void> {
+  await assertCanManage();
+  await strapiFetch(`/tasks/${documentId}`, {
+    method: "PUT",
+    strapiCache: { noStore: true },
+    body: JSON.stringify({ data: { active: false } }),
+  });
+  invalidateTasks();
+}
+
+export async function deleteTask(documentId: string): Promise<void> {
+  await assertCanManage();
+  const session = await auth();
+  if (!canDeleteTasks(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+  await strapiFetch(`/tasks/${documentId}`, {
+    method: "DELETE",
+    strapiCache: { noStore: true },
+  });
+  invalidateTasks();
+}

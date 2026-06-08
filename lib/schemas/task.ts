@@ -1,0 +1,19 @@
+import { z } from "zod";
+
+export const TASK_STATUSES = [
+  "queued",
+  "producing",
+  "paused",
+  "finished",
+] as const;
+
+export const taskFormSchema = z.object({
+  name: z.string().min(1),
+  qty: z.number().int().min(1),
+  deliveryDate: z.string().optional(),
+  stepDocumentId: z.string().optional(),
+  status: z.enum(TASK_STATUSES),
+  templateTaskCode: z.string().optional(),
+});
+
+export type TaskFormInput = z.infer<typeof taskFormSchema>;

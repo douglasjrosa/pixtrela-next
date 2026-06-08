@@ -1,0 +1,268 @@
+{
+  "app": {
+    "name": "Pixtrela",
+    "slogan": "Você produz. Você ganha. Você brilha.",
+    "description": "Plataforma de gamificação industrial para gestão de tarefas e recompensas."
+  },
+  "duration": {
+    "hoursMinutes": "{hours}h {minutes}min",
+    "hoursOnly": "{hours}h",
+    "minutesOnly": "{minutes}min"
+  },
+  "common": {
+    "loading": "Carregando...",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "create": "Criar",
+    "edit": "Editar",
+    "delete": "Excluir",
+    "deactivate": "Desativar",
+    "back": "Voltar",
+    "search": "Buscar"
+  },
+  "auth": {
+    "loginTitle": "Entrar no Pixtrela",
+    "login": "Login",
+    "password": "Senha",
+    "signIn": "Entrar",
+    "signOut": "Sair",
+    "invalidCredentials": "Login ou senha inválidos.",
+    "sessionExpired": "Sua sessão expirou. Entre novamente para continuar.",
+    "loginPlaceholder": "ex.: maria.9876"
+  },
+  "nav": {
+    "board": "Quadro",
+    "tasks": "Tarefas",
+    "templates": "Modelos",
+    "teams": "Equipes",
+    "awards": "Prêmios",
+    "exchange": "Trocas",
+    "users": "Usuários",
+    "myBalance": "Meu saldo",
+    "settings": "Configurações"
+  },
+  "tasks": {
+    "start": "Iniciar",
+    "stop": "Parar",
+    "finish": "Finalizar",
+    "status": {
+      "queued": "Na fila",
+      "producing": "Produzindo",
+      "paused": "Pausada",
+      "finished": "Finalizada"
+    },
+    "expectedTime": "Tempo previsto",
+    "timeSpent": "Tempo gasto",
+    "manage": {
+      "title": "Gerenciar tarefas",
+      "newTask": "Nova tarefa",
+      "editTask": "Editar tarefa",
+      "name": "Nome",
+      "qty": "Quantidade",
+      "deliveryDate": "Data de entrega",
+      "step": "Etapa",
+      "index": "Ordem",
+      "status": "Status",
+      "templateTaskCode": "Código do modelo",
+      "active": "Ativa",
+      "inactive": "Inativa",
+      "noStep": "Sem etapa",
+      "deactivate": "Desativar",
+      "delete": "Excluir",
+      "deactivateConfirm": "Desativar esta tarefa?",
+      "deleteConfirm": "Excluir permanentemente esta tarefa?",
+      "saved": "Tarefa salva com sucesso.",
+      "deactivated": "Tarefa desativada.",
+      "deleted": "Tarefa excluída.",
+      "error": "Não foi possível concluir a operação.",
+      "totalExpectedTime": "Tempo previsto total (s)",
+      "totalTimeSpent": "Tempo gasto total (s)",
+      "startedAt": "Início",
+      "endedAt": "Fim",
+      "manageSubtasks": "Gerenciar subtarefas",
+      "metrics": "Métricas"
+    }
+  },
+  "kanban": {
+    "title": "Quadro de produção",
+    "empty": "Sem tarefas nesta etapa."
+  },
+  "balance": {
+    "title": "Meu saldo",
+    "current": "Saldo atual",
+    "income": "Total ganho",
+    "outcome": "Total gasto",
+    "previous": "Saldo anterior",
+    "stars": "Estrelas"
+  },
+  "exchange": {
+    "title": "Trocar Estrelas por prêmios",
+    "redeem": "Resgatar",
+    "windowClosed": "As trocas estão disponíveis somente entre os dias {first} e {last} do mês.",
+    "windowOpen": "Janela de trocas aberta.",
+    "insufficient": "Saldo de Estrelas insuficiente.",
+    "cost": "Custo",
+    "success": "Troca realizada com sucesso."
+  },
+  "users": {
+    "title": "Usuários",
+    "name": "Nome",
+    "code": "Código",
+    "role": "Função",
+    "roles": {
+      "admin": "Administrador",
+      "manager": "Gerente",
+      "leader": "Líder",
+      "colaborator": "Colaborador",
+      "kiosk": "Kiosk"
+    },
+    "newUser": "Novo usuário",
+    "editUser": "Editar usuário",
+    "username": "Login",
+    "password": "Senha",
+    "passwordOptional": "Deixe em branco para manter a senha atual",
+    "deactivate": "Desativar",
+    "saved": "Usuário salvo.",
+    "deactivated": "Usuário desativado.",
+    "deleted": "Usuário excluído."
+  },
+  "templates": {
+    "title": "Modelos de tarefa",
+    "newTemplate": "Novo modelo",
+    "code": "Código",
+    "name": "Nome",
+    "subtasks": "Subtarefas",
+    "addSubtask": "Adicionar subtarefa",
+    "saved": "Modelo salvo.",
+    "deleted": "Modelo excluído."
+  },
+  "steps": {
+    "title": "Etapas de produção",
+    "newStep": "Nova etapa",
+    "name": "Nome",
+    "index": "Ordem",
+    "saved": "Etapa salva.",
+    "deleted": "Etapa excluída."
+  },
+  "subtasks": {
+    "title": "Subtarefas",
+    "newSubtask": "Nova subtarefa",
+    "name": "Nome",
+    "expectedTime": "Tempo previsto (s)",
+    "timeSpent": "Tempo gasto (s)",
+    "qty": "Quantidade",
+    "maxSameTimeWorkers": "Máx. colaboradores simultâneos",
+    "sharingTypeLabel": "Tipo de compartilhamento",
+    "sharingType": {
+      "qty": "Por quantidade",
+      "duration": "Por duração"
+    },
+    "assignedTo": "Atribuído a",
+    "selectAll": "TODOS",
+    "selectAllMembers": "Marcar ou desmarcar todos os colaboradores",
+    "toggleTeamMembers": "Marcar ou desmarcar todos de {team}",
+    "assignMember": "Atribuir {name}",
+    "unassignMember": "Remover {name}",
+    "noTeamMembers": "Nenhum colaborador nesta equipe",
+    "position": "#",
+    "dragToReorder": "Arrastar para reordenar",
+    "toggleSubtaskForm": "Expandir ou recolher formulário da subtarefa",
+    "saved": "Subtarefa salva.",
+    "activationStatusLabel": "Status de ativação",
+    "activationStatus": {
+      "locked": "Bloqueada",
+      "unlocked": "Liberada",
+      "disabled": "Desativada"
+    },
+    "reasonForDisabling": "Motivo da desativação",
+    "reasonForDisablingMinLength": "Informe pelo menos 10 caracteres.",
+    "dependencies": "Dependências",
+    "dependenciesTitle": "Dependências da subtarefa",
+    "dependenciesDescription": "Selecione as subtarefas que devem ser concluídas antes desta ser liberada automaticamente.",
+    "dependenciesEmpty": "Não há outras subtarefas nesta tarefa.",
+    "dependenciesCount": "{count, plural, =0 {Nenhuma dependência} one {# dependência} other {# dependências}}"
+  },
+  "teams": {
+    "title": "Equipes",
+    "newTeam": "Nova equipe",
+    "name": "Nome",
+    "leader": "Líder",
+    "colaborators": "Colaboradores",
+    "exchangesFirstDay": "Início das trocas",
+    "exchangesLastDay": "Fim das trocas",
+    "since": "Desde",
+    "untill": "Até",
+    "untillHint": "Deixe vazio para manter a equipe ativa. Preencha para arquivar.",
+    "status": "Status",
+    "active": "Ativa",
+    "inactive": "Inativa",
+    "saved": "Equipe salva."
+  },
+  "awards": {
+    "title": "Prêmios",
+    "newAward": "Novo prêmio",
+    "name": "Nome",
+    "titleField": "Título",
+    "description": "Descrição",
+    "warnings": "Avisos",
+    "image": "Imagem",
+    "imageHint": "Envie uma imagem (PNG, JPG ou WebP).",
+    "imageAttached": "Imagem anexada.",
+    "imageSelected": "Imagem enviada com sucesso.",
+    "imageUploadFailed": "Não foi possível enviar a imagem. Tente novamente.",
+    "starCost": "Custo",
+    "values": "Valores",
+    "numberOf": "Quantidade",
+    "currency": "Moeda",
+    "addValue": "Adicionar valor",
+    "saved": "Prêmio salvo.",
+    "deleted": "Prêmio excluído."
+  },
+  "settings": {
+    "title": "Configurações",
+    "currency": "Moeda Estrela",
+    "currencyPerSecond": "Estrelas por segundo",
+    "saved": "Configurações salvas."
+  },
+  "kiosk": {
+    "idleMessage": "Aproxime o seu cartão ou digite seu código e senha.",
+    "code": "Código",
+    "password": "Senha",
+    "enter": "Entrar",
+    "invalidCredentials": "Código ou senha inválidos.",
+    "forbidden": "Não foi possível identificar o colaborador.",
+    "start": "Iniciar",
+    "exitSubtask": "Sair da subtarefa",
+    "exitConfirmDuration": "A subtarefa foi concluída?",
+    "exitCompletedYes": "Sim, concluí",
+    "exitCompletedNo": "Não, ainda não",
+    "exitQtyLabel": "Quantas peças você concluiu?",
+    "exitQtyMax": "Máximo: {max} peça(s) restante(s)",
+    "exitQtyInvalid": "Informe uma quantidade válida.",
+    "exitQtyExceeds": "A quantidade não pode exceder o restante da subtarefa.",
+    "exitConfirm": "Confirmar saída",
+    "exitCancel": "Cancelar",
+    "noTasks": "Nenhuma subtarefa atribuída.",
+    "waitFinish": "Saia da subtarefa atual antes de iniciar outra.",
+    "startedAt": "Início",
+    "elapsed": "Tempo decorrido",
+    "timeSpent": "Tempo gasto"
+  },
+  "activities": {
+    "started": "Atividade iniciada.",
+    "stopped": "Atividade finalizada."
+  },
+  "exchangeHistory": {
+    "title": "Minhas trocas",
+    "empty": "Nenhuma troca realizada.",
+    "date": "Data",
+    "award": "Prêmio",
+    "qty": "Quantidade"
+  },
+  "errors": {
+    "generic": "Algo deu errado. Tente novamente.",
+    "forbidden": "Você não tem permissão para acessar este recurso.",
+    "notFound": "Não encontrado."
+  }
+}
