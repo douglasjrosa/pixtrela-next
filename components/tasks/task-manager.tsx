@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import {
@@ -13,7 +14,9 @@ import { Button } from "@/components/ui/button";
 import { CardBadge } from "@/components/ui/card";
 import { Duration } from "@/components/ui/duration";
 import { formatDatePtBr } from "@/lib/format/datetime";
+import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { TaskFormInput } from "@/lib/schemas/task";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 import { TaskForm } from "./task-form";
 import { TaskRowActions } from "./task-row-actions";
@@ -57,20 +60,26 @@ const EMPTY_FORM: TaskFormInput = {
 export function TaskManager({ tasks, steps, canDelete }: TaskManagerProps) {
   const tManage = useTranslations("tasks.manage");
   const tStatus = useTranslations("tasks.status");
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
   const [formKey, setFormKey] = useState(0);
 
   function handleCreate(values: TaskFormInput): void {
     startTransition(async () => {
       try {
         await createTask(values);
-        setMessage(tManage("saved"));
+        showSuccessToast(tManage("saved"));
         setFormKey((current) => current + 1);
-      } catch {
-        setMessage(tManage("error"));
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tManage("error"));
       }
     });
+  }
+
+  function handleInvalidCreate(): void {
+    showErrorToast(tManage("validationError"));
   }
 
   function handleDeactivate(documentId: string): void {
@@ -78,9 +87,11 @@ export function TaskManager({ tasks, steps, canDelete }: TaskManagerProps) {
     startTransition(async () => {
       try {
         await deactivateTask(documentId);
-        setMessage(tManage("deactivated"));
-      } catch {
-        setMessage(tManage("error"));
+        showSuccessToast(tManage("deactivated"));
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tManage("error"));
       }
     });
   }
@@ -90,9 +101,11 @@ export function TaskManager({ tasks, steps, canDelete }: TaskManagerProps) {
     startTransition(async () => {
       try {
         await deleteTask(documentId);
-        setMessage(tManage("deleted"));
-      } catch {
-        setMessage(tManage("error"));
+        showSuccessToast(tManage("deleted"));
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tManage("error"));
       }
     });
   }
@@ -103,12 +116,6 @@ export function TaskManager({ tasks, steps, canDelete }: TaskManagerProps) {
         <h1 className="text-2xl font-bold">{tManage("title")}</h1>
       </div>
 
-      {message ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          {message}
-        </p>
-      ) : null}
-
       <TaskForm
         key={formKey}
         mode="create"
@@ -116,6 +123,7 @@ export function TaskManager({ tasks, steps, canDelete }: TaskManagerProps) {
         steps={steps}
         isPending={isPending}
         onSubmit={handleCreate}
+        onInvalid={handleInvalidCreate}
       />
 
       <table className="w-full text-sm">

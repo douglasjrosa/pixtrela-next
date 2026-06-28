@@ -7,7 +7,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    isolate: false,
+    isolate: true,
     fileParallelism: false,
     pool: "threads",
     maxWorkers: 1,

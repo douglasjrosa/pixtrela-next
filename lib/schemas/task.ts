@@ -8,8 +8,8 @@ export const TASK_STATUSES = [
 ] as const;
 
 export const taskFormSchema = z.object({
-  name: z.string().min(1),
-  qty: z.number().int().min(1),
+  name: z.string().trim().min(1),
+  qty: z.coerce.number().int().min(1),
   deliveryDate: z.string().optional(),
   stepDocumentId: z.string().optional(),
   status: z.enum(TASK_STATUSES),

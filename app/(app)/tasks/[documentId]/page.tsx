@@ -19,7 +19,6 @@ import type { TaskFormInput } from "@/lib/schemas/task";
 import { ACTIVE_TEAM_FILTER } from "@/lib/business/team-active";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
-import { updateTask } from "../actions";
 import { createSubTask, reorderSubTasks, updateSubTask } from "./actions";
 
 interface StrapiList<T> {
@@ -244,11 +243,6 @@ export default async function TaskDetailPage({ params }: PageProps) {
     );
   }
 
-  async function handleUpdate(values: TaskFormInput): Promise<void> {
-    "use server";
-    await updateTask(documentId, values);
-  }
-
   async function handleCreate(values: SubTaskFormInput): Promise<void> {
     "use server";
     await createSubTask(documentId, values);
@@ -273,7 +267,7 @@ export default async function TaskDetailPage({ params }: PageProps) {
         {tCommon("back")}
       </Link>
 
-      <TaskEditor task={task} steps={steps} onUpdate={handleUpdate} />
+      <TaskEditor task={task} steps={steps} />
 
       <SubTaskManager
         subtasks={subtasks}

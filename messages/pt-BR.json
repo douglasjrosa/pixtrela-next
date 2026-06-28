@@ -76,6 +76,7 @@
       "deactivated": "Tarefa desativada.",
       "deleted": "Tarefa excluída.",
       "error": "Não foi possível concluir a operação.",
+      "validationError": "Verifique os campos do formulário.",
       "totalExpectedTime": "Tempo previsto total (s)",
       "totalTimeSpent": "Tempo gasto total (s)",
       "startedAt": "Início",

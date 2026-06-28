@@ -1,38 +1,45 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const updateTag = vi.fn();
-const refresh = vi.fn();
+const revalidatePath = vi.fn();
 
 vi.mock("next/cache", () => ({
   updateTag,
-  refresh,
+  revalidatePath,
 }));
 
 describe("revalidateStrapiTags", () => {
   beforeEach(() => {
     updateTag.mockClear();
-    refresh.mockClear();
+    revalidatePath.mockClear();
   });
 
-  it("calls updateTag for each tag (read-your-own-writes)", async () => {
+  it("calls updateTag for each tag", async () => {
     const { revalidateStrapiTags } = await import("./revalidate");
     revalidateStrapiTags("strapi:users", "strapi:teams");
     expect(updateTag).toHaveBeenCalledWith("strapi:users");
     expect(updateTag).toHaveBeenCalledWith("strapi:teams");
-    expect(refresh).toHaveBeenCalledOnce();
   });
 
-  it("deduplicates tags and skips refresh when empty", async () => {
+  it("revalidates paths when options are provided", async () => {
+    const { revalidateStrapiTags } = await import("./revalidate");
+    revalidateStrapiTags("strapi:tasks", {
+      paths: ["/tasks", "/tasks/t1"],
+    });
+    expect(revalidatePath).toHaveBeenCalledWith("/tasks");
+    expect(revalidatePath).toHaveBeenCalledWith("/tasks/t1");
+  });
+
+  it("deduplicates tags", async () => {
     const { revalidateStrapiTags } = await import("./revalidate");
     revalidateStrapiTags("strapi:users", "strapi:users");
     expect(updateTag).toHaveBeenCalledTimes(1);
-    expect(refresh).toHaveBeenCalledOnce();
   });
 
   it("does nothing when no tags passed", async () => {
     const { revalidateStrapiTags } = await import("./revalidate");
     revalidateStrapiTags();
     expect(updateTag).not.toHaveBeenCalled();
-    expect(refresh).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

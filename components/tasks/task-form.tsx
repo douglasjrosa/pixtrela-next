@@ -31,6 +31,7 @@ export interface TaskFormProps {
   metrics?: TaskFormMetrics;
   isPending?: boolean;
   onSubmit: (values: TaskFormInput) => void;
+  onInvalid?: () => void;
   onCancel?: () => void;
 }
 
@@ -41,6 +42,7 @@ export function TaskForm({
   metrics,
   isPending = false,
   onSubmit,
+  onInvalid,
   onCancel,
 }: TaskFormProps) {
   const tCommon = useTranslations("common");
@@ -58,7 +60,7 @@ export function TaskForm({
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleSubmit(onSubmit, onInvalid)}
       className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2"
     >
       <h2 className="text-lg font-semibold sm:col-span-2">
@@ -81,6 +83,9 @@ export function TaskForm({
           min={1}
           {...register("qty", { valueAsNumber: true })}
         />
+        {errors.qty ? (
+          <p className="text-sm text-destructive">{errors.qty.message}</p>
+        ) : null}
       </div>
 
       <div className="space-y-2">

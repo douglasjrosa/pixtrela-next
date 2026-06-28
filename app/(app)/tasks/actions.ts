@@ -5,7 +5,8 @@ import type { Role } from "@/lib/auth/nav";
 import { canDeleteTasks, canManageTasks } from "@/lib/auth/permissions";
 import { getNextTaskIndex } from "@/lib/business/task-order";
 import { taskFormSchema, type TaskFormInput } from "@/lib/schemas/task";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
+import { strapiFetch } from "@/lib/strapi";
+import { LIST_CACHE_CONTRACT } from "@/lib/strapi/list-cache-contract";
 import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
 
 interface StrapiList<T> {
@@ -35,8 +36,10 @@ function toStrapiPayload(input: TaskFormInput, index: number, active = true) {
   return base;
 }
 
-function invalidateTasks(): void {
-  revalidateStrapiTags(STRAPI_TAGS.tasks, STRAPI_TAGS.subTasks);
+function invalidateTasks(taskDocumentId?: string): void {
+  const { tags, paths } = LIST_CACHE_CONTRACT.tasks;
+  const detailPaths = taskDocumentId ? [`/tasks/${taskDocumentId}`] : [];
+  revalidateStrapiTags(...tags, { paths: [...paths, ...detailPaths] });
 }
 
 async function fetchTaskIndexes(): Promise<number[]> {
@@ -86,7 +89,7 @@ export async function updateTask(
     strapiCache: { noStore: true },
     body: JSON.stringify({ data: toStrapiPayload(data, index) }),
   });
-  invalidateTasks();
+  invalidateTasks(documentId);
 }
 
 export async function deactivateTask(documentId: string): Promise<void> {

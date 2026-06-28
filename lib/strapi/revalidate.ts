@@ -1,17 +1,40 @@
-import { refresh, updateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+
+export type RevalidateOptions = {
+  paths?: string[];
+};
+
+function isRevalidateOptions(value: unknown): value is RevalidateOptions {
+  return typeof value === "object" && value !== null && "paths" in value;
+}
 
 /**
  * Invalidate Strapi list caches after a Server Action mutation.
  *
- * Next.js 16: `revalidateTag` is stale-while-revalidate — lists stay stale until
- * a hard reload. `updateTag` + `refresh` give read-your-own-writes in actions.
+ * Uses updateTag + revalidatePath only. Call router.refresh() on the client
+ * after mutations — refresh() must not run inside Server Actions.
  */
-export function revalidateStrapiTags(...tags: string[]): void {
-  const unique = [...new Set(tags.filter(Boolean))];
-  for (const tag of unique) {
+export function revalidateStrapiTags(
+  ...args: string[] | [...string[], RevalidateOptions]
+): void {
+  let tags: string[];
+  let paths: string[] = [];
+
+  if (args.length > 0 && isRevalidateOptions(args[args.length - 1])) {
+    const options = args.pop() as RevalidateOptions;
+    paths = options.paths ?? [];
+    tags = args as string[];
+  } else {
+    tags = args as string[];
+  }
+
+  const uniqueTags = [...new Set(tags.filter(Boolean))];
+  const uniquePaths = [...new Set(paths.filter(Boolean))];
+
+  for (const tag of uniqueTags) {
     updateTag(tag);
   }
-  if (unique.length > 0) {
-    refresh();
+  for (const path of uniquePaths) {
+    revalidatePath(path);
   }
 }
