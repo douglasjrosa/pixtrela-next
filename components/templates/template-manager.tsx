@@ -5,6 +5,7 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
+import { loadTemplateFromLegacy } from "@/app/(app)/templates/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ import {
   type TemplateSubTaskComponentInput,
   type TemplateTaskFormInput,
 } from "@/lib/schemas/template-task";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 export interface TemplateRow {
   documentId: string;
@@ -62,6 +64,7 @@ export function TemplateManager({
   const tSharing = useTranslations("subtasks.sharingType");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const {
@@ -69,11 +72,31 @@ export function TemplateManager({
     handleSubmit,
     reset,
     control,
+    getValues,
     formState: { errors },
   } = useForm<TemplateTaskFormInput>({
     resolver: zodResolver(templateTaskFormSchema),
     defaultValues: EMPTY_FORM,
   });
+
+  async function handleLoadTemplate(): Promise<void> {
+    const code = getValues("code")?.trim();
+    if (!code) {
+      showErrorToast(tTemplates("loadTemplateMissingCode"));
+      return;
+    }
+    setIsLoadingTemplate(true);
+    try {
+      const result = await loadTemplateFromLegacy(code);
+      reset(result);
+      setMessage(tTemplates("loadTemplateSuccess"));
+      showSuccessToast(tTemplates("loadTemplateSuccess"));
+    } catch {
+      showErrorToast(tTemplates("loadTemplateError"));
+    } finally {
+      setIsLoadingTemplate(false);
+    }
+  }
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -150,7 +173,19 @@ export function TemplateManager({
 
         <div className="space-y-2">
           <Label htmlFor="code">{tTemplates("code")}</Label>
-          <Input id="code" {...register("code")} />
+          <div className="flex gap-2">
+            <Input id="code" {...register("code")} />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleLoadTemplate}
+              disabled={isLoadingTemplate}
+            >
+              {isLoadingTemplate
+                ? tTemplates("loadingTemplate")
+                : tTemplates("loadTemplate")}
+            </Button>
+          </div>
           {errors.code ? (
             <p className="text-sm text-destructive">{errors.code.message}</p>
           ) : null}

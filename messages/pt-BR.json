@@ -136,7 +136,12 @@
     "subtasks": "Subtarefas",
     "addSubtask": "Adicionar subtarefa",
     "saved": "Modelo salvo.",
-    "deleted": "Modelo excluído."
+    "deleted": "Modelo excluído.",
+    "loadTemplate": "Carregar template",
+    "loadingTemplate": "Carregando...",
+    "loadTemplateSuccess": "Template carregado. Revise e salve.",
+    "loadTemplateError": "Não foi possível carregar o template do sistema legado.",
+    "loadTemplateMissingCode": "Informe o Código (id da caixa) antes de carregar."
   },
   "steps": {
     "title": "Etapas de produção",

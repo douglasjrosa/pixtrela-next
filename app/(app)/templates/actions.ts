@@ -1,6 +1,8 @@
 "use server";
 
 import { auth } from "@/auth";
+import { buildTemplateFromBox } from "@/lib/business/template-from-box";
+import { fetchBoxTemplateData } from "@/lib/legacy/rbx-client";
 import type { Role } from "@/lib/auth/nav";
 import { canDeleteTasks, canManageTemplates } from "@/lib/auth/permissions";
 import {
@@ -60,6 +62,22 @@ export async function updateTemplate(
     body: JSON.stringify({ data: toStrapiPayload(data) }),
   });
   invalidateTemplates();
+}
+
+/**
+ * Builds a TemplateTask draft from a legacy RBX box id (the template `code`).
+ * Does not persist; returns the form input for the user to review and save.
+ */
+export async function loadTemplateFromLegacy(
+  code: string,
+): Promise<TemplateTaskFormInput> {
+  await assertCanManage();
+  const boxId = Number(code.trim());
+  if (!Number.isInteger(boxId) || boxId <= 0) {
+    throw new Error("invalidCode");
+  }
+  const data = await fetchBoxTemplateData(boxId);
+  return buildTemplateFromBox(data);
 }
 
 export async function deleteTemplate(documentId: string): Promise<void> {
