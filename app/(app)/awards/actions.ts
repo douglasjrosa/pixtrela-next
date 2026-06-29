@@ -42,12 +42,11 @@ export async function uploadAwardImage(formData: FormData): Promise<number> {
   if (!(entry instanceof Blob) || entry.size === 0) {
     throw new Error("invalid");
   }
+  const mimeType = entry.type || "image/jpeg";
   const file =
     entry instanceof File
       ? entry
-      : new File([entry], "award-image.jpg", {
-          type: entry.type || "image/jpeg",
-        });
+      : new File([entry], "award-image.jpg", { type: mimeType });
   return strapiUpload(file);
 }
 

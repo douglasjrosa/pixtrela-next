@@ -5,6 +5,7 @@ import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { StarBalance, type StarBalanceProps } from "@/components/balance/star-balance";
 import { canViewBalance } from "@/lib/auth/permissions";
+import type { Role } from "@/lib/auth/nav";
 import { balanceTag, strapiFetch } from "@/lib/strapi";
 
 interface BalanceResponse {
@@ -33,7 +34,7 @@ async function loadBalance(userId: string | undefined): Promise<StarBalanceProps
 
 export default async function BalancePage() {
   const session = await auth();
-  const role = session?.user?.role;
+  const role = session?.user?.role as Role | undefined;
 
   if (!canViewBalance(role)) {
     return <ForbiddenMessage />;

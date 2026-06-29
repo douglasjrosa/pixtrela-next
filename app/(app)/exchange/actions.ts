@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
+import type { Role } from "@/lib/auth/nav";
 import { canExchange } from "@/lib/auth/permissions";
 import { balanceTag, STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
@@ -11,7 +12,7 @@ import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
  */
 export async function redeemAward(awardId: string, currency: string, qty: number) {
   const session = await auth();
-  if (!canExchange(session?.user?.role)) {
+  if (!canExchange(session?.user?.role as Role | undefined)) {
     throw new Error("forbidden");
   }
   await strapiFetch("/exchanges", {

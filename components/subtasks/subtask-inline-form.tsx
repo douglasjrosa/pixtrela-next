@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
@@ -64,7 +64,8 @@ export function SubTaskInlineForm({
     watch,
     setValue,
     formState: { errors },
-  } = useForm<SubTaskFormInput>({    resolver: zodResolver(subTaskFormSchema),
+  } = useForm<SubTaskFormInput>({
+    resolver: zodResolver(subTaskFormSchema) as Resolver<SubTaskFormInput>,
     defaultValues,
   });
 

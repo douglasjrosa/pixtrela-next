@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
@@ -28,7 +28,7 @@ export function KioskColaboratorForm({
     handleSubmit,
     formState: { errors },
   } = useForm<KioskIdentifyInput>({
-    resolver: zodResolver(kioskIdentifySchema),
+    resolver: zodResolver(kioskIdentifySchema) as Resolver<KioskIdentifyInput>,
     defaultValues: { password: "" },
   });
 

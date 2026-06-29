@@ -5,6 +5,7 @@ import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { AwardCard, type AwardView } from "@/components/exchange/award-card";
 import { canExchange } from "@/lib/auth/permissions";
+import type { Role } from "@/lib/auth/nav";
 import {
   awardPricesFromValues,
   exchangeCost,
@@ -172,7 +173,7 @@ export default async function ExchangePage() {
   const t = await getTranslations("exchange");
   const tHistory = await getTranslations("exchangeHistory");
   const session = await auth();
-  const role = session?.user?.role;
+  const role = session?.user?.role as Role | undefined;
 
   if (!canExchange(role)) {
     return <ForbiddenMessage />;
