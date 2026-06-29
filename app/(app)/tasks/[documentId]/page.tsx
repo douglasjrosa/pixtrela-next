@@ -19,7 +19,7 @@ import type { TaskFormInput } from "@/lib/schemas/task";
 import { ACTIVE_TEAM_FILTER } from "@/lib/business/team-active";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
-import { createSubTask, reorderSubTasks, updateSubTask } from "./actions";
+import { createSubTask, deleteSubTask, reorderSubTasks, updateSubTask } from "./actions";
 
 interface StrapiList<T> {
   data: T[];
@@ -243,9 +243,12 @@ export default async function TaskDetailPage({ params }: PageProps) {
     );
   }
 
-  async function handleCreate(values: SubTaskFormInput): Promise<void> {
+  async function handleCreate(
+    values: SubTaskFormInput,
+    options?: { insertAtIndex?: number },
+  ): Promise<void> {
     "use server";
-    await createSubTask(documentId, values);
+    await createSubTask(documentId, values, options);
   }
 
   async function handleUpdateSubTask(
@@ -259,6 +262,11 @@ export default async function TaskDetailPage({ params }: PageProps) {
   async function handleReorder(orderedDocumentIds: string[]): Promise<void> {
     "use server";
     await reorderSubTasks(documentId, orderedDocumentIds);
+  }
+
+  async function handleDeleteSubTask(subtaskDocumentId: string): Promise<void> {
+    "use server";
+    await deleteSubTask(subtaskDocumentId);
   }
 
   return (
@@ -276,6 +284,7 @@ export default async function TaskDetailPage({ params }: PageProps) {
         onCreate={handleCreate}
         onUpdate={handleUpdateSubTask}
         onReorder={handleReorder}
+        onDelete={handleDeleteSubTask}
       />
     </section>
   );

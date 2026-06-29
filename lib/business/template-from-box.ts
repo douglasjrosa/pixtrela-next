@@ -9,9 +9,15 @@ import type {
   TemplateTaskFormInput,
 } from "@/lib/schemas/template-task";
 
+import {
+  TEMPLATE_SARRAFOS_CUT_NAME,
+  applyTemplateSubTaskDependencies,
+} from "./template-subtask-dependencies";
+
 const CUT_SECONDS = 60;
 const ADHESIVE_SECONDS = 30;
-const DEFAULT_MAX_WORKERS = 1;
+const MAX_WORKERS_SINGLE = 1;
+const MAX_WORKERS_DUAL = 2;
 const QTY_BASE = 1;
 const QTY_TAMPA = 1;
 const QTY_LATERAIS = 2;
@@ -80,6 +86,16 @@ function cutDraft(name: string, present: boolean): SubTaskDraft {
   };
 }
 
+function chapaCutDraft(name: string, qty: number, present: boolean): SubTaskDraft {
+  return {
+    name,
+    qty,
+    sharingType: "qty",
+    expectedTime: CUT_SECONDS,
+    include: present,
+  };
+}
+
 function qtyDraft(name: string, qty: number, expectedTime: number): SubTaskDraft {
   return {
     name,
@@ -94,6 +110,22 @@ function buildTemplateName(empresaNome: string, boxName: string): string {
   const company = empresaNome.trim();
   const box = boxName.trim();
   return company ? `${company} - ${box}` : box;
+}
+
+function maxSameTimeWorkersFor(name: string): number {
+  if (
+    name === "Montagem dos pés" ||
+    name === "Montagem dos quadros das laterais" ||
+    name === "Montagem dos quadros das cabeceiras" ||
+    name === "Montagem dos quadros da tampa" ||
+    name === "Corte das chapas das laterais" ||
+    name === "Corte das chapas das cabeceiras" ||
+    name === "Corte da chapa da tampa" ||
+    name.startsWith("Fixação dos adesivos")
+  ) {
+    return MAX_WORKERS_SINGLE;
+  }
+  return MAX_WORKERS_DUAL;
 }
 
 /**
@@ -122,7 +154,18 @@ export function buildTemplateFromBox(
   const drafts: SubTaskDraft[] = [
     cutDraft("Corte dos pés da base", hasBaseFeet),
     cutDraft("Corte das tábuas da base", hasBaseBoards),
-    cutDraft("Corte dos sarrafos da caixa", hasFrames),
+    cutDraft(TEMPLATE_SARRAFOS_CUT_NAME, hasFrames),
+    chapaCutDraft(
+      "Corte das chapas das laterais",
+      QTY_LATERAIS,
+      isPresent(lateral),
+    ),
+    chapaCutDraft(
+      "Corte das chapas das cabeceiras",
+      QTY_CABECEIRAS,
+      isPresent(cabeceira),
+    ),
+    chapaCutDraft("Corte da chapa da tampa", QTY_TAMPA, isPresent(tampa)),
     qtyDraft("Montagem dos pés", qPes, montagemSeconds(montagem, MONTAGEM_CODE.pe)),
     qtyDraft(
       "Montagem da base",
@@ -176,18 +219,19 @@ export function buildTemplateFromBox(
     ),
   ];
 
-  const subTask: TemplateSubTaskComponentInput[] = drafts
-    .filter((draft) => draft.include)
-    .map((draft, index) => ({
-      name: draft.name,
-      qty: draft.qty,
-      sharingType: draft.sharingType,
-      maxSameTimeWorkers: DEFAULT_MAX_WORKERS,
-      index,
-      expectedTime: draft.expectedTime,
-      dependencies: null,
-    }));
-
+  const subTask: TemplateSubTaskComponentInput[] = applyTemplateSubTaskDependencies(
+    drafts
+      .filter((draft) => draft.include)
+      .map((draft, index) => ({
+        name: draft.name,
+        qty: draft.qty,
+        sharingType: draft.sharingType,
+        maxSameTimeWorkers: maxSameTimeWorkersFor(draft.name),
+        index,
+        expectedTime: draft.expectedTime,
+        dependencies: null,
+      })),
+  );
   return {
     name: buildTemplateName(data.empresaNome, data.boxName),
     code: String(data.prodId),

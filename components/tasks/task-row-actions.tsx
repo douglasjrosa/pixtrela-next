@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,13 @@ export function TaskRowActions({
   const t = useTranslations("tasks.manage");
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
+      <Link
+        href={`/tasks/${documentId}`}
+        className="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs hover:bg-accent hover:text-accent-foreground"
+      >
+        {t("manageSubtasks")}
+      </Link>
       {active ? (
         <Button
           type="button"

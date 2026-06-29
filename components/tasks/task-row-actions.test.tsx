@@ -16,6 +16,9 @@ describe("TaskRowActions", () => {
       />,
     );
     expect(screen.getByRole("button", { name: "Desativar" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Gerenciar subtarefas" }),
+    ).toHaveAttribute("href", "/tasks/abc");
     expect(screen.queryByRole("button", { name: "Excluir" })).not.toBeInTheDocument();
   });
 

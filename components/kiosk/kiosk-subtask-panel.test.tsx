@@ -210,4 +210,11 @@ describe("KioskSubtaskPanel", () => {
       screen.getByText("Nenhuma subtarefa atribuída."),
     ).toBeInTheDocument();
   });
+
+  it("hides action buttons in read-only mode", () => {
+    renderWithIntl(<KioskSubtaskPanel subTasks={subTasks} readOnly />);
+
+    expect(screen.queryByRole("button", { name: "Iniciar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sair da subtarefa" })).toBeNull();
+  });
 });

@@ -1,18 +1,24 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ScanBarcode } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { buildDefaultLogin } from "@/lib/business/default-login";
+import { copyKioskColaboratorLink } from "@/lib/kiosk/kiosk-link";
 import {
+  USER_CODE_NOT_UNIQUE_KEY,
   USER_ROLES,
-  userFormSchema,
+  createUserFormSchema,
   type UserFormInput,
 } from "@/lib/schemas/user";
+import { showSuccessToast } from "@/lib/ui/app-toast";
 
 export interface UserRow {
   /** Strapi users-permissions numeric id (required for mutations). */
@@ -32,6 +38,11 @@ export interface UserManagerProps {
   canDelete: boolean;
   /** Precomputed on the server — do not pass predicate functions from RSC. */
   manageableRoles: UserFormInput["roleType"][];
+  canCopyKioskLink?: boolean;
+  /** Admin-only password field in create/edit modal. */
+  canSetPassword?: boolean;
+  /** Admin-only manual login override in create/edit modal. */
+  canEditUserLogin?: boolean;
 }
 
 const EMPTY_FORM: UserFormInput = {
@@ -65,6 +76,231 @@ function roleOptionsForUser(
   return [user.roleType, ...manageableRoles];
 }
 
+function codeErrorMessage(
+  message: string | undefined,
+  translate: (key: "codeNotUnique") => string,
+): string | undefined {
+  if (!message) return undefined;
+  if (message === USER_CODE_NOT_UNIQUE_KEY) {
+    return translate(USER_CODE_NOT_UNIQUE_KEY);
+  }
+  return message;
+}
+
+interface UserFormDialogProps {
+  users: UserRow[];
+  editingUser: UserRow | null;
+  roleOptions: UserFormInput["roleType"][];
+  isPending: boolean;
+  canCopyKioskLink: boolean;
+  canSetPassword: boolean;
+  canEditUserLogin: boolean;
+  onClose: () => void;
+  onSubmit: (values: UserFormInput) => void;
+  onCopyKioskLink: (documentId: string) => Promise<void>;
+}
+
+function UserFormDialog({
+  users,
+  editingUser,
+  roleOptions,
+  isPending,
+  canCopyKioskLink,
+  canSetPassword,
+  canEditUserLogin,
+  onClose,
+  onSubmit,
+  onCopyKioskLink,
+}: UserFormDialogProps) {
+  const tCommon = useTranslations("common");
+  const tUsers = useTranslations("users");
+  const isEditing = editingUser !== null;
+  const formTitleId = "user-form-title";
+  const [loginManuallyEdited, setLoginManuallyEdited] = useState(false);
+
+  const formSchema = useMemo(
+    () =>
+      createUserFormSchema(users, editingUser?.documentId, {
+        requirePassword: canSetPassword && !isEditing,
+      }),
+    [users, editingUser?.documentId, canSetPassword, isEditing],
+  );
+
+  const defaultValues = editingUser
+    ? {
+        name: editingUser.name,
+        username: editingUser.username,
+        password: "",
+        code: editingUser.code,
+        roleType: editingUser.roleType,
+      }
+    : EMPTY_FORM;
+
+  const prevNameCodeRef = useRef({ name: defaultValues.name, code: defaultValues.code });
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    trigger,
+    watch,
+    formState: { errors },
+  } = useForm<UserFormInput>({
+    resolver: zodResolver(formSchema),
+    defaultValues,
+  });
+
+  const name = watch("name");
+  const code = watch("code");
+
+  useEffect(() => {
+    const prev = prevNameCodeRef.current;
+    if (prev.name === name && prev.code === code) {
+      return;
+    }
+    prevNameCodeRef.current = { name, code };
+
+    if (canEditUserLogin && loginManuallyEdited) {
+      return;
+    }
+
+    setValue("username", buildDefaultLogin(name, code), { shouldValidate: true });
+  }, [name, code, canEditUserLogin, loginManuallyEdited, setValue]);
+
+  const codeError = codeErrorMessage(errors.code?.message, tUsers);
+  const usernameRegister = register("username");
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={formTitleId}
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border bg-background p-4 shadow-lg"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="grid gap-4 sm:grid-cols-2"
+        >
+          <div className="flex items-start justify-between gap-2 sm:col-span-2">
+            <h2 id={formTitleId} className="text-lg font-semibold">
+              {isEditing ? tUsers("editUser") : tUsers("newUser")}
+            </h2>
+            {canCopyKioskLink && editingUser ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-8 shrink-0"
+                aria-label={tUsers("copyKioskLink")}
+                onClick={() => void onCopyKioskLink(editingUser.documentId)}
+              >
+                <ScanBarcode className="size-4" aria-hidden />
+              </Button>
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="name">{tUsers("name")}</Label>
+            <Input id="name" {...register("name")} />
+            {errors.name ? (
+              <p className="text-sm text-destructive">{errors.name.message}</p>
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="username">{tUsers("username")}</Label>
+            <Input
+              id="username"
+              readOnly={!canEditUserLogin}
+              aria-readonly={!canEditUserLogin}
+              className={!canEditUserLogin ? "bg-muted" : undefined}
+              {...usernameRegister}
+              onChange={(event) => {
+                if (canEditUserLogin) {
+                  setLoginManuallyEdited(true);
+                }
+                void usernameRegister.onChange(event);
+              }}
+            />
+            {errors.username ? (
+              <p className="text-sm text-destructive">{errors.username.message}</p>
+            ) : null}
+            {canEditUserLogin ? (
+              <p className="text-xs text-muted-foreground">
+                {tUsers("loginOverrideHint")}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {tUsers("loginAutoFill")}
+              </p>
+            )}
+          </div>
+
+          {canSetPassword ? (
+            <div className="space-y-2">
+              <Label htmlFor="password">{tUsers("password")}</Label>
+              <Input id="password" type="password" {...register("password")} />
+              {isEditing ? (
+                <p className="text-xs text-muted-foreground">
+                  {tUsers("passwordOptional")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="code">{tUsers("code")}</Label>
+            <Input
+              id="code"
+              type="number"
+              min={0}
+              {...register("code", {
+                valueAsNumber: true,
+                onBlur: () => {
+                  void trigger("code");
+                },
+              })}
+            />
+            {codeError ? (
+              <p className="text-sm text-destructive">{codeError}</p>
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="roleType">{tUsers("role")}</Label>
+            <select
+              id="roleType"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              {...register("roleType")}
+            >
+              {roleOptions.map((role) => (
+                <option key={role} value={role}>
+                  {tUsers(`roles.${role}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex gap-2 sm:col-span-2">
+            <Button type="submit" disabled={isPending}>
+              {isEditing ? tCommon("save") : tCommon("create")}
+            </Button>
+            <Button type="button" variant="outline" onClick={onClose}>
+              {tCommon("cancel")}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export function UserManager({
   users,
   onCreate,
@@ -72,9 +308,14 @@ export function UserManager({
   onDelete,
   canDelete,
   manageableRoles,
+  canCopyKioskLink = false,
+  canSetPassword = false,
+  canEditUserLogin = false,
 }: UserManagerProps) {
   const tCommon = useTranslations("common");
   const tUsers = useTranslations("users");
+  const router = useRouter();
+  const [formOpen, setFormOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -82,37 +323,26 @@ export function UserManager({
   const editingUser =
     users.find((user) => user.id === editingUserId) ?? null;
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<UserFormInput>({
-    resolver: zodResolver(userFormSchema),
-    defaultValues: EMPTY_FORM,
-  });
+  function closeForm(): void {
+    setFormOpen(false);
+    setEditingUserId(null);
+  }
 
   function startCreate(): void {
     setEditingUserId(null);
-    reset(EMPTY_FORM);
     setMessage(null);
+    setFormOpen(true);
   }
 
   function startEdit(user: UserRow): void {
     setEditingUserId(user.id);
-    reset({
-      name: user.name,
-      username: user.username,
-      password: "",
-      code: user.code,
-      roleType: user.roleType,
-    });
     setMessage(null);
+    setFormOpen(true);
   }
 
   function onSubmit(values: UserFormInput): void {
     const payload: UserFormInput = { ...values };
-    if (!payload.password) {
+    if (!canSetPassword || !payload.password) {
       delete payload.password;
     }
 
@@ -123,8 +353,8 @@ export function UserManager({
         await onCreate(payload);
       }
       setMessage(tUsers("saved"));
-      setEditingUserId(null);
-      reset(EMPTY_FORM);
+      closeForm();
+      router.refresh();
     });
   }
 
@@ -133,10 +363,17 @@ export function UserManager({
     startTransition(async () => {
       await onDelete(userId);
       setMessage(tUsers("deleted"));
+      router.refresh();
     });
   }
 
+  async function handleCopyKioskLink(documentId: string): Promise<void> {
+    await copyKioskColaboratorLink(documentId, window.location.origin);
+    showSuccessToast(tUsers("kioskLinkCopied"));
+  }
+
   const roleOptions = roleOptionsForUser(editingUser, manageableRoles);
+  const formDialogKey = editingUserId ?? "new";
 
   return (
     <div className="space-y-6">
@@ -153,73 +390,21 @@ export function UserManager({
         </p>
       ) : null}
 
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2"
-      >
-        <h2 className="sm:col-span-2 text-lg font-semibold">
-          {editingUserId !== null ? tUsers("editUser") : tUsers("newUser")}
-        </h2>
-
-        <div className="space-y-2">
-          <Label htmlFor="name">{tUsers("name")}</Label>
-          <Input id="name" {...register("name")} />
-          {errors.name ? (
-            <p className="text-sm text-destructive">{errors.name.message}</p>
-          ) : null}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="username">{tUsers("username")}</Label>
-          <Input id="username" {...register("username")} />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="password">{tUsers("password")}</Label>
-          <Input id="password" type="password" {...register("password")} />
-          {editingUserId !== null ? (
-            <p className="text-xs text-muted-foreground">
-              {tUsers("passwordOptional")}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="code">{tUsers("code")}</Label>
-          <Input
-            id="code"
-            type="number"
-            min={0}
-            {...register("code", { valueAsNumber: true })}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="roleType">{tUsers("role")}</Label>
-          <select
-            id="roleType"
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-            {...register("roleType")}
-          >
-            {roleOptions.map((role) => (
-              <option key={role} value={role}>
-                {tUsers(`roles.${role}`)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex gap-2 sm:col-span-2">
-          <Button type="submit" disabled={isPending}>
-            {editingUserId !== null ? tCommon("save") : tCommon("create")}
-          </Button>
-          {editingUserId !== null ? (
-            <Button type="button" variant="outline" onClick={startCreate}>
-              {tCommon("cancel")}
-            </Button>
-          ) : null}
-        </div>
-      </form>
+      {formOpen ? (
+        <UserFormDialog
+          key={formDialogKey}
+          users={users}
+          editingUser={editingUser}
+          roleOptions={roleOptions}
+          isPending={isPending}
+          canCopyKioskLink={canCopyKioskLink}
+          canSetPassword={canSetPassword}
+          canEditUserLogin={canEditUserLogin}
+          onClose={closeForm}
+          onSubmit={onSubmit}
+          onCopyKioskLink={handleCopyKioskLink}
+        />
+      ) : null}
 
       <table className="w-full text-sm">
         <thead>

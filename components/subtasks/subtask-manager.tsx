@@ -47,15 +47,25 @@ import { Duration } from "@/components/ui/duration";
 
 import {
 
+  applySequentialSubTaskIndices,
+
   reorderSubTasksByDrag,
 
 } from "@/lib/business/subtask-order";
+
+import {
+  insertDraftSubTaskCloneAt,
+  isDraftSubTaskId,
+  mergeServerSubtasksWithDrafts,
+} from "@/lib/business/subtask-draft";
 
 import { calculateSubTaskDisplayQty } from "@/lib/business/subtask-display-qty";
 
 import { parseSubTaskDependencyIds } from "@/lib/business/subtask-dependencies";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
+import { SubTaskCloneButton } from "./subtask-clone-button";
+import { SubTaskRemoveButton } from "./subtask-remove-button";
 import { SubTaskInlineForm } from "./subtask-inline-form";
 import type { SubTaskDependencyOption } from "./subtask-dependencies-modal";
 
@@ -111,7 +121,19 @@ export interface SubTaskRow {
 
   assignedToIds?: string[];
 
+  /** Client-only clone; persisted when the user saves the subtask form. */
+
+  isDraft?: boolean;
+
 }
+
+
+
+export type SubTaskCreateOptions = {
+
+  insertAtIndex?: number;
+
+};
 
 
 
@@ -123,11 +145,16 @@ export interface SubTaskManagerProps {
 
   teams: TeamAssignmentOption[];
 
-  onCreate: (values: SubTaskFormInput) => void | Promise<void>;
+  onCreate: (
+    values: SubTaskFormInput,
+    options?: SubTaskCreateOptions,
+  ) => void | Promise<void>;
 
   onUpdate: (documentId: string, values: SubTaskFormInput) => void | Promise<void>;
 
   onReorder?: (orderedDocumentIds: string[]) => void | Promise<void>;
+
+  onDelete: (documentId: string) => void | Promise<void>;
 
 }
 
@@ -161,7 +188,7 @@ const EMPTY_FORM: SubTaskFormInput = {
 
 const NEW_SUBTASK_KEY = "new";
 
-const TABLE_COLUMN_COUNT = 6;
+const TABLE_COLUMN_COUNT = 7;
 
 const SUBTASK_DND_CONTEXT_ID = "subtask-manager-dnd";
 
@@ -220,7 +247,12 @@ function buildDependencyOptions(
   excludeDocumentId?: string,
 ): SubTaskDependencyOption[] {
   return subtasks
-    .filter((item) => item.documentId !== excludeDocumentId)
+    .filter(
+      (item) =>
+        item.documentId !== excludeDocumentId &&
+        !item.isDraft &&
+        !isDraftSubTaskId(item.documentId),
+    )
     .map((item) => ({ documentId: item.documentId, name: item.name }));
 }
 
@@ -250,7 +282,11 @@ interface SortableSubTaskAccordionProps {
 
   onSubmit: (documentId: string, values: SubTaskFormInput) => void;
 
-  onCancel: () => void;
+  onCancel: (documentId: string) => void;
+
+  onClone: (documentId: string) => void;
+
+  onRemove: (documentId: string) => void;
 
 }
 
@@ -282,6 +318,10 @@ function SortableSubTaskAccordion({
 
   onCancel,
 
+  onClone,
+
+  onRemove,
+
 }: SortableSubTaskAccordionProps) {
 
   const {
@@ -298,7 +338,10 @@ function SortableSubTaskAccordion({
 
     isDragging,
 
-  } = useSortable({ id: subtask.documentId });
+  } = useSortable({
+    id: subtask.documentId,
+    disabled: subtask.isDraft === true,
+  });
 
 
 
@@ -394,6 +437,19 @@ function SortableSubTaskAccordion({
 
         <td>{statusLabel}</td>
 
+        <td className="w-20 py-2 text-right">
+          <div className="flex justify-end">
+            <SubTaskCloneButton
+              onClick={() => onClone(subtask.documentId)}
+              disabled={isPending}
+            />
+            <SubTaskRemoveButton
+              onClick={() => onRemove(subtask.documentId)}
+              disabled={isPending}
+            />
+          </div>
+        </td>
+
       </tr>
 
       {isExpanded ? (
@@ -412,13 +468,17 @@ function SortableSubTaskAccordion({
 
               dependencyOptions={dependencyOptions}
 
-              currentDocumentId={subtask.documentId}
+              currentDocumentId={
+                subtask.isDraft ? undefined : subtask.documentId
+              }
+
+              isCreate={subtask.isDraft === true}
 
               isPending={isPending}
 
               onSubmit={(values) => onSubmit(subtask.documentId, values)}
 
-              onCancel={onCancel}
+              onCancel={() => onCancel(subtask.documentId)}
 
             />
 
@@ -449,6 +509,8 @@ export function SubTaskManager({
   onUpdate,
 
   onReorder,
+
+  onDelete,
 
 }: SubTaskManagerProps) {
 
@@ -484,7 +546,10 @@ export function SubTaskManager({
 
   useEffect(() => {
 
-    setOrderedSubtasks(subtasks);
+    setOrderedSubtasks((current) => {
+      const drafts = current.filter((item) => item.isDraft);
+      return mergeServerSubtasksWithDrafts(subtasks, drafts);
+    });
 
   }, [subtasks]);
 
@@ -493,6 +558,22 @@ export function SubTaskManager({
   function collapsePanel(): void {
 
     setExpandedKey(null);
+
+  }
+
+
+
+  function cancelRow(documentId: string): void {
+
+    if (isDraftSubTaskId(documentId)) {
+      setOrderedSubtasks((current) =>
+        applySequentialSubTaskIndices(
+          current.filter((item) => item.documentId !== documentId),
+        ),
+      );
+    }
+
+    collapsePanel();
 
   }
 
@@ -550,6 +631,72 @@ export function SubTaskManager({
 
 
 
+  function handleSubmitRow(
+    documentId: string,
+    values: SubTaskFormInput,
+  ): void {
+    const row = orderedSubtasks.find((item) => item.documentId === documentId);
+    if (!row) return;
+
+    if (row.isDraft) {
+      startTransition(async () => {
+        await onCreate(values, { insertAtIndex: row.index });
+        setOrderedSubtasks((current) =>
+          current.filter((item) => item.documentId !== documentId),
+        );
+        setMessage(tSubtasks("saved"));
+        collapsePanel();
+      });
+      return;
+    }
+
+    handleUpdate(documentId, values);
+  }
+
+
+
+  function handleClone(documentId: string): void {
+
+    const sourceIndex = orderedSubtasks.findIndex(
+      (item) => item.documentId === documentId,
+    );
+    if (sourceIndex === -1) return;
+
+    let draftId: string | undefined;
+    setOrderedSubtasks((current) => {
+      const next = insertDraftSubTaskCloneAt(current, sourceIndex);
+      draftId = next[sourceIndex + 1]?.documentId;
+      return next;
+    });
+    if (draftId) {
+      setExpandedKey(draftId);
+    }
+    setMessage(tSubtasks("cloned"));
+
+  }
+
+
+
+  function handleRemove(documentId: string): void {
+    const row = orderedSubtasks.find((item) => item.documentId === documentId);
+    if (!row) return;
+
+    if (row.isDraft || isDraftSubTaskId(documentId)) {
+      cancelRow(documentId);
+      return;
+    }
+
+    if (!window.confirm(tSubtasks("removeSubtaskConfirm"))) return;
+
+    startTransition(async () => {
+      await onDelete(documentId);
+      setMessage(tSubtasks("removed"));
+      collapsePanel();
+    });
+  }
+
+
+
   function handleDragEnd(event: DragEndEvent): void {
 
     const nextOrder = resolveSubTaskReorder(
@@ -570,7 +717,14 @@ export function SubTaskManager({
 
     startTransition(async () => {
 
-      await onReorder(nextOrder.map((subtask) => subtask.documentId));
+      const persistedIds = nextOrder
+        .filter(
+          (subtask) =>
+            !subtask.isDraft && !isDraftSubTaskId(subtask.documentId),
+        )
+        .map((subtask) => subtask.documentId);
+
+      await onReorder(persistedIds);
 
     });
 
@@ -642,6 +796,8 @@ export function SubTaskManager({
 
               <th>{tTasks("manage.status")}</th>
 
+              <th className="w-20 py-2" aria-hidden />
+
             </tr>
 
           </thead>
@@ -683,9 +839,13 @@ export function SubTaskManager({
 
                 onToggle={toggleRow}
 
-                onSubmit={handleUpdate}
+                onSubmit={handleSubmitRow}
 
-                onCancel={collapsePanel}
+                onCancel={cancelRow}
+
+                onClone={handleClone}
+
+                onRemove={handleRemove}
 
               />
 

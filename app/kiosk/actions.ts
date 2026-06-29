@@ -1,18 +1,23 @@
 "use server";
 
 import { auth } from "@/auth";
+import {
+  resolveKioskPathAfterIdentify,
+  type KioskIdentifiedRole,
+} from "@/lib/business/kiosk-identify-route";
 import { kioskIdentifySchema } from "@/lib/schemas/kiosk-identify";
 import { strapiFetch } from "@/lib/strapi";
 
 interface KioskIdentifyResponse {
-  colaboratorId: string;
+  documentId: string;
+  role: KioskIdentifiedRole;
 }
 
 export type KioskIdentifyResult =
-  | { ok: true; colaboratorId: string }
+  | { ok: true; documentId: string; role: KioskIdentifiedRole; path: string }
   | { ok: false; error: "invalidCredentials" | "forbidden" };
 
-export async function identifyColaboratorByCode(
+export async function identifyKioskUserByCode(
   code: number,
   password: string,
 ): Promise<KioskIdentifyResult> {
@@ -44,9 +49,33 @@ export async function identifyColaboratorByCode(
     return { ok: false, error: "invalidCredentials" };
   }
 
-  if (!identifyData?.colaboratorId) {
+  if (!identifyData?.documentId || !identifyData.role) {
     return { ok: false, error: "invalidCredentials" };
   }
 
-  return { ok: true, colaboratorId: identifyData.colaboratorId };
+  return {
+    ok: true,
+    documentId: identifyData.documentId,
+    role: identifyData.role,
+    path: resolveKioskPathAfterIdentify(
+      identifyData.documentId,
+      identifyData.role,
+    ),
+  };
+}
+
+/** @deprecated Use identifyKioskUserByCode */
+export async function identifyColaboratorByCode(
+  code: number,
+  password: string,
+): Promise<
+  | { ok: true; colaboratorId: string }
+  | { ok: false; error: "invalidCredentials" | "forbidden" }
+> {
+  const result = await identifyKioskUserByCode(code, password);
+  if (!result.ok) return result;
+  if (result.role !== "colaborator") {
+    return { ok: false, error: "invalidCredentials" };
+  }
+  return { ok: true, colaboratorId: result.documentId };
 }

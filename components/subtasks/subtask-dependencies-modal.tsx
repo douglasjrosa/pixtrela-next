@@ -44,6 +44,11 @@ export function SubTaskDependenciesModal({
     );
   }
 
+  function handleConfirm(): void {
+    onConfirm(draftIds);
+    onClose();
+  }
+
   const checkboxClass = cn(
     "size-4 rounded border border-input accent-primary",
   );
@@ -61,14 +66,7 @@ export function SubTaskDependenciesModal({
         className="w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg"
         onClick={(event) => event.stopPropagation()}
       >
-        <form
-          className="space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            onConfirm(draftIds);
-            onClose();
-          }}
-        >
+        <div className="space-y-4">
           <div className="space-y-1">
             <h2 id="subtask-dependencies-title" className="text-lg font-semibold">
               {tSubtasks("dependenciesTitle")}
@@ -113,9 +111,11 @@ export function SubTaskDependenciesModal({
             <Button type="button" variant="outline" onClick={onClose}>
               {tCommon("cancel")}
             </Button>
-            <Button type="submit">{tCommon("save")}</Button>
+            <Button type="button" onClick={handleConfirm}>
+              {tCommon("save")}
+            </Button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

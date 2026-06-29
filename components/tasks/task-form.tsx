@@ -1,19 +1,24 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
+import { lookupTemplateNameByCode } from "@/app/(app)/tasks/actions";
 import { Button } from "@/components/ui/button";
 import { Duration } from "@/components/ui/duration";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
+import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import {
   taskFormSchema,
   TASK_STATUSES,
   type TaskFormInput,
 } from "@/lib/schemas/task";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { cn } from "@/lib/utils";
 
 import type { StepOption } from "./task-manager";
 
@@ -30,6 +35,8 @@ export interface TaskFormProps {
   steps: StepOption[];
   metrics?: TaskFormMetrics;
   isPending?: boolean;
+  layout?: "standalone" | "embedded";
+  formTitleId?: string;
   onSubmit: (values: TaskFormInput) => void;
   onInvalid?: () => void;
   onCancel?: () => void;
@@ -41,6 +48,8 @@ export function TaskForm({
   steps,
   metrics,
   isPending = false,
+  layout = "standalone",
+  formTitleId = "task-form-title",
   onSubmit,
   onInvalid,
   onCancel,
@@ -48,24 +57,68 @@ export function TaskForm({
   const tCommon = useTranslations("common");
   const tManage = useTranslations("tasks.manage");
   const tStatus = useTranslations("tasks.status");
+  const [isLoadingTemplate, startLoadTemplate] = useTransition();
 
   const {
     register,
     handleSubmit,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<TaskFormInput>({
     resolver: zodResolver(taskFormSchema),
     defaultValues,
   });
 
+  function handleLoadTemplate(): void {
+    const code = getValues("templateTaskCode")?.trim() ?? "";
+    if (!code) {
+      showErrorToast(tManage("loadTemplateMissingCode"));
+      return;
+    }
+
+    startLoadTemplate(async () => {
+      try {
+        const template = await lookupTemplateNameByCode(code);
+        setValue("name", template.name, { shouldValidate: true });
+        showSuccessToast(tManage("loadTemplateSuccess"));
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tManage("loadTemplateError"));
+      }
+    });
+  }
+
   return (
     <form
       onSubmit={handleSubmit(onSubmit, onInvalid)}
-      className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2"
+      className={cn(
+        "grid gap-4 sm:grid-cols-2",
+        layout === "standalone" && "rounded-lg border p-4",
+      )}
     >
-      <h2 className="text-lg font-semibold sm:col-span-2">
+      <h2 id={formTitleId} className="text-lg font-semibold sm:col-span-2">
         {mode === "edit" ? tManage("editTask") : tManage("newTask")}
       </h2>
+
+      <div className="space-y-2 sm:col-span-2">
+        <Label htmlFor="templateTaskCode">{tManage("templateTaskCode")}</Label>
+        <div className="flex gap-2">
+          <Input
+            id="templateTaskCode"
+            className="flex-1"
+            {...register("templateTaskCode")}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isLoadingTemplate || isPending}
+            onClick={handleLoadTemplate}
+          >
+            {tManage("loadTemplate")}
+          </Button>
+        </div>
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="name">{tManage("name")}</Label>
@@ -100,7 +153,6 @@ export function TaskForm({
           className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
           {...register("stepDocumentId")}
         >
-          <option value="">{tManage("noStep")}</option>
           {steps.map((step) => (
             <option key={step.documentId} value={step.documentId}>
               {step.name}
@@ -122,11 +174,6 @@ export function TaskForm({
             </option>
           ))}
         </select>
-      </div>
-
-      <div className="space-y-2 sm:col-span-2">
-        <Label htmlFor="templateTaskCode">{tManage("templateTaskCode")}</Label>
-        <Input id="templateTaskCode" {...register("templateTaskCode")} />
       </div>
 
       {mode === "edit" && metrics ? (

@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { KioskSubtaskPanel } from "@/components/kiosk/kiosk-subtask-panel";
-import { useKioskIdle } from "@/components/kiosk/use-kiosk-idle";
 import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 
@@ -19,7 +18,6 @@ export function KioskPanelClient({
   colaboratorId,
   subTasks,
 }: KioskPanelClientProps) {
-  useKioskIdle();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 

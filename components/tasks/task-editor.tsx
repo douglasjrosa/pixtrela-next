@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { updateTask } from "@/app/(app)/tasks/actions";
+import { resolveDefaultStepDocumentId } from "@/lib/business/default-task-step";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { TaskFormInput } from "@/lib/schemas/task";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
@@ -22,12 +23,13 @@ function toDateInputValue(value: string | null | undefined): string {
   return value.slice(0, 10);
 }
 
-function toFormValues(task: TaskRow): TaskFormInput {
+function toFormValues(task: TaskRow, steps: StepOption[]): TaskFormInput {
   return {
     name: task.name,
     qty: task.qty,
     deliveryDate: toDateInputValue(task.deliveryDate),
-    stepDocumentId: task.step?.documentId ?? "",
+    stepDocumentId:
+      task.step?.documentId ?? resolveDefaultStepDocumentId(steps),
     status: task.status,
     templateTaskCode: task.templateTaskCode ?? "",
   };
@@ -58,7 +60,7 @@ export function TaskEditor({ task, steps }: TaskEditorProps) {
   return (
     <TaskForm
       mode="edit"
-      defaultValues={toFormValues(task)}
+      defaultValues={toFormValues(task, steps)}
       steps={steps}
       metrics={{
         totalExpectedTime: task.totalExpectedTime,

@@ -79,6 +79,14 @@ describe("resolveRouteAccess", () => {
         userId: "mgr-1",
       }),
     ).toEqual({ action: "redirect", destination: "/" });
+
+    expect(
+      resolveRouteAccess("/kiosk/col-1", {
+        isAuthenticated: true,
+        role: "admin",
+        userId: "admin-1",
+      }),
+    ).toEqual({ action: "redirect", destination: "/" });
   });
 
   it("redirects colaborator on staff routes to private path", () => {

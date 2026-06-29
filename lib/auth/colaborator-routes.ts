@@ -68,7 +68,7 @@ interface RouteAccessInput {
 
 /**
  * Resolves middleware access for all roles.
- * Kiosk: only /kiosk and /kiosk/[id] when authenticated as kiosk.
+ * Kiosk: only /kiosk and /kiosk/* when authenticated as kiosk.
  * Colaborator: only /[ownDocumentId].
  */
 export function resolveRouteAccess(

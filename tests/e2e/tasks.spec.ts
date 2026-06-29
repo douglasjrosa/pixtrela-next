@@ -31,6 +31,9 @@ test.describe("Tasks module", () => {
       page.getByRole("heading", { name: "Gerenciar tarefas" }),
     ).toBeVisible({ timeout: 60_000 });
 
+    await page.getByRole("button", { name: "Nova tarefa" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+
     const nameInput = page.getByLabel("Nome");
     const qtyInput = page.getByLabel("Quantidade");
     const dateInput = page.getByLabel("Data de entrega");
@@ -68,7 +71,7 @@ test.describe("Tasks module", () => {
     const activeMatchingRows = page
       .getByRole("row")
       .filter({
-        has: page.getByRole("link", {
+        has: page.getByRole("button", {
           name: createTaskE2ePayload.name,
           exact: true,
         }),

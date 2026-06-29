@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { BoxTemplateData } from "@/lib/legacy/rbx-types";
 
 import { buildTemplateFromBox } from "./template-from-box";
+import { TEMPLATE_SARRAFOS_CUT_NAME } from "./template-subtask-dependencies";
 
 function baseData(overrides: Partial<BoxTemplateData> = {}): BoxTemplateData {
   return {
@@ -41,12 +42,46 @@ describe("buildTemplateFromBox", () => {
     expect(cuts.map((s) => s.name)).toEqual([
       "Corte dos pés da base",
       "Corte das tábuas da base",
-      "Corte dos sarrafos da caixa",
+      "Corte dos sarrafos da embalagem",
     ]);
     for (const cut of cuts) {
       expect(cut.expectedTime).toBe(60);
       expect(cut.qty).toBe(1);
     }
+  });
+
+  it("generates chapa cut subtasks with qty sharing after sarrafos", () => {
+    const template = buildTemplateFromBox(baseData());
+    const byName = Object.fromEntries(
+      (template.subTask ?? []).map((s) => [s.name, s]),
+    );
+
+    expect(byName["Corte das chapas das laterais"]).toMatchObject({
+      qty: 2,
+      sharingType: "qty",
+      expectedTime: 60,
+      maxSameTimeWorkers: 1,
+    });
+    expect(byName["Corte das chapas das cabeceiras"]).toMatchObject({
+      qty: 2,
+      sharingType: "qty",
+      expectedTime: 60,
+      maxSameTimeWorkers: 1,
+    });
+    expect(byName["Corte da chapa da tampa"]).toMatchObject({
+      qty: 1,
+      sharingType: "qty",
+      expectedTime: 60,
+      maxSameTimeWorkers: 1,
+    });
+
+    const names = (template.subTask ?? []).map((s) => s.name);
+    const sarrafosIndex = names.indexOf(TEMPLATE_SARRAFOS_CUT_NAME);
+    expect(names.slice(sarrafosIndex + 1, sarrafosIndex + 4)).toEqual([
+      "Corte das chapas das laterais",
+      "Corte das chapas das cabeceiras",
+      "Corte da chapa da tampa",
+    ]);
   });
 
   it("maps assembly counts to qty subtasks with 1s per nail/staple", () => {
@@ -107,14 +142,67 @@ describe("buildTemplateFromBox", () => {
     expect(byName["Fixação dos adesivos da tampa"]).toBeUndefined();
   });
 
-  it("assigns sequential indexes and default sharing metadata", () => {
+  it("assigns sequential indexes and dependency indexes for assembly chains", () => {
     const template = buildTemplateFromBox(baseData());
     const subtasks = template.subTask ?? [];
+    const byName = Object.fromEntries(subtasks.map((row) => [row.name, row]));
+
     subtasks.forEach((subtask, position) => {
       expect(subtask.index).toBe(position);
-      expect(subtask.maxSameTimeWorkers).toBe(1);
-      expect(subtask.dependencies).toBeNull();
     });
+
+    expect(byName["Corte dos pés da base"]?.dependencies).toBeNull();
+    expect(byName["Montagem dos pés"]?.dependencies).toEqual([
+      byName["Corte dos pés da base"]?.index,
+    ]);
+    expect(byName["Montagem da base"]?.dependencies).toEqual([
+      byName["Corte das tábuas da base"]?.index,
+      byName["Montagem dos pés"]?.index,
+    ]);
+    expect(byName["Montagem dos quadros das laterais"]?.dependencies).toEqual([
+      byName[TEMPLATE_SARRAFOS_CUT_NAME]?.index,
+    ]);
+    expect(byName["Fixação das chapas das laterais"]?.dependencies).toEqual([
+      byName["Montagem dos quadros das laterais"]?.index,
+      byName["Corte das chapas das laterais"]?.index,
+    ]);
+    expect(byName["Fixação dos adesivos das laterais"]?.dependencies).toEqual([
+      byName["Fixação das chapas das laterais"]?.index,
+    ]);
+  });
+
+  it("sets maxSameTimeWorkers by subtask type", () => {
+    const byName = Object.fromEntries(
+      (buildTemplateFromBox(baseData()).subTask ?? []).map((s) => [s.name, s]),
+    );
+
+    const singleWorker = [
+      "Montagem dos pés",
+      "Montagem dos quadros das laterais",
+      "Montagem dos quadros das cabeceiras",
+      "Montagem dos quadros da tampa",
+      "Corte das chapas das laterais",
+      "Corte das chapas das cabeceiras",
+      "Corte da chapa da tampa",
+      "Fixação dos adesivos das laterais",
+      "Fixação dos adesivos das cabeceiras",
+    ];
+    for (const name of singleWorker) {
+      expect(byName[name]?.maxSameTimeWorkers).toBe(1);
+    }
+
+    const dualWorker = [
+      "Corte dos pés da base",
+      "Corte das tábuas da base",
+      "Corte dos sarrafos da embalagem",
+      "Montagem da base",
+      "Fixação das chapas das laterais",
+      "Fixação das chapas das cabeceiras",
+      "Fixação das chapas da tampa",
+    ];
+    for (const name of dualWorker) {
+      expect(byName[name]?.maxSameTimeWorkers).toBe(2);
+    }
   });
 
   it("omits assembly subtasks whose count is zero or part is missing", () => {
@@ -130,6 +218,17 @@ describe("buildTemplateFromBox", () => {
     expect(names).not.toContain("Montagem da base");
     expect(names).not.toContain("Montagem dos quadros das laterais");
     expect(names).toContain("Montagem dos quadros das cabeceiras");
+  });
+
+  it("omits chapa cut subtasks when the corresponding part is missing", () => {
+    const template = buildTemplateFromBox(
+      baseData({ lateral: null, cabeceira: null, tampa: null }),
+    );
+    const names = (template.subTask ?? []).map((s) => s.name);
+
+    expect(names).not.toContain("Corte das chapas das laterais");
+    expect(names).not.toContain("Corte das chapas das cabeceiras");
+    expect(names).not.toContain("Corte da chapa da tampa");
   });
 
   it("coerces stringified numbers from the legacy payload", () => {

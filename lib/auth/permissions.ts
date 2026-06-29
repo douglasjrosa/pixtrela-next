@@ -65,6 +65,21 @@ export function canViewUsers(role: Role | undefined): boolean {
   return isAtLeast(role, "leader");
 }
 
+/** Copy kiosk deep link on user edit: admin and manager only. */
+export function canCopyKioskLink(role: Role | undefined): boolean {
+  return role === "admin" || role === "manager";
+}
+
+/** Set user password in create/edit form: admin only. */
+export function canSetUserPassword(role: Role | undefined): boolean {
+  return role === "admin";
+}
+
+/** Override auto-generated login in user form: admin only. */
+export function canEditUserLogin(role: Role | undefined): boolean {
+  return role === "admin";
+}
+
 /** Admin/manager see any screen; leader/colaborator are scoped. */
 export function canViewAnyScreen(role: Role | undefined): boolean {
   return role === "admin" || role === "manager";

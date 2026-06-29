@@ -6,6 +6,7 @@ export const STRAPI_TAGS = {
   templateTasks: "strapi:template-tasks",
   activities: "strapi:activities",
   currencies: "strapi:currencies",
+  kioskSetting: "strapi:kiosk-setting",
   awards: "strapi:awards",
   balance: "strapi:balance",
   teams: "strapi:teams",

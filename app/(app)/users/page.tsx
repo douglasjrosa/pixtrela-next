@@ -3,7 +3,12 @@ import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { UserManager, type UserRow } from "@/components/users/user-manager";
 import type { Role } from "@/lib/auth/nav";
-import { canViewUsers } from "@/lib/auth/permissions";
+import {
+  canCopyKioskLink,
+  canEditUserLogin,
+  canSetUserPassword,
+  canViewUsers,
+} from "@/lib/auth/permissions";
 import { canDeleteUsers, manageableTargetRoles } from "@/lib/business/roles";
 import type { UserFormInput } from "@/lib/schemas/user";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
@@ -62,6 +67,9 @@ export default async function UsersPage() {
         onDelete={deleteUser}
         canDelete={canDeleteUsers(actorRole)}
         manageableRoles={manageableTargetRoles(actorRole)}
+        canCopyKioskLink={canCopyKioskLink(actorRole)}
+        canSetPassword={canSetUserPassword(actorRole)}
+        canEditUserLogin={canEditUserLogin(actorRole)}
       />
     </section>
   );

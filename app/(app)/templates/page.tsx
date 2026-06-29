@@ -1,62 +1,33 @@
 import { auth } from "@/auth";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
-import { TemplateManager, type TemplateRow } from "@/components/templates/template-manager";
+import {
+  TemplateManager,
+  type TemplateListRow,
+} from "@/components/templates/template-manager";
 import type { Role } from "@/lib/auth/nav";
 import { canDeleteTasks, canManageTemplates } from "@/lib/auth/permissions";
-import type { TemplateSubTaskComponentInput } from "@/lib/schemas/template-task";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
-
-import {
-  createTemplate,
-  deleteTemplate,
-  updateTemplate,
-} from "./actions";
 
 interface StrapiList<T> {
   data: T[];
-}
-
-interface TemplateSubTaskEntity {
-  name?: string;
-  qty?: number;
-  sharingType?: TemplateSubTaskComponentInput["sharingType"];
-  maxSameTimeWorkers?: number;
-  index?: number;
-  expectedTime?: number;
-  dependencies?: unknown;
 }
 
 interface TemplateEntity {
   documentId: string;
   name: string;
   code: string;
-  subTask?: TemplateSubTaskEntity[] | null;
+  subTask?: unknown[] | null;
 }
 
-function mapSubTaskComponents(
-  rows: TemplateSubTaskEntity[] | null | undefined,
-): TemplateSubTaskComponentInput[] {
-  if (!Array.isArray(rows)) return [];
-  return rows.map((row) => ({
-    name: row.name ?? "",
-    qty: row.qty ?? 1,
-    sharingType: row.sharingType ?? "duration",
-    maxSameTimeWorkers: row.maxSameTimeWorkers ?? 1,
-    index: row.index ?? 0,
-    expectedTime: row.expectedTime ?? 0,
-    dependencies: row.dependencies ?? null,
-  }));
-}
-
-async function loadTemplates(): Promise<TemplateRow[]> {
+async function loadTemplates(): Promise<TemplateListRow[]> {
   try {
     const res = await strapiFetch<StrapiList<TemplateEntity>>(
       "/template-tasks",
       { strapiCache: { tags: [STRAPI_TAGS.templateTasks], revalidate: 60 } },
       {
         fields: ["documentId", "name", "code"],
-        populate: { subTask: true },
+        populate: { subTask: { fields: ["name"] } },
         sort: "name:asc",
       },
     );
@@ -64,7 +35,7 @@ async function loadTemplates(): Promise<TemplateRow[]> {
       documentId: template.documentId,
       name: template.name,
       code: template.code,
-      subTask: mapSubTaskComponents(template.subTask),
+      subTaskCount: template.subTask?.length ?? 0,
     }));
   } catch (error) {
     rethrowIfNavigationError(error);
@@ -84,13 +55,7 @@ export default async function TemplatesPage() {
 
   return (
     <section className="p-6">
-      <TemplateManager
-        templates={templates}
-        onCreate={createTemplate}
-        onUpdate={updateTemplate}
-        onDelete={deleteTemplate}
-        canDelete={canDeleteTasks(role)}
-      />
+      <TemplateManager templates={templates} canDelete={canDeleteTasks(role)} />
     </section>
   );
 }

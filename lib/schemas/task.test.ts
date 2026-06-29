@@ -6,9 +6,19 @@ describe("taskFormSchema", () => {
     const result = taskFormSchema.safeParse({
       name: "Montagem A",
       qty: 10,
+      stepDocumentId: "step-1",
       status: "queued",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("rejects missing stepDocumentId", () => {
+    const result = taskFormSchema.safeParse({
+      name: "Montagem A",
+      qty: 10,
+      status: "queued",
+    });
+    expect(result.success).toBe(false);
   });
 
   it("rejects empty name", () => {

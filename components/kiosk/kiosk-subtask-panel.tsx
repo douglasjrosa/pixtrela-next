@@ -20,13 +20,15 @@ import { SubtaskElapsedTimer } from "./subtask-elapsed-timer";
 
 export interface KioskSubtaskPanelProps {
   subTasks: KioskSubTask[];
-  onStart: (documentId: string) => void | Promise<void>;
-  onExit: (documentId: string, input: KioskExitInput) => void | Promise<void>;
+  readOnly?: boolean;
+  onStart?: (documentId: string) => void | Promise<void>;
+  onExit?: (documentId: string, input: KioskExitInput) => void | Promise<void>;
   pending?: boolean;
 }
 
 export function KioskSubtaskPanel({
   subTasks,
+  readOnly = false,
   onStart,
   onExit,
   pending,
@@ -84,12 +86,12 @@ export function KioskSubtaskPanel({
                   </p>
                 ) : null}
               </div>
-              {!finished && !isExiting ? (
+              {!finished && !isExiting && !readOnly ? (
                 <div className="flex gap-2">
                   <Button
                     type="button"
                     disabled={!startable || pending}
-                    onClick={() => onStart(subTask.documentId)}
+                    onClick={() => onStart?.(subTask.documentId)}
                   >
                     {t("start")}
                   </Button>
@@ -104,7 +106,7 @@ export function KioskSubtaskPanel({
                 </div>
               ) : null}
             </div>
-            {isExiting ? (
+            {isExiting && onExit ? (
               <div className="mt-4">
                 <KioskExitSubtaskForm
                   sharingType={subTask.sharingType}

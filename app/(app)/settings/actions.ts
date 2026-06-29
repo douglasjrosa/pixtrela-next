@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
+import { KIOSK_SETTING_API_PATH } from "@/lib/strapi/kiosk-setting";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
 
@@ -48,4 +49,18 @@ export async function updateCurrencyPerSecond(
   });
 
   revalidateStrapiTags(STRAPI_TAGS.currencies);
+}
+
+export async function updateKioskSessionIdleSeconds(
+  sessionIdleSeconds: number,
+): Promise<void> {
+  await assertCanManage();
+
+  await strapiFetch(KIOSK_SETTING_API_PATH, {
+    method: "PUT",
+    strapiCache: { noStore: true },
+    body: JSON.stringify({ data: { sessionIdleSeconds } }),
+  });
+
+  revalidateStrapiTags(STRAPI_TAGS.kioskSetting);
 }

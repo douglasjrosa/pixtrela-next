@@ -51,7 +51,7 @@ describe("tasks/actions", () => {
       name: "Tarefa A",
       qty: 1,
       deliveryDate: "",
-      stepDocumentId: "",
+      stepDocumentId: "step-1",
       status: "queued",
       templateTaskCode: "",
     });
@@ -88,7 +88,7 @@ describe("tasks/actions", () => {
       name: "Tarefa A",
       qty: 1,
       deliveryDate: "",
-      stepDocumentId: "",
+      stepDocumentId: "step-1",
       status: "queued",
       templateTaskCode: "",
     });
@@ -98,5 +98,32 @@ describe("tasks/actions", () => {
       "strapi:sub-tasks",
       { paths: ["/tasks", "/tasks/task-1"] },
     );
+  });
+
+  it("lookupTemplateNameByCode returns template name by code", async () => {
+    mockStrapiFetch({
+      "GET /template-tasks": { data: [{ name: "Modelo A" }] },
+    });
+
+    const { lookupTemplateNameByCode } = await import("./actions");
+    const result = await lookupTemplateNameByCode("100");
+
+    expect(result).toEqual({ name: "Modelo A" });
+    expect(strapiFetch).toHaveBeenCalledWith(
+      "/template-tasks",
+      expect.objectContaining({ strapiCache: { noStore: true } }),
+      expect.objectContaining({
+        filters: { code: { $eq: "100" } },
+      }),
+    );
+  });
+
+  it("lookupTemplateNameByCode throws when template is not found", async () => {
+    mockStrapiFetch({
+      "GET /template-tasks": { data: [] },
+    });
+
+    const { lookupTemplateNameByCode } = await import("./actions");
+    await expect(lookupTemplateNameByCode("404")).rejects.toThrow("not_found");
   });
 });

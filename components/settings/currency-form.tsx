@@ -9,6 +9,8 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 const currencyPerSecondSchema = z.object({
   currencyPerSecond: z.number().min(0),
@@ -37,7 +39,13 @@ export function CurrencyForm({ currencyPerSecond, onSave }: CurrencyFormProps) {
 
   function onSubmit(values: CurrencyPerSecondInput): void {
     startTransition(async () => {
-      await onSave(values);
+      try {
+        await onSave(values);
+        showSuccessToast(tSettings("saved"));
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tSettings("error"));
+      }
     });
   }
 

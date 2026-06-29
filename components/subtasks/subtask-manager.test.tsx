@@ -116,6 +116,8 @@ describe("SubTaskManager", () => {
 
         onUpdate={vi.fn()}
 
+        onDelete={vi.fn()}
+
       />,
 
     );
@@ -143,6 +145,8 @@ describe("SubTaskManager", () => {
         onCreate={vi.fn()}
 
         onUpdate={vi.fn()}
+
+        onDelete={vi.fn()}
 
       />,
 
@@ -178,6 +182,8 @@ describe("SubTaskManager", () => {
 
         onUpdate={vi.fn()}
 
+        onDelete={vi.fn()}
+
       />,
 
     );
@@ -207,6 +213,8 @@ describe("SubTaskManager", () => {
         onCreate={vi.fn()}
 
         onUpdate={vi.fn()}
+
+        onDelete={vi.fn()}
 
       />,
 
@@ -246,6 +254,8 @@ describe("SubTaskManager", () => {
 
         onUpdate={vi.fn()}
 
+        onDelete={vi.fn()}
+
       />,
 
     );
@@ -280,11 +290,108 @@ describe("SubTaskManager", () => {
 
         onUpdate={vi.fn()}
 
+        onDelete={vi.fn()}
+
       />,
 
     );
 
     expect(screen.getByText("20")).toBeInTheDocument();
+
+  });
+
+
+
+  it("inserts a local draft clone after the source row", async () => {
+
+    const user = userEvent.setup();
+
+    renderWithIntl(
+
+      <SubTaskManager
+
+        subtasks={subtasks}
+
+        taskQty={1}
+
+        teams={teams}
+
+        onCreate={vi.fn()}
+
+        onUpdate={vi.fn()}
+
+        onDelete={vi.fn()}
+
+      />,
+
+    );
+
+
+
+    await user.click(
+      screen.getAllByRole("button", { name: "Clonar subtarefa" })[1],
+    );
+
+
+
+    expect(screen.getByText("Pintar - CÓPIA")).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("heading", { name: "Nova subtarefa" }),
+    ).toBeInTheDocument();
+
+    expect(screen.getByDisplayValue("Pintar - CÓPIA")).toBeInTheDocument();
+
+    const table = screen.getByRole("table");
+
+    const bodyRows = within(table).getAllByRole("row").slice(1);
+
+    expect(
+      within(bodyRows[1] as HTMLElement).getByText("Pintar"),
+    ).toBeInTheDocument();
+
+    expect(
+      within(bodyRows[2] as HTMLElement).getByText("Pintar - CÓPIA"),
+    ).toBeInTheDocument();
+
+  });
+
+
+
+  it("clones a draft copy to create a copy of the copy", async () => {
+
+    const user = userEvent.setup();
+
+    renderWithIntl(
+
+      <SubTaskManager
+
+        subtasks={subtasks}
+
+        taskQty={1}
+
+        teams={teams}
+
+        onCreate={vi.fn()}
+
+        onUpdate={vi.fn()}
+
+        onDelete={vi.fn()}
+
+      />,
+
+    );
+
+
+
+    const cloneButtons = () =>
+      screen.getAllByRole("button", { name: "Clonar subtarefa" });
+
+    await user.click(cloneButtons()[1]);
+
+    await user.click(cloneButtons()[2]);
+
+    expect(screen.getByDisplayValue("Pintar - CÓPIA - CÓPIA")).toBeInTheDocument();
 
   });
 
@@ -307,6 +414,8 @@ describe("SubTaskManager", () => {
         onCreate={vi.fn()}
 
         onUpdate={vi.fn()}
+
+        onDelete={vi.fn()}
 
       />,
 

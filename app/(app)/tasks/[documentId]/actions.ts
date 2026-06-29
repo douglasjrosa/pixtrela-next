@@ -50,17 +50,48 @@ function invalidateSubTasks(): void {
   revalidateStrapiTags(STRAPI_TAGS.subTasks, STRAPI_TAGS.tasks);
 }
 
-async function fetchSubTaskIndexes(taskDocumentId: string): Promise<number[]> {
-  const res = await strapiFetch<StrapiList<{ index: number }>>(
+interface SubTaskEntity {
+  documentId: string;
+  name: string;
+  qty: number;
+  index: number;
+  expectedTime: number;
+  sharingType: SubTaskFormInput["sharingType"];
+  maxSameTimeWorkers: number;
+  status: SubTaskFormInput["status"];
+  activationStatus?: SubTaskFormInput["activationStatus"];
+  reasonForDisabling?: string | null;
+  dependencies?: unknown;
+  assignedTo?: { documentId: string }[] | null;
+}
+
+async function fetchSubTasksForTask(
+  taskDocumentId: string,
+): Promise<SubTaskEntity[]> {
+  const res = await strapiFetch<StrapiList<SubTaskEntity>>(
     "/sub-tasks",
     { strapiCache: { noStore: true } },
     {
-      fields: ["index"],
+      fields: [
+        "documentId",
+        "name",
+        "qty",
+        "index",
+        "expectedTime",
+        "sharingType",
+        "maxSameTimeWorkers",
+        "status",
+        "activationStatus",
+        "reasonForDisabling",
+        "dependencies",
+      ],
       filters: { task: { documentId: { $eq: taskDocumentId } } },
+      populate: { assignedTo: { fields: ["documentId"] } },
+      sort: "index:asc",
       pagination: { pageSize: 100 },
     },
   );
-  return res.data.map((subtask) => subtask.index);
+  return res.data;
 }
 
 async function fetchSubTaskIndex(documentId: string): Promise<number> {
@@ -88,18 +119,36 @@ async function fetchSubTaskIds(taskDocumentId: string): Promise<string[]> {
 export async function createSubTask(
   taskDocumentId: string,
   raw: SubTaskFormInput,
+  options?: { insertAtIndex?: number },
 ): Promise<void> {
   await assertCanManage();
   const data = subTaskFormSchema.parse(raw);
-  const indexes = await fetchSubTaskIndexes(taskDocumentId);
+  const subtasks = await fetchSubTasksForTask(taskDocumentId);
+  const indexes = subtasks.map((subtask) => subtask.index);
   const nextIndex = getNextSubTaskIndex(indexes.map((index) => ({ index })));
-  await strapiFetch("/sub-tasks", {
-    method: "POST",
-    strapiCache: { noStore: true },
-    body: JSON.stringify({
-      data: toStrapiPayload(data, taskDocumentId, nextIndex),
-    }),
-  });
+
+  const created = await strapiFetch<{ data: { documentId: string } }>(
+    "/sub-tasks",
+    {
+      method: "POST",
+      strapiCache: { noStore: true },
+      body: JSON.stringify({
+        data: toStrapiPayload(data, taskDocumentId, nextIndex),
+      }),
+    },
+  );
+
+  const insertAt = options?.insertAtIndex;
+  if (insertAt !== undefined) {
+    const orderedDocumentIds = [
+      ...subtasks.slice(0, insertAt).map((subtask) => subtask.documentId),
+      created.data.documentId,
+      ...subtasks.slice(insertAt).map((subtask) => subtask.documentId),
+    ];
+    await reorderSubTasks(taskDocumentId, orderedDocumentIds);
+    return;
+  }
+
   invalidateSubTasks();
 }
 
@@ -139,15 +188,13 @@ export async function reorderSubTasks(
   }
 
   const updates = buildSubTaskIndexUpdates(orderedDocumentIds);
-  await Promise.all(
-    updates.map(({ documentId, index }) =>
-      strapiFetch(`/sub-tasks/${documentId}`, {
-        method: "PUT",
-        strapiCache: { noStore: true },
-        body: JSON.stringify({ data: { index, task: taskDocumentId } }),
-      }),
-    ),
-  );
+  for (const { documentId, index } of updates) {
+    await strapiFetch(`/sub-tasks/${documentId}`, {
+      method: "PUT",
+      strapiCache: { noStore: true },
+      body: JSON.stringify({ data: { index, task: taskDocumentId } }),
+    });
+  }
   invalidateSubTasks();
 }
 

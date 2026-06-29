@@ -2,9 +2,9 @@
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
-import { canViewUsers } from "@/lib/auth/permissions";
+import { canViewUsers, canSetUserPassword } from "@/lib/auth/permissions";
 import { canDeleteUsers, canManageRole } from "@/lib/business/roles";
-import { userFormSchema, type UserFormInput } from "@/lib/schemas/user";
+import { buildUserFormSchema, type UserFormInput } from "@/lib/schemas/user";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
 import {
@@ -32,8 +32,27 @@ function invalidateUsers(): void {
   revalidateStrapiTags(STRAPI_TAGS.users);
 }
 
+function sanitizePasswordFields(
+  raw: Partial<UserFormInput>,
+  actorRole: Role,
+): Partial<UserFormInput> {
+  if (!canSetUserPassword(actorRole)) {
+    const { password: _password, ...rest } = raw;
+    return rest;
+  }
+  if (raw.password === "") {
+    const { password: _password, ...rest } = raw;
+    return rest;
+  }
+  return raw;
+}
+
 export async function createUser(raw: UserFormInput): Promise<void> {
-  const data = userFormSchema.parse(raw);
+  const actorRole = await assertCanView();
+  const sanitized = sanitizePasswordFields(raw, actorRole);
+  const data = buildUserFormSchema({
+    requirePassword: canSetUserPassword(actorRole),
+  }).parse(sanitized);
   await assertCanManageTargetRole(data.roleType as Role);
 
   await strapiFetch("/users", {
@@ -47,16 +66,6 @@ export async function createUser(raw: UserFormInput): Promise<void> {
 interface StrapiUserEntity {
   id: number;
   roleType?: Role;
-}
-
-function stripEmptyPassword(
-  raw: Partial<UserFormInput>,
-): Partial<UserFormInput> {
-  if (raw.password === "") {
-    const { password: _password, ...rest } = raw;
-    return rest;
-  }
-  return raw;
 }
 
 async function loadUserRole(userId: number): Promise<Role> {
@@ -85,7 +94,8 @@ export async function updateUser(
     throw new Error("forbidden");
   }
 
-  const data = userFormSchema.partial().parse(stripEmptyPassword(raw));
+  const sanitized = sanitizePasswordFields(raw, actorRole);
+  const data = buildUserFormSchema().partial().parse(sanitized);
   if (data.roleType && !canManageRole(actorRole, data.roleType as Role)) {
     throw new Error("forbidden");
   }

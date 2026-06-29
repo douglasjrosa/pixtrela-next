@@ -30,10 +30,7 @@ function toStrapiPayload(input: TaskFormInput, index: number, active = true) {
     templateTaskCode: input.templateTaskCode || null,
     active,
   };
-  if (input.stepDocumentId) {
-    return { ...base, step: input.stepDocumentId };
-  }
-  return base;
+  return { ...base, step: input.stepDocumentId };
 }
 
 function invalidateTasks(taskDocumentId?: string): void {
@@ -100,6 +97,33 @@ export async function deactivateTask(documentId: string): Promise<void> {
     body: JSON.stringify({ data: { active: false } }),
   });
   invalidateTasks();
+}
+
+export async function lookupTemplateNameByCode(
+  code: string,
+): Promise<{ name: string }> {
+  await assertCanManage();
+  const trimmed = code.trim();
+  if (!trimmed) {
+    throw new Error("missingCode");
+  }
+
+  const res = await strapiFetch<StrapiList<{ name: string }>>(
+    "/template-tasks",
+    { strapiCache: { noStore: true } },
+    {
+      fields: ["name"],
+      filters: { code: { $eq: trimmed } },
+      pagination: { pageSize: 1 },
+    },
+  );
+
+  const template = res.data[0];
+  if (!template) {
+    throw new Error("not_found");
+  }
+
+  return { name: template.name };
 }
 
 export async function deleteTask(documentId: string): Promise<void> {

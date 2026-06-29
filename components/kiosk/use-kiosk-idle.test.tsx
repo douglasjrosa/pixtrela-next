@@ -1,22 +1,31 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
+import type { ReactNode } from "react";
 
 import { KIOSK_IDLE_MS } from "@/lib/business/kiosk-idle";
 import { KIOSK_HOME_PATH } from "@/lib/auth/colaborator-routes";
+import { KioskIdleProvider } from "./kiosk-idle-provider";
 import { useKioskIdle } from "./use-kiosk-idle";
 
-const { push } = vi.hoisted(() => ({
-  push: vi.fn(),
+const { replace, refresh } = vi.hoisted(() => ({
+  replace: vi.fn(),
+  refresh: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ replace, refresh }),
+  usePathname: () => "/kiosk/col-1",
 }));
+
+function wrapper({ children }: { children: ReactNode }) {
+  return <KioskIdleProvider>{children}</KioskIdleProvider>;
+}
 
 describe("useKioskIdle", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    push.mockClear();
+    replace.mockClear();
+    refresh.mockClear();
   });
 
   afterEach(() => {
@@ -24,17 +33,17 @@ describe("useKioskIdle", () => {
   });
 
   it("navigates to kiosk home after idle period", () => {
-    renderHook(() => useKioskIdle());
+    renderHook(() => useKioskIdle(), { wrapper });
 
     act(() => {
-      vi.advanceTimersByTime(KIOSK_IDLE_MS);
+      vi.advanceTimersByTime(KIOSK_IDLE_MS + 200);
     });
 
-    expect(push).toHaveBeenCalledWith(KIOSK_HOME_PATH);
+    expect(replace).toHaveBeenCalledWith(KIOSK_HOME_PATH);
   });
 
-  it("resets idle timer on activity", () => {
-    const { result } = renderHook(() => useKioskIdle());
+  it("resets idle timer on manual reset", () => {
+    const { result } = renderHook(() => useKioskIdle(), { wrapper });
 
     act(() => {
       vi.advanceTimersByTime(KIOSK_IDLE_MS - 1000);
@@ -42,6 +51,6 @@ describe("useKioskIdle", () => {
       vi.advanceTimersByTime(KIOSK_IDLE_MS - 1000);
     });
 
-    expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
   });
 });
