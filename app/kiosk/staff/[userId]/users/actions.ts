@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { kioskColaboratorPasswordSchema } from "@/lib/schemas/kiosk-colaborator-password";
+import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 import { strapiFetch } from "@/lib/strapi";
 
 const STRAPI_URL = process.env.STRAPI_URL ?? "http://127.0.0.1:1337";
@@ -84,5 +85,8 @@ export async function saveKioskColaboratorAvatar(
   }
 
   const body = (await response.json()) as { avatarUrl?: string | null };
-  return { ok: true, avatarUrl: body.avatarUrl ?? null };
+  return {
+    ok: true,
+    avatarUrl: resolveStrapiMediaUrl(body.avatarUrl ?? null),
+  };
 }

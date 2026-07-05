@@ -1,4 +1,5 @@
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 import { strapiFetch } from "@/lib/strapi";
 
 import type { KioskStaffColaboratorRow } from "@/components/kiosk/kiosk-staff-users-panel";
@@ -15,7 +16,10 @@ export async function loadKioskStaffColaborators(
       `/kiosk/staff/users/${staffUserId}/colaborators`,
       { strapiCache: { noStore: true } },
     );
-    return res.data;
+    return res.data.map((colaborator) => ({
+      ...colaborator,
+      avatarUrl: resolveStrapiMediaUrl(colaborator.avatarUrl ?? null),
+    }));
   } catch (error) {
     rethrowIfNavigationError(error);
     return [];
