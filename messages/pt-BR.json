@@ -134,7 +134,12 @@
     "deactivated": "Usuário desativado.",
     "deleted": "Usuário excluído.",
     "copyKioskLink": "Copiar link do kiosk",
-    "kioskLinkCopied": "Link do kiosk copiado."
+    "kioskLinkCopied": "Link do kiosk copiado.",
+    "writeKioskNfc": "Gravar link no cartão NFC",
+    "nfcHoldTagNear": "Aproxime o cartão NFC do celular…",
+    "nfcTagWritten": "Link gravado no cartão NFC.",
+    "nfcNotSupported": "Seu dispositivo ou navegador não suporta gravação NFC. Use Chrome no Android.",
+    "nfcWriteFailed": "Não foi possível gravar o cartão NFC."
   },
   "templates": {
     "title": "Modelos de tarefa",

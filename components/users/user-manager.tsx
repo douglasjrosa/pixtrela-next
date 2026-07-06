@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ScanBarcode } from "lucide-react";
+import { Nfc, ScanBarcode } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -13,12 +13,16 @@ import { Label } from "@/components/ui/label";
 import { buildDefaultLogin } from "@/lib/business/default-login";
 import { copyKioskColaboratorLink } from "@/lib/kiosk/kiosk-link";
 import {
+  isNfcWriteSupported,
+  writeKioskColaboratorLinkToNfc,
+} from "@/lib/kiosk/nfc-write";
+import {
   USER_CODE_NOT_UNIQUE_KEY,
   USER_ROLES,
   createUserFormSchema,
   type UserFormInput,
 } from "@/lib/schemas/user";
-import { showSuccessToast } from "@/lib/ui/app-toast";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 export interface UserRow {
   /** Strapi users-permissions numeric id (required for mutations). */
@@ -98,6 +102,7 @@ interface UserFormDialogProps {
   onClose: () => void;
   onSubmit: (values: UserFormInput) => void;
   onCopyKioskLink: (documentId: string) => Promise<void>;
+  onWriteKioskNfc: (documentId: string) => Promise<void>;
 }
 
 function UserFormDialog({
@@ -111,6 +116,7 @@ function UserFormDialog({
   onClose,
   onSubmit,
   onCopyKioskLink,
+  onWriteKioskNfc,
 }: UserFormDialogProps) {
   const tCommon = useTranslations("common");
   const tUsers = useTranslations("users");
@@ -192,16 +198,28 @@ function UserFormDialog({
               {isEditing ? tUsers("editUser") : tUsers("newUser")}
             </h2>
             {canCopyKioskLink && editingUser ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="size-8 shrink-0"
-                aria-label={tUsers("copyKioskLink")}
-                onClick={() => void onCopyKioskLink(editingUser.documentId)}
-              >
-                <ScanBarcode className="size-4" aria-hidden />
-              </Button>
+              <div className="flex shrink-0 gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="size-8"
+                  aria-label={tUsers("copyKioskLink")}
+                  onClick={() => void onCopyKioskLink(editingUser.documentId)}
+                >
+                  <ScanBarcode className="size-4" aria-hidden />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="size-8"
+                  aria-label={tUsers("writeKioskNfc")}
+                  onClick={() => void onWriteKioskNfc(editingUser.documentId)}
+                >
+                  <Nfc className="size-4" aria-hidden />
+                </Button>
+              </div>
             ) : null}
           </div>
 
@@ -372,6 +390,22 @@ export function UserManager({
     showSuccessToast(tUsers("kioskLinkCopied"));
   }
 
+  async function handleWriteKioskNfc(documentId: string): Promise<void> {
+    if (!isNfcWriteSupported()) {
+      showErrorToast(tUsers("nfcNotSupported"));
+      return;
+    }
+
+    showSuccessToast(tUsers("nfcHoldTagNear"));
+
+    try {
+      await writeKioskColaboratorLinkToNfc(documentId, window.location.origin);
+      showSuccessToast(tUsers("nfcTagWritten"));
+    } catch {
+      showErrorToast(tUsers("nfcWriteFailed"));
+    }
+  }
+
   const roleOptions = roleOptionsForUser(editingUser, manageableRoles);
   const formDialogKey = editingUserId ?? "new";
 
@@ -403,6 +437,7 @@ export function UserManager({
           onClose={closeForm}
           onSubmit={onSubmit}
           onCopyKioskLink={handleCopyKioskLink}
+          onWriteKioskNfc={handleWriteKioskNfc}
         />
       ) : null}
 

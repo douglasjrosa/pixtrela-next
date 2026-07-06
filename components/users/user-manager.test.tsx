@@ -1,13 +1,28 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 
 import { renderWithIntl } from "@/test/test-utils";
 import { UserManager } from "./user-manager";
 
 const refresh = vi.fn();
+const showSuccessToast = vi.fn();
+const showErrorToast = vi.fn();
+const isNfcWriteSupported = vi.fn();
+const writeKioskColaboratorLinkToNfc = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
+}));
+
+vi.mock("@/lib/ui/app-toast", () => ({
+  showSuccessToast: (...args: unknown[]) => showSuccessToast(...args),
+  showErrorToast: (...args: unknown[]) => showErrorToast(...args),
+}));
+
+vi.mock("@/lib/kiosk/nfc-write", () => ({
+  isNfcWriteSupported: () => isNfcWriteSupported(),
+  writeKioskColaboratorLinkToNfc: (...args: unknown[]) =>
+    writeKioskColaboratorLinkToNfc(...args),
 }));
 
 const users = [
@@ -30,6 +45,14 @@ const users = [
 ];
 
 describe("UserManager", () => {
+  beforeEach(() => {
+    showSuccessToast.mockReset();
+    showErrorToast.mockReset();
+    isNfcWriteSupported.mockReturnValue(true);
+    writeKioskColaboratorLinkToNfc.mockReset();
+    writeKioskColaboratorLinkToNfc.mockResolvedValue(undefined);
+  });
+
   it("renders user list", () => {
     renderWithIntl(
       <UserManager
@@ -396,5 +419,98 @@ describe("UserManager", () => {
         }),
       );
     });
+  });
+
+  it("shows NFC write button when canCopyKioskLink and editing", () => {
+    renderWithIntl(
+      <UserManager
+        users={users}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        canDelete={false}
+        manageableRoles={["colaborator"]}
+        canCopyKioskLink
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+
+    expect(
+      screen.getByRole("button", { name: "Gravar link no cartão NFC" }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides NFC write button on create modal", () => {
+    renderWithIntl(
+      <UserManager
+        users={users}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        canDelete={false}
+        manageableRoles={["colaborator"]}
+        canCopyKioskLink
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Novo usuário" }));
+
+    expect(
+      screen.queryByRole("button", { name: "Gravar link no cartão NFC" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("writes kiosk link to NFC tag when NFC button is clicked", async () => {
+    renderWithIntl(
+      <UserManager
+        users={users}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        canDelete={false}
+        manageableRoles={["colaborator"]}
+        canCopyKioskLink
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Gravar link no cartão NFC" }),
+    );
+
+    await waitFor(() => {
+      expect(writeKioskColaboratorLinkToNfc).toHaveBeenCalledWith(
+        "u1",
+        window.location.origin,
+      );
+    });
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      "Link gravado no cartão NFC.",
+    );
+  });
+
+  it("shows error toast when NFC is not supported", async () => {
+    isNfcWriteSupported.mockReturnValue(false);
+
+    renderWithIntl(
+      <UserManager
+        users={users}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        canDelete={false}
+        manageableRoles={["colaborator"]}
+        canCopyKioskLink
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Gravar link no cartão NFC" }),
+    );
+
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith(
+        "Seu dispositivo ou navegador não suporta gravação NFC. Use Chrome no Android.",
+      );
+    });
+    expect(writeKioskColaboratorLinkToNfc).not.toHaveBeenCalled();
   });
 });
