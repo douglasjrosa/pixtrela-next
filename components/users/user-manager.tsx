@@ -13,7 +13,11 @@ import { Label } from "@/components/ui/label";
 import { buildDefaultLogin } from "@/lib/business/default-login";
 import { copyKioskColaboratorLink } from "@/lib/kiosk/kiosk-link";
 import {
-  collectNfcDiagnostics,
+  getNfcWriteCooldownRemainingMs,
+  isNfcWriteOnCooldown,
+  waitForNfcWriteCooldown,
+} from "@/lib/kiosk/nfc-cooldown";
+import {
   isNfcWriteSupported,
   mapNfcWriteError,
   NfcWriteError,
@@ -106,7 +110,7 @@ interface UserFormDialogProps {
   onSubmit: (values: UserFormInput) => void;
   onCopyKioskLink: (documentId: string) => Promise<void>;
   onWriteKioskNfc: (documentId: string) => Promise<void>;
-  nfcDebugJson: string | null;
+  nfcWriteDisabled: boolean;
 }
 
 function UserFormDialog({
@@ -121,7 +125,7 @@ function UserFormDialog({
   onSubmit,
   onCopyKioskLink,
   onWriteKioskNfc,
-  nfcDebugJson,
+  nfcWriteDisabled,
 }: UserFormDialogProps) {
   const tCommon = useTranslations("common");
   const tUsers = useTranslations("users");
@@ -220,6 +224,7 @@ function UserFormDialog({
                   size="icon"
                   className="size-8"
                   aria-label={tUsers("writeKioskNfc")}
+                  disabled={nfcWriteDisabled}
                   onClick={() => void onWriteKioskNfc(editingUser.documentId)}
                 >
                   <Nfc className="size-4" aria-hidden />
@@ -227,17 +232,6 @@ function UserFormDialog({
               </div>
             ) : null}
           </div>
-
-          {nfcDebugJson ? (
-            <details className="rounded-lg border bg-muted/20 p-3 text-xs sm:col-span-2">
-              <summary className="cursor-pointer font-medium">
-                {tUsers("nfcDebugTitle")}
-              </summary>
-              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all">
-                {nfcDebugJson}
-              </pre>
-            </details>
-          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="name">{tUsers("name")}</Label>
@@ -353,7 +347,23 @@ export function UserManager({
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
-  const [nfcDebugJson, setNfcDebugJson] = useState<string | null>(null);
+  const [nfcWriting, setNfcWriting] = useState(false);
+  const [nfcCooldownTick, setNfcCooldownTick] = useState(0);
+
+  const nfcWriteDisabled = nfcWriting || isNfcWriteOnCooldown();
+
+  useEffect(() => {
+    if (!isNfcWriteOnCooldown()) return;
+    const intervalId = window.setInterval(() => {
+      if (isNfcWriteOnCooldown()) {
+        setNfcCooldownTick(Date.now());
+        return;
+      }
+      setNfcCooldownTick(Date.now());
+      window.clearInterval(intervalId);
+    }, 250);
+    return () => window.clearInterval(intervalId);
+  }, [nfcWriting, nfcCooldownTick]);
 
   const editingUser =
     users.find((user) => user.id === editingUserId) ?? null;
@@ -361,20 +371,17 @@ export function UserManager({
   function closeForm(): void {
     setFormOpen(false);
     setEditingUserId(null);
-    setNfcDebugJson(null);
   }
 
   function startCreate(): void {
     setEditingUserId(null);
     setMessage(null);
-    setNfcDebugJson(null);
     setFormOpen(true);
   }
 
   function startEdit(user: UserRow): void {
     setEditingUserId(user.id);
     setMessage(null);
-    setNfcDebugJson(null);
     setFormOpen(true);
   }
 
@@ -411,69 +418,41 @@ export function UserManager({
   }
 
   async function handleWriteKioskNfc(documentId: string): Promise<void> {
-    const diagnostics = await collectNfcDiagnostics();
-    const steps: Array<{ step: string; at: string; data?: Record<string, unknown> }> =
-      [{ step: "start", at: new Date().toISOString(), data: { documentId } }];
-
-    const publishDebug = (): void => {
-      setNfcDebugJson(JSON.stringify({ diagnostics, steps }, null, 2));
-    };
-
-    steps.push({
-      step: "diagnostics",
-      at: new Date().toISOString(),
-      data: diagnostics as unknown as Record<string, unknown>,
-    });
-    publishDebug();
+    if (isNfcWriteOnCooldown()) {
+      const seconds = Math.ceil(getNfcWriteCooldownRemainingMs() / 1000);
+      showErrorToast(tUsers("nfcCooldownActive", { seconds }));
+      return;
+    }
 
     if (!isNfcWriteSupported()) {
-      steps.push({
-        step: "blocked-unsupported",
-        at: new Date().toISOString(),
-        data: {
-          hasNdefReader: diagnostics.hasNdefReader,
-          hasNdefWriter: diagnostics.hasNdefWriter,
-        },
-      });
-      publishDebug();
       showErrorToast(tUsers("nfcNotSupported"));
       return;
     }
 
+    setNfcWriting(true);
     showSuccessToast(tUsers("nfcHoldTagNear"));
-    steps.push({
-      step: "write-start",
-      at: new Date().toISOString(),
-      data: { origin: window.location.origin },
-    });
-    publishDebug();
 
     try {
-      const result = await writeKioskColaboratorLinkToNfc(
+      await writeKioskColaboratorLinkToNfc(
         documentId,
         window.location.origin,
       );
-      steps.push({
-        step: "write-success",
-        at: new Date().toISOString(),
-        data: result as unknown as Record<string, unknown>,
-      });
+      showSuccessToast(tUsers("nfcRemoveCard"));
+      setNfcCooldownTick(Date.now());
+      await waitForNfcWriteCooldown();
       showSuccessToast(tUsers("nfcTagWritten"));
     } catch (error) {
       const code =
         error instanceof NfcWriteError ? error.code : mapNfcWriteError(error);
-      steps.push({
-        step: "write-failed",
-        at: new Date().toISOString(),
-        data: {
-          code,
-          name: error instanceof Error ? error.name : "unknown",
-          message: error instanceof Error ? error.message : String(error),
-        },
-      });
-      showErrorToast(tUsers("nfcWriteFailed"));
+      if (code === "cooldown") {
+        const seconds = Math.ceil(getNfcWriteCooldownRemainingMs() / 1000);
+        showErrorToast(tUsers("nfcCooldownActive", { seconds }));
+      } else {
+        showErrorToast(tUsers("nfcWriteFailed"));
+      }
     } finally {
-      publishDebug();
+      setNfcWriting(false);
+      setNfcCooldownTick(Date.now());
     }
   }
 
@@ -509,7 +488,7 @@ export function UserManager({
           onSubmit={onSubmit}
           onCopyKioskLink={handleCopyKioskLink}
           onWriteKioskNfc={handleWriteKioskNfc}
-          nfcDebugJson={nfcDebugJson}
+          nfcWriteDisabled={nfcWriteDisabled}
         />
       ) : null}
 

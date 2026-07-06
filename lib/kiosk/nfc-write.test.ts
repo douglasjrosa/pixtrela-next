@@ -1,12 +1,12 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 
 import {
-  collectNfcDiagnostics,
   isNfcWriteSupported,
   mapNfcWriteError,
   writeKioskColaboratorLinkToNfc,
   writeUrlToNfcTag,
 } from "./nfc-write";
+import { clearNfcWriteCooldown, startNfcWriteCooldown } from "./nfc-cooldown";
 
 describe("isNfcWriteSupported", () => {
   afterEach(() => {
@@ -26,36 +26,6 @@ describe("isNfcWriteSupported", () => {
   it("returns false when NFC APIs are missing", () => {
     vi.stubGlobal("window", {});
     expect(isNfcWriteSupported()).toBe(false);
-  });
-});
-
-describe("collectNfcDiagnostics", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("reports NDEFReader availability", async () => {
-    class NDEFReader {}
-    vi.stubGlobal("NDEFReader", NDEFReader);
-    vi.stubGlobal("navigator", {
-      userAgent: "test-agent",
-      permissions: {
-        query: vi.fn().mockResolvedValue({ state: "prompt" }),
-      },
-    });
-    vi.stubGlobal("window", {
-      isSecureContext: true,
-      location: { protocol: "https:", origin: "https://pixtrela.com" },
-      matchMedia: () => ({ matches: false }),
-      NDEFReader,
-    });
-    vi.stubGlobal("document", { visibilityState: "visible" });
-
-    const diagnostics = await collectNfcDiagnostics();
-
-    expect(diagnostics.hasNdefReader).toBe(true);
-    expect(diagnostics.isWriteSupported).toBe(true);
-    expect(diagnostics.permissionState).toBe("prompt");
   });
 });
 
@@ -83,6 +53,7 @@ describe("mapNfcWriteError", () => {
 describe("writeUrlToNfcTag", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    clearNfcWriteCooldown();
   });
 
   it("writes a url NDEF record via NDEFReader on Chrome Android", async () => {
@@ -131,11 +102,26 @@ describe("writeUrlToNfcTag", () => {
       code: "permissionDenied",
     });
   });
+
+  it("throws cooldown when a write cooldown is active", async () => {
+    vi.stubGlobal(
+      "NDEFReader",
+      class NDEFReader {
+        write = vi.fn();
+      },
+    );
+    startNfcWriteCooldown();
+
+    await expect(writeUrlToNfcTag("https://example.com")).rejects.toMatchObject({
+      code: "cooldown",
+    });
+  });
 });
 
 describe("writeKioskColaboratorLinkToNfc", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    clearNfcWriteCooldown();
   });
 
   it("writes the full kiosk colaborator url", async () => {
@@ -147,12 +133,8 @@ describe("writeKioskColaboratorLinkToNfc", () => {
       },
     );
 
-    const result = await writeKioskColaboratorLinkToNfc(
-      "col-abc",
-      "https://pixtrela.com",
-    );
+    await writeKioskColaboratorLinkToNfc("col-abc", "https://pixtrela.com");
 
-    expect(result.url).toBe("https://pixtrela.com/kiosk/col-abc");
     expect(write).toHaveBeenCalledWith({
       records: [
         { recordType: "url", data: "https://pixtrela.com/kiosk/col-abc" },

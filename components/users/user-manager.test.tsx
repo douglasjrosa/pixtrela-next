@@ -9,6 +9,9 @@ const showSuccessToast = vi.fn();
 const showErrorToast = vi.fn();
 const isNfcWriteSupported = vi.fn();
 const writeKioskColaboratorLinkToNfc = vi.fn();
+const isNfcWriteOnCooldown = vi.fn();
+const getNfcWriteCooldownRemainingMs = vi.fn();
+const waitForNfcWriteCooldown = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
@@ -19,20 +22,13 @@ vi.mock("@/lib/ui/app-toast", () => ({
   showErrorToast: (...args: unknown[]) => showErrorToast(...args),
 }));
 
+vi.mock("@/lib/kiosk/nfc-cooldown", () => ({
+  isNfcWriteOnCooldown: () => isNfcWriteOnCooldown(),
+  getNfcWriteCooldownRemainingMs: () => getNfcWriteCooldownRemainingMs(),
+  waitForNfcWriteCooldown: () => waitForNfcWriteCooldown(),
+}));
+
 vi.mock("@/lib/kiosk/nfc-write", () => ({
-  collectNfcDiagnostics: vi.fn().mockResolvedValue({
-    at: "2026-01-01T00:00:00.000Z",
-    isSecureContext: true,
-    protocol: "https:",
-    origin: "https://pixtrela.com",
-    hasNdefReader: true,
-    hasNdefWriter: false,
-    isWriteSupported: true,
-    displayMode: "browser",
-    visibilityState: "visible",
-    userAgent: "test",
-    permissionState: "prompt",
-  }),
   isNfcWriteSupported: () => isNfcWriteSupported(),
   mapNfcWriteError: (error: unknown) =>
     error instanceof Error && error.message === "denied"
@@ -73,6 +69,9 @@ describe("UserManager", () => {
     showSuccessToast.mockReset();
     showErrorToast.mockReset();
     isNfcWriteSupported.mockReturnValue(true);
+    isNfcWriteOnCooldown.mockReturnValue(false);
+    getNfcWriteCooldownRemainingMs.mockReturnValue(0);
+    waitForNfcWriteCooldown.mockResolvedValue(undefined);
     writeKioskColaboratorLinkToNfc.mockReset();
     writeKioskColaboratorLinkToNfc.mockResolvedValue({
       url: "http://localhost/kiosk/u1",
@@ -510,8 +509,15 @@ describe("UserManager", () => {
       );
     });
     expect(showSuccessToast).toHaveBeenCalledWith(
+      "Aproxime o cartão NFC do celular…",
+    );
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      "Afaste o cartão do celular por alguns segundos.",
+    );
+    expect(showSuccessToast).toHaveBeenCalledWith(
       "Link gravado no cartão NFC.",
     );
+    expect(waitForNfcWriteCooldown).toHaveBeenCalled();
   });
 
   it("shows error toast when NFC is not supported", async () => {

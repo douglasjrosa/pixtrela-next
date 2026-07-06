@@ -137,10 +137,11 @@
     "kioskLinkCopied": "Link do kiosk copiado.",
     "writeKioskNfc": "Gravar link no cartão NFC",
     "nfcHoldTagNear": "Aproxime o cartão NFC do celular…",
+    "nfcRemoveCard": "Afaste o cartão do celular por alguns segundos.",
     "nfcTagWritten": "Link gravado no cartão NFC.",
+    "nfcCooldownActive": "Aguarde {seconds}s antes de gravar novamente.",
     "nfcNotSupported": "Seu dispositivo ou navegador não suporta gravação NFC. Use Chrome no Android.",
-    "nfcWriteFailed": "Não foi possível gravar o cartão NFC.",
-    "nfcDebugTitle": "Diagnóstico (NFC)"
+    "nfcWriteFailed": "Não foi possível gravar o cartão NFC."
   },
   "templates": {
     "title": "Modelos de tarefa",

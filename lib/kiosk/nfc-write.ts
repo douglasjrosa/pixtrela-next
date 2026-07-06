@@ -1,30 +1,16 @@
 import { buildKioskColaboratorUrl } from "./kiosk-link";
+import {
+  isNfcWriteOnCooldown,
+  NFC_WRITE_COOLDOWN_MS,
+  startNfcWriteCooldown,
+} from "./nfc-cooldown";
 
 export type NfcWriteErrorCode =
   | "unsupported"
   | "permissionDenied"
   | "tagLost"
-  | "writeFailed";
-
-export type NfcDiagnosticStep = {
-  step: string;
-  at: string;
-  data?: Record<string, unknown>;
-};
-
-export type NfcDiagnostics = {
-  at: string;
-  isSecureContext: boolean;
-  protocol: string;
-  origin: string;
-  hasNdefReader: boolean;
-  hasNdefWriter: boolean;
-  isWriteSupported: boolean;
-  displayMode: string;
-  visibilityState: string;
-  userAgent: string;
-  permissionState: string;
-};
+  | "writeFailed"
+  | "cooldown";
 
 export class NfcWriteError extends Error {
   readonly code: NfcWriteErrorCode;
@@ -38,52 +24,6 @@ export class NfcWriteError extends Error {
 export function isNfcWriteSupported(): boolean {
   if (typeof window === "undefined") return false;
   return "NDEFReader" in window || "NDEFWriter" in window;
-}
-
-export async function collectNfcDiagnostics(): Promise<NfcDiagnostics> {
-  if (typeof window === "undefined") {
-    return {
-      at: new Date().toISOString(),
-      isSecureContext: false,
-      protocol: "ssr",
-      origin: "",
-      hasNdefReader: false,
-      hasNdefWriter: false,
-      isWriteSupported: false,
-      displayMode: "unknown",
-      visibilityState: "unknown",
-      userAgent: "",
-      permissionState: "unavailable",
-    };
-  }
-
-  let permissionState = "unavailable";
-  try {
-    const status = await navigator.permissions.query({
-      name: "nfc" as PermissionName,
-    });
-    permissionState = status.state;
-  } catch {
-    permissionState = "query-failed";
-  }
-
-  return {
-    at: new Date().toISOString(),
-    isSecureContext: window.isSecureContext,
-    protocol: window.location.protocol,
-    origin: window.location.origin,
-    hasNdefReader: "NDEFReader" in window,
-    hasNdefWriter: "NDEFWriter" in window,
-    isWriteSupported: isNfcWriteSupported(),
-    displayMode:
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(display-mode: standalone)").matches
-        ? "standalone"
-        : "browser",
-    visibilityState: document.visibilityState,
-    userAgent: navigator.userAgent,
-    permissionState,
-  };
 }
 
 export function mapNfcWriteError(error: unknown): NfcWriteErrorCode {
@@ -133,12 +73,16 @@ export async function writeUrlToNfcTag(url: string): Promise<{
   if (!isNfcWriteSupported()) {
     throw new NfcWriteError("unsupported");
   }
+  if (isNfcWriteOnCooldown()) {
+    throw new NfcWriteError("cooldown");
+  }
 
   try {
     const writer = createNfcWriter();
     await writer.write({
       records: [{ recordType: "url", data: url }],
     });
+    startNfcWriteCooldown(NFC_WRITE_COOLDOWN_MS);
     return { api: writer.api };
   } catch (error) {
     throw new NfcWriteError(mapNfcWriteError(error));

@@ -7,17 +7,27 @@ import {
   APP_ICON_512,
 } from "@/lib/assets/branding";
 
+type PixtrelaManifest = MetadataRoute.Manifest & {
+  handle_links?: "preferred" | "not-preferred";
+};
+
 export default function manifest(): MetadataRoute.Manifest {
-  return {
+  const manifestData: PixtrelaManifest = {
+    id: "/",
     name: "Pixtrela",
     short_name: "Pixtrela",
     description:
       "Plataforma de gamificação industrial: você produz, você ganha, você brilha.",
     start_url: "/",
+    scope: "/",
     display: "standalone",
     orientation: "portrait",
     background_color: "#ffffff",
     theme_color: "#0a0a0a",
+    launch_handler: {
+      client_mode: "navigate-existing",
+    },
+    handle_links: "preferred",
     icons: [
       {
         src: APP_FAVICON_PNG,
@@ -44,4 +54,6 @@ export default function manifest(): MetadataRoute.Manifest {
       },
     ],
   };
+
+  return manifestData;
 }
