@@ -50,11 +50,7 @@ describe("KioskStaffUsersPanel", () => {
     showErrorToast.mockReset();
     replace.mockReset();
     savePassword.mockResolvedValue({ ok: true });
-    saveAvatar.mockResolvedValue({
-      ok: true,
-      avatarUrl: "/uploads/avatar.jpg",
-      debug: { steps: [] },
-    });
+    saveAvatar.mockResolvedValue({ ok: true, avatarUrl: "/uploads/avatar.jpg" });
   });
   it("shows only the password form after selecting a colaborator", async () => {
     const user = userEvent.setup();

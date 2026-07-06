@@ -56,7 +56,6 @@ export function KioskStaffUsersPanel({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string | null>>({});
-  const [avatarDebugJson, setAvatarDebugJson] = useState<string | null>(null);
 
   const selectedColaborator = colaborators.find(
     (colaborator) => colaborator.documentId === selectedId,
@@ -79,18 +78,14 @@ export function KioskStaffUsersPanel({
     file: File,
   ): Promise<boolean> {
     setPending(true);
-    setAvatarDebugJson(null);
     try {
       const result = await saveKioskColaboratorAvatar(
         userId,
         colaboratorDocumentId,
         file,
       );
-      setAvatarDebugJson(JSON.stringify(result.debug, null, 2));
       if (!result.ok) {
-        showErrorToast(
-          `${t("staffAvatarForbidden")} (${result.error})`,
-        );
+        showErrorToast(t("staffAvatarForbidden"));
         return false;
       }
       setAvatarUrls((current) => ({
@@ -157,16 +152,6 @@ export function KioskStaffUsersPanel({
             disabled={pending}
             onSave={(file) => handleSaveAvatar(selectedColaborator.documentId, file)}
           />
-          {avatarDebugJson ? (
-            <details className="rounded-lg border bg-muted/20 p-3 text-xs">
-              <summary className="cursor-pointer font-medium">
-                {t("staffAvatarDebugTitle")}
-              </summary>
-              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all">
-                {avatarDebugJson}
-              </pre>
-            </details>
-          ) : null}
           <KioskColaboratorPasswordForm
             colaboratorName={selectedColaborator.name}
             disabled={pending}
