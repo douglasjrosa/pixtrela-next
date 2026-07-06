@@ -20,7 +20,31 @@ vi.mock("@/lib/ui/app-toast", () => ({
 }));
 
 vi.mock("@/lib/kiosk/nfc-write", () => ({
+  collectNfcDiagnostics: vi.fn().mockResolvedValue({
+    at: "2026-01-01T00:00:00.000Z",
+    isSecureContext: true,
+    protocol: "https:",
+    origin: "https://pixtrela.com",
+    hasNdefReader: true,
+    hasNdefWriter: false,
+    isWriteSupported: true,
+    displayMode: "browser",
+    visibilityState: "visible",
+    userAgent: "test",
+    permissionState: "prompt",
+  }),
   isNfcWriteSupported: () => isNfcWriteSupported(),
+  mapNfcWriteError: (error: unknown) =>
+    error instanceof Error && error.message === "denied"
+      ? "permissionDenied"
+      : "writeFailed",
+  NfcWriteError: class NfcWriteError extends Error {
+    code: string;
+    constructor(code: string) {
+      super(code);
+      this.code = code;
+    }
+  },
   writeKioskColaboratorLinkToNfc: (...args: unknown[]) =>
     writeKioskColaboratorLinkToNfc(...args),
 }));
@@ -50,7 +74,10 @@ describe("UserManager", () => {
     showErrorToast.mockReset();
     isNfcWriteSupported.mockReturnValue(true);
     writeKioskColaboratorLinkToNfc.mockReset();
-    writeKioskColaboratorLinkToNfc.mockResolvedValue(undefined);
+    writeKioskColaboratorLinkToNfc.mockResolvedValue({
+      url: "http://localhost/kiosk/u1",
+      api: "NDEFReader",
+    });
   });
 
   it("renders user list", () => {

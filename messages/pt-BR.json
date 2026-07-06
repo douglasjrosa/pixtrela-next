@@ -139,7 +139,8 @@
     "nfcHoldTagNear": "Aproxime o cartão NFC do celular…",
     "nfcTagWritten": "Link gravado no cartão NFC.",
     "nfcNotSupported": "Seu dispositivo ou navegador não suporta gravação NFC. Use Chrome no Android.",
-    "nfcWriteFailed": "Não foi possível gravar o cartão NFC."
+    "nfcWriteFailed": "Não foi possível gravar o cartão NFC.",
+    "nfcDebugTitle": "Diagnóstico (NFC)"
   },
   "templates": {
     "title": "Modelos de tarefa",
