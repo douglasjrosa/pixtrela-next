@@ -7,7 +7,10 @@ import {
   isFinishedSubTask,
   isLockedSubTask,
   nextStartableSubTask,
+  shouldShowExitButton,
+  shouldShowStartButton,
   sortSubTasksByIndex,
+  splitKioskQueueSections,
 } from "./subtask-queue";
 
 const subTasks = [
@@ -244,5 +247,113 @@ describe("canStopSubTask", () => {
         status: "waiting",
       }),
     ).toBe(false);
+  });
+});
+
+describe("shouldShowStartButton", () => {
+  it("shows start only for startable idle subtasks", () => {
+    const queue = [
+      {
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "waiting" as const,
+        activationStatus: "unlocked" as const,
+      },
+      {
+        documentId: "b",
+        name: "B",
+        index: 1,
+        status: "waiting" as const,
+        activationStatus: "locked" as const,
+      },
+    ];
+    expect(shouldShowStartButton(queue, queue[0])).toBe(true);
+    expect(shouldShowStartButton(queue, queue[1])).toBe(false);
+  });
+});
+
+describe("shouldShowExitButton", () => {
+  it("shows exit only on the producing subtask", () => {
+    const active = [
+      {
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "producing" as const,
+        activationStatus: "unlocked" as const,
+      },
+      {
+        documentId: "b",
+        name: "B",
+        index: 1,
+        status: "waiting" as const,
+        activationStatus: "unlocked" as const,
+      },
+    ];
+    expect(shouldShowExitButton(active, active[0])).toBe(true);
+    expect(shouldShowExitButton(active, active[1])).toBe(false);
+  });
+});
+
+describe("splitKioskQueueSections", () => {
+  it("groups subtasks by queue section", () => {
+    const sections = splitKioskQueueSections([
+      {
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "producing",
+        activationStatus: "unlocked",
+        qty: 1,
+        completedQty: 0,
+        sharingType: "duration",
+        timeSpent: 0,
+        startedAt: null,
+        expectedTime: 0,
+        taskDocumentId: "t1",
+        taskName: "Task",
+        taskIndex: 0,
+        finishedAt: null,
+      },
+      {
+        documentId: "b",
+        name: "B",
+        index: 1,
+        status: "waiting",
+        activationStatus: "unlocked",
+        qty: 1,
+        completedQty: 0,
+        sharingType: "duration",
+        timeSpent: 0,
+        startedAt: null,
+        expectedTime: 0,
+        taskDocumentId: "t1",
+        taskName: "Task",
+        taskIndex: 0,
+        finishedAt: null,
+      },
+      {
+        documentId: "c",
+        name: "C",
+        index: 2,
+        status: "finished",
+        activationStatus: "unlocked",
+        qty: 1,
+        completedQty: 0,
+        sharingType: "duration",
+        timeSpent: 10,
+        startedAt: null,
+        expectedTime: 0,
+        taskDocumentId: "t1",
+        taskName: "Task",
+        taskIndex: 0,
+        finishedAt: "2026-07-07T12:00:00.000Z",
+      },
+    ]);
+
+    expect(sections.producing.map((item) => item.documentId)).toEqual(["a"]);
+    expect(sections.pending.map((item) => item.documentId)).toEqual(["b"]);
+    expect(sections.finishedToday.map((item) => item.documentId)).toEqual(["c"]);
   });
 });

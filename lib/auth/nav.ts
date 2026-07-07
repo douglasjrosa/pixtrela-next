@@ -19,6 +19,7 @@ interface NavRule {
 }
 
 const NAV_RULES: NavRule[] = [
+  { item: { href: "/", labelKey: "panel" }, show: () => true },
   { item: { href: "/board", labelKey: "board" }, show: (r) => r !== "colaborator" },
   {
     item: { href: "/tasks", labelKey: "tasks" },

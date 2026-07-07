@@ -118,9 +118,9 @@ export function canAccessRoute(
 
   if (role === "colaborator") {
     if (!userId) {
-      return isColaboratorPrivatePath(pathname);
+      return isColaboratorPrivatePath(pathname) || pathname === "/";
     }
-    return canColaboratorAccessPath(pathname, userId);
+    return canColaboratorAccessPath(pathname, userId) || pathname === "/";
   }
   const guard = ROUTE_GUARDS.find((g) => pathname.startsWith(g.prefix));
   if (!guard) return true;

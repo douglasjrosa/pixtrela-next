@@ -1,10 +1,17 @@
 "use client";
 
 import { useRef } from "react";
-import { useDraggable } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useTranslations } from "next-intl";
 
 import { CardBadge } from "@/components/ui/card";
+import {
+  kanbanDeliveryDateBadgeClassName,
+  resolveKanbanDeliveryDateTone,
+} from "@/lib/business/kanban-delivery-badge";
+import { formatDatePtBr } from "@/lib/format/datetime";
+import { toKanbanTaskId } from "@/lib/business/kanban-task-order";
 import { cn } from "@/lib/utils";
 import type { KanbanTask } from "./types";
 
@@ -15,15 +22,56 @@ export interface KanbanCardProps {
   onTaskClick?: (task: KanbanTask) => void;
 }
 
-export function KanbanCard({ task, onTaskClick }: KanbanCardProps) {
-  const t = useTranslations("tasks.status");
-  const pointerStart = useRef<{ x: number; y: number } | null>(null);
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: task.id });
+export function KanbanCardSurface({
+  task,
+  className,
+}: {
+  task: KanbanTask;
+  className?: string;
+}) {
+  const tStatus = useTranslations("tasks.status");
+  const deliveryTone = resolveKanbanDeliveryDateTone(
+    task.deliveryDate,
+    new Date(),
+  );
 
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : undefined;
+  return (
+    <div className={cn("rounded-md border bg-card p-3 shadow-sm", className)}>
+      <p className="font-medium">{task.name}</p>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <CardBadge className={kanbanDeliveryDateBadgeClassName(deliveryTone)}>
+          {formatDatePtBr(task.deliveryDate)}
+        </CardBadge>
+        <CardBadge className="shrink-0">{tStatus(task.status)}</CardBadge>
+      </div>
+    </div>
+  );
+}
+
+export function KanbanCardDragOverlay({ task }: { task: KanbanTask }) {
+  return (
+    <KanbanCardSurface
+      task={task}
+      className="cursor-grabbing shadow-lg ring-2 ring-ring"
+    />
+  );
+}
+
+export function KanbanCard({ task, onTaskClick }: KanbanCardProps) {
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: toKanbanTaskId(task.id) });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>): void {
     pointerStart.current = { x: event.clientX, y: event.clientY };
@@ -52,16 +100,14 @@ export function KanbanCard({ task, onTaskClick }: KanbanCardProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-md border bg-card p-3 shadow-sm",
         onTaskClick && "cursor-pointer",
-        isDragging && "opacity-50",
+        isDragging && "opacity-40",
       )}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       {...attributes}
     >
-      <p className="font-medium">{task.name}</p>
-      <CardBadge className="mt-2">{t(task.status)}</CardBadge>
+      <KanbanCardSurface task={task} />
     </div>
   );
 }

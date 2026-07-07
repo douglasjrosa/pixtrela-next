@@ -7,13 +7,19 @@ export const STRAPI_TAGS = {
   activities: "strapi:activities",
   currencies: "strapi:currencies",
   kioskSetting: "strapi:kiosk-setting",
+  taskAutomationSetting: "strapi:task-automation-setting",
   awards: "strapi:awards",
   balance: "strapi:balance",
   teams: "strapi:teams",
   users: "strapi:users",
   exchanges: "strapi:exchanges",
+  dashboardRanking: "strapi:dashboard:ranking",
 } as const;
 
 export function balanceTag(userId: string): string {
   return `${STRAPI_TAGS.balance}:${userId}`;
+}
+
+export function dashboardColaboratorTag(documentId: string): string {
+  return `strapi:dashboard:colaborator:${documentId}`;
 }

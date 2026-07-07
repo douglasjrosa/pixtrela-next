@@ -1,8 +1,5 @@
 import { auth } from "@/auth";
-import {
-  sortSubTasksByIndex,
-  type KioskSubTask,
-} from "@/lib/business/subtask-queue";
+import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import type { Role } from "@/lib/auth/nav";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
@@ -25,6 +22,11 @@ interface SubTaskEntity {
   sharingType: SubTaskFormInput["sharingType"];
   timeSpent: number;
   startedAt: string | null;
+  expectedTime: number;
+  taskDocumentId: string;
+  taskName: string;
+  taskIndex: number;
+  finishedAt: string | null;
 }
 
 interface PageProps {
@@ -39,20 +41,23 @@ async function loadAssignedSubTasks(
       `/kiosk/colaborators/${colaboratorId}/sub-tasks`,
       { strapiCache: { tags: [STRAPI_TAGS.subTasks], revalidate: 10 } },
     );
-    return sortSubTasksByIndex(
-      res.data.map((subtask) => ({
-        documentId: subtask.documentId,
-        name: subtask.name,
-        index: subtask.index,
-        status: subtask.status,
-        activationStatus: subtask.activationStatus ?? "locked",
-        qty: subtask.qty ?? 1,
-        completedQty: subtask.completedQty ?? 0,
-        sharingType: subtask.sharingType ?? "duration",
-        timeSpent: subtask.timeSpent ?? 0,
-        startedAt: subtask.startedAt ?? null,
-      })),
-    );
+    return res.data.map((subtask) => ({
+      documentId: subtask.documentId,
+      name: subtask.name,
+      index: subtask.index,
+      status: subtask.status,
+      activationStatus: subtask.activationStatus ?? "locked",
+      qty: subtask.qty ?? 1,
+      completedQty: subtask.completedQty ?? 0,
+      sharingType: subtask.sharingType ?? "duration",
+      timeSpent: subtask.timeSpent ?? 0,
+      startedAt: subtask.startedAt ?? null,
+      expectedTime: subtask.expectedTime ?? 0,
+      taskDocumentId: subtask.taskDocumentId ?? "",
+      taskName: subtask.taskName ?? "",
+      taskIndex: subtask.taskIndex ?? 0,
+      finishedAt: subtask.finishedAt ?? null,
+    }));
   } catch (error) {
     rethrowIfNavigationError(error);
     return [];

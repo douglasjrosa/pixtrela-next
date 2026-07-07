@@ -64,6 +64,25 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(onAddSubtask).toHaveBeenCalledOnce();
   });
 
+  it("calls onClose when close button is clicked", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+
+    renderWithIntl(
+      <KanbanTaskSubtasksModal
+        open
+        taskName="Tarefa A"
+        subtasks={subtasks}
+        loading={false}
+        onClose={onClose}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("shows empty state when there are no sub-tasks", () => {
     renderWithIntl(
       <KanbanTaskSubtasksModal

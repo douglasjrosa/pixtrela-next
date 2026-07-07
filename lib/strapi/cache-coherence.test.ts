@@ -14,7 +14,7 @@ export const LIST_CACHE_MAP: Record<string, readonly string[]> = {
   taskSubtasks: [STRAPI_TAGS.subTasks, STRAPI_TAGS.tasks],
   teams: [STRAPI_TAGS.teams],
   awards: [STRAPI_TAGS.awards],
-  settings: [STRAPI_TAGS.currencies, STRAPI_TAGS.kioskSetting],
+  settings: [STRAPI_TAGS.currencies, STRAPI_TAGS.kioskSetting, STRAPI_TAGS.taskAutomationSetting],
   board: [STRAPI_TAGS.tasks, STRAPI_TAGS.steps],
   exchange: [STRAPI_TAGS.exchanges, STRAPI_TAGS.awards, STRAPI_TAGS.balance],
 };

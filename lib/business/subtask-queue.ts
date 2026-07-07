@@ -18,6 +18,17 @@ export interface KioskSubTask extends QueuedSubTask {
   sharingType: "qty" | "duration";
   timeSpent: number;
   startedAt: string | null;
+  expectedTime: number;
+  taskDocumentId: string;
+  taskName: string;
+  taskIndex: number;
+  finishedAt: string | null;
+}
+
+export interface KioskQueueSections {
+  producing: KioskSubTask[];
+  pending: KioskSubTask[];
+  finishedToday: KioskSubTask[];
 }
 
 /** Remaining pieces any colaborator may report on exit (global sum). */
@@ -31,6 +42,17 @@ export function getRemainingSubTaskQty(
 /** Sort subtasks by index ascending. */
 export function sortSubTasksByIndex<T extends { index: number }>(items: T[]): T[] {
   return [...items].sort((a, b) => a.index - b.index);
+}
+
+export function splitKioskQueueSections(subTasks: KioskSubTask[]): KioskQueueSections {
+  return {
+    producing: subTasks.filter((subTask) => subTask.status === "producing"),
+    pending: subTasks.filter(
+      (subTask) =>
+        subTask.status !== "producing" && subTask.status !== "finished",
+    ),
+    finishedToday: subTasks.filter((subTask) => subTask.status === "finished"),
+  };
 }
 
 /** Whether a subtask is currently in progress. */
@@ -84,4 +106,20 @@ export function canStopSubTask(subTask: QueuedSubTask): boolean {
 /** Whether the subtask is finished and read-only on the kiosk. */
 export function isFinishedSubTask(subTask: QueuedSubTask): boolean {
   return subTask.status === "finished";
+}
+
+/** Whether the start button should render for this subtask card. */
+export function shouldShowStartButton(
+  subTasks: QueuedSubTask[],
+  subTask: QueuedSubTask,
+): boolean {
+  return canStartSubTask(subTasks, subTask.documentId);
+}
+
+/** Whether the exit button should render for this subtask card. */
+export function shouldShowExitButton(
+  subTasks: QueuedSubTask[],
+  subTask: QueuedSubTask,
+): boolean {
+  return hasActiveSubTask(subTasks) && canStopSubTask(subTask);
 }

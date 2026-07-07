@@ -7,7 +7,10 @@
   "duration": {
     "hoursMinutes": "{hours}h {minutes}min",
     "hoursOnly": "{hours}h",
-    "minutesOnly": "{minutes}min"
+    "minutesOnly": "{minutes}min",
+    "hoursMinutesSeconds": "{hours}h {minutes}min {seconds}s",
+    "minutesSeconds": "{minutes}min {seconds}s",
+    "secondsOnly": "{seconds}s"
   },
   "common": {
     "loading": "Carregando...",
@@ -19,7 +22,8 @@
     "delete": "Excluir",
     "deactivate": "Desativar",
     "back": "Voltar",
-    "search": "Buscar"
+    "search": "Buscar",
+    "close": "Fechar"
   },
   "auth": {
     "loginTitle": "Entrar no Pixtrela",
@@ -32,6 +36,7 @@
     "loginPlaceholder": "ex.: maria.9876"
   },
   "nav": {
+    "panel": "Painel",
     "board": "Quadro",
     "tasks": "Tarefas",
     "templates": "Modelos",
@@ -104,6 +109,26 @@
     "outcome": "Total gasto",
     "previous": "Saldo anterior",
     "stars": "Estrelas"
+  },
+  "dashboard": {
+    "rankingTitle": "Ranking do mês",
+    "rankingMonth": "Referência: {month}",
+    "rankingDescription": "Soma de moedas ganhas no mês corrente",
+    "rankingEmpty": "Nenhum colaborador no ranking deste mês.",
+    "position": "Posição",
+    "colaborator": "Colaborador",
+    "earned": "Ganho",
+    "insightsTitle": "Saldos do colaborador",
+    "insightsDescription": "Ganhos diários no mês e consolidado dos três meses anteriores.",
+    "dailyIncomeTitle": "Ganhos diários no mês",
+    "dailyEmpty": "Nenhum ganho diário registrado neste mês.",
+    "consolidatedTitle": "Consolidado dos 3 meses anteriores",
+    "consolidatedEmpty": "Sem histórico nos três meses anteriores.",
+    "month": "Mês",
+    "day": "Dia",
+    "income": "Ganho",
+    "outcome": "Perdido",
+    "net": "Líquido"
   },
   "exchange": {
     "title": "Trocar Estrelas por prêmios",
@@ -252,8 +277,13 @@
   },
   "settings": {
     "title": "Configurações",
-    "currency": "Moeda Estrela",
-    "currencyPerSecond": "Estrelas por segundo",
+    "currency": "Moedas",
+    "currencyPerSecondFor": "{currency} por segundo",
+    "noCurrencies": "Nenhuma moeda cadastrada.",
+    "automations": "Automações",
+    "automationsDescription": "Quando o status da tarefa mudar, ela será movida automaticamente para a coluna configurada.",
+    "statusToStep": "{status} =>",
+    "automationNoStep": "Nenhuma coluna",
     "kioskSession": "Totem",
     "kioskSessionIdleSeconds": "Tempo de sessão do Totem (segundos)",
     "saved": "Configurações salvas.",
@@ -278,10 +308,13 @@
     "exitConfirm": "Confirmar saída",
     "exitCancel": "Cancelar",
     "noTasks": "Nenhuma subtarefa atribuída.",
-    "waitFinish": "Saia da subtarefa atual antes de iniciar outra.",
     "startedAt": "Início",
     "elapsed": "Tempo decorrido",
     "timeSpent": "Tempo gasto",
+    "sectionProducing": "Em execução",
+    "sectionPending": "A fazer",
+    "sectionFinishedToday": "Concluídas hoje",
+    "progressTowardExpected": "Progresso em relação ao tempo previsto",
     "staffTitle": "Totem — gestão",
     "usersPage": "Usuários",
     "exitSession": "Sair",

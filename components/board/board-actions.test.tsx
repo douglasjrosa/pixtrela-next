@@ -2,8 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+const refresh = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
+}));
+
 import { renderWithIntl } from "@/test/test-utils";
-import { resolveKanbanMove } from "@/components/kanban/kanban-board";
+import { resolveKanbanDragEnd, toKanbanTaskId } from "@/lib/business/kanban-task-order";
 import { BoardActions } from "./board-actions";
 
 const steps = [
@@ -18,6 +24,15 @@ const tasks = [
     name: "Tarefa A",
     status: "waiting" as const,
     stepId: 1,
+    index: 0,
+  },
+  {
+    id: 11,
+    documentId: "task-11",
+    name: "Tarefa B",
+    status: "waiting" as const,
+    stepId: 1,
+    index: 1,
   },
 ];
 
@@ -36,7 +51,7 @@ describe("BoardActions", () => {
         steps={steps}
         tasks={tasks}
         teams={teams}
-        moveTask={vi.fn()}
+        applyBoardTaskOrder={vi.fn()}
         loadSubtasks={vi.fn()}
         updateSubtaskAssignees={vi.fn()}
         createSubtask={vi.fn()}
@@ -57,7 +72,7 @@ describe("BoardActions", () => {
         steps={steps}
         tasks={tasks}
         teams={teams}
-        moveTask={vi.fn()}
+        applyBoardTaskOrder={vi.fn()}
         loadSubtasks={loadSubtasks}
         updateSubtaskAssignees={vi.fn()}
         createSubtask={vi.fn()}
@@ -70,16 +85,20 @@ describe("BoardActions", () => {
     expect(await screen.findByRole("button", { name: /Soldar/ })).toBeInTheDocument();
   });
 
-  it("calls moveTask when kanban move resolves", () => {
-    const moveTask = vi.fn();
-    const move = resolveKanbanMove(10, 2);
-    expect(move).toEqual({ taskId: 10, stepId: 2 });
-
-    if (move) {
-      moveTask(move.taskId, move.stepId);
-    }
-
-    expect(moveTask).toHaveBeenCalledWith(10, 2);
+  it("resolves same-column reorder updates", () => {
+    const orderItems = tasks.map((task) => ({
+      id: task.id,
+      documentId: task.documentId,
+      stepId: task.stepId,
+      index: task.index,
+    }));
+    const result = resolveKanbanDragEnd(
+      orderItems,
+      steps,
+      toKanbanTaskId(11),
+      toKanbanTaskId(10),
+    );
+    expect(result.type).toBe("updates");
   });
 
   it("closes assign modal after save and does not reopen it", async () => {
@@ -98,7 +117,7 @@ describe("BoardActions", () => {
         steps={steps}
         tasks={tasks}
         teams={teams}
-        moveTask={vi.fn()}
+        applyBoardTaskOrder={vi.fn()}
         loadSubtasks={loadSubtasks}
         updateSubtaskAssignees={updateSubtaskAssignees}
         createSubtask={vi.fn()}
@@ -138,7 +157,7 @@ describe("BoardActions", () => {
         steps={steps}
         tasks={tasks}
         teams={teams}
-        moveTask={vi.fn()}
+        applyBoardTaskOrder={vi.fn()}
         loadSubtasks={loadSubtasks}
         updateSubtaskAssignees={vi.fn()}
         createSubtask={createSubtask}

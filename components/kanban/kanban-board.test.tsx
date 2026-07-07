@@ -2,15 +2,23 @@ import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 
 import { renderWithIntl } from "@/test/test-utils";
-import { KanbanBoard, resolveKanbanMove } from "./kanban-board";
+import { KanbanBoard } from "./kanban-board";
 import type { KanbanStep, KanbanTask } from "./types";
+
 const steps: KanbanStep[] = [
   { id: 1, name: "Fila de produção" },
   { id: 2, name: "Produzindo" },
 ];
 
 const tasks: KanbanTask[] = [
-  { id: 10, documentId: "task-10", name: "Tarefa A", status: "waiting", stepId: 1 },
+  {
+    id: 10,
+    documentId: "task-10",
+    name: "Tarefa A",
+    status: "waiting",
+    stepId: 1,
+    index: 0,
+  },
 ];
 
 describe("KanbanBoard", () => {
@@ -24,15 +32,5 @@ describe("KanbanBoard", () => {
     renderWithIntl(<KanbanBoard steps={steps} tasks={tasks} />);
     expect(screen.getByText("Tarefa A")).toBeInTheDocument();
     expect(screen.getByText("Sem tarefas nesta etapa.")).toBeInTheDocument();
-  });
-});
-
-describe("resolveKanbanMove", () => {
-  it("returns task and step ids when over target exists", () => {
-    expect(resolveKanbanMove(10, 2)).toEqual({ taskId: 10, stepId: 2 });
-  });
-
-  it("returns null when drop target is missing", () => {
-    expect(resolveKanbanMove(10, null)).toBeNull();
   });
 });

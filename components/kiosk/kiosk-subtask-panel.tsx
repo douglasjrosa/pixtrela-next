@@ -6,11 +6,11 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import {
-  canStartSubTask,
-  canStopSubTask,
   getRemainingSubTaskQty,
   isFinishedSubTask,
   isLockedSubTask,
+  shouldShowExitButton,
+  shouldShowStartButton,
   type KioskSubTask,
 } from "@/lib/business/subtask-queue";
 import { cn } from "@/lib/utils";
@@ -20,18 +20,40 @@ import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 
 import { KioskExitSubtaskForm } from "./kiosk-exit-subtask-form";
 import { SubtaskElapsedTimer } from "./subtask-elapsed-timer";
+import { SubtaskProgressBar } from "./subtask-progress-bar";
+import { useElapsedSeconds } from "./use-elapsed-seconds";
 
 export interface KioskSubtaskPanelProps {
   subTasks: KioskSubTask[];
+  allSubTasks?: KioskSubTask[];
   readOnly?: boolean;
+  highlightProducing?: boolean;
   onStart?: (documentId: string) => void | Promise<void>;
   onExit?: (documentId: string, input: KioskExitInput) => void | Promise<void>;
   pending?: boolean;
 }
 
+function ProducingProgress({
+  subTask,
+}: {
+  subTask: KioskSubTask;
+}) {
+  const elapsedSeconds = useElapsedSeconds(subTask.startedAt, subTask.timeSpent);
+  if (elapsedSeconds === null) return null;
+
+  return (
+    <SubtaskProgressBar
+      elapsedSeconds={elapsedSeconds}
+      expectedSeconds={subTask.expectedTime}
+    />
+  );
+}
+
 export function KioskSubtaskPanel({
   subTasks,
+  allSubTasks,
   readOnly = false,
+  highlightProducing = false,
   onStart,
   onExit,
   pending,
@@ -39,18 +61,17 @@ export function KioskSubtaskPanel({
   const t = useTranslations("kiosk");
   const tStatus = useTranslations("tasks.status");
   const [exitingId, setExitingId] = useState<string | null>(null);
-
-  if (subTasks.length === 0) {
-    return <p role="status">{t("noTasks")}</p>;
-  }
+  const queueContext = allSubTasks ?? subTasks;
 
   return (
     <ul className="space-y-3">
       {subTasks.map((subTask) => {
         const finished = isFinishedSubTask(subTask);
         const locked = isLockedSubTask(subTask);
-        const startable = canStartSubTask(subTasks, subTask.documentId);
-        const stoppable = canStopSubTask(subTask);
+        const showStart =
+          !readOnly && shouldShowStartButton(queueContext, subTask);
+        const showExit =
+          !readOnly && shouldShowExitButton(queueContext, subTask);
         const isProducing = subTask.status === "producing";
         const isExiting = exitingId === subTask.documentId;
 
@@ -61,16 +82,24 @@ export function KioskSubtaskPanel({
               "relative rounded-lg border p-4",
               finished && "border-muted bg-muted/40 opacity-80",
               locked && "bg-muted/50",
+              highlightProducing &&
+                isProducing &&
+                "border-primary shadow-sm",
             )}
           >
             <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
+              <div className="min-w-0 flex-1 space-y-1">
+                {subTask.taskName ? (
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {subTask.taskName}
+                  </p>
+                ) : null}
                 <p className="font-medium">{subTask.name}</p>
                 <p className="text-sm text-muted-foreground">
                   {tStatus(subTask.status)}
                 </p>
                 {isProducing && subTask.startedAt ? (
-                  <div className="text-sm text-muted-foreground">
+                  <div className="space-y-2 text-sm text-muted-foreground">
                     <p>
                       {t("startedAt")}: {formatDateTimePtBr(subTask.startedAt)}
                     </p>
@@ -81,34 +110,47 @@ export function KioskSubtaskPanel({
                         baseSeconds={subTask.timeSpent}
                       />
                     </p>
+                    <ProducingProgress subTask={subTask} />
                   </div>
                 ) : null}
                 {finished ? (
-                  <p className="text-sm text-muted-foreground">
-                    {t("timeSpent")}:{" "}
-                    <span className="tabular-nums">
-                      <Duration seconds={subTask.timeSpent} />
-                    </span>
-                  </p>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>
+                      {t("timeSpent")}:{" "}
+                      <span className="tabular-nums">
+                        <Duration seconds={subTask.timeSpent} />
+                      </span>
+                    </p>
+                    {subTask.expectedTime > 0 ? (
+                      <SubtaskProgressBar
+                        elapsedSeconds={subTask.timeSpent}
+                        expectedSeconds={subTask.expectedTime}
+                      />
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
-              {!finished && !isExiting && !readOnly ? (
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    disabled={!startable || pending}
-                    onClick={() => onStart?.(subTask.documentId)}
-                  >
-                    {t("start")}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!stoppable || pending}
-                    onClick={() => setExitingId(subTask.documentId)}
-                  >
-                    {t("exitSubtask")}
-                  </Button>
+              {!finished && !isExiting ? (
+                <div className="flex shrink-0 gap-2">
+                  {showStart ? (
+                    <Button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => onStart?.(subTask.documentId)}
+                    >
+                      {t("start")}
+                    </Button>
+                  ) : null}
+                  {showExit ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={pending}
+                      onClick={() => setExitingId(subTask.documentId)}
+                    >
+                      {t("exitSubtask")}
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
             </div>

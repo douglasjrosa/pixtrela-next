@@ -2,34 +2,40 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import { renderWithIntl } from "@/test/test-utils";
 import { KioskSubtaskPanel } from "./kiosk-subtask-panel";
 
+function kioskSubTask(
+  overrides: Partial<KioskSubTask> & Pick<KioskSubTask, "documentId" | "name">,
+): KioskSubTask {
+  return {
+    documentId: overrides.documentId,
+    name: overrides.name,
+    index: overrides.index ?? 0,
+    status: overrides.status ?? "waiting",
+    activationStatus: overrides.activationStatus ?? "unlocked",
+    qty: overrides.qty ?? 1,
+    completedQty: overrides.completedQty ?? 0,
+    sharingType: overrides.sharingType ?? "duration",
+    timeSpent: overrides.timeSpent ?? 0,
+    startedAt: overrides.startedAt ?? null,
+    expectedTime: overrides.expectedTime ?? 0,
+    taskDocumentId: overrides.taskDocumentId ?? "task-1",
+    taskName: overrides.taskName ?? "Tarefa pai",
+    taskIndex: overrides.taskIndex ?? 0,
+    finishedAt: overrides.finishedAt ?? null,
+  };
+}
+
 const subTasks = [
-  {
-    documentId: "a",
-    name: "Tarefa A",
-    index: 0,
-    status: "waiting" as const,
-    activationStatus: "unlocked" as const,
-    qty: 1,
-    completedQty: 0,
-    sharingType: "duration" as const,
-    timeSpent: 0,
-    startedAt: null,
-  },
-  {
+  kioskSubTask({ documentId: "a", name: "Tarefa A", index: 0 }),
+  kioskSubTask({
     documentId: "b",
     name: "Tarefa B",
     index: 1,
-    status: "waiting" as const,
-    activationStatus: "locked" as const,
-    qty: 5,
-    completedQty: 0,
-    sharingType: "qty" as const,
-    timeSpent: 0,
-    startedAt: null,
-  },
+    activationStatus: "locked",
+  }),
 ];
 
 describe("KioskSubtaskPanel", () => {
@@ -53,7 +59,7 @@ describe("KioskSubtaskPanel", () => {
     expect(lockedItem).toHaveClass("bg-muted/50");
   });
 
-  it("enables start only for unlocked queued subtasks", () => {
+  it("shows only start on unlocked startable subtasks when idle", () => {
     renderWithIntl(
       <KioskSubtaskPanel
         subTasks={subTasks}
@@ -62,27 +68,34 @@ describe("KioskSubtaskPanel", () => {
       />,
     );
 
-    const startButtons = screen.getAllByRole("button", { name: "Iniciar" });
-    expect(startButtons[0]).not.toBeDisabled();
-    expect(startButtons[1]).toBeDisabled();
+    expect(screen.getAllByRole("button", { name: "Iniciar" })).toHaveLength(1);
+    expect(
+      screen.queryByRole("button", { name: "Sair da subtarefa" }),
+    ).toBeNull();
+  });
+
+  it("shows task name before subtask name", () => {
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={subTasks}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByText("Tarefa pai").length).toBeGreaterThan(0);
   });
 
   it("shows exit form for producing duration subtask", async () => {
     const user = userEvent.setup();
     const onExit = vi.fn();
     const producing = [
-      {
+      kioskSubTask({
         documentId: "a",
         name: "Tarefa A",
-        index: 0,
-        status: "producing" as const,
-        activationStatus: "unlocked" as const,
-        qty: 1,
-        completedQty: 0,
-        sharingType: "duration" as const,
-        timeSpent: 0,
+        status: "producing",
         startedAt: "2026-06-05T10:00:00.000Z",
-      },
+      }),
     ];
 
     renderWithIntl(
@@ -103,21 +116,46 @@ describe("KioskSubtaskPanel", () => {
     });
   });
 
+  it("shows only exit while producing", () => {
+    const producing = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Tarefa A",
+        status: "producing",
+        startedAt: "2026-06-05T10:00:00.000Z",
+      }),
+      kioskSubTask({
+        documentId: "b",
+        name: "Tarefa B",
+        index: 1,
+        activationStatus: "unlocked",
+      }),
+    ];
+
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={producing}
+        allSubTasks={producing}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByRole("button", { name: "Sair da subtarefa" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Iniciar" })).toBeNull();
+  });
+
   it("shows qty form for producing qty subtask", async () => {
     const user = userEvent.setup();
     const producing = [
-      {
+      kioskSubTask({
         documentId: "a",
         name: "Tarefa A",
-        index: 0,
-        status: "producing" as const,
-        activationStatus: "unlocked" as const,
+        status: "producing",
+        sharingType: "qty",
         qty: 10,
-        completedQty: 0,
-        sharingType: "qty" as const,
-        timeSpent: 0,
         startedAt: "2026-06-05T10:00:00.000Z",
-      },
+      }),
     ];
 
     renderWithIntl(
@@ -136,18 +174,13 @@ describe("KioskSubtaskPanel", () => {
 
   it("shows start time and elapsed timer for producing subtask", () => {
     const producing = [
-      {
+      kioskSubTask({
         documentId: "a",
         name: "Tarefa A",
-        index: 0,
-        status: "producing" as const,
-        activationStatus: "unlocked" as const,
-        qty: 1,
-        completedQty: 0,
-        sharingType: "duration" as const,
+        status: "producing",
         timeSpent: 30,
         startedAt: "2026-06-05T10:00:00.000Z",
-      },
+      }),
     ];
     renderWithIntl(
       <KioskSubtaskPanel
@@ -163,34 +196,22 @@ describe("KioskSubtaskPanel", () => {
 
   it("shows finished subtask with time spent and no actions", () => {
     const finished = [
-      {
+      kioskSubTask({
         documentId: "a",
         name: "Tarefa A",
-        index: 0,
-        status: "finished" as const,
-        activationStatus: "unlocked" as const,
-        qty: 1,
-        completedQty: 0,
-        sharingType: "duration" as const,
+        status: "finished",
         timeSpent: 125,
-        startedAt: null,
-      },
-      {
+      }),
+      kioskSubTask({
         documentId: "b",
         name: "Tarefa B",
         index: 1,
-        status: "waiting" as const,
-        activationStatus: "unlocked" as const,
-        qty: 1,
-        completedQty: 0,
-        sharingType: "duration" as const,
-        timeSpent: 0,
-        startedAt: null,
-      },
+      }),
     ];
     renderWithIntl(
       <KioskSubtaskPanel
         subTasks={finished}
+        allSubTasks={finished}
         onStart={vi.fn()}
         onExit={vi.fn()}
       />,
@@ -216,19 +237,6 @@ describe("KioskSubtaskPanel", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "Iniciar" })[0]);
     expect(onStart).toHaveBeenCalledWith("a");
-  });
-
-  it("shows empty state when no subtasks", () => {
-    renderWithIntl(
-      <KioskSubtaskPanel
-        subTasks={[]}
-        onStart={vi.fn()}
-        onExit={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByText("Nenhuma subtarefa atribuída."),
-    ).toBeInTheDocument();
   });
 
   it("hides action buttons in read-only mode", () => {

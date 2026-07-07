@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -42,11 +43,25 @@ export function KanbanTaskSubtasksModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="kanban-subtasks-title"
-        className="w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg"
+        className="relative w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg"
         onClick={(event) => event.stopPropagation()}
       >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="absolute top-3 right-3"
+          aria-label={tCommon("close")}
+          onClick={onClose}
+        >
+          <X className="size-4" aria-hidden />
+        </Button>
+
         <div className="space-y-4">
-          <h2 id="kanban-subtasks-title" className="text-lg font-semibold">
+          <h2
+            id="kanban-subtasks-title"
+            className="pr-8 text-lg font-semibold"
+          >
             {taskName}
           </h2>
 
@@ -93,16 +108,13 @@ export function KanbanTaskSubtasksModal({
             </ul>
           )}
 
-          <div className="flex justify-end gap-2">
-            {onAddSubtask ? (
+          {onAddSubtask ? (
+            <div className="flex justify-end">
               <Button type="button" onClick={onAddSubtask}>
                 {tKanban("addSubtask")}
               </Button>
-            ) : null}
-            <Button type="button" variant="outline" onClick={onClose}>
-              {tCommon("cancel")}
-            </Button>
-          </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

@@ -1,8 +1,13 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { useTranslations } from "next-intl";
 
+import { toKanbanColumnId, toKanbanTaskId } from "@/lib/business/kanban-task-order";
 import { cn } from "@/lib/utils";
 import { KanbanCard } from "./kanban-card";
 import type { KanbanStep, KanbanTask } from "./types";
@@ -17,7 +22,8 @@ export function KanbanColumn({
   onTaskClick?: (task: KanbanTask) => void;
 }) {
   const t = useTranslations("kanban");
-  const { setNodeRef, isOver } = useDroppable({ id: step.id });
+  const { setNodeRef, isOver } = useDroppable({ id: toKanbanColumnId(step.id) });
+  const sortableIds = tasks.map((task) => toKanbanTaskId(task.id));
 
   return (
     <section
@@ -35,9 +41,11 @@ export function KanbanColumn({
       {tasks.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
-        tasks.map((task) => (
-          <KanbanCard key={task.id} task={task} onTaskClick={onTaskClick} />
-        ))
+        <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+          {tasks.map((task) => (
+            <KanbanCard key={task.id} task={task} onTaskClick={onTaskClick} />
+          ))}
+        </SortableContext>
       )}
     </section>
   );

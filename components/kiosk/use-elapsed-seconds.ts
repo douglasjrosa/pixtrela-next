@@ -1,18 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 
 import { elapsedSecondsSince } from "@/lib/format/datetime";
-import { formatDurationMinutes } from "@/lib/format/duration";
 
 const TICK_MS = 1000;
 
-export function useElapsedTime(
+export function useElapsedSeconds(
   startedAt: string | null,
   baseSeconds = 0,
-): string | null {
-  const t = useTranslations("duration");
+): number | null {
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -23,6 +20,5 @@ export function useElapsedTime(
 
   if (!startedAt) return null;
 
-  const elapsed = baseSeconds + elapsedSecondsSince(startedAt, nowMs);
-  return formatDurationMinutes(elapsed, (key, values) => t(key, values));
+  return baseSeconds + elapsedSecondsSince(startedAt, nowMs);
 }

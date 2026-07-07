@@ -91,4 +91,4 @@ export async function strapiFetch<T>(
 }
 
 export { buildStrapiQuery, type StrapiQueryParams } from "./strapi/query";
-export { STRAPI_TAGS, balanceTag } from "./strapi/tags";
+export { STRAPI_TAGS, balanceTag, dashboardColaboratorTag } from "./strapi/tags";

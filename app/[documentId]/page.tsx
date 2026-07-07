@@ -3,9 +3,12 @@ import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
 import { StarBalance } from "@/components/balance/star-balance";
+import { DashboardInsightsBlock } from "@/components/dashboard/dashboard-insights-block";
 import { AwardCard } from "@/components/exchange/award-card";
 import { redeemAward } from "@/app/(app)/exchange/actions";
 import { loadColaboratorPrivateHome } from "@/lib/colaborator/private-home-data";
+import { loadColaboratorInsights } from "@/lib/dashboard/load-colaborator-insights";
+import { loadMonthlyRanking } from "@/lib/dashboard/load-monthly-ranking";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
 
 interface PageProps {
@@ -29,6 +32,9 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
 
   const { balance, awards, windowOpen, spendableBalance, team, history } =
     await loadColaboratorPrivateHome(documentId);
+  const ranking = await loadMonthlyRanking();
+  const insights = await loadColaboratorInsights(documentId);
+  const colaboratorName = session.user.name ?? "";
 
   return (
     <section className="space-y-10 p-6">
@@ -36,6 +42,16 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
         <h1 className="text-2xl font-bold">{tBalance("title")}</h1>
         <StarBalance {...balance} />
       </div>
+
+      <DashboardInsightsBlock
+        ranking={ranking}
+        mode="self"
+        role="colaborator"
+        colaboratorOptions={[]}
+        selectedDocumentId={documentId}
+        selectedName={colaboratorName}
+        insights={insights}
+      />
 
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">{tExchange("title")}</h2>

@@ -4,26 +4,36 @@ import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import {
+  currencyRatesFormSchema,
+  type CurrencyRatesFormInput,
+} from "@/lib/schemas/currency-rates";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
-const currencyPerSecondSchema = z.object({
-  currencyPerSecond: z.number().min(0),
-});
-
-type CurrencyPerSecondInput = z.infer<typeof currencyPerSecondSchema>;
-
-export interface CurrencyFormProps {
+export interface CurrencyRate {
+  documentId: string;
+  title: string;
+  pluralTitle: string;
   currencyPerSecond: number;
-  onSave: (values: CurrencyPerSecondInput) => void | Promise<void>;
 }
 
-export function CurrencyForm({ currencyPerSecond, onSave }: CurrencyFormProps) {
+export interface CurrencyFormProps {
+  currencies: CurrencyRate[];
+  onSave: (values: CurrencyRatesFormInput) => void | Promise<void>;
+}
+
+function resolveCurrencyLabel(currency: CurrencyRate): string {
+  if (currency.pluralTitle.trim().length > 0) return currency.pluralTitle;
+  if (currency.title.trim().length > 0) return currency.title;
+  return currency.documentId;
+}
+
+export function CurrencyForm({ currencies, onSave }: CurrencyFormProps) {
   const tCommon = useTranslations("common");
   const tSettings = useTranslations("settings");
   const [isPending, startTransition] = useTransition();
@@ -32,12 +42,17 @@ export function CurrencyForm({ currencyPerSecond, onSave }: CurrencyFormProps) {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<CurrencyPerSecondInput>({
-    resolver: zodResolver(currencyPerSecondSchema),
-    defaultValues: { currencyPerSecond },
+  } = useForm<CurrencyRatesFormInput>({
+    resolver: zodResolver(currencyRatesFormSchema),
+    defaultValues: {
+      rates: currencies.map((currency) => ({
+        documentId: currency.documentId,
+        currencyPerSecond: currency.currencyPerSecond,
+      })),
+    },
   });
 
-  function onSubmit(values: CurrencyPerSecondInput): void {
+  function onSubmit(values: CurrencyRatesFormInput): void {
     startTransition(async () => {
       try {
         await onSave(values);
@@ -50,28 +65,51 @@ export function CurrencyForm({ currencyPerSecond, onSave }: CurrencyFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-sm space-y-4">
+    <section className="max-w-sm space-y-4">
       <h2 className="text-lg font-semibold">{tSettings("currency")}</h2>
 
-      <div className="space-y-2">
-        <Label htmlFor="currencyPerSecond">{tSettings("currencyPerSecond")}</Label>
-        <Input
-          id="currencyPerSecond"
-          type="number"
-          min={0}
-          step="0.01"
-          {...register("currencyPerSecond", { valueAsNumber: true })}
-        />
-        {errors.currencyPerSecond ? (
-          <p className="text-sm text-destructive">
-            {errors.currencyPerSecond.message}
-          </p>
-        ) : null}
-      </div>
+      {currencies.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{tSettings("noCurrencies")}</p>
+      ) : (
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {currencies.map((currency, index) => {
+            const label = tSettings("currencyPerSecondFor", {
+              currency: resolveCurrencyLabel(currency),
+            });
+            const fieldError = errors.rates?.[index]?.currencyPerSecond;
 
-      <Button type="submit" disabled={isPending}>
-        {tCommon("save")}
-      </Button>
-    </form>
+            return (
+              <div className="space-y-2" key={currency.documentId}>
+                <input
+                  type="hidden"
+                  {...register(`rates.${index}.documentId`)}
+                />
+                <Label htmlFor={`currency-rate-${currency.documentId}`}>
+                  {label}
+                </Label>
+                <Input
+                  id={`currency-rate-${currency.documentId}`}
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  {...register(`rates.${index}.currencyPerSecond`, {
+                    valueAsNumber: true,
+                  })}
+                />
+                {fieldError ? (
+                  <p className="text-sm text-destructive">
+                    {fieldError.message}
+                  </p>
+                ) : null}
+              </div>
+            );
+          })}
+
+          <Button type="submit" disabled={isPending}>
+            {tCommon("save")}
+          </Button>
+        </form>
+      )}
+    </section>
   );
 }

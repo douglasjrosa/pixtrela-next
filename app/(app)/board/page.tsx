@@ -9,9 +9,9 @@ import { ACTIVE_TEAM_FILTER } from "@/lib/business/team-active";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
 import {
+  applyBoardTaskOrder,
   createBoardSubtask,
   loadBoardSubtasks,
-  moveTaskToStep,
   updateBoardSubtaskAssignees,
 } from "./actions";
 
@@ -29,6 +29,8 @@ interface TaskEntity {
   documentId: string;
   name: string;
   status: KanbanTask["status"];
+  index: number;
+  deliveryDate?: string | null;
   step?: { id: number } | null;
 }
 
@@ -52,7 +54,7 @@ async function loadBoard(): Promise<{ steps: KanbanStep[]; tasks: KanbanTask[] }
         "/tasks",
         { strapiCache: { tags: [STRAPI_TAGS.tasks], revalidate: BOARD_REVALIDATE_SEC } },
         {
-          fields: ["documentId", "name", "status"],
+          fields: ["documentId", "name", "status", "index", "deliveryDate"],
           filters: { active: { $eq: true } },
           populate: { step: { fields: ["id"] } },
           sort: "index:asc",
@@ -67,6 +69,8 @@ async function loadBoard(): Promise<{ steps: KanbanStep[]; tasks: KanbanTask[] }
         name: task.name,
         status: task.status,
         stepId: task.step?.id ?? null,
+        index: task.index,
+        deliveryDate: task.deliveryDate ?? null,
       })),
     };
   } catch (error) {
@@ -115,7 +119,7 @@ export default async function BoardPage() {
           steps={steps}
           tasks={tasks}
           teams={teams}
-          moveTask={moveTaskToStep}
+          applyBoardTaskOrder={applyBoardTaskOrder}
           loadSubtasks={loadBoardSubtasks}
           updateSubtaskAssignees={updateBoardSubtaskAssignees}
           createSubtask={createBoardSubtask}

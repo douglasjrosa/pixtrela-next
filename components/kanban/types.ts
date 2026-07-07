@@ -9,6 +9,8 @@ export interface KanbanTask {
   name: string;
   status: "waiting" | "producing" | "paused" | "finished";
   stepId: number | null;
+  index: number;
+  deliveryDate?: string | null;
 }
 
 export interface BoardSubTaskAssignee {

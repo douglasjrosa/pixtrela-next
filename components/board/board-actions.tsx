@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
 import { KanbanBoard } from "@/components/kanban/kanban-board";
 import { KanbanSubtaskAssignModal } from "@/components/kanban/kanban-subtask-assign-modal";
@@ -18,7 +19,9 @@ export interface BoardActionsProps {
   steps: KanbanStep[];
   tasks: KanbanTask[];
   teams: TeamAssignmentOption[];
-  moveTask: (taskId: number, stepId: number) => void | Promise<void>;
+  applyBoardTaskOrder: (
+    updates: { documentId: string; index: number; stepId: number | null }[],
+  ) => void | Promise<void>;
   loadSubtasks: (taskDocumentId: string) => Promise<BoardSubTaskSummary[]>;
   updateSubtaskAssignees: (
     subtaskDocumentId: string,
@@ -35,12 +38,14 @@ export function BoardActions({
   steps,
   tasks,
   teams,
-  moveTask,
+  applyBoardTaskOrder,
   loadSubtasks,
   updateSubtaskAssignees,
   createSubtask,
 }: BoardActionsProps) {
+  const router = useRouter();
   const [, startTransition] = useTransition();
+  const [orderedTasks, setOrderedTasks] = useState(tasks);
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
   const [subtasks, setSubtasks] = useState<BoardSubTaskSummary[]>([]);
   const [loadingSubtasks, setLoadingSubtasks] = useState(false);
@@ -50,9 +55,34 @@ export function BoardActions({
   const [createOpen, setCreateOpen] = useState(false);
   const [savingCreate, setSavingCreate] = useState(false);
 
-  function handleMove(taskId: number, stepId: number): void {
+  useEffect(() => {
+    setOrderedTasks(tasks);
+  }, [tasks]);
+
+  function handleApplyOrder(
+    updates: { documentId: string; index: number; stepId: number | null }[],
+  ): void {
+    const before = orderedTasks;
+    const updateMap = new Map(updates.map((update) => [update.documentId, update]));
+    const next = before
+      .map((task) => {
+        const update = updateMap.get(task.documentId);
+        if (!update) return task;
+        return { ...task, index: update.index, stepId: update.stepId };
+      })
+      .sort((left, right) => left.index - right.index);
+
+    setOrderedTasks(next);
+
     startTransition(() => {
-      void moveTask(taskId, stepId);
+      void (async () => {
+        try {
+          await applyBoardTaskOrder(updates);
+          router.refresh();
+        } catch {
+          setOrderedTasks(before);
+        }
+      })();
     });
   }
 
@@ -148,8 +178,8 @@ export function BoardActions({
     <>
       <KanbanBoard
         steps={steps}
-        tasks={tasks}
-        onMove={handleMove}
+        tasks={orderedTasks}
+        onApplyOrder={handleApplyOrder}
         onTaskClick={handleTaskClick}
       />
 

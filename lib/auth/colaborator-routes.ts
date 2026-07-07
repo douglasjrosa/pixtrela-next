@@ -126,6 +126,9 @@ export function resolveRouteAccess(
     if (!isAuthenticated) {
       return { action: "redirect", destination: LOGIN_PATH };
     }
+    if (pathname === "/") {
+      return { action: "allow" };
+    }
     if (userId) {
       return { action: "redirect", destination: `/${userId}` };
     }

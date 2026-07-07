@@ -117,6 +117,16 @@ describe("resolveRouteAccess", () => {
     ).toEqual({ action: "redirect", destination: "/col-1" });
   });
 
+  it("allows colaborator on dashboard home", () => {
+    expect(
+      resolveRouteAccess("/", {
+        isAuthenticated: true,
+        role: "colaborator",
+        userId: "col-1",
+      }),
+    ).toEqual({ action: "allow" });
+  });
+
   it("redirects colaborator on wrong private path to own id", () => {
     expect(
       resolveRouteAccess("/other-col", {

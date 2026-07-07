@@ -172,6 +172,32 @@ async function resolveDocumentId(
   return res.data[0]?.documentId ?? null;
 }
 
+export async function applyBoardTaskOrder(
+  updates: { documentId: string; index: number; stepId: number | null }[],
+): Promise<void> {
+  if (updates.length === 0) return;
+  await assertCanMove();
+
+  for (const update of updates) {
+    const data: { index: number; step?: string } = { index: update.index };
+    if (update.stepId != null) {
+      const stepDocumentId = await resolveDocumentId("/steps", update.stepId);
+      if (!stepDocumentId) {
+        throw new Error("notFound");
+      }
+      data.step = stepDocumentId;
+    }
+
+    await strapiFetch(`/tasks/${update.documentId}`, {
+      method: "PUT",
+      strapiCache: { noStore: true },
+      body: JSON.stringify({ data }),
+    });
+  }
+
+  revalidateStrapiTags(STRAPI_TAGS.tasks, STRAPI_TAGS.steps);
+}
+
 export async function moveTaskToStep(
   taskId: number,
   stepId: number,

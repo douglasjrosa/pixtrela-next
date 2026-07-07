@@ -48,7 +48,14 @@ export async function processCrmPedidoWebhook(
       body: { status: "ok", ...result },
       revalidateTasks: result.created > 0 || result.updated > 0,
     };
-  } catch {
-    return { status: 500, body: { error: "processing_failed" } };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown_error";
+    return {
+      status: 500,
+      body: {
+        error: "processing_failed",
+        ...(process.env.NODE_ENV === "development" ? { detail: message } : {}),
+      },
+    };
   }
 }

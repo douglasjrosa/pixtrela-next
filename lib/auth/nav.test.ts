@@ -6,12 +6,13 @@ function hrefs(role: Parameters<typeof navItemsForRole>[0]) {
 }
 
 describe("navItemsForRole", () => {
-  it("shows no staff nav items to colaborator", () => {
-    expect(hrefs("colaborator")).toEqual([]);
+  it("shows panel link to colaborator", () => {
+    expect(hrefs("colaborator")).toEqual(["/"]);
   });
 
   it("shows templates, users and tasks to leader", () => {
     const result = hrefs("leader");
+    expect(result).toContain("/");
     expect(result).toContain("/templates");
     expect(result).toContain("/users");
     expect(result).toContain("/tasks");
@@ -30,6 +31,7 @@ describe("navItemsForRole", () => {
     const result = hrefs("admin");
     expect(result).toEqual(
       expect.arrayContaining([
+        "/",
         "/board",
         "/tasks",
         "/templates",

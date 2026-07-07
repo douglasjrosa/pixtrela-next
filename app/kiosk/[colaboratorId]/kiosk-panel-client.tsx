@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
-import { KioskSubtaskPanel } from "@/components/kiosk/kiosk-subtask-panel";
+import { KioskDailyQueue } from "@/components/kiosk/kiosk-daily-queue";
 import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 
@@ -48,7 +48,7 @@ export function KioskPanelClient({
   }
 
   return (
-    <KioskSubtaskPanel
+    <KioskDailyQueue
       subTasks={subTasks}
       readOnly={readOnly}
       pending={pending}
