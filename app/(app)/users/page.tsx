@@ -4,10 +4,11 @@ import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { UserManager, type UserRow } from "@/components/users/user-manager";
 import type { Role } from "@/lib/auth/nav";
 import {
-  canCopyKioskLink,
   canEditUserLogin,
+  canPreviewKioskColaborator,
   canSetUserPassword,
   canViewUsers,
+  canWriteKioskNfc,
 } from "@/lib/auth/permissions";
 import { canDeleteUsers, manageableTargetRoles } from "@/lib/business/roles";
 import type { UserFormInput } from "@/lib/schemas/user";
@@ -67,7 +68,8 @@ export default async function UsersPage() {
         onDelete={deleteUser}
         canDelete={canDeleteUsers(actorRole)}
         manageableRoles={manageableTargetRoles(actorRole)}
-        canCopyKioskLink={canCopyKioskLink(actorRole)}
+        canWriteKioskNfc={canWriteKioskNfc(actorRole)}
+        canPreviewKioskColaborator={canPreviewKioskColaborator(actorRole)}
         canSetPassword={canSetUserPassword(actorRole)}
         canEditUserLogin={canEditUserLogin(actorRole)}
       />

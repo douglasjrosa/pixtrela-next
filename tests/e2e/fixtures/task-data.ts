@@ -4,8 +4,8 @@ export const createTaskE2ePayload = {
   qty: "15",
   deliveryDate: "2026-06-28",
   deliveryDatePtBr: "28/06/2026",
-  /** UI label for status `queued` (pt-BR). */
-  statusLabel: "Na fila",
+  /** UI label for status `waiting` (pt-BR). */
+  statusLabel: "Aguardando",
   /** Matches step "Na Fila" or seed default "Fila de produção". */
   stepLabelPattern: /fila/i,
   templateTaskCode: "123",

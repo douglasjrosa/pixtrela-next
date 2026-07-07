@@ -1,5 +1,6 @@
 "use client";
 
+import { Lock } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 
@@ -9,8 +10,10 @@ import {
   canStopSubTask,
   getRemainingSubTaskQty,
   isFinishedSubTask,
+  isLockedSubTask,
   type KioskSubTask,
 } from "@/lib/business/subtask-queue";
+import { cn } from "@/lib/utils";
 import { Duration } from "@/components/ui/duration";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
@@ -45,6 +48,7 @@ export function KioskSubtaskPanel({
     <ul className="space-y-3">
       {subTasks.map((subTask) => {
         const finished = isFinishedSubTask(subTask);
+        const locked = isLockedSubTask(subTask);
         const startable = canStartSubTask(subTasks, subTask.documentId);
         const stoppable = canStopSubTask(subTask);
         const isProducing = subTask.status === "producing";
@@ -53,9 +57,11 @@ export function KioskSubtaskPanel({
         return (
           <li
             key={subTask.documentId}
-            className={`rounded-lg border p-4 ${
-              finished ? "border-muted bg-muted/40 opacity-80" : ""
-            }`}
+            className={cn(
+              "relative rounded-lg border p-4",
+              finished && "border-muted bg-muted/40 opacity-80",
+              locked && "bg-muted/50",
+            )}
           >
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
@@ -106,6 +112,18 @@ export function KioskSubtaskPanel({
                 </div>
               ) : null}
             </div>
+            {locked ? (
+              <div
+                className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                data-testid="subtask-locked-overlay"
+              >
+                <Lock
+                  aria-hidden
+                  className="size-12 text-muted-foreground/40"
+                  strokeWidth={1.5}
+                />
+              </div>
+            ) : null}
             {isExiting && onExit ? (
               <div className="mt-4">
                 <KioskExitSubtaskForm

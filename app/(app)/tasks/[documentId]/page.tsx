@@ -4,12 +4,11 @@ import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
-import {
-  SubTaskManager,
-  type SubTaskRow,
-  type TeamAssignmentOption,
+import type {
+  SubTaskRow,
+  TeamAssignmentOption,
 } from "@/components/subtasks/subtask-manager";
-import { TaskEditor } from "@/components/tasks/task-editor";
+import { TaskDetailEditor } from "@/components/tasks/task-detail-editor";
 import type { StepOption, TaskRow } from "@/components/tasks/task-manager";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTasks } from "@/lib/auth/permissions";
@@ -275,16 +274,15 @@ export default async function TaskDetailPage({ params }: PageProps) {
         {tCommon("back")}
       </Link>
 
-      <TaskEditor task={task} steps={steps} />
-
-      <SubTaskManager
+      <TaskDetailEditor
+        task={task}
+        steps={steps}
         subtasks={subtasks}
-        taskQty={task.qty}
         teams={teams}
-        onCreate={handleCreate}
-        onUpdate={handleUpdateSubTask}
-        onReorder={handleReorder}
-        onDelete={handleDeleteSubTask}
+        onCreateSubTask={handleCreate}
+        onUpdateSubTask={handleUpdateSubTask}
+        onReorderSubTasks={handleReorder}
+        onDeleteSubTask={handleDeleteSubTask}
       />
     </section>
   );

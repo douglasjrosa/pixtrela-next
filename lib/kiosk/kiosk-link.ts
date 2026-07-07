@@ -8,12 +8,3 @@ export function buildKioskColaboratorUrl(
 ): string {
   return `${origin}${buildKioskColaboratorPath(documentId)}`;
 }
-
-export async function copyKioskColaboratorLink(
-  documentId: string,
-  origin: string,
-): Promise<void> {
-  await navigator.clipboard.writeText(
-    buildKioskColaboratorUrl(documentId, origin),
-  );
-}

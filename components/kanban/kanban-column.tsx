@@ -10,9 +10,11 @@ import type { KanbanStep, KanbanTask } from "./types";
 export function KanbanColumn({
   step,
   tasks,
+  onTaskClick,
 }: {
   step: KanbanStep;
   tasks: KanbanTask[];
+  onTaskClick?: (task: KanbanTask) => void;
 }) {
   const t = useTranslations("kanban");
   const { setNodeRef, isOver } = useDroppable({ id: step.id });
@@ -33,7 +35,9 @@ export function KanbanColumn({
       {tasks.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
-        tasks.map((task) => <KanbanCard key={task.id} task={task} />)
+        tasks.map((task) => (
+          <KanbanCard key={task.id} task={task} onTaskClick={onTaskClick} />
+        ))
       )}
     </section>
   );

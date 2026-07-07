@@ -40,6 +40,8 @@ export interface TaskFormProps {
   onSubmit: (values: TaskFormInput) => void;
   onInvalid?: () => void;
   onCancel?: () => void;
+  hideActions?: boolean;
+  formId?: string;
 }
 
 export function TaskForm({
@@ -53,6 +55,8 @@ export function TaskForm({
   onSubmit,
   onInvalid,
   onCancel,
+  hideActions = false,
+  formId,
 }: TaskFormProps) {
   const tCommon = useTranslations("common");
   const tManage = useTranslations("tasks.manage");
@@ -91,6 +95,7 @@ export function TaskForm({
 
   return (
     <form
+      id={formId}
       onSubmit={handleSubmit(onSubmit, onInvalid)}
       className={cn(
         "grid gap-4 sm:grid-cols-2",
@@ -196,16 +201,18 @@ export function TaskForm({
         </div>
       ) : null}
 
-      <div className="flex gap-2 sm:col-span-2">
-        <Button type="submit" disabled={isPending}>
-          {tCommon("save")}
-        </Button>
-        {onCancel ? (
-          <Button type="button" variant="outline" onClick={onCancel}>
-            {tCommon("cancel")}
+      {hideActions ? null : (
+        <div className="flex gap-2 sm:col-span-2">
+          <Button type="submit" disabled={isPending}>
+            {tCommon("save")}
           </Button>
-        ) : null}
-      </div>
+          {onCancel ? (
+            <Button type="button" variant="outline" onClick={onCancel}>
+              {tCommon("cancel")}
+            </Button>
+          ) : null}
+        </div>
+      )}
     </form>
   );
 }

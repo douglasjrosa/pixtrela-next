@@ -5,6 +5,7 @@ import { renderWithIntl } from "@/test/test-utils";
 import { UserManager } from "./user-manager";
 
 const refresh = vi.fn();
+const push = vi.fn();
 const showSuccessToast = vi.fn();
 const showErrorToast = vi.fn();
 const isNfcWriteSupported = vi.fn();
@@ -14,7 +15,7 @@ const getNfcWriteCooldownRemainingMs = vi.fn();
 const waitForNfcWriteCooldown = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh }),
+  useRouter: () => ({ refresh, push }),
 }));
 
 vi.mock("@/lib/ui/app-toast", () => ({
@@ -447,7 +448,7 @@ describe("UserManager", () => {
     });
   });
 
-  it("shows NFC write button when canCopyKioskLink and editing", () => {
+  it("shows NFC write button when canWriteKioskNfc and editing", () => {
     renderWithIntl(
       <UserManager
         users={users}
@@ -455,7 +456,7 @@ describe("UserManager", () => {
         onUpdate={vi.fn()}
         canDelete={false}
         manageableRoles={["colaborator"]}
-        canCopyKioskLink
+        canWriteKioskNfc
       />,
     );
 
@@ -474,7 +475,7 @@ describe("UserManager", () => {
         onUpdate={vi.fn()}
         canDelete={false}
         manageableRoles={["colaborator"]}
-        canCopyKioskLink
+        canWriteKioskNfc
       />,
     );
 
@@ -485,6 +486,55 @@ describe("UserManager", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows preview button for admin and navigates to kiosk panel", () => {
+    renderWithIntl(
+      <UserManager
+        users={users}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        canDelete={false}
+        manageableRoles={["colaborator"]}
+        canPreviewKioskColaborator
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Visualizar painel do kiosk do colaborador",
+      }),
+    );
+
+    expect(push).toHaveBeenCalledWith("/kiosk/u1");
+    expect(
+      screen.queryByRole("button", { name: "Gravar link no cartão NFC" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides preview button when admin preview is not allowed", () => {
+    renderWithIntl(
+      <UserManager
+        users={users}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        canDelete={false}
+        manageableRoles={["colaborator"]}
+        canWriteKioskNfc
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+
+    expect(
+      screen.queryByRole("button", {
+        name: "Visualizar painel do kiosk do colaborador",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Gravar link no cartão NFC" }),
+    ).toBeInTheDocument();
+  });
+
   it("writes kiosk link to NFC tag when NFC button is clicked", async () => {
     renderWithIntl(
       <UserManager
@@ -493,7 +543,7 @@ describe("UserManager", () => {
         onUpdate={vi.fn()}
         canDelete={false}
         manageableRoles={["colaborator"]}
-        canCopyKioskLink
+        canWriteKioskNfc
       />,
     );
 
@@ -530,7 +580,7 @@ describe("UserManager", () => {
         onUpdate={vi.fn()}
         canDelete={false}
         manageableRoles={["colaborator"]}
-        canCopyKioskLink
+        canWriteKioskNfc
       />,
     );
 

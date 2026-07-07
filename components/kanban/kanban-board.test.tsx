@@ -10,7 +10,7 @@ const steps: KanbanStep[] = [
 ];
 
 const tasks: KanbanTask[] = [
-  { id: 10, name: "Tarefa A", status: "queued", stepId: 1 },
+  { id: 10, documentId: "task-10", name: "Tarefa A", status: "waiting", stepId: 1 },
 ];
 
 describe("KanbanBoard", () => {

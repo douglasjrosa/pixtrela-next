@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const TASK_STATUSES = [
-  "queued",
+  "waiting",
   "producing",
   "paused",
   "finished",

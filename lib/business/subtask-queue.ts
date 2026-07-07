@@ -1,4 +1,4 @@
-export type SubTaskStatus = "queued" | "producing" | "paused" | "finished";
+export type SubTaskStatus = "waiting" | "producing" | "paused" | "finished";
 
 export type ActivationStatus = "locked" | "unlocked" | "disabled";
 
@@ -48,6 +48,12 @@ export function isUnlockedSubTask(subTask: QueuedSubTask): boolean {
   return resolveActivationStatus(subTask.activationStatus) === "unlocked";
 }
 
+/** Whether the subtask is blocked by dependencies and shown as locked on kiosk. */
+export function isLockedSubTask(subTask: QueuedSubTask): boolean {
+  if (isFinishedSubTask(subTask)) return false;
+  return resolveActivationStatus(subTask.activationStatus) === "locked";
+}
+
 /** Next unlocked queued subtask when none is active. */
 export function nextStartableSubTask(
   subTasks: QueuedSubTask[],
@@ -55,7 +61,7 @@ export function nextStartableSubTask(
   if (hasActiveSubTask(subTasks)) return null;
   const sorted = sortSubTasksByIndex(subTasks);
   return (
-    sorted.find((st) => st.status === "queued" && isUnlockedSubTask(st)) ?? null
+    sorted.find((st) => st.status === "waiting" && isUnlockedSubTask(st)) ?? null
   );
 }
 
@@ -66,7 +72,7 @@ export function canStartSubTask(
 ): boolean {
   if (hasActiveSubTask(subTasks)) return false;
   const subTask = subTasks.find((st) => st.documentId === documentId);
-  if (!subTask || subTask.status !== "queued") return false;
+  if (!subTask || subTask.status !== "waiting") return false;
   return isUnlockedSubTask(subTask);
 }
 

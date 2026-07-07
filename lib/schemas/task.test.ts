@@ -7,7 +7,7 @@ describe("taskFormSchema", () => {
       name: "Montagem A",
       qty: 10,
       stepDocumentId: "step-1",
-      status: "queued",
+      status: "waiting",
     });
     expect(result.success).toBe(true);
   });
@@ -16,13 +16,13 @@ describe("taskFormSchema", () => {
     const result = taskFormSchema.safeParse({
       name: "Montagem A",
       qty: 10,
-      status: "queued",
+      status: "waiting",
     });
     expect(result.success).toBe(false);
   });
 
   it("rejects empty name", () => {
-    const result = taskFormSchema.safeParse({ name: "", qty: 1, status: "queued" });
+    const result = taskFormSchema.safeParse({ name: "", qty: 1, status: "waiting" });
     expect(result.success).toBe(false);
   });
 });

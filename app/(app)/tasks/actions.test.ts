@@ -52,7 +52,7 @@ describe("tasks/actions", () => {
       qty: 1,
       deliveryDate: "",
       stepDocumentId: "step-1",
-      status: "queued",
+      status: "waiting",
       templateTaskCode: "",
     });
 
@@ -89,7 +89,7 @@ describe("tasks/actions", () => {
       qty: 1,
       deliveryDate: "",
       stepDocumentId: "step-1",
-      status: "queued",
+      status: "waiting",
       templateTaskCode: "",
     });
 

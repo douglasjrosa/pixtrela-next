@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Nfc, ScanBarcode } from "lucide-react";
+import { Nfc, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { buildDefaultLogin } from "@/lib/business/default-login";
-import { copyKioskColaboratorLink } from "@/lib/kiosk/kiosk-link";
+import { buildKioskColaboratorPath } from "@/lib/kiosk/kiosk-link";
 import {
   getNfcWriteCooldownRemainingMs,
   isNfcWriteOnCooldown,
@@ -49,7 +49,8 @@ export interface UserManagerProps {
   canDelete: boolean;
   /** Precomputed on the server — do not pass predicate functions from RSC. */
   manageableRoles: UserFormInput["roleType"][];
-  canCopyKioskLink?: boolean;
+  canWriteKioskNfc?: boolean;
+  canPreviewKioskColaborator?: boolean;
   /** Admin-only password field in create/edit modal. */
   canSetPassword?: boolean;
   /** Admin-only manual login override in create/edit modal. */
@@ -103,12 +104,13 @@ interface UserFormDialogProps {
   editingUser: UserRow | null;
   roleOptions: UserFormInput["roleType"][];
   isPending: boolean;
-  canCopyKioskLink: boolean;
+  canWriteKioskNfc: boolean;
+  canPreviewKioskColaborator: boolean;
   canSetPassword: boolean;
   canEditUserLogin: boolean;
   onClose: () => void;
   onSubmit: (values: UserFormInput) => void;
-  onCopyKioskLink: (documentId: string) => Promise<void>;
+  onPreviewKioskColaborator: (documentId: string) => void;
   onWriteKioskNfc: (documentId: string) => Promise<void>;
   nfcWriteDisabled: boolean;
 }
@@ -118,12 +120,13 @@ function UserFormDialog({
   editingUser,
   roleOptions,
   isPending,
-  canCopyKioskLink,
+  canWriteKioskNfc,
+  canPreviewKioskColaborator,
   canSetPassword,
   canEditUserLogin,
   onClose,
   onSubmit,
-  onCopyKioskLink,
+  onPreviewKioskColaborator,
   onWriteKioskNfc,
   nfcWriteDisabled,
 }: UserFormDialogProps) {
@@ -206,29 +209,35 @@ function UserFormDialog({
             <h2 id={formTitleId} className="text-lg font-semibold">
               {isEditing ? tUsers("editUser") : tUsers("newUser")}
             </h2>
-            {canCopyKioskLink && editingUser ? (
+            {(canPreviewKioskColaborator || canWriteKioskNfc) && editingUser ? (
               <div className="flex shrink-0 gap-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="size-8"
-                  aria-label={tUsers("copyKioskLink")}
-                  onClick={() => void onCopyKioskLink(editingUser.documentId)}
-                >
-                  <ScanBarcode className="size-4" aria-hidden />
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="size-8"
-                  aria-label={tUsers("writeKioskNfc")}
-                  disabled={nfcWriteDisabled}
-                  onClick={() => void onWriteKioskNfc(editingUser.documentId)}
-                >
-                  <Nfc className="size-4" aria-hidden />
-                </Button>
+                {canPreviewKioskColaborator ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-8"
+                    aria-label={tUsers("previewKioskColaborator")}
+                    onClick={() =>
+                      onPreviewKioskColaborator(editingUser.documentId)
+                    }
+                  >
+                    <Eye className="size-4" aria-hidden />
+                  </Button>
+                ) : null}
+                {canWriteKioskNfc ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-8"
+                    aria-label={tUsers("writeKioskNfc")}
+                    disabled={nfcWriteDisabled}
+                    onClick={() => void onWriteKioskNfc(editingUser.documentId)}
+                  >
+                    <Nfc className="size-4" aria-hidden />
+                  </Button>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -336,7 +345,8 @@ export function UserManager({
   onDelete,
   canDelete,
   manageableRoles,
-  canCopyKioskLink = false,
+  canWriteKioskNfc = false,
+  canPreviewKioskColaborator = false,
   canSetPassword = false,
   canEditUserLogin = false,
 }: UserManagerProps) {
@@ -412,11 +422,6 @@ export function UserManager({
     });
   }
 
-  async function handleCopyKioskLink(documentId: string): Promise<void> {
-    await copyKioskColaboratorLink(documentId, window.location.origin);
-    showSuccessToast(tUsers("kioskLinkCopied"));
-  }
-
   async function handleWriteKioskNfc(documentId: string): Promise<void> {
     if (isNfcWriteOnCooldown()) {
       const seconds = Math.ceil(getNfcWriteCooldownRemainingMs() / 1000);
@@ -456,6 +461,10 @@ export function UserManager({
     }
   }
 
+  function handlePreviewKioskColaborator(documentId: string): void {
+    router.push(buildKioskColaboratorPath(documentId));
+  }
+
   const roleOptions = roleOptionsForUser(editingUser, manageableRoles);
   const formDialogKey = editingUserId ?? "new";
 
@@ -481,12 +490,13 @@ export function UserManager({
           editingUser={editingUser}
           roleOptions={roleOptions}
           isPending={isPending}
-          canCopyKioskLink={canCopyKioskLink}
+          canWriteKioskNfc={canWriteKioskNfc}
+          canPreviewKioskColaborator={canPreviewKioskColaborator}
           canSetPassword={canSetPassword}
           canEditUserLogin={canEditUserLogin}
           onClose={closeForm}
           onSubmit={onSubmit}
-          onCopyKioskLink={handleCopyKioskLink}
+          onPreviewKioskColaborator={handlePreviewKioskColaborator}
           onWriteKioskNfc={handleWriteKioskNfc}
           nfcWriteDisabled={nfcWriteDisabled}
         />

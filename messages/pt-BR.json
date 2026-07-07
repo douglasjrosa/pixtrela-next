@@ -47,7 +47,7 @@
     "stop": "Parar",
     "finish": "Finalizar",
     "status": {
-      "queued": "Na fila",
+      "waiting": "Aguardando",
       "producing": "Produzindo",
       "paused": "Pausada",
       "finished": "Finalizada"
@@ -90,7 +90,12 @@
   },
   "kanban": {
     "title": "Quadro de produção",
-    "empty": "Sem tarefas nesta etapa."
+    "empty": "Sem tarefas nesta etapa.",
+    "subtasksEmpty": "Nenhuma subtarefa nesta tarefa.",
+    "assignTitle": "Atribuir colaboradores",
+    "createTitle": "Nova subtarefa",
+    "addSubtask": "Adicionar subtarefa",
+    "loading": "Carregando..."
   },
   "balance": {
     "title": "Meu saldo",
@@ -133,8 +138,7 @@
     "saved": "Usuário salvo.",
     "deactivated": "Usuário desativado.",
     "deleted": "Usuário excluído.",
-    "copyKioskLink": "Copiar link do kiosk",
-    "kioskLinkCopied": "Link do kiosk copiado.",
+    "previewKioskColaborator": "Visualizar painel do kiosk do colaborador",
     "writeKioskNfc": "Gravar link no cartão NFC",
     "nfcHoldTagNear": "Aproxime o cartão NFC do celular…",
     "nfcRemoveCard": "Afaste o cartão do celular por alguns segundos.",

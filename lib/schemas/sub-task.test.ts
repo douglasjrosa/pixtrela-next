@@ -10,7 +10,7 @@ describe("subTaskFormSchema", () => {
       expectedTime: 300,
       sharingType: "duration",
       maxSameTimeWorkers: 1,
-      status: "queued",
+      status: "waiting",
       activationStatus: "locked",
     });
     expect(data.name).toBe("Soldar");
@@ -24,7 +24,7 @@ describe("subTaskFormSchema", () => {
       expectedTime: 300,
       sharingType: "duration",
       maxSameTimeWorkers: 1,
-      status: "queued",
+      status: "waiting",
     });
     expect(data.activationStatus).toBe("locked");
   });
@@ -36,7 +36,7 @@ describe("subTaskFormSchema", () => {
       expectedTime: 300,
       sharingType: "duration",
       maxSameTimeWorkers: 1,
-      status: "queued",
+      status: "waiting",
       activationStatus: "disabled",
       reasonForDisabling: "curta",
     });
@@ -52,7 +52,7 @@ describe("subTaskFormSchema", () => {
       expectedTime: 300,
       sharingType: "duration",
       maxSameTimeWorkers: 1,
-      status: "queued",
+      status: "waiting",
       activationStatus: "disabled",
       reasonForDisabling: "Equipamento indisponível para esta etapa.",
     });
@@ -66,7 +66,7 @@ describe("subTaskFormSchema", () => {
       expectedTime: 300,
       sharingType: "duration",
       maxSameTimeWorkers: 1,
-      status: "queued",
+      status: "waiting",
       activationStatus: "unlocked",
     });
     expect(data.activationStatus).toBe("unlocked");

@@ -5,7 +5,20 @@ export interface KanbanStep {
 
 export interface KanbanTask {
   id: number;
+  documentId: string;
   name: string;
-  status: "queued" | "producing" | "paused" | "finished";
+  status: "waiting" | "producing" | "paused" | "finished";
   stepId: number | null;
+}
+
+export interface BoardSubTaskAssignee {
+  documentId: string;
+  name: string;
+}
+
+export interface BoardSubTaskSummary {
+  documentId: string;
+  name: string;
+  status: KanbanTask["status"];
+  assignedTo: BoardSubTaskAssignee[];
 }

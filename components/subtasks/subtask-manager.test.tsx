@@ -40,7 +40,7 @@ const subtasks = [
 
     maxSameTimeWorkers: 1,
 
-    status: "queued" as const,
+    status: "waiting" as const,
 
     assignedToIds: ["u1"],
 
@@ -64,7 +64,7 @@ const subtasks = [
 
     maxSameTimeWorkers: 1,
 
-    status: "queued" as const,
+    status: "waiting" as const,
 
   },
 
@@ -397,6 +397,27 @@ describe("SubTaskManager", () => {
 
 
 
+  it("does not show save buttons inside expanded subtask form", async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <SubTaskManager
+        subtasks={subtasks}
+        taskQty={1}
+        teams={teams}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByText("Soldar"));
+
+    expect(screen.getByRole("heading", { name: "Editar" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Salvar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancelar" })).not.toBeInTheDocument();
+  });
+
   it("collapses the form when clicking the same row again", async () => {
 
     const user = userEvent.setup();
@@ -425,13 +446,11 @@ describe("SubTaskManager", () => {
 
     await user.click(screen.getByText("Soldar"));
 
-    expect(screen.getByRole("button", { name: "Salvar" })).toBeInTheDocument();
-
-
+    expect(screen.getByRole("heading", { name: "Editar" })).toBeInTheDocument();
 
     await user.click(screen.getByText("Soldar"));
 
-    expect(screen.queryByRole("button", { name: "Salvar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Editar" })).not.toBeInTheDocument();
 
   });
 

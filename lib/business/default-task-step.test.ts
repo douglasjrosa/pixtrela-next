@@ -37,6 +37,6 @@ describe("buildCreateTaskFormDefaults", () => {
     ]);
 
     expect(defaults.stepDocumentId).toBe("s1");
-    expect(defaults.status).toBe("queued");
+    expect(defaults.status).toBe("waiting");
   });
 });

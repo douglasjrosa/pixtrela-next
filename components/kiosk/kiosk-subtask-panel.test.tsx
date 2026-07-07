@@ -10,7 +10,7 @@ const subTasks = [
     documentId: "a",
     name: "Tarefa A",
     index: 0,
-    status: "queued" as const,
+    status: "waiting" as const,
     activationStatus: "unlocked" as const,
     qty: 1,
     completedQty: 0,
@@ -22,7 +22,7 @@ const subTasks = [
     documentId: "b",
     name: "Tarefa B",
     index: 1,
-    status: "queued" as const,
+    status: "waiting" as const,
     activationStatus: "locked" as const,
     qty: 5,
     completedQty: 0,
@@ -33,6 +33,26 @@ const subTasks = [
 ];
 
 describe("KioskSubtaskPanel", () => {
+  it("shows lock overlay and muted background for locked queued subtasks", () => {
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={subTasks}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    const lockedItem = screen.getByText("Tarefa B").closest("li");
+    const unlockedItem = screen.getByText("Tarefa A").closest("li");
+    expect(lockedItem).not.toBeNull();
+    expect(unlockedItem).not.toBeNull();
+    expect(within(lockedItem!).getByTestId("subtask-locked-overlay")).toBeInTheDocument();
+    expect(
+      within(unlockedItem!).queryByTestId("subtask-locked-overlay"),
+    ).toBeNull();
+    expect(lockedItem).toHaveClass("bg-muted/50");
+  });
+
   it("enables start only for unlocked queued subtasks", () => {
     renderWithIntl(
       <KioskSubtaskPanel
@@ -159,7 +179,7 @@ describe("KioskSubtaskPanel", () => {
         documentId: "b",
         name: "Tarefa B",
         index: 1,
-        status: "queued" as const,
+        status: "waiting" as const,
         activationStatus: "unlocked" as const,
         qty: 1,
         completedQty: 0,

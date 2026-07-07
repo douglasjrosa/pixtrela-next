@@ -12,11 +12,13 @@ import { exitSubTask, startSubTask } from "./actions";
 export interface KioskPanelClientProps {
   colaboratorId: string;
   subTasks: KioskSubTask[];
+  readOnly?: boolean;
 }
 
 export function KioskPanelClient({
   colaboratorId,
   subTasks,
+  readOnly = false,
 }: KioskPanelClientProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -48,9 +50,10 @@ export function KioskPanelClient({
   return (
     <KioskSubtaskPanel
       subTasks={subTasks}
+      readOnly={readOnly}
       pending={pending}
-      onStart={handleStart}
-      onExit={handleExit}
+      onStart={readOnly ? undefined : handleStart}
+      onExit={readOnly ? undefined : handleExit}
     />
   );
 }

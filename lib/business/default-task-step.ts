@@ -21,7 +21,7 @@ export function buildCreateTaskFormDefaults(steps: StepRef[]): TaskFormInput {
     qty: 1,
     deliveryDate: "",
     stepDocumentId: resolveDefaultStepDocumentId(steps),
-    status: "queued",
+    status: "waiting",
     templateTaskCode: "",
   };
 }

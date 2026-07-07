@@ -5,6 +5,7 @@ import {
   canStopSubTask,
   hasActiveSubTask,
   isFinishedSubTask,
+  isLockedSubTask,
   nextStartableSubTask,
   sortSubTasksByIndex,
 } from "./subtask-queue";
@@ -14,14 +15,14 @@ const subTasks = [
     documentId: "b",
     name: "B",
     index: 1,
-    status: "queued" as const,
+    status: "waiting" as const,
     activationStatus: "unlocked" as const,
   },
   {
     documentId: "a",
     name: "A",
     index: 0,
-    status: "queued" as const,
+    status: "waiting" as const,
     activationStatus: "unlocked" as const,
   },
 ];
@@ -53,7 +54,7 @@ describe("nextStartableSubTask", () => {
         documentId: "b",
         name: "B",
         index: 1,
-        status: "queued" as const,
+        status: "waiting" as const,
         activationStatus: "unlocked" as const,
       },
     ];
@@ -78,7 +79,7 @@ describe("nextStartableSubTask", () => {
         documentId: "b",
         name: "B",
         index: 1,
-        status: "queued" as const,
+        status: "waiting" as const,
         activationStatus: "unlocked" as const,
       },
     ];
@@ -91,14 +92,14 @@ describe("nextStartableSubTask", () => {
         documentId: "a",
         name: "A",
         index: 0,
-        status: "queued" as const,
+        status: "waiting" as const,
         activationStatus: "locked" as const,
       },
       {
         documentId: "b",
         name: "B",
         index: 1,
-        status: "queued" as const,
+        status: "waiting" as const,
         activationStatus: "unlocked" as const,
       },
     ];
@@ -118,7 +119,7 @@ describe("canStartSubTask", () => {
         documentId: "a",
         name: "A",
         index: 0,
-        status: "queued" as const,
+        status: "waiting" as const,
         activationStatus: "locked" as const,
       },
     ];
@@ -131,7 +132,7 @@ describe("canStartSubTask", () => {
         documentId: "a",
         name: "A",
         index: 0,
-        status: "queued" as const,
+        status: "waiting" as const,
       },
     ];
     expect(canStartSubTask(legacy, "a")).toBe(false);
@@ -150,7 +151,7 @@ describe("canStartSubTask", () => {
         documentId: "b",
         name: "B",
         index: 1,
-        status: "queued" as const,
+        status: "waiting" as const,
         activationStatus: "unlocked" as const,
       },
     ];
@@ -173,7 +174,53 @@ describe("isFinishedSubTask", () => {
         documentId: "a",
         name: "A",
         index: 0,
-        status: "queued",
+        status: "waiting",
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("isLockedSubTask", () => {
+  it("detects locked queued subtasks", () => {
+    expect(
+      isLockedSubTask({
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "waiting",
+        activationStatus: "locked",
+      }),
+    ).toBe(true);
+  });
+
+  it("treats missing activationStatus as locked", () => {
+    expect(
+      isLockedSubTask({
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "waiting",
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false for unlocked or finished subtasks", () => {
+    expect(
+      isLockedSubTask({
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "waiting",
+        activationStatus: "unlocked",
+      }),
+    ).toBe(false);
+    expect(
+      isLockedSubTask({
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "finished",
+        activationStatus: "locked",
       }),
     ).toBe(false);
   });
@@ -194,7 +241,7 @@ describe("canStopSubTask", () => {
         documentId: "a",
         name: "A",
         index: 0,
-        status: "queued",
+        status: "waiting",
       }),
     ).toBe(false);
   });

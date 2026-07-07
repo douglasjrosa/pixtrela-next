@@ -6,7 +6,7 @@ describe("buildStrapiQuery", () => {
     const query = buildStrapiQuery({
       fields: ["name", "status"],
       populate: { step: { fields: ["id"] } },
-      filters: { status: { $eq: "queued" } },
+      filters: { status: { $eq: "waiting" } },
       sort: "index:asc",
     });
     expect(query).toContain("fields");

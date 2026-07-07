@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   canAccessRoute,
-  canCopyKioskLink,
   canEditUserLogin,
+  canPreviewKioskColaborator,
   canSetUserPassword,
+  canWriteKioskNfc,
   canDeleteTasks,
   canExchange,
   canManageAwards,
@@ -92,16 +93,26 @@ describe("canEditUserLogin", () => {
   });
 });
 
-describe("canCopyKioskLink", () => {
+describe("canWriteKioskNfc", () => {
   it("allows admin and manager", () => {
-    expect(canCopyKioskLink("admin")).toBe(true);
-    expect(canCopyKioskLink("manager")).toBe(true);
+    expect(canWriteKioskNfc("admin")).toBe(true);
+    expect(canWriteKioskNfc("manager")).toBe(true);
   });
 
   it("denies leader and below", () => {
-    expect(canCopyKioskLink("leader")).toBe(false);
-    expect(canCopyKioskLink("colaborator")).toBe(false);
-    expect(canCopyKioskLink("kiosk")).toBe(false);
+    expect(canWriteKioskNfc("leader")).toBe(false);
+    expect(canWriteKioskNfc("colaborator")).toBe(false);
+    expect(canWriteKioskNfc("kiosk")).toBe(false);
+  });
+});
+
+describe("canPreviewKioskColaborator", () => {
+  it("allows admin only", () => {
+    expect(canPreviewKioskColaborator("admin")).toBe(true);
+    expect(canPreviewKioskColaborator("manager")).toBe(false);
+    expect(canPreviewKioskColaborator("leader")).toBe(false);
+    expect(canPreviewKioskColaborator("colaborator")).toBe(false);
+    expect(canPreviewKioskColaborator("kiosk")).toBe(false);
   });
 });
 

@@ -37,7 +37,7 @@ const tasks = [
     name: "Montagem",
     qty: 2,
     index: 0,
-    status: "queued" as const,
+    status: "waiting" as const,
     active: true,
     totalExpectedTime: 0,
     totalTimeSpent: 0,

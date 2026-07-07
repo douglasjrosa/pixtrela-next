@@ -65,9 +65,14 @@ export function canViewUsers(role: Role | undefined): boolean {
   return isAtLeast(role, "leader");
 }
 
-/** Copy kiosk deep link on user edit: admin and manager only. */
-export function canCopyKioskLink(role: Role | undefined): boolean {
+/** Write kiosk NFC tag on user edit: admin and manager only. */
+export function canWriteKioskNfc(role: Role | undefined): boolean {
   return role === "admin" || role === "manager";
+}
+
+/** Preview colaborator kiosk panel from user edit: admin only. */
+export function canPreviewKioskColaborator(role: Role | undefined): boolean {
+  return role === "admin";
 }
 
 /** Set user password in create/edit form: admin only. */

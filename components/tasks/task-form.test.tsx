@@ -25,7 +25,7 @@ const defaultValues = {
   qty: 2,
   deliveryDate: "",
   stepDocumentId: "s1",
-  status: "queued" as const,
+  status: "waiting" as const,
   templateTaskCode: "",
 };
 

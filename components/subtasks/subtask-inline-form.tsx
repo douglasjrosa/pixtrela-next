@@ -34,10 +34,24 @@ export interface SubTaskInlineFormProps {
   dependencyOptions?: SubTaskDependencyOption[];
   currentDocumentId?: string;
   isCreate?: boolean;
-  isPending?: boolean;
-  onSubmit: (values: SubTaskFormInput) => void | Promise<void>;
-  onCancel?: () => void;
+  disabled?: boolean;
+  hideHeading?: boolean;
+  onChange: (values: SubTaskFormInput) => void;
 }
+
+function parseFormValues(
+  values: SubTaskFormInput,
+  currentDocumentId?: string,
+): SubTaskFormInput {
+  return {
+    ...values,
+    dependencyIds: normalizeSubTaskDependencyIds(
+      values.dependencyIds ?? [],
+      currentDocumentId,
+    ),
+  };
+}
+
 export function SubTaskInlineForm({
   formKey,
   defaultValues,
@@ -45,20 +59,20 @@ export function SubTaskInlineForm({
   dependencyOptions = [],
   currentDocumentId,
   isCreate = false,
-  isPending = false,
-  onSubmit,
-  onCancel,
+  disabled = false,
+  hideHeading = false,
+  onChange,
 }: SubTaskInlineFormProps) {
-  const [dependenciesOpen, setDependenciesOpen] = useState(false);  const tCommon = useTranslations("common");
+  const [dependenciesOpen, setDependenciesOpen] = useState(false);
   const tSubtasks = useTranslations("subtasks");
   const tTasks = useTranslations("tasks");
   const tStatus = useTranslations("tasks.status");
   const tSharing = useTranslations("subtasks.sharingType");
   const tActivation = useTranslations("subtasks.activationStatus");
+  const tCommon = useTranslations("common");
 
   const {
     register,
-    handleSubmit,
     reset,
     control,
     watch,
@@ -71,7 +85,16 @@ export function SubTaskInlineForm({
 
   useEffect(() => {
     reset(defaultValues);
-  }, [defaultValues, formKey, reset]);
+    // Reset only when switching rows, not on every parent-driven value sync.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formKey, reset]);
+
+  useEffect(() => {
+    const subscription = watch((values) => {
+      onChange(parseFormValues(values as SubTaskFormInput, currentDocumentId));
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, onChange, currentDocumentId]);
 
   const activationStatus = watch("activationStatus");
   const dependencyIds = watch("dependencyIds") ?? [];
@@ -86,25 +109,16 @@ export function SubTaskInlineForm({
   );
 
   return (
-    <form
-      onSubmit={handleSubmit((values) =>
-        onSubmit({
-          ...values,
-          dependencyIds: normalizeSubTaskDependencyIds(
-            values.dependencyIds ?? [],
-            currentDocumentId,
-          ),
-        }),
+    <div className="grid gap-4 rounded-lg border bg-muted/30 p-4 sm:grid-cols-2">
+      {hideHeading ? null : (
+        <h3 className="sm:col-span-2 text-base font-semibold">
+          {isCreate ? tSubtasks("newSubtask") : tCommon("edit")}
+        </h3>
       )}
-      className="grid gap-4 rounded-lg border bg-muted/30 p-4 sm:grid-cols-2"
-    >
-      <h3 className="sm:col-span-2 text-base font-semibold">
-        {isCreate ? tSubtasks("newSubtask") : tCommon("edit")}
-      </h3>
 
       <div className="space-y-2">
         <Label htmlFor={fieldId("name")}>{tSubtasks("name")}</Label>
-        <Input id={fieldId("name")} {...register("name")} />
+        <Input id={fieldId("name")} disabled={disabled} {...register("name")} />
         {errors.name ? (
           <p className="text-sm text-destructive">{errors.name.message}</p>
         ) : null}
@@ -116,6 +130,7 @@ export function SubTaskInlineForm({
           id={fieldId("qty")}
           type="number"
           min={1}
+          disabled={disabled}
           {...register("qty", { valueAsNumber: true })}
         />
       </div>
@@ -126,6 +141,7 @@ export function SubTaskInlineForm({
           id={fieldId("expectedTime")}
           type="number"
           min={0}
+          disabled={disabled}
           {...register("expectedTime", { valueAsNumber: true })}
         />
       </div>
@@ -138,6 +154,7 @@ export function SubTaskInlineForm({
           id={fieldId("maxSameTimeWorkers")}
           type="number"
           min={1}
+          disabled={disabled}
           {...register("maxSameTimeWorkers", { valueAsNumber: true })}
         />
       </div>
@@ -147,6 +164,7 @@ export function SubTaskInlineForm({
         <select
           id={fieldId("sharingType")}
           className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          disabled={disabled}
           {...register("sharingType")}
         >
           {SHARING_TYPES.map((type) => (
@@ -162,6 +180,7 @@ export function SubTaskInlineForm({
         <select
           id={fieldId("status")}
           className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          disabled={disabled}
           {...register("status")}
         >
           {SUB_TASK_STATUSES.map((status) => (
@@ -179,6 +198,7 @@ export function SubTaskInlineForm({
         <select
           id={fieldId("activationStatus")}
           className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          disabled={disabled}
           {...register("activationStatus")}
         >
           {ACTIVATION_STATUSES.map((status) => (
@@ -197,6 +217,7 @@ export function SubTaskInlineForm({
           <textarea
             id={fieldId("reasonForDisabling")}
             className={textareaClass}
+            disabled={disabled}
             {...register("reasonForDisabling")}
           />
           {errors.reasonForDisabling ? (
@@ -227,18 +248,10 @@ export function SubTaskInlineForm({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-        <Button type="submit" disabled={isPending}>
-          {tCommon("save")}
-        </Button>
-        {onCancel ? (
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
-            {tCommon("cancel")}
-          </Button>
-        ) : null}
         <Button
           type="button"
           variant="outline"
-          disabled={isPending}
+          disabled={disabled}
           onClick={() => setDependenciesOpen(true)}
         >
           {tSubtasks("dependencies")}
@@ -255,6 +268,6 @@ export function SubTaskInlineForm({
         onClose={() => setDependenciesOpen(false)}
         onConfirm={(ids) => setValue("dependencyIds", ids, { shouldDirty: true })}
       />
-    </form>
+    </div>
   );
 }

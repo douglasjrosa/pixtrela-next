@@ -93,6 +93,9 @@ export function resolveRouteAccess(
     if (isKiosk) {
       return { action: "allow" };
     }
+    if (role === "admin" && isKioskPanelPath(pathname)) {
+      return { action: "allow" };
+    }
     if (isColaborator && userId) {
       return { action: "redirect", destination: `/${userId}` };
     }

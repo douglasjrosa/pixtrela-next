@@ -71,7 +71,7 @@ describe("resolveRouteAccess", () => {
     ).toEqual({ action: "redirect", destination: "/col-1" });
   });
 
-  it("redirects staff on kiosk routes to home", () => {
+  it("redirects staff on kiosk home to app home", () => {
     expect(
       resolveRouteAccess("/kiosk", {
         isAuthenticated: true,
@@ -81,10 +81,28 @@ describe("resolveRouteAccess", () => {
     ).toEqual({ action: "redirect", destination: "/" });
 
     expect(
+      resolveRouteAccess("/kiosk", {
+        isAuthenticated: true,
+        role: "admin",
+        userId: "admin-1",
+      }),
+    ).toEqual({ action: "redirect", destination: "/" });
+  });
+
+  it("allows admin on kiosk colaborator panel paths", () => {
+    expect(
       resolveRouteAccess("/kiosk/col-1", {
         isAuthenticated: true,
         role: "admin",
         userId: "admin-1",
+      }),
+    ).toEqual({ action: "allow" });
+
+    expect(
+      resolveRouteAccess("/kiosk/col-1", {
+        isAuthenticated: true,
+        role: "manager",
+        userId: "mgr-1",
       }),
     ).toEqual({ action: "redirect", destination: "/" });
   });
