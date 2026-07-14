@@ -23,7 +23,8 @@
     "deactivate": "Desativar",
     "back": "Voltar",
     "search": "Buscar",
-    "close": "Fechar"
+    "close": "Fechar",
+    "reasonMinLength": "Informe pelo menos 100 caracteres."
   },
   "auth": {
     "loginTitle": "Entrar no Pixtrela",
@@ -73,20 +74,21 @@
       "active": "Ativa",
       "inactive": "Inativa",
       "deactivate": "Desativar",
+      "reactivate": "Reativar",
+      "confirmDeactivate": "Confirmar desativação",
+      "confirmReactivate": "Confirmar reativação",
       "delete": "Excluir",
-      "deactivateConfirm": "Desativar esta tarefa?",
+      "deleteTitle": "Excluir tarefa",
+      "reasonForDeactivation": "Motivo da desativação",
       "deleteConfirm": "Excluir permanentemente esta tarefa?",
       "saved": "Tarefa salva com sucesso.",
       "deactivated": "Tarefa desativada.",
+      "reactivated": "Tarefa reativada.",
       "deleted": "Tarefa excluída.",
       "error": "Não foi possível concluir a operação.",
       "validationError": "Verifique os campos do formulário.",
       "totalExpectedTime": "Tempo previsto total (s)",
       "totalTimeSpent": "Tempo gasto total (s)",
-      "startedAt": "Início",
-      "endedAt": "Fim",
-      "manageSubtasks": "Gerenciar subtarefas",
-      "metrics": "Métricas",
       "loadTemplate": "Carregar template",
       "loadTemplateSuccess": "Nome preenchido com o modelo.",
       "loadTemplateError": "Não foi possível carregar o modelo.",
@@ -99,6 +101,7 @@
     "subtasksEmpty": "Nenhuma subtarefa nesta tarefa.",
     "createTitle": "Nova subtarefa",
     "addSubtask": "Adicionar subtarefa",
+    "addToTemplate": "Adicionar subtarefa ao template",
     "loading": "Carregando..."
   },
   "balance": {
@@ -216,7 +219,7 @@
     "noTeamMembers": "Nenhum colaborador nesta equipe",
     "position": "#",
     "dragToReorder": "Arrastar para reordenar",
-    "toggleSubtaskForm": "Expandir ou recolher formulário da subtarefa",
+    "toggleSubtaskForm": "Abrir formulário da subtarefa",
     "cloneSubtask": "Clonar subtarefa",
     "cloned": "Subtarefa clonada.",
     "removeSubtask": "Remover subtarefa",
@@ -230,12 +233,14 @@
       "disabled": "Desativada"
     },
     "reasonForDisabling": "Motivo da desativação",
-    "reasonForDisablingMinLength": "Informe pelo menos 10 caracteres.",
     "dependencies": "Dependências",
     "dependenciesTitle": "Dependências da subtarefa",
     "dependenciesDescription": "Selecione as subtarefas que devem ser concluídas antes desta ser liberada automaticamente.",
     "dependenciesEmpty": "Não há outras subtarefas nesta tarefa.",
-    "dependenciesCount": "{count, plural, =0 {Nenhuma dependência} one {# dependência} other {# dependências}}"
+    "dependenciesCount": "{count, plural, =0 {Nenhuma dependência} one {# dependência} other {# dependências}}",
+    "presetSuggestions": "Sugestões de presets de subtarefa",
+    "presetsLoading": "Buscando presets...",
+    "presetsEmpty": "Nenhum preset encontrado."
   },
   "teams": {
     "title": "Equipes",

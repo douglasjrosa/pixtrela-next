@@ -7,6 +7,7 @@ import { SubTaskInlineForm } from "@/components/subtasks/subtask-inline-form";
 import type { SubTaskDependencyOption } from "@/components/subtasks/subtask-dependencies-modal";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   subTaskFormSchema,
   type SubTaskFormInput,
@@ -25,6 +26,10 @@ const EMPTY_FORM: SubTaskFormInput = {
   assignedToIds: [],
 };
 
+export type KanbanSubtaskCreateOptions = {
+  addToTemplate: boolean;
+};
+
 export interface KanbanSubtaskCreateModalProps {
   open: boolean;
   taskName: string;
@@ -32,7 +37,10 @@ export interface KanbanSubtaskCreateModalProps {
   dependencyOptions: SubTaskDependencyOption[];
   saving: boolean;
   onClose: () => void;
-  onCreate: (values: SubTaskFormInput) => void;
+  onCreate: (
+    values: SubTaskFormInput,
+    options: KanbanSubtaskCreateOptions,
+  ) => void;
 }
 
 export function KanbanSubtaskCreateModal({
@@ -47,11 +55,13 @@ export function KanbanSubtaskCreateModal({
   const tCommon = useTranslations("common");
   const tKanban = useTranslations("kanban");
   const [draft, setDraft] = useState<SubTaskFormInput>(EMPTY_FORM);
+  const [addToTemplate, setAddToTemplate] = useState(false);
   const [formKey, setFormKey] = useState("kanban-create-subtask-0");
 
   useEffect(() => {
     if (open) {
       setDraft(EMPTY_FORM);
+      setAddToTemplate(false);
       setFormKey(`kanban-create-subtask-${Date.now()}`);
     }
   }, [open]);
@@ -61,7 +71,7 @@ export function KanbanSubtaskCreateModal({
   function handleSave(): void {
     const parsed = subTaskFormSchema.safeParse(draft);
     if (!parsed.success) return;
-    onCreate(parsed.data);
+    onCreate(parsed.data, { addToTemplate });
   }
 
   return (
@@ -74,7 +84,10 @@ export function KanbanSubtaskCreateModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="kanban-create-title"
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border bg-background p-6 shadow-lg"
+        className={
+          "max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border " +
+          "bg-background p-6 shadow-lg"
+        }
         onClick={(event) => event.stopPropagation()}
       >
         <div className="space-y-4">
@@ -92,17 +105,40 @@ export function KanbanSubtaskCreateModal({
             dependencyOptions={dependencyOptions}
             isCreate
             hideHeading
+            hideStatus
+            hideActivationStatus
+            hideAssignees
             disabled={saving}
             onChange={setDraft}
           />
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
-              {tCommon("cancel")}
-            </Button>
-            <Button type="button" onClick={handleSave} disabled={saving}>
-              {tCommon("save")}
-            </Button>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <input
+                id="kanban-add-to-template"
+                type="checkbox"
+                className="size-4 accent-primary"
+                checked={addToTemplate}
+                disabled={saving}
+                onChange={(event) => setAddToTemplate(event.target.checked)}
+              />
+              <Label htmlFor="kanban-add-to-template" className="font-normal">
+                {tKanban("addToTemplate")}
+              </Label>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={saving}
+              >
+                {tCommon("cancel")}
+              </Button>
+              <Button type="button" onClick={handleSave} disabled={saving}>
+                {tCommon("save")}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

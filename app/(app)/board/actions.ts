@@ -3,10 +3,19 @@
 import { createSubTask, updateSubTask } from "@/app/(app)/tasks/[documentId]/actions";
 import { auth } from "@/auth";
 import type { BoardSubTaskSummary } from "@/components/kanban/types";
+import {
+  appendSubtaskToTemplateComponents,
+  mapDependencyIdsToTemplateIndexes,
+} from "@/lib/business/append-subtask-to-template";
 import { parseSubTaskDependencyIds } from "@/lib/business/subtask-dependencies";
 import type { Role } from "@/lib/auth/nav";
-import { canManageTasks, canMoveBoardTasks } from "@/lib/auth/permissions";
+import {
+  canManageTasks,
+  canManageTemplates,
+  canMoveBoardTasks,
+} from "@/lib/auth/permissions";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
+import type { TemplateSubTaskComponentInput } from "@/lib/schemas/template-task";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
 
@@ -132,9 +141,126 @@ function toSubTaskFormInput(
 export async function createBoardSubtask(
   taskDocumentId: string,
   values: SubTaskFormInput,
+  options?: { addToTemplate?: boolean },
 ): Promise<void> {
   await assertCanManageBoardSubtasks();
+
   await createSubTask(taskDocumentId, values);
+
+  if (options?.addToTemplate) {
+    await appendBoardSubtaskToTaskTemplate(taskDocumentId, values);
+  }
+}
+
+async function fetchTaskTemplateCode(
+  taskDocumentId: string,
+): Promise<string | null> {
+  const res = await strapiFetch<{ data: { templateTaskCode?: string | null } }>(
+    `/tasks/${taskDocumentId}`,
+    { strapiCache: { noStore: true } },
+    { fields: ["templateTaskCode"] },
+  );
+  const code = res.data.templateTaskCode?.trim();
+  return code ? code : null;
+}
+
+async function fetchTemplateByCode(code: string): Promise<{
+  documentId: string;
+  name: string;
+  code: string;
+  subTask: TemplateSubTaskComponentInput[];
+} | null> {
+  const res = await strapiFetch<
+    StrapiList<{
+      documentId: string;
+      name: string;
+      code: string;
+      subTask?: TemplateSubTaskComponentInput[] | null;
+    }>
+  >(
+    "/template-tasks",
+    { strapiCache: { noStore: true } },
+    {
+      fields: ["documentId", "name", "code"],
+      filters: { code: { $eq: code } },
+      populate: { subTask: true },
+      pagination: { pageSize: 1 },
+    },
+  );
+
+  const template = res.data[0];
+  if (!template) return null;
+
+  return {
+    documentId: template.documentId,
+    name: template.name,
+    code: template.code,
+    subTask: template.subTask ?? [],
+  };
+}
+
+async function fetchTaskSubtaskRefs(
+  taskDocumentId: string,
+): Promise<{ documentId: string; name: string }[]> {
+  const res = await strapiFetch<
+    StrapiList<{ documentId: string; name: string }>
+  >(
+    "/sub-tasks",
+    { strapiCache: { noStore: true } },
+    {
+      fields: ["documentId", "name"],
+      filters: { task: { documentId: { $eq: taskDocumentId } } },
+      sort: "index:asc",
+      pagination: { pageSize: 100 },
+    },
+  );
+  return res.data;
+}
+
+async function appendBoardSubtaskToTaskTemplate(
+  taskDocumentId: string,
+  values: SubTaskFormInput,
+): Promise<void> {
+  const session = await auth();
+  if (!canManageTemplates(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+
+  const templateCode = await fetchTaskTemplateCode(taskDocumentId);
+  if (!templateCode) {
+    throw new Error("no_template");
+  }
+
+  const template = await fetchTemplateByCode(templateCode);
+  if (!template) {
+    throw new Error("template_not_found");
+  }
+
+  const taskSubtasks = await fetchTaskSubtaskRefs(taskDocumentId);
+  const dependencyIndexes = mapDependencyIdsToTemplateIndexes(
+    values.dependencyIds ?? [],
+    taskSubtasks,
+    template.subTask.map((row) => row.name),
+  );
+  const nextSubTasks = appendSubtaskToTemplateComponents(
+    template.subTask,
+    values,
+    dependencyIndexes,
+  );
+
+  await strapiFetch(`/template-tasks/${template.documentId}`, {
+    method: "PUT",
+    strapiCache: { noStore: true },
+    body: JSON.stringify({
+      data: {
+        name: template.name,
+        code: template.code,
+        subTask: nextSubTasks,
+      },
+    }),
+  });
+
+  revalidateStrapiTags(STRAPI_TAGS.templateTasks);
 }
 
 export async function updateBoardSubtaskAssignees(

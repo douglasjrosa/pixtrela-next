@@ -7,13 +7,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { DeactivationReasonField } from "@/components/ui/deactivation-reason-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { normalizeSubTaskDependencyIds } from "@/lib/business/subtask-dependencies";
 import {
+  applySubTaskPreset,
+  type SubTaskPreset,
+} from "@/lib/business/subtask-preset";
+import {
   ACTIVATION_STATUSES,
-  REASON_FOR_DISABLING_MIN_LENGTH_KEY,
   SHARING_TYPES,
   SUB_TASK_STATUSES,
   subTaskFormSchema,
@@ -25,6 +29,7 @@ import {
   SubTaskDependenciesModal,
   type SubTaskDependencyOption,
 } from "./subtask-dependencies-modal";
+import { SubTaskNamePresetField } from "./subtask-name-preset-field";
 import type { TeamAssignmentOption } from "./subtask-manager";
 
 export interface SubTaskInlineFormProps {
@@ -36,6 +41,10 @@ export interface SubTaskInlineFormProps {
   isCreate?: boolean;
   disabled?: boolean;
   hideHeading?: boolean;
+  hideStatus?: boolean;
+  hideActivationStatus?: boolean;
+  hideAssignees?: boolean;
+  plain?: boolean;
   onChange: (values: SubTaskFormInput) => void;
 }
 
@@ -61,6 +70,10 @@ export function SubTaskInlineForm({
   isCreate = false,
   disabled = false,
   hideHeading = false,
+  hideStatus = false,
+  hideActivationStatus = false,
+  hideAssignees = false,
+  plain = false,
   onChange,
 }: SubTaskInlineFormProps) {
   const [dependenciesOpen, setDependenciesOpen] = useState(false);
@@ -76,12 +89,31 @@ export function SubTaskInlineForm({
     reset,
     control,
     watch,
+    getValues,
     setValue,
+    trigger,
     formState: { errors },
   } = useForm<SubTaskFormInput>({
     resolver: zodResolver(subTaskFormSchema) as Resolver<SubTaskFormInput>,
     defaultValues,
   });
+
+  function handleApplyPreset(preset: SubTaskPreset): void {
+    const next = applySubTaskPreset(getValues(), preset);
+    setValue("name", next.name, { shouldDirty: true, shouldValidate: true });
+    setValue("sharingType", next.sharingType, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("maxSameTimeWorkers", next.maxSameTimeWorkers, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("expectedTime", next.expectedTime, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }
 
   useEffect(() => {
     reset(defaultValues);
@@ -101,28 +133,50 @@ export function SubTaskInlineForm({
   const isDisabled = activationStatus === "disabled";
   const fieldId = (name: string): string => `${formKey}-${name}`;
 
-  const textareaClass = cn(
-    "flex min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2",
-    "text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none",
-    "focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
-    "disabled:opacity-50",
-  );
+  useEffect(() => {
+    if (!isDisabled) return;
+    void trigger("reasonForDisabling");
+  }, [isDisabled, trigger]);
 
   return (
-    <div className="grid gap-4 rounded-lg border bg-muted/30 p-4 sm:grid-cols-2">
+    <div
+      className={cn(
+        "grid gap-4 sm:grid-cols-2",
+        !plain && "rounded-lg border bg-muted/30 p-4",
+      )}
+    >
       {hideHeading ? null : (
         <h3 className="sm:col-span-2 text-base font-semibold">
           {isCreate ? tSubtasks("newSubtask") : tCommon("edit")}
         </h3>
       )}
 
-      <div className="space-y-2">
-        <Label htmlFor={fieldId("name")}>{tSubtasks("name")}</Label>
-        <Input id={fieldId("name")} disabled={disabled} {...register("name")} />
-        {errors.name ? (
-          <p className="text-sm text-destructive">{errors.name.message}</p>
-        ) : null}
-      </div>
+      {isCreate ? (
+        <SubTaskNamePresetField
+          id={fieldId("name")}
+          label={tSubtasks("name")}
+          value={watch("name") ?? ""}
+          enabled
+          disabled={disabled}
+          errorMessage={errors.name?.message}
+          onChange={(next) =>
+            setValue("name", next, { shouldDirty: true, shouldValidate: true })
+          }
+          onApplyPreset={handleApplyPreset}
+        />
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor={fieldId("name")}>{tSubtasks("name")}</Label>
+          <Input
+            id={fieldId("name")}
+            disabled={disabled}
+            {...register("name")}
+          />
+          {errors.name ? (
+            <p className="text-sm text-destructive">{errors.name.message}</p>
+          ) : null}
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor={fieldId("qty")}>{tSubtasks("qty")}</Label>
@@ -175,77 +229,85 @@ export function SubTaskInlineForm({
         </select>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor={fieldId("status")}>{tTasks("manage.status")}</Label>
-        <select
-          id={fieldId("status")}
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-          disabled={disabled}
-          {...register("status")}
-        >
-          {SUB_TASK_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {tStatus(status)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor={fieldId("activationStatus")}>
-          {tSubtasks("activationStatusLabel")}
-        </Label>
-        <select
-          id={fieldId("activationStatus")}
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-          disabled={disabled}
-          {...register("activationStatus")}
-        >
-          {ACTIVATION_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {tActivation(status)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {isDisabled ? (
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor={fieldId("reasonForDisabling")}>
-            {tSubtasks("reasonForDisabling")}
-          </Label>
-          <textarea
-            id={fieldId("reasonForDisabling")}
-            className={textareaClass}
+      {hideStatus ? (
+        <input type="hidden" {...register("status")} />
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor={fieldId("status")}>{tTasks("manage.status")}</Label>
+          <select
+            id={fieldId("status")}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
             disabled={disabled}
-            {...register("reasonForDisabling")}
-          />
-          {errors.reasonForDisabling ? (
-            <p className="text-sm text-destructive">
-              {errors.reasonForDisabling.message ===
-              REASON_FOR_DISABLING_MIN_LENGTH_KEY
-                ? tSubtasks(REASON_FOR_DISABLING_MIN_LENGTH_KEY)
-                : errors.reasonForDisabling.message}
-            </p>
-          ) : null}
+            {...register("status")}
+          >
+            {SUB_TASK_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {tStatus(status)}
+              </option>
+            ))}
+          </select>
         </div>
-      ) : null}
+      )}
 
-      <div className="sm:col-span-2">
+      {hideActivationStatus ? (
+        <input type="hidden" {...register("activationStatus")} />
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor={fieldId("activationStatus")}>
+            {tSubtasks("activationStatusLabel")}
+          </Label>
+          <select
+            id={fieldId("activationStatus")}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            disabled={disabled}
+            {...register("activationStatus")}
+          >
+            {ACTIVATION_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {tActivation(status)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {!hideActivationStatus && isDisabled ? (
         <Controller
-          name="assignedToIds"
+          name="reasonForDisabling"
           control={control}
           render={({ field }) => (
-            <SubTaskAssigneePicker
-              id={fieldId("assignedToIds")}
-              label={tSubtasks("assignedTo")}
-              teams={teams}
-              value={field.value ?? []}
-              onChange={field.onChange}
+            <DeactivationReasonField
+              id={fieldId("reasonForDisabling")}
+              label={tSubtasks("reasonForDisabling")}
+              value={field.value ?? ""}
+              disabled={disabled}
+              errorMessage={errors.reasonForDisabling?.message}
+              onChange={(next) => {
+                field.onChange(next);
+                void trigger("reasonForDisabling");
+              }}
             />
           )}
         />
-      </div>
+      ) : null}
+
+      {hideAssignees ? null : (
+        <div className="sm:col-span-2">
+          <Controller
+            name="assignedToIds"
+            control={control}
+            render={({ field }) => (
+              <SubTaskAssigneePicker
+                id={fieldId("assignedToIds")}
+                label={tSubtasks("assignedTo")}
+                teams={teams}
+                value={field.value ?? []}
+                onChange={field.onChange}
+              />
+            )}
+          />
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
         <Button

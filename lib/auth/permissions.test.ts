@@ -6,6 +6,7 @@ import {
   canPreviewKioskColaborator,
   canSetUserPassword,
   canWriteKioskNfc,
+  canDeactivateTasks,
   canDeleteTasks,
   canExchange,
   canManageAwards,
@@ -25,6 +26,19 @@ describe("canManageTasks", () => {
   it("denies colaborator and kiosk", () => {
     expect(canManageTasks("colaborator")).toBe(false);
     expect(canManageTasks("kiosk")).toBe(false);
+  });
+});
+
+describe("canDeactivateTasks", () => {
+  it("allows admin and manager", () => {
+    expect(canDeactivateTasks("admin")).toBe(true);
+    expect(canDeactivateTasks("manager")).toBe(true);
+  });
+
+  it("denies leader and below", () => {
+    expect(canDeactivateTasks("leader")).toBe(false);
+    expect(canDeactivateTasks("colaborator")).toBe(false);
+    expect(canDeactivateTasks("kiosk")).toBe(false);
   });
 });
 

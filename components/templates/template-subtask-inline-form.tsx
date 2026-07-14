@@ -9,6 +9,10 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  applySubTaskPreset,
+  type SubTaskPreset,
+} from "@/lib/business/subtask-preset";
 import { parseTemplateDependencyUiIds } from "@/lib/business/template-subtask-dependency-refs";
 import { SHARING_TYPES } from "@/lib/schemas/sub-task";
 import {
@@ -20,6 +24,7 @@ import {
   SubTaskDependenciesModal,
   type SubTaskDependencyOption,
 } from "../subtasks/subtask-dependencies-modal";
+import { SubTaskNamePresetField } from "../subtasks/subtask-name-preset-field";
 
 export interface TemplateSubTaskInlineFormProps {
   formKey: string;
@@ -63,12 +68,32 @@ export function TemplateSubTaskInlineForm({
     register,
     reset,
     watch,
+    getValues,
     setValue,
     formState: { errors },
   } = useForm<TemplateSubTaskFormInput>({
-    resolver: zodResolver(templateSubTaskFormSchema) as Resolver<TemplateSubTaskFormInput>,
+    resolver: zodResolver(
+      templateSubTaskFormSchema,
+    ) as Resolver<TemplateSubTaskFormInput>,
     defaultValues,
   });
+
+  function handleApplyPreset(preset: SubTaskPreset): void {
+    const next = applySubTaskPreset(getValues(), preset);
+    setValue("name", next.name, { shouldDirty: true, shouldValidate: true });
+    setValue("sharingType", next.sharingType, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("maxSameTimeWorkers", next.maxSameTimeWorkers, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("expectedTime", next.expectedTime, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }
 
   useEffect(() => {
     reset(defaultValues);
@@ -92,13 +117,32 @@ export function TemplateSubTaskInlineForm({
         {isCreate ? tSubtasks("newSubtask") : tCommon("edit")}
       </h3>
 
-      <div className="space-y-2">
-        <Label htmlFor={fieldId("name")}>{tSubtasks("name")}</Label>
-        <Input id={fieldId("name")} disabled={disabled} {...register("name")} />
-        {errors.name ? (
-          <p className="text-sm text-destructive">{errors.name.message}</p>
-        ) : null}
-      </div>
+      {isCreate ? (
+        <SubTaskNamePresetField
+          id={fieldId("name")}
+          label={tSubtasks("name")}
+          value={watch("name") ?? ""}
+          enabled
+          disabled={disabled}
+          errorMessage={errors.name?.message}
+          onChange={(next) =>
+            setValue("name", next, { shouldDirty: true, shouldValidate: true })
+          }
+          onApplyPreset={handleApplyPreset}
+        />
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor={fieldId("name")}>{tSubtasks("name")}</Label>
+          <Input
+            id={fieldId("name")}
+            disabled={disabled}
+            {...register("name")}
+          />
+          {errors.name ? (
+            <p className="text-sm text-destructive">{errors.name.message}</p>
+          ) : null}
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor={fieldId("qty")}>{tSubtasks("qty")}</Label>

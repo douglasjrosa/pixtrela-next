@@ -3,8 +3,13 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
-import { KanbanSubtaskCreateModal } from "./kanban-subtask-create-modal";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
+
+vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
+  searchSubTaskPresets: vi.fn(async () => []),
+}));
+
+import { KanbanSubtaskCreateModal } from "./kanban-subtask-create-modal";
 
 const teams: TeamAssignmentOption[] = [
   {
@@ -25,9 +30,7 @@ describe("KanbanSubtaskCreateModal", () => {
         open
         taskName="Tarefa A"
         teams={teams}
-        dependencyOptions={[
-          { documentId: "st-1", name: "Soldar" },
-        ]}
+        dependencyOptions={[{ documentId: "st-1", name: "Soldar" }]}
         saving={false}
         onClose={onClose}
         onCreate={onCreate}
@@ -37,12 +40,52 @@ describe("KanbanSubtaskCreateModal", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Nova subtarefa" })).toBeInTheDocument();
     expect(screen.getByText("Tarefa A")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Status")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Status de ativação")).not.toBeInTheDocument();
+    expect(screen.queryByText("Atribuído a")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Adicionar subtarefa ao template" }),
+    ).not.toBeChecked();
 
     await user.type(screen.getByLabelText("Nome"), "Cortar");
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Cortar",
+        status: "waiting",
+        activationStatus: "locked",
+        assignedToIds: [],
+      }),
+      { addToTemplate: false },
+    );
+  });
+
+  it("passes addToTemplate true when checkbox is checked", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn();
+
+    renderWithIntl(
+      <KanbanSubtaskCreateModal
+        open
+        taskName="Tarefa A"
+        teams={teams}
+        dependencyOptions={[]}
+        saving={false}
+        onClose={vi.fn()}
+        onCreate={onCreate}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Nome"), "Cortar");
+    await user.click(
+      screen.getByRole("checkbox", { name: "Adicionar subtarefa ao template" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(onCreate).toHaveBeenCalledWith(
       expect.objectContaining({ name: "Cortar" }),
+      { addToTemplate: true },
     );
   });
 

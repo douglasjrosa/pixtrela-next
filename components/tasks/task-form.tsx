@@ -3,16 +3,17 @@
 import { useState, useTransition } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Archive, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { lookupTemplateNameByCode } from "@/app/(app)/tasks/actions";
 import { Button } from "@/components/ui/button";
-import { Duration } from "@/components/ui/duration";
+import { DeactivationReasonField } from "@/components/ui/deactivation-reason-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatDateTimePtBr } from "@/lib/format/datetime";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import {
+  taskDeactivationSchema,
   taskFormSchema,
   TASK_STATUSES,
   type TaskFormInput,
@@ -22,24 +23,23 @@ import { cn } from "@/lib/utils";
 
 import type { StepOption } from "./task-manager";
 
-export interface TaskFormMetrics {
-  totalExpectedTime: number;
-  totalTimeSpent: number;
-  startedAt?: string | null;
-  endedAt?: string | null;
-}
-
 export interface TaskFormProps {
   mode: "create" | "edit";
   defaultValues: TaskFormInput;
   steps: StepOption[];
-  metrics?: TaskFormMetrics;
   isPending?: boolean;
   layout?: "standalone" | "embedded";
   formTitleId?: string;
+  active?: boolean;
+  reasonForDeactivation?: string | null;
+  canDeactivate?: boolean;
+  canDelete?: boolean;
   onSubmit: (values: TaskFormInput) => void;
   onInvalid?: () => void;
   onCancel?: () => void;
+  onDeactivate?: (reasonForDeactivation: string) => void;
+  onReactivate?: (reasonForDeactivation: string) => void;
+  onDelete?: () => void;
   hideActions?: boolean;
   formId?: string;
 }
@@ -48,13 +48,19 @@ export function TaskForm({
   mode,
   defaultValues,
   steps,
-  metrics,
   isPending = false,
   layout = "standalone",
   formTitleId = "task-form-title",
+  active = true,
+  reasonForDeactivation: savedReasonForDeactivation = "",
+  canDeactivate = false,
+  canDelete = false,
   onSubmit,
   onInvalid,
   onCancel,
+  onDeactivate,
+  onReactivate,
+  onDelete,
   hideActions = false,
   formId,
 }: TaskFormProps) {
@@ -62,6 +68,9 @@ export function TaskForm({
   const tManage = useTranslations("tasks.manage");
   const tStatus = useTranslations("tasks.status");
   const [isLoadingTemplate, startLoadTemplate] = useTransition();
+  const [isReasonPanelOpen, setIsReasonPanelOpen] = useState(false);
+  const [reasonForDeactivation, setReasonForDeactivation] = useState("");
+  const [reasonError, setReasonError] = useState<string | null>(null);
 
   const {
     register,
@@ -92,6 +101,47 @@ export function TaskForm({
       }
     });
   }
+
+  function closeReasonPanel(): void {
+    setIsReasonPanelOpen(false);
+    setReasonForDeactivation("");
+    setReasonError(null);
+  }
+
+  function beginArchiveAction(): void {
+    setIsReasonPanelOpen(true);
+    setReasonError(null);
+    setReasonForDeactivation(
+      active ? "" : (savedReasonForDeactivation ?? ""),
+    );
+  }
+
+  function confirmArchiveAction(): void {
+    const parsed = taskDeactivationSchema.safeParse({
+      reasonForDeactivation,
+    });
+    if (!parsed.success) {
+      setReasonError(
+        parsed.error.issues[0]?.message ?? tManage("validationError"),
+      );
+      return;
+    }
+
+    const reason = parsed.data.reasonForDeactivation.trim();
+    setReasonError(null);
+    if (active) {
+      onDeactivate?.(reason);
+      return;
+    }
+    onReactivate?.(reason);
+  }
+
+  const showArchive =
+    mode === "edit" &&
+    canDeactivate &&
+    Boolean(active ? onDeactivate : onReactivate);
+  const showDelete =
+    mode === "edit" && !active && canDelete && Boolean(onDelete);
 
   return (
     <form
@@ -168,37 +218,84 @@ export function TaskForm({
 
       <div className="space-y-2">
         <Label htmlFor="status">{tManage("status")}</Label>
-        <select
-          id="status"
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-          {...register("status")}
-        >
-          {TASK_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {tStatus(status)}
-            </option>
-          ))}
-        </select>
+        <div className="flex gap-2">
+          <select
+            id="status"
+            className={cn(
+              "flex h-9 min-w-0 flex-1 rounded-md border border-input",
+              "bg-transparent px-3 text-sm",
+            )}
+            {...register("status")}
+          >
+            {TASK_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {tStatus(status)}
+              </option>
+            ))}
+          </select>
+          {showArchive ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              disabled={isPending}
+              aria-label={
+                active ? tManage("deactivate") : tManage("reactivate")
+              }
+              onClick={beginArchiveAction}
+            >
+              <Archive className="size-4" aria-hidden />
+            </Button>
+          ) : null}
+          {showDelete ? (
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon"
+              disabled={isPending}
+              aria-label={tManage("delete")}
+              onClick={onDelete}
+            >
+              <Trash2 className="size-4" aria-hidden />
+            </Button>
+          ) : null}
+        </div>
       </div>
 
-      {mode === "edit" && metrics ? (
-        <div className="grid gap-2 rounded-md border bg-muted/30 p-3 text-sm sm:col-span-2 sm:grid-cols-2">
-          <p className="font-medium sm:col-span-2">{tManage("metrics")}</p>
-          <p>
-            {tManage("totalExpectedTime")}:{" "}
-            <Duration seconds={metrics.totalExpectedTime} />
-          </p>
-          <p>
-            {tManage("totalTimeSpent")}:{" "}
-            <Duration seconds={metrics.totalTimeSpent} />
-          </p>
-          <p>
-            {tManage("startedAt")}: {formatDateTimePtBr(metrics.startedAt)}
-          </p>
-          <p>
-            {tManage("endedAt")}: {formatDateTimePtBr(metrics.endedAt)}
-          </p>
-        </div>
+      {showArchive && isReasonPanelOpen ? (
+        <>
+          <DeactivationReasonField
+            id="reasonForDeactivation"
+            label={tManage("reasonForDeactivation")}
+            value={reasonForDeactivation}
+            disabled={isPending}
+            errorMessage={reasonError}
+            onChange={(next) => {
+              setReasonForDeactivation(next);
+              setReasonError(null);
+            }}
+          />
+          <div className="flex gap-2 sm:col-span-2">
+            <Button
+              type="button"
+              variant={active ? "destructive" : "default"}
+              disabled={isPending}
+              onClick={confirmArchiveAction}
+            >
+              {active
+                ? tManage("confirmDeactivate")
+                : tManage("confirmReactivate")}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending}
+              onClick={closeReasonPanel}
+            >
+              {tCommon("cancel")}
+            </Button>
+          </div>
+        </>
       ) : null}
 
       {hideActions ? null : (

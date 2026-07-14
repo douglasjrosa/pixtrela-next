@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { TaskManager, type TaskRow, type StepOption } from "@/components/tasks/task-manager";
 import type { Role } from "@/lib/auth/nav";
-import { canDeleteTasks, canManageTasks } from "@/lib/auth/permissions";
+import { canManageTasks } from "@/lib/auth/permissions";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import type { TaskFormInput } from "@/lib/schemas/task";
 
@@ -21,8 +21,6 @@ interface TaskEntity {
   status: TaskFormInput["status"];
   active?: boolean;
   templateTaskCode?: string | null;
-  startedAt?: string | null;
-  endedAt?: string | null;
   totalExpectedTime?: number;
   totalTimeSpent?: number;
   step?: { documentId: string; name: string } | null;
@@ -48,8 +46,6 @@ async function loadTasks(): Promise<TaskRow[]> {
           "status",
           "active",
           "templateTaskCode",
-          "startedAt",
-          "endedAt",
           "totalExpectedTime",
           "totalTimeSpent",
         ],
@@ -66,8 +62,6 @@ async function loadTasks(): Promise<TaskRow[]> {
       status: task.status,
       active: task.active ?? true,
       templateTaskCode: task.templateTaskCode,
-      startedAt: task.startedAt,
-      endedAt: task.endedAt,
       totalExpectedTime: task.totalExpectedTime ?? 0,
       totalTimeSpent: task.totalTimeSpent ?? 0,
       step: task.step ?? null,
@@ -115,7 +109,6 @@ export default async function TasksPage() {
       <TaskManager
         tasks={tasks}
         steps={steps}
-        canDelete={canDeleteTasks(role)}
       />
     </section>
   );

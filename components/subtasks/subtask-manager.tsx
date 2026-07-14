@@ -25,7 +25,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, ChevronRight, GripVertical } from "lucide-react";
+import { GripVertical } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -40,12 +40,12 @@ import {
   mergeServerSubtasksWithDrafts,
 } from "@/lib/business/subtask-draft";
 import { calculateSubTaskDisplayQty } from "@/lib/business/subtask-display-qty";
-import { parseSubTaskDependencyIds } from "@/lib/business/subtask-dependencies";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
 import { SubTaskCloneButton } from "./subtask-clone-button";
-import { SubTaskRemoveButton } from "./subtask-remove-button";
+import { SubTaskFormModal } from "./subtask-form-modal";
 import { SubTaskInlineForm } from "./subtask-inline-form";
+import { SubTaskRemoveButton } from "./subtask-remove-button";
 import type { SubTaskDependencyOption } from "./subtask-dependencies-modal";
 
 export interface UserOption {
@@ -113,7 +113,6 @@ const EMPTY_FORM: SubTaskFormInput = {
 };
 
 const NEW_SUBTASK_KEY = "new";
-const TABLE_COLUMN_COUNT = 7;
 const SUBTASK_DND_CONTEXT_ID = "subtask-manager-dnd";
 
 /** Pure drag-end resolver for tests and SubTaskManager. */
@@ -181,37 +180,29 @@ function buildDependencyOptions(
     .map((item) => ({ documentId: item.documentId, name: item.name }));
 }
 
-interface SortableSubTaskAccordionProps {
+interface SortableSubTaskRowProps {
   subtask: SubTaskRow;
   displayQty: number;
   statusLabel: string;
   dragLabel: string;
-  toggleLabel: string;
-  isExpanded: boolean;
-  teams: TeamAssignmentOption[];
-  dependencyOptions: SubTaskDependencyOption[];
+  openLabel: string;
   disabled: boolean;
-  onToggle: (documentId: string) => void;
-  onChange: (documentId: string, values: SubTaskFormInput) => void;
+  onOpen: (documentId: string) => void;
   onClone: (documentId: string) => void;
   onRemove: (documentId: string) => void;
 }
 
-function SortableSubTaskAccordion({
+function SortableSubTaskRow({
   subtask,
   displayQty,
   statusLabel,
   dragLabel,
-  toggleLabel,
-  isExpanded,
-  teams,
-  dependencyOptions,
+  openLabel,
   disabled,
-  onToggle,
-  onChange,
+  onOpen,
   onClone,
   onRemove,
-}: SortableSubTaskAccordionProps) {
+}: SortableSubTaskRowProps) {
   const {
     attributes,
     listeners,
@@ -229,87 +220,56 @@ function SortableSubTaskAccordion({
     transition,
   };
 
-  const handleChange = useCallback(
-    (values: SubTaskFormInput) => onChange(subtask.documentId, values),
-    [onChange, subtask.documentId],
-  );
-
   return (
-    <tbody
+    <tr
       ref={setNodeRef}
       style={style}
-      className={isDragging ? "bg-muted/50" : undefined}
+      className={
+        isDragging
+          ? "cursor-pointer border-b bg-muted/50 hover:bg-muted/30"
+          : "cursor-pointer border-b hover:bg-muted/30"
+      }
+      onClick={() => onOpen(subtask.documentId)}
     >
-      <tr
-        className="cursor-pointer border-b hover:bg-muted/30"
-        onClick={() => onToggle(subtask.documentId)}
-        aria-expanded={isExpanded}
-      >
-        <td className="w-10 py-2">
-          <button
-            type="button"
-            className="cursor-grab rounded p-1 text-muted-foreground hover:text-foreground"
-            aria-label={dragLabel}
+      <td className="w-10 py-2">
+        <button
+          type="button"
+          className="cursor-grab rounded p-1 text-muted-foreground hover:text-foreground"
+          aria-label={dragLabel}
+          disabled={disabled}
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-4" aria-hidden />
+        </button>
+      </td>
+      <td className="py-2">
+        <span className="sr-only">{openLabel}</span>
+        <span>{subtask.name}</span>
+      </td>
+      <td>{displayQty}</td>
+      <td>
+        <Duration seconds={subtask.expectedTime} />
+      </td>
+      <td>
+        <Duration seconds={subtask.timeSpent} />
+      </td>
+      <td>{statusLabel}</td>
+      <td className="w-20 py-2 text-right">
+        <div className="flex justify-end">
+          <SubTaskCloneButton
+            onClick={() => onClone(subtask.documentId)}
             disabled={disabled}
-            onClick={(event) => event.stopPropagation()}
-            onPointerDown={(event) => event.stopPropagation()}
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical className="size-4" aria-hidden />
-          </button>
-        </td>
-        <td className="py-2">
-          <div className="flex items-center gap-2">
-            {isExpanded ? (
-              <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            ) : (
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            )}
-            <span className="sr-only">{toggleLabel}</span>
-            <span>{subtask.name}</span>
-          </div>
-        </td>
-        <td>{displayQty}</td>
-        <td>
-          <Duration seconds={subtask.expectedTime} />
-        </td>
-        <td>
-          <Duration seconds={subtask.timeSpent} />
-        </td>
-        <td>{statusLabel}</td>
-        <td className="w-20 py-2 text-right">
-          <div className="flex justify-end">
-            <SubTaskCloneButton
-              onClick={() => onClone(subtask.documentId)}
-              disabled={disabled}
-            />
-            <SubTaskRemoveButton
-              onClick={() => onRemove(subtask.documentId)}
-              disabled={disabled}
-            />
-          </div>
-        </td>
-      </tr>
-      {isExpanded ? (
-        <tr className="border-b">
-          <td colSpan={TABLE_COLUMN_COUNT} className="p-4">
-            <SubTaskInlineForm
-              formKey={subtask.documentId}
-              defaultValues={subTaskToFormValues(subtask)}
-              teams={teams}
-              dependencyOptions={dependencyOptions}
-              currentDocumentId={
-                subtask.isDraft ? undefined : subtask.documentId
-              }
-              isCreate={subtask.isDraft === true}
-              disabled={disabled}
-              onChange={handleChange}
-            />
-          </td>
-        </tr>
-      ) : null}
-    </tbody>
+          />
+          <SubTaskRemoveButton
+            onClick={() => onRemove(subtask.documentId)}
+            disabled={disabled}
+          />
+        </div>
+      </td>
+    </tr>
   );
 }
 
@@ -327,11 +287,12 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
     },
     ref,
   ) {
+    const tCommon = useTranslations("common");
     const tSubtasks = useTranslations("subtasks");
     const tTasks = useTranslations("tasks");
     const tStatus = useTranslations("tasks.status");
     const [orderedSubtasks, setOrderedSubtasks] = useState(subtasks);
-    const [expandedKey, setExpandedKey] = useState<string | null>(null);
+    const [editingKey, setEditingKey] = useState<string | null>(null);
     const [newSubtaskDraft, setNewSubtaskDraft] =
       useState<SubTaskFormInput>(EMPTY_FORM);
     const [isPending, startTransition] = useTransition();
@@ -353,13 +314,11 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
 
     const isBusy = disabled || isPending;
 
-    function collapsePanel(): void {
-      setExpandedKey(null);
-    }
-
-    function discardNewSubtaskDraft(): void {
-      setNewSubtaskDraft(EMPTY_FORM);
-      collapsePanel();
+    function closeModal(): void {
+      if (editingKey === NEW_SUBTASK_KEY) {
+        setNewSubtaskDraft(EMPTY_FORM);
+      }
+      setEditingKey(null);
     }
 
     function cancelRow(documentId: string): void {
@@ -370,22 +329,19 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
           ),
         );
       }
-      collapsePanel();
+      if (editingKey === documentId) {
+        setEditingKey(null);
+      }
     }
 
-    function toggleRow(documentId: string): void {
-      if (documentId === NEW_SUBTASK_KEY && expandedKey === NEW_SUBTASK_KEY) {
-        discardNewSubtaskDraft();
-        return;
-      }
-
-      setExpandedKey((current) => (current === documentId ? null : documentId));
+    function openRow(documentId: string): void {
+      setEditingKey(documentId);
       setMessage(null);
     }
 
     function startCreate(): void {
       setNewSubtaskDraft(EMPTY_FORM);
-      setExpandedKey(NEW_SUBTASK_KEY);
+      setEditingKey(NEW_SUBTASK_KEY);
       setMessage(null);
     }
 
@@ -432,9 +388,10 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
         }
       }
 
-      if (expandedKey === NEW_SUBTASK_KEY && newSubtaskDraft.name.trim()) {
+      if (editingKey === NEW_SUBTASK_KEY && newSubtaskDraft.name.trim()) {
         await onCreate(newSubtaskDraft);
-        discardNewSubtaskDraft();
+        setNewSubtaskDraft(EMPTY_FORM);
+        setEditingKey(null);
       }
     }, [
       orderedSubtasks,
@@ -442,7 +399,7 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
       onCreate,
       onUpdate,
       onReorder,
-      expandedKey,
+      editingKey,
       newSubtaskDraft,
     ]);
 
@@ -461,7 +418,7 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
         return next;
       });
       if (draftId) {
-        setExpandedKey(draftId);
+        setEditingKey(draftId);
       }
       setMessage(tSubtasks("cloned"));
     }
@@ -480,7 +437,9 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
       startTransition(async () => {
         await onDelete(documentId);
         setMessage(tSubtasks("removed"));
-        collapsePanel();
+        if (editingKey === documentId) {
+          setEditingKey(null);
+        }
       });
     }
 
@@ -495,7 +454,14 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
       setOrderedSubtasks(nextOrder);
     }
 
-    const isNewExpanded = expandedKey === NEW_SUBTASK_KEY;
+    const isCreatingNew = editingKey === NEW_SUBTASK_KEY;
+    const editingSubtask = isCreatingNew
+      ? null
+      : orderedSubtasks.find((item) => item.documentId === editingKey) ?? null;
+    const isModalOpen = isCreatingNew || editingSubtask !== null;
+    const modalTitle = isCreatingNew || editingSubtask?.isDraft
+      ? tSubtasks("newSubtask")
+      : tCommon("edit");
 
     return (
       <div className="space-y-6">
@@ -535,51 +501,73 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
                 <th className="w-20 py-2" aria-hidden />
               </tr>
             </thead>
-            <SortableContext
-              items={orderedSubtasks.map((subtask) => subtask.documentId)}
-              strategy={verticalListSortingStrategy}
-            >
-              {orderedSubtasks.map((subtask) => (
-                <SortableSubTaskAccordion
-                  key={subtask.documentId}
-                  subtask={subtask}
-                  displayQty={calculateSubTaskDisplayQty(subtask.qty, taskQty)}
-                  statusLabel={tStatus(subtask.status)}
-                  dragLabel={tSubtasks("dragToReorder")}
-                  toggleLabel={tSubtasks("toggleSubtaskForm")}
-                  isExpanded={expandedKey === subtask.documentId}
-                  teams={teams}
-                  dependencyOptions={buildDependencyOptions(
-                    orderedSubtasks,
-                    subtask.documentId,
-                  )}
-                  disabled={isBusy}
-                  onToggle={toggleRow}
-                  onChange={handleRowChange}
-                  onClone={handleClone}
-                  onRemove={handleRemove}
-                />
-              ))}
-            </SortableContext>
-            {isNewExpanded ? (
-              <tbody>
-                <tr className="border-b">
-                  <td colSpan={TABLE_COLUMN_COUNT} className="p-4">
-                    <SubTaskInlineForm
-                      formKey={NEW_SUBTASK_KEY}
-                      defaultValues={newSubtaskDraft}
-                      teams={teams}
-                      dependencyOptions={buildDependencyOptions(orderedSubtasks)}
-                      isCreate
-                      disabled={isBusy}
-                      onChange={setNewSubtaskDraft}
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            ) : null}
+            <tbody>
+              <SortableContext
+                items={orderedSubtasks.map((subtask) => subtask.documentId)}
+                strategy={verticalListSortingStrategy}
+              >
+                {orderedSubtasks.map((subtask) => (
+                  <SortableSubTaskRow
+                    key={subtask.documentId}
+                    subtask={subtask}
+                    displayQty={calculateSubTaskDisplayQty(subtask.qty, taskQty)}
+                    statusLabel={tStatus(subtask.status)}
+                    dragLabel={tSubtasks("dragToReorder")}
+                    openLabel={tSubtasks("toggleSubtaskForm")}
+                    disabled={isBusy}
+                    onOpen={openRow}
+                    onClone={handleClone}
+                    onRemove={handleRemove}
+                  />
+                ))}
+              </SortableContext>
+            </tbody>
           </table>
         </DndContext>
+
+        <SubTaskFormModal
+          open={isModalOpen}
+          title={modalTitle}
+          disabled={isBusy}
+          onClose={closeModal}
+        >
+          {isCreatingNew ? (
+            <SubTaskInlineForm
+              formKey={NEW_SUBTASK_KEY}
+              defaultValues={newSubtaskDraft}
+              teams={teams}
+              dependencyOptions={buildDependencyOptions(orderedSubtasks)}
+              isCreate
+              hideHeading
+              hideAssignees
+              plain
+              disabled={isBusy}
+              onChange={setNewSubtaskDraft}
+            />
+          ) : null}
+          {editingSubtask ? (
+            <SubTaskInlineForm
+              formKey={editingSubtask.documentId}
+              defaultValues={subTaskToFormValues(editingSubtask)}
+              teams={teams}
+              dependencyOptions={buildDependencyOptions(
+                orderedSubtasks,
+                editingSubtask.documentId,
+              )}
+              currentDocumentId={
+                editingSubtask.isDraft ? undefined : editingSubtask.documentId
+              }
+              isCreate={editingSubtask.isDraft === true}
+              hideHeading
+              hideAssignees
+              plain
+              disabled={isBusy}
+              onChange={(values) =>
+                handleRowChange(editingSubtask.documentId, values)
+              }
+            />
+          ) : null}
+        </SubTaskFormModal>
       </div>
     );
   },

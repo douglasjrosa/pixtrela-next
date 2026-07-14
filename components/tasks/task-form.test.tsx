@@ -36,18 +36,12 @@ describe("TaskForm", () => {
     showErrorToast.mockReset();
   });
 
-  it("shows edit title and metrics in edit mode", () => {
+  it("shows edit title in edit mode", () => {
     renderWithIntl(
       <TaskForm
         mode="edit"
         defaultValues={defaultValues}
         steps={steps}
-        metrics={{
-          totalExpectedTime: 120,
-          totalTimeSpent: 60,
-          startedAt: null,
-          endedAt: null,
-        }}
         onSubmit={vi.fn()}
       />,
     );
@@ -55,9 +49,156 @@ describe("TaskForm", () => {
     expect(
       screen.getByRole("heading", { name: "Editar tarefa" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Tempo previsto total/)).toBeInTheDocument();
+    expect(screen.queryByText("Métricas")).not.toBeInTheDocument();
   });
 
+  it("shows archive reason field when manager starts deactivation", async () => {
+    const user = userEvent.setup();
+    const onDeactivate = vi.fn();
+    renderWithIntl(
+      <TaskForm
+        mode="edit"
+        defaultValues={defaultValues}
+        steps={steps}
+        active
+        canDeactivate
+        onSubmit={vi.fn()}
+        onDeactivate={onDeactivate}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Desativar" }));
+    expect(onDeactivate).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Motivo da desativação")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Excluir" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("requires 100 characters before confirming deactivation", async () => {
+    const user = userEvent.setup();
+    const onDeactivate = vi.fn();
+    renderWithIntl(
+      <TaskForm
+        mode="edit"
+        defaultValues={defaultValues}
+        steps={steps}
+        active
+        canDeactivate
+        onSubmit={vi.fn()}
+        onDeactivate={onDeactivate}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Desativar" }));
+    const reasonField = screen.getByLabelText("Motivo da desativação");
+    fireEvent.change(reasonField, { target: { value: "curta" } });
+    await user.click(
+      screen.getByRole("button", { name: "Confirmar desativação" }),
+    );
+
+    expect(onDeactivate).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("Informe pelo menos 100 caracteres."),
+    ).toBeInTheDocument();
+
+    const reason = "x".repeat(100);
+    fireEvent.change(reasonField, { target: { value: reason } });
+    await user.click(
+      screen.getByRole("button", { name: "Confirmar desativação" }),
+    );
+
+    expect(onDeactivate).toHaveBeenCalledWith(reason);
+  });
+
+  it("hides archive when canDeactivate is false", () => {
+    renderWithIntl(
+      <TaskForm
+        mode="edit"
+        defaultValues={defaultValues}
+        steps={steps}
+        active
+        canDeactivate={false}
+        onSubmit={vi.fn()}
+        onDeactivate={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Desativar" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows delete action after status when task is inactive", () => {
+    const onDelete = vi.fn();
+    renderWithIntl(
+      <TaskForm
+        mode="edit"
+        defaultValues={defaultValues}
+        steps={steps}
+        active={false}
+        canDelete
+        onSubmit={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
+    expect(onDelete).toHaveBeenCalledOnce();
+  });
+
+  it("shows archive as reactivate when inactive for manager+", async () => {
+    const user = userEvent.setup();
+    const onReactivate = vi.fn();
+    const previousReason = "y".repeat(100);
+
+    renderWithIntl(
+      <TaskForm
+        mode="edit"
+        defaultValues={defaultValues}
+        steps={steps}
+        active={false}
+        canDeactivate
+        reasonForDeactivation={previousReason}
+        onSubmit={vi.fn()}
+        onReactivate={onReactivate}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Desativar" }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Reativar" }));
+
+    const reasonField = screen.getByLabelText("Motivo da desativação");
+    expect(reasonField).toHaveValue(previousReason);
+
+    const updatedReason = "z".repeat(100);
+    fireEvent.change(reasonField, { target: { value: updatedReason } });
+    await user.click(
+      screen.getByRole("button", { name: "Confirmar reativação" }),
+    );
+
+    expect(onReactivate).toHaveBeenCalledWith(updatedReason);
+  });
+
+  it("hides delete when canDelete is false", () => {
+    renderWithIntl(
+      <TaskForm
+        mode="edit"
+        defaultValues={defaultValues}
+        steps={steps}
+        active={false}
+        canDelete={false}
+        onSubmit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Excluir" }),
+    ).not.toBeInTheDocument();
+  });
   it("does not show order input in the form", () => {
     renderWithIntl(
       <TaskForm

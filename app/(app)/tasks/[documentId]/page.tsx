@@ -11,7 +11,11 @@ import type {
 import { TaskDetailEditor } from "@/components/tasks/task-detail-editor";
 import type { StepOption, TaskRow } from "@/components/tasks/task-manager";
 import type { Role } from "@/lib/auth/nav";
-import { canManageTasks } from "@/lib/auth/permissions";
+import {
+  canDeactivateTasks,
+  canDeleteTasks,
+  canManageTasks,
+} from "@/lib/auth/permissions";
 import { parseSubTaskDependencyIds } from "@/lib/business/subtask-dependencies";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import type { TaskFormInput } from "@/lib/schemas/task";
@@ -36,9 +40,8 @@ interface TaskEntity {
   index: number;
   status: TaskFormInput["status"];
   active?: boolean;
+  reasonForDeactivation?: string | null;
   templateTaskCode?: string | null;
-  startedAt?: string | null;
-  endedAt?: string | null;
   totalExpectedTime?: number;
   totalTimeSpent?: number;
   step?: { documentId: string; name: string } | null;
@@ -78,9 +81,8 @@ function mapTaskEntity(task: TaskEntity): TaskRow {
     index: task.index,
     status: task.status,
     active: task.active ?? true,
+    reasonForDeactivation: task.reasonForDeactivation ?? "",
     templateTaskCode: task.templateTaskCode,
-    startedAt: task.startedAt,
-    endedAt: task.endedAt,
     totalExpectedTime: task.totalExpectedTime ?? 0,
     totalTimeSpent: task.totalTimeSpent ?? 0,
     step: task.step ?? null,
@@ -101,9 +103,8 @@ async function loadTask(taskDocumentId: string): Promise<TaskRow | null> {
           "index",
           "status",
           "active",
+          "reasonForDeactivation",
           "templateTaskCode",
-          "startedAt",
-          "endedAt",
           "totalExpectedTime",
           "totalTimeSpent",
         ],
@@ -279,6 +280,8 @@ export default async function TaskDetailPage({ params }: PageProps) {
         steps={steps}
         subtasks={subtasks}
         teams={teams}
+        canDeactivate={canDeactivateTasks(role)}
+        canDelete={canDeleteTasks(role)}
         onCreateSubTask={handleCreate}
         onUpdateSubTask={handleUpdateSubTask}
         onReorderSubTasks={handleReorder}

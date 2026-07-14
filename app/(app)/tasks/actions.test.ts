@@ -100,6 +100,52 @@ describe("tasks/actions", () => {
     );
   });
 
+  it("deactivateTask requires a valid reason and archives the task", async () => {
+    mockStrapiFetch({
+      "PUT /tasks/task-1": { data: { documentId: "task-1" } },
+    });
+
+    const { deactivateTask } = await import("./actions");
+    const reason = "x".repeat(100);
+    await deactivateTask("task-1", reason);
+
+    expect(strapiFetch).toHaveBeenCalledWith(
+      "/tasks/task-1",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({
+          data: { active: false, reasonForDeactivation: reason },
+        }),
+      }),
+    );
+  });
+
+  it("deactivateTask rejects short reasons", async () => {
+    const { deactivateTask } = await import("./actions");
+    await expect(deactivateTask("task-1", "curta")).rejects.toThrow();
+    expect(strapiFetch).not.toHaveBeenCalled();
+  });
+
+  it("reactivateTask requires a valid reason and restores the task", async () => {
+    mockStrapiFetch({
+      "PUT /tasks/task-1": { data: { documentId: "task-1" } },
+    });
+
+    const { reactivateTask } = await import("./actions");
+    const reason = "y".repeat(100);
+    await reactivateTask("task-1", reason);
+
+    expect(strapiFetch).toHaveBeenCalledWith(
+      "/tasks/task-1",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({
+          data: { active: true, reasonForDeactivation: reason },
+        }),
+      }),
+    );
+  });
+
   it("lookupTemplateNameByCode returns template name by code", async () => {
     mockStrapiFetch({
       "GET /template-tasks": { data: [{ name: "Modelo A" }] },

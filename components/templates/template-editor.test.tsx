@@ -13,6 +13,10 @@ vi.mock("@/app/(app)/templates/actions", () => ({
   loadTemplateFromLegacy: (...args: unknown[]) => loadTemplateFromLegacy(...args),
 }));
 
+vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
+  searchSubTaskPresets: vi.fn(async () => []),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
@@ -38,6 +42,20 @@ const initialSubtasks: TemplateSubTaskRow[] = [
 ];
 
 describe("TemplateEditor", () => {
+  it("shows a single floating save button", () => {
+    renderWithIntl(
+      <TemplateEditor
+        documentId="tpl-1"
+        template={{ name: "Modelo A", code: "100" }}
+        initialSubtasks={initialSubtasks}
+      />,
+    );
+
+    const saveButtons = screen.getAllByRole("button", { name: "Salvar" });
+    expect(saveButtons).toHaveLength(1);
+    expect(saveButtons[0]).toHaveAttribute("form", "template-detail-form");
+  });
+
   it("persists metadata and subtasks when save is clicked", async () => {
     const user = userEvent.setup();
     updateTemplate.mockResolvedValue(undefined);

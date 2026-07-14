@@ -38,6 +38,7 @@ export interface BoardActionsProps {
   createSubtask: (
     taskDocumentId: string,
     values: SubTaskFormInput,
+    options?: { addToTemplate?: boolean },
   ) => Promise<void>;
 }
 
@@ -183,7 +184,10 @@ export function BoardActions({
     })();
   }
 
-  function handleCreateSubtask(values: SubTaskFormInput): void {
+  function handleCreateSubtask(
+    values: SubTaskFormInput,
+    options: { addToTemplate: boolean },
+  ): void {
     if (!selectedTask) return;
 
     const taskDocumentId = selectedTask.documentId;
@@ -191,7 +195,7 @@ export function BoardActions({
 
     void (async () => {
       try {
-        await createSubtask(taskDocumentId, values);
+        await createSubtask(taskDocumentId, values, options);
         await refreshSubtasksList(taskDocumentId, { keepDraftAssignees: true });
         setCreateOpen(false);
       } finally {

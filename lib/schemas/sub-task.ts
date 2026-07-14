@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { refineDeactivationReason } from "./deactivation-reason";
+
 export const SUB_TASK_STATUSES = [
   "waiting",
   "producing",
@@ -10,11 +12,6 @@ export const SUB_TASK_STATUSES = [
 export const SHARING_TYPES = ["qty", "duration"] as const;
 
 export const ACTIVATION_STATUSES = ["locked", "unlocked", "disabled"] as const;
-
-export const REASON_FOR_DISABLING_MIN_LENGTH = 10;
-
-export const REASON_FOR_DISABLING_MIN_LENGTH_KEY =
-  "reasonForDisablingMinLength";
 
 const subTaskFormBaseSchema = z.object({
   name: z.string().min(1),
@@ -32,15 +29,9 @@ const subTaskFormBaseSchema = z.object({
 export const subTaskFormSchema = subTaskFormBaseSchema.superRefine(
   (data, ctx) => {
     if (data.activationStatus !== "disabled") return;
-
-    const reason = data.reasonForDisabling?.trim() ?? "";
-    if (reason.length < REASON_FOR_DISABLING_MIN_LENGTH) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: REASON_FOR_DISABLING_MIN_LENGTH_KEY,
-        path: ["reasonForDisabling"],
-      });
-    }
+    refineDeactivationReason(data.reasonForDisabling, ctx, [
+      "reasonForDisabling",
+    ]);
   },
 );
 

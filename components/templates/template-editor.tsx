@@ -26,6 +26,8 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 import { TemplateSubTaskManager } from "./template-subtask-manager";
 
+const TEMPLATE_DETAIL_FORM_ID = "template-detail-form";
+
 export interface TemplateEditorProps {
   documentId: string;
   template: Pick<TemplateTaskFormInput, "name" | "code">;
@@ -96,8 +98,9 @@ export function TemplateEditor({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-24">
       <form
+        id={TEMPLATE_DETAIL_FORM_ID}
         onSubmit={handleSubmit(handleSave)}
         className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2"
       >
@@ -130,12 +133,6 @@ export function TemplateEditor({
             <p className="text-sm text-destructive">{errors.code.message}</p>
           ) : null}
         </div>
-
-        <div className="sm:col-span-2">
-          <Button type="submit" disabled={isPending}>
-            {tCommon("save")}
-          </Button>
-        </div>
       </form>
 
       <TemplateSubTaskManager
@@ -143,6 +140,18 @@ export function TemplateEditor({
         onSubtasksChange={setSubtasks}
         disabled={isPending}
       />
+
+      <div className="fixed right-6 bottom-6 z-50">
+        <Button
+          type="submit"
+          form={TEMPLATE_DETAIL_FORM_ID}
+          size="lg"
+          className="shadow-lg"
+          disabled={isPending}
+        >
+          {tCommon("save")}
+        </Button>
+      </div>
     </div>
   );
 }

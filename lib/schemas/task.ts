@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { refineDeactivationReason } from "./deactivation-reason";
+
 export const TASK_STATUSES = [
   "waiting",
   "producing",
@@ -17,3 +19,15 @@ export const taskFormSchema = z.object({
 });
 
 export type TaskFormInput = z.infer<typeof taskFormSchema>;
+
+export const taskDeactivationSchema = z
+  .object({
+    reasonForDeactivation: z.string(),
+  })
+  .superRefine((data, ctx) => {
+    refineDeactivationReason(data.reasonForDeactivation, ctx, [
+      "reasonForDeactivation",
+    ]);
+  });
+
+export type TaskDeactivationInput = z.infer<typeof taskDeactivationSchema>;

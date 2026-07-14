@@ -2,9 +2,17 @@
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
-import { canDeleteTasks, canManageTasks } from "@/lib/auth/permissions";
+import {
+  canDeactivateTasks,
+  canDeleteTasks,
+  canManageTasks,
+} from "@/lib/auth/permissions";
 import { getNextTaskIndex } from "@/lib/business/task-order";
-import { taskFormSchema, type TaskFormInput } from "@/lib/schemas/task";
+import {
+  taskDeactivationSchema,
+  taskFormSchema,
+  type TaskFormInput,
+} from "@/lib/schemas/task";
 import { strapiFetch } from "@/lib/strapi";
 import { LIST_CACHE_CONTRACT } from "@/lib/strapi/list-cache-contract";
 import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
@@ -16,6 +24,13 @@ interface StrapiList<T> {
 async function assertCanManage(): Promise<void> {
   const session = await auth();
   if (!canManageTasks(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+}
+
+async function assertCanDeactivate(): Promise<void> {
+  const session = await auth();
+  if (!canDeactivateTasks(session?.user?.role as Role | undefined)) {
     throw new Error("forbidden");
   }
 }
@@ -89,14 +104,42 @@ export async function updateTask(
   invalidateTasks(documentId);
 }
 
-export async function deactivateTask(documentId: string): Promise<void> {
-  await assertCanManage();
+export async function deactivateTask(
+  documentId: string,
+  reasonForDeactivation: string,
+): Promise<void> {
+  await assertCanDeactivate();
+  const parsed = taskDeactivationSchema.parse({ reasonForDeactivation });
   await strapiFetch(`/tasks/${documentId}`, {
     method: "PUT",
     strapiCache: { noStore: true },
-    body: JSON.stringify({ data: { active: false } }),
+    body: JSON.stringify({
+      data: {
+        active: false,
+        reasonForDeactivation: parsed.reasonForDeactivation.trim(),
+      },
+    }),
   });
-  invalidateTasks();
+  invalidateTasks(documentId);
+}
+
+export async function reactivateTask(
+  documentId: string,
+  reasonForDeactivation: string,
+): Promise<void> {
+  await assertCanDeactivate();
+  const parsed = taskDeactivationSchema.parse({ reasonForDeactivation });
+  await strapiFetch(`/tasks/${documentId}`, {
+    method: "PUT",
+    strapiCache: { noStore: true },
+    body: JSON.stringify({
+      data: {
+        active: true,
+        reasonForDeactivation: parsed.reasonForDeactivation.trim(),
+      },
+    }),
+  });
+  invalidateTasks(documentId);
 }
 
 export async function lookupTemplateNameByCode(

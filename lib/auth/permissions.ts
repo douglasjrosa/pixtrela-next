@@ -30,7 +30,12 @@ export function canManageSteps(role: Role | undefined): boolean {
   return isAtLeast(role, "leader");
 }
 
-/** Hard delete tasks: admin only (others may deactivate). */
+/** Soft-deactivate (archive) tasks: manager and admin. */
+export function canDeactivateTasks(role: Role | undefined): boolean {
+  return isAtLeast(role, "manager");
+}
+
+/** Hard delete tasks: admin only. */
 export function canDeleteTasks(role: Role | undefined): boolean {
   return role === "admin";
 }

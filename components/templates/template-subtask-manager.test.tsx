@@ -5,6 +5,10 @@ import userEvent from "@testing-library/user-event";
 import { renderWithIntl } from "@/test/test-utils";
 import type { TemplateSubTaskRow } from "@/lib/business/template-subtask-map";
 
+vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
+  searchSubTaskPresets: vi.fn(async () => []),
+}));
+
 import {
   resolveTemplateSubTaskReorder,
   TemplateSubTaskManager,

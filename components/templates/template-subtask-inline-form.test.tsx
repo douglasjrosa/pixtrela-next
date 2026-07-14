@@ -4,6 +4,10 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
 
+vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
+  searchSubTaskPresets: vi.fn(async () => []),
+}));
+
 import { TemplateSubTaskInlineForm } from "./template-subtask-inline-form";
 
 const defaultValues = {

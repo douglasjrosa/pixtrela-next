@@ -4,6 +4,7 @@ export const STRAPI_TAGS = {
   tasks: "strapi:tasks",
   subTasks: "strapi:sub-tasks",
   templateTasks: "strapi:template-tasks",
+  subTaskPresets: "strapi:sub-task-presets",
   activities: "strapi:activities",
   currencies: "strapi:currencies",
   kioskSetting: "strapi:kiosk-setting",
