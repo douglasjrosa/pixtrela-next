@@ -139,4 +139,24 @@ describe("SubTaskAssigneePicker", () => {
     );
     expect(onChange).toHaveBeenCalledWith(["u3"]);
   });
+
+  it("renders compact rows variant without TODOS control", () => {
+    renderWithIntl(
+      <SubTaskAssigneePicker
+        id="assignees-rows"
+        teams={teams}
+        value={["u1"]}
+        variant="rows"
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Equipe Norte")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remover Maria" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Marcar ou desmarcar todos os colaboradores",
+      }),
+    ).not.toBeInTheDocument();
+  });
 });

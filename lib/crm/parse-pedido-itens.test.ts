@@ -29,7 +29,7 @@ describe("parsePedidoItens", () => {
     ]);
   });
 
-  it("skips rows without prodId or nomeProd", () => {
+  it("skips rows without prodId or a product name", () => {
     expect(
       parsePedidoItens([
         { Qtd: 1, prodId: 0, nomeProd: "Bad" },
@@ -37,6 +37,19 @@ describe("parsePedidoItens", () => {
         { Qtd: 1, prodId: 3, nomeProd: "Ok" },
       ]),
     ).toEqual([{ qty: 1, prodId: 3, nomeProd: "Ok" }]);
+  });
+
+  it("falls back to titulo when nomeProd is empty", () => {
+    expect(
+      parsePedidoItens([
+        {
+          Qtd: 1,
+          prodId: "16238",
+          nomeProd: "",
+          titulo: "Caixa Estruturada",
+        },
+      ]),
+    ).toEqual([{ qty: 1, prodId: 16238, nomeProd: "Caixa Estruturada" }]);
   });
 
   it("returns empty array for null, empty or invalid JSON", () => {

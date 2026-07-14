@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
@@ -40,7 +40,7 @@ export function TaskAutomationForm({
   const [isPending, startTransition] = useTransition();
 
   const { register, handleSubmit } = useForm<TaskAutomationFormInput>({
-    resolver: zodResolver(taskAutomationFormSchema),
+    resolver: zodResolver(taskAutomationFormSchema) as Resolver<TaskAutomationFormInput>,
     defaultValues,
   });
 

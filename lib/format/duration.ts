@@ -58,7 +58,7 @@ export function formatDurationHms(
     return t("hoursMinutesSeconds", { hours, minutes, seconds });
   }
   if (minutes > 0) {
-    return t("minutesSeconds", { minutes, seconds });
+    return t("minutesSeconds", { hours: 0, minutes, seconds });
   }
   return t("secondsOnly", { hours: 0, minutes: 0, seconds });
 }

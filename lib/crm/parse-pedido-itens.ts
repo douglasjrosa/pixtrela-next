@@ -29,7 +29,8 @@ function normalizeRawItem(raw: unknown): CrmPedidoItem | null {
   if (prodId == null) return null;
 
   const qty = toPositiveInt(record.Qtd) ?? 1;
-  const nomeProd = toNonEmptyString(record.nomeProd);
+  const nomeProd =
+    toNonEmptyString(record.nomeProd) || toNonEmptyString(record.titulo);
   if (!nomeProd) return null;
 
   return { qty, prodId, nomeProd };

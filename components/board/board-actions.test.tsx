@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const refresh = vi.fn();
@@ -82,7 +82,8 @@ describe("BoardActions", () => {
     await user.click(screen.getByText("Tarefa A"));
 
     expect(loadSubtasks).toHaveBeenCalledWith("task-10");
-    expect(await screen.findByRole("button", { name: /Soldar/ })).toBeInTheDocument();
+    expect(await screen.findByText("Soldar")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Atribuir Ana" })).toBeInTheDocument();
   });
 
   it("resolves same-column reorder updates", () => {
@@ -101,14 +102,19 @@ describe("BoardActions", () => {
     expect(result.type).toBe("updates");
   });
 
-  it("closes assign modal after save and does not reopen it", async () => {
+  it("keeps assignee toggles local until save is clicked", async () => {
     const user = userEvent.setup();
     const loadSubtasks = vi.fn().mockResolvedValue([
       { documentId: "st-1", name: "Soldar", status: "waiting" as const, assignedTo: [] },
     ]);
     const updateSubtaskAssignees = vi.fn().mockImplementation(async () => {
       loadSubtasks.mockResolvedValue([
-        { documentId: "st-1", name: "Soldar", status: "producing" as const, assignedTo: [{ documentId: "u-1", name: "Ana" }] },
+        {
+          documentId: "st-1",
+          name: "Soldar",
+          status: "waiting" as const,
+          assignedTo: [{ documentId: "u-1", name: "Ana" }],
+        },
       ]);
     });
 
@@ -125,18 +131,17 @@ describe("BoardActions", () => {
     );
 
     await user.click(screen.getByText("Tarefa A"));
-    await user.click(await screen.findByRole("button", { name: /Soldar/ }));
-    expect(screen.getByRole("heading", { name: "Atribuir colaboradores" })).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Atribuir Ana" }));
 
-    await user.click(screen.getByRole("button", { name: "Atribuir Ana" }));
+    expect(updateSubtaskAssignees).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Remover Ana" })).toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     await vi.waitFor(() => {
       expect(updateSubtaskAssignees).toHaveBeenCalledWith("st-1", "task-10", ["u-1"]);
     });
-    expect(
-      screen.queryByRole("heading", { name: "Atribuir colaboradores" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tarefa A" })).toBeInTheDocument();
   });
 
   it("opens create modal, saves subtask, and keeps subtasks modal open", async () => {
@@ -168,8 +173,12 @@ describe("BoardActions", () => {
     await user.click(await screen.findByRole("button", { name: "Adicionar subtarefa" }));
     expect(screen.getByRole("heading", { name: "Nova subtarefa" })).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText("Nome"), "Cortar");
-    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    const createDialog = screen.getByRole("heading", { name: "Nova subtarefa" })
+      .closest('[role="dialog"]');
+    expect(createDialog).toBeTruthy();
+
+    await user.type(within(createDialog as HTMLElement).getByLabelText("Nome"), "Cortar");
+    await user.click(within(createDialog as HTMLElement).getByRole("button", { name: "Salvar" }));
 
     await vi.waitFor(() => {
       expect(createSubtask).toHaveBeenCalledWith(
@@ -181,6 +190,6 @@ describe("BoardActions", () => {
       screen.queryByRole("heading", { name: "Nova subtarefa" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Tarefa A" })).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: /Cortar/ })).toBeInTheDocument();
+    expect(await screen.findByText("Cortar")).toBeInTheDocument();
   });
 });

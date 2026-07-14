@@ -27,7 +27,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const result = await processCrmPedidoWebhook(rawBody, signature, secret);
 
   if (result.revalidateTasks) {
-    revalidateTag(STRAPI_TAGS.tasks);
+    revalidateTag(STRAPI_TAGS.tasks, "default");
   }
 
   return NextResponse.json(result.body, { status: result.status });

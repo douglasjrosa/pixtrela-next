@@ -3,18 +3,26 @@
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { SubTaskAssigneePicker } from "@/components/subtasks/subtask-assignee-picker";
+import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import { Button } from "@/components/ui/button";
 import { CardBadge } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 import type { BoardSubTaskSummary } from "./types";
 
 export interface KanbanTaskSubtasksModalProps {
   open: boolean;
   taskName: string;
   subtasks: BoardSubTaskSummary[];
+  teams: TeamAssignmentOption[];
   loading: boolean;
+  dirty: boolean;
+  saving: boolean;
   onClose: () => void;
-  onSelect: (subtask: BoardSubTaskSummary) => void;
+  onAssigneesChange: (
+    subtask: BoardSubTaskSummary,
+    assignedToIds: string[],
+  ) => void;
+  onSave: () => void;
   onAddSubtask?: () => void;
 }
 
@@ -22,14 +30,19 @@ export function KanbanTaskSubtasksModal({
   open,
   taskName,
   subtasks,
+  teams,
   loading,
+  dirty,
+  saving,
   onClose,
-  onSelect,
+  onAssigneesChange,
+  onSave,
   onAddSubtask,
 }: KanbanTaskSubtasksModalProps) {
   const tCommon = useTranslations("common");
   const tKanban = useTranslations("kanban");
   const tStatus = useTranslations("tasks.status");
+  const tSubtasks = useTranslations("subtasks");
 
   if (!open) return null;
 
@@ -43,7 +56,7 @@ export function KanbanTaskSubtasksModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="kanban-subtasks-title"
-        className="relative w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg"
+        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg border bg-background p-6 shadow-lg"
         onClick={(event) => event.stopPropagation()}
       >
         <Button
@@ -57,7 +70,7 @@ export function KanbanTaskSubtasksModal({
           <X className="size-4" aria-hidden />
         </Button>
 
-        <div className="space-y-4">
+        <div className="flex min-h-0 flex-1 flex-col space-y-4">
           <h2
             id="kanban-subtasks-title"
             className="pr-8 text-lg font-semibold"
@@ -74,47 +87,57 @@ export function KanbanTaskSubtasksModal({
               {tKanban("subtasksEmpty")}
             </p>
           ) : (
-            <ul className="flex max-h-64 flex-col gap-2 overflow-y-auto">
-              {subtasks.map((subtask) => (
-                <li key={subtask.documentId}>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      "h-auto w-full flex-col items-start gap-1.5 py-2.5",
-                      "whitespace-normal",
-                    )}
-                    onClick={() => onSelect(subtask)}
+            <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
+              {subtasks.map((subtask) => {
+                const assignedIds = subtask.assignedTo.map(
+                  (assignee) => assignee.documentId,
+                );
+
+                return (
+                  <li
+                    key={subtask.documentId}
+                    className="rounded-lg border bg-background p-3"
                   >
-                    <span className="flex w-full items-start justify-between gap-2">
-                      <span className="font-medium text-left">{subtask.name}</span>
-                      <CardBadge className="shrink-0">{tStatus(subtask.status)}</CardBadge>
-                    </span>
-                    {subtask.assignedTo.length > 0 ? (
-                      <span className="flex flex-wrap gap-1">
-                        {subtask.assignedTo.map((assignee) => (
-                          <CardBadge
-                            key={assignee.documentId}
-                            className="border-primary bg-primary text-primary-foreground"
-                          >
-                            {assignee.name}
-                          </CardBadge>
-                        ))}
-                      </span>
-                    ) : null}
-                  </Button>
-                </li>
-              ))}
+                    <div className="mb-3 flex items-start justify-between gap-2">
+                      <span className="font-medium">{subtask.name}</span>
+                      <CardBadge className="shrink-0">
+                        {tStatus(subtask.status)}
+                      </CardBadge>
+                    </div>
+                    <SubTaskAssigneePicker
+                      id={`kanban-subtask-assignees-${subtask.documentId}`}
+                      label={tSubtasks("assignedTo")}
+                      teams={teams}
+                      value={assignedIds}
+                      variant="rows"
+                      disabled={saving}
+                      onChange={(nextIds) => onAssigneesChange(subtask, nextIds)}
+                    />
+                  </li>
+                );
+              })}
             </ul>
           )}
 
-          {onAddSubtask ? (
-            <div className="flex justify-end">
-              <Button type="button" onClick={onAddSubtask}>
+          <div className="flex shrink-0 justify-end gap-2">
+            {onAddSubtask ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={saving}
+                onClick={onAddSubtask}
+              >
                 {tKanban("addSubtask")}
               </Button>
-            </div>
-          ) : null}
+            ) : null}
+            <Button
+              type="button"
+              disabled={!dirty || saving}
+              onClick={onSave}
+            >
+              {tCommon("save")}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
