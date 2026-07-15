@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export function SubTaskRemoveButton({
       disabled={disabled}
       aria-label={tSubtasks("removeSubtask")}
     >
-      <X className="size-4" aria-hidden />
+      <Trash2 className="size-4" aria-hidden />
     </Button>
   );
 }

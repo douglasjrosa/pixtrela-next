@@ -1,14 +1,21 @@
+import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { NextIntlClientProvider } from "next-intl";
 
+import messages from "@/messages/pt-BR.json";
 import { renderWithIntl } from "@/test/test-utils";
 
 vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
   searchSubTaskPresets: vi.fn(async () => []),
 }));
 
-import { resolveSubTaskReorder, SubTaskManager } from "./subtask-manager";
+import {
+  resolveSubTaskReorder,
+  SubTaskManager,
+  type SubTaskManagerHandle,
+} from "./subtask-manager";
 
 const teams = [
   {
@@ -111,6 +118,27 @@ describe("SubTaskManager", () => {
     expect(screen.queryByLabelText("Ordem")).not.toBeInTheDocument();
   });
 
+  it("does not show clone or remove buttons on table rows", () => {
+    renderWithIntl(
+      <SubTaskManager
+        subtasks={subtasks}
+        taskQty={1}
+        teams={teams}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    const table = screen.getByRole("table");
+    expect(
+      within(table).queryByRole("button", { name: "Clonar subtarefa" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(table).queryByRole("button", { name: "Remover subtarefa" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("opens the subtask form modal when clicking a row", async () => {
     const user = userEvent.setup();
 
@@ -131,6 +159,12 @@ describe("SubTaskManager", () => {
     expect(dialog).toBeInTheDocument();
     expect(
       within(dialog).getByRole("heading", { name: "Editar" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Clonar subtarefa" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Remover subtarefa" }),
     ).toBeInTheDocument();
     expect(
       within(dialog).queryByLabelText("Atribuído a"),
@@ -158,6 +192,12 @@ describe("SubTaskManager", () => {
     expect(
       within(dialog).getByRole("heading", { name: "Nova subtarefa" }),
     ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("button", { name: "Clonar subtarefa" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("button", { name: "Remover subtarefa" }),
+    ).not.toBeInTheDocument();
     expect(
       within(dialog).queryByLabelText("Atribuído a"),
     ).not.toBeInTheDocument();
@@ -205,31 +245,41 @@ describe("SubTaskManager", () => {
     expect(screen.getByText("20")).toBeInTheDocument();
   });
 
-  it("inserts a local draft clone after the source row", async () => {
+  it("inserts a local draft clone after the source row from the modal", async () => {
     const user = userEvent.setup();
+    const onCreate = vi.fn();
+    const managerRef = createRef<SubTaskManagerHandle>();
 
     renderWithIntl(
       <SubTaskManager
+        ref={managerRef}
         subtasks={subtasks}
         taskQty={1}
         teams={teams}
-        onCreate={vi.fn()}
+        onCreate={onCreate}
         onUpdate={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
 
+    await user.click(screen.getByText("Pintar"));
     await user.click(
-      screen.getAllByRole("button", { name: "Clonar subtarefa" })[1],
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Clonar subtarefa",
+      }),
     );
 
     expect(screen.getByText("Pintar - CÓPIA")).toBeInTheDocument();
+    expect(onCreate).not.toHaveBeenCalled();
 
     const dialog = screen.getByRole("dialog");
     expect(
       within(dialog).getByRole("heading", { name: "Nova subtarefa" }),
     ).toBeInTheDocument();
     expect(within(dialog).getByDisplayValue("Pintar - CÓPIA")).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Clonar subtarefa" }),
+    ).toBeInTheDocument();
 
     const table = screen.getByRole("table");
     const bodyRows = within(table).getAllByRole("row").slice(1);
@@ -239,9 +289,180 @@ describe("SubTaskManager", () => {
     expect(
       within(bodyRows[2] as HTMLElement).getByText("Pintar - CÓPIA"),
     ).toBeInTheDocument();
+
+    await managerRef.current?.flushChanges();
+    expect(onCreate).toHaveBeenCalledTimes(1);
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Pintar - CÓPIA" }),
+      expect.objectContaining({ insertAtIndex: expect.any(Number) }),
+    );
   });
 
-  it("clones a draft copy to create a copy of the copy", async () => {
+  it("creates a clone draft exactly once even if flushChanges runs twice", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn();
+    const managerRef = createRef<SubTaskManagerHandle>();
+
+    renderWithIntl(
+      <SubTaskManager
+        ref={managerRef}
+        subtasks={subtasks}
+        taskQty={1}
+        teams={teams}
+        onCreate={onCreate}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByText("Pintar"));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Clonar subtarefa",
+      }),
+    );
+
+    await managerRef.current?.flushChanges();
+    await managerRef.current?.flushChanges();
+
+    expect(onCreate).toHaveBeenCalledTimes(1);
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Pintar - CÓPIA" }),
+      expect.objectContaining({ insertAtIndex: expect.any(Number) }),
+    );
+  });
+
+  it("does not remount a flushed clone draft when server props refresh", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn();
+    const managerRef = createRef<SubTaskManagerHandle>();
+    const persistedClone = {
+      ...subtasks[1],
+      documentId: "st-clone-1",
+      name: "Pintar - CÓPIA",
+      index: 2,
+      timeSpent: 0,
+    };
+    const afterSaveSubtasks = [
+      subtasks[0],
+      subtasks[1],
+      persistedClone,
+    ];
+
+    const view = renderWithIntl(
+      <SubTaskManager
+        ref={managerRef}
+        subtasks={subtasks}
+        taskQty={1}
+        teams={teams}
+        onCreate={onCreate}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByText("Pintar"));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Clonar subtarefa",
+      }),
+    );
+
+    await managerRef.current?.flushChanges();
+    expect(onCreate).toHaveBeenCalledTimes(1);
+
+    view.rerender(
+      <NextIntlClientProvider locale="pt-BR" messages={messages}>
+        <SubTaskManager
+          ref={managerRef}
+          subtasks={afterSaveSubtasks}
+          taskQty={1}
+          teams={teams}
+          onCreate={onCreate}
+          onUpdate={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      </NextIntlClientProvider>,
+    );
+
+    expect(screen.getAllByText("Pintar - CÓPIA")).toHaveLength(1);
+
+    await managerRef.current?.flushChanges();
+    expect(onCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("removes a persisted subtask locally and deletes only on flushChanges", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn();
+    const onDelete = vi.fn();
+    const managerRef = createRef<SubTaskManagerHandle>();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    renderWithIntl(
+      <SubTaskManager
+        ref={managerRef}
+        subtasks={subtasks}
+        taskQty={1}
+        teams={teams}
+        onCreate={onCreate}
+        onUpdate={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    await user.click(screen.getByText("Soldar"));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Remover subtarefa",
+      }),
+    );
+
+    expect(window.confirm).toHaveBeenCalled();
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByText("Soldar")).not.toBeInTheDocument();
+    expect(screen.getByText("Pintar")).toBeInTheDocument();
+
+    await managerRef.current?.flushChanges();
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onDelete).toHaveBeenCalledWith("st1");
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
+  it("does not call onDelete when removing a draft clone", async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    const managerRef = createRef<SubTaskManagerHandle>();
+
+    renderWithIntl(
+      <SubTaskManager
+        ref={managerRef}
+        subtasks={subtasks}
+        taskQty={1}
+        teams={teams}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    await user.click(screen.getByText("Pintar"));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Clonar subtarefa",
+      }),
+    );
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Remover subtarefa",
+      }),
+    );
+
+    await managerRef.current?.flushChanges();
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it("clones a draft copy to create a copy of the copy from the modal", async () => {
     const user = userEvent.setup();
 
     renderWithIntl(
@@ -255,13 +476,51 @@ describe("SubTaskManager", () => {
       />,
     );
 
-    const cloneButtons = () =>
-      screen.getAllByRole("button", { name: "Clonar subtarefa" });
-
-    await user.click(cloneButtons()[1]);
-    await user.click(cloneButtons()[2]);
+    await user.click(screen.getByText("Pintar"));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Clonar subtarefa",
+      }),
+    );
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Clonar subtarefa",
+      }),
+    );
 
     expect(screen.getByDisplayValue("Pintar - CÓPIA - CÓPIA")).toBeInTheDocument();
+  });
+
+  it("closes the modal after removing a draft clone", async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <SubTaskManager
+        subtasks={subtasks}
+        taskQty={1}
+        teams={teams}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByText("Pintar"));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Clonar subtarefa",
+      }),
+    );
+    expect(screen.getByDisplayValue("Pintar - CÓPIA")).toBeInTheDocument();
+
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Remover subtarefa",
+      }),
+    );
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByText("Pintar - CÓPIA")).not.toBeInTheDocument();
   });
 
   it("does not show save button inside the subtask form modal", async () => {
@@ -307,6 +566,28 @@ describe("SubTaskManager", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("closes the form modal when clicking the OK button", async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <SubTaskManager
+        subtasks={subtasks}
+        taskQty={1}
+        teams={teams}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByText("Soldar"));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

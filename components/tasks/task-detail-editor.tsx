@@ -82,10 +82,13 @@ export function TaskDetailEditor({
   const tManage = useTranslations("tasks.manage");
   const router = useRouter();
   const subtaskManagerRef = useRef<SubTaskManagerHandle>(null);
+  const saveInFlightRef = useRef(false);
   const [isPending, startTransition] = useTransition();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   function handleSubmit(values: TaskFormInput): void {
+    if (saveInFlightRef.current || isPending) return;
+    saveInFlightRef.current = true;
     startTransition(async () => {
       try {
         await updateTask(task.documentId, values);
@@ -95,6 +98,8 @@ export function TaskDetailEditor({
       } catch (error) {
         rethrowIfNavigationError(error);
         showErrorToast(tManage("error"));
+      } finally {
+        saveInFlightRef.current = false;
       }
     });
   }

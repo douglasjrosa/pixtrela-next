@@ -5,8 +5,8 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useRef,
   useState,
-  useTransition,
 } from "react";
 
 import {
@@ -43,10 +43,8 @@ import { normalizeSubTaskCreateValues } from "@/lib/business/subtask-create-fiel
 import { calculateSubTaskDisplayQty } from "@/lib/business/subtask-display-qty";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
-import { SubTaskCloneButton } from "./subtask-clone-button";
 import { SubTaskFormModal } from "./subtask-form-modal";
 import { SubTaskInlineForm } from "./subtask-inline-form";
-import { SubTaskRemoveButton } from "./subtask-remove-button";
 import type { SubTaskDependencyOption } from "./subtask-dependencies-modal";
 
 export interface UserOption {
@@ -209,8 +207,6 @@ interface SortableSubTaskRowProps {
   openLabel: string;
   disabled: boolean;
   onOpen: (documentId: string) => void;
-  onClone: (documentId: string) => void;
-  onRemove: (documentId: string) => void;
 }
 
 function SortableSubTaskRow({
@@ -221,8 +217,6 @@ function SortableSubTaskRow({
   openLabel,
   disabled,
   onOpen,
-  onClone,
-  onRemove,
 }: SortableSubTaskRowProps) {
   const {
     attributes,
@@ -278,18 +272,6 @@ function SortableSubTaskRow({
         <Duration seconds={subtask.timeSpent} />
       </td>
       <td>{statusLabel}</td>
-      <td className="w-20 py-2 text-right">
-        <div className="flex justify-end">
-          <SubTaskCloneButton
-            onClick={() => onClone(subtask.documentId)}
-            disabled={disabled}
-          />
-          <SubTaskRemoveButton
-            onClick={() => onRemove(subtask.documentId)}
-            disabled={disabled}
-          />
-        </div>
-      </td>
     </tr>
   );
 }
@@ -313,10 +295,14 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
     const tTasks = useTranslations("tasks");
     const tStatus = useTranslations("tasks.status");
     const [orderedSubtasks, setOrderedSubtasks] = useState(subtasks);
+    const [removedDocumentIds, setRemovedDocumentIds] = useState<string[]>([]);
+    const removedDocumentIdsRef = useRef(removedDocumentIds);
+    removedDocumentIdsRef.current = removedDocumentIds;
+    const flushInFlightRef = useRef(false);
+    const persistedDraftIdsRef = useRef(new Set<string>());
     const [editingKey, setEditingKey] = useState<string | null>(null);
     const [newSubtaskDraft, setNewSubtaskDraft] =
       useState<SubTaskFormInput>(EMPTY_FORM);
-    const [isPending, startTransition] = useTransition();
     const [message, setMessage] = useState<string | null>(null);
 
     const sensors = useSensors(
@@ -328,12 +314,20 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
 
     useEffect(() => {
       setOrderedSubtasks((current) => {
-        const drafts = current.filter((item) => item.isDraft);
-        return mergeServerSubtasksWithDrafts(subtasks, drafts);
+        const drafts = current.filter(
+          (item) =>
+            item.isDraft &&
+            !persistedDraftIdsRef.current.has(item.documentId),
+        );
+        const merged = mergeServerSubtasksWithDrafts(subtasks, drafts);
+        const removed = new Set(removedDocumentIdsRef.current);
+        return applySequentialSubTaskIndices(
+          merged.filter((item) => !removed.has(item.documentId)),
+        );
       });
     }, [subtasks]);
 
-    const isBusy = disabled || isPending;
+    const isBusy = disabled;
 
     function closeModal(): void {
       if (editingKey === NEW_SUBTASK_KEY) {
@@ -380,51 +374,93 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
     );
 
     const flushChanges = useCallback(async (): Promise<void> => {
-      const persistedIds = orderedSubtasks
-        .filter(
-          (row) => !row.isDraft && !isDraftSubTaskId(row.documentId),
-        )
-        .map((row) => row.documentId);
-      const serverOrder = subtasks.map((row) => row.documentId);
+      if (flushInFlightRef.current) return;
+      flushInFlightRef.current = true;
 
-      if (
-        onReorder &&
-        JSON.stringify(persistedIds) !== JSON.stringify(serverOrder)
-      ) {
-        await onReorder(persistedIds);
-      }
+      try {
+        const idsToDelete = [...removedDocumentIds];
+        for (const documentId of idsToDelete) {
+          await onDelete(documentId);
+        }
+        if (idsToDelete.length > 0) {
+          setRemovedDocumentIds([]);
+        }
 
-      for (const row of orderedSubtasks) {
-        const values = subTaskToFormValues(row);
-        if (row.isDraft || isDraftSubTaskId(row.documentId)) {
-          await onCreate(
-            applyAutomaticCreateFields(values, orderedSubtasks),
-            { insertAtIndex: row.index },
+        const persistedIds = orderedSubtasks
+          .filter(
+            (row) => !row.isDraft && !isDraftSubTaskId(row.documentId),
+          )
+          .map((row) => row.documentId);
+        const serverOrder = subtasks
+          .map((row) => row.documentId)
+          .filter((documentId) => !idsToDelete.includes(documentId));
+
+        if (
+          onReorder &&
+          JSON.stringify(persistedIds) !== JSON.stringify(serverOrder)
+        ) {
+          await onReorder(persistedIds);
+        }
+
+        const flushedDraftIds: string[] = [];
+        for (const row of orderedSubtasks) {
+          const values = subTaskToFormValues(row);
+          const isDraftRow =
+            row.isDraft === true || isDraftSubTaskId(row.documentId);
+          if (isDraftRow) {
+            if (persistedDraftIdsRef.current.has(row.documentId)) {
+              flushedDraftIds.push(row.documentId);
+              continue;
+            }
+            await onCreate(
+              applyAutomaticCreateFields(values, orderedSubtasks),
+              { insertAtIndex: row.index },
+            );
+            persistedDraftIdsRef.current.add(row.documentId);
+            flushedDraftIds.push(row.documentId);
+            continue;
+          }
+
+          const original = subtasks.find(
+            (item) => item.documentId === row.documentId,
           );
-          continue;
+          if (!original) continue;
+
+          if (!subTaskFormValuesEqual(values, subTaskToFormValues(original))) {
+            await onUpdate(row.documentId, values);
+          }
         }
 
-        const original = subtasks.find((item) => item.documentId === row.documentId);
-        if (!original) continue;
-
-        if (!subTaskFormValuesEqual(values, subTaskToFormValues(original))) {
-          await onUpdate(row.documentId, values);
+        if (flushedDraftIds.length > 0) {
+          const flushed = new Set(flushedDraftIds);
+          setOrderedSubtasks((current) =>
+            applySequentialSubTaskIndices(
+              current.filter((row) => !flushed.has(row.documentId)),
+            ),
+          );
+          if (editingKey != null && flushed.has(editingKey)) {
+            setEditingKey(null);
+          }
         }
-      }
 
-      if (editingKey === NEW_SUBTASK_KEY && newSubtaskDraft.name.trim()) {
-        await onCreate(
-          applyAutomaticCreateFields(newSubtaskDraft, orderedSubtasks),
-        );
-        setNewSubtaskDraft(EMPTY_FORM);
-        setEditingKey(null);
+        if (editingKey === NEW_SUBTASK_KEY && newSubtaskDraft.name.trim()) {
+          await onCreate(
+            applyAutomaticCreateFields(newSubtaskDraft, orderedSubtasks),
+          );
+          setNewSubtaskDraft(EMPTY_FORM);
+          setEditingKey(null);
+        }
+      } finally {
+        flushInFlightRef.current = false;
       }
     }, [
       orderedSubtasks,
+      removedDocumentIds,
       subtasks,
       onCreate,
       onUpdate,
       onReorder,
+      onDelete,
       editingKey,
       newSubtaskDraft,
     ]);
@@ -460,13 +496,18 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
 
       if (!window.confirm(tSubtasks("removeSubtaskConfirm"))) return;
 
-      startTransition(async () => {
-        await onDelete(documentId);
-        setMessage(tSubtasks("removed"));
-        if (editingKey === documentId) {
-          setEditingKey(null);
-        }
-      });
+      setRemovedDocumentIds((current) =>
+        current.includes(documentId) ? current : [...current, documentId],
+      );
+      setOrderedSubtasks((current) =>
+        applySequentialSubTaskIndices(
+          current.filter((item) => item.documentId !== documentId),
+        ),
+      );
+      setMessage(tSubtasks("removed"));
+      if (editingKey === documentId) {
+        setEditingKey(null);
+      }
     }
 
     function handleDragEnd(event: DragEndEvent): void {
@@ -524,7 +565,6 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
                 <th>{tSubtasks("expectedTime")}</th>
                 <th>{tSubtasks("timeSpent")}</th>
                 <th>{tTasks("manage.status")}</th>
-                <th className="w-20 py-2" aria-hidden />
               </tr>
             </thead>
             <tbody>
@@ -542,8 +582,6 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
                     openLabel={tSubtasks("toggleSubtaskForm")}
                     disabled={isBusy}
                     onOpen={openRow}
-                    onClone={handleClone}
-                    onRemove={handleRemove}
                   />
                 ))}
               </SortableContext>
@@ -556,6 +594,16 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
           title={modalTitle}
           disabled={isBusy}
           onClose={closeModal}
+          onClone={
+            editingSubtask
+              ? () => handleClone(editingSubtask.documentId)
+              : undefined
+          }
+          onRemove={
+            editingSubtask
+              ? () => handleRemove(editingSubtask.documentId)
+              : undefined
+          }
         >
           {isCreatingNew ? (
             <SubTaskInlineForm

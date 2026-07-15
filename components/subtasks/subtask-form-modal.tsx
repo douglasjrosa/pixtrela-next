@@ -6,12 +6,17 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 
+import { SubTaskCloneButton } from "./subtask-clone-button";
+import { SubTaskRemoveButton } from "./subtask-remove-button";
+
 export interface SubTaskFormModalProps {
   open: boolean;
   title: string;
   titleId?: string;
   disabled?: boolean;
   onClose: () => void;
+  onClone?: () => void;
+  onRemove?: () => void;
   children: ReactNode;
 }
 
@@ -21,9 +26,12 @@ export function SubTaskFormModal({
   titleId = "subtask-form-modal-title",
   disabled = false,
   onClose,
+  onClone,
+  onRemove,
   children,
 }: SubTaskFormModalProps) {
   const tCommon = useTranslations("common");
+  const showRowActions = onClone != null && onRemove != null;
 
   if (!open) return null;
 
@@ -49,18 +57,31 @@ export function SubTaskFormModal({
             <h2 id={titleId} className="text-lg font-semibold">
               {title}
             </h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              disabled={disabled}
-              aria-label={tCommon("close")}
-              onClick={onClose}
-            >
-              <X className="size-4" aria-hidden />
-            </Button>
+            <div className="flex shrink-0 items-center">
+              {showRowActions ? (
+                <>
+                  <SubTaskCloneButton onClick={onClone} disabled={disabled} />
+                  <SubTaskRemoveButton onClick={onRemove} disabled={disabled} />
+                </>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                disabled={disabled}
+                aria-label={tCommon("close")}
+                onClick={onClose}
+              >
+                <X className="size-4" aria-hidden />
+              </Button>
+            </div>
           </div>
           {children}
+          <div className="flex justify-end border-t pt-4">
+            <Button type="button" disabled={disabled} onClick={onClose}>
+              {tCommon("ok")}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
