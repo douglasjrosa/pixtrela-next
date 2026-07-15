@@ -84,18 +84,24 @@ export function CurrencyForm({ currencies, onSave }: CurrencyFormProps) {
                   type="hidden"
                   {...register(`rates.${index}.documentId`)}
                 />
-                <Label htmlFor={`currency-rate-${currency.documentId}`}>
-                  {label}
-                </Label>
-                <Input
-                  id={`currency-rate-${currency.documentId}`}
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  {...register(`rates.${index}.currencyPerSecond`, {
-                    valueAsNumber: true,
-                  })}
-                />
+                <div className="flex items-center gap-3">
+                  <Label
+                    htmlFor={`currency-rate-${currency.documentId}`}
+                    className="shrink-0"
+                  >
+                    {label}
+                  </Label>
+                  <Input
+                    id={`currency-rate-${currency.documentId}`}
+                    className="flex-1"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    {...register(`rates.${index}.currencyPerSecond`, {
+                      valueAsNumber: true,
+                    })}
+                  />
+                </div>
                 {fieldError ? (
                   <p className="text-sm text-destructive">
                     {fieldError.message}

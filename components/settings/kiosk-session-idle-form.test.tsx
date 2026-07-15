@@ -22,7 +22,7 @@ describe("KioskSessionIdleForm", () => {
     renderWithIntl(
       <KioskSessionIdleForm sessionIdleSeconds={7} onSave={vi.fn()} />,
     );
-    expect(screen.getByLabelText("Tempo de sessão do Totem (segundos)")).toHaveValue(
+    expect(screen.getByLabelText("Tempo de sessão do Totem (segundos):")).toHaveValue(
       7,
     );
   });
@@ -34,7 +34,7 @@ describe("KioskSessionIdleForm", () => {
     );
 
     fireEvent.change(
-      screen.getByLabelText("Tempo de sessão do Totem (segundos)"),
+      screen.getByLabelText("Tempo de sessão do Totem (segundos):"),
       { target: { value: "15" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));

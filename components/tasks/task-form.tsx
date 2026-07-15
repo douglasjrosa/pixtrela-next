@@ -148,7 +148,13 @@ export function TaskForm({
         layout === "standalone" && "rounded-lg border p-4",
       )}
     >
-      <h2 id={formTitleId} className="text-lg font-semibold sm:col-span-2">
+      <h2
+        id={formTitleId}
+        className={cn(
+          "text-lg font-semibold sm:col-span-2",
+          layout === "embedded" && "pr-8",
+        )}
+      >
         {mode === "edit" ? tManage("editTask") : tManage("newTask")}
       </h2>
 
@@ -199,51 +205,55 @@ export function TaskForm({
 
       <input type="hidden" {...register("stepDocumentId")} />
 
-      <div className="space-y-2">
-        <Label htmlFor="status">{tManage("status")}</Label>
-        <div className="flex gap-2">
-          <select
-            id="status"
-            className={cn(
-              "flex h-9 min-w-0 flex-1 rounded-md border border-input",
-              "bg-transparent px-3 text-sm",
-            )}
-            {...register("status")}
-          >
-            {TASK_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {tStatus(status)}
-              </option>
-            ))}
-          </select>
-          {showArchive ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              disabled={isPending}
-              aria-label={
-                active ? tManage("deactivate") : tManage("reactivate")
-              }
-              onClick={beginArchiveAction}
+      {mode === "create" ? (
+        <input type="hidden" {...register("status")} />
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor="status">{tManage("status")}</Label>
+          <div className="flex gap-2">
+            <select
+              id="status"
+              className={cn(
+                "flex h-9 min-w-0 flex-1 rounded-md border border-input",
+                "bg-transparent px-3 text-sm",
+              )}
+              {...register("status")}
             >
-              <Archive className="size-4" aria-hidden />
-            </Button>
-          ) : null}
-          {showDelete ? (
-            <Button
-              type="button"
-              variant="destructive"
-              size="icon"
-              disabled={isPending}
-              aria-label={tManage("delete")}
-              onClick={onDelete}
-            >
-              <Trash2 className="size-4" aria-hidden />
-            </Button>
-          ) : null}
+              {TASK_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {tStatus(status)}
+                </option>
+              ))}
+            </select>
+            {showArchive ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                disabled={isPending}
+                aria-label={
+                  active ? tManage("deactivate") : tManage("reactivate")
+                }
+                onClick={beginArchiveAction}
+              >
+                <Archive className="size-4" aria-hidden />
+              </Button>
+            ) : null}
+            {showDelete ? (
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                disabled={isPending}
+                aria-label={tManage("delete")}
+                onClick={onDelete}
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </Button>
+            ) : null}
+          </div>
         </div>
-      </div>
+      )}
 
       {showArchive && isReasonPanelOpen ? (
         <>

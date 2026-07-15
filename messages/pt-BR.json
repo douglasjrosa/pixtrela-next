@@ -24,6 +24,7 @@
     "back": "Voltar",
     "search": "Buscar",
     "close": "Fechar",
+    "ok": "OK",
     "reasonMinLength": "Informe pelo menos 100 caracteres."
   },
   "auth": {
@@ -209,8 +210,12 @@
     "newStep": "Nova etapa",
     "name": "Nome",
     "index": "Ordem",
+    "dragToReorder": "Arrastar para reordenar",
+    "openStep": "Abrir etapa",
     "saved": "Etapa salva.",
-    "deleted": "Etapa excluída."
+    "deleted": "Etapa excluída.",
+    "deleteTitle": "Excluir etapa",
+    "deleteConfirm": "Excluir permanentemente esta etapa?"
   },
   "subtasks": {
     "title": "Subtarefas",
@@ -303,15 +308,15 @@
       "kiosk": "Totem"
     },
     "currency": "Moedas",
-    "currencyPerSecondFor": "{currency} por segundo",
+    "currencyPerSecondFor": "{currency} por segundo:",
     "noCurrencies": "Nenhuma moeda cadastrada.",
     "automations": "Automações",
     "automationsHeading": "Etapas",
     "automationsDescription": "Quando o status da tarefa mudar, ela será movida automaticamente para a coluna configurada.",
-    "statusToStep": "{status} =>",
+    "statusGoesTo": "Status <bold>{status}</bold> vai para:",
     "automationNoStep": "Nenhuma coluna",
     "kioskSession": "Totem",
-    "kioskSessionIdleSeconds": "Tempo de sessão do Totem (segundos)",
+    "kioskSessionIdleSeconds": "Tempo de sessão do Totem (segundos):",
     "saved": "Configurações salvas.",
     "error": "Não foi possível salvar as configurações."
   },

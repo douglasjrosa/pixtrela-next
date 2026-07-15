@@ -68,7 +68,10 @@ export function TaskAutomationForm({
       {TASK_AUTOMATION_STATUS_FIELDS.map(({ status, field }) => (
         <div className="flex items-center gap-3" key={status}>
           <Label htmlFor={`automation-${status}`} className="shrink-0">
-            {tSettings("statusToStep", { status: tStatus(status) })}
+            {tSettings.rich("statusGoesTo", {
+              status: tStatus(status),
+              bold: (chunks) => <b>{chunks}</b>,
+            })}
           </Label>
           <select
             id={`automation-${status}`}

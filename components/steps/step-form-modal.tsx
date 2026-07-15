@@ -9,16 +9,21 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { stepFormSchema, type StepFormInput } from "@/lib/schemas/step";
+import {
+  stepNameFormSchema,
+  type StepNameFormInput,
+} from "@/lib/schemas/step";
 
 export interface StepFormModalProps {
   open: boolean;
   title: string;
   formKey: string;
-  defaultValues: StepFormInput;
+  defaultValues: StepNameFormInput;
   saving?: boolean;
+  showDelete?: boolean;
   onClose: () => void;
-  onSave: (values: StepFormInput) => void;
+  onSave: (values: StepNameFormInput) => void;
+  onDelete?: () => void;
 }
 
 export function StepFormModal({
@@ -27,8 +32,10 @@ export function StepFormModal({
   formKey,
   defaultValues,
   saving = false,
+  showDelete = false,
   onClose,
   onSave,
+  onDelete,
 }: StepFormModalProps) {
   const tCommon = useTranslations("common");
   const tSteps = useTranslations("steps");
@@ -41,8 +48,8 @@ export function StepFormModal({
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<StepFormInput>({
-    resolver: zodResolver(stepFormSchema),
+  } = useForm<StepNameFormInput>({
+    resolver: zodResolver(stepNameFormSchema),
     defaultValues,
   });
 
@@ -107,11 +114,7 @@ export function StepFormModal({
             {title}
           </h2>
 
-          <form
-            id={formId}
-            onSubmit={handleSubmit(onSave)}
-            className="grid gap-4 sm:grid-cols-2"
-          >
+          <form id={formId} onSubmit={handleSubmit(onSave)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="step-name">{tSteps("name")}</Label>
               <Input id="step-name" disabled={saving} {...register("name")} />
@@ -119,20 +122,21 @@ export function StepFormModal({
                 <p className="text-sm text-destructive">{errors.name.message}</p>
               ) : null}
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="step-index">{tSteps("index")}</Label>
-              <Input
-                id="step-index"
-                type="number"
-                min={0}
-                disabled={saving}
-                {...register("index", { valueAsNumber: true })}
-              />
-            </div>
           </form>
 
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {showDelete && onDelete ? (
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={saving}
+                onClick={onDelete}
+              >
+                {tCommon("delete")}
+              </Button>
+            ) : (
+              <span />
+            )}
             <Button type="submit" form={formId} disabled={saving}>
               {tCommon("save")}
             </Button>

@@ -40,10 +40,16 @@ describe("TaskAutomationForm", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Etapas" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Aguardando =>")).toHaveValue("step-1");
-    expect(screen.getByLabelText("Produzindo =>")).toHaveValue("step-2");
-    expect(screen.getByLabelText("Pausada =>")).toHaveValue("");
-    expect(screen.getByLabelText("Finalizada =>")).toHaveValue("");
+    expect(screen.getByLabelText("Status Aguardando vai para:")).toHaveValue(
+      "step-1",
+    );
+    expect(screen.getByLabelText("Status Produzindo vai para:")).toHaveValue(
+      "step-2",
+    );
+    expect(screen.getByLabelText("Status Pausada vai para:")).toHaveValue("");
+    expect(screen.getByLabelText("Status Finalizada vai para:")).toHaveValue(
+      "",
+    );
   });
 
   it("calls onSave with updated mappings", async () => {
@@ -56,7 +62,7 @@ describe("TaskAutomationForm", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("Pausada =>"), {
+    fireEvent.change(screen.getByLabelText("Status Pausada vai para:"), {
       target: { value: "step-1" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));

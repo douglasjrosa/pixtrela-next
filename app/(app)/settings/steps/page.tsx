@@ -2,7 +2,7 @@ import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { StepManager, type StepRow } from "@/components/steps/step-manager";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
-import { createStep, deleteStep, updateStep } from "./actions";
+import { createStep, deleteStep, reorderSteps, updateStep } from "./actions";
 
 interface StrapiList<T> {
   data: T[];
@@ -40,6 +40,7 @@ export default async function SettingsStepsPage() {
       steps={steps}
       onCreate={createStep}
       onUpdate={updateStep}
+      onReorder={reorderSteps}
       onDelete={deleteStep}
     />
   );

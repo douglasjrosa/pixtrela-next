@@ -36,8 +36,8 @@ describe("CurrencyForm", () => {
   it("renders a units-per-second field for each currency", () => {
     renderWithIntl(<CurrencyForm currencies={currencies} onSave={vi.fn()} />);
 
-    expect(screen.getByLabelText("Estrelas por segundo")).toHaveValue(2);
-    expect(screen.getByLabelText("Gemas por segundo")).toHaveValue(0.5);
+    expect(screen.getByLabelText("Estrelas por segundo:")).toHaveValue(2);
+    expect(screen.getByLabelText("Gemas por segundo:")).toHaveValue(0.5);
   });
 
   it("shows empty state when there are no currencies", () => {
@@ -51,10 +51,10 @@ describe("CurrencyForm", () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     renderWithIntl(<CurrencyForm currencies={currencies} onSave={onSave} />);
 
-    fireEvent.change(screen.getByLabelText("Estrelas por segundo"), {
+    fireEvent.change(screen.getByLabelText("Estrelas por segundo:"), {
       target: { value: "3" },
     });
-    fireEvent.change(screen.getByLabelText("Gemas por segundo"), {
+    fireEvent.change(screen.getByLabelText("Gemas por segundo:"), {
       target: { value: "1.25" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));

@@ -78,12 +78,18 @@ describe("TaskManager", () => {
     expect(
       screen.getByRole("heading", { name: "Nova tarefa" }),
     ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Status")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancelar" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fechar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Salvar" })).toBeInTheDocument();
   });
 
-  it("closes create modal on cancel", () => {
+  it("closes create modal when close button is clicked", () => {
     renderWithIntl(<TaskManager tasks={[]} steps={steps} />);
     fireEvent.click(screen.getByRole("button", { name: "Nova tarefa" }));
-    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -101,6 +107,7 @@ describe("TaskManager", () => {
         name: "Nova tarefa",
         qty: 1,
         stepDocumentId: "s1",
+        status: "waiting",
       }),
     );
     expect(showSuccessToast).toHaveBeenCalledWith("Tarefa salva com sucesso.");

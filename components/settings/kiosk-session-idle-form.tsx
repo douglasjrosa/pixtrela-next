@@ -54,17 +54,20 @@ export function KioskSessionIdleForm({
       <h2 className="text-lg font-semibold">{tSettings("kioskSession")}</h2>
 
       <div className="space-y-2">
-        <Label htmlFor="sessionIdleSeconds">
-          {tSettings("kioskSessionIdleSeconds")}
-        </Label>
-        <Input
-          id="sessionIdleSeconds"
-          type="number"
-          min={1}
-          max={3600}
-          step={1}
-          {...register("sessionIdleSeconds", { valueAsNumber: true })}
-        />
+        <div className="flex items-center gap-3">
+          <Label htmlFor="sessionIdleSeconds" className="shrink-0">
+            {tSettings("kioskSessionIdleSeconds")}
+          </Label>
+          <Input
+            id="sessionIdleSeconds"
+            className="flex-1"
+            type="number"
+            min={1}
+            max={3600}
+            step={1}
+            {...register("sessionIdleSeconds", { valueAsNumber: true })}
+          />
+        </div>
         {errors.sessionIdleSeconds ? (
           <p className="text-sm text-destructive">
             {errors.sessionIdleSeconds.message}

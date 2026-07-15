@@ -209,12 +209,49 @@ describe("TaskForm", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows Cancel only when onCancel is provided", () => {
+    const { unmount } = renderWithIntl(
+      <TaskForm mode="create" defaultValues={defaultValues} onSubmit={vi.fn()} />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Cancelar" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Salvar" })).toBeInTheDocument();
+    unmount();
+
+    renderWithIntl(
+      <TaskForm
+        mode="create"
+        defaultValues={defaultValues}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+  });
+
   it("does not show a manual step (Etapa) select", () => {
     renderWithIntl(
       <TaskForm mode="create" defaultValues={defaultValues} onSubmit={vi.fn()} />,
     );
 
     expect(screen.queryByLabelText("Etapa")).not.toBeInTheDocument();
+  });
+
+  it("hides Status select in create mode", () => {
+    renderWithIntl(
+      <TaskForm mode="create" defaultValues={defaultValues} onSubmit={vi.fn()} />,
+    );
+
+    expect(screen.queryByLabelText("Status")).not.toBeInTheDocument();
+  });
+
+  it("shows Status select in edit mode", () => {
+    renderWithIntl(
+      <TaskForm mode="edit" defaultValues={defaultValues} onSubmit={vi.fn()} />,
+    );
+
+    expect(screen.getByLabelText("Status")).toBeInTheDocument();
   });
 
   it("submits the default stepDocumentId without a step select", async () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -57,6 +58,7 @@ function CreateTaskDialog({
   onSubmit,
   onInvalid,
 }: CreateTaskDialogProps) {
+  const tCommon = useTranslations("common");
   const formTitleId = "task-form-title";
 
   return (
@@ -69,9 +71,23 @@ function CreateTaskDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={formTitleId}
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border bg-background p-4 shadow-lg"
+        className={
+          "relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg " +
+          "border bg-background p-4 shadow-lg"
+        }
         onClick={(event) => event.stopPropagation()}
       >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="absolute top-3 right-3"
+          disabled={isPending}
+          aria-label={tCommon("close")}
+          onClick={onClose}
+        >
+          <X className="size-4" aria-hidden />
+        </Button>
         <TaskForm
           mode="create"
           defaultValues={buildCreateTaskFormDefaults(steps)}
@@ -80,7 +96,6 @@ function CreateTaskDialog({
           isPending={isPending}
           onSubmit={onSubmit}
           onInvalid={onInvalid}
-          onCancel={onClose}
         />
       </div>
     </div>
