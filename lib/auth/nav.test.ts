@@ -10,35 +10,37 @@ describe("navItemsForRole", () => {
     expect(hrefs("colaborator")).toEqual(["/"]);
   });
 
-  it("shows templates, users and tasks to leader", () => {
+  it("shows users and tasks to leader but not templates", () => {
     const result = hrefs("leader");
     expect(result).toContain("/");
-    expect(result).toContain("/templates");
     expect(result).toContain("/users");
     expect(result).toContain("/tasks");
+    expect(result).not.toContain("/templates");
+    expect(result).not.toContain("/templates/tasks");
     expect(result).not.toContain("/teams");
     expect(result).not.toContain("/exchange");
   });
 
-  it("shows teams, awards and tasks to manager", () => {
+  it("shows teams, awards, tasks and templates to manager", () => {
     const result = hrefs("manager");
     expect(result).toContain("/teams");
     expect(result).toContain("/awards");
     expect(result).toContain("/tasks");
+    expect(result).toContain("/templates/tasks");
   });
 
-  it("admin sees every management screen including settings", () => {
+  it("admin sees every management screen including settings steps", () => {
     const result = hrefs("admin");
     expect(result).toEqual(
       expect.arrayContaining([
         "/",
         "/board",
         "/tasks",
-        "/templates",
+        "/templates/tasks",
         "/teams",
         "/awards",
         "/users",
-        "/settings",
+        "/settings/steps",
       ]),
     );
   });

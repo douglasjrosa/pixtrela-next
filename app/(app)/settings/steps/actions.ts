@@ -2,14 +2,14 @@
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
-import { canDeleteTasks, canManageSteps } from "@/lib/auth/permissions";
+import { canManageSettings } from "@/lib/auth/permissions";
 import { stepFormSchema, type StepFormInput } from "@/lib/schemas/step";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
 
 async function assertCanManage(): Promise<void> {
   const session = await auth();
-  if (!canManageSteps(session?.user?.role as Role | undefined)) {
+  if (!canManageSettings(session?.user?.role as Role | undefined)) {
     throw new Error("forbidden");
   }
 }
@@ -45,10 +45,6 @@ export async function updateStep(
 
 export async function deleteStep(documentId: string): Promise<void> {
   await assertCanManage();
-  const session = await auth();
-  if (!canDeleteTasks(session?.user?.role as Role | undefined)) {
-    throw new Error("forbidden");
-  }
   await strapiFetch(`/steps/${documentId}`, {
     method: "DELETE",
     strapiCache: { noStore: true },

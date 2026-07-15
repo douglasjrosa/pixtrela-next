@@ -39,6 +39,7 @@ describe("TaskAutomationForm", () => {
       />,
     );
 
+    expect(screen.getByRole("heading", { name: "Etapas" })).toBeInTheDocument();
     expect(screen.getByLabelText("Aguardando =>")).toHaveValue("step-1");
     expect(screen.getByLabelText("Produzindo =>")).toHaveValue("step-2");
     expect(screen.getByLabelText("Pausada =>")).toHaveValue("");

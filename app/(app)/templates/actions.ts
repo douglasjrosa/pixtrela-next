@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { buildTemplateFromBox } from "@/lib/business/template-from-box";
 import { fetchBoxTemplateData } from "@/lib/legacy/rbx-client";
 import type { Role } from "@/lib/auth/nav";
-import { canDeleteTasks, canManageTemplates } from "@/lib/auth/permissions";
+import { canManageTemplates } from "@/lib/auth/permissions";
 import {
   templateTaskFormSchema,
   type TemplateSubTaskComponentInput,
@@ -156,10 +156,6 @@ export async function loadTemplateFromLegacy(
 
 export async function deleteTemplate(documentId: string): Promise<void> {
   await assertCanManage();
-  const session = await auth();
-  if (!canDeleteTasks(session?.user?.role as Role | undefined)) {
-    throw new Error("forbidden");
-  }
   await strapiFetch(`/template-tasks/${documentId}`, {
     method: "DELETE",
     strapiCache: { noStore: true },

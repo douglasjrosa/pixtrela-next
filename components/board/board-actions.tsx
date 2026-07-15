@@ -208,6 +208,10 @@ export function BoardActions({
     documentId: subtask.documentId,
     name: subtask.name,
   }));
+  const dependencyStatusSiblings = subtasks.map((subtask) => ({
+    documentId: subtask.documentId,
+    status: subtask.status,
+  }));
 
   return (
     <>
@@ -237,6 +241,7 @@ export function BoardActions({
         taskName={selectedTask?.name ?? ""}
         teams={teams}
         dependencyOptions={dependencyOptions}
+        dependencyStatusSiblings={dependencyStatusSiblings}
         saving={savingCreate}
         onClose={() => setCreateOpen(false)}
         onCreate={handleCreateSubtask}

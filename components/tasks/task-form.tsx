@@ -21,12 +21,9 @@ import {
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 import { cn } from "@/lib/utils";
 
-import type { StepOption } from "./task-manager";
-
 export interface TaskFormProps {
   mode: "create" | "edit";
   defaultValues: TaskFormInput;
-  steps: StepOption[];
   isPending?: boolean;
   layout?: "standalone" | "embedded";
   formTitleId?: string;
@@ -47,7 +44,6 @@ export interface TaskFormProps {
 export function TaskForm({
   mode,
   defaultValues,
-  steps,
   isPending = false,
   layout = "standalone",
   formTitleId = "task-form-title",
@@ -201,20 +197,7 @@ export function TaskForm({
         <Input id="deliveryDate" type="date" {...register("deliveryDate")} />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="stepDocumentId">{tManage("step")}</Label>
-        <select
-          id="stepDocumentId"
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-          {...register("stepDocumentId")}
-        >
-          {steps.map((step) => (
-            <option key={step.documentId} value={step.documentId}>
-              {step.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <input type="hidden" {...register("stepDocumentId")} />
 
       <div className="space-y-2">
         <Label htmlFor="status">{tManage("status")}</Label>

@@ -178,18 +178,13 @@ describe("BoardActions", () => {
     expect(createDialog).toBeTruthy();
 
     await user.type(within(createDialog as HTMLElement).getByLabelText("Nome"), "Cortar");
-    await user.click(
-      within(createDialog as HTMLElement).getByRole("checkbox", {
-        name: "Adicionar subtarefa ao template",
-      }),
-    );
     await user.click(within(createDialog as HTMLElement).getByRole("button", { name: "Salvar" }));
 
     await vi.waitFor(() => {
       expect(createSubtask).toHaveBeenCalledWith(
         "task-10",
         expect.objectContaining({ name: "Cortar" }),
-        { addToTemplate: true },
+        { addToTemplate: false },
       );
     });
     expect(

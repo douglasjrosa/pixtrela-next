@@ -4,7 +4,7 @@ import { STRAPI_TAGS } from "./tags";
 export const LIST_CACHE_CONTRACT = {
   templateTasks: {
     tags: [STRAPI_TAGS.templateTasks],
-    paths: ["/templates"],
+    paths: ["/templates/tasks"],
   },
   tasks: {
     tags: [STRAPI_TAGS.tasks, STRAPI_TAGS.subTasks],

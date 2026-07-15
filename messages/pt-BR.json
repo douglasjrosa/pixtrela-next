@@ -46,7 +46,10 @@
     "exchange": "Trocas",
     "users": "Usuários",
     "myBalance": "Meu saldo",
-    "settings": "Configurações"
+    "settings": "Configurações",
+    "openMenu": "Abrir menu",
+    "closeMenu": "Fechar menu",
+    "menuTitle": "Menu"
   },
   "tasks": {
     "start": "Iniciar",
@@ -89,7 +92,7 @@
       "validationError": "Verifique os campos do formulário.",
       "totalExpectedTime": "Tempo previsto total (s)",
       "totalTimeSpent": "Tempo gasto total (s)",
-      "loadTemplate": "Carregar template",
+      "loadTemplate": "Carregar modelo",
       "loadTemplateSuccess": "Nome preenchido com o modelo.",
       "loadTemplateError": "Não foi possível carregar o modelo.",
       "loadTemplateMissingCode": "Informe o código do modelo antes de carregar."
@@ -101,7 +104,7 @@
     "subtasksEmpty": "Nenhuma subtarefa nesta tarefa.",
     "createTitle": "Nova subtarefa",
     "addSubtask": "Adicionar subtarefa",
-    "addToTemplate": "Adicionar subtarefa ao template",
+    "addToTemplate": "Adicionar subtarefa ao modelo",
     "loading": "Carregando..."
   },
   "balance": {
@@ -175,7 +178,9 @@
     "nfcWriteFailed": "Não foi possível gravar o cartão NFC."
   },
   "templates": {
-    "title": "Modelos de tarefa",
+    "title": "Modelos",
+    "tasksTab": "Tarefas",
+    "subtasksTab": "Subtarefas",
     "newTemplate": "Novo modelo",
     "code": "Código",
     "name": "Nome",
@@ -183,11 +188,21 @@
     "addSubtask": "Adicionar subtarefa",
     "saved": "Modelo salvo.",
     "deleted": "Modelo excluído.",
-    "loadTemplate": "Carregar template",
+    "loadTemplate": "Carregar modelo",
     "loadingTemplate": "Carregando...",
-    "loadTemplateSuccess": "Template carregado. Revise e salve.",
-    "loadTemplateError": "Não foi possível carregar o template do sistema legado.",
+    "loadTemplateSuccess": "Modelo carregado. Revise e salve.",
+    "loadTemplateError": "Não foi possível carregar o modelo do sistema legado.",
     "loadTemplateMissingCode": "Informe o Código (id da caixa) antes de carregar."
+  },
+  "subTaskPresets": {
+    "title": "Modelos de subtarefa",
+    "new": "Novo modelo",
+    "empty": "Nenhum modelo de subtarefa cadastrado.",
+    "saved": "Modelo salvo.",
+    "deleted": "Modelo excluído.",
+    "error": "Não foi possível concluir a operação.",
+    "deleteTitle": "Excluir modelo",
+    "deleteConfirm": "Excluir permanentemente este modelo de subtarefa?"
   },
   "steps": {
     "title": "Etapas de produção",
@@ -281,10 +296,17 @@
   },
   "settings": {
     "title": "Configurações",
+    "tabs": {
+      "steps": "Etapas",
+      "currency": "Moedas",
+      "automations": "Automações",
+      "kiosk": "Totem"
+    },
     "currency": "Moedas",
     "currencyPerSecondFor": "{currency} por segundo",
     "noCurrencies": "Nenhuma moeda cadastrada.",
     "automations": "Automações",
+    "automationsHeading": "Etapas",
     "automationsDescription": "Quando o status da tarefa mudar, ela será movida automaticamente para a coluna configurada.",
     "statusToStep": "{status} =>",
     "automationNoStep": "Nenhuma coluna",

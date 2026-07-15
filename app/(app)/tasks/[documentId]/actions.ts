@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
+import { normalizeSubTaskCreateValues } from "@/lib/business/subtask-create-fields";
 import { getNextSubTaskIndex, buildSubTaskIndexUpdates } from "@/lib/business/subtask-order";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTasks } from "@/lib/auth/permissions";
@@ -122,8 +123,14 @@ export async function createSubTask(
   options?: { insertAtIndex?: number },
 ): Promise<void> {
   await assertCanManage();
-  const data = subTaskFormSchema.parse(raw);
   const subtasks = await fetchSubTasksForTask(taskDocumentId);
+  const data = normalizeSubTaskCreateValues(
+    subTaskFormSchema.parse(raw),
+    subtasks.map((subtask) => ({
+      documentId: subtask.documentId,
+      status: subtask.status,
+    })),
+  );
   const indexes = subtasks.map((subtask) => subtask.index);
   const nextIndex = getNextSubTaskIndex(indexes.map((index) => ({ index })));
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { SubTaskInlineForm } from "@/components/subtasks/subtask-inline-form";
@@ -8,6 +9,7 @@ import type { SubTaskDependencyOption } from "@/components/subtasks/subtask-depe
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { normalizeSubTaskCreateValues } from "@/lib/business/subtask-create-fields";
 import {
   subTaskFormSchema,
   type SubTaskFormInput,
@@ -20,7 +22,7 @@ const EMPTY_FORM: SubTaskFormInput = {
   sharingType: "duration",
   maxSameTimeWorkers: 1,
   status: "waiting",
-  activationStatus: "locked",
+  activationStatus: "unlocked",
   reasonForDisabling: "",
   dependencyIds: [],
   assignedToIds: [],
@@ -35,6 +37,10 @@ export interface KanbanSubtaskCreateModalProps {
   taskName: string;
   teams: TeamAssignmentOption[];
   dependencyOptions: SubTaskDependencyOption[];
+  dependencyStatusSiblings?: Array<{
+    documentId: string;
+    status: SubTaskFormInput["status"];
+  }>;
   saving: boolean;
   onClose: () => void;
   onCreate: (
@@ -48,6 +54,7 @@ export function KanbanSubtaskCreateModal({
   taskName,
   teams,
   dependencyOptions,
+  dependencyStatusSiblings = [],
   saving,
   onClose,
   onCreate,
@@ -71,7 +78,10 @@ export function KanbanSubtaskCreateModal({
   function handleSave(): void {
     const parsed = subTaskFormSchema.safeParse(draft);
     if (!parsed.success) return;
-    onCreate(parsed.data, { addToTemplate });
+    onCreate(
+      normalizeSubTaskCreateValues(parsed.data, dependencyStatusSiblings),
+      { addToTemplate },
+    );
   }
 
   return (
@@ -85,13 +95,25 @@ export function KanbanSubtaskCreateModal({
         aria-modal="true"
         aria-labelledby="kanban-create-title"
         className={
-          "max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border " +
+          "relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border " +
           "bg-background p-6 shadow-lg"
         }
         onClick={(event) => event.stopPropagation()}
       >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="absolute top-3 right-3"
+          disabled={saving}
+          aria-label={tCommon("close")}
+          onClick={onClose}
+        >
+          <X className="size-4" aria-hidden />
+        </Button>
+
         <div className="space-y-4">
-          <div className="space-y-1">
+          <div className="space-y-1 pr-8">
             <h2 id="kanban-create-title" className="text-lg font-semibold">
               {tKanban("createTitle")}
             </h2>
@@ -126,19 +148,9 @@ export function KanbanSubtaskCreateModal({
                 {tKanban("addToTemplate")}
               </Label>
             </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                disabled={saving}
-              >
-                {tCommon("cancel")}
-              </Button>
-              <Button type="button" onClick={handleSave} disabled={saving}>
-                {tCommon("save")}
-              </Button>
-            </div>
+            <Button type="button" onClick={handleSave} disabled={saving}>
+              {tCommon("save")}
+            </Button>
           </div>
         </div>
       </div>

@@ -11,6 +11,7 @@ import {
   canExchange,
   canManageAwards,
   canManageTasks,
+  canManageTemplates,
   canManageTeams,
   canViewBalance,
   canViewUsers,
@@ -47,6 +48,19 @@ describe("canDeleteTasks", () => {
     expect(canDeleteTasks("admin")).toBe(true);
     expect(canDeleteTasks("manager")).toBe(false);
     expect(canDeleteTasks("leader")).toBe(false);
+  });
+});
+
+describe("canManageTemplates", () => {
+  it("allows admin and manager", () => {
+    expect(canManageTemplates("admin")).toBe(true);
+    expect(canManageTemplates("manager")).toBe(true);
+  });
+
+  it("denies leader and below", () => {
+    expect(canManageTemplates("leader")).toBe(false);
+    expect(canManageTemplates("colaborator")).toBe(false);
+    expect(canManageTemplates("kiosk")).toBe(false);
   });
 });
 

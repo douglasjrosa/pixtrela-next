@@ -59,20 +59,20 @@ export function TaskAutomationForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-sm space-y-4">
       <div className="space-y-1">
-        <h2 className="text-lg font-semibold">{tSettings("automations")}</h2>
+        <h2 className="text-lg font-semibold">{tSettings("automationsHeading")}</h2>
         <p className="text-sm text-muted-foreground">
           {tSettings("automationsDescription")}
         </p>
       </div>
 
       {TASK_AUTOMATION_STATUS_FIELDS.map(({ status, field }) => (
-        <div className="space-y-2" key={status}>
-          <Label htmlFor={`automation-${status}`}>
+        <div className="flex items-center gap-3" key={status}>
+          <Label htmlFor={`automation-${status}`} className="shrink-0">
             {tSettings("statusToStep", { status: tStatus(status) })}
           </Label>
           <select
             id={`automation-${status}`}
-            className={SELECT_CLASS_NAME}
+            className={`${SELECT_CLASS_NAME} flex-1`}
             {...register(field)}
           >
             <option value="">{tSettings("automationNoStep")}</option>

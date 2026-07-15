@@ -23,11 +23,7 @@ export function canManageTasks(role: Role | undefined): boolean {
 }
 
 export function canManageTemplates(role: Role | undefined): boolean {
-  return isAtLeast(role, "leader");
-}
-
-export function canManageSteps(role: Role | undefined): boolean {
-  return isAtLeast(role, "leader");
+  return isAtLeast(role, "manager");
 }
 
 /** Soft-deactivate (archive) tasks: manager and admin. */

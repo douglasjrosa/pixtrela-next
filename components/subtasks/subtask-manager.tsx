@@ -39,6 +39,7 @@ import {
   isDraftSubTaskId,
   mergeServerSubtasksWithDrafts,
 } from "@/lib/business/subtask-draft";
+import { normalizeSubTaskCreateValues } from "@/lib/business/subtask-create-fields";
 import { calculateSubTaskDisplayQty } from "@/lib/business/subtask-display-qty";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
@@ -106,7 +107,7 @@ const EMPTY_FORM: SubTaskFormInput = {
   sharingType: "duration",
   maxSameTimeWorkers: 1,
   status: "waiting",
-  activationStatus: "locked",
+  activationStatus: "unlocked",
   reasonForDisabling: "",
   dependencyIds: [],
   assignedToIds: [],
@@ -164,6 +165,26 @@ function subTaskFormValuesEqual(
   right: SubTaskFormInput,
 ): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function getPersistedSubTaskStatusSiblings(
+  subtasks: SubTaskRow[],
+): Array<{ documentId: string; status: SubTaskFormInput["status"] }> {
+  return subtasks
+    .filter(
+      (item) => !item.isDraft && !isDraftSubTaskId(item.documentId),
+    )
+    .map((item) => ({ documentId: item.documentId, status: item.status }));
+}
+
+function applyAutomaticCreateFields(
+  values: SubTaskFormInput,
+  subtasks: SubTaskRow[],
+): SubTaskFormInput {
+  return normalizeSubTaskCreateValues(
+    values,
+    getPersistedSubTaskStatusSiblings(subtasks),
+  );
 }
 
 function buildDependencyOptions(
@@ -376,7 +397,10 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
       for (const row of orderedSubtasks) {
         const values = subTaskToFormValues(row);
         if (row.isDraft || isDraftSubTaskId(row.documentId)) {
-          await onCreate(values, { insertAtIndex: row.index });
+          await onCreate(
+            applyAutomaticCreateFields(values, orderedSubtasks),
+            { insertAtIndex: row.index },
+          );
           continue;
         }
 
@@ -389,7 +413,9 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
       }
 
       if (editingKey === NEW_SUBTASK_KEY && newSubtaskDraft.name.trim()) {
-        await onCreate(newSubtaskDraft);
+        await onCreate(
+          applyAutomaticCreateFields(newSubtaskDraft, orderedSubtasks),
+        );
         setNewSubtaskDraft(EMPTY_FORM);
         setEditingKey(null);
       }
@@ -539,10 +565,16 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
               dependencyOptions={buildDependencyOptions(orderedSubtasks)}
               isCreate
               hideHeading
+              hideStatus
+              hideActivationStatus
               hideAssignees
               plain
               disabled={isBusy}
-              onChange={setNewSubtaskDraft}
+              onChange={(values) =>
+                setNewSubtaskDraft(
+                  applyAutomaticCreateFields(values, orderedSubtasks),
+                )
+              }
             />
           ) : null}
           {editingSubtask ? (
@@ -559,11 +591,18 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
               }
               isCreate={editingSubtask.isDraft === true}
               hideHeading
+              hideStatus
+              hideActivationStatus
               hideAssignees
               plain
               disabled={isBusy}
               onChange={(values) =>
-                handleRowChange(editingSubtask.documentId, values)
+                handleRowChange(
+                  editingSubtask.documentId,
+                  editingSubtask.isDraft
+                    ? applyAutomaticCreateFields(values, orderedSubtasks)
+                    : values,
+                )
               }
             />
           ) : null}

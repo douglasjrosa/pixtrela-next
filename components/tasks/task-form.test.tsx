@@ -19,7 +19,6 @@ vi.mock("@/lib/ui/app-toast", () => ({
   showErrorToast: (...args: unknown[]) => showErrorToast(...args),
 }));
 
-const steps = [{ documentId: "s1", name: "Fila" }];
 const defaultValues = {
   name: "Montagem",
   qty: 2,
@@ -41,7 +40,6 @@ describe("TaskForm", () => {
       <TaskForm
         mode="edit"
         defaultValues={defaultValues}
-        steps={steps}
         onSubmit={vi.fn()}
       />,
     );
@@ -59,7 +57,6 @@ describe("TaskForm", () => {
       <TaskForm
         mode="edit"
         defaultValues={defaultValues}
-        steps={steps}
         active
         canDeactivate
         onSubmit={vi.fn()}
@@ -82,7 +79,6 @@ describe("TaskForm", () => {
       <TaskForm
         mode="edit"
         defaultValues={defaultValues}
-        steps={steps}
         active
         canDeactivate
         onSubmit={vi.fn()}
@@ -116,7 +112,6 @@ describe("TaskForm", () => {
       <TaskForm
         mode="edit"
         defaultValues={defaultValues}
-        steps={steps}
         active
         canDeactivate={false}
         onSubmit={vi.fn()}
@@ -135,7 +130,6 @@ describe("TaskForm", () => {
       <TaskForm
         mode="edit"
         defaultValues={defaultValues}
-        steps={steps}
         active={false}
         canDelete
         onSubmit={vi.fn()}
@@ -156,7 +150,6 @@ describe("TaskForm", () => {
       <TaskForm
         mode="edit"
         defaultValues={defaultValues}
-        steps={steps}
         active={false}
         canDeactivate
         reasonForDeactivation={previousReason}
@@ -187,7 +180,6 @@ describe("TaskForm", () => {
       <TaskForm
         mode="edit"
         defaultValues={defaultValues}
-        steps={steps}
         active={false}
         canDelete={false}
         onSubmit={vi.fn()}
@@ -201,12 +193,7 @@ describe("TaskForm", () => {
   });
   it("does not show order input in the form", () => {
     renderWithIntl(
-      <TaskForm
-        mode="create"
-        defaultValues={defaultValues}
-        steps={steps}
-        onSubmit={vi.fn()}
-      />,
+      <TaskForm mode="create" defaultValues={defaultValues} onSubmit={vi.fn()} />,
     );
 
     expect(screen.queryByLabelText("Ordem")).not.toBeInTheDocument();
@@ -214,12 +201,7 @@ describe("TaskForm", () => {
 
   it("shows create title in create mode", () => {
     renderWithIntl(
-      <TaskForm
-        mode="create"
-        defaultValues={defaultValues}
-        steps={steps}
-        onSubmit={vi.fn()}
-      />,
+      <TaskForm mode="create" defaultValues={defaultValues} onSubmit={vi.fn()} />,
     );
 
     expect(
@@ -227,50 +209,33 @@ describe("TaskForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not show a no-step option in the step dropdown", () => {
+  it("does not show a manual step (Etapa) select", () => {
     renderWithIntl(
-      <TaskForm
-        mode="create"
-        defaultValues={defaultValues}
-        steps={steps}
-        onSubmit={vi.fn()}
-      />,
+      <TaskForm mode="create" defaultValues={defaultValues} onSubmit={vi.fn()} />,
     );
 
-    expect(screen.queryByText("Sem etapa")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Etapa")).not.toBeInTheDocument();
   });
 
-  it("selects the queue step by default in create mode", () => {
+  it("submits the default stepDocumentId without a step select", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+
     renderWithIntl(
-      <TaskForm
-        mode="create"
-        defaultValues={{
-          ...defaultValues,
-          stepDocumentId: "s1",
-        }}
-        steps={[
-          { documentId: "s1", name: "Na Fila" },
-          { documentId: "s2", name: "Produzindo" },
-        ]}
-        onSubmit={vi.fn()}
-      />,
+      <TaskForm mode="create" defaultValues={defaultValues} onSubmit={onSubmit} />,
     );
 
-    const stepSelect = screen.getByLabelText("Etapa");
-    expect(stepSelect).toHaveValue("s1");
-    expect(
-      (stepSelect as HTMLSelectElement).selectedOptions[0].textContent,
-    ).toBe("Na Fila");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ stepDocumentId: "s1", status: "waiting" }),
+      expect.anything(),
+    );
   });
 
   it("renders template code field before name field", () => {
     renderWithIntl(
-      <TaskForm
-        mode="create"
-        defaultValues={defaultValues}
-        steps={steps}
-        onSubmit={vi.fn()}
-      />,
+      <TaskForm mode="create" defaultValues={defaultValues} onSubmit={vi.fn()} />,
     );
 
     const labels = screen
@@ -285,18 +250,13 @@ describe("TaskForm", () => {
     lookupTemplateNameByCode.mockResolvedValue({ name: "Modelo Caixa A" });
 
     renderWithIntl(
-      <TaskForm
-        mode="create"
-        defaultValues={defaultValues}
-        steps={steps}
-        onSubmit={vi.fn()}
-      />,
+      <TaskForm mode="create" defaultValues={defaultValues} onSubmit={vi.fn()} />,
     );
 
     fireEvent.change(screen.getByLabelText("Código do modelo"), {
       target: { value: "123" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Carregar template" }));
+    fireEvent.click(screen.getByRole("button", { name: "Carregar modelo" }));
 
     await waitFor(() => {
       expect(lookupTemplateNameByCode).toHaveBeenCalledWith("123");
@@ -311,15 +271,10 @@ describe("TaskForm", () => {
 
   it("shows error toast when template code is missing", async () => {
     renderWithIntl(
-      <TaskForm
-        mode="create"
-        defaultValues={defaultValues}
-        steps={steps}
-        onSubmit={vi.fn()}
-      />,
+      <TaskForm mode="create" defaultValues={defaultValues} onSubmit={vi.fn()} />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Carregar template" }));
+    fireEvent.click(screen.getByRole("button", { name: "Carregar modelo" }));
 
     expect(showErrorToast).toHaveBeenCalledWith(
       "Informe o código do modelo antes de carregar.",
@@ -331,18 +286,13 @@ describe("TaskForm", () => {
     lookupTemplateNameByCode.mockRejectedValue(new Error("not_found"));
 
     renderWithIntl(
-      <TaskForm
-        mode="create"
-        defaultValues={defaultValues}
-        steps={steps}
-        onSubmit={vi.fn()}
-      />,
+      <TaskForm mode="create" defaultValues={defaultValues} onSubmit={vi.fn()} />,
     );
 
     fireEvent.change(screen.getByLabelText("Código do modelo"), {
       target: { value: "999" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Carregar template" }));
+    fireEvent.click(screen.getByRole("button", { name: "Carregar modelo" }));
 
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(

@@ -75,7 +75,6 @@ function CreateTaskDialog({
         <TaskForm
           mode="create"
           defaultValues={buildCreateTaskFormDefaults(steps)}
-          steps={steps}
           layout="embedded"
           formTitleId={formTitleId}
           isPending={isPending}

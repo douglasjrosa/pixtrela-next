@@ -35,27 +35,21 @@ const templates = [
 
 describe("TemplateManager", () => {
   it("renders template list with subtask count", () => {
-    renderWithIntl(
-      <TemplateManager templates={templates} canDelete={false} />,
-    );
+    renderWithIntl(<TemplateManager templates={templates} />);
     expect(screen.getByText("Montagem padrão")).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
   });
 
   it("links each template to its detail page", () => {
-    renderWithIntl(
-      <TemplateManager templates={templates} canDelete={false} />,
-    );
+    renderWithIntl(<TemplateManager templates={templates} />);
     expect(screen.getByRole("link", { name: "Montagem padrão" })).toHaveAttribute(
       "href",
-      "/templates/tpl1",
+      "/templates/tasks/tpl1",
     );
   });
 
   it("shows new template form title", () => {
-    renderWithIntl(
-      <TemplateManager templates={[]} canDelete={false} />,
-    );
+    renderWithIntl(<TemplateManager templates={[]} />);
     expect(screen.getByRole("heading", { name: "Novo modelo" })).toBeInTheDocument();
   });
 
@@ -63,9 +57,7 @@ describe("TemplateManager", () => {
     const user = userEvent.setup();
     createTemplate.mockResolvedValue("tpl-new");
 
-    renderWithIntl(
-      <TemplateManager templates={[]} canDelete={false} />,
-    );
+    renderWithIntl(<TemplateManager templates={[]} />);
 
     await user.type(screen.getByLabelText("Nome"), "Novo modelo");
     await user.type(screen.getByLabelText("Código"), "999");
@@ -75,6 +67,6 @@ describe("TemplateManager", () => {
       name: "Novo modelo",
       code: "999",
     });
-    expect(push).toHaveBeenCalledWith("/templates/tpl-new");
+    expect(push).toHaveBeenCalledWith("/templates/tasks/tpl-new");
   });
 });

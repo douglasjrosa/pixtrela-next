@@ -1,14 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
+import { StepFormModal } from "@/components/steps/step-form-modal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { stepFormSchema, type StepFormInput } from "@/lib/schemas/step";
+import type { StepFormInput } from "@/lib/schemas/step";
 
 export interface StepRow {
   documentId: string;
@@ -21,56 +18,40 @@ export interface StepManagerProps {
   onCreate: (values: StepFormInput) => void | Promise<void>;
   onUpdate: (documentId: string, values: StepFormInput) => void | Promise<void>;
   onDelete: (documentId: string) => void | Promise<void>;
-  canDelete: boolean;
 }
 
 const EMPTY_FORM: StepFormInput = { name: "", index: 0 };
+
+type ModalState =
+  | { mode: "closed" }
+  | { mode: "create" }
+  | { mode: "edit"; step: StepRow };
 
 export function StepManager({
   steps,
   onCreate,
   onUpdate,
   onDelete,
-  canDelete,
 }: StepManagerProps) {
   const tCommon = useTranslations("common");
   const tSteps = useTranslations("steps");
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [modal, setModal] = useState<ModalState>({ mode: "closed" });
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<StepFormInput>({
-    resolver: zodResolver(stepFormSchema),
-    defaultValues: EMPTY_FORM,
-  });
-
-  function startCreate(): void {
-    setEditingId(null);
-    reset(EMPTY_FORM);
-    setMessage(null);
+  function closeModal(): void {
+    setModal({ mode: "closed" });
   }
 
-  function startEdit(step: StepRow): void {
-    setEditingId(step.documentId);
-    reset({ name: step.name, index: step.index });
-    setMessage(null);
-  }
-
-  function onSubmit(values: StepFormInput): void {
+  function handleSave(values: StepFormInput): void {
     startTransition(async () => {
-      if (editingId) {
-        await onUpdate(editingId, values);
-      } else {
+      if (modal.mode === "edit") {
+        await onUpdate(modal.step.documentId, values);
+      } else if (modal.mode === "create") {
         await onCreate(values);
       }
       setMessage(tSteps("saved"));
-      setEditingId(null);
-      reset(EMPTY_FORM);
+      closeModal();
     });
   }
 
@@ -82,11 +63,28 @@ export function StepManager({
     });
   }
 
+  const formKey =
+    modal.mode === "edit"
+      ? `step-edit-${modal.step.documentId}`
+      : "step-create";
+
+  const defaultValues: StepFormInput =
+    modal.mode === "edit"
+      ? { name: modal.step.name, index: modal.step.index }
+      : EMPTY_FORM;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{tSteps("title")}</h1>
-        <Button type="button" variant="outline" onClick={startCreate}>
+        <h2 className="text-xl font-semibold">{tSteps("title")}</h2>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setMessage(null);
+            setModal({ mode: "create" });
+          }}
+        >
           {tSteps("newStep")}
         </Button>
       </div>
@@ -96,44 +94,6 @@ export function StepManager({
           {message}
         </p>
       ) : null}
-
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2"
-      >
-        <h2 className="sm:col-span-2 text-lg font-semibold">
-          {editingId ? tCommon("edit") : tSteps("newStep")}
-        </h2>
-
-        <div className="space-y-2">
-          <Label htmlFor="name">{tSteps("name")}</Label>
-          <Input id="name" {...register("name")} />
-          {errors.name ? (
-            <p className="text-sm text-destructive">{errors.name.message}</p>
-          ) : null}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="index">{tSteps("index")}</Label>
-          <Input
-            id="index"
-            type="number"
-            min={0}
-            {...register("index", { valueAsNumber: true })}
-          />
-        </div>
-
-        <div className="flex gap-2 sm:col-span-2">
-          <Button type="submit" disabled={isPending}>
-            {tCommon("save")}
-          </Button>
-          {editingId ? (
-            <Button type="button" variant="outline" onClick={startCreate}>
-              {tCommon("cancel")}
-            </Button>
-          ) : null}
-        </div>
-      </form>
 
       <table className="w-full text-sm">
         <thead>
@@ -150,29 +110,40 @@ export function StepManager({
                 <button
                   type="button"
                   className="text-left hover:underline"
-                  onClick={() => startEdit(step)}
+                  onClick={() => {
+                    setMessage(null);
+                    setModal({ mode: "edit", step });
+                  }}
                 >
                   {step.name}
                 </button>
               </td>
               <td>{step.index}</td>
               <td>
-                {canDelete ? (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    disabled={isPending}
-                    onClick={() => handleDelete(step.documentId)}
-                  >
-                    {tCommon("delete")}
-                  </Button>
-                ) : null}
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  disabled={isPending}
+                  onClick={() => handleDelete(step.documentId)}
+                >
+                  {tCommon("delete")}
+                </Button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      <StepFormModal
+        open={modal.mode !== "closed"}
+        title={modal.mode === "edit" ? tCommon("edit") : tSteps("newStep")}
+        formKey={formKey}
+        defaultValues={defaultValues}
+        saving={isPending}
+        onClose={closeModal}
+        onSave={handleSave}
+      />
     </div>
   );
 }

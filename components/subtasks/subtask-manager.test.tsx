@@ -161,6 +161,33 @@ describe("SubTaskManager", () => {
     expect(
       within(dialog).queryByLabelText("Atribuído a"),
     ).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Status")).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByLabelText("Status de ativação"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides status fields when editing an existing subtask", async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <SubTaskManager
+        subtasks={subtasks}
+        taskQty={1}
+        teams={teams}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByText("Soldar"));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByLabelText("Status")).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByLabelText("Status de ativação"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows total qty as sub-task qty times task qty", () => {

@@ -27,7 +27,6 @@ export interface TemplateListRow {
 
 export interface TemplateManagerProps {
   templates: TemplateListRow[];
-  canDelete: boolean;
 }
 
 const EMPTY_FORM: Pick<TemplateTaskFormInput, "name" | "code"> = {
@@ -35,7 +34,7 @@ const EMPTY_FORM: Pick<TemplateTaskFormInput, "name" | "code"> = {
   code: "",
 };
 
-export function TemplateManager({ templates, canDelete }: TemplateManagerProps) {
+export function TemplateManager({ templates }: TemplateManagerProps) {
   const tCommon = useTranslations("common");
   const tTemplates = useTranslations("templates");
   const router = useRouter();
@@ -59,7 +58,7 @@ export function TemplateManager({ templates, canDelete }: TemplateManagerProps) 
         const documentId = await createTemplate(values);
         showSuccessToast(tTemplates("saved"));
         setFormKey((current) => current + 1);
-        router.push(`/templates/${documentId}`);
+        router.push(`/templates/tasks/${documentId}`);
       } catch (error) {
         rethrowIfNavigationError(error);
         showErrorToast(tTemplates("loadTemplateError"));
@@ -83,10 +82,6 @@ export function TemplateManager({ templates, canDelete }: TemplateManagerProps) 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{tTemplates("title")}</h1>
-      </div>
-
       <form
         key={formKey}
         onSubmit={handleSubmit(handleCreate)}
@@ -133,7 +128,7 @@ export function TemplateManager({ templates, canDelete }: TemplateManagerProps) 
             <tr key={template.documentId} className="border-b">
               <td className="py-2">
                 <Link
-                  href={`/templates/${template.documentId}`}
+                  href={`/templates/tasks/${template.documentId}`}
                   className="hover:underline"
                 >
                   {template.name}
@@ -142,17 +137,15 @@ export function TemplateManager({ templates, canDelete }: TemplateManagerProps) 
               <td>{template.code}</td>
               <td>{template.subTaskCount}</td>
               <td>
-                {canDelete ? (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    disabled={isPending}
-                    onClick={() => handleDelete(template.documentId)}
-                  >
-                    {tCommon("delete")}
-                  </Button>
-                ) : null}
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  disabled={isPending}
+                  onClick={() => handleDelete(template.documentId)}
+                >
+                  {tCommon("delete")}
+                </Button>
               </td>
             </tr>
           ))}

@@ -25,11 +25,17 @@ const NAV_RULES: NavRule[] = [
     item: { href: "/tasks", labelKey: "tasks" },
     show: (r) => r === "admin" || r === "manager" || r === "leader",
   },
-  { item: { href: "/templates", labelKey: "templates" }, show: (r) => RANK[r] >= RANK.leader },
+  {
+    item: { href: "/templates/tasks", labelKey: "templates" },
+    show: (r) => RANK[r] >= RANK.manager,
+  },
   { item: { href: "/teams", labelKey: "teams" }, show: (r) => RANK[r] >= RANK.manager },
   { item: { href: "/awards", labelKey: "awards" }, show: (r) => RANK[r] >= RANK.manager },
   { item: { href: "/users", labelKey: "users" }, show: (r) => RANK[r] >= RANK.leader },
-  { item: { href: "/settings", labelKey: "settings" }, show: (r) => r === "admin" },
+  {
+    item: { href: "/settings/steps", labelKey: "settings" },
+    show: (r) => r === "admin",
+  },
 ];
 
 /**

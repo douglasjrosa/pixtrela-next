@@ -155,7 +155,6 @@ export function TaskDetailEditor({
         formId={TASK_DETAIL_FORM_ID}
         hideActions
         defaultValues={toFormValues(task, steps)}
-        steps={steps}
         isPending={isPending}
         active={task.active}
         reasonForDeactivation={task.reasonForDeactivation}

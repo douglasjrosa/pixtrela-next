@@ -40,11 +40,12 @@ describe("KanbanSubtaskCreateModal", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Nova subtarefa" })).toBeInTheDocument();
     expect(screen.getByText("Tarefa A")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fechar" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Status")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Status de ativação")).not.toBeInTheDocument();
     expect(screen.queryByText("Atribuído a")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("checkbox", { name: "Adicionar subtarefa ao template" }),
+      screen.getByRole("checkbox", { name: "Adicionar subtarefa ao modelo" }),
     ).not.toBeChecked();
 
     await user.type(screen.getByLabelText("Nome"), "Cortar");
@@ -54,7 +55,7 @@ describe("KanbanSubtaskCreateModal", () => {
       expect.objectContaining({
         name: "Cortar",
         status: "waiting",
-        activationStatus: "locked",
+        activationStatus: "unlocked",
         assignedToIds: [],
       }),
       { addToTemplate: false },
@@ -79,7 +80,7 @@ describe("KanbanSubtaskCreateModal", () => {
 
     await user.type(screen.getByLabelText("Nome"), "Cortar");
     await user.click(
-      screen.getByRole("checkbox", { name: "Adicionar subtarefa ao template" }),
+      screen.getByRole("checkbox", { name: "Adicionar subtarefa ao modelo" }),
     );
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
@@ -89,7 +90,7 @@ describe("KanbanSubtaskCreateModal", () => {
     );
   });
 
-  it("calls onClose when cancel is clicked", async () => {
+  it("calls onClose when close button is clicked", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
 
@@ -105,7 +106,7 @@ describe("KanbanSubtaskCreateModal", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+    await user.click(screen.getByRole("button", { name: "Fechar" }));
     expect(onClose).toHaveBeenCalledOnce();
   });
 });

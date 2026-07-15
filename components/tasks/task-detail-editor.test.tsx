@@ -84,6 +84,13 @@ describe("TaskDetailEditor", () => {
     expect(saveButtons).toHaveLength(1);
   });
 
+  it("does not show a manual step (Etapa) select on the detail form", () => {
+    renderWithIntl(<TaskDetailEditor {...editorProps} />);
+
+    expect(screen.queryByLabelText("Etapa")).not.toBeInTheDocument();
+    expect(document.getElementById("task-detail-form")).toBeTruthy();
+  });
+
   it("updates task when floating save is clicked", async () => {
     const user = userEvent.setup();
 
