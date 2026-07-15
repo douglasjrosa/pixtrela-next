@@ -3,7 +3,8 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
-import { TaskManager } from "./task-manager";
+import { TasksPageHeader } from "./tasks-page-header";
+import { TasksListView } from "./tasks-list-view";
 
 const createTask = vi.fn();
 const showSuccessToast = vi.fn();
@@ -34,14 +35,14 @@ const tasks = [
     index: 0,
     status: "waiting" as const,
     active: true,
-    totalExpectedTime: 0,
-    totalTimeSpent: 0,
+    totalExpectedTime: 4860,
+    totalTimeSpent: 1920,
     deliveryDate: "2026-06-12",
     step: { documentId: "s1", name: "Fila" },
   },
 ];
 
-describe("TaskManager", () => {
+describe("TasksPageHeader", () => {
   beforeEach(() => {
     createTask.mockReset();
     showSuccessToast.mockReset();
@@ -52,27 +53,13 @@ describe("TaskManager", () => {
   });
 
   it("hides task form by default", () => {
-    renderWithIntl(<TaskManager tasks={tasks} steps={steps} />);
+    renderWithIntl(<TasksPageHeader steps={steps} />);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
   });
 
-  it("renders task list without action column", () => {
-    renderWithIntl(<TaskManager tasks={tasks} steps={steps} />);
-    expect(screen.getByRole("link", { name: "Montagem" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Desativar" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Excluir" })).not.toBeInTheDocument();
-    expect(screen.getByText("12/06/2026")).toBeInTheDocument();
-  });
-
-  it("navigates to task detail when a row is activated", () => {
-    renderWithIntl(<TaskManager tasks={tasks} steps={steps} />);
-    fireEvent.click(screen.getByRole("link", { name: "Montagem" }));
-    expect(push).toHaveBeenCalledWith("/tasks/t1");
-  });
-
   it("opens create modal when Nova tarefa is clicked", () => {
-    renderWithIntl(<TaskManager tasks={[]} steps={steps} />);
+    renderWithIntl(<TasksPageHeader steps={steps} />);
     fireEvent.click(screen.getByRole("button", { name: "Nova tarefa" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(
@@ -87,7 +74,7 @@ describe("TaskManager", () => {
   });
 
   it("closes create modal when close button is clicked", () => {
-    renderWithIntl(<TaskManager tasks={[]} steps={steps} />);
+    renderWithIntl(<TasksPageHeader steps={steps} />);
     fireEvent.click(screen.getByRole("button", { name: "Nova tarefa" }));
     fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -96,7 +83,7 @@ describe("TaskManager", () => {
   it("creates a task, closes modal and shows success toast", async () => {
     const user = userEvent.setup();
 
-    renderWithIntl(<TaskManager tasks={[]} steps={steps} />);
+    renderWithIntl(<TasksPageHeader steps={steps} />);
 
     await user.click(screen.getByRole("button", { name: "Nova tarefa" }));
     await user.type(screen.getByLabelText("Nome"), "Nova tarefa");
@@ -121,7 +108,7 @@ describe("TaskManager", () => {
     const user = userEvent.setup();
     createTask.mockRejectedValueOnce(new Error("Strapi request failed"));
 
-    renderWithIntl(<TaskManager tasks={[]} steps={steps} />);
+    renderWithIntl(<TasksPageHeader steps={steps} />);
 
     await user.click(screen.getByRole("button", { name: "Nova tarefa" }));
     await user.type(screen.getByLabelText("Nome"), "Nova tarefa");
@@ -130,5 +117,32 @@ describe("TaskManager", () => {
     expect(showErrorToast).toHaveBeenCalledWith(
       "Não foi possível concluir a operação.",
     );
+  });
+});
+
+describe("TasksListView", () => {
+  beforeEach(() => {
+    push.mockReset();
+  });
+
+  it("renders task list without action column", () => {
+    renderWithIntl(<TasksListView tasks={tasks} />);
+    expect(screen.getAllByRole("link", { name: "Montagem" }).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.queryByRole("button", { name: "Desativar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Excluir" })).not.toBeInTheDocument();
+    expect(screen.getAllByText("12/06/2026").length).toBeGreaterThan(0);
+  });
+
+  it("navigates to task detail when a row is activated", () => {
+    renderWithIntl(<TasksListView tasks={tasks} />);
+    fireEvent.click(screen.getAllByRole("link", { name: "Montagem" })[0]!);
+    expect(push).toHaveBeenCalledWith("/tasks/t1");
+  });
+
+  it("shows spent of expected duration", () => {
+    renderWithIntl(<TasksListView tasks={tasks} />);
+    expect(screen.getAllByText("32min de 1h 21min").length).toBeGreaterThan(0);
   });
 });

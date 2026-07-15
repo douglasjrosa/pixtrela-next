@@ -9,6 +9,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("@/lib/strapi", () => ({
   strapiFetch,
+  STRAPI_TAGS: { tasks: "strapi:tasks" },
 }));
 
 vi.mock("@/lib/strapi/revalidate", () => ({
@@ -212,5 +213,35 @@ describe("tasks/actions", () => {
 
     const { lookupTemplateNameByCode } = await import("./actions");
     await expect(lookupTemplateNameByCode("404")).rejects.toThrow("not_found");
+  });
+
+  it("loadMoreTasks returns the next filtered page", async () => {
+    mockStrapiFetch({
+      "GET /tasks": {
+        data: [
+          {
+            documentId: "t2",
+            name: "Embalagem",
+            qty: 1,
+            index: 1,
+            status: "producing",
+            deliveryDate: "2026-07-10",
+          },
+        ],
+        meta: {
+          pagination: { page: 2, pageSize: 10, pageCount: 2, total: 11 },
+        },
+      },
+    });
+
+    const { loadMoreTasks } = await import("./actions");
+    const result = await loadMoreTasks(
+      { statuses: ["producing", "waiting"], from: "2026-06-01" },
+      2,
+    );
+
+    expect(result.page).toBe(2);
+    expect(result.hasMore).toBe(false);
+    expect(result.tasks[0]?.name).toBe("Embalagem");
   });
 });

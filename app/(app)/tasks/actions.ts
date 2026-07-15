@@ -13,9 +13,14 @@ import {
   taskFormSchema,
   type TaskFormInput,
 } from "@/lib/schemas/task";
+import { taskListFiltersSchema } from "@/lib/schemas/task-list-filters";
 import { strapiFetch } from "@/lib/strapi";
 import { LIST_CACHE_CONTRACT } from "@/lib/strapi/list-cache-contract";
 import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
+import {
+  loadTaskListPage,
+  type TaskListPageResult,
+} from "@/lib/tasks/load-task-list-page";
 
 interface StrapiList<T> {
   data: T[];
@@ -81,6 +86,15 @@ async function fetchTaskIndex(documentId: string): Promise<number> {
     { fields: ["index"] },
   );
   return res.data.index;
+}
+
+export async function loadMoreTasks(
+  rawFilters: unknown,
+  page: number,
+): Promise<TaskListPageResult> {
+  await assertCanManage();
+  const filters = taskListFiltersSchema.parse(rawFilters);
+  return loadTaskListPage(filters, page);
 }
 
 export async function createTask(raw: TaskFormInput): Promise<void> {

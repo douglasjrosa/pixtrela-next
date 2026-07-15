@@ -1,29 +1,26 @@
+import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
-import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
-import { TaskManager, type TaskRow, type StepOption } from "@/components/tasks/task-manager";
+import { TasksListSkeleton } from "@/components/tasks/tasks-list-skeleton";
+import { TasksListWithLoadMore } from "@/components/tasks/tasks-list-with-load-more";
+import { TASKS_PAGE_HEIGHT_CLASS } from "@/components/tasks/tasks-page-layout";
+import { TasksPageHeader } from "@/components/tasks/tasks-page-header";
+import { TasksToolbar } from "@/components/tasks/tasks-toolbar";
+import type { StepOption } from "@/components/tasks/types";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTasks } from "@/lib/auth/permissions";
+import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
-import type { TaskFormInput } from "@/lib/schemas/task";
+import { loadTaskListPage } from "@/lib/tasks/load-task-list-page";
+import {
+  parseTaskListSearchParams,
+  taskListFilterKey,
+} from "@/lib/tasks/task-list-params";
 
 interface StrapiList<T> {
   data: T[];
-}
-
-interface TaskEntity {
-  documentId: string;
-  name: string;
-  qty: number;
-  deliveryDate?: string | null;
-  index: number;
-  status: TaskFormInput["status"];
-  active?: boolean;
-  templateTaskCode?: string | null;
-  totalExpectedTime?: number;
-  totalTimeSpent?: number;
-  step?: { documentId: string; name: string } | null;
 }
 
 interface StepEntity {
@@ -31,45 +28,8 @@ interface StepEntity {
   name: string;
 }
 
-async function loadTasks(): Promise<TaskRow[]> {
-  try {
-    const res = await strapiFetch<StrapiList<TaskEntity>>(
-      "/tasks",
-      { strapiCache: { tags: [STRAPI_TAGS.tasks], revalidate: 30 } },
-      {
-        fields: [
-          "documentId",
-          "name",
-          "qty",
-          "deliveryDate",
-          "index",
-          "status",
-          "active",
-          "templateTaskCode",
-          "totalExpectedTime",
-          "totalTimeSpent",
-        ],
-        populate: { step: { fields: ["documentId", "name"] } },
-        sort: "index:asc",
-      },
-    );
-    return res.data.map((task) => ({
-      documentId: task.documentId,
-      name: task.name,
-      qty: task.qty,
-      deliveryDate: task.deliveryDate,
-      index: task.index,
-      status: task.status,
-      active: task.active ?? true,
-      templateTaskCode: task.templateTaskCode,
-      totalExpectedTime: task.totalExpectedTime ?? 0,
-      totalTimeSpent: task.totalTimeSpent ?? 0,
-      step: task.step ?? null,
-    }));
-  } catch (error) {
-    rethrowIfNavigationError(error);
-    return [];
-  }
+interface TasksPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 async function loadSteps(): Promise<StepOption[]> {
@@ -89,7 +49,35 @@ async function loadSteps(): Promise<StepOption[]> {
   }
 }
 
-export default async function TasksPage() {
+async function TasksListSection({
+  filters,
+}: {
+  filters: TaskListFilters;
+}) {
+  try {
+    const page = await loadTaskListPage(filters, 1);
+    return (
+      <TasksListWithLoadMore
+        filters={filters}
+        initialTasks={page.tasks}
+        initialHasMore={page.hasMore}
+        initialPage={page.page}
+      />
+    );
+  } catch (error) {
+    rethrowIfNavigationError(error);
+    return (
+      <TasksListWithLoadMore
+        filters={filters}
+        initialTasks={[]}
+        initialHasMore={false}
+        initialPage={1}
+      />
+    );
+  }
+}
+
+export default async function TasksPage({ searchParams }: TasksPageProps) {
   const t = await getTranslations("errors");
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
@@ -102,14 +90,20 @@ export default async function TasksPage() {
     );
   }
 
-  const [tasks, steps] = await Promise.all([loadTasks(), loadSteps()]);
+  const params = await searchParams;
+  const filters = parseTaskListSearchParams(params);
+  const filterKey = taskListFilterKey(filters);
+  const steps = await loadSteps();
 
   return (
-    <section className="p-6">
-      <TaskManager
-        tasks={tasks}
-        steps={steps}
-      />
+    <section className={`flex ${TASKS_PAGE_HEIGHT_CLASS} flex-col gap-4 p-6`}>
+      <TasksPageHeader steps={steps} />
+      <Suspense fallback={null}>
+        <TasksToolbar />
+      </Suspense>
+      <Suspense key={filterKey} fallback={<TasksListSkeleton />}>
+        <TasksListSection filters={filters} />
+      </Suspense>
     </section>
   );
 }

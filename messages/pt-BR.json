@@ -96,7 +96,20 @@
       "loadTemplate": "Carregar modelo",
       "loadTemplateSuccess": "Nome preenchido com o modelo.",
       "loadTemplateError": "Não foi possível carregar o modelo.",
-      "loadTemplateMissingCode": "Informe o código do modelo antes de carregar."
+      "loadTemplateMissingCode": "Informe o código do modelo antes de carregar.",
+      "filters": "Filtros",
+      "applyFilters": "Aplicar",
+      "clearFilters": "Limpar",
+      "searchByName": "Buscar por nome",
+      "loadMore": "Carregar mais",
+      "loadingMore": "Carregando...",
+      "empty": "Nenhuma tarefa encontrada.",
+      "dateFrom": "De",
+      "dateTo": "Até",
+      "statusFilter": "Status",
+      "spentOfExpected": "{spent} de {expected}",
+      "qtyShort": "Qtde.: {qty}",
+      "listLoading": "Carregando tarefas..."
     }
   },
   "kanban": {
