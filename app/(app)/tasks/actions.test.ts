@@ -73,7 +73,48 @@ describe("tasks/actions", () => {
     expect(revalidateStrapiTags).toHaveBeenCalledWith(
       "strapi:tasks",
       "strapi:sub-tasks",
-      { paths: ["/tasks"] },
+      { paths: ["/tasks", "/board"] },
+    );
+  });
+
+  it("updateTask PUT omits step so status→step automation can apply", async () => {
+    mockStrapiFetch({
+      "GET /tasks/task-1": { data: { index: 2 } },
+      "PUT /tasks/task-1": { data: { documentId: "task-1" } },
+    });
+
+    const { updateTask } = await import("./actions");
+    await updateTask("task-1", {
+      name: "Tarefa A",
+      qty: 1,
+      deliveryDate: "",
+      stepDocumentId: "step-old",
+      status: "producing",
+      templateTaskCode: "",
+    });
+
+    expect(strapiFetch).toHaveBeenNthCalledWith(
+      2,
+      "/tasks/task-1",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({
+          data: {
+            name: "Tarefa A",
+            qty: 1,
+            deliveryDate: null,
+            index: 2,
+            status: "producing",
+            templateTaskCode: null,
+            active: true,
+          },
+        }),
+      }),
+    );
+    expect(revalidateStrapiTags).toHaveBeenCalledWith(
+      "strapi:tasks",
+      "strapi:sub-tasks",
+      { paths: ["/tasks", "/board", "/tasks/task-1"] },
     );
   });
 
@@ -96,7 +137,7 @@ describe("tasks/actions", () => {
     expect(revalidateStrapiTags).toHaveBeenCalledWith(
       "strapi:tasks",
       "strapi:sub-tasks",
-      { paths: ["/tasks", "/tasks/task-1"] },
+      { paths: ["/tasks", "/board", "/tasks/task-1"] },
     );
   });
 

@@ -8,7 +8,7 @@ export const LIST_CACHE_CONTRACT = {
   },
   tasks: {
     tags: [STRAPI_TAGS.tasks, STRAPI_TAGS.subTasks],
-    paths: ["/tasks"],
+    paths: ["/tasks", "/board"],
   },
   board: {
     tags: [STRAPI_TAGS.tasks, STRAPI_TAGS.steps],

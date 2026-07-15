@@ -35,7 +35,13 @@ async function assertCanDeactivate(): Promise<void> {
   }
 }
 
-function toStrapiPayload(input: TaskFormInput, index: number, active = true) {
+function toStrapiPayload(
+  input: TaskFormInput,
+  index: number,
+  active = true,
+  options: { includeStep?: boolean } = {},
+) {
+  const includeStep = options.includeStep ?? true;
   const base = {
     name: input.name,
     qty: input.qty,
@@ -45,6 +51,7 @@ function toStrapiPayload(input: TaskFormInput, index: number, active = true) {
     templateTaskCode: input.templateTaskCode || null,
     active,
   };
+  if (!includeStep) return base;
   return { ...base, step: input.stepDocumentId };
 }
 
@@ -96,10 +103,14 @@ export async function updateTask(
   await assertCanManage();
   const data = taskFormSchema.parse(raw);
   const index = await fetchTaskIndex(documentId);
+  // Omit step so status→step automation owns the board column (hidden form
+  // stepDocumentId would otherwise overwrite the mapped step after update).
   await strapiFetch(`/tasks/${documentId}`, {
     method: "PUT",
     strapiCache: { noStore: true },
-    body: JSON.stringify({ data: toStrapiPayload(data, index) }),
+    body: JSON.stringify({
+      data: toStrapiPayload(data, index, true, { includeStep: false }),
+    }),
   });
   invalidateTasks(documentId);
 }
