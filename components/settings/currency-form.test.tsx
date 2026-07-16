@@ -33,24 +33,60 @@ describe("CurrencyForm", () => {
     showErrorToast.mockReset();
   });
 
+  it("renders active-for-subtasks select with currency titles", () => {
+    renderWithIntl(
+      <CurrencyForm
+        currencies={currencies}
+        activeCurrencyDocumentId="cur-star"
+        onSave={vi.fn()}
+      />,
+    );
+
+    const select = screen.getByLabelText("Ativo para Subtarefas:");
+    expect(select).toHaveValue("cur-star");
+    expect(screen.getByRole("option", { name: "Estrela" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Gema" })).toBeInTheDocument();
+  });
+
   it("renders a units-per-second field for each currency", () => {
-    renderWithIntl(<CurrencyForm currencies={currencies} onSave={vi.fn()} />);
+    renderWithIntl(
+      <CurrencyForm
+        currencies={currencies}
+        activeCurrencyDocumentId=""
+        onSave={vi.fn()}
+      />,
+    );
 
     expect(screen.getByLabelText("Estrelas por segundo:")).toHaveValue(2);
     expect(screen.getByLabelText("Gemas por segundo:")).toHaveValue(0.5);
   });
 
   it("shows empty state when there are no currencies", () => {
-    renderWithIntl(<CurrencyForm currencies={[]} onSave={vi.fn()} />);
+    renderWithIntl(
+      <CurrencyForm
+        currencies={[]}
+        activeCurrencyDocumentId=""
+        onSave={vi.fn()}
+      />,
+    );
 
     expect(screen.getByText("Nenhuma moeda cadastrada.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Salvar" })).toBeNull();
   });
 
-  it("calls onSave with updated rates and shows success toast", async () => {
+  it("calls onSave with active currency and rates", async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
-    renderWithIntl(<CurrencyForm currencies={currencies} onSave={onSave} />);
+    renderWithIntl(
+      <CurrencyForm
+        currencies={currencies}
+        activeCurrencyDocumentId="cur-star"
+        onSave={onSave}
+      />,
+    );
 
+    fireEvent.change(screen.getByLabelText("Ativo para Subtarefas:"), {
+      target: { value: "cur-gem" },
+    });
     fireEvent.change(screen.getByLabelText("Estrelas por segundo:"), {
       target: { value: "3" },
     });
@@ -61,6 +97,7 @@ describe("CurrencyForm", () => {
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith({
+        currencyDocumentId: "cur-gem",
         rates: [
           { documentId: "cur-star", currencyPerSecond: 3 },
           { documentId: "cur-gem", currencyPerSecond: 1.25 },
@@ -73,7 +110,13 @@ describe("CurrencyForm", () => {
 
   it("shows error toast when onSave fails", async () => {
     const onSave = vi.fn().mockRejectedValue(new Error("forbidden"));
-    renderWithIntl(<CurrencyForm currencies={currencies} onSave={onSave} />);
+    renderWithIntl(
+      <CurrencyForm
+        currencies={currencies}
+        activeCurrencyDocumentId=""
+        onSave={onSave}
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 

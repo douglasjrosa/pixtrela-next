@@ -59,13 +59,13 @@ describe("buildTemplateFromBox", () => {
     expect(byName["Corte das chapas das laterais"]).toMatchObject({
       qty: 2,
       sharingType: "qty",
-      expectedTime: 60,
+      expectedTime: 120,
       maxSameTimeWorkers: 1,
     });
     expect(byName["Corte das chapas das cabeceiras"]).toMatchObject({
       qty: 2,
       sharingType: "qty",
-      expectedTime: 60,
+      expectedTime: 120,
       maxSameTimeWorkers: 1,
     });
     expect(byName["Corte da chapa da tampa"]).toMatchObject({
@@ -128,15 +128,15 @@ describe("buildTemplateFromBox", () => {
       (template.subTask ?? []).map((s) => [s.name, s]),
     );
 
-    // lateral: fragil + adExtra => 2 adhesives => 60s, qty 2
+    // lateral: fragil + adExtra => 2 adhesives × 30s × qty 2 => 120s
     expect(byName["Fixação dos adesivos das laterais"]).toMatchObject({
       qty: 2,
-      expectedTime: 60,
+      expectedTime: 120,
     });
-    // cabeceira: fragil only => 1 adhesive => 30s, qty 2
+    // cabeceira: fragil only => 1 adhesive × 30s × qty 2 => 60s
     expect(byName["Fixação dos adesivos das cabeceiras"]).toMatchObject({
       qty: 2,
-      expectedTime: 30,
+      expectedTime: 60,
     });
     // tampa: none => omitted
     expect(byName["Fixação dos adesivos da tampa"]).toBeUndefined();

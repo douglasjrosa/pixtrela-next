@@ -25,7 +25,7 @@ export function buildTaskNameFromPedidoItem(
   item: CrmPedidoItem,
   empresaNome: string,
 ): string {
-  return `${item.qty} - ${empresaNome} - ${item.nomeProd}`;
+  return `${empresaNome} - ${item.nomeProd}`;
 }
 
 export function mapPedidoToTaskDrafts(pedido: CrmPedidoEntity): CrmTaskDraft[] {

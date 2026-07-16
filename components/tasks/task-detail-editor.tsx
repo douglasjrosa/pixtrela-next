@@ -175,6 +175,7 @@ export function TaskDetailEditor({
       <SubTaskManager
         ref={subtaskManagerRef}
         subtasks={subtasks}
+        taskName={task.name}
         taskQty={task.qty}
         teams={teams}
         disabled={isPending}

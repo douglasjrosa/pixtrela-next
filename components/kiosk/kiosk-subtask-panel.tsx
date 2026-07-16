@@ -21,8 +21,6 @@ import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 
 import { KioskExitSubtaskForm } from "./kiosk-exit-subtask-form";
 import { SubtaskElapsedTimer } from "./subtask-elapsed-timer";
-import { SubtaskProgressBar } from "./subtask-progress-bar";
-import { useElapsedSeconds } from "./use-elapsed-seconds";
 
 export interface KioskSubtaskPanelProps {
   subTasks: KioskSubTask[];
@@ -32,22 +30,6 @@ export interface KioskSubtaskPanelProps {
   onStart?: (documentId: string) => void | Promise<void>;
   onExit?: (documentId: string, input: KioskExitInput) => void | Promise<void>;
   pending?: boolean;
-}
-
-function ProducingProgress({
-  subTask,
-}: {
-  subTask: KioskSubTask;
-}) {
-  const elapsedSeconds = useElapsedSeconds(subTask.startedAt, subTask.timeSpent);
-  if (elapsedSeconds === null) return null;
-
-  return (
-    <SubtaskProgressBar
-      elapsedSeconds={elapsedSeconds}
-      expectedSeconds={subTask.expectedTime}
-    />
-  );
 }
 
 export function KioskSubtaskPanel({
@@ -111,24 +93,15 @@ export function KioskSubtaskPanel({
                         baseSeconds={subTask.timeSpent}
                       />
                     </p>
-                    <ProducingProgress subTask={subTask} />
                   </div>
                 ) : null}
                 {finished ? (
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <p>
-                      {t("timeSpent")}:{" "}
-                      <span className="tabular-nums">
-                        <Duration seconds={subTask.timeSpent} />
-                      </span>
-                    </p>
-                    {subTask.expectedTime > 0 ? (
-                      <SubtaskProgressBar
-                        elapsedSeconds={subTask.timeSpent}
-                        expectedSeconds={subTask.expectedTime}
-                      />
-                    ) : null}
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {t("timeSpent")}:{" "}
+                    <span className="tabular-nums">
+                      <Duration seconds={subTask.timeSpent} />
+                    </span>
+                  </p>
                 ) : null}
               </div>
               {!finished && !isExiting ? (
@@ -174,7 +147,10 @@ export function KioskSubtaskPanel({
                   allowComplete={canCompleteSubTaskOnExit(subTask)}
                   maxQty={
                     subTask.sharingType === "qty"
-                      ? getRemainingSubTaskQty(subTask.qty, subTask.completedQty)
+                      ? getRemainingSubTaskQty(
+                          subTask.targetQty,
+                          subTask.completedQty,
+                        )
                       : undefined
                   }
                   disabled={pending}

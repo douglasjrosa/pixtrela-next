@@ -10,6 +10,7 @@ vi.mock("@/auth", () => ({
 vi.mock("@/lib/strapi", () => ({
   STRAPI_TAGS: {
     currencies: "strapi:currencies",
+    currencyForSubtasks: "strapi:currency-for-subtasks",
     kioskSetting: "strapi:kiosk-setting",
     taskAutomationSetting: "strapi:task-automation-setting",
     tasks: "strapi:tasks",
@@ -19,6 +20,13 @@ vi.mock("@/lib/strapi", () => ({
 
 vi.mock("@/lib/strapi/revalidate", () => ({
   revalidateStrapiTags,
+}));
+
+vi.mock("@/lib/strapi/currency-for-subtasks", () => ({
+  CURRENCY_FOR_SUBTASKS_API_PATH: "/currency-for-subtasks",
+  toCurrencyForSubtasksPayload: (values: { currencyDocumentId: string }) => ({
+    currency: values.currencyDocumentId || null,
+  }),
 }));
 
 vi.mock("@/lib/strapi/kiosk-setting", () => ({
@@ -104,6 +112,26 @@ describe("settings/actions", () => {
       expect.objectContaining({ method: "PUT" }),
     );
     expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:currencies");
+  });
+
+  it("updateCurrencyForSubtasks PUTs single-type path", async () => {
+    mockStrapiFetch({
+      "PUT /currency-for-subtasks": { data: { documentId: "cfs-1" } },
+    });
+
+    const { updateCurrencyForSubtasks } = await import("./actions");
+    await updateCurrencyForSubtasks({ currencyDocumentId: "cur-star" });
+
+    expect(strapiFetch).toHaveBeenCalledWith(
+      "/currency-for-subtasks",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ data: { currency: "cur-star" } }),
+      }),
+    );
+    expect(revalidateStrapiTags).toHaveBeenCalledWith(
+      "strapi:currency-for-subtasks",
+    );
   });
 
   it("updateTaskAutomationSetting PUTs single-type path", async () => {

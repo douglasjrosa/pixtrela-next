@@ -12,6 +12,7 @@ import { SubTaskRemoveButton } from "./subtask-remove-button";
 export interface SubTaskFormModalProps {
   open: boolean;
   title: string;
+  subtitle?: string;
   titleId?: string;
   disabled?: boolean;
   onClose: () => void;
@@ -23,6 +24,7 @@ export interface SubTaskFormModalProps {
 export function SubTaskFormModal({
   open,
   title,
+  subtitle,
   titleId = "subtask-form-modal-title",
   disabled = false,
   onClose,
@@ -54,9 +56,14 @@ export function SubTaskFormModal({
       >
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-4">
-            <h2 id={titleId} className="text-lg font-semibold">
-              {title}
-            </h2>
+            <div className="min-w-0 space-y-1">
+              <h2 id={titleId} className="text-lg font-semibold">
+                {title}
+              </h2>
+              {subtitle ? (
+                <p className="text-sm text-muted-foreground">{subtitle}</p>
+              ) : null}
+            </div>
             <div className="flex shrink-0 items-center">
               {showRowActions ? (
                 <>

@@ -20,6 +20,7 @@ import {
   mergeLoadedSubtasksWithDraft,
   resolveAssigneeNames,
 } from "@/lib/business/board-assignee-draft";
+import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
 export interface BoardActionsProps {
@@ -212,6 +213,9 @@ export function BoardActions({
     documentId: subtask.documentId,
     status: subtask.status,
   }));
+  const selectedTaskDisplayTitle = selectedTask
+    ? formatTaskDisplayTitle(selectedTask.qty, selectedTask.name)
+    : "";
 
   return (
     <>
@@ -224,7 +228,7 @@ export function BoardActions({
 
       <KanbanTaskSubtasksModal
         open={selectedTask !== null}
-        taskName={selectedTask?.name ?? ""}
+        taskName={selectedTaskDisplayTitle}
         subtasks={subtasks}
         teams={teams}
         loading={loadingSubtasks}
@@ -238,7 +242,7 @@ export function BoardActions({
 
       <KanbanSubtaskCreateModal
         open={createOpen}
-        taskName={selectedTask?.name ?? ""}
+        taskName={selectedTaskDisplayTitle}
         teams={teams}
         dependencyOptions={dependencyOptions}
         dependencyStatusSiblings={dependencyStatusSiblings}

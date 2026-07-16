@@ -71,12 +71,15 @@ export function KanbanTaskSubtasksModal({
         </Button>
 
         <div className="flex min-h-0 flex-1 flex-col space-y-4">
-          <h2
-            id="kanban-subtasks-title"
-            className="pr-8 text-lg font-semibold"
-          >
-            {taskName}
-          </h2>
+          <div className="space-y-1 pr-8">
+            <h2
+              id="kanban-subtasks-title"
+              className="text-lg font-semibold"
+            >
+              {tKanban("assignTitle")}
+            </h2>
+            <p className="text-sm text-muted-foreground">{taskName}</p>
+          </div>
 
           {loading ? (
             <p className="text-sm text-muted-foreground" role="status">

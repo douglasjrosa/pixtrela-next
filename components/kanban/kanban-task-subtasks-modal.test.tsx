@@ -42,7 +42,10 @@ describe("KanbanTaskSubtasksModal", () => {
     );
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Tarefa A" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Atribuir subtarefa" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Tarefa A")).toBeInTheDocument();
     expect(screen.getByText("Soldar")).toBeInTheDocument();
     expect(screen.getByText("Pintar")).toBeInTheDocument();
     expect(screen.getByText("Aguardando")).toBeInTheDocument();

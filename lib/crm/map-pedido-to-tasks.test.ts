@@ -19,7 +19,7 @@ describe("mapPedidoToTaskDrafts", () => {
       {
         crmPedidoId: 42,
         crmItemKey: "42:0",
-        name: "10 - Max Brasil - Caixotona",
+        name: "Max Brasil - Caixotona",
         qty: 10,
         deliveryDate: "2026-07-15",
         templateTaskCode: "123",
@@ -32,12 +32,12 @@ describe("mapPedidoToTaskDrafts", () => {
     expect(buildCrmItemKey(7, 2)).toBe("7:2");
   });
 
-  it("builds task name from item and empresa", () => {
+  it("builds task name from empresa and box name without qty", () => {
     expect(
       buildTaskNameFromPedidoItem(
         { qty: 5, prodId: 1, nomeProd: "Base" },
         "Empresa X",
       ),
-    ).toBe("5 - Empresa X - Base");
+    ).toBe("Empresa X - Base");
   });
 });

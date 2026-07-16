@@ -16,6 +16,7 @@ function kioskSubTask(
     status: overrides.status ?? "waiting",
     activationStatus: overrides.activationStatus ?? "unlocked",
     qty: overrides.qty ?? 1,
+    targetQty: overrides.targetQty ?? overrides.qty ?? 1,
     completedQty: overrides.completedQty ?? 0,
     sharingType: overrides.sharingType ?? "duration",
     timeSpent: overrides.timeSpent ?? 0,

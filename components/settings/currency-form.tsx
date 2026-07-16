@@ -4,16 +4,24 @@ import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
+import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
-import {
-  currencyRatesFormSchema,
-  type CurrencyRatesFormInput,
-} from "@/lib/schemas/currency-rates";
+import { currencyForSubtasksSchema } from "@/lib/schemas/currency-for-subtasks";
+import { currencyRatesFormSchema } from "@/lib/schemas/currency-rates";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+
+const SELECT_CLASS_NAME =
+  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm";
+
+const currencySettingsFormSchema = currencyRatesFormSchema.merge(
+  currencyForSubtasksSchema,
+);
+
+type CurrencySettingsFormInput = z.infer<typeof currencySettingsFormSchema>;
 
 export interface CurrencyRate {
   documentId: string;
@@ -24,7 +32,8 @@ export interface CurrencyRate {
 
 export interface CurrencyFormProps {
   currencies: CurrencyRate[];
-  onSave: (values: CurrencyRatesFormInput) => void | Promise<void>;
+  activeCurrencyDocumentId: string;
+  onSave: (values: CurrencySettingsFormInput) => void | Promise<void>;
 }
 
 function resolveCurrencyLabel(currency: CurrencyRate): string {
@@ -33,7 +42,17 @@ function resolveCurrencyLabel(currency: CurrencyRate): string {
   return currency.documentId;
 }
 
-export function CurrencyForm({ currencies, onSave }: CurrencyFormProps) {
+function resolveCurrencyTitle(currency: CurrencyRate): string {
+  if (currency.title.trim().length > 0) return currency.title;
+  if (currency.pluralTitle.trim().length > 0) return currency.pluralTitle;
+  return currency.documentId;
+}
+
+export function CurrencyForm({
+  currencies,
+  activeCurrencyDocumentId,
+  onSave,
+}: CurrencyFormProps) {
   const tCommon = useTranslations("common");
   const tSettings = useTranslations("settings");
   const [isPending, startTransition] = useTransition();
@@ -42,9 +61,10 @@ export function CurrencyForm({ currencies, onSave }: CurrencyFormProps) {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<CurrencyRatesFormInput>({
-    resolver: zodResolver(currencyRatesFormSchema),
+  } = useForm<CurrencySettingsFormInput>({
+    resolver: zodResolver(currencySettingsFormSchema),
     defaultValues: {
+      currencyDocumentId: activeCurrencyDocumentId,
       rates: currencies.map((currency) => ({
         documentId: currency.documentId,
         currencyPerSecond: currency.currencyPerSecond,
@@ -52,7 +72,7 @@ export function CurrencyForm({ currencies, onSave }: CurrencyFormProps) {
     },
   });
 
-  function onSubmit(values: CurrencyRatesFormInput): void {
+  function onSubmit(values: CurrencySettingsFormInput): void {
     startTransition(async () => {
       try {
         await onSave(values);
@@ -72,6 +92,24 @@ export function CurrencyForm({ currencies, onSave }: CurrencyFormProps) {
         <p className="text-sm text-muted-foreground">{tSettings("noCurrencies")}</p>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Label htmlFor="currency-active-for-subtasks" className="shrink-0">
+              {tSettings("currencyActiveForSubtasks")}
+            </Label>
+            <select
+              id="currency-active-for-subtasks"
+              className={`${SELECT_CLASS_NAME} flex-1`}
+              {...register("currencyDocumentId")}
+            >
+              <option value="">{tSettings("currencyActiveNone")}</option>
+              {currencies.map((currency) => (
+                <option key={currency.documentId} value={currency.documentId}>
+                  {resolveCurrencyTitle(currency)}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {currencies.map((currency, index) => {
             const label = tSettings("currencyPerSecondFor", {
               currency: resolveCurrencyLabel(currency),

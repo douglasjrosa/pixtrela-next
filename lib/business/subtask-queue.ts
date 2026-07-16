@@ -17,6 +17,8 @@ export interface QueuedSubTask {
 
 export interface KioskSubTask extends QueuedSubTask {
   qty: number;
+  /** Pieces required for the whole task (subTask.qty * task.qty). */
+  targetQty: number;
   completedQty: number;
   sharingType: "qty" | "duration";
   timeSpent: number;
@@ -37,10 +39,10 @@ export interface KioskQueueSections {
 
 /** Remaining pieces any colaborator may report on exit (global sum). */
 export function getRemainingSubTaskQty(
-  qty: number,
+  targetQty: number,
   completedQty: number,
 ): number {
-  return Math.max(0, qty - completedQty);
+  return Math.max(0, targetQty - completedQty);
 }
 
 /** Sort subtasks by index ascending. */

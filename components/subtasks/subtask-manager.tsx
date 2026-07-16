@@ -41,6 +41,7 @@ import {
 } from "@/lib/business/subtask-draft";
 import { normalizeSubTaskCreateValues } from "@/lib/business/subtask-create-fields";
 import { calculateSubTaskDisplayQty } from "@/lib/business/subtask-display-qty";
+import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
 import { SubTaskFormModal } from "./subtask-form-modal";
@@ -82,6 +83,7 @@ export type SubTaskCreateOptions = {
 
 export interface SubTaskManagerProps {
   subtasks: SubTaskRow[];
+  taskName: string;
   taskQty: number;
   teams: TeamAssignmentOption[];
   disabled?: boolean;
@@ -280,6 +282,7 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
   function SubTaskManager(
     {
       subtasks,
+      taskName,
       taskQty,
       teams,
       disabled = false,
@@ -290,7 +293,6 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
     },
     ref,
   ) {
-    const tCommon = useTranslations("common");
     const tSubtasks = useTranslations("subtasks");
     const tTasks = useTranslations("tasks");
     const tStatus = useTranslations("tasks.status");
@@ -528,7 +530,8 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
     const isModalOpen = isCreatingNew || editingSubtask !== null;
     const modalTitle = isCreatingNew || editingSubtask?.isDraft
       ? tSubtasks("newSubtask")
-      : tCommon("edit");
+      : tSubtasks("editSubtask");
+    const taskDisplayTitle = formatTaskDisplayTitle(taskQty, taskName);
 
     return (
       <div className="space-y-6">
@@ -592,6 +595,7 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
         <SubTaskFormModal
           open={isModalOpen}
           title={modalTitle}
+          subtitle={taskDisplayTitle}
           disabled={isBusy}
           onClose={closeModal}
           onClone={

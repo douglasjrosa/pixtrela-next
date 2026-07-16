@@ -91,7 +91,8 @@ function chapaCutDraft(name: string, qty: number, present: boolean): SubTaskDraf
     name,
     qty,
     sharingType: "qty",
-    expectedTime: CUT_SECONDS,
+    // Total time for all pieces of this cut (qty × per-piece cut seconds).
+    expectedTime: CUT_SECONDS * qty,
     include: present,
   };
 }
@@ -131,9 +132,11 @@ function maxSameTimeWorkersFor(name: string): number {
 /**
  * Turns a legacy box payload into a Pixtrela TemplateTask form input.
  *
- * Cut subtasks are time-based (fixed 60s); assembly/fixation subtasks are
- * quantity-based with expectedTime = nails/staples (1s each) or 30s per
- * adhesive. Subtasks for absent parts (count 0) are omitted. Part quantities
+ * Cut subtasks: duration for single pieces (60s) or qty cuts with
+ * expectedTime = 60s × piece count (total for subTask.qty).
+ * Assembly/fixation: quantity-based; expectedTime is the total for
+ * subTask.qty (nails/staples as 1s each, or 30s × adhesives × pieces).
+ * Subtasks for absent parts (count 0) are omitted. Part quantities
  * follow the box anatomy: 1 base, 1 tampa, 2 laterais, 2 cabeceiras.
  */
 export function buildTemplateFromBox(
@@ -185,7 +188,7 @@ export function buildTemplateFromBox(
     qtyDraft(
       "Fixação dos adesivos das laterais",
       QTY_LATERAIS,
-      lateralAdhesives * ADHESIVE_SECONDS,
+      lateralAdhesives * ADHESIVE_SECONDS * QTY_LATERAIS,
     ),
     qtyDraft(
       "Montagem dos quadros das cabeceiras",
@@ -200,7 +203,7 @@ export function buildTemplateFromBox(
     qtyDraft(
       "Fixação dos adesivos das cabeceiras",
       QTY_CABECEIRAS,
-      cabeceiraAdhesives * ADHESIVE_SECONDS,
+      cabeceiraAdhesives * ADHESIVE_SECONDS * QTY_CABECEIRAS,
     ),
     qtyDraft(
       "Montagem dos quadros da tampa",
@@ -215,7 +218,7 @@ export function buildTemplateFromBox(
     qtyDraft(
       "Fixação dos adesivos da tampa",
       QTY_TAMPA,
-      tampaAdhesives * ADHESIVE_SECONDS,
+      tampaAdhesives * ADHESIVE_SECONDS * QTY_TAMPA,
     ),
   ];
 

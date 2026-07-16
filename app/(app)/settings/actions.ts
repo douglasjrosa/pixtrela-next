@@ -3,8 +3,13 @@
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
+import type { CurrencyForSubtasksInput } from "@/lib/schemas/currency-for-subtasks";
 import type { CurrencyRateInput } from "@/lib/schemas/currency-rates";
 import type { TaskAutomationFormInput } from "@/lib/schemas/task-automation";
+import {
+  CURRENCY_FOR_SUBTASKS_API_PATH,
+  toCurrencyForSubtasksPayload,
+} from "@/lib/strapi/currency-for-subtasks";
 import { KIOSK_SETTING_API_PATH } from "@/lib/strapi/kiosk-setting";
 import {
   TASK_AUTOMATION_SETTING_API_PATH,
@@ -39,6 +44,22 @@ export async function updateCurrencyRates(
   );
 
   revalidateStrapiTags(STRAPI_TAGS.currencies);
+}
+
+export async function updateCurrencyForSubtasks(
+  values: CurrencyForSubtasksInput,
+): Promise<void> {
+  await assertCanManage();
+
+  await strapiFetch(CURRENCY_FOR_SUBTASKS_API_PATH, {
+    method: "PUT",
+    strapiCache: { noStore: true },
+    body: JSON.stringify({
+      data: toCurrencyForSubtasksPayload(values),
+    }),
+  });
+
+  revalidateStrapiTags(STRAPI_TAGS.currencyForSubtasks);
 }
 
 export async function updateKioskSessionIdleSeconds(

@@ -46,7 +46,7 @@ export function KioskPanelClient({
         documentId,
         subTask.sharingType,
         input,
-        subTask.qty,
+        subTask.targetQty,
         subTask.completedQty,
       );
       const names = formatRemainingWorkerNames(result.remainingWorkerNames);

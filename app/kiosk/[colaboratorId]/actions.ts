@@ -51,15 +51,15 @@ export async function exitSubTask(
   subTaskDocumentId: string,
   sharingType: SubTaskFormInput["sharingType"],
   rawExit: unknown,
-  subTaskQty?: number,
+  targetQty?: number,
   completedQty = 0,
 ): Promise<{ remainingWorkerNames: string[] }> {
   await assertKioskSession();
 
   const exitInput: KioskExitInput = parseKioskExitInput(sharingType, rawExit, {
     maxQty:
-      sharingType === "qty" && subTaskQty !== undefined
-        ? getRemainingSubTaskQty(subTaskQty, completedQty)
+      sharingType === "qty" && targetQty !== undefined
+        ? getRemainingSubTaskQty(targetQty, completedQty)
         : undefined,
   });
   const stopPayload = toActivityStopPayload(exitInput);

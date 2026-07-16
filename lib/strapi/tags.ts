@@ -7,6 +7,7 @@ export const STRAPI_TAGS = {
   subTaskPresets: "strapi:sub-task-presets",
   activities: "strapi:activities",
   currencies: "strapi:currencies",
+  currencyForSubtasks: "strapi:currency-for-subtasks",
   kioskSetting: "strapi:kiosk-setting",
   taskAutomationSetting: "strapi:task-automation-setting",
   awards: "strapi:awards",

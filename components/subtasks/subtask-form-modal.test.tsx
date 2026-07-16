@@ -100,4 +100,25 @@ describe("SubTaskFormModal", () => {
     await user.click(within(dialog).getByRole("button", { name: "OK" }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("renders optional subtitle under the title", () => {
+    renderWithIntl(
+      <SubTaskFormModal
+        open
+        title="Editar subtarefa"
+        subtitle="1 - Beccaro - Misturadeira 25kg"
+        onClose={vi.fn()}
+      >
+        <p>Form body</p>
+      </SubTaskFormModal>,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Editar subtarefa" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("1 - Beccaro - Misturadeira 25kg"),
+    ).toBeInTheDocument();
+  });
 });

@@ -22,17 +22,23 @@ const tasks = [
     id: 10,
     documentId: "task-10",
     name: "Tarefa A",
+    qty: 1,
     status: "waiting" as const,
     stepId: 1,
     index: 0,
+    totalExpectedTime: 0,
+    totalTimeSpent: 0,
   },
   {
     id: 11,
     documentId: "task-11",
     name: "Tarefa B",
+    qty: 2,
     status: "waiting" as const,
     stepId: 1,
     index: 1,
+    totalExpectedTime: 0,
+    totalTimeSpent: 0,
   },
 ];
 
@@ -58,7 +64,7 @@ describe("BoardActions", () => {
       />,
     );
     expect(screen.getByRole("region", { name: "Fila de produção" })).toBeInTheDocument();
-    expect(screen.getByText("Tarefa A")).toBeInTheDocument();
+    expect(screen.getByText("1 - Tarefa A")).toBeInTheDocument();
   });
 
   it("opens subtasks modal when a task card is clicked", async () => {
@@ -79,7 +85,7 @@ describe("BoardActions", () => {
       />,
     );
 
-    await user.click(screen.getByText("Tarefa A"));
+    await user.click(screen.getByText("1 - Tarefa A"));
 
     expect(loadSubtasks).toHaveBeenCalledWith("task-10");
     expect(await screen.findByText("Soldar")).toBeInTheDocument();
@@ -130,7 +136,7 @@ describe("BoardActions", () => {
       />,
     );
 
-    await user.click(screen.getByText("Tarefa A"));
+    await user.click(screen.getByText("1 - Tarefa A"));
     await user.click(await screen.findByRole("button", { name: "Atribuir Ana" }));
 
     expect(updateSubtaskAssignees).not.toHaveBeenCalled();
@@ -141,7 +147,9 @@ describe("BoardActions", () => {
     await vi.waitFor(() => {
       expect(updateSubtaskAssignees).toHaveBeenCalledWith("st-1", "task-10", ["u-1"]);
     });
-    expect(screen.getByRole("heading", { name: "Tarefa A" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Atribuir subtarefa" }),
+    ).toBeInTheDocument();
   });
 
   it("opens create modal, saves subtask, and keeps subtasks modal open", async () => {
@@ -169,7 +177,7 @@ describe("BoardActions", () => {
       />,
     );
 
-    await user.click(screen.getByText("Tarefa A"));
+    await user.click(screen.getByText("1 - Tarefa A"));
     await user.click(await screen.findByRole("button", { name: "Adicionar subtarefa" }));
     expect(screen.getByRole("heading", { name: "Nova subtarefa" })).toBeInTheDocument();
 
@@ -190,7 +198,9 @@ describe("BoardActions", () => {
     expect(
       screen.queryByRole("heading", { name: "Nova subtarefa" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Tarefa A" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Atribuir subtarefa" }),
+    ).toBeInTheDocument();
     expect(await screen.findByText("Cortar")).toBeInTheDocument();
   });
 });

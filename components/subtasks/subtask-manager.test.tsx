@@ -69,6 +69,7 @@ describe("SubTaskManager", () => {
     renderWithIntl(
       <SubTaskManager
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={vi.fn()}
@@ -85,6 +86,7 @@ describe("SubTaskManager", () => {
     renderWithIntl(
       <SubTaskManager
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={vi.fn()}
@@ -105,6 +107,7 @@ describe("SubTaskManager", () => {
     renderWithIntl(
       <SubTaskManager
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={vi.fn()}
@@ -122,6 +125,7 @@ describe("SubTaskManager", () => {
     renderWithIntl(
       <SubTaskManager
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={vi.fn()}
@@ -145,6 +149,7 @@ describe("SubTaskManager", () => {
     renderWithIntl(
       <SubTaskManager
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={vi.fn()}
@@ -158,8 +163,9 @@ describe("SubTaskManager", () => {
     const dialog = screen.getByRole("dialog");
     expect(dialog).toBeInTheDocument();
     expect(
-      within(dialog).getByRole("heading", { name: "Editar" }),
+      within(dialog).getByRole("heading", { name: "Editar subtarefa" }),
     ).toBeInTheDocument();
+    expect(within(dialog).getByText("1 - Tarefa A")).toBeInTheDocument();
     expect(
       within(dialog).getByRole("button", { name: "Clonar subtarefa" }),
     ).toBeInTheDocument();
@@ -178,6 +184,7 @@ describe("SubTaskManager", () => {
     renderWithIntl(
       <SubTaskManager
         subtasks={[]}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={vi.fn()}
@@ -213,6 +220,7 @@ describe("SubTaskManager", () => {
     renderWithIntl(
       <SubTaskManager
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={vi.fn()}
@@ -234,6 +242,7 @@ describe("SubTaskManager", () => {
     renderWithIntl(
       <SubTaskManager
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={10}
         teams={teams}
         onCreate={vi.fn()}
@@ -254,6 +263,7 @@ describe("SubTaskManager", () => {
       <SubTaskManager
         ref={managerRef}
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={onCreate}
@@ -307,6 +317,7 @@ describe("SubTaskManager", () => {
       <SubTaskManager
         ref={managerRef}
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={onCreate}
@@ -353,6 +364,7 @@ describe("SubTaskManager", () => {
       <SubTaskManager
         ref={managerRef}
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={onCreate}
@@ -376,6 +388,7 @@ describe("SubTaskManager", () => {
         <SubTaskManager
           ref={managerRef}
           subtasks={afterSaveSubtasks}
+          taskName="Tarefa A"
           taskQty={1}
           teams={teams}
           onCreate={onCreate}
@@ -402,6 +415,7 @@ describe("SubTaskManager", () => {
       <SubTaskManager
         ref={managerRef}
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={onCreate}
@@ -438,6 +452,7 @@ describe("SubTaskManager", () => {
       <SubTaskManager
         ref={managerRef}
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={vi.fn()}
@@ -468,6 +483,7 @@ describe("SubTaskManager", () => {
     renderWithIntl(
       <SubTaskManager
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={vi.fn()}
@@ -497,6 +513,7 @@ describe("SubTaskManager", () => {
     renderWithIntl(
       <SubTaskManager
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={vi.fn()}
@@ -529,6 +546,7 @@ describe("SubTaskManager", () => {
     renderWithIntl(
       <SubTaskManager
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={vi.fn()}
@@ -541,7 +559,7 @@ describe("SubTaskManager", () => {
 
     const dialog = screen.getByRole("dialog");
     expect(
-      within(dialog).getByRole("heading", { name: "Editar" }),
+      within(dialog).getByRole("heading", { name: "Editar subtarefa" }),
     ).toBeInTheDocument();
     expect(
       within(dialog).queryByRole("button", { name: "Salvar" }),
@@ -554,6 +572,7 @@ describe("SubTaskManager", () => {
     renderWithIntl(
       <SubTaskManager
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={vi.fn()}
@@ -575,6 +594,7 @@ describe("SubTaskManager", () => {
     renderWithIntl(
       <SubTaskManager
         subtasks={subtasks}
+        taskName="Tarefa A"
         taskQty={1}
         teams={teams}
         onCreate={vi.fn()}

@@ -10,9 +10,14 @@ import {
   kanbanDeliveryDateBadgeClassName,
   resolveKanbanDeliveryDateTone,
 } from "@/lib/business/kanban-delivery-badge";
-import { formatDatePtBr } from "@/lib/format/datetime";
 import { toKanbanTaskId } from "@/lib/business/kanban-task-order";
+import { shouldShowKanbanTaskProgress } from "@/lib/business/task-progress";
+import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
+import { formatDatePtBr } from "@/lib/format/datetime";
 import { cn } from "@/lib/utils";
+
+import { TaskProgressBar } from "./task-progress-bar";
+import { TaskProgressBarSkeleton } from "./task-progress-bar-skeleton";
 import type { KanbanTask } from "./types";
 
 const KANBAN_CLICK_ACTIVATION_DISTANCE_PX = 8;
@@ -34,16 +39,33 @@ export function KanbanCardSurface({
     task.deliveryDate,
     new Date(),
   );
+  const showProgress = shouldShowKanbanTaskProgress(task.status);
 
   return (
     <div className={cn("rounded-md border bg-card p-3 shadow-sm", className)}>
-      <p className="font-medium">{task.name}</p>
+      <p className="font-medium">
+        {formatTaskDisplayTitle(task.qty, task.name)}
+      </p>
       <div className="mt-2 flex items-center justify-between gap-2">
         <CardBadge className={kanbanDeliveryDateBadgeClassName(deliveryTone)}>
           {formatDatePtBr(task.deliveryDate)}
         </CardBadge>
         <CardBadge className="shrink-0">{tStatus(task.status)}</CardBadge>
       </div>
+      {showProgress ? (
+        <div className="mt-3">
+          {task.progressPending || !task.progressInput ? (
+            <TaskProgressBarSkeleton />
+          ) : (
+            <TaskProgressBar
+              totalTimeSpent={task.totalTimeSpent}
+              totalExpectedTime={task.totalExpectedTime}
+              progressInput={task.progressInput}
+              nowMs={task.progressNowMs ?? Date.now()}
+            />
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

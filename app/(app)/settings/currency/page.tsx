@@ -3,9 +3,10 @@ import {
   type CurrencyRate,
 } from "@/components/settings/currency-form";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import { loadCurrencyForSubtasks } from "@/lib/strapi/currency-for-subtasks";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
-import { updateCurrencyRates } from "../actions";
+import { updateCurrencyForSubtasks, updateCurrencyRates } from "../actions";
 
 interface StrapiList<T> {
   data: T[];
@@ -44,14 +45,29 @@ async function loadCurrencies(): Promise<CurrencyRate[]> {
 }
 
 export default async function SettingsCurrencyPage() {
-  const currencies = await loadCurrencies();
+  const [currencies, activeCurrency] = await Promise.all([
+    loadCurrencies(),
+    loadCurrencyForSubtasks(),
+  ]);
 
   async function handleSaveCurrency(values: {
+    currencyDocumentId: string;
     rates: { documentId: string; currencyPerSecond: number }[];
   }): Promise<void> {
     "use server";
-    await updateCurrencyRates(values.rates);
+    await Promise.all([
+      updateCurrencyForSubtasks({
+        currencyDocumentId: values.currencyDocumentId,
+      }),
+      updateCurrencyRates(values.rates),
+    ]);
   }
 
-  return <CurrencyForm currencies={currencies} onSave={handleSaveCurrency} />;
+  return (
+    <CurrencyForm
+      currencies={currencies}
+      activeCurrencyDocumentId={activeCurrency.currencyDocumentId}
+      onSave={handleSaveCurrency}
+    />
+  );
 }

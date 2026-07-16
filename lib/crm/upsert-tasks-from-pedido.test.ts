@@ -91,7 +91,10 @@ describe("upsertTasksFromPedido", () => {
 
     expect(result.created).toBe(1);
     expect(result.updated).toBe(0);
-    expect(ensureTemplateTaskForProdId).toHaveBeenCalledWith(123, "10 - Max Brasil - Caixotona");
+    expect(ensureTemplateTaskForProdId).toHaveBeenCalledWith(
+      123,
+      "Max Brasil - Caixotona",
+    );
     const postCall = strapiServiceFetch.mock.calls.find(
       ([, init]) => (init as { method?: string })?.method === "POST",
     );
@@ -134,7 +137,7 @@ describe("upsertTasksFromPedido", () => {
       ([path, init]) => path === "/tasks/task-1" && (init as { method?: string })?.method === "PUT",
     );
     const body = JSON.parse((putCall![1] as { body: string }).body);
-    expect(body.data.name).toBe("10 - Max Brasil - Caixotona");
+    expect(body.data.name).toBe("Max Brasil - Caixotona");
     expect(body.data.qty).toBe(10);
     expect(body.data.templateTaskCode).toBeUndefined();
   });
@@ -149,7 +152,7 @@ describe("upsertTasksFromPedido", () => {
           data: [
             {
               documentId: "task-1",
-              name: "10 - Max Brasil - Caixotona",
+              name: "Max Brasil - Caixotona",
               qty: 10,
               deliveryDate: "2026-07-15",
               crmItemKey: "42:0",

@@ -15,9 +15,12 @@ const tasks: KanbanTask[] = [
     id: 10,
     documentId: "task-10",
     name: "Tarefa A",
+    qty: 1,
     status: "waiting",
     stepId: 1,
     index: 0,
+    totalExpectedTime: 0,
+    totalTimeSpent: 0,
   },
 ];
 
@@ -30,7 +33,7 @@ describe("KanbanBoard", () => {
 
   it("places a task in its step column and shows empty state otherwise", () => {
     renderWithIntl(<KanbanBoard steps={steps} tasks={tasks} />);
-    expect(screen.getByText("Tarefa A")).toBeInTheDocument();
+    expect(screen.getByText("1 - Tarefa A")).toBeInTheDocument();
     expect(screen.getByText("Sem tarefas nesta etapa.")).toBeInTheDocument();
   });
 });

@@ -18,6 +18,7 @@ interface SubTaskEntity {
   status: SubTaskFormInput["status"];
   activationStatus?: SubTaskFormInput["activationStatus"];
   qty: number;
+  targetQty?: number;
   completedQty?: number;
   sharingType: SubTaskFormInput["sharingType"];
   timeSpent: number;
@@ -49,6 +50,7 @@ async function loadAssignedSubTasks(
       status: subtask.status,
       activationStatus: subtask.activationStatus ?? "locked",
       qty: subtask.qty ?? 1,
+      targetQty: subtask.targetQty ?? subtask.qty ?? 1,
       completedQty: subtask.completedQty ?? 0,
       sharingType: subtask.sharingType ?? "duration",
       timeSpent: subtask.timeSpent ?? 0,

@@ -116,10 +116,12 @@
     "title": "Quadro de produção",
     "empty": "Sem tarefas nesta etapa.",
     "subtasksEmpty": "Nenhuma subtarefa nesta tarefa.",
+    "assignTitle": "Atribuir subtarefa",
     "createTitle": "Nova subtarefa",
     "addSubtask": "Adicionar subtarefa",
     "addToTemplate": "Adicionar subtarefa ao modelo",
-    "loading": "Carregando..."
+    "loading": "Carregando...",
+    "progressTowardExpected": "Progresso em relação ao tempo previsto"
   },
   "balance": {
     "title": "Meu saldo",
@@ -233,6 +235,7 @@
   "subtasks": {
     "title": "Subtarefas",
     "newSubtask": "Nova subtarefa",
+    "editSubtask": "Editar subtarefa",
     "name": "Nome",
     "expectedTime": "Tempo previsto (s)",
     "timeSpent": "Tempo gasto (s)",
@@ -322,6 +325,8 @@
     },
     "currency": "Moedas",
     "currencyPerSecondFor": "{currency} por segundo:",
+    "currencyActiveForSubtasks": "Ativo para Subtarefas:",
+    "currencyActiveNone": "Nenhuma",
     "noCurrencies": "Nenhuma moeda cadastrada.",
     "automations": "Automações",
     "automationsHeading": "Etapas",
@@ -361,7 +366,6 @@
     "sectionProducing": "Em execução",
     "sectionPending": "A fazer",
     "sectionFinishedToday": "Concluídas hoje",
-    "progressTowardExpected": "Progresso em relação ao tempo previsto",
     "staffTitle": "Totem — gestão",
     "usersPage": "Usuários",
     "exitSession": "Sair",
