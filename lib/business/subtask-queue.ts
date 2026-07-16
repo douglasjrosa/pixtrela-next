@@ -92,13 +92,11 @@ export function nextStartableSubTask(
   if (hasActiveSubTask(subTasks)) return null;
   const sorted = sortSubTasksByIndex(subTasks);
   return (
-    sorted.find(
-      (st) =>
-        !isFinishedSubTask(st) &&
-        !hasViewerSession(st) &&
-        isUnlockedSubTask(st) &&
-        (st.status === "waiting" || st.status === "producing"),
-    ) ?? null
+    sorted.find((st) => {
+      if (isFinishedSubTask(st) || hasViewerSession(st)) return false;
+      if (st.status === "waiting") return isUnlockedSubTask(st);
+      return st.status === "producing";
+    }) ?? null
   );
 }
 
@@ -111,10 +109,14 @@ export function canStartSubTask(
   const subTask = subTasks.find((st) => st.documentId === documentId);
   if (!subTask || hasViewerSession(subTask)) return false;
   if (isFinishedSubTask(subTask)) return false;
-  if (subTask.status !== "waiting" && subTask.status !== "producing") {
+  if (resolveActivationStatus(subTask.activationStatus) === "disabled") {
     return false;
   }
-  return isUnlockedSubTask(subTask);
+  if (subTask.status === "waiting") {
+    return isUnlockedSubTask(subTask);
+  }
+  // Join an in-progress multi-worker subtask still shown in the queue.
+  return subTask.status === "producing";
 }
 
 /** Whether the viewer can stop this subtask (own open session). */

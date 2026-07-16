@@ -195,6 +195,21 @@ describe("canStartSubTask", () => {
     ];
     expect(canStartSubTask(peerProducing, "a")).toBe(true);
   });
+
+  it("allows joining a peer producing subtask even if activation lagged as locked", () => {
+    const peerProducing = [
+      {
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "producing" as const,
+        activationStatus: "locked" as const,
+        startedAt: null,
+        activeWorkerCount: 1,
+      },
+    ];
+    expect(canStartSubTask(peerProducing, "a")).toBe(true);
+  });
 });
 
 describe("isFinishedSubTask", () => {
