@@ -2,10 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
+import { useTranslations } from "next-intl";
 
 import { KioskDailyQueue } from "@/components/kiosk/kiosk-daily-queue";
-import type { KioskSubTask } from "@/lib/business/subtask-queue";
+import {
+  formatRemainingWorkerNames,
+  type KioskSubTask,
+} from "@/lib/business/subtask-queue";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
+import { showSuccessToast } from "@/lib/ui/app-toast";
 
 import { exitSubTask, startSubTask } from "./actions";
 
@@ -20,6 +25,7 @@ export function KioskPanelClient({
   subTasks,
   readOnly = false,
 }: KioskPanelClientProps) {
+  const t = useTranslations("kiosk");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -35,7 +41,7 @@ export function KioskPanelClient({
     if (!subTask) return;
 
     startTransition(async () => {
-      await exitSubTask(
+      const result = await exitSubTask(
         colaboratorId,
         documentId,
         subTask.sharingType,
@@ -43,6 +49,10 @@ export function KioskPanelClient({
         subTask.qty,
         subTask.completedQty,
       );
+      const names = formatRemainingWorkerNames(result.remainingWorkerNames);
+      if (names) {
+        showSuccessToast(t("exitOthersStillActive", { name: names }));
+      }
       router.refresh();
     });
   }

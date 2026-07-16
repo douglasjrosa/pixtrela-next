@@ -27,6 +27,7 @@ interface SubTaskEntity {
   taskName: string;
   taskIndex: number;
   finishedAt: string | null;
+  activeWorkerCount?: number;
 }
 
 interface PageProps {
@@ -57,6 +58,7 @@ async function loadAssignedSubTasks(
       taskName: subtask.taskName ?? "",
       taskIndex: subtask.taskIndex ?? 0,
       finishedAt: subtask.finishedAt ?? null,
+      activeWorkerCount: subtask.activeWorkerCount ?? 0,
     }));
   } catch (error) {
     rethrowIfNavigationError(error);

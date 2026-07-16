@@ -12,6 +12,8 @@ import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 export interface KioskExitSubtaskFormProps {
   sharingType: SubTaskFormInput["sharingType"];
   maxQty?: number;
+  /** When false, duration completion and qty-based finish are blocked by peers. */
+  allowComplete?: boolean;
   disabled?: boolean;
   onCancel: () => void;
   onConfirm: (input: KioskExitInput) => void;
@@ -20,6 +22,7 @@ export interface KioskExitSubtaskFormProps {
 export function KioskExitSubtaskForm({
   sharingType,
   maxQty = 1,
+  allowComplete = true,
   disabled = false,
   onCancel,
   onConfirm,
@@ -29,6 +32,33 @@ export function KioskExitSubtaskForm({
   const [qtyError, setQtyError] = useState<string | null>(null);
 
   if (sharingType === "duration") {
+    if (!allowComplete) {
+      return (
+        <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+          <p className="text-sm font-medium">{t("exitWithoutCompleteHint")}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              disabled={disabled}
+              onClick={() =>
+                onConfirm({ sharingType: "duration", isCompleted: false })
+              }
+            >
+              {t("exitConfirm")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={disabled}
+              onClick={onCancel}
+            >
+              {t("exitCancel")}
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
         <p className="text-sm font-medium">{t("exitConfirmDuration")}</p>
@@ -64,6 +94,11 @@ export function KioskExitSubtaskForm({
 
   return (
     <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+      {!allowComplete ? (
+        <p className="text-sm text-muted-foreground">
+          {t("exitQtyWithoutCompleteHint")}
+        </p>
+      ) : null}
       <div className="space-y-2">
         <Label htmlFor="kiosk-exit-qty">{t("exitQtyLabel")}</Label>
         <Input

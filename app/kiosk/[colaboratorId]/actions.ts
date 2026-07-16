@@ -53,7 +53,7 @@ export async function exitSubTask(
   rawExit: unknown,
   subTaskQty?: number,
   completedQty = 0,
-): Promise<void> {
+): Promise<{ remainingWorkerNames: string[] }> {
   await assertKioskSession();
 
   const exitInput: KioskExitInput = parseKioskExitInput(sharingType, rawExit, {
@@ -70,7 +70,10 @@ export async function exitSubTask(
     ...stopPayload,
   });
 
-  await strapiFetch(
+  const result = await strapiFetch<{
+    ok?: boolean;
+    remainingWorkerNames?: string[];
+  }>(
     `/kiosk/colaborators/${colaboratorId}/sub-tasks/${subTaskDocumentId}/stop`,
     {
       method: "POST",
@@ -80,4 +83,7 @@ export async function exitSubTask(
   );
 
   invalidateActivityData();
+  return {
+    remainingWorkerNames: result?.remainingWorkerNames ?? [],
+  };
 }

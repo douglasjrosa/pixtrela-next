@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canCompleteSubTaskOnExit,
   canStartSubTask,
   canStopSubTask,
+  formatRemainingWorkerNames,
   hasActiveSubTask,
   isFinishedSubTask,
   isLockedSubTask,
@@ -44,7 +46,7 @@ describe("nextStartableSubTask", () => {
     expect(nextStartableSubTask(subTasks)?.documentId).toBe("a");
   });
 
-  it("returns null when one is producing", () => {
+  it("returns null when the viewer already has a session", () => {
     const active = [
       {
         documentId: "a",
@@ -52,6 +54,7 @@ describe("nextStartableSubTask", () => {
         index: 0,
         status: "producing" as const,
         activationStatus: "unlocked" as const,
+        startedAt: "2026-07-15T10:00:00.000Z",
       },
       {
         documentId: "b",
@@ -63,6 +66,22 @@ describe("nextStartableSubTask", () => {
     ];
     expect(nextStartableSubTask(active)).toBeNull();
     expect(hasActiveSubTask(active)).toBe(true);
+  });
+
+  it("allows joining a producing subtask when viewer has no session", () => {
+    const peerProducing = [
+      {
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "producing" as const,
+        activationStatus: "unlocked" as const,
+        startedAt: null,
+        activeWorkerCount: 1,
+      },
+    ];
+    expect(nextStartableSubTask(peerProducing)?.documentId).toBe("a");
+    expect(hasActiveSubTask(peerProducing)).toBe(false);
   });
 
   it("returns null for empty queue", () => {
@@ -141,7 +160,7 @@ describe("canStartSubTask", () => {
     expect(canStartSubTask(legacy, "a")).toBe(false);
   });
 
-  it("blocks start when another subtask is producing", () => {
+  it("blocks start when the viewer already has a session", () => {
     const active = [
       {
         documentId: "a",
@@ -149,6 +168,7 @@ describe("canStartSubTask", () => {
         index: 0,
         status: "producing" as const,
         activationStatus: "unlocked" as const,
+        startedAt: "2026-07-15T10:00:00.000Z",
       },
       {
         documentId: "b",
@@ -159,6 +179,21 @@ describe("canStartSubTask", () => {
       },
     ];
     expect(canStartSubTask(active, "b")).toBe(false);
+  });
+
+  it("allows joining a peer producing unlocked subtask", () => {
+    const peerProducing = [
+      {
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "producing" as const,
+        activationStatus: "unlocked" as const,
+        startedAt: null,
+        activeWorkerCount: 1,
+      },
+    ];
+    expect(canStartSubTask(peerProducing, "a")).toBe(true);
   });
 });
 
@@ -230,13 +265,14 @@ describe("isLockedSubTask", () => {
 });
 
 describe("canStopSubTask", () => {
-  it("allows stop only when producing", () => {
+  it("allows stop only when the viewer has an open session", () => {
     expect(
       canStopSubTask({
         documentId: "a",
         name: "A",
         index: 0,
         status: "producing",
+        startedAt: "2026-07-15T10:00:00.000Z",
       }),
     ).toBe(true);
     expect(
@@ -244,7 +280,33 @@ describe("canStopSubTask", () => {
         documentId: "a",
         name: "A",
         index: 0,
-        status: "waiting",
+        status: "producing",
+        startedAt: null,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("canCompleteSubTaskOnExit", () => {
+  it("allows completion only when the viewer is the sole active worker", () => {
+    expect(
+      canCompleteSubTaskOnExit({
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "producing",
+        startedAt: "2026-07-15T10:00:00.000Z",
+        activeWorkerCount: 1,
+      }),
+    ).toBe(true);
+    expect(
+      canCompleteSubTaskOnExit({
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "producing",
+        startedAt: "2026-07-15T10:00:00.000Z",
+        activeWorkerCount: 2,
       }),
     ).toBe(false);
   });
@@ -268,13 +330,13 @@ describe("shouldShowStartButton", () => {
         activationStatus: "locked" as const,
       },
     ];
-    expect(shouldShowStartButton(queue, queue[0])).toBe(true);
-    expect(shouldShowStartButton(queue, queue[1])).toBe(false);
+    expect(shouldShowStartButton(queue, queue[0]!)).toBe(true);
+    expect(shouldShowStartButton(queue, queue[1]!)).toBe(false);
   });
 });
 
 describe("shouldShowExitButton", () => {
-  it("shows exit only on the producing subtask", () => {
+  it("shows exit only when the viewer has an open session", () => {
     const active = [
       {
         documentId: "a",
@@ -282,17 +344,29 @@ describe("shouldShowExitButton", () => {
         index: 0,
         status: "producing" as const,
         activationStatus: "unlocked" as const,
+        startedAt: "2026-07-15T10:00:00.000Z",
       },
       {
         documentId: "b",
         name: "B",
         index: 1,
-        status: "waiting" as const,
+        status: "producing" as const,
         activationStatus: "unlocked" as const,
+        startedAt: null,
       },
     ];
-    expect(shouldShowExitButton(active, active[0])).toBe(true);
-    expect(shouldShowExitButton(active, active[1])).toBe(false);
+    expect(shouldShowExitButton(active, active[0]!)).toBe(true);
+    expect(shouldShowExitButton(active, active[1]!)).toBe(false);
+  });
+});
+
+describe("formatRemainingWorkerNames", () => {
+  it("formats one, two, and many names", () => {
+    expect(formatRemainingWorkerNames(["Ana"])).toBe("Ana");
+    expect(formatRemainingWorkerNames(["Ana", "Bia"])).toBe("Ana e Bia");
+    expect(formatRemainingWorkerNames(["Ana", "Bia", "Cris"])).toBe(
+      "Ana, Bia e Cris",
+    );
   });
 });
 
@@ -315,6 +389,7 @@ describe("splitKioskQueueSections", () => {
         taskName: "Task",
         taskIndex: 0,
         finishedAt: null,
+        activeWorkerCount: 1,
       },
       {
         documentId: "b",
@@ -332,6 +407,7 @@ describe("splitKioskQueueSections", () => {
         taskName: "Task",
         taskIndex: 0,
         finishedAt: null,
+        activeWorkerCount: 0,
       },
       {
         documentId: "c",
@@ -349,6 +425,7 @@ describe("splitKioskQueueSections", () => {
         taskName: "Task",
         taskIndex: 0,
         finishedAt: "2026-07-07T12:00:00.000Z",
+        activeWorkerCount: 0,
       },
     ]);
 

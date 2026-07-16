@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import {
+  canCompleteSubTaskOnExit,
   getRemainingSubTaskQty,
   isFinishedSubTask,
   isLockedSubTask,
@@ -170,6 +171,7 @@ export function KioskSubtaskPanel({
               <div className="mt-4">
                 <KioskExitSubtaskForm
                   sharingType={subTask.sharingType}
+                  allowComplete={canCompleteSubTaskOnExit(subTask)}
                   maxQty={
                     subTask.sharingType === "qty"
                       ? getRemainingSubTaskQty(subTask.qty, subTask.completedQty)

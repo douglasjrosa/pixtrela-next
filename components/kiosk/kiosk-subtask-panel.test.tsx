@@ -25,6 +25,7 @@ function kioskSubTask(
     taskName: overrides.taskName ?? "Tarefa pai",
     taskIndex: overrides.taskIndex ?? 0,
     finishedAt: overrides.finishedAt ?? null,
+    activeWorkerCount: overrides.activeWorkerCount ?? 0,
   };
 }
 
@@ -95,6 +96,7 @@ describe("KioskSubtaskPanel", () => {
         name: "Tarefa A",
         status: "producing",
         startedAt: "2026-06-05T10:00:00.000Z",
+        activeWorkerCount: 1,
       }),
     ];
 
@@ -239,10 +241,60 @@ describe("KioskSubtaskPanel", () => {
     expect(onStart).toHaveBeenCalledWith("a");
   });
 
-  it("hides action buttons in read-only mode", () => {
-    renderWithIntl(<KioskSubtaskPanel subTasks={subTasks} readOnly />);
+  it("hides mark-complete when other workers are still active", async () => {
+    const user = userEvent.setup();
+    const onExit = vi.fn();
+    const producing = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Tarefa A",
+        status: "producing",
+        startedAt: "2026-06-05T10:00:00.000Z",
+        activeWorkerCount: 2,
+      }),
+    ];
 
-    expect(screen.queryByRole("button", { name: "Iniciar" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Sair da subtarefa" })).toBeNull();
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={producing}
+        onStart={vi.fn()}
+        onExit={onExit}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Sair da subtarefa" }));
+    expect(
+      screen.queryByRole("button", { name: "Sim, concluí" }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirmar saída" }));
+    expect(onExit).toHaveBeenCalledWith("a", {
+      sharingType: "duration",
+      isCompleted: false,
+    });
+  });
+
+  it("shows start for peer producing without own session", () => {
+    const peerProducing = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Tarefa A",
+        status: "producing",
+        startedAt: null,
+        activeWorkerCount: 1,
+      }),
+    ];
+
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={peerProducing}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Iniciar" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Sair da subtarefa" }),
+    ).toBeNull();
   });
 });

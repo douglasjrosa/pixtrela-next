@@ -70,4 +70,27 @@ describe("KioskExitSubtaskForm", () => {
       screen.getByText("A quantidade não pode exceder o restante da subtarefa."),
     ).toBeInTheDocument();
   });
+
+  it("hides completion options when peers are still active", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+
+    renderWithIntl(
+      <KioskExitSubtaskForm
+        sharingType="duration"
+        allowComplete={false}
+        onCancel={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Sim, concluí" }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirmar saída" }));
+    expect(onConfirm).toHaveBeenCalledWith({
+      sharingType: "duration",
+      isCompleted: false,
+    });
+  });
 });
