@@ -8,19 +8,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export interface StarBalanceProps {
+export interface CurrencyBalanceProps {
   balance: number;
   previousBalance: number;
   totalIncome: number;
   totalOutcome: number;
+  /** Display name of the currency unit (e.g. Estrelas). */
+  currencyLabel?: string;
 }
 
-export function StarBalance({
+export function CurrencyBalance({
   balance,
   previousBalance,
   totalIncome,
   totalOutcome,
-}: StarBalanceProps) {
+  currencyLabel,
+}: CurrencyBalanceProps) {
   const t = useTranslations("balance");
 
   return (
@@ -28,7 +31,7 @@ export function StarBalance({
       <CardHeader>
         <CardTitle>{t("title")}</CardTitle>
         <CardDescription>
-          {balance} {t("stars")}
+          {balance} {currencyLabel ?? t("stars")}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-2 text-sm">

@@ -11,9 +11,13 @@ import {
   resolveKanbanDeliveryDateTone,
 } from "@/lib/business/kanban-delivery-badge";
 import { toKanbanTaskId } from "@/lib/business/kanban-task-order";
-import { shouldShowKanbanTaskProgress } from "@/lib/business/task-progress";
+import {
+  needsLiveBoardProgress,
+  shouldShowKanbanTaskProgress,
+} from "@/lib/business/task-progress";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
 import { formatDatePtBr } from "@/lib/format/datetime";
+import { useLiveProgressClock } from "@/hooks/use-live-progress-clock";
 import { cn } from "@/lib/utils";
 
 import { TaskProgressBar } from "./task-progress-bar";
@@ -21,6 +25,7 @@ import { TaskProgressBarSkeleton } from "./task-progress-bar-skeleton";
 import type { KanbanTask } from "./types";
 
 const KANBAN_CLICK_ACTIVATION_DISTANCE_PX = 8;
+const FINISHED_STATUS = "finished";
 
 export interface KanbanCardProps {
   task: KanbanTask;
@@ -40,6 +45,8 @@ export function KanbanCardSurface({
     new Date(),
   );
   const showProgress = shouldShowKanbanTaskProgress(task.status);
+  const liveClock = needsLiveBoardProgress(task.status);
+  const nowMs = useLiveProgressClock(liveClock, task.progressNowMs);
 
   return (
     <div className={cn("rounded-md border bg-card p-3 shadow-sm", className)}>
@@ -61,7 +68,8 @@ export function KanbanCardSurface({
               totalTimeSpent={task.totalTimeSpent}
               totalExpectedTime={task.totalExpectedTime}
               progressInput={task.progressInput}
-              nowMs={task.progressNowMs ?? Date.now()}
+              nowMs={nowMs}
+              usePersistedRemaining={task.status === FINISHED_STATUS}
             />
           )}
         </div>

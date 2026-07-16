@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { BoardSubTaskSummary } from "@/components/kanban/types";
+import { boardSubTaskSummaryStub } from "@/lib/business/board-subtask-summary";
 import {
   assigneeIdsKey,
   buildAssigneesSnapshot,
@@ -12,18 +13,21 @@ import {
 } from "./board-assignee-draft";
 
 const subtasks: BoardSubTaskSummary[] = [
-  {
+  boardSubTaskSummaryStub({
     documentId: "st-1",
     name: "Soldar",
     status: "waiting",
-    assignedTo: [{ documentId: "u-2", name: "Bia" }, { documentId: "u-1", name: "Ana" }],
-  },
-  {
+    assignedTo: [
+      { documentId: "u-2", name: "Bia" },
+      { documentId: "u-1", name: "Ana" },
+    ],
+  }),
+  boardSubTaskSummaryStub({
     documentId: "st-2",
     name: "Pintar",
     status: "producing",
     assignedTo: [],
-  },
+  }),
 ];
 
 describe("board-assignee-draft", () => {
@@ -72,33 +76,31 @@ describe("board-assignee-draft", () => {
 
   it("keeps draft assignees when merging loaded subtasks", () => {
     const loaded: BoardSubTaskSummary[] = [
-      {
+      boardSubTaskSummaryStub({
         documentId: "st-1",
         name: "Soldar",
         status: "waiting",
         assignedTo: [],
-      },
-      {
+      }),
+      boardSubTaskSummaryStub({
         documentId: "st-3",
         name: "Nova",
         status: "waiting",
         assignedTo: [],
-      },
+      }),
     ];
     const draft: BoardSubTaskSummary[] = [
-      {
+      boardSubTaskSummaryStub({
         documentId: "st-1",
         name: "Soldar",
         status: "waiting",
         assignedTo: [{ documentId: "u-1", name: "Ana" }],
-      },
+      }),
     ];
 
     expect(mergeLoadedSubtasksWithDraft(loaded, draft)).toEqual([
       {
-        documentId: "st-1",
-        name: "Soldar",
-        status: "waiting",
+        ...loaded[0],
         assignedTo: [{ documentId: "u-1", name: "Ana" }],
       },
       loaded[1],
@@ -110,18 +112,18 @@ describe("board-assignee-draft", () => {
       mergeAssigneesBaseline(
         { "st-1": "u-1", "st-gone": "u-9" },
         [
-          {
+          boardSubTaskSummaryStub({
             documentId: "st-1",
             name: "Soldar",
             status: "waiting",
             assignedTo: [{ documentId: "u-2", name: "Bia" }],
-          },
-          {
+          }),
+          boardSubTaskSummaryStub({
             documentId: "st-3",
             name: "Nova",
             status: "waiting",
             assignedTo: [],
-          },
+          }),
         ],
       ),
     ).toEqual({

@@ -37,6 +37,9 @@ export interface TaskDetailEditorProps {
   teams: TeamAssignmentOption[];
   canDeactivate: boolean;
   canDelete: boolean;
+  loadSessions?: (
+    subTaskDocumentId: string,
+  ) => Promise<import("@/lib/business/task-progress").ActivitySession[]>;
   onCreateSubTask: (
     values: SubTaskFormInput,
     options?: SubTaskCreateOptions,
@@ -73,6 +76,7 @@ export function TaskDetailEditor({
   teams,
   canDeactivate,
   canDelete,
+  loadSessions,
   onCreateSubTask,
   onUpdateSubTask,
   onReorderSubTasks,
@@ -179,6 +183,7 @@ export function TaskDetailEditor({
         taskQty={task.qty}
         teams={teams}
         disabled={isPending}
+        loadSessions={loadSessions}
         onCreate={onCreateSubTask}
         onUpdate={onUpdateSubTask}
         onReorder={onReorderSubTasks}

@@ -46,6 +46,7 @@ import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
 import { SubTaskFormModal } from "./subtask-form-modal";
 import { SubTaskInlineForm } from "./subtask-inline-form";
+import { SubTaskSessionsLoader } from "./subtask-sessions-loader";
 import type { SubTaskDependencyOption } from "./subtask-dependencies-modal";
 
 export interface UserOption {
@@ -87,6 +88,9 @@ export interface SubTaskManagerProps {
   taskQty: number;
   teams: TeamAssignmentOption[];
   disabled?: boolean;
+  loadSessions?: (
+    subTaskDocumentId: string,
+  ) => Promise<import("@/lib/business/task-progress").ActivitySession[]>;
   onCreate: (
     values: SubTaskFormInput,
     options?: SubTaskCreateOptions,
@@ -286,6 +290,7 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
       taskQty,
       teams,
       disabled = false,
+      loadSessions,
       onCreate,
       onUpdate,
       onReorder,
@@ -630,33 +635,44 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
             />
           ) : null}
           {editingSubtask ? (
-            <SubTaskInlineForm
-              formKey={editingSubtask.documentId}
-              defaultValues={subTaskToFormValues(editingSubtask)}
-              teams={teams}
-              dependencyOptions={buildDependencyOptions(
-                orderedSubtasks,
-                editingSubtask.documentId,
-              )}
-              currentDocumentId={
-                editingSubtask.isDraft ? undefined : editingSubtask.documentId
-              }
-              isCreate={editingSubtask.isDraft === true}
-              hideHeading
-              hideStatus
-              hideActivationStatus
-              hideAssignees
-              plain
-              disabled={isBusy}
-              onChange={(values) =>
-                handleRowChange(
+            <>
+              <SubTaskInlineForm
+                formKey={editingSubtask.documentId}
+                defaultValues={subTaskToFormValues(editingSubtask)}
+                teams={teams}
+                dependencyOptions={buildDependencyOptions(
+                  orderedSubtasks,
                   editingSubtask.documentId,
-                  editingSubtask.isDraft
-                    ? applyAutomaticCreateFields(values, orderedSubtasks)
-                    : values,
-                )
-              }
-            />
+                )}
+                currentDocumentId={
+                  editingSubtask.isDraft ? undefined : editingSubtask.documentId
+                }
+                isCreate={editingSubtask.isDraft === true}
+                hideHeading
+                hideStatus
+                hideActivationStatus
+                hideAssignees
+                plain
+                disabled={isBusy}
+                onChange={(values) =>
+                  handleRowChange(
+                    editingSubtask.documentId,
+                    editingSubtask.isDraft
+                      ? applyAutomaticCreateFields(values, orderedSubtasks)
+                      : values,
+                  )
+                }
+              />
+              {loadSessions && !editingSubtask.isDraft ? (
+                <div className="mt-4 border-t pt-4">
+                  <SubTaskSessionsLoader
+                    subTaskDocumentId={editingSubtask.documentId}
+                    sharingType={editingSubtask.sharingType}
+                    loadSessions={loadSessions}
+                  />
+                </div>
+              ) : null}
+            </>
           ) : null}
         </SubTaskFormModal>
       </div>

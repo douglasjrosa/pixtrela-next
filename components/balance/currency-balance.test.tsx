@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 
 import { renderWithIntl } from "@/test/test-utils";
-import { StarBalance } from "./star-balance";
+import { CurrencyBalance } from "./currency-balance";
 
-describe("StarBalance", () => {
+describe("CurrencyBalance", () => {
   it("renders the balance breakdown", () => {
     renderWithIntl(
-      <StarBalance
+      <CurrencyBalance
         balance={120}
         previousBalance={80}
         totalIncome={50}

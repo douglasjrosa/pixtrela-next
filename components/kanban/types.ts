@@ -32,5 +32,10 @@ export interface BoardSubTaskSummary {
   documentId: string;
   name: string;
   status: KanbanTask["status"];
+  sharingType: "qty" | "duration";
+  expectedTime: number;
+  timeSpent: number;
+  openActivityStartedAts: string[];
+  sessions: import("@/lib/business/task-progress").ActivitySession[];
   assignedTo: BoardSubTaskAssignee[];
 }

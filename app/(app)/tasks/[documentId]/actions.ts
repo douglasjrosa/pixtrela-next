@@ -11,6 +11,8 @@ import {
 } from "@/lib/schemas/sub-task";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
+import { loadSubTaskSessions } from "@/lib/strapi/subtask-sessions";
+import type { ActivitySession } from "@/lib/business/task-progress";
 
 interface StrapiList<T> {
   data: T[];
@@ -212,4 +214,11 @@ export async function deleteSubTask(documentId: string): Promise<void> {
     strapiCache: { noStore: true },
   });
   invalidateSubTasks();
+}
+
+export async function loadSubTaskSessionsAction(
+  subTaskDocumentId: string,
+): Promise<ActivitySession[]> {
+  await assertCanManage();
+  return loadSubTaskSessions(subTaskDocumentId);
 }

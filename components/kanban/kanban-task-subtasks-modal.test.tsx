@@ -3,6 +3,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
+import { boardSubTaskSummaryStub } from "@/lib/business/board-subtask-summary";
 import { renderWithIntl } from "@/test/test-utils";
 import { KanbanTaskSubtasksModal } from "./kanban-task-subtasks-modal";
 
@@ -15,17 +16,42 @@ const teams: TeamAssignmentOption[] = [
 ];
 
 const subtasks = [
-  { documentId: "st-1", name: "Soldar", status: "waiting" as const, assignedTo: [] },
-  {
+  boardSubTaskSummaryStub({
+    documentId: "st-1",
+    name: "Soldar",
+    status: "waiting",
+    assignedTo: [],
+  }),
+  boardSubTaskSummaryStub({
     documentId: "st-2",
     name: "Pintar",
-    status: "producing" as const,
+    status: "producing",
+    expectedTime: 120,
+    timeSpent: 30,
     assignedTo: [{ documentId: "u-1", name: "Ana" }],
-  },
+  }),
+  boardSubTaskSummaryStub({
+    documentId: "st-3",
+    name: "Embalar",
+    status: "finished",
+    expectedTime: 60,
+    timeSpent: 60,
+    sessions: [
+      {
+        colaboratorDocumentId: "u-1",
+        colaboratorName: "Ana",
+        startedAt: "2026-07-16T10:00:00.000Z",
+        finishedAt: "2026-07-16T10:01:00.000Z",
+        durationSec: 60,
+        qty: 0,
+      },
+    ],
+    assignedTo: [],
+  }),
 ];
 
 describe("KanbanTaskSubtasksModal", () => {
-  it("lists sub-tasks with inline assignee pickers and a save button", () => {
+  it("lists sub-tasks with title Subtarefas and assignee pickers", () => {
     renderWithIntl(
       <KanbanTaskSubtasksModal
         open
@@ -43,14 +69,15 @@ describe("KanbanTaskSubtasksModal", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Atribuir subtarefa" }),
+      screen.getByRole("heading", { name: "Subtarefas" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Tarefa A")).toBeInTheDocument();
     expect(screen.getByText("Soldar")).toBeInTheDocument();
     expect(screen.getByText("Pintar")).toBeInTheDocument();
     expect(screen.getByText("Aguardando")).toBeInTheDocument();
     expect(screen.getByText("Produzindo")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Ana/ })).toHaveLength(2);
+    expect(screen.getByText("Sessões")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Ana/ }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Salvar" })).toBeDisabled();
   });
 

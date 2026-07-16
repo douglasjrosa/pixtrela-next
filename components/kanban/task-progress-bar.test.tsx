@@ -54,8 +54,9 @@ describe("TaskProgressBar", () => {
       />,
     );
 
+    // liveSpent = 4000 + 600 = 4600s => 1h 17min
     // remaining = 3600 - 3500 - 600 = -500s => -9min (ceil)
-    expect(screen.getByText("1h 7min")).toBeInTheDocument();
+    expect(screen.getByText("1h 17min")).toBeInTheDocument();
     expect(
       screen.getByText((_, element) => element?.textContent === "-9min"),
     ).toBeInTheDocument();

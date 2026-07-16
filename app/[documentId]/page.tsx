@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
-import { StarBalance } from "@/components/balance/star-balance";
+import { CurrencyBalance } from "@/components/balance/currency-balance";
 import { DashboardInsightsBlock } from "@/components/dashboard/dashboard-insights-block";
 import { AwardCard } from "@/components/exchange/award-card";
 import { redeemAward } from "@/app/(app)/exchange/actions";
@@ -40,7 +40,7 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
     <section className="space-y-10 p-6">
       <div className="max-w-md space-y-2">
         <h1 className="text-2xl font-bold">{tBalance("title")}</h1>
-        <StarBalance {...balance} />
+        <CurrencyBalance {...balance} />
       </div>
 
       <DashboardInsightsBlock

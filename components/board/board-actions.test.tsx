@@ -9,6 +9,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { renderWithIntl } from "@/test/test-utils";
+import { boardSubTaskSummaryStub } from "@/lib/business/board-subtask-summary";
 import { resolveKanbanDragEnd, toKanbanTaskId } from "@/lib/business/kanban-task-order";
 import { BoardActions } from "./board-actions";
 
@@ -70,7 +71,12 @@ describe("BoardActions", () => {
   it("opens subtasks modal when a task card is clicked", async () => {
     const user = userEvent.setup();
     const loadSubtasks = vi.fn().mockResolvedValue([
-      { documentId: "st-1", name: "Soldar", status: "waiting" as const, assignedTo: [] },
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        assignedTo: [],
+      }),
     ]);
 
     renderWithIntl(
@@ -111,16 +117,21 @@ describe("BoardActions", () => {
   it("keeps assignee toggles local until save is clicked", async () => {
     const user = userEvent.setup();
     const loadSubtasks = vi.fn().mockResolvedValue([
-      { documentId: "st-1", name: "Soldar", status: "waiting" as const, assignedTo: [] },
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        assignedTo: [],
+      }),
     ]);
     const updateSubtaskAssignees = vi.fn().mockImplementation(async () => {
       loadSubtasks.mockResolvedValue([
-        {
+        boardSubTaskSummaryStub({
           documentId: "st-1",
           name: "Soldar",
-          status: "waiting" as const,
+          status: "waiting",
           assignedTo: [{ documentId: "u-1", name: "Ana" }],
-        },
+        }),
       ]);
     });
 
@@ -148,7 +159,7 @@ describe("BoardActions", () => {
       expect(updateSubtaskAssignees).toHaveBeenCalledWith("st-1", "task-10", ["u-1"]);
     });
     expect(
-      screen.getByRole("heading", { name: "Atribuir subtarefa" }),
+      screen.getByRole("heading", { name: "Subtarefas" }),
     ).toBeInTheDocument();
   });
 
@@ -157,11 +168,26 @@ describe("BoardActions", () => {
     const loadSubtasks = vi
       .fn()
       .mockResolvedValueOnce([
-        { documentId: "st-1", name: "Soldar", status: "waiting" as const, assignedTo: [] },
+        boardSubTaskSummaryStub({
+          documentId: "st-1",
+          name: "Soldar",
+          status: "waiting",
+          assignedTo: [],
+        }),
       ])
       .mockResolvedValueOnce([
-        { documentId: "st-1", name: "Soldar", status: "waiting" as const, assignedTo: [] },
-        { documentId: "st-2", name: "Cortar", status: "waiting" as const, assignedTo: [] },
+        boardSubTaskSummaryStub({
+          documentId: "st-1",
+          name: "Soldar",
+          status: "waiting",
+          assignedTo: [],
+        }),
+        boardSubTaskSummaryStub({
+          documentId: "st-2",
+          name: "Cortar",
+          status: "waiting",
+          assignedTo: [],
+        }),
       ]);
     const createSubtask = vi.fn().mockResolvedValue(undefined);
 
@@ -199,7 +225,7 @@ describe("BoardActions", () => {
       screen.queryByRole("heading", { name: "Nova subtarefa" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Atribuir subtarefa" }),
+      screen.getByRole("heading", { name: "Subtarefas" }),
     ).toBeInTheDocument();
     expect(await screen.findByText("Cortar")).toBeInTheDocument();
   });

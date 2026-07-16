@@ -116,12 +116,12 @@
     "title": "Quadro de produção",
     "empty": "Sem tarefas nesta etapa.",
     "subtasksEmpty": "Nenhuma subtarefa nesta tarefa.",
-    "assignTitle": "Atribuir subtarefa",
     "createTitle": "Nova subtarefa",
     "addSubtask": "Adicionar subtarefa",
     "addToTemplate": "Adicionar subtarefa ao modelo",
     "loading": "Carregando...",
-    "progressTowardExpected": "Progresso em relação ao tempo previsto"
+    "progressTowardExpected": "Progresso em relação ao tempo previsto",
+    "subtasksTitle": "Subtarefas"
   },
   "balance": {
     "title": "Meu saldo",
@@ -276,7 +276,16 @@
     "dependenciesCount": "{count, plural, =0 {Nenhuma dependência} one {# dependência} other {# dependências}}",
     "presetSuggestions": "Sugestões de presets de subtarefa",
     "presetsLoading": "Buscando presets...",
-    "presetsEmpty": "Nenhum preset encontrado."
+    "presetsEmpty": "Nenhum preset encontrado.",
+    "sessionsTitle": "Sessões",
+    "sessionsEmpty": "Nenhuma sessão registrada.",
+    "sessionsLoading": "Carregando sessões...",
+    "sessionWho": "Colaborador",
+    "sessionStart": "Início",
+    "sessionEnd": "Fim",
+    "sessionDuration": "Duração",
+    "sessionTotalsTitle": "Total por colaborador",
+    "sessionTotalQty": "{qty} peças"
   },
   "teams": {
     "title": "Equipes",

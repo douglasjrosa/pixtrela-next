@@ -1,5 +1,5 @@
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
-import type { StarBalanceProps } from "@/components/balance/star-balance";
+import type { CurrencyBalanceProps } from "@/components/balance/currency-balance";
 import type { AwardView } from "@/components/exchange/award-card";
 import {
   awardPricesFromValues,
@@ -7,9 +7,9 @@ import {
   isExchangeWindowOpen,
 } from "@/lib/business/exchange";
 import { ACTIVE_TEAM_FILTER } from "@/lib/business/team-active";
+import { loadCurrencyForSubtasks } from "@/lib/strapi/currency-for-subtasks";
 import { balanceTag, STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
-const STAR_CURRENCY = "star";
 const AWARDS_REVALIDATE_SEC = 120;
 
 interface StrapiList<T> {
@@ -17,7 +17,7 @@ interface StrapiList<T> {
 }
 
 interface BalanceResponse {
-  data: Partial<StarBalanceProps> | null;
+  data: Partial<CurrencyBalanceProps> | null;
 }
 
 interface AwardEntity {
@@ -48,7 +48,7 @@ export interface ExchangeHistoryRow {
 }
 
 export interface ColaboratorPrivateHomeData {
-  balance: StarBalanceProps;
+  balance: CurrencyBalanceProps;
   awards: AwardView[];
   windowOpen: boolean;
   spendableBalance: number;
@@ -56,7 +56,7 @@ export interface ColaboratorPrivateHomeData {
   history: ExchangeHistoryRow[];
 }
 
-const EMPTY_BALANCE: StarBalanceProps = {
+const EMPTY_BALANCE: CurrencyBalanceProps = {
   balance: 0,
   previousBalance: 0,
   totalIncome: 0,
@@ -99,7 +99,8 @@ export async function loadColaboratorPrivateHome(
   userId: string,
 ): Promise<ColaboratorPrivateHomeData> {
   try {
-    const [balanceRes, awardsRes, teamsRes, history] = await Promise.all([
+    const [balanceRes, awardsRes, teamsRes, history, paymentCurrency] =
+      await Promise.all([
       strapiFetch<BalanceResponse>("/balances/me/current", {
         strapiCache: { tags: [balanceTag(userId)], revalidate: 30 },
       }),
@@ -131,19 +132,30 @@ export async function loadColaboratorPrivateHome(
         },
       ),
       loadExchangeHistory(userId),
+      loadCurrencyForSubtasks(),
     ]);
 
+    const paymentCurrencyName = paymentCurrency.currencyName;
     const team = teamsRes.data[0] ?? null;
     const windowOpen = team ? isExchangeWindowOpen(team, new Date()) : false;
-    const balance = { ...EMPTY_BALANCE, ...(balanceRes.data ?? {}) };
+    const balance = {
+      ...EMPTY_BALANCE,
+      ...(balanceRes.data ?? {}),
+      currencyLabel:
+        paymentCurrency.currencyPluralTitle ||
+        paymentCurrency.currencyTitle ||
+        undefined,
+    };
     const awards = awardsRes.data.map((award) => {
       const prices = awardPricesFromValues(award.Value);
       return {
         id: award.documentId,
         title: award.title ?? award.name,
         description: award.description,
-        currency: STAR_CURRENCY,
-        cost: exchangeCost(prices, STAR_CURRENCY, 1),
+        currency: paymentCurrencyName,
+        cost: paymentCurrencyName
+          ? exchangeCost(prices, paymentCurrencyName, 1)
+          : 0,
       };
     });
 

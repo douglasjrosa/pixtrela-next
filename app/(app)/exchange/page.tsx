@@ -13,10 +13,10 @@ import {
 } from "@/lib/business/exchange";
 import { ACTIVE_TEAM_FILTER } from "@/lib/business/team-active";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
+import { loadCurrencyForSubtasks } from "@/lib/strapi/currency-for-subtasks";
 import { balanceTag, STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { redeemAward } from "./actions";
 
-const STAR_CURRENCY = "star";
 const AWARDS_REVALIDATE_SEC = 120;
 
 interface StrapiList<T> {
@@ -135,14 +135,18 @@ async function loadExchange(userId: string | undefined): Promise<ExchangeData> {
       : Promise.resolve({ data: null });
 
     const historyPromise = loadExchangeHistory(userId);
+    const paymentCurrencyPromise = loadCurrencyForSubtasks();
 
-    const [awardsRes, teamsRes, balanceRes, history] = await Promise.all([
-      awardsPromise,
-      teamsPromise,
-      balancePromise,
-      historyPromise,
-    ]);
+    const [awardsRes, teamsRes, balanceRes, history, paymentCurrency] =
+      await Promise.all([
+        awardsPromise,
+        teamsPromise,
+        balancePromise,
+        historyPromise,
+        paymentCurrencyPromise,
+      ]);
 
+    const paymentCurrencyName = paymentCurrency.currencyName;
     const team = teamsRes.data[0] ?? null;
     const windowOpen = team ? isExchangeWindowOpen(team, new Date()) : false;
     const awards = awardsRes.data.map((award) => {
@@ -151,8 +155,10 @@ async function loadExchange(userId: string | undefined): Promise<ExchangeData> {
         id: award.documentId,
         title: award.title ?? award.name,
         description: award.description,
-        currency: STAR_CURRENCY,
-        cost: exchangeCost(prices, STAR_CURRENCY, 1),
+        currency: paymentCurrencyName,
+        cost: paymentCurrencyName
+          ? exchangeCost(prices, paymentCurrencyName, 1)
+          : 0,
       };
     });
 

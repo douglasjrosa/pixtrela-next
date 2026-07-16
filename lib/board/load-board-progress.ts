@@ -1,10 +1,10 @@
 import {
   listOpenActivityStartedAts,
-  shouldShowKanbanTaskProgress,
+  needsLiveBoardProgress,
   type BoardTaskProgressInput,
   type KanbanProgressStatus,
 } from "@/lib/business/task-progress";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
+import { STRAPI_TAGS, strapiFetch, type StrapiCacheOptions } from "@/lib/strapi";
 
 interface StrapiList<T> {
   data: T[];
@@ -55,16 +55,26 @@ function toActivitySessionRefs(activities: ActivityProgressEntity[]) {
   });
 }
 
+function resolveProgressCache(
+  noStore: boolean,
+  tags: string[],
+): StrapiCacheOptions {
+  if (noStore) return { noStore: true };
+  return { tags, revalidate: PROGRESS_REVALIDATE_SEC };
+}
+
 /**
  * Loads live remaining inputs for producing/paused board tasks.
- * Relies on Task.totalExpectedTime / totalTimeSpent for the bar fill (already
- * synced in Strapi); only unfinished counted sub-tasks + open sessions are fetched.
+ * Finished tasks use persisted totals only (no fetch here).
+ * Relies on Task.totalExpectedTime / totalTimeSpent for the bar fill.
  */
 export async function loadBoardProgressByTaskId(
   tasks: ReadonlyArray<{ documentId: string; status: KanbanProgressStatus }>,
+  options?: { noStore?: boolean },
 ): Promise<Record<string, BoardTaskProgressInput>> {
+  const noStore = options?.noStore === true;
   const taskIds = tasks
-    .filter((task) => shouldShowKanbanTaskProgress(task.status))
+    .filter((task) => needsLiveBoardProgress(task.status))
     .map((task) => task.documentId);
 
   const result: Record<string, BoardTaskProgressInput> = {};
@@ -76,10 +86,10 @@ export async function loadBoardProgressByTaskId(
   const subTasksRes = await strapiFetch<StrapiList<SubTaskProgressEntity>>(
     "/sub-tasks",
     {
-      strapiCache: {
-        tags: [STRAPI_TAGS.subTasks, STRAPI_TAGS.tasks],
-        revalidate: PROGRESS_REVALIDATE_SEC,
-      },
+      strapiCache: resolveProgressCache(noStore, [
+        STRAPI_TAGS.subTasks,
+        STRAPI_TAGS.tasks,
+      ]),
     },
     {
       fields: [
@@ -124,10 +134,10 @@ export async function loadBoardProgressByTaskId(
   const activitiesRes = await strapiFetch<StrapiList<ActivityProgressEntity>>(
     "/activities",
     {
-      strapiCache: {
-        tags: [STRAPI_TAGS.activities, STRAPI_TAGS.subTasks],
-        revalidate: PROGRESS_REVALIDATE_SEC,
-      },
+      strapiCache: resolveProgressCache(noStore, [
+        STRAPI_TAGS.activities,
+        STRAPI_TAGS.subTasks,
+      ]),
     },
     {
       fields: ["action", "timestamp"],

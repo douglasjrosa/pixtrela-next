@@ -14,6 +14,14 @@ import {
   canManageTemplates,
   canMoveBoardTasks,
 } from "@/lib/auth/permissions";
+import { loadBoardProgressByTaskId } from "@/lib/board/load-board-progress";
+import type { BoardProgressPollSnapshot } from "@/lib/board/progress-poll";
+import {
+  listActivitySessions,
+  listOpenActivityStartedAts,
+  type ActivitySessionRef,
+  type KanbanProgressStatus,
+} from "@/lib/business/task-progress";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import type { TemplateSubTaskComponentInput } from "@/lib/schemas/template-task";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
@@ -31,7 +39,18 @@ interface BoardSubTaskEntity {
   documentId: string;
   name: string;
   status: BoardSubTaskSummary["status"];
+  sharingType?: "qty" | "duration";
+  expectedTime?: number;
+  timeSpent?: number;
   assignedTo?: { documentId: string; name?: string }[] | null;
+}
+
+interface BoardActivityEntity {
+  action: "started" | "stoped";
+  timestamp?: string | null;
+  qty?: number | null;
+  subTask?: { documentId?: string } | null;
+  colaborator?: { documentId?: string; name?: string | null } | null;
 }
 
 interface SubTaskEntity {
@@ -62,6 +81,53 @@ async function assertCanManageBoardSubtasks(): Promise<void> {
   }
 }
 
+export async function pollBoardProgress(
+  tasks: ReadonlyArray<{ documentId: string; status: KanbanProgressStatus }>,
+): Promise<BoardProgressPollSnapshot> {
+  const session = await auth();
+  if (!session?.jwt) {
+    throw new Error("unauthorized");
+  }
+
+  const progressByTaskId = await loadBoardProgressByTaskId(tasks, {
+    noStore: true,
+  });
+
+  const documentIds = tasks.map((task) => task.documentId);
+  const totalsByTaskId: BoardProgressPollSnapshot["totalsByTaskId"] = {};
+
+  if (documentIds.length > 0) {
+    const tasksRes = await strapiFetch<
+      StrapiList<{
+        documentId: string;
+        totalTimeSpent?: number;
+        totalExpectedTime?: number;
+      }>
+    >(
+      "/tasks",
+      { strapiCache: { noStore: true } },
+      {
+        fields: ["documentId", "totalTimeSpent", "totalExpectedTime"],
+        filters: { documentId: { $in: documentIds } },
+        pagination: { pageSize: 200 },
+      },
+    );
+
+    for (const task of tasksRes.data) {
+      totalsByTaskId[task.documentId] = {
+        totalTimeSpent: task.totalTimeSpent ?? 0,
+        totalExpectedTime: task.totalExpectedTime ?? 0,
+      };
+    }
+  }
+
+  return {
+    progressByTaskId,
+    totalsByTaskId,
+    nowMs: Date.now(),
+  };
+}
+
 export async function loadBoardSubtasks(
   taskDocumentId: string,
 ): Promise<BoardSubTaskSummary[]> {
@@ -71,7 +137,14 @@ export async function loadBoardSubtasks(
     "/sub-tasks",
     { strapiCache: { noStore: true } },
     {
-      fields: ["documentId", "name", "status"],
+      fields: [
+        "documentId",
+        "name",
+        "status",
+        "sharingType",
+        "expectedTime",
+        "timeSpent",
+      ],
       filters: { task: { documentId: { $eq: taskDocumentId } } },
       populate: { assignedTo: { fields: ["documentId", "name"] } },
       sort: "index:asc",
@@ -79,16 +152,64 @@ export async function loadBoardSubtasks(
     },
   );
 
-  return res.data.map((subtask) => ({
-    documentId: subtask.documentId,
-    name: subtask.name,
-    status: subtask.status,
-    assignedTo:
-      subtask.assignedTo?.map((user) => ({
-        documentId: user.documentId,
-        name: user.name ?? "",
-      })) ?? [],
-  }));
+  const subTaskIds = res.data.map((subtask) => subtask.documentId);
+  const activitiesBySubTask = new Map<string, ActivitySessionRef[]>();
+
+  if (subTaskIds.length > 0) {
+    const activitiesRes = await strapiFetch<StrapiList<BoardActivityEntity>>(
+      "/activities",
+      { strapiCache: { noStore: true } },
+      {
+        fields: ["action", "timestamp", "qty"],
+        filters: {
+          subTask: { documentId: { $in: subTaskIds } },
+          action: { $in: ["started", "stoped"] },
+        },
+        populate: {
+          subTask: { fields: ["documentId"] },
+          colaborator: { fields: ["documentId", "name"] },
+        },
+        sort: "timestamp:asc",
+        pagination: { pageSize: 1000 },
+      },
+    );
+
+    for (const activity of activitiesRes.data) {
+      const subTaskDocumentId = activity.subTask?.documentId;
+      const colaboratorDocumentId = activity.colaborator?.documentId;
+      const timestamp = activity.timestamp;
+      if (!subTaskDocumentId || !colaboratorDocumentId || !timestamp) continue;
+      const list = activitiesBySubTask.get(subTaskDocumentId) ?? [];
+      list.push({
+        subTaskDocumentId,
+        colaboratorDocumentId,
+        colaboratorName: activity.colaborator?.name ?? "",
+        action: activity.action,
+        timestamp,
+        qty: Number(activity.qty ?? 0),
+      });
+      activitiesBySubTask.set(subTaskDocumentId, list);
+    }
+  }
+
+  return res.data.map((subtask) => {
+    const activityRefs = activitiesBySubTask.get(subtask.documentId) ?? [];
+    return {
+      documentId: subtask.documentId,
+      name: subtask.name,
+      status: subtask.status,
+      sharingType: subtask.sharingType === "qty" ? "qty" : "duration",
+      expectedTime: subtask.expectedTime ?? 0,
+      timeSpent: subtask.timeSpent ?? 0,
+      openActivityStartedAts: listOpenActivityStartedAts(activityRefs),
+      sessions: listActivitySessions(activityRefs),
+      assignedTo:
+        subtask.assignedTo?.map((user) => ({
+          documentId: user.documentId,
+          name: user.name ?? "",
+        })) ?? [],
+    };
+  });
 }
 
 async function fetchSubTaskForUpdate(

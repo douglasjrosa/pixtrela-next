@@ -3,11 +3,15 @@
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { SubTaskProgressBar } from "@/components/kanban/subtask-progress-bar";
 import { SubTaskAssigneePicker } from "@/components/subtasks/subtask-assignee-picker";
+import { SubTaskSessionsPanel } from "@/components/subtasks/subtask-sessions-panel";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import { Button } from "@/components/ui/button";
 import { CardBadge } from "@/components/ui/card";
 import type { BoardSubTaskSummary } from "./types";
+
+const FINISHED_STATUS = "finished";
 
 export interface KanbanTaskSubtasksModalProps {
   open: boolean;
@@ -76,7 +80,7 @@ export function KanbanTaskSubtasksModal({
               id="kanban-subtasks-title"
               className="text-lg font-semibold"
             >
-              {tKanban("assignTitle")}
+              {tKanban("subtasksTitle")}
             </h2>
             <p className="text-sm text-muted-foreground">{taskName}</p>
           </div>
@@ -95,6 +99,7 @@ export function KanbanTaskSubtasksModal({
                 const assignedIds = subtask.assignedTo.map(
                   (assignee) => assignee.documentId,
                 );
+                const isFinished = subtask.status === FINISHED_STATUS;
 
                 return (
                   <li
@@ -107,15 +112,33 @@ export function KanbanTaskSubtasksModal({
                         {tStatus(subtask.status)}
                       </CardBadge>
                     </div>
-                    <SubTaskAssigneePicker
-                      id={`kanban-subtask-assignees-${subtask.documentId}`}
-                      label={tSubtasks("assignedTo")}
-                      teams={teams}
-                      value={assignedIds}
-                      variant="rows"
-                      disabled={saving}
-                      onChange={(nextIds) => onAssigneesChange(subtask, nextIds)}
-                    />
+                    <div className="mb-3">
+                      <SubTaskProgressBar
+                        status={subtask.status}
+                        expectedTime={subtask.expectedTime}
+                        timeSpent={subtask.timeSpent}
+                        openActivityStartedAts={subtask.openActivityStartedAts}
+                        usePersistedRemaining={isFinished}
+                      />
+                    </div>
+                    {isFinished ? (
+                      <SubTaskSessionsPanel
+                        sessions={subtask.sessions}
+                        sharingType={subtask.sharingType}
+                      />
+                    ) : (
+                      <SubTaskAssigneePicker
+                        id={`kanban-subtask-assignees-${subtask.documentId}`}
+                        label={tSubtasks("assignedTo")}
+                        teams={teams}
+                        value={assignedIds}
+                        variant="rows"
+                        disabled={saving}
+                        onChange={(nextIds) =>
+                          onAssigneesChange(subtask, nextIds)
+                        }
+                      />
+                    )}
                   </li>
                 );
               })}
@@ -133,11 +156,7 @@ export function KanbanTaskSubtasksModal({
                 {tKanban("addSubtask")}
               </Button>
             ) : null}
-            <Button
-              type="button"
-              disabled={!dirty || saving}
-              onClick={onSave}
-            >
+            <Button type="button" disabled={!dirty || saving} onClick={onSave}>
               {tCommon("save")}
             </Button>
           </div>

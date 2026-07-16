@@ -22,7 +22,7 @@ import type { TaskFormInput } from "@/lib/schemas/task";
 import { ACTIVE_TEAM_FILTER } from "@/lib/business/team-active";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
-import { createSubTask, deleteSubTask, reorderSubTasks, updateSubTask } from "./actions";
+import { createSubTask, deleteSubTask, loadSubTaskSessionsAction, reorderSubTasks, updateSubTask } from "./actions";
 
 interface StrapiList<T> {
   data: T[];
@@ -282,6 +282,7 @@ export default async function TaskDetailPage({ params }: PageProps) {
         teams={teams}
         canDeactivate={canDeactivateTasks(role)}
         canDelete={canDeleteTasks(role)}
+        loadSessions={loadSubTaskSessionsAction}
         onCreateSubTask={handleCreate}
         onUpdateSubTask={handleUpdateSubTask}
         onReorderSubTasks={handleReorder}
