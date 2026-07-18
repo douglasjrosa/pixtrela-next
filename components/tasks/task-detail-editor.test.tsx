@@ -43,6 +43,7 @@ const task = {
   index: 0,
   status: "waiting" as const,
   active: true,
+  deliveryDate: "2026-07-20",
   totalExpectedTime: 120,
   totalTimeSpent: 60,
   step: { documentId: "s1", name: "Fila" },

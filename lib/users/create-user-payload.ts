@@ -25,7 +25,10 @@ export function buildUpdateUserPayload(
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   if (data.name) payload.name = data.name;
-  if (data.username) payload.username = data.username;
+  if (data.username) {
+    payload.username = data.username;
+    payload.email = deriveUserEmail(data.username);
+  }
   if (data.password) payload.password = data.password;
   if (data.code !== undefined) payload.code = data.code;
   if (data.roleType) payload.roleType = data.roleType;

@@ -22,5 +22,9 @@ export default async function TemplateSubtasksPage() {
     presets = [];
   }
 
-  return <SubTaskPresetManager presets={presets} />;
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <SubTaskPresetManager presets={presets} />
+    </div>
+  );
 }

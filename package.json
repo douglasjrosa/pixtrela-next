@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test tests/e2e/smoke-nav.spec.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

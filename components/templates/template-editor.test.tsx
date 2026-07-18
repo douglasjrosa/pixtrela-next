@@ -7,10 +7,15 @@ import type { TemplateSubTaskRow } from "@/lib/business/template-subtask-map";
 
 const updateTemplate = vi.fn();
 const loadTemplateFromLegacy = vi.fn();
+const deleteTemplate = vi.fn();
+const push = vi.fn();
+const refresh = vi.fn();
 
 vi.mock("@/app/(app)/templates/actions", () => ({
   updateTemplate: (...args: unknown[]) => updateTemplate(...args),
-  loadTemplateFromLegacy: (...args: unknown[]) => loadTemplateFromLegacy(...args),
+  loadTemplateFromLegacy: (...args: unknown[]) =>
+    loadTemplateFromLegacy(...args),
+  deleteTemplate: (...args: unknown[]) => deleteTemplate(...args),
 }));
 
 vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
@@ -18,7 +23,7 @@ vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
+  useRouter: () => ({ refresh, push }),
 }));
 
 vi.mock("@/lib/ui/app-toast", () => ({
@@ -54,6 +59,23 @@ describe("TemplateEditor", () => {
     const saveButtons = screen.getAllByRole("button", { name: "Salvar" });
     expect(saveButtons).toHaveLength(1);
     expect(saveButtons[0]).toHaveAttribute("form", "template-detail-form");
+  });
+
+  it("shows edit title and delete control", () => {
+    renderWithIntl(
+      <TemplateEditor
+        documentId="tpl-1"
+        template={{ name: "Modelo A", code: "100" }}
+        initialSubtasks={initialSubtasks}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Editar modelo" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Excluir modelo" }),
+    ).toBeInTheDocument();
   });
 
   it("persists metadata and subtasks when save is clicked", async () => {

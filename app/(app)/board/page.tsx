@@ -2,13 +2,12 @@ import { Suspense } from "react";
 
 import { auth } from "@/auth";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
-import { BoardActions } from "@/components/board/board-actions";
 import { BoardLiveProgress } from "@/components/board/board-live-progress";
-import { KanbanBoard } from "@/components/kanban/kanban-board";
 import type { KanbanStep, KanbanTask } from "@/components/kanban/types";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import type { Role } from "@/lib/auth/nav";
 import { canMoveBoardTasks } from "@/lib/auth/permissions";
+import { DEFAULT_ASSIGN_WARN_MAX } from "@/lib/business/assign-warn-max";
 import { loadBoardProgressByTaskId } from "@/lib/board/load-board-progress";
 import {
   needsLiveBoardProgress,
@@ -16,6 +15,7 @@ import {
 } from "@/lib/business/task-progress";
 import { ACTIVE_TEAM_FILTER } from "@/lib/business/team-active";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
+import { loadTaskAutomationSetting } from "@/lib/strapi/task-automation-setting";
 
 import {
   applyBoardTaskOrder,
@@ -153,32 +153,50 @@ function withProgressPending(tasks: KanbanTask[]): KanbanTask[] {
   });
 }
 
-async function withProgressLoaded(tasks: KanbanTask[]): Promise<KanbanTask[]> {
-  const progressByTaskId = await loadBoardProgressByTaskId(tasks);
+async function withProgressLoaded(tasks: KanbanTask[]): Promise<{
+  tasks: KanbanTask[];
+  assignedCountByColaboratorId: Record<string, number>;
+}> {
+  const { progressByTaskId, badgesByTaskId, assignedCountByColaboratorId } =
+    await loadBoardProgressByTaskId(tasks);
   const nowMs = Date.now();
 
-  return tasks.map((task) => {
-    if (!shouldShowKanbanTaskProgress(task.status) || task.totalExpectedTime <= 0) {
-      return task;
-    }
-    if (!needsLiveBoardProgress(task.status)) {
+  return {
+    assignedCountByColaboratorId,
+    tasks: tasks.map((task) => {
+      const badges = badgesByTaskId[task.documentId];
+      const badgeFields = {
+        activeColaboratorCount: badges?.activeColaboratorCount ?? 0,
+        unassignedSubTaskCount: badges?.unassignedSubTaskCount ?? 0,
+      };
+
+      if (
+        !shouldShowKanbanTaskProgress(task.status) ||
+        task.totalExpectedTime <= 0
+      ) {
+        return { ...task, ...badgeFields };
+      }
+      if (!needsLiveBoardProgress(task.status)) {
+        return {
+          ...task,
+          ...badgeFields,
+          progressPending: false,
+          progressInput: { subTasks: [], openActivityStartedAts: [] },
+          progressNowMs: nowMs,
+        };
+      }
       return {
         ...task,
+        ...badgeFields,
         progressPending: false,
-        progressInput: { subTasks: [], openActivityStartedAts: [] },
+        progressInput: progressByTaskId[task.documentId] ?? {
+          subTasks: [],
+          openActivityStartedAts: [],
+        },
         progressNowMs: nowMs,
       };
-    }
-    return {
-      ...task,
-      progressPending: false,
-      progressInput: progressByTaskId[task.documentId] ?? {
-        subTasks: [],
-        openActivityStartedAts: [],
-      },
-      progressNowMs: nowMs,
-    };
-  });
+    }),
+  };
 }
 
 function BoardCanvas({
@@ -186,30 +204,30 @@ function BoardCanvas({
   tasks,
   teams,
   interactive,
+  assignWarnMax,
+  assignedCountByColaboratorId,
 }: {
   steps: KanbanStep[];
   tasks: KanbanTask[];
   teams: TeamAssignmentOption[];
   interactive: boolean;
+  assignWarnMax: number;
+  assignedCountByColaboratorId: Record<string, number>;
 }) {
   return (
-    <BoardLiveProgress tasks={tasks} pollBoardProgress={pollBoardProgress}>
-      {(liveTasks) =>
-        interactive ? (
-          <BoardActions
-            steps={steps}
-            tasks={liveTasks}
-            teams={teams}
-            applyBoardTaskOrder={applyBoardTaskOrder}
-            loadSubtasks={loadBoardSubtasks}
-            updateSubtaskAssignees={updateBoardSubtaskAssignees}
-            createSubtask={createBoardSubtask}
-          />
-        ) : (
-          <KanbanBoard steps={steps} tasks={liveTasks} />
-        )
-      }
-    </BoardLiveProgress>
+    <BoardLiveProgress
+      tasks={tasks}
+      steps={steps}
+      teams={teams}
+      interactive={interactive}
+      assignWarnMax={assignWarnMax}
+      assignedCountByColaboratorId={assignedCountByColaboratorId}
+      pollBoardProgress={pollBoardProgress}
+      applyBoardTaskOrder={applyBoardTaskOrder}
+      loadSubtasks={loadBoardSubtasks}
+      updateSubtaskAssignees={updateBoardSubtaskAssignees}
+      createSubtask={createBoardSubtask}
+    />
   );
 }
 
@@ -218,19 +236,23 @@ async function BoardWithProgress({
   tasks,
   teams,
   interactive,
+  assignWarnMax,
 }: {
   steps: KanbanStep[];
   tasks: KanbanTask[];
   teams: TeamAssignmentOption[];
   interactive: boolean;
+  assignWarnMax: number;
 }) {
-  const tasksWithProgress = await withProgressLoaded(tasks);
+  const loaded = await withProgressLoaded(tasks);
   return (
     <BoardCanvas
       steps={steps}
-      tasks={tasksWithProgress}
+      tasks={loaded.tasks}
       teams={teams}
       interactive={interactive}
+      assignWarnMax={assignWarnMax}
+      assignedCountByColaboratorId={loaded.assignedCountByColaboratorId}
     />
   );
 }
@@ -239,10 +261,12 @@ export default async function BoardPage() {
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
   const interactive = canMoveBoardTasks(role);
-  const [{ steps, tasks }, teams] = await Promise.all([
+  const [{ steps, tasks }, teams, automation] = await Promise.all([
     loadBoard(),
     interactive ? loadTeamsForAssignment() : Promise.resolve([]),
+    loadTaskAutomationSetting(),
   ]);
+  const assignWarnMax = automation.assignWarnMax ?? DEFAULT_ASSIGN_WARN_MAX;
 
   return (
     <Suspense
@@ -252,6 +276,8 @@ export default async function BoardPage() {
           tasks={withProgressPending(tasks)}
           teams={teams}
           interactive={interactive}
+          assignWarnMax={assignWarnMax}
+          assignedCountByColaboratorId={{}}
         />
       }
     >
@@ -260,6 +286,7 @@ export default async function BoardPage() {
         tasks={tasks}
         teams={teams}
         interactive={interactive}
+        assignWarnMax={assignWarnMax}
       />
     </Suspense>
   );

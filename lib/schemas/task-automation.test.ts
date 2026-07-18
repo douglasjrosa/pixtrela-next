@@ -10,12 +10,26 @@ describe("taskAutomationFormSchema", () => {
         producingStepDocumentId: "",
         pausedStepDocumentId: "step-3",
         finishedStepDocumentId: "step-4",
+        assignWarnMax: 4,
       }),
     ).toEqual({
       waitingStepDocumentId: "step-1",
       producingStepDocumentId: "",
       pausedStepDocumentId: "step-3",
       finishedStepDocumentId: "step-4",
+      assignWarnMax: 4,
     });
+  });
+
+  it("rejects non-integer assignWarnMax", () => {
+    expect(
+      taskAutomationFormSchema.safeParse({
+        waitingStepDocumentId: "",
+        producingStepDocumentId: "",
+        pausedStepDocumentId: "",
+        finishedStepDocumentId: "",
+        assignWarnMax: 2.5,
+      }).success,
+    ).toBe(false);
   });
 });

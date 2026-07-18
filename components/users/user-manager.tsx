@@ -25,10 +25,12 @@ import {
 } from "@/lib/kiosk/nfc-write";
 import {
   USER_CODE_NOT_UNIQUE_KEY,
+  USER_LOGIN_NOT_UNIQUE_KEY,
   USER_ROLES,
   createUserFormSchema,
   type UserFormInput,
 } from "@/lib/schemas/user";
+import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 export interface UserRow {
@@ -37,6 +39,7 @@ export interface UserRow {
   documentId: string;
   name: string;
   username: string;
+  email?: string | null;
   code: number;
   roleType: UserFormInput["roleType"];
 }
@@ -97,6 +100,26 @@ function codeErrorMessage(
     return translate(USER_CODE_NOT_UNIQUE_KEY);
   }
   return message;
+}
+
+function loginErrorMessage(
+  message: string | undefined,
+  translate: (key: "loginNotUnique") => string,
+): string | undefined {
+  if (!message) return undefined;
+  if (message === USER_LOGIN_NOT_UNIQUE_KEY) {
+    return translate(USER_LOGIN_NOT_UNIQUE_KEY);
+  }
+  return message;
+}
+
+function isLoginConflictError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("email already taken") ||
+    message.includes("username already taken")
+  );
 }
 
 interface UserFormDialogProps {
@@ -186,6 +209,7 @@ function UserFormDialog({
   }, [name, code, canEditUserLogin, loginManuallyEdited, setValue]);
 
   const codeError = codeErrorMessage(errors.code?.message, tUsers);
+  const loginError = loginErrorMessage(errors.username?.message, tUsers);
   const usernameRegister = register("username");
 
   return (
@@ -265,8 +289,8 @@ function UserFormDialog({
                 void usernameRegister.onChange(event);
               }}
             />
-            {errors.username ? (
-              <p className="text-sm text-destructive">{errors.username.message}</p>
+            {loginError ? (
+              <p className="text-sm text-destructive">{loginError}</p>
             ) : null}
             {canEditUserLogin ? (
               <p className="text-xs text-muted-foreground">
@@ -402,14 +426,23 @@ export function UserManager({
     }
 
     startTransition(async () => {
-      if (editingUserId !== null) {
-        await onUpdate(editingUserId, payload);
-      } else {
-        await onCreate(payload);
+      try {
+        if (editingUserId !== null) {
+          await onUpdate(editingUserId, payload);
+        } else {
+          await onCreate(payload);
+        }
+        setMessage(tUsers("saved"));
+        closeForm();
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        if (isLoginConflictError(error)) {
+          showErrorToast(tUsers("loginNotUnique"));
+          return;
+        }
+        showErrorToast(tUsers("saveFailed"));
       }
-      setMessage(tUsers("saved"));
-      closeForm();
-      router.refresh();
     });
   }
 

@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { User } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { CardBadge } from "@/components/ui/card";
@@ -10,6 +11,12 @@ import {
   kanbanDeliveryDateBadgeClassName,
   resolveKanbanDeliveryDateTone,
 } from "@/lib/business/kanban-delivery-badge";
+import {
+  KANBAN_PAUSED_BADGE_CLASS_NAME,
+  KANBAN_PRODUCING_BADGE_CLASS_NAME,
+  PAUSED_STATUS,
+  PRODUCING_STATUS,
+} from "@/lib/business/kanban-status-badge";
 import { toKanbanTaskId } from "@/lib/business/kanban-task-order";
 import {
   needsLiveBoardProgress,
@@ -20,6 +27,7 @@ import { formatDatePtBr } from "@/lib/format/datetime";
 import { useLiveProgressClock } from "@/hooks/use-live-progress-clock";
 import { cn } from "@/lib/utils";
 
+import { KanbanFloatingCountBadge } from "./kanban-floating-count-badge";
 import { TaskProgressBar } from "./task-progress-bar";
 import { TaskProgressBarSkeleton } from "./task-progress-bar-skeleton";
 import type { KanbanTask } from "./types";
@@ -32,6 +40,56 @@ export interface KanbanCardProps {
   onTaskClick?: (task: KanbanTask) => void;
 }
 
+function KanbanUnassignedFloatingBadge({ count }: { count: number }) {
+  const t = useTranslations("kanban");
+  return (
+    <KanbanFloatingCountBadge
+      count={count}
+      ariaLabel={t("unassignedSubtasksBadge", { count })}
+    />
+  );
+}
+
+function KanbanTaskStatusBadge({
+  status,
+  activeCount,
+}: {
+  status: KanbanTask["status"];
+  activeCount: number;
+}) {
+  const tStatus = useTranslations("tasks.status");
+  const tKanban = useTranslations("kanban");
+  const isProducing = status === PRODUCING_STATUS;
+  const isPaused = status === PAUSED_STATUS;
+  const showActive = isProducing && activeCount > 0;
+
+  return (
+    <CardBadge
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1",
+        isProducing && KANBAN_PRODUCING_BADGE_CLASS_NAME,
+        isPaused && KANBAN_PAUSED_BADGE_CLASS_NAME,
+      )}
+      aria-label={
+        showActive
+          ? tKanban("producingWithActiveColaborators", {
+              status: tStatus(status),
+              count: activeCount,
+            })
+          : undefined
+      }
+    >
+      {tStatus(status)}
+      {showActive ? (
+        <>
+          <User aria-hidden className="size-3" />
+          <span className="tabular-nums">{activeCount}</span>
+        </>
+      ) : null}
+    </CardBadge>
+  );
+}
+
 export function KanbanCardSurface({
   task,
   className,
@@ -39,7 +97,6 @@ export function KanbanCardSurface({
   task: KanbanTask;
   className?: string;
 }) {
-  const tStatus = useTranslations("tasks.status");
   const deliveryTone = resolveKanbanDeliveryDateTone(
     task.deliveryDate,
     new Date(),
@@ -47,9 +104,17 @@ export function KanbanCardSurface({
   const showProgress = shouldShowKanbanTaskProgress(task.status);
   const liveClock = needsLiveBoardProgress(task.status);
   const nowMs = useLiveProgressClock(liveClock, task.progressNowMs);
+  const unassignedCount = task.unassignedSubTaskCount ?? 0;
+  const activeCount = task.activeColaboratorCount ?? 0;
 
   return (
-    <div className={cn("rounded-md border bg-card p-3 shadow-sm", className)}>
+    <div
+      className={cn(
+        "relative rounded-md border bg-card p-3 shadow-sm",
+        className,
+      )}
+    >
+      <KanbanUnassignedFloatingBadge count={unassignedCount} />
       <p className="font-medium">
         {formatTaskDisplayTitle(task.qty, task.name)}
       </p>
@@ -57,7 +122,7 @@ export function KanbanCardSurface({
         <CardBadge className={kanbanDeliveryDateBadgeClassName(deliveryTone)}>
           {formatDatePtBr(task.deliveryDate)}
         </CardBadge>
-        <CardBadge className="shrink-0">{tStatus(task.status)}</CardBadge>
+        <KanbanTaskStatusBadge status={task.status} activeCount={activeCount} />
       </div>
       {showProgress ? (
         <div className="mt-3">
@@ -130,6 +195,7 @@ export function KanbanCard({ task, onTaskClick }: KanbanCardProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
+        "relative overflow-visible",
         onTaskClick && "cursor-pointer",
         isDragging && "opacity-40",
       )}

@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+import {
+  DEFAULT_ASSIGN_WARN_MAX,
+  MAX_ASSIGN_WARN_MAX,
+  MIN_ASSIGN_WARN_MAX,
+} from "@/lib/business/assign-warn-max";
+
 const optionalStepDocumentId = z
   .string()
   .optional()
@@ -10,6 +16,12 @@ export const taskAutomationFormSchema = z.object({
   producingStepDocumentId: optionalStepDocumentId,
   pausedStepDocumentId: optionalStepDocumentId,
   finishedStepDocumentId: optionalStepDocumentId,
+  assignWarnMax: z
+    .number()
+    .int()
+    .min(MIN_ASSIGN_WARN_MAX)
+    .max(MAX_ASSIGN_WARN_MAX)
+    .default(DEFAULT_ASSIGN_WARN_MAX),
 });
 
 export type TaskAutomationFormInput = z.infer<typeof taskAutomationFormSchema>;

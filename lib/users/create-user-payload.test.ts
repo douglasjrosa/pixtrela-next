@@ -33,4 +33,11 @@ describe("buildUpdateUserPayload", () => {
       roleType: "leader",
     });
   });
+
+  it("syncs synthetic email when username changes", () => {
+    expect(buildUpdateUserPayload({ username: "Maria.9" })).toEqual({
+      username: "Maria.9",
+      email: "maria.9@pixtrela.local",
+    });
+  });
 });

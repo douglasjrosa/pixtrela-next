@@ -1,4 +1,11 @@
 import {
+  countAssignedSubTasksByColaborator,
+} from "@/lib/business/assign-warn";
+import {
+  countOpenColaborators,
+  countUnassignedSubTasks,
+} from "@/lib/business/kanban-card-badges";
+import {
   listOpenActivityStartedAts,
   needsLiveBoardProgress,
   type BoardTaskProgressInput,
@@ -17,6 +24,7 @@ interface SubTaskProgressEntity {
   expectedTime?: number;
   timeSpent?: number;
   task?: { documentId?: string } | null;
+  assignedTo?: { documentId?: string }[] | null;
 }
 
 interface ActivityProgressEntity {
@@ -26,6 +34,17 @@ interface ActivityProgressEntity {
   colaborator?: { documentId?: string } | null;
 }
 
+export type BoardCardBadges = {
+  activeColaboratorCount: number;
+  unassignedSubTaskCount: number;
+};
+
+export type BoardProgressLoadResult = {
+  progressByTaskId: Record<string, BoardTaskProgressInput>;
+  badgesByTaskId: Record<string, BoardCardBadges>;
+  assignedCountByColaboratorId: Record<string, number>;
+};
+
 const PROGRESS_REVALIDATE_SEC = 15;
 const SUBTASK_PAGE_SIZE = 500;
 const ACTIVITY_PAGE_SIZE = 1000;
@@ -34,6 +53,18 @@ const DISABLED_ACTIVATION = "disabled";
 
 function emptyProgress(): BoardTaskProgressInput {
   return { subTasks: [], openActivityStartedAts: [] };
+}
+
+function emptyBadges(): BoardCardBadges {
+  return { activeColaboratorCount: 0, unassignedSubTaskCount: 0 };
+}
+
+function emptyLoadResult(): BoardProgressLoadResult {
+  return {
+    progressByTaskId: {},
+    badgesByTaskId: {},
+    assignedCountByColaboratorId: {},
+  };
 }
 
 function toActivitySessionRefs(activities: ActivityProgressEntity[]) {
@@ -64,24 +95,37 @@ function resolveProgressCache(
 }
 
 /**
- * Loads live remaining inputs for producing/paused board tasks.
- * Finished tasks use persisted totals only (no fetch here).
- * Relies on Task.totalExpectedTime / totalTimeSpent for the bar fill.
+ * Loads live progress for producing/paused tasks and card badge counts for all.
+ * Finished tasks use persisted totals only for the bar (no progress rows here).
  */
 export async function loadBoardProgressByTaskId(
   tasks: ReadonlyArray<{ documentId: string; status: KanbanProgressStatus }>,
   options?: { noStore?: boolean },
-): Promise<Record<string, BoardTaskProgressInput>> {
+): Promise<BoardProgressLoadResult> {
   const noStore = options?.noStore === true;
-  const taskIds = tasks
-    .filter((task) => needsLiveBoardProgress(task.status))
-    .map((task) => task.documentId);
+  const allTaskIds = tasks.map((task) => task.documentId);
+  const liveTaskIds = new Set(
+    tasks
+      .filter((task) => needsLiveBoardProgress(task.status))
+      .map((task) => task.documentId),
+  );
 
-  const result: Record<string, BoardTaskProgressInput> = {};
-  for (const taskId of taskIds) {
-    result[taskId] = emptyProgress();
+  const progressByTaskId: Record<string, BoardTaskProgressInput> = {};
+  const badgesByTaskId: Record<string, BoardCardBadges> = {};
+  const assignedCountsByTask = new Map<string, number[]>();
+  const assignedSubTaskInputs: { assignedToIds: string[] }[] = [];
+
+  for (const taskId of allTaskIds) {
+    badgesByTaskId[taskId] = emptyBadges();
+    assignedCountsByTask.set(taskId, []);
+    if (liveTaskIds.has(taskId)) {
+      progressByTaskId[taskId] = emptyProgress();
+    }
   }
-  if (taskIds.length === 0) return result;
+
+  if (allTaskIds.length === 0) {
+    return emptyLoadResult();
+  }
 
   const subTasksRes = await strapiFetch<StrapiList<SubTaskProgressEntity>>(
     "/sub-tasks",
@@ -100,11 +144,14 @@ export async function loadBoardProgressByTaskId(
         "timeSpent",
       ],
       filters: {
-        task: { documentId: { $in: taskIds } },
+        task: { documentId: { $in: allTaskIds } },
         status: { $ne: FINISHED_STATUS },
         activationStatus: { $ne: DISABLED_ACTIVATION },
       },
-      populate: { task: { fields: ["documentId"] } },
+      populate: {
+        task: { fields: ["documentId"] },
+        assignedTo: { fields: ["documentId"] },
+      },
       pagination: { pageSize: SUBTASK_PAGE_SIZE },
     },
   );
@@ -114,14 +161,24 @@ export async function loadBoardProgressByTaskId(
 
   for (const subTask of subTasksRes.data) {
     const taskDocumentId = subTask.task?.documentId;
-    if (!taskDocumentId || !result[taskDocumentId]) continue;
+    if (!taskDocumentId || !badgesByTaskId[taskDocumentId]) continue;
 
-    result[taskDocumentId].subTasks.push({
-      status: subTask.status,
-      activationStatus: subTask.activationStatus ?? null,
-      expectedTime: subTask.expectedTime ?? 0,
-      timeSpent: subTask.timeSpent ?? 0,
-    });
+    const assignedToIds =
+      subTask.assignedTo
+        ?.map((user) => user.documentId)
+        .filter((id): id is string => Boolean(id)) ?? [];
+    assignedSubTaskInputs.push({ assignedToIds });
+    assignedCountsByTask.get(taskDocumentId)?.push(assignedToIds.length);
+
+    const progress = progressByTaskId[taskDocumentId];
+    if (progress) {
+      progress.subTasks.push({
+        status: subTask.status,
+        activationStatus: subTask.activationStatus ?? null,
+        expectedTime: subTask.expectedTime ?? 0,
+        timeSpent: subTask.timeSpent ?? 0,
+      });
+    }
 
     if (subTask.status === "producing") {
       producingSubTaskIds.push(subTask.documentId);
@@ -129,7 +186,20 @@ export async function loadBoardProgressByTaskId(
     }
   }
 
-  if (producingSubTaskIds.length === 0) return result;
+  for (const [taskDocumentId, assignedCounts] of assignedCountsByTask) {
+    const badges = badgesByTaskId[taskDocumentId];
+    if (!badges) continue;
+    badges.unassignedSubTaskCount = countUnassignedSubTasks(
+      assignedCounts.map((assignedCount) => ({ assignedCount })),
+    );
+  }
+
+  const assignedCountByColaboratorId =
+    countAssignedSubTasksByColaborator(assignedSubTaskInputs);
+
+  if (producingSubTaskIds.length === 0) {
+    return { progressByTaskId, badgesByTaskId, assignedCountByColaboratorId };
+  }
 
   const activitiesRes = await strapiFetch<StrapiList<ActivityProgressEntity>>(
     "/activities",
@@ -166,12 +236,16 @@ export async function loadBoardProgressByTaskId(
   }
 
   for (const [taskDocumentId, activities] of activitiesByTask.entries()) {
-    const progress = result[taskDocumentId];
-    if (!progress) continue;
-    progress.openActivityStartedAts = listOpenActivityStartedAts(
-      toActivitySessionRefs(activities),
-    );
+    const refs = toActivitySessionRefs(activities);
+    const progress = progressByTaskId[taskDocumentId];
+    if (progress) {
+      progress.openActivityStartedAts = listOpenActivityStartedAts(refs);
+    }
+    const badges = badgesByTaskId[taskDocumentId];
+    if (badges) {
+      badges.activeColaboratorCount = countOpenColaborators(refs);
+    }
   }
 
-  return result;
+  return { progressByTaskId, badgesByTaskId, assignedCountByColaboratorId };
 }

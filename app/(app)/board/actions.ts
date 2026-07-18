@@ -89,9 +89,8 @@ export async function pollBoardProgress(
     throw new Error("unauthorized");
   }
 
-  const progressByTaskId = await loadBoardProgressByTaskId(tasks, {
-    noStore: true,
-  });
+  const { progressByTaskId, badgesByTaskId, assignedCountByColaboratorId } =
+    await loadBoardProgressByTaskId(tasks, { noStore: true });
 
   const documentIds = tasks.map((task) => task.documentId);
   const totalsByTaskId: BoardProgressPollSnapshot["totalsByTaskId"] = {};
@@ -123,6 +122,8 @@ export async function pollBoardProgress(
 
   return {
     progressByTaskId,
+    badgesByTaskId,
+    assignedCountByColaboratorId,
     totalsByTaskId,
     nowMs: Date.now(),
   };

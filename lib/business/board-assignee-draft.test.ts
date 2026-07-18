@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { BoardSubTaskSummary } from "@/components/kanban/types";
 import { boardSubTaskSummaryStub } from "@/lib/business/board-subtask-summary";
 import {
+  applyAssigneeDraftDeltasToCounts,
   assigneeIdsKey,
   buildAssigneesSnapshot,
   collectDirtyAssigneeUpdates,
@@ -130,5 +131,28 @@ describe("board-assignee-draft", () => {
       "st-1": "u-1",
       "st-3": "",
     });
+  });
+
+  it("rebases server assign counts with draft deltas without losing poll data", () => {
+    const baseline = buildAssigneesSnapshot(subtasks);
+    const draft: BoardSubTaskSummary[] = [
+      {
+        ...subtasks[0]!,
+        assignedTo: [
+          { documentId: "u-1", name: "Ana" },
+          { documentId: "u-2", name: "Bia" },
+          { documentId: "u-3", name: "Cia" },
+        ],
+      },
+      subtasks[1]!,
+    ];
+
+    expect(
+      applyAssigneeDraftDeltasToCounts(
+        { "u-1": 3, "u-2": 1, "u-9": 2 },
+        draft,
+        baseline,
+      ),
+    ).toEqual({ "u-1": 3, "u-2": 1, "u-3": 1, "u-9": 2 });
   });
 });

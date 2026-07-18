@@ -6,8 +6,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import {
+  MAX_ASSIGN_WARN_MAX,
+  MIN_ASSIGN_WARN_MAX,
+} from "@/lib/business/assign-warn-max";
 import {
   TASK_AUTOMATION_STATUS_FIELDS,
   taskAutomationFormSchema,
@@ -39,8 +44,14 @@ export function TaskAutomationForm({
   const tStatus = useTranslations("tasks.status");
   const [isPending, startTransition] = useTransition();
 
-  const { register, handleSubmit } = useForm<TaskAutomationFormInput>({
-    resolver: zodResolver(taskAutomationFormSchema) as Resolver<TaskAutomationFormInput>,
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<TaskAutomationFormInput>({
+    resolver: zodResolver(
+      taskAutomationFormSchema,
+    ) as Resolver<TaskAutomationFormInput>,
     defaultValues,
   });
 
@@ -57,36 +68,73 @@ export function TaskAutomationForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-sm space-y-4">
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold">{tSettings("automationsHeading")}</h2>
-        <p className="text-sm text-muted-foreground">
-          {tSettings("automationsDescription")}
-        </p>
+    <form onSubmit={handleSubmit(onSubmit)} className="max-w-sm space-y-6">
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold">
+            {tSettings("automationsHeading")}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {tSettings("automationsDescription")}
+          </p>
+        </div>
+
+        {TASK_AUTOMATION_STATUS_FIELDS.map(({ status, field }) => (
+          <div className="flex items-center gap-3" key={status}>
+            <Label htmlFor={`automation-${status}`} className="shrink-0">
+              {tSettings.rich("statusGoesTo", {
+                status: tStatus(status),
+                bold: (chunks) => <b>{chunks}</b>,
+              })}
+            </Label>
+            <select
+              id={`automation-${status}`}
+              className={`${SELECT_CLASS_NAME} flex-1`}
+              {...register(field)}
+            >
+              <option value="">{tSettings("automationNoStep")}</option>
+              {steps.map((step) => (
+                <option key={step.documentId} value={step.documentId}>
+                  {step.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
       </div>
 
-      {TASK_AUTOMATION_STATUS_FIELDS.map(({ status, field }) => (
-        <div className="flex items-center gap-3" key={status}>
-          <Label htmlFor={`automation-${status}`} className="shrink-0">
-            {tSettings.rich("statusGoesTo", {
-              status: tStatus(status),
-              bold: (chunks) => <b>{chunks}</b>,
-            })}
-          </Label>
-          <select
-            id={`automation-${status}`}
-            className={`${SELECT_CLASS_NAME} flex-1`}
-            {...register(field)}
-          >
-            <option value="">{tSettings("automationNoStep")}</option>
-            {steps.map((step) => (
-              <option key={step.documentId} value={step.documentId}>
-                {step.name}
-              </option>
-            ))}
-          </select>
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold">
+            {tSettings("assignWarnHeading")}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {tSettings("assignWarnDescription")}
+          </p>
         </div>
-      ))}
+
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <Label htmlFor="assignWarnMax" className="shrink-0">
+              {tSettings("assignWarnMax")}
+            </Label>
+            <Input
+              id="assignWarnMax"
+              className="flex-1"
+              type="number"
+              min={MIN_ASSIGN_WARN_MAX}
+              max={MAX_ASSIGN_WARN_MAX}
+              step={1}
+              {...register("assignWarnMax", { valueAsNumber: true })}
+            />
+          </div>
+          {errors.assignWarnMax ? (
+            <p className="text-sm text-destructive">
+              {errors.assignWarnMax.message}
+            </p>
+          ) : null}
+        </div>
+      </div>
 
       <Button type="submit" disabled={isPending || steps.length === 0}>
         {tCommon("save")}

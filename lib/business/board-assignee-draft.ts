@@ -1,13 +1,21 @@
 import type { BoardSubTaskSummary } from "@/components/kanban/types";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
+import { adjustAssignedCount } from "@/lib/business/assign-warn";
 
 export type AssigneeDraftUpdate = {
   documentId: string;
   assignedToIds: string[];
 };
 
+const FINISHED_STATUS = "finished";
+
 export function assigneeIdsKey(ids: string[]): string {
   return [...ids].sort().join(",");
+}
+
+export function parseAssigneeIdsKey(key: string): string[] {
+  if (!key) return [];
+  return key.split(",").filter(Boolean);
 }
 
 export function getSubtaskAssigneeIds(subtask: BoardSubTaskSummary): string[] {
@@ -45,6 +53,36 @@ export function hasAssigneeDraftChanges(
   baseline: Record<string, string>,
 ): boolean {
   return collectDirtyAssigneeUpdates(subtasks, baseline).length > 0;
+}
+
+/**
+ * Rebases board-wide server counts with unsaved assignee toggles so polls do
+ * not wipe local draft warn badges.
+ */
+export function applyAssigneeDraftDeltasToCounts(
+  serverCounts: Readonly<Record<string, number>>,
+  subtasks: readonly BoardSubTaskSummary[],
+  baseline: Readonly<Record<string, string>>,
+): Record<string, number> {
+  let counts = { ...serverCounts };
+  for (const subtask of subtasks) {
+    if (subtask.status === FINISHED_STATUS) continue;
+    const baselineIds = new Set(
+      parseAssigneeIdsKey(baseline[subtask.documentId] ?? ""),
+    );
+    const currentIds = new Set(getSubtaskAssigneeIds(subtask));
+    for (const id of currentIds) {
+      if (!baselineIds.has(id)) {
+        counts = adjustAssignedCount(counts, id, 1);
+      }
+    }
+    for (const id of baselineIds) {
+      if (!currentIds.has(id)) {
+        counts = adjustAssignedCount(counts, id, -1);
+      }
+    }
+  }
+  return counts;
 }
 
 export function resolveAssigneeNames(

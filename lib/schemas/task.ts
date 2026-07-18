@@ -12,7 +12,7 @@ export const TASK_STATUSES = [
 export const taskFormSchema = z.object({
   name: z.string().trim().min(1),
   qty: z.coerce.number().int().min(1),
-  deliveryDate: z.string().optional(),
+  deliveryDate: z.string().trim().min(1),
   stepDocumentId: z.string().trim().min(1),
   status: z.enum(TASK_STATUSES),
   templateTaskCode: z.string().optional(),

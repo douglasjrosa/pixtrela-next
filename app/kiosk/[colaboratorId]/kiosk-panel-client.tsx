@@ -10,7 +10,8 @@ import {
   type KioskSubTask,
 } from "@/lib/business/subtask-queue";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
-import { showSuccessToast } from "@/lib/ui/app-toast";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 
 import { exitSubTask, startSubTask } from "./actions";
 
@@ -41,19 +42,24 @@ export function KioskPanelClient({
     if (!subTask) return;
 
     startTransition(async () => {
-      const result = await exitSubTask(
-        colaboratorId,
-        documentId,
-        subTask.sharingType,
-        input,
-        subTask.targetQty,
-        subTask.completedQty,
-      );
-      const names = formatRemainingWorkerNames(result.remainingWorkerNames);
-      if (names) {
-        showSuccessToast(t("exitOthersStillActive", { name: names }));
+      try {
+        const result = await exitSubTask(
+          colaboratorId,
+          documentId,
+          subTask.sharingType,
+          input,
+          subTask.targetQty,
+          subTask.completedQty,
+        );
+        const names = formatRemainingWorkerNames(result.remainingWorkerNames);
+        if (names) {
+          showSuccessToast(t("exitOthersStillActive", { name: names }));
+        }
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(t("exitFailed"));
       }
-      router.refresh();
     });
   }
 

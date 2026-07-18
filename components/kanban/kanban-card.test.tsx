@@ -76,6 +76,22 @@ describe("KanbanCard", () => {
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
+  it("styles paused status badge with warning amber", () => {
+    renderWithIntl(
+      <DndContext>
+        <SortableContext
+          items={[toKanbanTaskId(task.id)]}
+          strategy={verticalListSortingStrategy}
+        >
+          <KanbanCard task={{ ...task, status: "paused" }} />
+        </SortableContext>
+      </DndContext>,
+    );
+
+    expect(screen.getByText("Pausada").className).toContain("bg-yellow-200");
+    expect(screen.getByText("Pausada").className).toContain("text-yellow-900");
+  });
+
   it("shows progress bar footer for producing tasks", () => {
     renderWithIntl(
       <DndContext>
@@ -101,7 +117,7 @@ describe("KanbanCard", () => {
     expect(screen.getAllByText("30min")).toHaveLength(2);
   });
 
-  it("shows skeleton while progress is pending", () => {
+  it("shows floating unassigned badge and producing status with active count", () => {
     renderWithIntl(
       <DndContext>
         <SortableContext
@@ -111,17 +127,43 @@ describe("KanbanCard", () => {
           <KanbanCard
             task={{
               ...task,
-              status: "paused",
-              totalTimeSpent: 900,
-              totalExpectedTime: 3600,
-              progressPending: true,
+              status: "producing",
+              activeColaboratorCount: 3,
+              unassignedSubTaskCount: 2,
             }}
           />
         </SortableContext>
       </DndContext>,
     );
 
-    expect(screen.getByTestId("task-progress-bar-skeleton")).toBeInTheDocument();
-    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Produzindo · 3 em atividade"),
+    ).toHaveTextContent("3");
+    expect(
+      screen.getByLabelText("2 subtarefa(s) sem colaborador"),
+    ).toHaveTextContent("2");
+  });
+
+  it("hides floating unassigned badge when count is zero", () => {
+    renderWithIntl(
+      <DndContext>
+        <SortableContext
+          items={[toKanbanTaskId(task.id)]}
+          strategy={verticalListSortingStrategy}
+        >
+          <KanbanCard
+            task={{
+              ...task,
+              activeColaboratorCount: 0,
+              unassignedSubTaskCount: 0,
+            }}
+          />
+        </SortableContext>
+      </DndContext>,
+    );
+
+    expect(
+      screen.queryByLabelText(/subtarefa\(s\) sem colaborador/),
+    ).not.toBeInTheDocument();
   });
 });

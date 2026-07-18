@@ -30,7 +30,7 @@ export function KanbanColumn({
       ref={setNodeRef}
       aria-label={step.name}
       className={cn(
-        "flex w-72 shrink-0 flex-col gap-3 rounded-lg border bg-muted/30 p-3",
+        "flex w-72 shrink-0 flex-col gap-3 overflow-visible rounded-lg border bg-muted/30 p-3",
         isOver && "ring-2 ring-ring",
       )}
     >

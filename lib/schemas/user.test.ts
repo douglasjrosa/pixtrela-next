@@ -2,14 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import {
   USER_CODE_NOT_UNIQUE_KEY,
+  USER_LOGIN_NOT_UNIQUE_KEY,
   buildUserFormSchema,
   createUserFormSchema,
   userFormSchema,
 } from "./user";
 
 const existingUsers = [
-  { documentId: "u1", code: 1234 },
-  { documentId: "u2", code: 5678 },
+  { documentId: "u1", code: 1234, username: "maria.1234" },
+  { documentId: "u2", code: 5678, username: "joao.5678" },
 ];
 
 const validUser = {
@@ -88,5 +89,37 @@ describe("userFormSchema", () => {
     expect(createUserFormSchema(existingUsers).parse(validUser)).toMatchObject({
       code: 9876,
     });
+  });
+
+  it("rejects duplicate login on create", () => {
+    const result = createUserFormSchema(existingUsers).safeParse({
+      ...validUser,
+      username: "Maria.1234",
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues[0]?.message).toBe(USER_LOGIN_NOT_UNIQUE_KEY);
+  });
+
+  it("rejects login whose derived email collides with an orphan email", () => {
+    const withOrphan = [
+      ...existingUsers,
+      {
+        documentId: "u3",
+        code: 2,
+        username: "joao.silva.2",
+        email: "joao.2@pixtrela.local",
+      },
+    ];
+    const result = createUserFormSchema(withOrphan).safeParse({
+      ...validUser,
+      username: "joao.2",
+      code: 9999,
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues[0]?.message).toBe(USER_LOGIN_NOT_UNIQUE_KEY);
   });
 });

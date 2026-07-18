@@ -21,6 +21,7 @@ interface UserEntity {
   id: number;
   name?: string;
   username: string;
+  email?: string | null;
   code?: number;
   roleType?: UserFormInput["roleType"];
 }
@@ -31,7 +32,7 @@ async function loadUsers(): Promise<UserRow[]> {
       "/users",
       { strapiCache: { tags: [STRAPI_TAGS.users], revalidate: 60 } },
       {
-        fields: ["documentId", "id", "name", "username", "code", "roleType"],
+        fields: ["documentId", "id", "name", "username", "email", "code", "roleType"],
       },
     );
     return res.map((user) => ({
@@ -39,6 +40,7 @@ async function loadUsers(): Promise<UserRow[]> {
       documentId: user.documentId ?? String(user.id),
       name: user.name ?? user.username,
       username: user.username,
+      email: user.email ?? null,
       code: user.code ?? 0,
       roleType: user.roleType ?? "colaborator",
     }));

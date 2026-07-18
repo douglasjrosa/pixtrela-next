@@ -22,6 +22,7 @@ const defaultValues = {
   producingStepDocumentId: "step-2",
   pausedStepDocumentId: "",
   finishedStepDocumentId: "",
+  assignWarnMax: 4,
 };
 
 describe("TaskAutomationForm", () => {
@@ -73,6 +74,7 @@ describe("TaskAutomationForm", () => {
         producingStepDocumentId: "step-2",
         pausedStepDocumentId: "step-1",
         finishedStepDocumentId: "",
+        assignWarnMax: 4,
       });
     });
     expect(showSuccessToast).toHaveBeenCalledWith("Configurações salvas.");

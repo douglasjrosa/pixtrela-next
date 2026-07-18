@@ -15,6 +15,7 @@ describe("loadTaskAutomationSetting", () => {
         producingStep: { documentId: "step-run" },
         pausedStep: null,
         finishedStep: { documentId: "step-done" },
+        assignWarnMax: 3,
       },
     });
 
@@ -24,6 +25,7 @@ describe("loadTaskAutomationSetting", () => {
       producingStepDocumentId: "step-run",
       pausedStepDocumentId: "",
       finishedStepDocumentId: "step-done",
+      assignWarnMax: 3,
     });
   });
 });
@@ -40,12 +42,14 @@ describe("toTaskAutomationSettingPayload", () => {
         producingStepDocumentId: "",
         pausedStepDocumentId: "step-pause",
         finishedStepDocumentId: "",
+        assignWarnMax: 4,
       }),
     ).toEqual({
       waitingStep: "step-wait",
       producingStep: null,
       pausedStep: "step-pause",
       finishedStep: null,
+      assignWarnMax: 4,
     });
   });
 });

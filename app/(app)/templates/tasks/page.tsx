@@ -1,57 +1,66 @@
-import { auth } from "@/auth";
+import { Suspense } from "react";
+
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
-import { ForbiddenMessage } from "@/components/auth/forbidden-message";
+import type { TemplateListFilters } from "@/lib/schemas/template-list-filters";
+import { loadTemplateListPage } from "@/lib/templates/load-template-list-page";
 import {
-  TemplateManager,
-  type TemplateListRow,
-} from "@/components/templates/template-manager";
-import type { Role } from "@/lib/auth/nav";
-import { canManageTemplates } from "@/lib/auth/permissions";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
+  parseTemplateListSearchParams,
+  templateListFilterKey,
+} from "@/lib/templates/template-list-params";
 
-interface StrapiList<T> {
-  data: T[];
+import { TemplatesListSkeleton } from "@/components/templates/templates-list-skeleton";
+import { TemplatesListWithLoadMore } from "@/components/templates/templates-list-with-load-more";
+import { TemplatesPageHeader } from "@/components/templates/templates-page-header";
+import { TemplatesToolbar } from "@/components/templates/templates-toolbar";
+
+interface TemplateTasksPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-interface TemplateEntity {
-  documentId: string;
-  name: string;
-  code: string;
-  subTask?: unknown[] | null;
-}
-
-async function loadTemplates(): Promise<TemplateListRow[]> {
+async function TemplatesListSection({
+  filters,
+}: {
+  filters: TemplateListFilters;
+}) {
   try {
-    const res = await strapiFetch<StrapiList<TemplateEntity>>(
-      "/template-tasks",
-      { strapiCache: { tags: [STRAPI_TAGS.templateTasks], revalidate: 60 } },
-      {
-        fields: ["documentId", "name", "code"],
-        populate: { subTask: { fields: ["name"] } },
-        sort: "name:asc",
-      },
+    const page = await loadTemplateListPage(filters, 1);
+    return (
+      <TemplatesListWithLoadMore
+        filters={filters}
+        initialTemplates={page.templates}
+        initialHasMore={page.hasMore}
+        initialPage={page.page}
+      />
     );
-    return res.data.map((template) => ({
-      documentId: template.documentId,
-      name: template.name,
-      code: template.code,
-      subTaskCount: template.subTask?.length ?? 0,
-    }));
   } catch (error) {
     rethrowIfNavigationError(error);
-    return [];
+    return (
+      <TemplatesListWithLoadMore
+        filters={filters}
+        initialTemplates={[]}
+        initialHasMore={false}
+        initialPage={1}
+      />
+    );
   }
 }
 
-export default async function TemplateTasksPage() {
-  const session = await auth();
-  const role = session?.user?.role as Role | undefined;
+export default async function TemplateTasksPage({
+  searchParams,
+}: TemplateTasksPageProps) {
+  const params = await searchParams;
+  const filters = parseTemplateListSearchParams(params);
+  const filterKey = templateListFilterKey(filters);
 
-  if (!canManageTemplates(role)) {
-    return <ForbiddenMessage />;
-  }
-
-  const templates = await loadTemplates();
-
-  return <TemplateManager templates={templates} />;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <TemplatesPageHeader />
+      <Suspense fallback={null}>
+        <TemplatesToolbar />
+      </Suspense>
+      <Suspense key={filterKey} fallback={<TemplatesListSkeleton />}>
+        <TemplatesListSection filters={filters} />
+      </Suspense>
+    </div>
+  );
 }

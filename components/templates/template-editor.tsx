@@ -1,16 +1,19 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
 import {
+  deleteTemplate,
   loadTemplateFromLegacy,
   updateTemplate,
 } from "@/app/(app)/templates/actions";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
@@ -45,6 +48,7 @@ export function TemplateEditor({
   const [isPending, startTransition] = useTransition();
   const [isLoadingTemplate, startLoadTransition] = useTransition();
   const [subtasks, setSubtasks] = useState(initialSubtasks);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const {
     register,
@@ -62,7 +66,9 @@ export function TemplateEditor({
     setSubtasks(initialSubtasks);
   }, [initialSubtasks]);
 
-  function handleSave(values: Pick<TemplateTaskFormInput, "name" | "code">): void {
+  function handleSave(
+    values: Pick<TemplateTaskFormInput, "name" | "code">,
+  ): void {
     startTransition(async () => {
       try {
         await updateTemplate(documentId, {
@@ -74,9 +80,13 @@ export function TemplateEditor({
         router.refresh();
       } catch (error) {
         rethrowIfNavigationError(error);
-        showErrorToast(tTemplates("loadTemplateError"));
+        showErrorToast(tTemplates("error"));
       }
     });
+  }
+
+  function handleInvalid(): void {
+    showErrorToast(tTemplates("validationError"));
   }
 
   function handleLoadTemplate(): void {
@@ -97,18 +107,49 @@ export function TemplateEditor({
     });
   }
 
+  function handleDeleteConfirm(): void {
+    setIsDeleteDialogOpen(false);
+    startTransition(async () => {
+      try {
+        await deleteTemplate(documentId);
+        showSuccessToast(tTemplates("deleted"));
+        router.push("/templates/tasks");
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tTemplates("error"));
+      }
+    });
+  }
+
   return (
     <div className="space-y-8 pb-24">
       <form
         id={TEMPLATE_DETAIL_FORM_ID}
-        onSubmit={handleSubmit(handleSave)}
+        onSubmit={handleSubmit(handleSave, handleInvalid)}
         className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2"
       >
-        <h2 className="sm:col-span-2 text-lg font-semibold">{tCommon("edit")}</h2>
+        <div className="sm:col-span-2 flex items-start justify-between gap-3">
+          <h2 className="text-lg font-semibold">{tTemplates("editTemplate")}</h2>
+          <Button
+            type="button"
+            variant="destructive"
+            size="icon"
+            disabled={isPending}
+            aria-label={tTemplates("deleteTitle")}
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
+            <Trash2 className="size-4" aria-hidden />
+          </Button>
+        </div>
 
         <div className="space-y-2">
           <Label htmlFor="template-name">{tTemplates("name")}</Label>
-          <Input id="template-name" disabled={isPending} {...register("name")} />
+          <Input
+            id="template-name"
+            disabled={isPending}
+            {...register("name")}
+          />
           {errors.name ? (
             <p className="text-sm text-destructive">{errors.name.message}</p>
           ) : null}
@@ -117,7 +158,11 @@ export function TemplateEditor({
         <div className="space-y-2">
           <Label htmlFor="template-code">{tTemplates("code")}</Label>
           <div className="flex gap-2">
-            <Input id="template-code" disabled={isPending} {...register("code")} />
+            <Input
+              id="template-code"
+              disabled={isPending}
+              {...register("code")}
+            />
             <Button
               type="button"
               variant="outline"
@@ -152,6 +197,15 @@ export function TemplateEditor({
           {tCommon("save")}
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        title={tTemplates("deleteTitle")}
+        description={tTemplates("deleteConfirm")}
+        disabled={isPending}
+        onConfirm={handleDeleteConfirm}
+        onClose={() => setIsDeleteDialogOpen(false)}
+      />
     </div>
   );
 }

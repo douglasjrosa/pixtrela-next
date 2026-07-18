@@ -5,13 +5,19 @@ import { buildTemplateFromBox } from "@/lib/business/template-from-box";
 import { fetchBoxTemplateData } from "@/lib/legacy/rbx-client";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTemplates } from "@/lib/auth/permissions";
+import { templateListFiltersSchema } from "@/lib/schemas/template-list-filters";
 import {
   templateTaskFormSchema,
   type TemplateSubTaskComponentInput,
   type TemplateTaskFormInput,
 } from "@/lib/schemas/template-task";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
+import { strapiFetch } from "@/lib/strapi";
+import { LIST_CACHE_CONTRACT } from "@/lib/strapi/list-cache-contract";
 import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
+import {
+  loadTemplateListPage,
+  type TemplateListPageResult,
+} from "@/lib/templates/load-template-list-page";
 
 interface StrapiOne<T> {
   data: T;
@@ -47,8 +53,21 @@ function toStrapiPayload(input: TemplateTaskFormInput) {
   };
 }
 
-function invalidateTemplates(): void {
-  revalidateStrapiTags(STRAPI_TAGS.templateTasks);
+function invalidateTemplates(templateDocumentId?: string): void {
+  const { tags, paths } = LIST_CACHE_CONTRACT.templateTasks;
+  const detailPaths = templateDocumentId
+    ? [`/templates/tasks/${templateDocumentId}`]
+    : [];
+  revalidateStrapiTags(...tags, { paths: [...paths, ...detailPaths] });
+}
+
+export async function loadMoreTemplates(
+  rawFilters: unknown,
+  page: number,
+): Promise<TemplateListPageResult> {
+  await assertCanManage();
+  const filters = templateListFiltersSchema.parse(rawFilters);
+  return loadTemplateListPage(filters, page);
 }
 
 async function fetchTemplateEntity(
@@ -101,7 +120,7 @@ export async function updateTemplate(
     strapiCache: { noStore: true },
     body: JSON.stringify({ data: toStrapiPayload(data) }),
   });
-  invalidateTemplates();
+  invalidateTemplates(documentId);
 }
 
 export async function updateTemplateMetadata(
@@ -160,5 +179,5 @@ export async function deleteTemplate(documentId: string): Promise<void> {
     method: "DELETE",
     strapiCache: { noStore: true },
   });
-  invalidateTemplates();
+  invalidateTemplates(documentId);
 }

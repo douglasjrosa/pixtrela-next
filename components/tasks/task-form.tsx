@@ -201,6 +201,11 @@ export function TaskForm({
       <div className="space-y-2">
         <Label htmlFor="deliveryDate">{tManage("deliveryDate")}</Label>
         <Input id="deliveryDate" type="date" {...register("deliveryDate")} />
+        {errors.deliveryDate ? (
+          <p className="text-sm text-destructive">
+            {errors.deliveryDate.message}
+          </p>
+        ) : null}
       </div>
 
       <input type="hidden" {...register("stepDocumentId")} />

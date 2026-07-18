@@ -46,6 +46,10 @@ export function TaskProgressBar({
   const remainingSeconds = usePersistedRemaining
     ? resolvePersistedRemainingSeconds(totalExpectedTime, totalTimeSpent)
     : resolveTaskRemainingSeconds(progressInput.subTasks, openStarts, nowMs);
+  const overFillPercent = resolveProgressOverFillPercent(
+    totalExpectedTime,
+    liveSpent,
+  );
 
   return (
     <ProgressTrack
@@ -55,10 +59,8 @@ export function TaskProgressBar({
       remainingSec={remainingSeconds}
       markPercent={resolveProgressMarkPercent(totalExpectedTime, liveSpent)}
       okFillPercent={resolveProgressOkFillPercent(totalExpectedTime, liveSpent)}
-      overFillPercent={resolveProgressOverFillPercent(
-        totalExpectedTime,
-        liveSpent,
-      )}
+      overFillPercent={overFillPercent}
+      okFillSuccess={usePersistedRemaining && overFillPercent === 0}
     />
   );
 }

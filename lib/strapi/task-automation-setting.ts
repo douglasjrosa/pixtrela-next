@@ -1,4 +1,8 @@
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import {
+  DEFAULT_ASSIGN_WARN_MAX,
+  normalizeAssignWarnMax,
+} from "@/lib/business/assign-warn-max";
 import type { TaskAutomationFormInput } from "@/lib/schemas/task-automation";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
@@ -14,6 +18,7 @@ interface TaskAutomationSettingEntity {
   producingStep?: StepEntity | null;
   pausedStep?: StepEntity | null;
   finishedStep?: StepEntity | null;
+  assignWarnMax?: number | null;
 }
 
 interface StrapiSingle<T> {
@@ -25,6 +30,7 @@ const EMPTY_AUTOMATION: TaskAutomationFormInput = {
   producingStepDocumentId: "",
   pausedStepDocumentId: "",
   finishedStepDocumentId: "",
+  assignWarnMax: DEFAULT_ASSIGN_WARN_MAX,
 };
 
 function readStepDocumentId(step: StepEntity | null | undefined): string {
@@ -42,6 +48,7 @@ export async function loadTaskAutomationSetting(): Promise<TaskAutomationFormInp
         },
       },
       {
+        fields: ["assignWarnMax"],
         populate: {
           waitingStep: { fields: ["documentId"] },
           producingStep: { fields: ["documentId"] },
@@ -59,6 +66,9 @@ export async function loadTaskAutomationSetting(): Promise<TaskAutomationFormInp
       producingStepDocumentId: readStepDocumentId(setting.producingStep),
       pausedStepDocumentId: readStepDocumentId(setting.pausedStep),
       finishedStepDocumentId: readStepDocumentId(setting.finishedStep),
+      assignWarnMax: normalizeAssignWarnMax(
+        setting.assignWarnMax ?? DEFAULT_ASSIGN_WARN_MAX,
+      ),
     };
   } catch (error) {
     rethrowIfNavigationError(error);
@@ -68,11 +78,12 @@ export async function loadTaskAutomationSetting(): Promise<TaskAutomationFormInp
 
 export function toTaskAutomationSettingPayload(
   values: TaskAutomationFormInput,
-): Record<string, string | null> {
+): Record<string, string | number | null> {
   return {
     waitingStep: values.waitingStepDocumentId || null,
     producingStep: values.producingStepDocumentId || null,
     pausedStep: values.pausedStepDocumentId || null,
     finishedStep: values.finishedStepDocumentId || null,
+    assignWarnMax: normalizeAssignWarnMax(values.assignWarnMax),
   };
 }

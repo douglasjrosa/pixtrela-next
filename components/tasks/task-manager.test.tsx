@@ -87,12 +87,14 @@ describe("TasksPageHeader", () => {
 
     await user.click(screen.getByRole("button", { name: "Nova tarefa" }));
     await user.type(screen.getByLabelText("Nome"), "Nova tarefa");
+    await user.type(screen.getByLabelText("Data de entrega"), "2026-07-18");
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(createTask).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "Nova tarefa",
         qty: 1,
+        deliveryDate: "2026-07-18",
         stepDocumentId: "s1",
         status: "waiting",
       }),
@@ -112,6 +114,7 @@ describe("TasksPageHeader", () => {
 
     await user.click(screen.getByRole("button", { name: "Nova tarefa" }));
     await user.type(screen.getByLabelText("Nome"), "Nova tarefa");
+    await user.type(screen.getByLabelText("Data de entrega"), "2026-07-18");
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(showErrorToast).toHaveBeenCalledWith(

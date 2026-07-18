@@ -60,11 +60,11 @@ export default async function TemplateTaskDetailPage({ params }: PageProps) {
 
   if (!template) {
     return (
-      <section className="space-y-4">
+      <section className="min-h-0 flex-1 space-y-4 overflow-y-auto">
         <Link href="/templates/tasks" className="text-sm hover:underline">
           {tCommon("back")}
         </Link>
-        <p className="text-destructive">{tTemplates("loadTemplateError")}</p>
+        <p className="text-destructive">{tTemplates("error")}</p>
       </section>
     );
   }
@@ -72,7 +72,7 @@ export default async function TemplateTaskDetailPage({ params }: PageProps) {
   const subtasks = mapTemplateComponentsToRows(template.subTask ?? []);
 
   return (
-    <section className="space-y-8">
+    <section className="min-h-0 flex-1 space-y-8 overflow-y-auto">
       <Link href="/templates/tasks" className="text-sm hover:underline">
         {tCommon("back")}
       </Link>

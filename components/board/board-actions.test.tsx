@@ -58,6 +58,8 @@ describe("BoardActions", () => {
         steps={steps}
         tasks={tasks}
         teams={teams}
+        assignWarnMax={4}
+        assignedCountByColaboratorId={{}}
         applyBoardTaskOrder={vi.fn()}
         loadSubtasks={vi.fn()}
         updateSubtaskAssignees={vi.fn()}
@@ -84,6 +86,8 @@ describe("BoardActions", () => {
         steps={steps}
         tasks={tasks}
         teams={teams}
+        assignWarnMax={4}
+        assignedCountByColaboratorId={{}}
         applyBoardTaskOrder={vi.fn()}
         loadSubtasks={loadSubtasks}
         updateSubtaskAssignees={vi.fn()}
@@ -140,6 +144,8 @@ describe("BoardActions", () => {
         steps={steps}
         tasks={tasks}
         teams={teams}
+        assignWarnMax={4}
+        assignedCountByColaboratorId={{}}
         applyBoardTaskOrder={vi.fn()}
         loadSubtasks={loadSubtasks}
         updateSubtaskAssignees={updateSubtaskAssignees}
@@ -148,7 +154,8 @@ describe("BoardActions", () => {
     );
 
     await user.click(screen.getByText("1 - Tarefa A"));
-    await user.click(await screen.findByRole("button", { name: "Atribuir Ana" }));
+    await user.click(await screen.findByRole("button", { name: /Soldar/ }));
+    await user.click(screen.getByRole("button", { name: "Atribuir Ana" }));
 
     expect(updateSubtaskAssignees).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Remover Ana" })).toBeInTheDocument();
@@ -159,8 +166,8 @@ describe("BoardActions", () => {
       expect(updateSubtaskAssignees).toHaveBeenCalledWith("st-1", "task-10", ["u-1"]);
     });
     expect(
-      screen.getByRole("heading", { name: "Subtarefas" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("heading", { name: "Subtarefas" }),
+    ).not.toBeInTheDocument();
   });
 
   it("opens create modal, saves subtask, and keeps subtasks modal open", async () => {
@@ -196,6 +203,8 @@ describe("BoardActions", () => {
         steps={steps}
         tasks={tasks}
         teams={teams}
+        assignWarnMax={4}
+        assignedCountByColaboratorId={{}}
         applyBoardTaskOrder={vi.fn()}
         loadSubtasks={loadSubtasks}
         updateSubtaskAssignees={vi.fn()}
@@ -228,5 +237,64 @@ describe("BoardActions", () => {
       screen.getByRole("heading", { name: "Subtarefas" }),
     ).toBeInTheDocument();
     expect(await screen.findByText("Cortar")).toBeInTheDocument();
+  });
+
+  it("resets create modal when subtasks modal is closed", async () => {
+    const user = userEvent.setup();
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        assignedTo: [],
+      }),
+    ]);
+
+    renderWithIntl(
+      <BoardActions
+        steps={steps}
+        tasks={tasks}
+        teams={teams}
+        assignWarnMax={4}
+        assignedCountByColaboratorId={{}}
+        applyBoardTaskOrder={vi.fn()}
+        loadSubtasks={loadSubtasks}
+        updateSubtaskAssignees={vi.fn()}
+        createSubtask={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByText("1 - Tarefa A"));
+    await user.click(
+      await screen.findByRole("button", { name: "Adicionar subtarefa" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Nova subtarefa" }),
+    ).toBeInTheDocument();
+
+    const subtasksDialog = screen
+      .getByRole("heading", { name: "Subtarefas" })
+      .closest('[role="dialog"]');
+    expect(subtasksDialog).toBeTruthy();
+    await user.click(
+      within(subtasksDialog as HTMLElement).getByRole("button", {
+        name: "Fechar",
+      }),
+    );
+
+    expect(
+      screen.queryByRole("heading", { name: "Subtarefas" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Nova subtarefa" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByText("1 - Tarefa A"));
+    expect(
+      await screen.findByRole("heading", { name: "Subtarefas" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Nova subtarefa" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -51,7 +51,7 @@ describe("tasks/actions", () => {
     await createTask({
       name: "Tarefa A",
       qty: 1,
-      deliveryDate: "",
+      deliveryDate: "2026-07-18",
       stepDocumentId: "step-1",
       status: "waiting",
       templateTaskCode: "",
@@ -88,7 +88,7 @@ describe("tasks/actions", () => {
     await updateTask("task-1", {
       name: "Tarefa A",
       qty: 1,
-      deliveryDate: "",
+      deliveryDate: "2026-07-18",
       stepDocumentId: "step-old",
       status: "producing",
       templateTaskCode: "",
@@ -103,7 +103,7 @@ describe("tasks/actions", () => {
           data: {
             name: "Tarefa A",
             qty: 1,
-            deliveryDate: null,
+            deliveryDate: "2026-07-18",
             index: 2,
             status: "producing",
             templateTaskCode: null,
@@ -129,7 +129,7 @@ describe("tasks/actions", () => {
     await updateTask("task-1", {
       name: "Tarefa A",
       qty: 1,
-      deliveryDate: "",
+      deliveryDate: "2026-07-18",
       stepDocumentId: "step-1",
       status: "waiting",
       templateTaskCode: "",

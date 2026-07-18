@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import type { KanbanTask } from "@/components/kanban/types";
 import { mergeBoardProgressPoll } from "@/lib/board/merge-progress-poll";
 import type { BoardProgressPollSnapshot } from "@/lib/board/progress-poll";
-import { needsLiveBoardProgress } from "@/lib/business/task-progress";
 
 const BOARD_PROGRESS_POLL_MS = 12_000;
 
@@ -13,15 +12,25 @@ export type PollBoardProgressFn = (
   tasks: ReadonlyArray<{ documentId: string; status: KanbanTask["status"] }>,
 ) => Promise<BoardProgressPollSnapshot>;
 
+export type BoardProgressPollState = {
+  tasks: KanbanTask[];
+  assignedCountByColaboratorId: Record<string, number>;
+};
+
 /**
  * Polls live board progress without refreshing the rest of the page cache.
  * Pauses while the document is hidden.
+ * Polls all board tasks so assignment counts stay board-wide.
  */
 export function useBoardProgressPoll(
   tasks: KanbanTask[],
+  assignedCountByColaboratorId: Record<string, number>,
   pollBoardProgress: PollBoardProgressFn,
-): KanbanTask[] {
+): BoardProgressPollState {
   const [polledTasks, setPolledTasks] = useState(tasks);
+  const [assignedCounts, setAssignedCounts] = useState(
+    assignedCountByColaboratorId,
+  );
   const tasksRef = useRef(tasks);
   const pollRef = useRef(pollBoardProgress);
 
@@ -29,6 +38,10 @@ export function useBoardProgressPoll(
     tasksRef.current = tasks;
     setPolledTasks(tasks);
   }, [tasks]);
+
+  useEffect(() => {
+    setAssignedCounts(assignedCountByColaboratorId);
+  }, [assignedCountByColaboratorId]);
 
   useEffect(() => {
     pollRef.current = pollBoardProgress;
@@ -39,24 +52,25 @@ export function useBoardProgressPoll(
     let timerId: number | undefined;
 
     async function runPoll(): Promise<void> {
-      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      ) {
         return;
       }
-      const liveTasks = tasksRef.current.filter(
-        (task) =>
-          needsLiveBoardProgress(task.status) && task.totalExpectedTime > 0,
-      );
-      if (liveTasks.length === 0) return;
+      const boardTasks = tasksRef.current;
+      if (boardTasks.length === 0) return;
 
       try {
         const snapshot = await pollRef.current(
-          liveTasks.map((task) => ({
+          boardTasks.map((task) => ({
             documentId: task.documentId,
             status: task.status,
           })),
         );
         if (cancelled) return;
         setPolledTasks((current) => mergeBoardProgressPoll(current, snapshot));
+        setAssignedCounts(snapshot.assignedCountByColaboratorId);
       } catch {
         // Keep last good snapshot; next interval retries.
       }
@@ -85,5 +99,8 @@ export function useBoardProgressPoll(
     };
   }, []);
 
-  return polledTasks;
+  return {
+    tasks: polledTasks,
+    assignedCountByColaboratorId: assignedCounts,
+  };
 }

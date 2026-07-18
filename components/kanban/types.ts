@@ -20,6 +20,10 @@ export interface KanbanTask {
   progressPending?: boolean;
   progressInput?: BoardTaskProgressInput;
   progressNowMs?: number;
+  /** Unique colaborators with an open activity on this task. */
+  activeColaboratorCount?: number;
+  /** Unfinished sub-tasks with zero assignees. */
+  unassignedSubTaskCount?: number;
 }
 
 

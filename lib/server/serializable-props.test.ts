@@ -2,20 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { manageableTargetRoles } from "@/lib/business/roles";
 import type { Role } from "@/lib/auth/nav";
-
-/** Props passed from RSC pages to client managers must be JSON-serializable. */
-function isJsonSerializable(value: unknown): boolean {
-  try {
-    JSON.stringify(value);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function hasNoFunctionValues(value: Record<string, unknown>): boolean {
-  return Object.values(value).every((entry) => typeof entry !== "function");
-}
+import {
+  hasNoFunctionValues,
+  isJsonSerializable,
+} from "@/lib/server/serializable-props";
 
 describe("RSC client props (non-action)", () => {
   it("manageableTargetRoles is serializable for every role", () => {
@@ -48,5 +38,13 @@ describe("RSC client props (non-action)", () => {
     };
     expect(hasNoFunctionValues(props)).toBe(true);
     expect(isJsonSerializable(props)).toBe(true);
+  });
+
+  it("flags render-prop children as non-serializable RSC payload", () => {
+    const badPayload = {
+      tasks: [],
+      children: (_liveTasks: unknown) => null,
+    };
+    expect(hasNoFunctionValues(badPayload)).toBe(false);
   });
 });

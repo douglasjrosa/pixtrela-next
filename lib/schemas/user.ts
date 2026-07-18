@@ -4,6 +4,10 @@ import {
   isUserCodeAvailable,
   type UserCodeOwner,
 } from "@/lib/business/user-code";
+import {
+  isUserLoginAvailable,
+  type UserLoginOwner,
+} from "@/lib/business/user-login";
 
 export const USER_ROLES = [
   "admin",
@@ -14,6 +18,7 @@ export const USER_ROLES = [
 ] as const;
 
 export const USER_CODE_NOT_UNIQUE_KEY = "codeNotUnique";
+export const USER_LOGIN_NOT_UNIQUE_KEY = "loginNotUnique";
 
 const optionalPasswordSchema = z
   .string()
@@ -34,21 +39,29 @@ export function buildUserFormSchema(options?: { requirePassword?: boolean }) {
 
 export const userFormSchema = buildUserFormSchema();
 
+export type UserFormOwner = UserCodeOwner & UserLoginOwner;
+
 export function createUserFormSchema(
-  existingUsers: UserCodeOwner[],
+  existingUsers: UserFormOwner[],
   excludeDocumentId?: string,
   options?: { requirePassword?: boolean },
 ) {
   return buildUserFormSchema(options).superRefine((data, ctx) => {
-    if (isUserCodeAvailable(data.code, existingUsers, excludeDocumentId)) {
-      return;
+    if (!isUserCodeAvailable(data.code, existingUsers, excludeDocumentId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: USER_CODE_NOT_UNIQUE_KEY,
+        path: ["code"],
+      });
     }
 
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: USER_CODE_NOT_UNIQUE_KEY,
-      path: ["code"],
-    });
+    if (!isUserLoginAvailable(data.username, existingUsers, excludeDocumentId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: USER_LOGIN_NOT_UNIQUE_KEY,
+        path: ["username"],
+      });
+    }
   });
 }
 

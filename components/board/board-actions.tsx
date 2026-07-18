@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { KanbanBoard } from "@/components/kanban/kanban-board";
@@ -13,6 +13,7 @@ import type {
 } from "@/components/kanban/types";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import {
+  applyAssigneeDraftDeltasToCounts,
   buildAssigneesSnapshot,
   collectDirtyAssigneeUpdates,
   hasAssigneeDraftChanges,
@@ -20,13 +21,28 @@ import {
   mergeLoadedSubtasksWithDraft,
   resolveAssigneeNames,
 } from "@/lib/business/board-assignee-draft";
+import { countUnassignedSubTasks } from "@/lib/business/kanban-card-badges";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
+
+const FINISHED_STATUS = "finished";
+
+function resolveUnassignedSubTaskCount(
+  items: readonly BoardSubTaskSummary[],
+): number {
+  return countUnassignedSubTasks(
+    items
+      .filter((item) => item.status !== FINISHED_STATUS)
+      .map((item) => ({ assignedCount: item.assignedTo.length })),
+  );
+}
 
 export interface BoardActionsProps {
   steps: KanbanStep[];
   tasks: KanbanTask[];
   teams: TeamAssignmentOption[];
+  assignWarnMax: number;
+  assignedCountByColaboratorId: Record<string, number>;
   applyBoardTaskOrder: (
     updates: { documentId: string; index: number; stepId: number | null }[],
   ) => void | Promise<void>;
@@ -47,6 +63,8 @@ export function BoardActions({
   steps,
   tasks,
   teams,
+  assignWarnMax,
+  assignedCountByColaboratorId,
   applyBoardTaskOrder,
   loadSubtasks,
   updateSubtaskAssignees,
@@ -57,13 +75,23 @@ export function BoardActions({
   const [orderedTasks, setOrderedTasks] = useState(tasks);
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
   const [subtasks, setSubtasks] = useState<BoardSubTaskSummary[]>([]);
-  const [assigneesBaseline, setAssigneesBaseline] = useState<Record<string, string>>(
-    {},
-  );
+  const [assigneesBaseline, setAssigneesBaseline] = useState<
+    Record<string, string>
+  >({});
   const [loadingSubtasks, setLoadingSubtasks] = useState(false);
   const [savingAssignees, setSavingAssignees] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [savingCreate, setSavingCreate] = useState(false);
+
+  const assignedCountsForUi = useMemo(
+    () =>
+      applyAssigneeDraftDeltasToCounts(
+        assignedCountByColaboratorId,
+        subtasks,
+        assigneesBaseline,
+      ),
+    [assignedCountByColaboratorId, subtasks, assigneesBaseline],
+  );
 
   useEffect(() => {
     setOrderedTasks(tasks);
@@ -73,7 +101,9 @@ export function BoardActions({
     updates: { documentId: string; index: number; stepId: number | null }[],
   ): void {
     const before = orderedTasks;
-    const updateMap = new Map(updates.map((update) => [update.documentId, update]));
+    const updateMap = new Map(
+      updates.map((update) => [update.documentId, update]),
+    );
     const next = before
       .map((task) => {
         const update = updateMap.get(task.documentId);
@@ -107,6 +137,8 @@ export function BoardActions({
     setLoadingSubtasks(true);
     setSubtasks([]);
     setAssigneesBaseline({});
+    setCreateOpen(false);
+    setSavingCreate(false);
 
     void (async () => {
       try {
@@ -123,6 +155,8 @@ export function BoardActions({
     setAssigneesBaseline({});
     setLoadingSubtasks(false);
     setSavingAssignees(false);
+    setCreateOpen(false);
+    setSavingCreate(false);
   }
 
   async function refreshSubtasksList(
@@ -159,7 +193,10 @@ export function BoardActions({
     if (!selectedTask) return;
 
     const taskDocumentId = selectedTask.documentId;
-    const dirtyUpdates = collectDirtyAssigneeUpdates(subtasks, assigneesBaseline);
+    const dirtyUpdates = collectDirtyAssigneeUpdates(
+      subtasks,
+      assigneesBaseline,
+    );
     if (dirtyUpdates.length === 0) return;
 
     const previous = subtasks;
@@ -175,11 +212,21 @@ export function BoardActions({
             update.assignedToIds,
           );
         }
-        await refreshSubtasksList(taskDocumentId);
+        setOrderedTasks((current) =>
+          current.map((task) =>
+            task.documentId === taskDocumentId
+              ? {
+                  ...task,
+                  unassignedSubTaskCount:
+                    resolveUnassignedSubTaskCount(subtasks),
+                }
+              : task,
+          ),
+        );
+        handleCloseSubtasksModal();
       } catch {
         setSubtasks(previous);
         setAssigneesBaseline(previousBaseline);
-      } finally {
         setSavingAssignees(false);
       }
     })();
@@ -198,6 +245,18 @@ export function BoardActions({
       try {
         await createSubtask(taskDocumentId, values, options);
         await refreshSubtasksList(taskDocumentId, { keepDraftAssignees: true });
+        setOrderedTasks((current) =>
+          current.map((task) =>
+            task.documentId === taskDocumentId
+              ? {
+                  ...task,
+                  unassignedSubTaskCount:
+                    (task.unassignedSubTaskCount ?? 0) +
+                    (values.assignedToIds?.length ? 0 : 1),
+                }
+              : task,
+          ),
+        );
         setCreateOpen(false);
       } finally {
         setSavingCreate(false);
@@ -231,6 +290,8 @@ export function BoardActions({
         taskName={selectedTaskDisplayTitle}
         subtasks={subtasks}
         teams={teams}
+        assignWarnMax={assignWarnMax}
+        assignedCountByColaboratorId={assignedCountsForUi}
         loading={loadingSubtasks}
         dirty={hasAssigneeDraftChanges(subtasks, assigneesBaseline)}
         saving={savingAssignees}
@@ -240,16 +301,17 @@ export function BoardActions({
         onAddSubtask={() => setCreateOpen(true)}
       />
 
-      <KanbanSubtaskCreateModal
-        open={createOpen}
-        taskName={selectedTaskDisplayTitle}
-        teams={teams}
-        dependencyOptions={dependencyOptions}
-        dependencyStatusSiblings={dependencyStatusSiblings}
-        saving={savingCreate}
-        onClose={() => setCreateOpen(false)}
-        onCreate={handleCreateSubtask}
-      />
+      {selectedTask ? (
+        <KanbanSubtaskCreateModal
+          open={createOpen}
+          saving={savingCreate}
+          teams={teams}
+          dependencyOptions={dependencyOptions}
+          dependencyStatusSiblings={dependencyStatusSiblings}
+          onClose={() => setCreateOpen(false)}
+          onCreate={handleCreateSubtask}
+        />
+      ) : null}
     </>
   );
 }

@@ -22,7 +22,7 @@ vi.mock("@/lib/ui/app-toast", () => ({
 const defaultValues = {
   name: "Montagem",
   qty: 2,
-  deliveryDate: "",
+  deliveryDate: "2026-07-18",
   stepDocumentId: "s1",
   status: "waiting" as const,
   templateTaskCode: "",
