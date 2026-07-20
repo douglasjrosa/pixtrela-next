@@ -30,22 +30,34 @@ export function KanbanColumn({
       ref={setNodeRef}
       aria-label={step.name}
       className={cn(
-        "flex w-72 shrink-0 flex-col gap-3 overflow-visible rounded-lg border bg-muted/30 p-3",
+        "flex h-full max-h-full w-72 shrink-0 flex-col gap-3 overflow-hidden",
+        "rounded-lg border bg-muted p-3",
         isOver && "ring-2 ring-ring",
       )}
     >
-      <header className="flex items-center justify-between">
+      <header className="flex shrink-0 items-center justify-between">
         <h2 className="font-semibold">{step.name}</h2>
         <span className="text-xs text-muted-foreground">{tasks.length}</span>
       </header>
       {tasks.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
-        <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-          {tasks.map((task) => (
-            <KanbanCard key={task.id} task={task} onTaskClick={onTaskClick} />
-          ))}
-        </SortableContext>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <SortableContext
+            items={sortableIds}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="flex flex-col gap-3 pt-2 pr-2">
+              {tasks.map((task) => (
+                <KanbanCard
+                  key={task.id}
+                  task={task}
+                  onTaskClick={onTaskClick}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </div>
       )}
     </section>
   );

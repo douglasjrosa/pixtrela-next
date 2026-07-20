@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, ChevronRight, GripVertical } from "lucide-react";
+import { GripVertical } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -41,13 +41,13 @@ import {
 } from "@/lib/business/template-subtask-dependency-refs";
 import type { TemplateSubTaskFormInput } from "@/lib/schemas/template-sub-task";
 
-import { SubTaskCloneButton } from "../subtasks/subtask-clone-button";
-import { SubTaskRemoveButton } from "../subtasks/subtask-remove-button";
+import { SubTaskFormModal } from "../subtasks/subtask-form-modal";
 import type { SubTaskDependencyOption } from "../subtasks/subtask-dependencies-modal";
 import { TemplateSubTaskInlineForm } from "./template-subtask-inline-form";
 
 export interface TemplateSubTaskManagerProps {
   subtasks: TemplateSubTaskRow[];
+  templateName: string;
   onSubtasksChange: (subtasks: TemplateSubTaskRow[]) => void;
   disabled?: boolean;
 }
@@ -61,7 +61,7 @@ const EMPTY_FORM: TemplateSubTaskFormInput = {
   dependencyIds: [],
 };
 
-const TABLE_COLUMN_COUNT = 5;
+const NEW_SUBTASK_KEY = "new";
 const TEMPLATE_DND_CONTEXT_ID = "template-subtask-manager-dnd";
 
 export function resolveTemplateSubTaskReorder(
@@ -105,47 +105,55 @@ function buildDependencyOptions(
     }));
 }
 
-function createEmptyDraftRow(index: number): TemplateSubTaskRow {
+function formValuesToDraftRow(
+  values: TemplateSubTaskFormInput,
+  index: number,
+): TemplateSubTaskRow {
   return {
     rowKey: `draft:${crypto.randomUUID()}`,
     isDraft: true,
-    name: "",
-    qty: EMPTY_FORM.qty,
+    name: values.name,
+    qty: values.qty,
     index,
-    expectedTime: EMPTY_FORM.expectedTime,
-    sharingType: EMPTY_FORM.sharingType,
-    maxSameTimeWorkers: EMPTY_FORM.maxSameTimeWorkers,
-    dependencyIndexes: [],
+    expectedTime: values.expectedTime,
+    sharingType: values.sharingType,
+    maxSameTimeWorkers: values.maxSameTimeWorkers,
+    dependencyIndexes: values.dependencyIds.map(Number),
   };
 }
 
-interface SortableTemplateSubTaskAccordionProps {
-  subtask: TemplateSubTaskRow;
-  isExpanded: boolean;
-  dragLabel: string;
-  toggleLabel: string;
-  disabled: boolean;
-  dependencyOptions: SubTaskDependencyOption[];
-  onToggle: (rowKey: string) => void;
-  onChange: (rowKey: string, values: TemplateSubTaskFormInput) => void;
-  onCancel: (rowKey: string) => void;
-  onClone: (rowKey: string) => void;
-  onRemove: (rowKey: string) => void;
+function applyFormValuesToRow(
+  row: TemplateSubTaskRow,
+  values: TemplateSubTaskFormInput,
+): TemplateSubTaskRow {
+  return {
+    ...row,
+    name: values.name,
+    qty: values.qty,
+    expectedTime: values.expectedTime,
+    sharingType: values.sharingType,
+    maxSameTimeWorkers: values.maxSameTimeWorkers,
+    dependencyIndexes: values.dependencyIds.map(Number),
+  };
 }
 
-function SortableTemplateSubTaskAccordion({
+interface SortableTemplateSubTaskRowProps {
+  subtask: TemplateSubTaskRow;
+  statusLabel: string;
+  dragLabel: string;
+  openLabel: string;
+  disabled: boolean;
+  onOpen: (rowKey: string) => void;
+}
+
+function SortableTemplateSubTaskRow({
   subtask,
-  isExpanded,
+  statusLabel,
   dragLabel,
-  toggleLabel,
+  openLabel,
   disabled,
-  dependencyOptions,
-  onToggle,
-  onChange,
-  onCancel,
-  onClone,
-  onRemove,
-}: SortableTemplateSubTaskAccordionProps) {
+  onOpen,
+}: SortableTemplateSubTaskRowProps) {
   const {
     attributes,
     listeners,
@@ -163,93 +171,60 @@ function SortableTemplateSubTaskAccordion({
     transition,
   };
 
-  const handleChange = useCallback(
-    (values: TemplateSubTaskFormInput) => onChange(subtask.rowKey, values),
-    [onChange, subtask.rowKey],
-  );
-
   return (
-    <tbody
+    <tr
       ref={setNodeRef}
       style={style}
-      className={isDragging ? "bg-muted/50" : undefined}
+      className={
+        isDragging
+          ? "cursor-pointer border-b bg-muted/50 hover:bg-muted/30"
+          : "cursor-pointer border-b hover:bg-muted/30"
+      }
+      onClick={() => onOpen(subtask.rowKey)}
     >
-      <tr
-        className="cursor-pointer border-b hover:bg-muted/30"
-        onClick={() => onToggle(subtask.rowKey)}
-        aria-expanded={isExpanded}
-      >
-        <td className="w-10 py-2">
-          <button
-            type="button"
-            className="cursor-grab rounded p-1 text-muted-foreground hover:text-foreground"
-            aria-label={dragLabel}
-            disabled={disabled}
-            onClick={(event) => event.stopPropagation()}
-            onPointerDown={(event) => event.stopPropagation()}
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical className="size-4" aria-hidden />
-          </button>
-        </td>
-        <td className="py-2">
-          <div className="flex items-center gap-2">
-            {isExpanded ? (
-              <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            ) : (
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            )}
-            <span className="sr-only">{toggleLabel}</span>
-            <span>{subtask.name || "—"}</span>
-          </div>
-        </td>
-        <td>{subtask.qty}</td>
-        <td>
-          <Duration seconds={subtask.expectedTime} />
-        </td>
-        <td className="w-20 py-2 text-right">
-          <div className="flex justify-end">
-            <SubTaskCloneButton
-              onClick={() => onClone(subtask.rowKey)}
-              disabled={disabled}
-            />
-            <SubTaskRemoveButton
-              onClick={() => onRemove(subtask.rowKey)}
-              disabled={disabled}
-            />
-          </div>
-        </td>
-      </tr>
-      {isExpanded ? (
-        <tr className="border-b">
-          <td colSpan={TABLE_COLUMN_COUNT} className="p-4">
-            <TemplateSubTaskInlineForm
-              formKey={subtask.rowKey}
-              defaultValues={templateRowToFormValues(subtask)}
-              dependencyOptions={dependencyOptions}
-              currentRowKey={templateDependencyIndexToUiId(subtask.index)}
-              isCreate={subtask.isDraft === true}
-              disabled={disabled}
-              onChange={handleChange}
-              onCancel={() => onCancel(subtask.rowKey)}
-            />
-          </td>
-        </tr>
-      ) : null}
-    </tbody>
+      <td className="w-10 py-2">
+        <button
+          type="button"
+          className="cursor-grab rounded p-1 text-muted-foreground hover:text-foreground"
+          aria-label={dragLabel}
+          disabled={disabled}
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-4" aria-hidden />
+        </button>
+      </td>
+      <td className="py-2">
+        <span className="sr-only">{openLabel}</span>
+        <span>{subtask.name}</span>
+      </td>
+      <td>{subtask.qty}</td>
+      <td>
+        <Duration seconds={subtask.expectedTime} />
+      </td>
+      <td>
+        <Duration seconds={0} />
+      </td>
+      <td>{statusLabel}</td>
+    </tr>
   );
 }
 
 export function TemplateSubTaskManager({
   subtasks,
+  templateName,
   onSubtasksChange,
   disabled = false,
 }: TemplateSubTaskManagerProps) {
   const tSubtasks = useTranslations("subtasks");
-  const tTemplates = useTranslations("templates");
+  const tTasks = useTranslations("tasks");
+  const tStatus = useTranslations("tasks.status");
   const [orderedSubtasks, setOrderedSubtasks] = useState(subtasks);
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [newSubtaskDraft, setNewSubtaskDraft] =
+    useState<TemplateSubTaskFormInput>(EMPTY_FORM);
   const [message, setMessage] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -272,29 +247,6 @@ export function TemplateSubTaskManager({
     onSubtasksChange(rows);
   }
 
-  function collapsePanel(): void {
-    setExpandedKey(null);
-  }
-
-  function applyRowUpdate(
-    rowKey: string,
-    values: TemplateSubTaskFormInput,
-  ): TemplateSubTaskRow[] {
-    return orderedSubtasks.map((row) =>
-      row.rowKey === rowKey
-        ? {
-            ...row,
-            name: values.name,
-            qty: values.qty,
-            expectedTime: values.expectedTime,
-            sharingType: values.sharingType,
-            maxSameTimeWorkers: values.maxSameTimeWorkers,
-            dependencyIndexes: values.dependencyIds.map(Number),
-          }
-        : row,
-    );
-  }
-
   function cancelRow(rowKey: string): void {
     if (isDraftTemplateSubTaskRow(rowKey)) {
       commitRows(
@@ -305,42 +257,65 @@ export function TemplateSubTaskManager({
         ),
       );
     }
-    collapsePanel();
+    if (editingKey === rowKey) {
+      setEditingKey(null);
+    }
   }
 
-  function toggleRow(rowKey: string): void {
-    setExpandedKey((current) => (current === rowKey ? null : rowKey));
+  function closeModal(): void {
+    if (editingKey === NEW_SUBTASK_KEY) {
+      if (newSubtaskDraft.name.trim()) {
+        const draft = formValuesToDraftRow(
+          newSubtaskDraft,
+          orderedSubtasks.length,
+        );
+        commitRows(
+          applySequentialSubTaskIndices([...orderedSubtasks, draft]),
+        );
+      }
+      setNewSubtaskDraft(EMPTY_FORM);
+    }
+    setEditingKey(null);
+  }
+
+  function openRow(rowKey: string): void {
+    setEditingKey(rowKey);
     setMessage(null);
   }
 
   function startCreate(): void {
-    const draft = createEmptyDraftRow(orderedSubtasks.length);
-    const nextRows = applySequentialSubTaskIndices([
-      ...orderedSubtasks,
-      draft,
-    ]);
-    commitRows(nextRows);
-    setExpandedKey(draft.rowKey);
+    setNewSubtaskDraft(EMPTY_FORM);
+    setEditingKey(NEW_SUBTASK_KEY);
     setMessage(null);
   }
 
-  function handleChangeRow(
-    rowKey: string,
-    values: TemplateSubTaskFormInput,
-  ): void {
-    commitRows(applyRowUpdate(rowKey, values));
-  }
+  const handleRowChange = useCallback(
+    (rowKey: string, values: TemplateSubTaskFormInput) => {
+      setOrderedSubtasks((current) => {
+        const next = current.map((row) =>
+          row.rowKey === rowKey ? applyFormValuesToRow(row, values) : row,
+        );
+        onSubtasksChange(next);
+        return next;
+      });
+    },
+    [onSubtasksChange],
+  );
 
   function handleClone(rowKey: string): void {
-    const sourceIndex = orderedSubtasks.findIndex((item) => item.rowKey === rowKey);
+    const sourceIndex = orderedSubtasks.findIndex(
+      (item) => item.rowKey === rowKey,
+    );
     if (sourceIndex === -1) return;
 
-    let draftKey: string | undefined;
-    const next = insertDraftTemplateSubTaskCloneAt(orderedSubtasks, sourceIndex);
-    draftKey = next[sourceIndex + 1]?.rowKey;
+    const next = insertDraftTemplateSubTaskCloneAt(
+      orderedSubtasks,
+      sourceIndex,
+    );
+    const draftKey = next[sourceIndex + 1]?.rowKey;
     commitRows(next);
     if (draftKey) {
-      setExpandedKey(draftKey);
+      setEditingKey(draftKey);
     }
     setMessage(tSubtasks("cloned"));
   }
@@ -356,10 +331,11 @@ export function TemplateSubTaskManager({
 
     if (!window.confirm(tSubtasks("removeSubtaskConfirm"))) return;
 
-    const nextRows = removeTemplateSubTaskAt(orderedSubtasks, rowKey);
-    commitRows(nextRows);
+    commitRows(removeTemplateSubTaskAt(orderedSubtasks, rowKey));
     setMessage(tSubtasks("removed"));
-    collapsePanel();
+    if (editingKey === rowKey) {
+      setEditingKey(null);
+    }
   }
 
   function handleDragEnd(event: DragEndEvent): void {
@@ -371,16 +347,31 @@ export function TemplateSubTaskManager({
     );
     if (!nextOrder) return;
 
-    const remapped = remapTemplateDependencyIndexes(before, nextOrder);
-    commitRows(remapped);
+    commitRows(remapTemplateDependencyIndexes(before, nextOrder));
   }
+
+  const isCreatingNew = editingKey === NEW_SUBTASK_KEY;
+  const editingSubtask = isCreatingNew
+    ? null
+    : orderedSubtasks.find((item) => item.rowKey === editingKey) ?? null;
+  const isModalOpen = isCreatingNew || editingSubtask !== null;
+  const modalTitle =
+    isCreatingNew || editingSubtask?.isDraft
+      ? tSubtasks("newSubtask")
+      : tSubtasks("editSubtask");
+  const waitingStatusLabel = tStatus("waiting");
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">{tTemplates("subtasks")}</h2>
-        <Button type="button" variant="outline" onClick={startCreate} disabled={disabled}>
-          {tTemplates("addSubtask")}
+        <h1 className="text-2xl font-bold">{tSubtasks("title")}</h1>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={startCreate}
+          disabled={disabled}
+        >
+          {tSubtasks("newSubtask")}
         </Button>
       </div>
 
@@ -403,35 +394,79 @@ export function TemplateSubTaskManager({
               <th className="py-2">{tSubtasks("name")}</th>
               <th>{tSubtasks("qty")}</th>
               <th>{tSubtasks("expectedTime")}</th>
-              <th className="w-20 py-2" aria-hidden />
+              <th>{tSubtasks("timeSpent")}</th>
+              <th>{tTasks("manage.status")}</th>
             </tr>
           </thead>
-          <SortableContext
-            items={orderedSubtasks.map((subtask) => subtask.rowKey)}
-            strategy={verticalListSortingStrategy}
-          >
-            {orderedSubtasks.map((subtask) => (
-              <SortableTemplateSubTaskAccordion
-                key={subtask.rowKey}
-                subtask={subtask}
-                dragLabel={tSubtasks("dragToReorder")}
-                toggleLabel={tSubtasks("toggleSubtaskForm")}
-                isExpanded={expandedKey === subtask.rowKey}
-                disabled={disabled}
-                dependencyOptions={buildDependencyOptions(
-                  orderedSubtasks,
-                  subtask.rowKey,
-                )}
-                onToggle={toggleRow}
-                onChange={handleChangeRow}
-                onCancel={cancelRow}
-                onClone={handleClone}
-                onRemove={handleRemove}
-              />
-            ))}
-          </SortableContext>
+          <tbody>
+            <SortableContext
+              items={orderedSubtasks.map((subtask) => subtask.rowKey)}
+              strategy={verticalListSortingStrategy}
+            >
+              {orderedSubtasks.map((subtask) => (
+                <SortableTemplateSubTaskRow
+                  key={subtask.rowKey}
+                  subtask={subtask}
+                  statusLabel={waitingStatusLabel}
+                  dragLabel={tSubtasks("dragToReorder")}
+                  openLabel={tSubtasks("toggleSubtaskForm")}
+                  disabled={disabled}
+                  onOpen={openRow}
+                />
+              ))}
+            </SortableContext>
+          </tbody>
         </table>
       </DndContext>
+
+      <SubTaskFormModal
+        open={isModalOpen}
+        title={modalTitle}
+        subtitle={templateName}
+        disabled={disabled}
+        onClose={closeModal}
+        onClone={
+          editingSubtask
+            ? () => handleClone(editingSubtask.rowKey)
+            : undefined
+        }
+        onRemove={
+          editingSubtask
+            ? () => handleRemove(editingSubtask.rowKey)
+            : undefined
+        }
+      >
+        {isCreatingNew ? (
+          <TemplateSubTaskInlineForm
+            formKey={NEW_SUBTASK_KEY}
+            defaultValues={newSubtaskDraft}
+            dependencyOptions={buildDependencyOptions(orderedSubtasks)}
+            isCreate
+            hideHeading
+            plain
+            disabled={disabled}
+            onChange={setNewSubtaskDraft}
+          />
+        ) : null}
+        {editingSubtask ? (
+          <TemplateSubTaskInlineForm
+            formKey={editingSubtask.rowKey}
+            defaultValues={templateRowToFormValues(editingSubtask)}
+            dependencyOptions={buildDependencyOptions(
+              orderedSubtasks,
+              editingSubtask.rowKey,
+            )}
+            currentRowKey={templateDependencyIndexToUiId(editingSubtask.index)}
+            isCreate={editingSubtask.isDraft === true}
+            hideHeading
+            plain
+            disabled={disabled}
+            onChange={(values) =>
+              handleRowChange(editingSubtask.rowKey, values)
+            }
+          />
+        ) : null}
+      </SubTaskFormModal>
     </div>
   );
 }

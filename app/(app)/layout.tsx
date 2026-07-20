@@ -1,12 +1,18 @@
 import type { ReactNode } from "react";
 
 import { AppNav } from "@/components/app-nav";
+import { RouteThemeBackground } from "@/components/themes/route-theme-background";
+import { RouteThemeContentFrame } from "@/components/themes/route-theme-content-frame";
+import { loadRouteThemes } from "@/lib/strapi/route-themes";
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+export default async function AppLayout({ children }: { children: ReactNode }) {
+  const themes = await loadRouteThemes();
+
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="relative flex min-h-dvh flex-col">
+      <RouteThemeBackground themes={themes} />
       <AppNav />
-      <main className="flex-1">{children}</main>
+      <RouteThemeContentFrame themes={themes}>{children}</RouteThemeContentFrame>
     </div>
   );
 }

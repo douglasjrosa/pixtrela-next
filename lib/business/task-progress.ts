@@ -3,14 +3,29 @@ import { elapsedSecondsSince } from "@/lib/format/datetime";
 const FULL_PROGRESS_PERCENT = 100;
 const FINISHED_STATUS = "finished";
 const WAITING_STATUS = "waiting";
+const PRODUCING_STATUS = "producing";
+const PAUSED_STATUS = "paused";
 const DISABLED_ACTIVATION = "disabled";
 
 export type KanbanProgressStatus =
   | "waiting"
   | "producing"
   | "paused"
-  | "finished";
+  | "finished"
+  | "reviewed"
+  | "delivered";
 
+const COMPLETED_TASK_STATUSES: readonly KanbanProgressStatus[] = [
+  "finished",
+  "reviewed",
+  "delivered",
+];
+
+export function isCompletedTaskStatus(
+  status: KanbanProgressStatus | string,
+): boolean {
+  return (COMPLETED_TASK_STATUSES as readonly string[]).includes(status);
+}
 export type TaskProgressSubTaskInput = {
   status: KanbanProgressStatus | string;
   expectedTime: number;
@@ -55,20 +70,24 @@ export type SharingType = "qty" | "duration";
 export function shouldShowKanbanTaskProgress(
   status: KanbanProgressStatus,
 ): boolean {
-  return status !== WAITING_STATUS;
+  return (
+    status === WAITING_STATUS ||
+    status === PRODUCING_STATUS ||
+    status === PAUSED_STATUS
+  );
 }
 
-/** Live opens / sub-task fetch only for in-progress board tasks. */
+/** Live open-session clock only while work can be actively running. */
 export function needsLiveBoardProgress(
   status: KanbanProgressStatus,
 ): boolean {
-  return status === "producing" || status === "paused";
+  return status === PRODUCING_STATUS || status === PAUSED_STATUS;
 }
 
 export function shouldShowSubTaskProgress(
   status: KanbanProgressStatus | string,
 ): boolean {
-  return status !== WAITING_STATUS;
+  return status !== WAITING_STATUS && status !== FINISHED_STATUS;
 }
 
 export function isOverExpected(
@@ -138,14 +157,6 @@ export function resolveTaskRemainingSeconds(
 
   remaining -= resolveOpenSessionsElapsedSeconds(openActivityStartedAts, nowMs);
   return remaining;
-}
-
-/** Remaining for a finished task from persisted totals only (no live opens). */
-export function resolvePersistedRemainingSeconds(
-  expectedSec: number,
-  spentSec: number,
-): number {
-  return Math.max(0, expectedSec) - Math.max(0, spentSec);
 }
 
 /**
@@ -240,6 +251,43 @@ export function listActivitySessions(
   }
 
   return sessions;
+}
+
+/** Total pieces/units produced across all finished sessions of a sub-task. */
+export function sumSessionQty(sessions: readonly ActivitySession[]): number {
+  return sessions.reduce((sum, session) => sum + session.qty, 0);
+}
+
+/** Unique colaborators who appear in at least one finished session. */
+export function countSessionParticipants(
+  sessions: readonly ActivitySession[],
+): number {
+  const ids = new Set<string>();
+  for (const session of sessions) {
+    if (session.colaboratorDocumentId) {
+      ids.add(session.colaboratorDocumentId);
+    }
+  }
+  return ids.size;
+}
+
+/** Latest session finishedAt — used as the sub-task completion timestamp. */
+export function resolveLatestSessionFinishedAt(
+  sessions: readonly ActivitySession[],
+): string | null {
+  let latest: string | null = null;
+  let latestMs = Number.NEGATIVE_INFINITY;
+
+  for (const session of sessions) {
+    const finishedMs = new Date(session.finishedAt).getTime();
+    if (Number.isNaN(finishedMs)) continue;
+    if (finishedMs >= latestMs) {
+      latestMs = finishedMs;
+      latest = session.finishedAt;
+    }
+  }
+
+  return latest;
 }
 
 export function aggregateSessionTotals(

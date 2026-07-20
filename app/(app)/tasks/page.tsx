@@ -4,10 +4,13 @@ import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { TasksListSkeleton } from "@/components/tasks/tasks-list-skeleton";
 import { TasksListWithLoadMore } from "@/components/tasks/tasks-list-with-load-more";
-import { TASKS_PAGE_HEIGHT_CLASS } from "@/components/tasks/tasks-page-layout";
 import { TasksPageHeader } from "@/components/tasks/tasks-page-header";
 import { TasksToolbar } from "@/components/tasks/tasks-toolbar";
 import type { StepOption } from "@/components/tasks/types";
+import {
+  APP_LIST_PAGE_SHELL_CLASS,
+  APP_LIST_PAGE_STACK_CLASS,
+} from "@/components/layout/app-page-layout";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTasks } from "@/lib/auth/permissions";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
@@ -96,14 +99,16 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   const steps = await loadSteps();
 
   return (
-    <section className={`flex ${TASKS_PAGE_HEIGHT_CLASS} flex-col gap-4 p-6`}>
-      <TasksPageHeader steps={steps} />
-      <Suspense fallback={null}>
-        <TasksToolbar />
-      </Suspense>
-      <Suspense key={filterKey} fallback={<TasksListSkeleton />}>
-        <TasksListSection filters={filters} />
-      </Suspense>
+    <section className={APP_LIST_PAGE_SHELL_CLASS}>
+      <div className={APP_LIST_PAGE_STACK_CLASS}>
+        <TasksPageHeader steps={steps} />
+        <Suspense fallback={null}>
+          <TasksToolbar />
+        </Suspense>
+        <Suspense key={filterKey} fallback={<TasksListSkeleton />}>
+          <TasksListSection filters={filters} />
+        </Suspense>
+      </div>
     </section>
   );
 }

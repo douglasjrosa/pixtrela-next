@@ -6,8 +6,8 @@ import { useTranslations } from "next-intl";
 
 import { Input } from "@/components/ui/input";
 import {
-  TEMPLATE_LIST_NAME_MIN_CHARS,
   TEMPLATE_LIST_SEARCH_DEBOUNCE_MS,
+  TEMPLATE_LIST_SEARCH_MIN_CHARS,
 } from "@/lib/schemas/template-list-filters";
 import {
   parseTemplateListSearchParams,
@@ -34,7 +34,7 @@ export function TemplatesNameSearch() {
     const handle = window.setTimeout(() => {
       const trimmed = value.trim();
       const nextQ =
-        trimmed.length >= TEMPLATE_LIST_NAME_MIN_CHARS ? trimmed : undefined;
+        trimmed.length >= TEMPLATE_LIST_SEARCH_MIN_CHARS ? trimmed : undefined;
       const current = parseTemplateListSearchParams(
         Object.fromEntries(searchParams.entries()),
       );
@@ -62,8 +62,8 @@ export function TemplatesNameSearch() {
       type="search"
       value={value}
       onChange={(event) => setValue(event.target.value)}
-      placeholder={tTemplates("searchByName")}
-      aria-label={tTemplates("searchByName")}
+      placeholder={tTemplates("searchByNameOrCode")}
+      aria-label={tTemplates("searchByNameOrCode")}
       className="max-w-sm flex-1"
     />
   );

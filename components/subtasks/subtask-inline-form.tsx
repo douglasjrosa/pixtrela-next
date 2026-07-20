@@ -142,7 +142,7 @@ export function SubTaskInlineForm({
     <div
       className={cn(
         "grid gap-4 sm:grid-cols-2",
-        !plain && "rounded-lg border bg-muted/30 p-4",
+        !plain && "rounded-lg border bg-muted p-4",
       )}
     >
       {hideHeading ? null : (

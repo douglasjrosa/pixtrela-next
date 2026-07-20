@@ -17,12 +17,10 @@ export default async function KioskStaffUsersPage({ params }: PageProps) {
   ]);
 
   return (
-    <section className="p-6">
-      <KioskStaffUsersPanel
-        userId={userId}
-        colaborators={colaborators}
-        canSignOut={canKioskSignOutDevice(staffUser?.role)}
-      />
-    </section>
+    <KioskStaffUsersPanel
+      userId={userId}
+      colaborators={colaborators}
+      canSignOut={canKioskSignOutDevice(staffUser?.role)}
+    />
   );
 }

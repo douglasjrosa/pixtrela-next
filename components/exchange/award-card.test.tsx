@@ -17,9 +17,10 @@ describe("AwardCard", () => {
     description: "Pacote de arroz",
     cost: 100,
     currency: "star",
+    imageUrl: "/uploads/arroz.png",
   };
 
-  it("shows title and cost", () => {
+  it("shows title, cost and image", () => {
     renderWithIntl(
       <AwardCard
         award={award}
@@ -29,10 +30,11 @@ describe("AwardCard", () => {
       />,
     );
     expect(screen.getByText("Arroz 5kg")).toBeInTheDocument();
-    expect(screen.getByText(/cost.*100/)).toBeInTheDocument();
+    expect(screen.getByText("100")).toBeInTheDocument();
+    expect(screen.getByRole("img")).toHaveAttribute("src", "/uploads/arroz.png");
   });
 
-  it("disables redeem when balance is insufficient", () => {
+  it("shows remaining stars bar when unaffordable", () => {
     renderWithIntl(
       <AwardCard
         award={award}
@@ -41,6 +43,8 @@ describe("AwardCard", () => {
         onRedeem={vi.fn()}
       />,
     );
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    expect(screen.getByText("starsRemaining")).toBeInTheDocument();
     expect(screen.getByRole("button")).toBeDisabled();
   });
 

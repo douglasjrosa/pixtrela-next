@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { buildDefaultLogin } from "@/lib/business/default-login";
@@ -33,16 +35,11 @@ import {
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
-export interface UserRow {
-  /** Strapi users-permissions numeric id (required for mutations). */
-  id: number;
-  documentId: string;
-  name: string;
-  username: string;
-  email?: string | null;
-  code: number;
-  roleType: UserFormInput["roleType"];
-}
+import type { UserRow } from "./types";
+import { UsersListView } from "./users-list-view";
+import { UsersToolbar } from "./users-toolbar";
+
+export type { UserRow } from "./types";
 
 export interface UserManagerProps {
   users: UserRow[];
@@ -67,13 +64,6 @@ const EMPTY_FORM: UserFormInput = {
   code: 0,
   roleType: "colaborator",
 };
-
-function canEditUser(
-  user: UserRow,
-  manageableRoles: UserFormInput["roleType"][],
-): boolean {
-  return manageableRoles.includes(user.roleType);
-}
 
 function roleOptionsForUser(
   user: UserRow | null,
@@ -131,8 +121,10 @@ interface UserFormDialogProps {
   canPreviewKioskColaborator: boolean;
   canSetPassword: boolean;
   canEditUserLogin: boolean;
+  showDelete: boolean;
   onClose: () => void;
   onSubmit: (values: UserFormInput) => void;
+  onDelete?: () => void;
   onPreviewKioskColaborator: (documentId: string) => void;
   onWriteKioskNfc: (documentId: string) => Promise<void>;
   nfcWriteDisabled: boolean;
@@ -147,8 +139,10 @@ function UserFormDialog({
   canPreviewKioskColaborator,
   canSetPassword,
   canEditUserLogin,
+  showDelete,
   onClose,
   onSubmit,
+  onDelete,
   onPreviewKioskColaborator,
   onWriteKioskNfc,
   nfcWriteDisabled,
@@ -211,154 +205,153 @@ function UserFormDialog({
   const codeError = codeErrorMessage(errors.code?.message, tUsers);
   const loginError = loginErrorMessage(errors.username?.message, tUsers);
   const usernameRegister = register("username");
+  const formId = "user-form";
+
+  const headerActions =
+    (canPreviewKioskColaborator || canWriteKioskNfc) && editingUser ? (
+      <div className="flex shrink-0 gap-1">
+        {canPreviewKioskColaborator ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="size-8"
+            aria-label={tUsers("previewKioskColaborator")}
+            onClick={() => onPreviewKioskColaborator(editingUser.documentId)}
+          >
+            <Eye className="size-4" aria-hidden />
+          </Button>
+        ) : null}
+        {canWriteKioskNfc ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="size-8"
+            aria-label={tUsers("writeKioskNfc")}
+            disabled={nfcWriteDisabled}
+            onClick={() => void onWriteKioskNfc(editingUser.documentId)}
+          >
+            <Nfc className="size-4" aria-hidden />
+          </Button>
+        ) : null}
+      </div>
+    ) : undefined;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      role="presentation"
-      onClick={onClose}
+    <FormModalShell
+      open
+      title={isEditing ? tUsers("editUser") : tUsers("newUser")}
+      titleId={formTitleId}
+      onClose={onClose}
+      disabled={isPending}
+      headerActions={headerActions}
+      footerStart={
+        showDelete && onDelete ? (
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={isPending}
+            onClick={onDelete}
+          >
+            {tCommon("delete")}
+          </Button>
+        ) : undefined
+      }
+      footerEnd={
+        <Button type="submit" form={formId} disabled={isPending}>
+          {isEditing ? tCommon("save") : tCommon("create")}
+        </Button>
+      }
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={formTitleId}
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border bg-background p-4 shadow-lg"
-        onClick={(event) => event.stopPropagation()}
+      <form
+        id={formId}
+        onSubmit={handleSubmit(onSubmit)}
+        className="grid gap-4 sm:grid-cols-2"
       >
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="grid gap-4 sm:grid-cols-2"
-        >
-          <div className="flex items-start justify-between gap-2 sm:col-span-2">
-            <h2 id={formTitleId} className="text-lg font-semibold">
-              {isEditing ? tUsers("editUser") : tUsers("newUser")}
-            </h2>
-            {(canPreviewKioskColaborator || canWriteKioskNfc) && editingUser ? (
-              <div className="flex shrink-0 gap-1">
-                {canPreviewKioskColaborator ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="size-8"
-                    aria-label={tUsers("previewKioskColaborator")}
-                    onClick={() =>
-                      onPreviewKioskColaborator(editingUser.documentId)
-                    }
-                  >
-                    <Eye className="size-4" aria-hidden />
-                  </Button>
-                ) : null}
-                {canWriteKioskNfc ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="size-8"
-                    aria-label={tUsers("writeKioskNfc")}
-                    disabled={nfcWriteDisabled}
-                    onClick={() => void onWriteKioskNfc(editingUser.documentId)}
-                  >
-                    <Nfc className="size-4" aria-hidden />
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="name">{tUsers("name")}</Label>
-            <Input id="name" {...register("name")} />
-            {errors.name ? (
-              <p className="text-sm text-destructive">{errors.name.message}</p>
-            ) : null}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="username">{tUsers("username")}</Label>
-            <Input
-              id="username"
-              readOnly={!canEditUserLogin}
-              aria-readonly={!canEditUserLogin}
-              className={!canEditUserLogin ? "bg-muted" : undefined}
-              {...usernameRegister}
-              onChange={(event) => {
-                if (canEditUserLogin) {
-                  setLoginManuallyEdited(true);
-                }
-                void usernameRegister.onChange(event);
-              }}
-            />
-            {loginError ? (
-              <p className="text-sm text-destructive">{loginError}</p>
-            ) : null}
-            {canEditUserLogin ? (
-              <p className="text-xs text-muted-foreground">
-                {tUsers("loginOverrideHint")}
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                {tUsers("loginAutoFill")}
-              </p>
-            )}
-          </div>
-
-          {canSetPassword ? (
-            <div className="space-y-2">
-              <Label htmlFor="password">{tUsers("password")}</Label>
-              <Input id="password" type="password" {...register("password")} />
-              {isEditing ? (
-                <p className="text-xs text-muted-foreground">
-                  {tUsers("passwordOptional")}
-                </p>
-              ) : null}
-            </div>
+        <div className="space-y-2">
+          <Label htmlFor="name">{tUsers("name")}</Label>
+          <Input id="name" {...register("name")} />
+          {errors.name ? (
+            <p className="text-sm text-destructive">{errors.name.message}</p>
           ) : null}
+        </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="username">{tUsers("username")}</Label>
+          <Input
+            id="username"
+            readOnly={!canEditUserLogin}
+            aria-readonly={!canEditUserLogin}
+            className={!canEditUserLogin ? "bg-muted" : undefined}
+            {...usernameRegister}
+            onChange={(event) => {
+              if (canEditUserLogin) {
+                setLoginManuallyEdited(true);
+              }
+              void usernameRegister.onChange(event);
+            }}
+          />
+          {loginError ? (
+            <p className="text-sm text-destructive">{loginError}</p>
+          ) : null}
+          {canEditUserLogin ? (
+            <p className="text-xs text-muted-foreground">
+              {tUsers("loginOverrideHint")}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {tUsers("loginAutoFill")}
+            </p>
+          )}
+        </div>
+
+        {canSetPassword ? (
           <div className="space-y-2">
-            <Label htmlFor="code">{tUsers("code")}</Label>
-            <Input
-              id="code"
-              type="number"
-              min={0}
-              {...register("code", {
-                valueAsNumber: true,
-                onBlur: () => {
-                  void trigger("code");
-                },
-              })}
-            />
-            {codeError ? (
-              <p className="text-sm text-destructive">{codeError}</p>
+            <Label htmlFor="password">{tUsers("password")}</Label>
+            <Input id="password" type="password" {...register("password")} />
+            {isEditing ? (
+              <p className="text-xs text-muted-foreground">
+                {tUsers("passwordOptional")}
+              </p>
             ) : null}
           </div>
+        ) : null}
 
-          <div className="space-y-2">
-            <Label htmlFor="roleType">{tUsers("role")}</Label>
-            <select
-              id="roleType"
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-              {...register("roleType")}
-            >
-              {roleOptions.map((role) => (
-                <option key={role} value={role}>
-                  {tUsers(`roles.${role}`)}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="code">{tUsers("code")}</Label>
+          <Input
+            id="code"
+            type="number"
+            min={0}
+            {...register("code", {
+              valueAsNumber: true,
+              onBlur: () => {
+                void trigger("code");
+              },
+            })}
+          />
+          {codeError ? (
+            <p className="text-sm text-destructive">{codeError}</p>
+          ) : null}
+        </div>
 
-          <div className="flex gap-2 sm:col-span-2">
-            <Button type="submit" disabled={isPending}>
-              {isEditing ? tCommon("save") : tCommon("create")}
-            </Button>
-            <Button type="button" variant="outline" onClick={onClose}>
-              {tCommon("cancel")}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="space-y-2">
+          <Label htmlFor="roleType">{tUsers("role")}</Label>
+          <select
+            id="roleType"
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            {...register("roleType")}
+          >
+            {roleOptions.map((role) => (
+              <option key={role} value={role}>
+                {tUsers(`roles.${role}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </form>
+    </FormModalShell>
   );
 }
 
@@ -379,6 +372,8 @@ export function UserManager({
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [nameQuery, setNameQuery] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [nfcWriting, setNfcWriting] = useState(false);
@@ -405,17 +400,20 @@ export function UserManager({
   function closeForm(): void {
     setFormOpen(false);
     setEditingUserId(null);
+    setDeleteOpen(false);
   }
 
   function startCreate(): void {
     setEditingUserId(null);
     setMessage(null);
+    setDeleteOpen(false);
     setFormOpen(true);
   }
 
   function startEdit(user: UserRow): void {
     setEditingUserId(user.id);
     setMessage(null);
+    setDeleteOpen(false);
     setFormOpen(true);
   }
 
@@ -446,11 +444,12 @@ export function UserManager({
     });
   }
 
-  function handleDelete(userId: number): void {
-    if (!onDelete || !window.confirm(tCommon("delete"))) return;
+  function handleConfirmDelete(): void {
+    if (!onDelete || editingUserId === null) return;
     startTransition(async () => {
-      await onDelete(userId);
+      await onDelete(editingUserId);
       setMessage(tUsers("deleted"));
+      closeForm();
       router.refresh();
     });
   }
@@ -500,18 +499,25 @@ export function UserManager({
 
   const roleOptions = roleOptionsForUser(editingUser, manageableRoles);
   const formDialogKey = editingUserId ?? "new";
+  const query = nameQuery.trim().toLowerCase();
+  const visibleUsers =
+    query.length === 0
+      ? users
+      : users.filter((user) => user.name.toLowerCase().includes(query));
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{tUsers("title")}</h1>
+    <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
+      <div className="flex shrink-0 items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold max-[500px]:text-lg">{tUsers("title")}</h1>
         <Button type="button" variant="outline" onClick={startCreate}>
           {tUsers("newUser")}
         </Button>
       </div>
 
+      <UsersToolbar value={nameQuery} onChange={setNameQuery} />
+
       {message ? (
-        <p role="status" className="text-sm text-muted-foreground">
+        <p role="status" className="shrink-0 text-sm text-muted-foreground">
           {message}
         </p>
       ) : null}
@@ -527,58 +533,35 @@ export function UserManager({
           canPreviewKioskColaborator={canPreviewKioskColaborator}
           canSetPassword={canSetPassword}
           canEditUserLogin={canEditUserLogin}
+          showDelete={Boolean(canDelete && onDelete && editingUser)}
           onClose={closeForm}
           onSubmit={onSubmit}
+          onDelete={() => setDeleteOpen(true)}
           onPreviewKioskColaborator={handlePreviewKioskColaborator}
           onWriteKioskNfc={handleWriteKioskNfc}
           nfcWriteDisabled={nfcWriteDisabled}
         />
       ) : null}
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="py-2">{tUsers("name")}</th>
-            <th>{tUsers("code")}</th>
-            <th>{tUsers("role")}</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user.documentId} className="border-b">
-              <td className="py-2">
-                {canEditUser(user, manageableRoles) ? (
-                  <button
-                    type="button"
-                    className="text-left hover:underline"
-                    onClick={() => startEdit(user)}
-                  >
-                    {user.name}
-                  </button>
-                ) : (
-                  user.name
-                )}
-              </td>
-              <td>{user.code}</td>
-              <td>{tUsers(`roles.${user.roleType}`)}</td>
-              <td>
-                {canDelete && onDelete ? (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    disabled={isPending}
-                    onClick={() => handleDelete(user.id)}
-                  >
-                    {tCommon("delete")}
-                  </Button>
-                ) : null}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ConfirmDialog
+        open={deleteOpen}
+        title={tUsers("deleteTitle")}
+        description={tUsers("deleteConfirm")}
+        confirmLabel={tCommon("delete")}
+        disabled={isPending}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeleteOpen(false)}
+      />
+
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <UsersListView
+            users={visibleUsers}
+            manageableRoles={manageableRoles}
+            onOpen={startEdit}
+          />
+        </div>
+      </div>
     </div>
   );
 }

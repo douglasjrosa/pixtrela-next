@@ -26,5 +26,17 @@ export async function loginAs(
   await page.getByLabel(/Login/i).fill(login);
   await page.getByLabel(/Senha/i).fill(password);
   await page.getByRole("button", { name: /Entrar/i }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
+
+  const leftLogin = page.waitForURL(
+    (url) => !url.pathname.startsWith("/login"),
+  );
+  const authError = page
+    .getByRole("alert")
+    .filter({ hasText: /inválidos|invalid/i })
+    .waitFor({ state: "visible" })
+    .then(() => {
+      throw new Error(`E2E login failed for "${login}" (invalid credentials)`);
+    });
+
+  await Promise.race([leftLogin, authError]);
 }

@@ -16,6 +16,8 @@ export const taskAutomationFormSchema = z.object({
   producingStepDocumentId: optionalStepDocumentId,
   pausedStepDocumentId: optionalStepDocumentId,
   finishedStepDocumentId: optionalStepDocumentId,
+  reviewedStepDocumentId: optionalStepDocumentId,
+  deliveredStepDocumentId: optionalStepDocumentId,
   assignWarnMax: z
     .number()
     .int()
@@ -42,5 +44,13 @@ export const TASK_AUTOMATION_STATUS_FIELDS = [
   {
     status: "finished" as const,
     field: "finishedStepDocumentId" as const,
+  },
+  {
+    status: "reviewed" as const,
+    field: "reviewedStepDocumentId" as const,
+  },
+  {
+    status: "delivered" as const,
+    field: "deliveredStepDocumentId" as const,
   },
 ] as const;

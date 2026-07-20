@@ -182,6 +182,7 @@ export function TemplateEditor({
 
       <TemplateSubTaskManager
         subtasks={subtasks}
+        templateName={template.name}
         onSubtasksChange={setSubtasks}
         disabled={isPending}
       />

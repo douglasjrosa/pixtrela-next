@@ -64,7 +64,7 @@ describe("ColaboratorInsightsSection", () => {
     expect(screen.getByText("30")).toBeInTheDocument();
   });
 
-  it("renders a label for colaborator self mode", () => {
+  it("renders today gain for colaborator self mode", () => {
     renderWithIntl(
       <ColaboratorInsightsSection
         mode="self"
@@ -78,6 +78,6 @@ describe("ColaboratorInsightsSection", () => {
     );
 
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
-    expect(screen.getByText("Ana")).toBeInTheDocument();
+    expect(screen.getByText("Ganho de hoje")).toBeInTheDocument();
   });
 });

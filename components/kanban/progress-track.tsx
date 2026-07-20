@@ -9,11 +9,9 @@ export interface ProgressTrackProps {
   markPercent: number;
   okFillPercent: number;
   overFillPercent: number;
-  /** When true, in-budget fill uses success green instead of blue. */
-  okFillSuccess?: boolean;
 }
 
-/** Shared dual-fill track: blue (or success) until mark, red for excess. */
+/** Shared dual-fill track: blue until mark, red for excess. */
 export function ProgressTrack({
   ariaLabel,
   expectedSec,
@@ -22,7 +20,6 @@ export function ProgressTrack({
   markPercent,
   okFillPercent,
   overFillPercent,
-  okFillSuccess = false,
 }: ProgressTrackProps) {
   return (
     <div
@@ -44,10 +41,7 @@ export function ProgressTrack({
         />
         <div
           aria-hidden
-          className={cn(
-            "absolute inset-y-0 left-0 transition-[width] duration-300 ease-out",
-            okFillSuccess ? "bg-success" : "bg-blue-500",
-          )}
+          className="absolute inset-y-0 left-0 bg-blue-500 transition-[width] duration-300 ease-out"
           style={{ width: `${okFillPercent}%` }}
         />
         {overFillPercent > 0 ? (

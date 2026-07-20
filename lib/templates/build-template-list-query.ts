@@ -8,26 +8,25 @@ export const TEMPLATE_LIST_FIELDS = ["documentId", "name", "code"] as const;
 
 /**
  * Builds lean Strapi query for the filtered/paginated template-tasks list.
+ * `q` matches name OR code (case-insensitive contains).
  */
 export function buildTemplateListQuery(
   filters: TemplateListFilters,
   page: number,
 ): StrapiQueryParams {
-  const queryFilters: Record<string, unknown> = {};
-
-  if (filters.q) {
-    queryFilters.name = { $containsi: filters.q };
-  }
-  if (filters.code) {
-    queryFilters.code = { $containsi: filters.code };
-  }
+  const queryFilters: Record<string, unknown> | undefined = filters.q
+    ? {
+        $or: [
+          { name: { $containsi: filters.q } },
+          { code: { $containsi: filters.q } },
+        ],
+      }
+    : undefined;
 
   return {
     fields: [...TEMPLATE_LIST_FIELDS],
     populate: { subTask: { fields: ["name"] } },
-    ...(Object.keys(queryFilters).length > 0
-      ? { filters: queryFilters }
-      : {}),
+    ...(queryFilters ? { filters: queryFilters } : {}),
     sort: "name:asc",
     pagination: {
       page: Math.max(1, page),

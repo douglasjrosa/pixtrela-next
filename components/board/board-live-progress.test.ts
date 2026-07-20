@@ -32,6 +32,11 @@ describe("BoardLiveProgress RSC data props", () => {
       interactive: true,
       assignWarnMax: 4,
       assignedCountByColaboratorId: { "u-1": 2 },
+      paymentCurrency: {
+        iconUrl: "https://cdn.example/star.png",
+        currencyPerSecond: 2,
+        pluralTitle: "Estrelas",
+      },
     });
 
     expect(hasNoFunctionValues(props)).toBe(true);

@@ -10,11 +10,13 @@ describe("buildTemplateListQuery", () => {
     expect(query.filters).toBeUndefined();
   });
 
-  it("adds name and code containsi filters", () => {
-    const query = buildTemplateListQuery({ q: "mont", code: "10" }, 2);
+  it("searches name or code with $or containsi", () => {
+    const query = buildTemplateListQuery({ q: "mont" }, 2);
     expect(query.filters).toEqual({
-      name: { $containsi: "mont" },
-      code: { $containsi: "10" },
+      $or: [
+        { name: { $containsi: "mont" } },
+        { code: { $containsi: "mont" } },
+      ],
     });
     expect(query.pagination).toEqual({ page: 2, pageSize: 10 });
   });

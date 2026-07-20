@@ -1,6 +1,11 @@
+import {
+  labeledDateBadgeToneClassName,
+  type LabeledDateBadgeTone,
+} from "@/lib/ui/labeled-date-badge-tone";
+
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-export type KanbanDeliveryDateTone = "danger" | "secondary";
+export type KanbanDeliveryDateTone = LabeledDateBadgeTone;
 
 function parseDateOnly(value: string): Date | null {
   const match = DATE_ONLY_PATTERN.exec(value.trim());
@@ -34,8 +39,5 @@ export function resolveKanbanDeliveryDateTone(
 export function kanbanDeliveryDateBadgeClassName(
   tone: KanbanDeliveryDateTone,
 ): string {
-  if (tone === "danger") {
-    return "border-destructive/40 bg-destructive/10 text-destructive";
-  }
-  return "border-border bg-secondary text-secondary-foreground";
+  return labeledDateBadgeToneClassName(tone);
 }

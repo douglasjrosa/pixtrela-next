@@ -1,5 +1,6 @@
 "use client";
 
+import { Contact } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export function KioskIdleScreen() {
@@ -8,9 +9,14 @@ export function KioskIdleScreen() {
   return (
     <div
       role="status"
-      className="flex items-center justify-center px-6 py-10 text-center"
+      className="flex flex-col items-center justify-center gap-4 px-6 py-12 text-center"
     >
-      <p className="text-lg font-medium">{t("idleMessage")}</p>
+      <Contact
+        className="size-20 animate-pulse text-[var(--star-gold)]"
+        strokeWidth={1.5}
+        aria-hidden
+      />
+      <p className="max-w-xs text-lg font-medium leading-snug">{t("idleMessage")}</p>
     </div>
   );
 }

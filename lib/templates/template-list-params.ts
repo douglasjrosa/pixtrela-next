@@ -1,5 +1,5 @@
 import {
-  TEMPLATE_LIST_NAME_MIN_CHARS,
+  TEMPLATE_LIST_SEARCH_MIN_CHARS,
   templateListFiltersSchema,
   type TemplateListFilters,
 } from "@/lib/schemas/template-list-filters";
@@ -22,20 +22,18 @@ export function defaultTemplateListFilters(): TemplateListFilters {
 
 /**
  * Parses URL search params into template list filters.
- * Missing params use empty defaults (no q/code).
+ * Missing params use empty defaults (no q).
  */
 export function parseTemplateListSearchParams(
   params: SearchParamsRecord,
 ): TemplateListFilters {
   const qRaw = firstParam(params.q)?.trim();
-  const codeRaw = firstParam(params.code)?.trim();
 
   const result = templateListFiltersSchema.safeParse({
     q:
-      qRaw && qRaw.length >= TEMPLATE_LIST_NAME_MIN_CHARS
+      qRaw && qRaw.length >= TEMPLATE_LIST_SEARCH_MIN_CHARS
         ? qRaw
         : undefined,
-    code: codeRaw || undefined,
   });
 
   if (!result.success) {
@@ -54,13 +52,10 @@ export function serializeTemplateListSearchParams(
   if (filters.q) {
     params.set("q", filters.q);
   }
-  if (filters.code) {
-    params.set("code", filters.code);
-  }
   return params;
 }
 
 /** Stable key for Suspense remount when filters change. */
 export function templateListFilterKey(filters: TemplateListFilters): string {
-  return [filters.q ?? "", filters.code ?? ""].join("|");
+  return filters.q ?? "";
 }

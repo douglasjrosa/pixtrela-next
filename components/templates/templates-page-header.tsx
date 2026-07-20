@@ -1,16 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { createTemplate } from "@/app/(app)/templates/actions";
 import { Button } from "@/components/ui/button";
+import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 import { TemplateForm, type TemplateFormValues } from "./template-form";
+
+const CREATE_TEMPLATE_FORM_ID = "create-template-form";
+const CREATE_TEMPLATE_TITLE_ID = "template-form-title";
 
 interface CreateTemplateDialogProps {
   isPending: boolean;
@@ -26,46 +29,38 @@ function CreateTemplateDialog({
   onInvalid,
 }: CreateTemplateDialogProps) {
   const tCommon = useTranslations("common");
-  const formTitleId = "template-form-title";
+  const tTemplates = useTranslations("templates");
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={formTitleId}
-        className={
-          "relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg " +
-          "border bg-background p-4 shadow-lg"
-        }
-        onClick={(event) => event.stopPropagation()}
-      >
+    <FormModalShell
+      open
+      title={tTemplates("newTemplate")}
+      titleId={CREATE_TEMPLATE_TITLE_ID}
+      onClose={onClose}
+      disabled={isPending}
+      footerEnd={
         <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="absolute top-3 right-3"
+          type="submit"
+          form={CREATE_TEMPLATE_FORM_ID}
           disabled={isPending}
-          aria-label={tCommon("close")}
-          onClick={onClose}
         >
-          <X className="size-4" aria-hidden />
+          {tCommon("save")}
         </Button>
-        <TemplateForm
-          mode="create"
-          defaultValues={{ name: "", code: "" }}
-          layout="embedded"
-          formTitleId={formTitleId}
-          isPending={isPending}
-          onSubmit={onSubmit}
-          onInvalid={onInvalid}
-        />
-      </div>
-    </div>
+      }
+    >
+      <TemplateForm
+        mode="create"
+        defaultValues={{ name: "", code: "" }}
+        layout="embedded"
+        formId={CREATE_TEMPLATE_FORM_ID}
+        formTitleId={CREATE_TEMPLATE_TITLE_ID}
+        hideTitle
+        hideActions
+        isPending={isPending}
+        onSubmit={onSubmit}
+        onInvalid={onInvalid}
+      />
+    </FormModalShell>
   );
 }
 

@@ -38,6 +38,7 @@ export interface TaskFormProps {
   onReactivate?: (reasonForDeactivation: string) => void;
   onDelete?: () => void;
   hideActions?: boolean;
+  hideTitle?: boolean;
   formId?: string;
 }
 
@@ -58,6 +59,7 @@ export function TaskForm({
   onReactivate,
   onDelete,
   hideActions = false,
+  hideTitle = false,
   formId,
 }: TaskFormProps) {
   const tCommon = useTranslations("common");
@@ -148,15 +150,17 @@ export function TaskForm({
         layout === "standalone" && "rounded-lg border p-4",
       )}
     >
-      <h2
-        id={formTitleId}
-        className={cn(
-          "text-lg font-semibold sm:col-span-2",
-          layout === "embedded" && "pr-8",
-        )}
-      >
-        {mode === "edit" ? tManage("editTask") : tManage("newTask")}
-      </h2>
+      {hideTitle ? null : (
+        <h2
+          id={formTitleId}
+          className={cn(
+            "text-lg font-semibold sm:col-span-2",
+            layout === "embedded" && "pr-8",
+          )}
+        >
+          {mode === "edit" ? tManage("editTask") : tManage("newTask")}
+        </h2>
+      )}
 
       <div className="space-y-2 sm:col-span-2">
         <Label htmlFor="templateTaskCode">{tManage("templateTaskCode")}</Label>

@@ -3,14 +3,12 @@
 import { useRef } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { User } from "lucide-react";
+import { User, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { CardBadge } from "@/components/ui/card";
-import {
-  kanbanDeliveryDateBadgeClassName,
-  resolveKanbanDeliveryDateTone,
-} from "@/lib/business/kanban-delivery-badge";
+import { LabeledDateBadge } from "@/components/ui/labeled-date-badge";
+import { resolveKanbanDeliveryDateTone } from "@/lib/business/kanban-delivery-badge";
 import {
   KANBAN_PAUSED_BADGE_CLASS_NAME,
   KANBAN_PRODUCING_BADGE_CLASS_NAME,
@@ -19,17 +17,18 @@ import {
 } from "@/lib/business/kanban-status-badge";
 import { toKanbanTaskId } from "@/lib/business/kanban-task-order";
 import {
+  isCompletedTaskStatus,
   needsLiveBoardProgress,
   shouldShowKanbanTaskProgress,
 } from "@/lib/business/task-progress";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
-import { formatDatePtBr } from "@/lib/format/datetime";
 import { useLiveProgressClock } from "@/hooks/use-live-progress-clock";
 import { cn } from "@/lib/utils";
 
 import { KanbanFloatingCountBadge } from "./kanban-floating-count-badge";
 import { TaskProgressBar } from "./task-progress-bar";
 import { TaskProgressBarSkeleton } from "./task-progress-bar-skeleton";
+import { TimeMetrics } from "./time-metrics";
 import type { KanbanTask } from "./types";
 
 const KANBAN_CLICK_ACTIVATION_DISTANCE_PX = 8;
@@ -47,6 +46,19 @@ function KanbanUnassignedFloatingBadge({ count }: { count: number }) {
       count={count}
       ariaLabel={t("unassignedSubtasksBadge", { count })}
     />
+  );
+}
+
+function FinishedParticipantCount({ count }: { count: number }) {
+  const t = useTranslations("kanban");
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground"
+      aria-label={t("finishedParticipants", { count })}
+    >
+      <Users className="size-3.5 shrink-0" aria-hidden />
+      <span>{count}</span>
+    </span>
   );
 }
 
@@ -97,6 +109,7 @@ export function KanbanCardSurface({
   task: KanbanTask;
   className?: string;
 }) {
+  const tKanban = useTranslations("kanban");
   const deliveryTone = resolveKanbanDeliveryDateTone(
     task.deliveryDate,
     new Date(),
@@ -106,6 +119,9 @@ export function KanbanCardSurface({
   const nowMs = useLiveProgressClock(liveClock, task.progressNowMs);
   const unassignedCount = task.unassignedSubTaskCount ?? 0;
   const activeCount = task.activeColaboratorCount ?? 0;
+  const participantCount = task.participantCount ?? 0;
+  const isCompleted = isCompletedTaskStatus(task.status);
+  const hideStatusBadge = task.status === FINISHED_STATUS;
 
   return (
     <div
@@ -118,11 +134,36 @@ export function KanbanCardSurface({
       <p className="font-medium">
         {formatTaskDisplayTitle(task.qty, task.name)}
       </p>
+      {isCompleted ? (
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <TimeMetrics
+            expectedTime={task.totalExpectedTime}
+            timeSpent={task.totalTimeSpent}
+          />
+          <FinishedParticipantCount count={participantCount} />
+        </div>
+      ) : null}
       <div className="mt-2 flex items-center justify-between gap-2">
-        <CardBadge className={kanbanDeliveryDateBadgeClassName(deliveryTone)}>
-          {formatDatePtBr(task.deliveryDate)}
-        </CardBadge>
-        <KanbanTaskStatusBadge status={task.status} activeCount={activeCount} />
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <LabeledDateBadge
+            label={tKanban("deliveryForecast")}
+            value={task.deliveryDate}
+            tone={deliveryTone}
+          />
+          {isCompleted ? (
+            <LabeledDateBadge
+              label={tKanban("completion")}
+              value={task.endedAt}
+              showTime
+            />
+          ) : null}
+        </div>
+        {!hideStatusBadge ? (
+          <KanbanTaskStatusBadge
+            status={task.status}
+            activeCount={activeCount}
+          />
+        ) : null}
       </div>
       {showProgress ? (
         <div className="mt-3">
@@ -134,7 +175,6 @@ export function KanbanCardSurface({
               totalExpectedTime={task.totalExpectedTime}
               progressInput={task.progressInput}
               nowMs={nowMs}
-              usePersistedRemaining={task.status === FINISHED_STATUS}
             />
           )}
         </div>

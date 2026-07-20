@@ -27,6 +27,13 @@ export function countOpenColaborators(
   return new Set(openBySession.values()).size;
 }
 
+/** Unique colaborators who appear in any activity on the task. */
+export function countUniqueColaboratorIds(
+  colaboratorDocumentIds: readonly string[],
+): number {
+  return new Set(colaboratorDocumentIds).size;
+}
+
 /** Sub-tasks with zero assignees (already filtered by caller). */
 export function countUnassignedSubTasks(
   subTasks: readonly UnassignedSubTaskInput[],

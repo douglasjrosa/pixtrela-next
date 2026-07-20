@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import { KioskDailyQueue } from "@/components/kiosk/kiosk-daily-queue";
@@ -14,6 +14,8 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 
 import { exitSubTask, startSubTask } from "./actions";
+
+const START_FLASH_MS = 300;
 
 export interface KioskPanelClientProps {
   colaboratorId: string;
@@ -29,8 +31,12 @@ export function KioskPanelClient({
   const t = useTranslations("kiosk");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [flashDocumentId, setFlashDocumentId] = useState<string | null>(null);
 
   function handleStart(documentId: string): void {
+    setFlashDocumentId(documentId);
+    window.setTimeout(() => setFlashDocumentId(null), START_FLASH_MS);
+
     startTransition(async () => {
       await startSubTask(colaboratorId, documentId);
       router.refresh();
@@ -68,6 +74,7 @@ export function KioskPanelClient({
       subTasks={subTasks}
       readOnly={readOnly}
       pending={pending}
+      flashDocumentId={flashDocumentId}
       onStart={readOnly ? undefined : handleStart}
       onExit={readOnly ? undefined : handleExit}
     />

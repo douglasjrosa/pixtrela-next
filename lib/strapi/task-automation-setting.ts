@@ -18,6 +18,8 @@ interface TaskAutomationSettingEntity {
   producingStep?: StepEntity | null;
   pausedStep?: StepEntity | null;
   finishedStep?: StepEntity | null;
+  reviewedStep?: StepEntity | null;
+  deliveredStep?: StepEntity | null;
   assignWarnMax?: number | null;
 }
 
@@ -30,6 +32,8 @@ const EMPTY_AUTOMATION: TaskAutomationFormInput = {
   producingStepDocumentId: "",
   pausedStepDocumentId: "",
   finishedStepDocumentId: "",
+  reviewedStepDocumentId: "",
+  deliveredStepDocumentId: "",
   assignWarnMax: DEFAULT_ASSIGN_WARN_MAX,
 };
 
@@ -54,6 +58,8 @@ export async function loadTaskAutomationSetting(): Promise<TaskAutomationFormInp
           producingStep: { fields: ["documentId"] },
           pausedStep: { fields: ["documentId"] },
           finishedStep: { fields: ["documentId"] },
+          reviewedStep: { fields: ["documentId"] },
+          deliveredStep: { fields: ["documentId"] },
         },
       },
     );
@@ -66,6 +72,8 @@ export async function loadTaskAutomationSetting(): Promise<TaskAutomationFormInp
       producingStepDocumentId: readStepDocumentId(setting.producingStep),
       pausedStepDocumentId: readStepDocumentId(setting.pausedStep),
       finishedStepDocumentId: readStepDocumentId(setting.finishedStep),
+      reviewedStepDocumentId: readStepDocumentId(setting.reviewedStep),
+      deliveredStepDocumentId: readStepDocumentId(setting.deliveredStep),
       assignWarnMax: normalizeAssignWarnMax(
         setting.assignWarnMax ?? DEFAULT_ASSIGN_WARN_MAX,
       ),
@@ -84,6 +92,8 @@ export function toTaskAutomationSettingPayload(
     producingStep: values.producingStepDocumentId || null,
     pausedStep: values.pausedStepDocumentId || null,
     finishedStep: values.finishedStepDocumentId || null,
+    reviewedStep: values.reviewedStepDocumentId || null,
+    deliveredStep: values.deliveredStepDocumentId || null,
     assignWarnMax: normalizeAssignWarnMax(values.assignWarnMax),
   };
 }

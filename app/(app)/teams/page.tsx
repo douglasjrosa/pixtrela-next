@@ -1,12 +1,13 @@
 import { auth } from "@/auth";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
+import { APP_LIST_PAGE_SHELL_CLASS } from "@/components/layout/app-page-layout";
 import { TeamManager, type TeamRow, type UserOption } from "@/components/teams/team-manager";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTeams } from "@/lib/auth/permissions";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
-import { createTeam, updateTeam } from "./actions";
+import { createTeam, deleteTeam, updateTeam } from "./actions";
 
 interface StrapiList<T> {
   data: T[];
@@ -111,13 +112,14 @@ export default async function TeamsPage() {
   ]);
 
   return (
-    <section className="p-6">
+    <section className={APP_LIST_PAGE_SHELL_CLASS}>
       <TeamManager
         teams={teams}
         leaders={leaders}
         colaborators={colaborators}
         onCreate={createTeam}
         onUpdate={updateTeam}
+        onDelete={deleteTeam}
       />
     </section>
   );

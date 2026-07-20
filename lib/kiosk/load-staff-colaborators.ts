@@ -18,7 +18,7 @@ export async function loadKioskStaffColaborators(
     );
     return res.data.map((colaborator) => ({
       ...colaborator,
-      avatarUrl: resolveStrapiMediaUrl(colaborator.avatarUrl ?? null),
+      facePhotoUrl: resolveStrapiMediaUrl(colaborator.facePhotoUrl ?? null),
     }));
   } catch (error) {
     rethrowIfNavigationError(error);

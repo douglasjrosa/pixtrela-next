@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { createTask } from "@/app/(app)/tasks/actions";
 import { Button } from "@/components/ui/button";
+import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { buildCreateTaskFormDefaults } from "@/lib/business/default-task-step";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { TaskFormInput } from "@/lib/schemas/task";
@@ -14,6 +14,9 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 import { TaskForm } from "./task-form";
 import type { StepOption } from "./types";
+
+const CREATE_TASK_FORM_ID = "create-task-form";
+const CREATE_TASK_TITLE_ID = "task-form-title";
 
 interface CreateTaskDialogProps {
   steps: StepOption[];
@@ -31,46 +34,34 @@ function CreateTaskDialog({
   onInvalid,
 }: CreateTaskDialogProps) {
   const tCommon = useTranslations("common");
-  const formTitleId = "task-form-title";
+  const tManage = useTranslations("tasks.manage");
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={formTitleId}
-        className={
-          "relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg " +
-          "border bg-background p-4 shadow-lg"
-        }
-        onClick={(event) => event.stopPropagation()}
-      >
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="absolute top-3 right-3"
-          disabled={isPending}
-          aria-label={tCommon("close")}
-          onClick={onClose}
-        >
-          <X className="size-4" aria-hidden />
+    <FormModalShell
+      open
+      title={tManage("newTask")}
+      titleId={CREATE_TASK_TITLE_ID}
+      onClose={onClose}
+      disabled={isPending}
+      footerEnd={
+        <Button type="submit" form={CREATE_TASK_FORM_ID} disabled={isPending}>
+          {tCommon("save")}
         </Button>
-        <TaskForm
-          mode="create"
-          defaultValues={buildCreateTaskFormDefaults(steps)}
-          layout="embedded"
-          formTitleId={formTitleId}
-          isPending={isPending}
-          onSubmit={onSubmit}
-          onInvalid={onInvalid}
-        />
-      </div>
-    </div>
+      }
+    >
+      <TaskForm
+        mode="create"
+        defaultValues={buildCreateTaskFormDefaults(steps)}
+        layout="embedded"
+        formId={CREATE_TASK_FORM_ID}
+        formTitleId={CREATE_TASK_TITLE_ID}
+        hideTitle
+        hideActions
+        isPending={isPending}
+        onSubmit={onSubmit}
+        onInvalid={onInvalid}
+      />
+    </FormModalShell>
   );
 }
 
@@ -108,7 +99,7 @@ export function TasksPageHeader({ steps }: TasksPageHeaderProps) {
 
   return (
     <div className="flex shrink-0 items-center justify-between gap-3">
-      <h1 className="text-2xl font-bold">{tManage("title")}</h1>
+      <h1 className="text-2xl font-bold max-[500px]:text-lg">{tManage("title")}</h1>
       <Button type="button" variant="outline" onClick={() => setCreateOpen(true)}>
         {tManage("newTask")}
       </Button>

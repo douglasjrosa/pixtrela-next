@@ -18,8 +18,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { reason } = await searchParams;
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
+    <main className="w-full max-w-sm">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>{t("loginTitle")}</CardTitle>
         </CardHeader>

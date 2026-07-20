@@ -8,6 +8,7 @@ import {
   templateListFilterKey,
 } from "@/lib/templates/template-list-params";
 
+import { APP_LIST_PAGE_STACK_CLASS } from "@/components/layout/app-page-layout";
 import { TemplatesListSkeleton } from "@/components/templates/templates-list-skeleton";
 import { TemplatesListWithLoadMore } from "@/components/templates/templates-list-with-load-more";
 import { TemplatesPageHeader } from "@/components/templates/templates-page-header";
@@ -53,11 +54,22 @@ export default async function TemplateTasksPage({
   const filterKey = templateListFilterKey(filters);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <TemplatesPageHeader />
-      <Suspense fallback={null}>
-        <TemplatesToolbar />
-      </Suspense>
+    <div className={APP_LIST_PAGE_STACK_CLASS}>
+      <div
+        className={
+          "flex shrink-0 flex-col gap-2 " +
+          "max-[500px]:flex-row max-[500px]:items-center max-[500px]:gap-2"
+        }
+      >
+        <div className="min-w-0 flex-1">
+          <Suspense fallback={null}>
+            <TemplatesToolbar />
+          </Suspense>
+        </div>
+        <div className="shrink-0">
+          <TemplatesPageHeader />
+        </div>
+      </div>
       <Suspense key={filterKey} fallback={<TemplatesListSkeleton />}>
         <TemplatesListSection filters={filters} />
       </Suspense>

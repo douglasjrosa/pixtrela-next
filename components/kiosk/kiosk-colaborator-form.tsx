@@ -4,13 +4,14 @@ import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   kioskIdentifySchema,
   type KioskIdentifyInput,
 } from "@/lib/schemas/kiosk-identify";
+
+import { KioskActionButton } from "./kiosk-action-button";
 
 export interface KioskColaboratorFormProps {
   onSubmit: (values: KioskIdentifyInput) => void | Promise<void>;
@@ -39,14 +40,18 @@ export function KioskColaboratorForm({
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit)}
-      className="mx-auto max-w-sm space-y-4"
+      className="mx-auto w-full max-w-sm space-y-4 px-1"
     >
       <div className="space-y-2">
-        <Label htmlFor="code">{t("code")}</Label>
+        <Label htmlFor="code" className="text-base">
+          {t("code")}
+        </Label>
         <Input
           id="code"
           type="number"
+          inputMode="numeric"
           min={0}
+          className="h-14 rounded-2xl text-lg"
           {...register("code", { valueAsNumber: true })}
         />
         {errors.code ? (
@@ -55,16 +60,23 @@ export function KioskColaboratorForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">{t("password")}</Label>
-        <Input id="password" type="password" {...register("password")} />
+        <Label htmlFor="password" className="text-base">
+          {t("password")}
+        </Label>
+        <Input
+          id="password"
+          type="password"
+          className="h-14 rounded-2xl text-lg"
+          {...register("password")}
+        />
         {errors.password ? (
           <p className="text-sm text-destructive">{errors.password.message}</p>
         ) : null}
       </div>
 
-      <Button type="submit" disabled={pending} className="w-full">
+      <KioskActionButton type="submit" disabled={pending} actionVariant="gold">
         {t("enter")}
-      </Button>
+      </KioskActionButton>
     </form>
   );
 }

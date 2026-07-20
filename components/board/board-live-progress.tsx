@@ -8,6 +8,7 @@ import {
   useBoardProgressPoll,
   type PollBoardProgressFn,
 } from "@/hooks/use-board-progress-poll";
+import type { SubtaskPaymentCurrency } from "@/lib/strapi/currency-for-subtasks";
 
 /** Data-only keys from the RSC page — must stay JSON-serializable (no render props). */
 export const BOARD_LIVE_PROGRESS_DATA_PROP_KEYS = [
@@ -17,6 +18,7 @@ export const BOARD_LIVE_PROGRESS_DATA_PROP_KEYS = [
   "interactive",
   "assignWarnMax",
   "assignedCountByColaboratorId",
+  "paymentCurrency",
 ] as const;
 
 export type BoardLiveProgressDataProps = {
@@ -26,6 +28,7 @@ export type BoardLiveProgressDataProps = {
   interactive: boolean;
   assignWarnMax: number;
   assignedCountByColaboratorId: Record<string, number>;
+  paymentCurrency: SubtaskPaymentCurrency;
 };
 
 export function pickBoardLiveProgressDataProps(
@@ -38,6 +41,7 @@ export function pickBoardLiveProgressDataProps(
     interactive: props.interactive,
     assignWarnMax: props.assignWarnMax,
     assignedCountByColaboratorId: props.assignedCountByColaboratorId,
+    paymentCurrency: props.paymentCurrency,
   };
 }
 
@@ -56,6 +60,7 @@ export function BoardLiveProgress({
   interactive,
   assignWarnMax,
   assignedCountByColaboratorId,
+  paymentCurrency,
   pollBoardProgress,
   applyBoardTaskOrder,
   loadSubtasks,
@@ -70,19 +75,26 @@ export function BoardLiveProgress({
 
   if (interactive) {
     return (
-      <BoardActions
-        steps={steps}
-        tasks={live.tasks}
-        teams={teams}
-        assignWarnMax={assignWarnMax}
-        assignedCountByColaboratorId={live.assignedCountByColaboratorId}
-        applyBoardTaskOrder={applyBoardTaskOrder}
-        loadSubtasks={loadSubtasks}
-        updateSubtaskAssignees={updateSubtaskAssignees}
-        createSubtask={createSubtask}
-      />
+      <div className="flex h-full min-h-0 flex-col">
+        <BoardActions
+          steps={steps}
+          tasks={live.tasks}
+          teams={teams}
+          assignWarnMax={assignWarnMax}
+          assignedCountByColaboratorId={live.assignedCountByColaboratorId}
+          paymentCurrency={paymentCurrency}
+          applyBoardTaskOrder={applyBoardTaskOrder}
+          loadSubtasks={loadSubtasks}
+          updateSubtaskAssignees={updateSubtaskAssignees}
+          createSubtask={createSubtask}
+        />
+      </div>
     );
   }
 
-  return <KanbanBoard steps={steps} tasks={live.tasks} />;
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <KanbanBoard steps={steps} tasks={live.tasks} />
+    </div>
+  );
 }

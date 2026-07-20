@@ -47,7 +47,7 @@ export function KioskColaboratorPasswordForm({
 
   return (
     <form
-      className="space-y-4 rounded-lg border bg-muted/30 p-4"
+      className="space-y-4 rounded-lg border bg-card p-4"
       onSubmit={handleSubmit(onSubmit)}
     >
       <h2 className="text-lg font-semibold">{colaboratorName}</h2>

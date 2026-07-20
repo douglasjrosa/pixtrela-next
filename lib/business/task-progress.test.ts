@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import {
   aggregateSessionTotals,
+  countSessionParticipants,
   isOverExpected,
   listActivitySessions,
   listOpenActivityStartedAts,
   needsLiveBoardProgress,
+  resolveLatestSessionFinishedAt,
+  sumSessionQty,
   resolveLiveTimeSpent,
   resolveOpenSessionsElapsedSeconds,
-  resolvePersistedRemainingSeconds,
   resolveProgressFillPercent,
   resolveProgressMarkPercent,
   resolveProgressOkFillPercent,
@@ -69,13 +71,6 @@ describe("resolveLiveTimeSpent", () => {
         nowMs,
       ),
     ).toBe(220);
-  });
-});
-
-describe("resolvePersistedRemainingSeconds", () => {
-  it("returns expected minus spent for finished tasks", () => {
-    expect(resolvePersistedRemainingSeconds(300, 250)).toBe(50);
-    expect(resolvePersistedRemainingSeconds(300, 400)).toBe(-100);
   });
 });
 
@@ -182,6 +177,101 @@ describe("listActivitySessions", () => {
   });
 });
 
+describe("sumSessionQty", () => {
+  it("sums qty across all sessions", () => {
+    expect(
+      sumSessionQty([
+        {
+          colaboratorDocumentId: "u-1",
+          colaboratorName: "Ana",
+          startedAt: "a",
+          finishedAt: "b",
+          durationSec: 60,
+          qty: 2,
+        },
+        {
+          colaboratorDocumentId: "u-2",
+          colaboratorName: "Bia",
+          startedAt: "c",
+          finishedAt: "d",
+          durationSec: 40,
+          qty: 3,
+        },
+      ]),
+    ).toBe(5);
+  });
+
+  it("returns 0 for an empty session list", () => {
+    expect(sumSessionQty([])).toBe(0);
+  });
+});
+
+describe("countSessionParticipants", () => {
+  it("counts unique colaborators across sessions", () => {
+    expect(
+      countSessionParticipants([
+        {
+          colaboratorDocumentId: "u-1",
+          colaboratorName: "Ana",
+          startedAt: "a",
+          finishedAt: "b",
+          durationSec: 60,
+          qty: 0,
+        },
+        {
+          colaboratorDocumentId: "u-1",
+          colaboratorName: "Ana",
+          startedAt: "c",
+          finishedAt: "d",
+          durationSec: 30,
+          qty: 0,
+        },
+        {
+          colaboratorDocumentId: "u-2",
+          colaboratorName: "Bia",
+          startedAt: "e",
+          finishedAt: "f",
+          durationSec: 40,
+          qty: 0,
+        },
+      ]),
+    ).toBe(2);
+  });
+
+  it("returns 0 for an empty session list", () => {
+    expect(countSessionParticipants([])).toBe(0);
+  });
+});
+
+describe("resolveLatestSessionFinishedAt", () => {
+  it("returns the latest finishedAt among sessions", () => {
+    expect(
+      resolveLatestSessionFinishedAt([
+        {
+          colaboratorDocumentId: "u-1",
+          colaboratorName: "Ana",
+          startedAt: "2026-07-16T10:00:00.000Z",
+          finishedAt: "2026-07-16T10:01:00.000Z",
+          durationSec: 60,
+          qty: 0,
+        },
+        {
+          colaboratorDocumentId: "u-2",
+          colaboratorName: "Bia",
+          startedAt: "2026-07-16T10:00:00.000Z",
+          finishedAt: "2026-07-16T10:05:00.000Z",
+          durationSec: 300,
+          qty: 0,
+        },
+      ]),
+    ).toBe("2026-07-16T10:05:00.000Z");
+  });
+
+  it("returns null when there are no sessions", () => {
+    expect(resolveLatestSessionFinishedAt([])).toBeNull();
+  });
+});
+
 describe("aggregateSessionTotals", () => {
   it("sums duration and qty per colaborator", () => {
     const totals = aggregateSessionTotals([
@@ -256,27 +346,31 @@ describe("isOverExpected", () => {
 });
 
 describe("shouldShowKanbanTaskProgress", () => {
-  it("shows for every status except waiting", () => {
+  it("shows for waiting, producing and paused", () => {
+    expect(shouldShowKanbanTaskProgress("waiting")).toBe(true);
     expect(shouldShowKanbanTaskProgress("producing")).toBe(true);
     expect(shouldShowKanbanTaskProgress("paused")).toBe(true);
-    expect(shouldShowKanbanTaskProgress("finished")).toBe(true);
-    expect(shouldShowKanbanTaskProgress("waiting")).toBe(false);
+    expect(shouldShowKanbanTaskProgress("finished")).toBe(false);
+    expect(shouldShowKanbanTaskProgress("reviewed")).toBe(false);
+    expect(shouldShowKanbanTaskProgress("delivered")).toBe(false);
   });
 });
 
 describe("needsLiveBoardProgress", () => {
-  it("is true only for producing and paused", () => {
+  it("is true only while work can be actively running", () => {
     expect(needsLiveBoardProgress("producing")).toBe(true);
     expect(needsLiveBoardProgress("paused")).toBe(true);
-    expect(needsLiveBoardProgress("finished")).toBe(false);
     expect(needsLiveBoardProgress("waiting")).toBe(false);
+    expect(needsLiveBoardProgress("finished")).toBe(false);
+    expect(needsLiveBoardProgress("reviewed")).toBe(false);
+    expect(needsLiveBoardProgress("delivered")).toBe(false);
   });
 });
 
 describe("shouldShowSubTaskProgress", () => {
-  it("hides only waiting subtasks", () => {
+  it("hides waiting and finished subtasks", () => {
     expect(shouldShowSubTaskProgress("waiting")).toBe(false);
-    expect(shouldShowSubTaskProgress("finished")).toBe(true);
+    expect(shouldShowSubTaskProgress("finished")).toBe(false);
     expect(shouldShowSubTaskProgress("producing")).toBe(true);
   });
 });

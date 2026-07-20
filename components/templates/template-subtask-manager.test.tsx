@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
@@ -46,7 +46,80 @@ describe("resolveTemplateSubTaskReorder", () => {
 });
 
 describe("TemplateSubTaskManager", () => {
-  it("removes a subtask locally without persisting", async () => {
+  it("opens edit modal when a row is clicked", async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <TemplateSubTaskManager
+        subtasks={subtasks}
+        templateName="Modelo A"
+        onSubtasksChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByText("Corte"));
+
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Editar subtarefa" }),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText("Modelo A")).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Clonar subtarefa" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Remover subtarefa" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show clone/remove controls on the table rows", () => {
+    renderWithIntl(
+      <TemplateSubTaskManager
+        subtasks={subtasks}
+        templateName="Modelo A"
+        onSubtasksChange={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Remover subtarefa" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Clonar subtarefa" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens create modal without inserting a row until confirmed", async () => {
+    const user = userEvent.setup();
+    const onSubtasksChange = vi.fn();
+
+    renderWithIntl(
+      <TemplateSubTaskManager
+        subtasks={subtasks}
+        templateName="Modelo A"
+        onSubtasksChange={onSubtasksChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Nova subtarefa" }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Nova subtarefa" }),
+    ).toBeInTheDocument();
+    expect(onSubtasksChange).not.toHaveBeenCalled();
+
+    await user.type(within(dialog).getByLabelText("Nome"), "Acabamento");
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+
+    expect(onSubtasksChange).toHaveBeenCalledTimes(1);
+    const nextRows = onSubtasksChange.mock.calls[0]![0] as TemplateSubTaskRow[];
+    expect(nextRows).toHaveLength(3);
+    expect(nextRows[2]?.name).toBe("Acabamento");
+    expect(nextRows[2]?.isDraft).toBe(true);
+  });
+
+  it("removes a subtask from the modal without persisting remotely", async () => {
     const user = userEvent.setup();
     const onSubtasksChange = vi.fn();
     vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -54,35 +127,19 @@ describe("TemplateSubTaskManager", () => {
     renderWithIntl(
       <TemplateSubTaskManager
         subtasks={subtasks}
+        templateName="Modelo A"
         onSubtasksChange={onSubtasksChange}
       />,
     );
 
-    const removeButtons = screen.getAllByRole("button", { name: "Remover subtarefa" });
-    await user.click(removeButtons[0]!);
+    await user.click(screen.getByText("Corte"));
+    await user.click(
+      screen.getByRole("button", { name: "Remover subtarefa" }),
+    );
 
     expect(onSubtasksChange).toHaveBeenCalledTimes(1);
     const nextRows = onSubtasksChange.mock.calls[0]![0] as TemplateSubTaskRow[];
     expect(nextRows).toHaveLength(1);
     expect(nextRows[0]?.name).toBe("Solda");
-  });
-
-  it("adds a draft row when add subtask is clicked", async () => {
-    const user = userEvent.setup();
-    const onSubtasksChange = vi.fn();
-
-    renderWithIntl(
-      <TemplateSubTaskManager
-        subtasks={subtasks}
-        onSubtasksChange={onSubtasksChange}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Adicionar subtarefa" }));
-
-    expect(onSubtasksChange).toHaveBeenCalledTimes(1);
-    const nextRows = onSubtasksChange.mock.calls[0]![0] as TemplateSubTaskRow[];
-    expect(nextRows).toHaveLength(3);
-    expect(nextRows[2]?.isDraft).toBe(true);
   });
 });

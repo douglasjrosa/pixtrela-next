@@ -17,13 +17,11 @@ const currencies = [
     documentId: "cur-star",
     title: "Estrela",
     pluralTitle: "Estrelas",
-    currencyPerSecond: 2,
   },
   {
     documentId: "cur-gem",
     title: "Gema",
     pluralTitle: "Gemas",
-    currencyPerSecond: 0.5,
   },
 ];
 
@@ -48,19 +46,6 @@ describe("CurrencyForm", () => {
     expect(screen.getByRole("option", { name: "Gema" })).toBeInTheDocument();
   });
 
-  it("renders a units-per-second field for each currency", () => {
-    renderWithIntl(
-      <CurrencyForm
-        currencies={currencies}
-        activeCurrencyDocumentId=""
-        onSave={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByLabelText("Estrelas por segundo:")).toHaveValue(2);
-    expect(screen.getByLabelText("Gemas por segundo:")).toHaveValue(0.5);
-  });
-
   it("shows empty state when there are no currencies", () => {
     renderWithIntl(
       <CurrencyForm
@@ -74,7 +59,7 @@ describe("CurrencyForm", () => {
     expect(screen.queryByRole("button", { name: "Salvar" })).toBeNull();
   });
 
-  it("calls onSave with active currency and rates", async () => {
+  it("calls onSave with the selected active currency", async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     renderWithIntl(
       <CurrencyForm
@@ -87,21 +72,11 @@ describe("CurrencyForm", () => {
     fireEvent.change(screen.getByLabelText("Ativo para Subtarefas:"), {
       target: { value: "cur-gem" },
     });
-    fireEvent.change(screen.getByLabelText("Estrelas por segundo:"), {
-      target: { value: "3" },
-    });
-    fireEvent.change(screen.getByLabelText("Gemas por segundo:"), {
-      target: { value: "1.25" },
-    });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith({
         currencyDocumentId: "cur-gem",
-        rates: [
-          { documentId: "cur-star", currencyPerSecond: 3 },
-          { documentId: "cur-gem", currencyPerSecond: 1.25 },
-        ],
       });
     });
     expect(showSuccessToast).toHaveBeenCalledWith("Configurações salvas.");

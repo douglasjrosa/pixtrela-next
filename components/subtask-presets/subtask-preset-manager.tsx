@@ -100,9 +100,11 @@ export function SubTaskPresetManager({ presets }: SubTaskPresetManagerProps) {
       : EMPTY_FORM;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">{tPresets("title")}</h2>
+    <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
+      <div className="flex shrink-0 items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold max-[500px]:text-base">
+          {tPresets("title")}
+        </h2>
         <Button
           type="button"
           size="icon"
@@ -116,34 +118,36 @@ export function SubTaskPresetManager({ presets }: SubTaskPresetManagerProps) {
       {presets.length === 0 ? (
         <p className="text-sm text-muted-foreground">{tPresets("empty")}</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left">
-              <th className="py-2">{tSubtasks("name")}</th>
-              <th>{tSubtasks("sharingTypeLabel")}</th>
-              <th>{tSubtasks("expectedTime")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {presets.map((preset) => (
-              <tr key={preset.documentId} className="border-b">
-                <td className="py-2">
-                  <button
-                    type="button"
-                    className="text-left hover:underline"
-                    onClick={() => setModal({ mode: "edit", preset })}
-                  >
-                    {preset.name}
-                  </button>
-                </td>
-                <td>{tSharing(preset.sharingType)}</td>
-                <td>
-                  <Duration seconds={preset.expectedTime} />
-                </td>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left">
+                <th className="py-2">{tSubtasks("name")}</th>
+                <th>{tSubtasks("sharingTypeLabel")}</th>
+                <th>{tSubtasks("expectedTime")}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {presets.map((preset) => (
+                <tr key={preset.documentId} className="border-b">
+                  <td className="py-2">
+                    <button
+                      type="button"
+                      className="text-left hover:underline"
+                      onClick={() => setModal({ mode: "edit", preset })}
+                    >
+                      {preset.name}
+                    </button>
+                  </td>
+                  <td>{tSharing(preset.sharingType)}</td>
+                  <td>
+                    <Duration seconds={preset.expectedTime} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <SubTaskPresetFormModal

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Comfortaa, Lilita_One } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 
@@ -14,14 +14,16 @@ import {
   APP_ICON_512,
 } from "@/lib/assets/branding";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const comfortaa = Comfortaa({
+  variable: "--font-comfortaa",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const lilitaOne = Lilita_One({
+  variable: "--font-lilita",
   subsets: ["latin"],
+  weight: "400",
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -60,11 +62,11 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${comfortaa.variable} ${lilitaOne.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="flex min-h-full flex-col font-sans">
         <SerwistProvider swUrl="/serwist/sw.js">
-          <NextIntlClientProvider messages={messages}>
+          <NextIntlClientProvider locale={locale} messages={messages}>
             <Providers>{children}</Providers>
           </NextIntlClientProvider>
         </SerwistProvider>

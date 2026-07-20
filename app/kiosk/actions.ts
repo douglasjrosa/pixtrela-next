@@ -5,6 +5,12 @@ import {
   resolveKioskPathAfterIdentify,
   type KioskIdentifiedRole,
 } from "@/lib/business/kiosk-identify-route";
+import {
+  loadKioskDirectoryTeamColaborators,
+  loadKioskDirectoryTeams,
+  type KioskDirectoryColaborator,
+  type KioskDirectoryTeam,
+} from "@/lib/kiosk/load-directory";
 import { kioskIdentifySchema } from "@/lib/schemas/kiosk-identify";
 import { strapiFetch } from "@/lib/strapi";
 
@@ -78,4 +84,30 @@ export async function identifyColaboratorByCode(
     return { ok: false, error: "invalidCredentials" };
   }
   return { ok: true, colaboratorId: result.documentId };
+}
+
+export async function fetchKioskDirectoryTeams(): Promise<
+  { ok: true; teams: KioskDirectoryTeam[] } | { ok: false }
+> {
+  const session = await auth();
+  if (session?.user?.role !== "kiosk") {
+    return { ok: false };
+  }
+
+  const teams = await loadKioskDirectoryTeams();
+  return { ok: true, teams };
+}
+
+export async function fetchKioskDirectoryColaborators(
+  teamDocumentId: string,
+): Promise<
+  { ok: true; colaborators: KioskDirectoryColaborator[] } | { ok: false }
+> {
+  const session = await auth();
+  if (session?.user?.role !== "kiosk") {
+    return { ok: false };
+  }
+
+  const colaborators = await loadKioskDirectoryTeamColaborators(teamDocumentId);
+  return { ok: true, colaborators };
 }

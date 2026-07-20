@@ -22,6 +22,8 @@ const defaultValues = {
   producingStepDocumentId: "step-2",
   pausedStepDocumentId: "",
   finishedStepDocumentId: "",
+  reviewedStepDocumentId: "",
+  deliveredStepDocumentId: "",
   assignWarnMax: 4,
 };
 
@@ -51,6 +53,8 @@ describe("TaskAutomationForm", () => {
     expect(screen.getByLabelText("Status Finalizada vai para:")).toHaveValue(
       "",
     );
+    expect(screen.getByLabelText("Status Revisada vai para:")).toHaveValue("");
+    expect(screen.getByLabelText("Status Entregue vai para:")).toHaveValue("");
   });
 
   it("calls onSave with updated mappings", async () => {
@@ -74,6 +78,8 @@ describe("TaskAutomationForm", () => {
         producingStepDocumentId: "step-2",
         pausedStepDocumentId: "step-1",
         finishedStepDocumentId: "",
+        reviewedStepDocumentId: "",
+        deliveredStepDocumentId: "",
         assignWarnMax: 4,
       });
     });

@@ -8,6 +8,7 @@ import {
 } from "@/lib/business/exchange";
 import { ACTIVE_TEAM_FILTER } from "@/lib/business/team-active";
 import { loadCurrencyForSubtasks } from "@/lib/strapi/currency-for-subtasks";
+import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 import { balanceTag, STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
 const AWARDS_REVALIDATE_SEC = 120;
@@ -25,6 +26,7 @@ interface AwardEntity {
   title?: string;
   name: string;
   description?: string;
+  image?: { url?: string } | null;
   Value?: { numberOf?: number; currency?: { name?: string } }[];
 }
 
@@ -110,6 +112,7 @@ export async function loadColaboratorPrivateHome(
         {
           fields: ["documentId", "name", "title", "description"],
           populate: {
+            image: { fields: ["url"] },
             Value: { populate: { currency: { fields: ["name"] } } },
           },
         },
@@ -156,6 +159,7 @@ export async function loadColaboratorPrivateHome(
         cost: paymentCurrencyName
           ? exchangeCost(prices, paymentCurrencyName, 1)
           : 0,
+        imageUrl: resolveStrapiMediaUrl(award.image?.url),
       };
     });
 

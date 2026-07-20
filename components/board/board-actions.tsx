@@ -24,6 +24,7 @@ import {
 import { countUnassignedSubTasks } from "@/lib/business/kanban-card-badges";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
+import type { SubtaskPaymentCurrency } from "@/lib/strapi/currency-for-subtasks";
 
 const FINISHED_STATUS = "finished";
 
@@ -43,6 +44,7 @@ export interface BoardActionsProps {
   teams: TeamAssignmentOption[];
   assignWarnMax: number;
   assignedCountByColaboratorId: Record<string, number>;
+  paymentCurrency: SubtaskPaymentCurrency;
   applyBoardTaskOrder: (
     updates: { documentId: string; index: number; stepId: number | null }[],
   ) => void | Promise<void>;
@@ -65,6 +67,7 @@ export function BoardActions({
   teams,
   assignWarnMax,
   assignedCountByColaboratorId,
+  paymentCurrency,
   applyBoardTaskOrder,
   loadSubtasks,
   updateSubtaskAssignees,
@@ -278,12 +281,14 @@ export function BoardActions({
 
   return (
     <>
-      <KanbanBoard
-        steps={steps}
-        tasks={orderedTasks}
-        onApplyOrder={handleApplyOrder}
-        onTaskClick={handleTaskClick}
-      />
+      <div className="flex h-full min-h-0 flex-col">
+        <KanbanBoard
+          steps={steps}
+          tasks={orderedTasks}
+          onApplyOrder={handleApplyOrder}
+          onTaskClick={handleTaskClick}
+        />
+      </div>
 
       <KanbanTaskSubtasksModal
         open={selectedTask !== null}
@@ -292,6 +297,7 @@ export function BoardActions({
         teams={teams}
         assignWarnMax={assignWarnMax}
         assignedCountByColaboratorId={assignedCountsForUi}
+        paymentCurrency={paymentCurrency}
         loading={loadingSubtasks}
         dirty={hasAssigneeDraftChanges(subtasks, assigneesBaseline)}
         saving={savingAssignees}

@@ -62,35 +62,22 @@ describe("TaskProgressBar", () => {
     ).toBeInTheDocument();
   });
 
-  it("uses success fill for finished tasks without overrun", () => {
+  it("keeps blue fill for in-progress tasks without overrun", () => {
     const { container } = renderWithIntl(
       <TaskProgressBar
         totalTimeSpent={1800}
         totalExpectedTime={3600}
         nowMs={NOW_MS}
-        usePersistedRemaining
-        progressInput={{ subTasks: [], openActivityStartedAts: [] }}
-      />,
-    );
-
-    expect(container.querySelector(".bg-success")).toBeTruthy();
-    expect(container.querySelector(".bg-blue-500")).toBeNull();
-    expect(container.querySelector(".bg-red-400")).toBeNull();
-  });
-
-  it("keeps blue and red fills for finished tasks with overrun", () => {
-    const { container } = renderWithIntl(
-      <TaskProgressBar
-        totalTimeSpent={4000}
-        totalExpectedTime={3600}
-        nowMs={NOW_MS}
-        usePersistedRemaining
-        progressInput={{ subTasks: [], openActivityStartedAts: [] }}
+        progressInput={{
+          subTasks: [
+            { status: "producing", expectedTime: 3600, timeSpent: 1800 },
+          ],
+          openActivityStartedAts: [],
+        }}
       />,
     );
 
     expect(container.querySelector(".bg-blue-500")).toBeTruthy();
     expect(container.querySelector(".bg-success")).toBeNull();
-    expect(container.querySelector(".bg-red-400")).toBeTruthy();
   });
 });

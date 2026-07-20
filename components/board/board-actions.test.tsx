@@ -13,6 +13,12 @@ import { boardSubTaskSummaryStub } from "@/lib/business/board-subtask-summary";
 import { resolveKanbanDragEnd, toKanbanTaskId } from "@/lib/business/kanban-task-order";
 import { BoardActions } from "./board-actions";
 
+const paymentCurrency = {
+  iconUrl: "https://cdn.example/star.png",
+  currencyPerSecond: 2,
+  pluralTitle: "Estrelas",
+};
+
 const steps = [
   { id: 1, name: "Fila de produção" },
   { id: 2, name: "Produzindo" },
@@ -60,6 +66,7 @@ describe("BoardActions", () => {
         teams={teams}
         assignWarnMax={4}
         assignedCountByColaboratorId={{}}
+        paymentCurrency={paymentCurrency}
         applyBoardTaskOrder={vi.fn()}
         loadSubtasks={vi.fn()}
         updateSubtaskAssignees={vi.fn()}
@@ -88,6 +95,7 @@ describe("BoardActions", () => {
         teams={teams}
         assignWarnMax={4}
         assignedCountByColaboratorId={{}}
+        paymentCurrency={paymentCurrency}
         applyBoardTaskOrder={vi.fn()}
         loadSubtasks={loadSubtasks}
         updateSubtaskAssignees={vi.fn()}
@@ -146,6 +154,7 @@ describe("BoardActions", () => {
         teams={teams}
         assignWarnMax={4}
         assignedCountByColaboratorId={{}}
+        paymentCurrency={paymentCurrency}
         applyBoardTaskOrder={vi.fn()}
         loadSubtasks={loadSubtasks}
         updateSubtaskAssignees={updateSubtaskAssignees}
@@ -205,6 +214,7 @@ describe("BoardActions", () => {
         teams={teams}
         assignWarnMax={4}
         assignedCountByColaboratorId={{}}
+        paymentCurrency={paymentCurrency}
         applyBoardTaskOrder={vi.fn()}
         loadSubtasks={loadSubtasks}
         updateSubtaskAssignees={vi.fn()}
@@ -257,6 +267,7 @@ describe("BoardActions", () => {
         teams={teams}
         assignWarnMax={4}
         assignedCountByColaboratorId={{}}
+        paymentCurrency={paymentCurrency}
         applyBoardTaskOrder={vi.fn()}
         loadSubtasks={loadSubtasks}
         updateSubtaskAssignees={vi.fn()}

@@ -1,14 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { User, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { User, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { CurrencyMediaIcon } from "@/components/currency/currency-media-icon";
 import { SubTaskProgressBar } from "@/components/kanban/subtask-progress-bar";
+import { TimeMetrics } from "@/components/kanban/time-metrics";
 import { SubTaskSessionsPanel } from "@/components/subtasks/subtask-sessions-panel";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import { Button } from "@/components/ui/button";
 import { Card, CardBadge, CardContent } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS,
+  FormModalShell,
+} from "@/components/ui/form-modal-shell";
+import { StackedDateTime } from "@/components/ui/stacked-date-time";
 import {
   isSubtaskAssignedTo,
   splitSubtasksByFinished,
@@ -16,20 +24,47 @@ import {
   toggleTeamOnSubtask,
 } from "@/lib/business/board-assign-focus";
 import { getSubtaskAssigneeIds } from "@/lib/business/board-assignee-draft";
+import {
+  buildMultiAssignUpdates,
+  buildMultiRemoveUpdates,
+  canApplyMultiAssign,
+  countMultiSelection,
+  isMultiSelectionDirty,
+  toggleIdInSet,
+  toggleTeamMembersInSelection,
+} from "@/lib/business/board-multi-assign";
 import { shouldShowAssignWarn } from "@/lib/business/assign-warn";
 import {
   KANBAN_PRODUCING_BADGE_CLASS_NAME,
   PRODUCING_STATUS,
 } from "@/lib/business/kanban-status-badge";
+import { calculateSubtaskPayment } from "@/lib/business/subtask-payment";
+import {
+  countSessionParticipants,
+  resolveLatestSessionFinishedAt,
+} from "@/lib/business/task-progress";
+import { splitDateTimePtBr } from "@/lib/format/datetime";
+import type { SubtaskPaymentCurrency } from "@/lib/strapi/currency-for-subtasks";
+import {
+  showConfirmToast,
+  showHintToast,
+  showSuccessToast,
+} from "@/lib/ui/app-toast";
 import { cn } from "@/lib/utils";
 
 import { KanbanFloatingCountBadge } from "./kanban-floating-count-badge";
+import { KanbanMultiAssignToolbar } from "./kanban-multi-assign-toolbar";
 import type { BoardSubTaskSummary } from "./types";
-
-const FINISHED_STATUS = "finished";
 
 type MainTab = "pending" | "finished";
 type FocusMode = "subtasks" | "teams";
+type PendingExitAction = "disable-multi" | "go-finished";
+
+const EMPTY_PAYMENT_CURRENCY: SubtaskPaymentCurrency = {
+  iconUrl: null,
+  currencyPerSecond: 0,
+  pluralTitle: "",
+};
 
 export interface KanbanTaskSubtasksModalProps {
   open: boolean;
@@ -38,6 +73,7 @@ export interface KanbanTaskSubtasksModalProps {
   teams: TeamAssignmentOption[];
   assignWarnMax: number;
   assignedCountByColaboratorId: Record<string, number>;
+  paymentCurrency?: SubtaskPaymentCurrency;
   loading: boolean;
   dirty: boolean;
   saving: boolean;
@@ -125,6 +161,7 @@ export function KanbanTaskSubtasksModal({
   teams,
   assignWarnMax,
   assignedCountByColaboratorId,
+  paymentCurrency = EMPTY_PAYMENT_CURRENCY,
   loading,
   dirty,
   saving,
@@ -137,6 +174,7 @@ export function KanbanTaskSubtasksModal({
   const tKanban = useTranslations("kanban");
   const tStatus = useTranslations("tasks.status");
   const tSubtasks = useTranslations("subtasks");
+  const tBalance = useTranslations("balance");
 
   const [mainTab, setMainTab] = useState<MainTab>("pending");
   const [focusMode, setFocusMode] = useState<FocusMode>("subtasks");
@@ -146,31 +184,191 @@ export function KanbanTaskSubtasksModal({
   const [selectedCollaboratorId, setSelectedCollaboratorId] = useState<
     string | null
   >(null);
+  const [multiEnabled, setMultiEnabled] = useState(false);
+  const [selectedSubtaskIds, setSelectedSubtaskIds] = useState<string[]>([]);
+  const [selectedCollaboratorIds, setSelectedCollaboratorIds] = useState<
+    string[]
+  >([]);
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const [pendingExitAction, setPendingExitAction] =
+    useState<PendingExitAction | null>(null);
+  const [infoSubtask, setInfoSubtask] = useState<BoardSubTaskSummary | null>(
+    null,
+  );
+  const userSelectedFinishedRef = useRef(false);
 
   useEffect(() => {
-    if (!open) return;
-    setMainTab("pending");
+    if (!open) {
+      userSelectedFinishedRef.current = false;
+      return;
+    }
     setFocusMode("subtasks");
     setSelectedSubtaskId(null);
     setSelectedCollaboratorId(null);
+    setMultiEnabled(false);
+    setSelectedSubtaskIds([]);
+    setSelectedCollaboratorIds([]);
+    setExitConfirmOpen(false);
+    setPendingExitAction(null);
+    setInfoSubtask(null);
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const split = splitSubtasksByFinished(subtasks);
+    if (split.pending.length === 0 && split.finished.length > 0) {
+      setMainTab("finished");
+      return;
+    }
+    if (split.finished.length === 0) {
+      userSelectedFinishedRef.current = false;
+      setMainTab("pending");
+      return;
+    }
+    if (!userSelectedFinishedRef.current) {
+      setMainTab("pending");
+    }
+  }, [open, subtasks]);
 
   if (!open) return null;
 
   const { pending, finished } = splitSubtasksByFinished(subtasks);
+  const hasPendingSubtasks = pending.length > 0;
+  const hasFinishedSubtasks = finished.length > 0;
+  const activeMainTab: MainTab = !hasFinishedSubtasks
+    ? "pending"
+    : !hasPendingSubtasks
+      ? "finished"
+      : mainTab;
   const selectedSubtask =
     pending.find((item) => item.documentId === selectedSubtaskId) ?? null;
   const selectedAssigneeIds = selectedSubtask
     ? getSubtaskAssigneeIds(selectedSubtask)
     : [];
+  const canApply = canApplyMultiAssign(
+    selectedSubtaskIds,
+    selectedCollaboratorIds,
+  );
+  const multiDirty = isMultiSelectionDirty(
+    multiEnabled,
+    selectedSubtaskIds,
+    selectedCollaboratorIds,
+  );
+
+  function clearMultiState(): void {
+    setMultiEnabled(false);
+    setSelectedSubtaskIds([]);
+    setSelectedCollaboratorIds([]);
+    setSelectedSubtaskId(null);
+    setSelectedCollaboratorId(null);
+  }
+
+  function requestExitMulti(action: PendingExitAction): void {
+    if (multiDirty) {
+      setPendingExitAction(action);
+      setExitConfirmOpen(true);
+      return;
+    }
+    applyExitAction(action);
+  }
+
+  function applyExitAction(action: PendingExitAction): void {
+    clearMultiState();
+    if (action === "go-finished") {
+      userSelectedFinishedRef.current = true;
+      setMainTab("finished");
+    }
+    setExitConfirmOpen(false);
+    setPendingExitAction(null);
+  }
+
+  function handleExitConfirmYes(): void {
+    if (pendingExitAction) {
+      applyExitAction(pendingExitAction);
+    }
+  }
+
+  function handleExitConfirmNo(): void {
+    setExitConfirmOpen(false);
+    setPendingExitAction(null);
+  }
+
+  function confirmIfDirty(onProceed: () => void): void {
+    if (!dirty) {
+      onProceed();
+      return;
+    }
+    showConfirmToast({
+      message: tKanban("exitUnsavedConfirm"),
+      yesLabel: tCommon("yes"),
+      noLabel: tCommon("no"),
+      onYes: onProceed,
+    });
+  }
+
+  function handleMultiEnabledChange(enabled: boolean): void {
+    if (!enabled) {
+      requestExitMulti("disable-multi");
+      return;
+    }
+    confirmIfDirty(() => {
+      setMultiEnabled(true);
+      setSelectedSubtaskIds([]);
+      setSelectedCollaboratorIds([]);
+      setSelectedSubtaskId(null);
+      setSelectedCollaboratorId(null);
+    });
+  }
+
+  function handleMainTabChange(next: MainTab): void {
+    if (next !== "finished") {
+      userSelectedFinishedRef.current = false;
+      setMainTab(next);
+      return;
+    }
+    if (dirty) {
+      confirmIfDirty(() => {
+        userSelectedFinishedRef.current = true;
+        if (multiEnabled) {
+          applyExitAction("go-finished");
+          return;
+        }
+        setMainTab("finished");
+      });
+      return;
+    }
+    if (multiEnabled) {
+      requestExitMulti("go-finished");
+      return;
+    }
+    userSelectedFinishedRef.current = true;
+    setMainTab("finished");
+  }
+
+  function handleAddSubtask(): void {
+    if (!onAddSubtask) return;
+    confirmIfDirty(onAddSubtask);
+  }
 
   function handleFocusModeChange(next: FocusMode): void {
+    if (multiEnabled) return;
     setFocusMode(next);
     setSelectedSubtaskId(null);
     setSelectedCollaboratorId(null);
   }
 
+  function requestClose(): void {
+    confirmIfDirty(onClose);
+  }
+
   function handlePendingSubtaskClick(subtask: BoardSubTaskSummary): void {
+    if (multiEnabled) {
+      setSelectedSubtaskIds((current) =>
+        toggleIdInSet(current, subtask.documentId),
+      );
+      return;
+    }
+
     if (focusMode === "subtasks") {
       setSelectedSubtaskId((current) =>
         current === subtask.documentId ? null : subtask.documentId,
@@ -178,7 +376,10 @@ export function KanbanTaskSubtasksModal({
       return;
     }
 
-    if (!selectedCollaboratorId) return;
+    if (!selectedCollaboratorId) {
+      showHintToast(tKanban("chooseCollaboratorFirst"));
+      return;
+    }
     const nextIds = toggleCollaboratorOnSubtask(
       getSubtaskAssigneeIds(subtask),
       selectedCollaboratorId,
@@ -187,6 +388,13 @@ export function KanbanTaskSubtasksModal({
   }
 
   function handleCollaboratorClick(collaboratorId: string): void {
+    if (multiEnabled) {
+      setSelectedCollaboratorIds((current) =>
+        toggleIdInSet(current, collaboratorId),
+      );
+      return;
+    }
+
     if (focusMode === "teams") {
       setSelectedCollaboratorId((current) =>
         current === collaboratorId ? null : collaboratorId,
@@ -194,7 +402,10 @@ export function KanbanTaskSubtasksModal({
       return;
     }
 
-    if (!selectedSubtask) return;
+    if (!selectedSubtask) {
+      showHintToast(tKanban("chooseSubtaskFirst"));
+      return;
+    }
     const nextIds = toggleCollaboratorOnSubtask(
       getSubtaskAssigneeIds(selectedSubtask),
       collaboratorId,
@@ -203,16 +414,84 @@ export function KanbanTaskSubtasksModal({
   }
 
   function handleTeamClick(team: TeamAssignmentOption): void {
+    const teamIds = getTeamMemberIds(team);
+    if (multiEnabled) {
+      setSelectedCollaboratorIds((current) =>
+        toggleTeamMembersInSelection(current, teamIds),
+      );
+      return;
+    }
+
     if (focusMode === "teams") return;
-    if (!selectedSubtask) return;
+    if (!selectedSubtask) {
+      showHintToast(tKanban("chooseSubtaskFirst"));
+      return;
+    }
     const nextIds = toggleTeamOnSubtask(
       getSubtaskAssigneeIds(selectedSubtask),
-      getTeamMemberIds(team),
+      teamIds,
     );
     onAssigneesChange(selectedSubtask, nextIds);
   }
 
+  function applyUpdates(
+    updates: ReturnType<typeof buildMultiAssignUpdates>,
+  ): void {
+    for (const update of updates) {
+      const subtask = subtasks.find(
+        (item) => item.documentId === update.documentId,
+      );
+      if (!subtask) continue;
+      onAssigneesChange(subtask, update.assignedToIds);
+    }
+  }
+
+  function handleMultiAssign(): void {
+    const counts = countMultiSelection(
+      selectedSubtaskIds,
+      selectedCollaboratorIds,
+    );
+    applyUpdates(
+      buildMultiAssignUpdates(
+        pending,
+        selectedSubtaskIds,
+        selectedCollaboratorIds,
+      ),
+    );
+    showSuccessToast(
+      tKanban("multiAssignToast", {
+        subtaskCount: counts.subtaskCount,
+        collaboratorCount: counts.collaboratorCount,
+      }),
+    );
+    clearMultiState();
+  }
+
+  function handleMultiRemove(): void {
+    const counts = countMultiSelection(
+      selectedSubtaskIds,
+      selectedCollaboratorIds,
+    );
+    applyUpdates(
+      buildMultiRemoveUpdates(
+        pending,
+        selectedSubtaskIds,
+        selectedCollaboratorIds,
+      ),
+    );
+    showSuccessToast(
+      tKanban("multiRemoveToast", {
+        subtaskCount: counts.subtaskCount,
+        collaboratorCount: counts.collaboratorCount,
+      }),
+    );
+    clearMultiState();
+  }
+
   function isPendingSubtaskHighlighted(subtask: BoardSubTaskSummary): boolean {
+    if (multiEnabled) {
+      return selectedSubtaskIds.includes(subtask.documentId);
+    }
     if (focusMode === "subtasks") {
       return subtask.documentId === selectedSubtaskId;
     }
@@ -221,152 +500,213 @@ export function KanbanTaskSubtasksModal({
   }
 
   function isCollaboratorActive(collaboratorId: string): boolean {
+    if (multiEnabled) {
+      return selectedCollaboratorIds.includes(collaboratorId);
+    }
     if (focusMode === "teams") {
       return collaboratorId === selectedCollaboratorId;
     }
     return selectedAssigneeIds.includes(collaboratorId);
   }
 
-  const teamsDisabled =
-    focusMode === "subtasks" && selectedSubtaskId === null;
+  const teamsColumnLooksIdle =
+    !multiEnabled && focusMode === "subtasks" && selectedSubtaskId === null;
+
+  const infoPayment = infoSubtask
+    ? calculateSubtaskPayment(
+        infoSubtask.expectedTime,
+        paymentCurrency.currencyPerSecond,
+      )
+    : 0;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 sm:p-4"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="kanban-subtasks-title"
-        className={cn(
-          "relative flex h-dvh w-full max-w-none flex-col border-0",
-          "rounded-none bg-background p-4 shadow-none sm:h-auto sm:max-h-[90vh]",
-          "sm:max-w-4xl sm:rounded-lg sm:border sm:p-6 sm:shadow-lg",
-        )}
-        onClick={(event) => event.stopPropagation()}
+    <>
+      <FormModalShell
+        open
+        title={tKanban("subtasksTitle")}
+        titleId="kanban-subtasks-title"
+        onClose={requestClose}
+        disabled={saving}
+        size="xl"
+        layout="viewport"
+        footerEnd={
+          <>
+            {onAddSubtask ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={saving}
+                onClick={handleAddSubtask}
+              >
+                {tKanban("addSubtask")}
+              </Button>
+            ) : null}
+            <Button type="button" disabled={!dirty || saving} onClick={onSave}>
+              {tCommon("save")}
+            </Button>
+          </>
+        }
       >
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="absolute top-3 right-3"
-          aria-label={tCommon("close")}
-          onClick={onClose}
-        >
-          <X className="size-4" aria-hidden />
-        </Button>
+        <p className="text-sm text-muted-foreground">{taskName}</p>
 
-        <div className="flex min-h-0 flex-1 flex-col space-y-4">
-          <div className="space-y-1 pr-8">
-            <h2
-              id="kanban-subtasks-title"
-              className="text-lg font-semibold"
-            >
-              {tKanban("subtasksTitle")}
-            </h2>
-            <p className="text-sm text-muted-foreground">{taskName}</p>
-          </div>
-
+        {hasPendingSubtasks || hasFinishedSubtasks ? (
           <div
             role="tablist"
             aria-label={tKanban("subtasksTitle")}
             className="flex gap-4 border-b"
           >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mainTab === "pending"}
-              className={cn(
-                "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
-                mainTab === "pending"
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-              onClick={() => setMainTab("pending")}
-            >
-              {tKanban("pendingTab")}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mainTab === "finished"}
-              className={cn(
-                "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
-                mainTab === "finished"
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-              onClick={() => setMainTab("finished")}
-            >
-              {tKanban("finishedTab")}
-            </button>
+            {hasPendingSubtasks ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeMainTab === "pending"}
+                className={cn(
+                  "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
+                  activeMainTab === "pending"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
+                )}
+                onClick={() => handleMainTabChange("pending")}
+              >
+                {tKanban("pendingTab")}
+              </button>
+            ) : null}
+            {hasFinishedSubtasks ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeMainTab === "finished"}
+                className={cn(
+                  "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
+                  activeMainTab === "finished"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
+                )}
+                onClick={() => handleMainTabChange("finished")}
+              >
+                {tKanban("finishedTab")}
+              </button>
+            ) : null}
           </div>
+        ) : null}
 
-          {loading ? (
-            <p className="text-sm text-muted-foreground" role="status">
-              {tKanban("loading")}
-            </p>
-          ) : subtasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground" role="status">
-              {tKanban("subtasksEmpty")}
-            </p>
-          ) : mainTab === "finished" ? (
-            <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-2.5">
-              {finished.length === 0 ? (
-                <li className="text-sm text-muted-foreground" role="status">
-                  {tKanban("subtasksEmpty")}
-                </li>
-              ) : (
-                finished.map((subtask) => (
-                  <li
-                    key={subtask.documentId}
-                    className="relative rounded-lg border bg-background p-3"
-                  >
-                    <SubTaskUnassignedFloatingBadge
-                      assignedCount={subtask.assignedTo.length}
-                    />
-                    <SubTaskCardHeader
-                      name={subtask.name}
-                      status={subtask.status}
-                      statusLabel={tStatus(subtask.status)}
-                      workingCount={subtask.openActivityStartedAts.length}
-                    />
-                    <div className="mb-3">
-                      <SubTaskProgressBar
-                        status={subtask.status}
-                        expectedTime={subtask.expectedTime}
-                        timeSpent={subtask.timeSpent}
-                        openActivityStartedAts={subtask.openActivityStartedAts}
-                        usePersistedRemaining
+        {loading ? (
+          <p className="text-sm text-muted-foreground" role="status">
+            {tKanban("loading")}
+          </p>
+        ) : subtasks.length === 0 ? (
+          <p className="text-sm text-muted-foreground" role="status">
+            {tKanban("subtasksEmpty")}
+          </p>
+        ) : activeMainTab === "finished" ? (
+          <ul
+            className={cn(
+              "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-2.5",
+              FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS,
+            )}
+          >
+            {finished.length === 0 ? (
+              <li className="text-sm text-muted-foreground" role="status">
+                {tKanban("subtasksEmpty")}
+              </li>
+            ) : (
+              finished.map((subtask) => {
+                const participantCount = countSessionParticipants(
+                  subtask.sessions,
+                );
+                const finishedAt = resolveLatestSessionFinishedAt(
+                  subtask.sessions,
+                );
+                const finishedParts = finishedAt
+                  ? splitDateTimePtBr(finishedAt)
+                  : null;
+                return (
+                  <li key={subtask.documentId}>
+                    <button
+                      type="button"
+                      className={cn(
+                        "relative w-full rounded-lg border bg-background p-3",
+                        "text-left transition-colors hover:bg-muted/40",
+                      )}
+                      onClick={() => setInfoSubtask(subtask)}
+                    >
+                      <SubTaskUnassignedFloatingBadge
+                        assignedCount={subtask.assignedTo.length}
                       />
-                    </div>
-                    <SubTaskSessionsPanel
-                      sessions={subtask.sessions}
-                      sharingType={subtask.sharingType}
-                    />
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="min-w-0 flex-1 font-medium">
+                          {subtask.name}
+                        </span>
+                        <span
+                          className="inline-flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground"
+                          aria-label={tKanban("finishedParticipants", {
+                            count: participantCount,
+                          })}
+                        >
+                          <Users className="size-3.5 shrink-0" aria-hidden />
+                          <span>{participantCount}</span>
+                        </span>
+                      </div>
+                      <div className="mt-1 space-y-1">
+                        <TimeMetrics
+                          expectedTime={subtask.expectedTime}
+                          timeSpent={subtask.timeSpent}
+                        />
+                        {finishedAt && finishedParts ? (
+                          <StackedDateTime
+                            value={finishedAt}
+                            className="text-xs text-muted-foreground"
+                            aria-label={tKanban("finishedAt", {
+                              date: finishedParts.date,
+                              time: finishedParts.time,
+                            })}
+                          />
+                        ) : null}
+                      </div>
+                    </button>
                   </li>
-                ))
-              )}
-            </ul>
-          ) : (
+                );
+              })
+            )}
+          </ul>
+        ) : (
+          <div
+            className={cn(
+              "flex min-h-0 min-w-0 flex-1 flex-col gap-4",
+              FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS,
+            )}
+          >
+            <KanbanMultiAssignToolbar
+              multiEnabled={multiEnabled}
+              canApply={canApply}
+              disabled={saving}
+              onMultiEnabledChange={handleMultiEnabledChange}
+              onAssign={handleMultiAssign}
+              onRemove={handleMultiRemove}
+            />
+
             <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[7fr_3fr] gap-4">
               <section className="flex min-h-0 min-w-0 flex-col gap-2">
-                <button
-                  type="button"
-                  aria-pressed={focusMode === "subtasks"}
-                  className={cn(
-                    "text-left text-sm font-semibold transition-colors",
-                    focusMode === "subtasks"
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                  onClick={() => handleFocusModeChange("subtasks")}
-                >
-                  {tKanban("subtasksColumn")}
-                </button>
-                <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-2.5">
+                {multiEnabled ? (
+                  <p className="text-sm font-semibold text-foreground">
+                    {tKanban("subtasksColumn")}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    aria-pressed={focusMode === "subtasks"}
+                    className={cn(
+                      "text-left text-sm font-semibold transition-colors",
+                      focusMode === "subtasks"
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                    onClick={() => handleFocusModeChange("subtasks")}
+                  >
+                    {tKanban("subtasksColumn")}
+                  </button>
+                )}
+                <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pt-2 pr-2.5">
                   {pending.length === 0 ? (
                     <li className="text-sm text-muted-foreground" role="status">
                       {tKanban("subtasksEmpty")}
@@ -407,9 +747,6 @@ export function KanbanTaskSubtasksModal({
                               openActivityStartedAts={
                                 subtask.openActivityStartedAts
                               }
-                              usePersistedRemaining={
-                                subtask.status === FINISHED_STATUS
-                              }
                             />
                           </button>
                         </li>
@@ -420,42 +757,50 @@ export function KanbanTaskSubtasksModal({
               </section>
 
               <section className="flex min-h-0 min-w-0 flex-col gap-2">
-                <button
-                  type="button"
-                  aria-pressed={focusMode === "teams"}
-                  className={cn(
-                    "text-left text-sm font-semibold transition-colors",
-                    focusMode === "teams"
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                  onClick={() => handleFocusModeChange("teams")}
-                >
-                  {tKanban("teamsColumn")}
-                </button>
+                {multiEnabled ? (
+                  <p className="text-sm font-semibold text-foreground">
+                    {tKanban("teamsColumn")}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    aria-pressed={focusMode === "teams"}
+                    className={cn(
+                      "text-left text-sm font-semibold transition-colors",
+                      focusMode === "teams"
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                    onClick={() => handleFocusModeChange("teams")}
+                  >
+                    {tKanban("teamsColumn")}
+                  </button>
+                )}
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto pr-2.5">
                   {teams.map((team) => {
                     const teamIds = getTeamMemberIds(team);
-                    const teamAllSelected =
-                      focusMode === "subtasks" &&
-                      areAllSelected(teamIds, selectedAssigneeIds);
+                    const teamAllSelected = multiEnabled
+                      ? areAllSelected(teamIds, selectedCollaboratorIds)
+                      : focusMode === "subtasks" &&
+                        areAllSelected(teamIds, selectedAssigneeIds);
+                    const showTeamAsButton =
+                      multiEnabled || focusMode === "subtasks";
 
                     return (
                       <Card key={team.documentId} className="min-w-0 shadow-sm">
-                        {focusMode === "subtasks" ? (
+                        {showTeamAsButton ? (
                           <button
                             type="button"
                             className={cn(
                               "w-full px-3 pt-3 text-left text-xs font-medium",
-                              teamsDisabled || teamIds.length === 0
+                              (!multiEnabled &&
+                                (teamsColumnLooksIdle ||
+                                  teamIds.length === 0)) ||
+                                (multiEnabled && teamIds.length === 0)
                                 ? "cursor-default text-muted-foreground"
                                 : "text-muted-foreground hover:text-foreground",
                             )}
-                            disabled={
-                              saving ||
-                              teamsDisabled ||
-                              teamIds.length === 0
-                            }
+                            disabled={saving || teamIds.length === 0}
                             aria-pressed={teamAllSelected}
                             aria-label={tSubtasks("toggleTeamMembers", {
                               team: team.name,
@@ -487,18 +832,16 @@ export function KanbanTaskSubtasksModal({
                                 assignedCount,
                                 assignWarnMax,
                               );
+                              const memberDisabled = saving;
                               return (
                                 <button
                                   key={member.documentId}
                                   type="button"
                                   className="relative max-w-full min-w-0"
-                                  disabled={
-                                    saving ||
-                                    (focusMode === "subtasks" && teamsDisabled)
-                                  }
+                                  disabled={memberDisabled}
                                   aria-pressed={active}
                                   aria-label={
-                                    focusMode === "teams"
+                                    multiEnabled || focusMode === "teams"
                                       ? member.name
                                       : active
                                         ? tSubtasks("unassignMember", {
@@ -528,9 +871,7 @@ export function KanbanTaskSubtasksModal({
                                     title={member.name}
                                     className={cn(
                                       "max-w-full cursor-pointer truncate transition-colors",
-                                      (saving ||
-                                        (focusMode === "subtasks" &&
-                                          teamsDisabled)) &&
+                                      memberDisabled &&
                                         "pointer-events-none opacity-50",
                                       active
                                         ? "border-primary bg-primary text-primary-foreground"
@@ -550,25 +891,64 @@ export function KanbanTaskSubtasksModal({
                 </div>
               </section>
             </div>
-          )}
-
-          <div className="flex shrink-0 justify-end gap-2">
-            {onAddSubtask ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={saving}
-                onClick={onAddSubtask}
-              >
-                {tKanban("addSubtask")}
-              </Button>
-            ) : null}
-            <Button type="button" disabled={!dirty || saving} onClick={onSave}>
-              {tCommon("save")}
-            </Button>
           </div>
-        </div>
-      </div>
-    </div>
+        )}
+      </FormModalShell>
+
+      <FormModalShell
+        open={infoSubtask !== null}
+        title={tKanban("infoTitle")}
+        onClose={() => setInfoSubtask(null)}
+        size="lg"
+      >
+        {infoSubtask ? (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="min-w-0 truncate font-medium">
+                  {infoSubtask.name}
+                </p>
+                <span
+                  className="inline-flex shrink-0 items-center gap-1 tabular-nums text-muted-foreground"
+                  aria-label={tKanban("subtaskPayment", {
+                    count: infoPayment,
+                    currency: paymentCurrency.pluralTitle || tBalance("stars"),
+                  })}
+                >
+                  <CurrencyMediaIcon
+                    url={paymentCurrency.iconUrl}
+                    className="size-4"
+                  />
+                  <span>{infoPayment}</span>
+                </span>
+              </div>
+              <TimeMetrics
+                expectedTime={infoSubtask.expectedTime}
+                timeSpent={infoSubtask.timeSpent}
+              />
+            </div>
+            <SubTaskSessionsPanel
+              sessions={infoSubtask.sessions}
+              sharingType={infoSubtask.sharingType}
+              expectedTime={infoSubtask.expectedTime}
+              timeSpent={infoSubtask.timeSpent}
+              paymentCurrency={paymentCurrency}
+              totalsFirst
+            />
+          </div>
+        ) : null}
+      </FormModalShell>
+
+      <ConfirmDialog
+        open={exitConfirmOpen}
+        title={tKanban("multiExitTitle")}
+        description={tKanban("multiExitConfirm")}
+        cancelLabel={tCommon("yes")}
+        confirmLabel={tCommon("no")}
+        confirmVariant="default"
+        onClose={handleExitConfirmYes}
+        onConfirm={handleExitConfirmNo}
+      />
+    </>
   );
 }

@@ -11,11 +11,9 @@ export default async function KioskStaffPage({ params }: PageProps) {
   const staffUser = await loadKioskStaffUser(userId);
 
   return (
-    <section className="p-6">
-      <KioskStaffHome
-        userId={userId}
-        canSignOut={canKioskSignOutDevice(staffUser?.role)}
-      />
-    </section>
+    <KioskStaffHome
+      userId={userId}
+      canSignOut={canKioskSignOutDevice(staffUser?.role)}
+    />
   );
 }

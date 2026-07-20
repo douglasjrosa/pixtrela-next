@@ -4,7 +4,6 @@ import { Lock } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { Button } from "@/components/ui/button";
 import {
   canCompleteSubTaskOnExit,
   getRemainingSubTaskQty,
@@ -19,6 +18,7 @@ import { Duration } from "@/components/ui/duration";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 
+import { KioskActionButton } from "./kiosk-action-button";
 import { KioskExitSubtaskForm } from "./kiosk-exit-subtask-form";
 import { SubtaskElapsedTimer } from "./subtask-elapsed-timer";
 
@@ -27,6 +27,7 @@ export interface KioskSubtaskPanelProps {
   allSubTasks?: KioskSubTask[];
   readOnly?: boolean;
   highlightProducing?: boolean;
+  flashDocumentId?: string | null;
   onStart?: (documentId: string) => void | Promise<void>;
   onExit?: (documentId: string, input: KioskExitInput) => void | Promise<void>;
   pending?: boolean;
@@ -37,6 +38,7 @@ export function KioskSubtaskPanel({
   allSubTasks,
   readOnly = false,
   highlightProducing = false,
+  flashDocumentId,
   onStart,
   onExit,
   pending,
@@ -57,36 +59,38 @@ export function KioskSubtaskPanel({
           !readOnly && shouldShowExitButton(queueContext, subTask);
         const isProducing = subTask.status === "producing";
         const isExiting = exitingId === subTask.documentId;
+        const isFlashing = flashDocumentId === subTask.documentId;
 
         return (
           <li
             key={subTask.documentId}
             className={cn(
-              "relative rounded-lg border p-4",
-              finished && "border-muted bg-muted/40 opacity-80",
-              locked && "bg-muted/50",
+              "relative rounded-2xl border bg-card p-4 transition-colors duration-300",
+              finished && "border-muted bg-muted opacity-80",
+              locked && "bg-muted",
               highlightProducing &&
                 isProducing &&
-                "border-primary shadow-sm",
+                "border-l-4 border-l-[var(--success)] shadow-sm",
+              isFlashing && "bg-muted",
             )}
           >
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-col gap-4">
+              <div className="min-w-0 space-y-1">
                 {subTask.taskName ? (
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                     {subTask.taskName}
                   </p>
                 ) : null}
-                <p className="font-medium">{subTask.name}</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-lg font-semibold leading-snug">{subTask.name}</p>
+                <p className="text-base text-muted-foreground">
                   {tStatus(subTask.status)}
                 </p>
                 {isProducing && subTask.startedAt ? (
-                  <div className="space-y-2 text-sm text-muted-foreground">
+                  <div className="space-y-2 text-base text-muted-foreground">
                     <p>
                       {t("startedAt")}: {formatDateTimePtBr(subTask.startedAt)}
                     </p>
-                    <p className="flex items-center gap-2">
+                    <p className="flex flex-wrap items-center gap-2">
                       <span>{t("elapsed")}:</span>
                       <SubtaskElapsedTimer
                         startedAt={subTask.startedAt}
@@ -96,7 +100,7 @@ export function KioskSubtaskPanel({
                   </div>
                 ) : null}
                 {finished ? (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-base text-muted-foreground">
                     {t("timeSpent")}:{" "}
                     <span className="tabular-nums">
                       <Duration seconds={subTask.timeSpent} />
@@ -105,25 +109,24 @@ export function KioskSubtaskPanel({
                 ) : null}
               </div>
               {!finished && !isExiting ? (
-                <div className="flex shrink-0 gap-2">
+                <div className="flex w-full flex-col gap-2">
                   {showStart ? (
-                    <Button
-                      type="button"
+                    <KioskActionButton
+                      actionVariant="produce"
                       disabled={pending}
                       onClick={() => onStart?.(subTask.documentId)}
                     >
                       {t("start")}
-                    </Button>
+                    </KioskActionButton>
                   ) : null}
                   {showExit ? (
-                    <Button
-                      type="button"
-                      variant="outline"
+                    <KioskActionButton
+                      actionVariant="outline"
                       disabled={pending}
                       onClick={() => setExitingId(subTask.documentId)}
                     >
                       {t("exitSubtask")}
-                    </Button>
+                    </KioskActionButton>
                   ) : null}
                 </div>
               ) : null}

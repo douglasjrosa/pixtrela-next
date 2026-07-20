@@ -2,18 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { saveKioskColaboratorAvatar, saveKioskColaboratorPassword } from "@/app/kiosk/staff/[userId]/users/actions";
+import { saveKioskColaboratorFacePhoto, saveKioskColaboratorPassword } from "@/app/kiosk/staff/[userId]/users/actions";
 import { KIOSK_HOME_PATH } from "@/lib/auth/colaborator-routes";
 import { renderWithIntl } from "@/test/test-utils";
 import { KioskStaffUsersPanel } from "./kiosk-staff-users-panel";
 
 vi.mock("@/app/kiosk/staff/[userId]/users/actions", () => ({
   saveKioskColaboratorPassword: vi.fn(),
-  saveKioskColaboratorAvatar: vi.fn(),
+  saveKioskColaboratorFacePhoto: vi.fn(),
 }));
 
 const savePassword = vi.mocked(saveKioskColaboratorPassword);
-const saveAvatar = vi.mocked(saveKioskColaboratorAvatar);
+const saveFacePhoto = vi.mocked(saveKioskColaboratorFacePhoto);
 const showSuccessToast = vi.fn();
 const showErrorToast = vi.fn();
 const replace = vi.fn();
@@ -45,14 +45,17 @@ async function submitPassword(user: ReturnType<typeof userEvent.setup>) {
 describe("KioskStaffUsersPanel", () => {
   beforeEach(() => {
     savePassword.mockReset();
-    saveAvatar.mockReset();
+    saveFacePhoto.mockReset();
     showSuccessToast.mockReset();
     showErrorToast.mockReset();
     replace.mockReset();
     savePassword.mockResolvedValue({ ok: true });
-    saveAvatar.mockResolvedValue({ ok: true, avatarUrl: "/uploads/avatar.jpg" });
+    saveFacePhoto.mockResolvedValue({
+      ok: true,
+      facePhotoUrl: "/uploads/face.jpg",
+    });
   });
-  it("shows only the password form after selecting a colaborator", async () => {
+  it("shows face photo and password forms after selecting a colaborator", async () => {
     const user = userEvent.setup();
 
     renderWithIntl(
@@ -66,6 +69,9 @@ describe("KioskStaffUsersPanel", () => {
     await user.click(screen.getByRole("button", { name: /Ana Costa/i }));
 
     expect(screen.getByRole("heading", { name: "Ana Costa" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Foto para reconhecimento facial" }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Bruno Lima")).toBeNull();
     expect(screen.getByRole("button", { name: "Voltar para a lista" })).toBeInTheDocument();
   });

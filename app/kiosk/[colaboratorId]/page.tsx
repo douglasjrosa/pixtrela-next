@@ -76,12 +76,10 @@ export default async function KioskColaboratorPage({ params }: PageProps) {
   const subTasks = await loadAssignedSubTasks(colaboratorId);
 
   return (
-    <section className="p-6">
-      <KioskPanelClient
-        colaboratorId={colaboratorId}
-        subTasks={subTasks}
-        readOnly={readOnly}
-      />
-    </section>
+    <KioskPanelClient
+      colaboratorId={colaboratorId}
+      subTasks={subTasks}
+      readOnly={readOnly}
+    />
   );
 }

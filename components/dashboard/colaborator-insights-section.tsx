@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 
+import { ColaboratorDailyGain } from "@/components/colaborator/colaborator-daily-gain";
 import type { Role } from "@/lib/auth/nav";
 import type {
   ColaboratorInsightsData,
@@ -37,6 +38,15 @@ export function ColaboratorInsightsSection({
 }: ColaboratorInsightsSectionProps) {
   const t = useTranslations("dashboard");
 
+  if (mode === "self") {
+    return (
+      <ColaboratorDailyGain
+        insights={insights}
+        currencyRankings={currencyRankings}
+      />
+    );
+  }
+
   return (
     <section className="space-y-6">
       <div>
@@ -44,7 +54,7 @@ export function ColaboratorInsightsSection({
         <p className="text-sm text-muted-foreground">{t("insightsDescription")}</p>
       </div>
 
-      {mode === "staff" && role !== "colaborator" ? (
+      {role !== "colaborator" ? (
         <ColaboratorPicker
           options={colaboratorOptions}
           selectedDocumentId={selectedDocumentId}

@@ -1,12 +1,22 @@
+import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import {
   CurrencyForm,
-  type CurrencyRate,
 } from "@/components/settings/currency-form";
-import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import {
+  CurrencyManager,
+  type CurrencyRow,
+} from "@/components/settings/currency-manager";
 import { loadCurrencyForSubtasks } from "@/lib/strapi/currency-for-subtasks";
+import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
-import { updateCurrencyForSubtasks, updateCurrencyRates } from "../actions";
+import { updateCurrencyForSubtasks } from "../actions";
+import {
+  createCurrency,
+  deleteCurrency,
+  updateCurrency,
+  uploadCurrencyIcon,
+} from "./actions";
 
 interface StrapiList<T> {
   data: T[];
@@ -18,15 +28,27 @@ interface CurrencyEntity {
   title?: string | null;
   pluralTitle?: string | null;
   currencyPerSecond: number;
+  iconMedia?: { id?: number; url?: string | null } | null;
 }
 
-async function loadCurrencies(): Promise<CurrencyRate[]> {
+async function loadCurrencies(): Promise<CurrencyRow[]> {
   try {
     const res = await strapiFetch<StrapiList<CurrencyEntity>>(
       "/currencies",
       { strapiCache: { tags: [STRAPI_TAGS.currencies], revalidate: 60 } },
       {
-        fields: ["documentId", "name", "title", "pluralTitle", "currencyPerSecond"],
+        fields: [
+          "documentId",
+          "name",
+          "title",
+          "pluralTitle",
+          "currencyPerSecond",
+        ],
+        populate: {
+          iconMedia: {
+            fields: ["id", "url"],
+          },
+        },
         sort: ["name:asc"],
         pagination: { pageSize: 100 },
       },
@@ -34,8 +56,11 @@ async function loadCurrencies(): Promise<CurrencyRate[]> {
 
     return res.data.map((currency) => ({
       documentId: currency.documentId,
+      name: currency.name,
       title: currency.title ?? "",
       pluralTitle: currency.pluralTitle ?? "",
+      iconMediaId: currency.iconMedia?.id ?? null,
+      iconMediaUrl: resolveStrapiMediaUrl(currency.iconMedia?.url ?? null),
       currencyPerSecond: Number(currency.currencyPerSecond ?? 0),
     }));
   } catch (error) {
@@ -50,24 +75,20 @@ export default async function SettingsCurrencyPage() {
     loadCurrencyForSubtasks(),
   ]);
 
-  async function handleSaveCurrency(values: {
-    currencyDocumentId: string;
-    rates: { documentId: string; currencyPerSecond: number }[];
-  }): Promise<void> {
-    "use server";
-    await Promise.all([
-      updateCurrencyForSubtasks({
-        currencyDocumentId: values.currencyDocumentId,
-      }),
-      updateCurrencyRates(values.rates),
-    ]);
-  }
-
   return (
-    <CurrencyForm
-      currencies={currencies}
-      activeCurrencyDocumentId={activeCurrency.currencyDocumentId}
-      onSave={handleSaveCurrency}
-    />
+    <div className="space-y-10">
+      <CurrencyManager
+        currencies={currencies}
+        onCreate={createCurrency}
+        onUpdate={updateCurrency}
+        onDelete={deleteCurrency}
+        onUploadIcon={uploadCurrencyIcon}
+      />
+      <CurrencyForm
+        currencies={currencies}
+        activeCurrencyDocumentId={activeCurrency.currencyDocumentId}
+        onSave={updateCurrencyForSubtasks}
+      />
+    </div>
   );
 }

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
+import { APP_LIST_PAGE_SHELL_CLASS } from "@/components/layout/app-page-layout";
 import { UserManager, type UserRow } from "@/components/users/user-manager";
 import type { Role } from "@/lib/auth/nav";
 import {
@@ -62,7 +63,7 @@ export default async function UsersPage() {
   const actorRole = role!;
 
   return (
-    <section className="p-6">
+    <section className={APP_LIST_PAGE_SHELL_CLASS}>
       <UserManager
         users={users}
         onCreate={createUser}

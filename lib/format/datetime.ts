@@ -6,6 +6,11 @@ const PT_BR_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   year: "numeric",
 };
 
+const PT_BR_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
+  hour: "2-digit",
+  minute: "2-digit",
+};
+
 function parseDateValue(value: string): Date | null {
   const dateOnly = DATE_ONLY_PATTERN.exec(value.trim());
   if (dateOnly) {
@@ -37,9 +42,30 @@ export function formatDateTimePtBr(value: string | null | undefined): string {
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleString("pt-BR", {
     ...PT_BR_DATE_OPTIONS,
-    hour: "2-digit",
-    minute: "2-digit",
+    ...PT_BR_TIME_OPTIONS,
   });
+}
+
+/** Formats time as hh:mm for pt-BR UI. */
+export function formatTimePtBr(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleTimeString("pt-BR", PT_BR_TIME_OPTIONS);
+}
+
+/** Splits an ISO datetime into stacked date + time labels for pt-BR UI. */
+export function splitDateTimePtBr(value: string | null | undefined): {
+  date: string;
+  time: string;
+} {
+  if (!value) return { date: "—", time: "" };
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return { date: "—", time: "" };
+  return {
+    date: date.toLocaleDateString("pt-BR", PT_BR_DATE_OPTIONS),
+    time: date.toLocaleTimeString("pt-BR", PT_BR_TIME_OPTIONS),
+  };
 }
 
 export function elapsedSecondsSince(

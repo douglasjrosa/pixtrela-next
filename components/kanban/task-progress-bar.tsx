@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { ProgressTrack } from "@/components/kanban/progress-track";
 import {
   resolveLiveTimeSpent,
-  resolvePersistedRemainingSeconds,
   resolveProgressMarkPercent,
   resolveProgressOkFillPercent,
   resolveProgressOverFillPercent,
@@ -21,11 +20,6 @@ export interface TaskProgressBarProps {
   progressInput: BoardTaskProgressInput;
   /** Clock; remaining and live fill recalculate from this. */
   nowMs: number;
-  /**
-   * When true, remaining uses only expected − spent (finished tasks).
-   * When false, remaining uses unfinished sub-tasks + live open sessions.
-   */
-  usePersistedRemaining?: boolean;
 }
 
 export function TaskProgressBar({
@@ -33,22 +27,17 @@ export function TaskProgressBar({
   totalExpectedTime,
   progressInput,
   nowMs,
-  usePersistedRemaining = false,
 }: TaskProgressBarProps) {
   const t = useTranslations("kanban");
 
   if (totalExpectedTime <= 0) return null;
 
   const openStarts = progressInput.openActivityStartedAts;
-  const liveSpent = usePersistedRemaining
-    ? Math.max(0, totalTimeSpent)
-    : resolveLiveTimeSpent(totalTimeSpent, openStarts, nowMs);
-  const remainingSeconds = usePersistedRemaining
-    ? resolvePersistedRemainingSeconds(totalExpectedTime, totalTimeSpent)
-    : resolveTaskRemainingSeconds(progressInput.subTasks, openStarts, nowMs);
-  const overFillPercent = resolveProgressOverFillPercent(
-    totalExpectedTime,
-    liveSpent,
+  const liveSpent = resolveLiveTimeSpent(totalTimeSpent, openStarts, nowMs);
+  const remainingSeconds = resolveTaskRemainingSeconds(
+    progressInput.subTasks,
+    openStarts,
+    nowMs,
   );
 
   return (
@@ -59,8 +48,10 @@ export function TaskProgressBar({
       remainingSec={remainingSeconds}
       markPercent={resolveProgressMarkPercent(totalExpectedTime, liveSpent)}
       okFillPercent={resolveProgressOkFillPercent(totalExpectedTime, liveSpent)}
-      overFillPercent={overFillPercent}
-      okFillSuccess={usePersistedRemaining && overFillPercent === 0}
+      overFillPercent={resolveProgressOverFillPercent(
+        totalExpectedTime,
+        liveSpent,
+      )}
     />
   );
 }

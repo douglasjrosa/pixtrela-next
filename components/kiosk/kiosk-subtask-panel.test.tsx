@@ -58,7 +58,7 @@ describe("KioskSubtaskPanel", () => {
     expect(
       within(unlockedItem!).queryByTestId("subtask-locked-overlay"),
     ).toBeNull();
-    expect(lockedItem).toHaveClass("bg-muted/50");
+    expect(lockedItem).toHaveClass("bg-muted");
   });
 
   it("shows only start on unlocked startable subtasks when idle", () => {

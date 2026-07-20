@@ -42,8 +42,8 @@ describe("AwardManager", () => {
         canDelete={false}
       />,
     );
-    expect(screen.getByText("Arroz")).toBeInTheDocument();
-    expect(screen.getByText("50 Estrela")).toBeInTheDocument();
+    expect(screen.getAllByText("Arroz").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("50 Estrela").length).toBeGreaterThan(0);
   });
 
   it("hides award form by default", () => {
@@ -97,12 +97,29 @@ describe("AwardManager", () => {
         canDelete={false}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Arroz" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Arroz" })[0]!);
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Editar prêmio" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toHaveValue("Arroz");
+  });
+
+  it("shows delete action in edit modal when canDelete is true", () => {
+    renderWithIntl(
+      <AwardManager
+        awards={awards}
+        currencies={currencies}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onUploadImage={noopUpload}
+        canDelete
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Excluir" })).toBeNull();
+    fireEvent.click(screen.getAllByRole("link", { name: "Arroz" })[0]!);
+    expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
   });
 
   it("closes modal on cancel", () => {
@@ -117,8 +134,8 @@ describe("AwardManager", () => {
         canDelete={false}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Arroz" }));
-    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Arroz" })[0]!);
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 

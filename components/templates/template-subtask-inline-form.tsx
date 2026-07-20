@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import {
   applySubTaskPreset,
   type SubTaskPreset,
@@ -33,8 +34,9 @@ export interface TemplateSubTaskInlineFormProps {
   currentRowKey?: string;
   isCreate?: boolean;
   disabled?: boolean;
+  hideHeading?: boolean;
+  plain?: boolean;
   onChange: (values: TemplateSubTaskFormInput) => void;
-  onCancel?: () => void;
 }
 
 function parseFormValues(
@@ -56,11 +58,11 @@ export function TemplateSubTaskInlineForm({
   currentRowKey,
   isCreate = false,
   disabled = false,
+  hideHeading = false,
+  plain = false,
   onChange,
-  onCancel,
 }: TemplateSubTaskInlineFormProps) {
   const [dependenciesOpen, setDependenciesOpen] = useState(false);
-  const tCommon = useTranslations("common");
   const tSubtasks = useTranslations("subtasks");
   const tSharing = useTranslations("subtasks.sharingType");
 
@@ -103,7 +105,9 @@ export function TemplateSubTaskInlineForm({
 
   useEffect(() => {
     const subscription = watch((values) => {
-      onChange(parseFormValues(values as TemplateSubTaskFormInput, currentRowKey));
+      onChange(
+        parseFormValues(values as TemplateSubTaskFormInput, currentRowKey),
+      );
     });
     return () => subscription.unsubscribe();
   }, [watch, onChange, currentRowKey]);
@@ -112,10 +116,17 @@ export function TemplateSubTaskInlineForm({
   const fieldId = (name: string): string => `${formKey}-${name}`;
 
   return (
-    <div className="grid gap-4 rounded-lg border bg-muted/30 p-4 sm:grid-cols-2">
-      <h3 className="sm:col-span-2 text-base font-semibold">
-        {isCreate ? tSubtasks("newSubtask") : tCommon("edit")}
-      </h3>
+    <div
+      className={cn(
+        "grid gap-4 sm:grid-cols-2",
+        !plain && "rounded-lg border bg-muted p-4",
+      )}
+    >
+      {!hideHeading ? (
+        <h3 className="sm:col-span-2 text-base font-semibold">
+          {isCreate ? tSubtasks("newSubtask") : tSubtasks("editSubtask")}
+        </h3>
+      ) : null}
 
       {isCreate ? (
         <SubTaskNamePresetField
@@ -156,7 +167,9 @@ export function TemplateSubTaskInlineForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor={fieldId("expectedTime")}>{tSubtasks("expectedTime")}</Label>
+        <Label htmlFor={fieldId("expectedTime")}>
+          {tSubtasks("expectedTime")}
+        </Label>
         <Input
           id={fieldId("expectedTime")}
           type="number"
@@ -180,7 +193,9 @@ export function TemplateSubTaskInlineForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor={fieldId("sharingType")}>{tSubtasks("sharingTypeLabel")}</Label>
+        <Label htmlFor={fieldId("sharingType")}>
+          {tSubtasks("sharingTypeLabel")}
+        </Label>
         <select
           id={fieldId("sharingType")}
           className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
@@ -196,16 +211,6 @@ export function TemplateSubTaskInlineForm({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-        {onCancel ? (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={disabled}
-          >
-            {tCommon("cancel")}
-          </Button>
-        ) : null}
         <Button
           type="button"
           variant="outline"
@@ -224,7 +229,9 @@ export function TemplateSubTaskInlineForm({
         options={dependencyOptions}
         selectedIds={dependencyIds}
         onClose={() => setDependenciesOpen(false)}
-        onConfirm={(ids) => setValue("dependencyIds", ids, { shouldDirty: true })}
+        onConfirm={(ids) =>
+          setValue("dependencyIds", ids, { shouldDirty: true })
+        }
       />
     </div>
   );

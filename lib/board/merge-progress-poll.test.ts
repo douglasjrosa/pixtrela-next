@@ -40,7 +40,11 @@ describe("mergeBoardProgressPoll", () => {
         },
       },
       badgesByTaskId: {
-        live: { activeColaboratorCount: 2, unassignedSubTaskCount: 1 },
+        live: {
+          activeColaboratorCount: 2,
+          unassignedSubTaskCount: 1,
+          participantCount: 0,
+        },
       },
       assignedCountByColaboratorId: { "u-1": 2 },
       totalsByTaskId: {
@@ -76,7 +80,11 @@ describe("mergeBoardProgressPoll", () => {
       nowMs: 1_700_000_000_000,
       progressByTaskId: {},
       badgesByTaskId: {
-        waiting: { activeColaboratorCount: 0, unassignedSubTaskCount: 3 },
+        waiting: {
+          activeColaboratorCount: 0,
+          unassignedSubTaskCount: 3,
+          participantCount: 0,
+        },
       },
       assignedCountByColaboratorId: {},
       totalsByTaskId: {},

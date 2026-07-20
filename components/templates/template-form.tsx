@@ -24,6 +24,7 @@ export interface TemplateFormProps {
   formTitleId?: string;
   formId?: string;
   hideActions?: boolean;
+  hideTitle?: boolean;
   onSubmit: (values: TemplateFormValues) => void;
   onInvalid?: () => void;
   onCancel?: () => void;
@@ -40,6 +41,7 @@ export function TemplateForm({
   formTitleId = "template-form-title",
   formId,
   hideActions = false,
+  hideTitle = false,
   onSubmit,
   onInvalid,
   onCancel,
@@ -71,12 +73,11 @@ export function TemplateForm({
         layout === "standalone" && "rounded-lg border p-4",
       )}
     >
-      <h2
-        id={formTitleId}
-        className="sm:col-span-2 text-lg font-semibold"
-      >
-        {title}
-      </h2>
+      {hideTitle ? null : (
+        <h2 id={formTitleId} className="sm:col-span-2 text-lg font-semibold">
+          {title}
+        </h2>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor={`${formTitleId}-name`}>{tTemplates("name")}</Label>

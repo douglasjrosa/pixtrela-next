@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
+import { APP_LIST_PAGE_STACK_CLASS } from "@/components/layout/app-page-layout";
 import { SubTaskPresetManager } from "@/components/subtask-presets/subtask-preset-manager";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTemplates } from "@/lib/auth/permissions";
@@ -23,7 +24,7 @@ export default async function TemplateSubtasksPage() {
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
+    <div className={APP_LIST_PAGE_STACK_CLASS}>
       <SubTaskPresetManager presets={presets} />
     </div>
   );

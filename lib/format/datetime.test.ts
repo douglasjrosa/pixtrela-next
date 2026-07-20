@@ -4,6 +4,8 @@ import {
   elapsedSecondsSince,
   formatDatePtBr,
   formatDateTimePtBr,
+  formatTimePtBr,
+  splitDateTimePtBr,
 } from "./datetime";
 
 describe("formatDatePtBr", () => {
@@ -21,6 +23,27 @@ describe("formatDateTimePtBr", () => {
   it("formats iso datetimes with date and time", () => {
     const formatted = formatDateTimePtBr("2026-06-05T10:00:00.000Z");
     expect(formatted).toMatch(/05\/06\/2026/);
+  });
+});
+
+describe("formatTimePtBr", () => {
+  it("formats iso datetimes as hh:mm", () => {
+    const formatted = formatTimePtBr("2026-06-05T10:00:00.000Z");
+    expect(formatted).toMatch(/\d{2}:\d{2}/);
+  });
+});
+
+describe("splitDateTimePtBr", () => {
+  it("returns date and time as separate labels", () => {
+    const parts = splitDateTimePtBr("2026-07-15T22:28:00.000Z");
+    expect(parts.date).toMatch(/\d{2}\/\d{2}\/2026/);
+    expect(parts.time).toMatch(/\d{2}:\d{2}/);
+    expect(parts.date).not.toContain(",");
+    expect(parts.time).not.toContain(",");
+  });
+
+  it("returns em dash date for empty values", () => {
+    expect(splitDateTimePtBr(null)).toEqual({ date: "—", time: "" });
   });
 });
 

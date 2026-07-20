@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { ProgressTrack } from "@/components/kanban/progress-track";
 import {
   resolveLiveTimeSpent,
-  resolvePersistedRemainingSeconds,
   resolveProgressMarkPercent,
   resolveProgressOkFillPercent,
   resolveProgressOverFillPercent,
@@ -19,8 +18,6 @@ export interface SubTaskProgressBarProps {
   expectedTime: number;
   timeSpent: number;
   openActivityStartedAts: string[];
-  /** Finished subtasks use persisted remaining only. */
-  usePersistedRemaining?: boolean;
 }
 
 export function SubTaskProgressBar({
@@ -28,24 +25,23 @@ export function SubTaskProgressBar({
   expectedTime,
   timeSpent,
   openActivityStartedAts,
-  usePersistedRemaining = false,
 }: SubTaskProgressBarProps) {
   const t = useTranslations("kanban");
-  const nowMs = useLiveProgressClock(!usePersistedRemaining);
+  const nowMs = useLiveProgressClock(true);
 
   if (!shouldShowSubTaskProgress(status) || expectedTime <= 0) return null;
 
-  const liveSpent = usePersistedRemaining
-    ? Math.max(0, timeSpent)
-    : resolveLiveTimeSpent(timeSpent, openActivityStartedAts, nowMs);
-  const remainingSeconds = usePersistedRemaining
-    ? resolvePersistedRemainingSeconds(expectedTime, timeSpent)
-    : resolveSubTaskRemainingSeconds(
-        expectedTime,
-        timeSpent,
-        openActivityStartedAts,
-        nowMs,
-      );
+  const liveSpent = resolveLiveTimeSpent(
+    timeSpent,
+    openActivityStartedAts,
+    nowMs,
+  );
+  const remainingSeconds = resolveSubTaskRemainingSeconds(
+    expectedTime,
+    timeSpent,
+    openActivityStartedAts,
+    nowMs,
+  );
 
   return (
     <ProgressTrack

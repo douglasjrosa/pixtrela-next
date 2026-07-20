@@ -47,7 +47,23 @@ describe("KanbanCard", () => {
     expect(onTaskClick).toHaveBeenCalledWith(task);
   });
 
-  it("shows qty-prefixed title with delivery and status badges", () => {
+  it("shows qty-prefixed title, delivery and completion badges when finished", () => {
+    const endedAt = "2026-07-17T18:45:00.000Z";
+    const endedParts = (() => {
+      const date = new Date(endedAt);
+      return {
+        date: date.toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+        time: date.toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+    })();
+
     renderWithIntl(
       <DndContext>
         <SortableContext
@@ -61,6 +77,8 @@ describe("KanbanCard", () => {
               name: "Beccaro - Misturadeira 25kg",
               status: "finished",
               deliveryDate: "2026-07-06",
+              endedAt,
+              participantCount: 4,
             }}
           />
         </SortableContext>
@@ -70,9 +88,23 @@ describe("KanbanCard", () => {
     expect(
       screen.getByText("3 - Beccaro - Misturadeira 25kg"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Previsão")).toBeInTheDocument();
     expect(screen.getByText("06/07/2026")).toBeInTheDocument();
-    expect(screen.getByText("Finalizada")).toBeInTheDocument();
-    expect(screen.getByText("06/07/2026").className).toContain("destructive");
+    expect(screen.getByText("Conclusão")).toBeInTheDocument();
+    expect(screen.getByText(endedParts.date)).toBeInTheDocument();
+    expect(screen.getByText(endedParts.time)).toBeInTheDocument();
+    expect(screen.queryByText("Finalizada")).not.toBeInTheDocument();
+    expect(screen.getByText("Previsão").parentElement?.className).toContain(
+      "destructive",
+    );
+    expect(screen.getByText("Conclusão").parentElement?.className).toContain(
+      "secondary",
+    );
+    expect(screen.getByLabelText(/Tempo estimado/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Tempo gasto/)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("4 colaborador(es)"),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
@@ -90,6 +122,39 @@ describe("KanbanCard", () => {
 
     expect(screen.getByText("Pausada").className).toContain("bg-yellow-200");
     expect(screen.getByText("Pausada").className).toContain("text-yellow-900");
+  });
+
+  it("shows progress bar footer for waiting tasks", () => {
+    renderWithIntl(
+      <DndContext>
+        <SortableContext
+          items={[toKanbanTaskId(task.id)]}
+          strategy={verticalListSortingStrategy}
+        >
+          <KanbanCard
+            task={{
+              ...task,
+              status: "waiting",
+              totalTimeSpent: 0,
+              totalExpectedTime: 3600,
+              progressInput: {
+                subTasks: [
+                  {
+                    status: "waiting",
+                    expectedTime: 3600,
+                    timeSpent: 0,
+                  },
+                ],
+                openActivityStartedAts: [],
+              },
+              progressNowMs: Date.parse("2026-07-16T12:00:00.000Z"),
+            }}
+          />
+        </SortableContext>
+      </DndContext>,
+    );
+
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 
   it("shows progress bar footer for producing tasks", () => {

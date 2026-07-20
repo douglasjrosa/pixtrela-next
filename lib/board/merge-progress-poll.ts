@@ -18,6 +18,7 @@ export function mergeBoardProgressPoll(
           ...task,
           activeColaboratorCount: badges.activeColaboratorCount,
           unassignedSubTaskCount: badges.unassignedSubTaskCount,
+          participantCount: badges.participantCount,
         }
       : task;
 

@@ -4,17 +4,22 @@ import { auth } from "@/auth";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { BoardLiveProgress } from "@/components/board/board-live-progress";
 import type { KanbanStep, KanbanTask } from "@/components/kanban/types";
+import { APP_BOARD_SHELL_CLASS } from "@/components/layout/app-page-layout";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import type { Role } from "@/lib/auth/nav";
 import { canMoveBoardTasks } from "@/lib/auth/permissions";
 import { DEFAULT_ASSIGN_WARN_MAX } from "@/lib/business/assign-warn-max";
 import { loadBoardProgressByTaskId } from "@/lib/board/load-board-progress";
 import {
-  needsLiveBoardProgress,
   shouldShowKanbanTaskProgress,
 } from "@/lib/business/task-progress";
 import { ACTIVE_TEAM_FILTER } from "@/lib/business/team-active";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
+import {
+  loadCurrencyForSubtasks,
+  toSubtaskPaymentCurrency,
+  type SubtaskPaymentCurrency,
+} from "@/lib/strapi/currency-for-subtasks";
 import { loadTaskAutomationSetting } from "@/lib/strapi/task-automation-setting";
 
 import {
@@ -42,6 +47,7 @@ interface TaskEntity {
   status: KanbanTask["status"];
   index: number;
   deliveryDate?: string | null;
+  endedAt?: string | null;
   totalExpectedTime?: number;
   totalTimeSpent?: number;
   step?: { id: number } | null;
@@ -65,6 +71,7 @@ function mapTaskEntity(task: TaskEntity): KanbanTask {
     stepId: task.step?.id ?? null,
     index: task.index,
     deliveryDate: task.deliveryDate ?? null,
+    endedAt: task.endedAt ?? null,
     totalExpectedTime: task.totalExpectedTime ?? 0,
     totalTimeSpent: task.totalTimeSpent ?? 0,
   };
@@ -89,6 +96,7 @@ async function loadBoard(): Promise<{ steps: KanbanStep[]; tasks: KanbanTask[] }
             "status",
             "index",
             "deliveryDate",
+            "endedAt",
             "totalExpectedTime",
             "totalTimeSpent",
           ],
@@ -140,15 +148,6 @@ function withProgressPending(tasks: KanbanTask[]): KanbanTask[] {
     if (!shouldShowKanbanTaskProgress(task.status) || task.totalExpectedTime <= 0) {
       return task;
     }
-    // Finished: no live fetch — show bar from persisted totals immediately.
-    if (!needsLiveBoardProgress(task.status)) {
-      return {
-        ...task,
-        progressPending: false,
-        progressInput: { subTasks: [], openActivityStartedAts: [] },
-        progressNowMs: Date.now(),
-      };
-    }
     return { ...task, progressPending: true };
   });
 }
@@ -168,6 +167,7 @@ async function withProgressLoaded(tasks: KanbanTask[]): Promise<{
       const badgeFields = {
         activeColaboratorCount: badges?.activeColaboratorCount ?? 0,
         unassignedSubTaskCount: badges?.unassignedSubTaskCount ?? 0,
+        participantCount: badges?.participantCount ?? 0,
       };
 
       if (
@@ -175,15 +175,6 @@ async function withProgressLoaded(tasks: KanbanTask[]): Promise<{
         task.totalExpectedTime <= 0
       ) {
         return { ...task, ...badgeFields };
-      }
-      if (!needsLiveBoardProgress(task.status)) {
-        return {
-          ...task,
-          ...badgeFields,
-          progressPending: false,
-          progressInput: { subTasks: [], openActivityStartedAts: [] },
-          progressNowMs: nowMs,
-        };
       }
       return {
         ...task,
@@ -206,6 +197,7 @@ function BoardCanvas({
   interactive,
   assignWarnMax,
   assignedCountByColaboratorId,
+  paymentCurrency,
 }: {
   steps: KanbanStep[];
   tasks: KanbanTask[];
@@ -213,6 +205,7 @@ function BoardCanvas({
   interactive: boolean;
   assignWarnMax: number;
   assignedCountByColaboratorId: Record<string, number>;
+  paymentCurrency: SubtaskPaymentCurrency;
 }) {
   return (
     <BoardLiveProgress
@@ -222,6 +215,7 @@ function BoardCanvas({
       interactive={interactive}
       assignWarnMax={assignWarnMax}
       assignedCountByColaboratorId={assignedCountByColaboratorId}
+      paymentCurrency={paymentCurrency}
       pollBoardProgress={pollBoardProgress}
       applyBoardTaskOrder={applyBoardTaskOrder}
       loadSubtasks={loadBoardSubtasks}
@@ -237,12 +231,14 @@ async function BoardWithProgress({
   teams,
   interactive,
   assignWarnMax,
+  paymentCurrency,
 }: {
   steps: KanbanStep[];
   tasks: KanbanTask[];
   teams: TeamAssignmentOption[];
   interactive: boolean;
   assignWarnMax: number;
+  paymentCurrency: SubtaskPaymentCurrency;
 }) {
   const loaded = await withProgressLoaded(tasks);
   return (
@@ -253,6 +249,7 @@ async function BoardWithProgress({
       interactive={interactive}
       assignWarnMax={assignWarnMax}
       assignedCountByColaboratorId={loaded.assignedCountByColaboratorId}
+      paymentCurrency={paymentCurrency}
     />
   );
 }
@@ -261,33 +258,40 @@ export default async function BoardPage() {
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
   const interactive = canMoveBoardTasks(role);
-  const [{ steps, tasks }, teams, automation] = await Promise.all([
-    loadBoard(),
-    interactive ? loadTeamsForAssignment() : Promise.resolve([]),
-    loadTaskAutomationSetting(),
-  ]);
+  const [{ steps, tasks }, teams, automation, paymentSetting] =
+    await Promise.all([
+      loadBoard(),
+      interactive ? loadTeamsForAssignment() : Promise.resolve([]),
+      loadTaskAutomationSetting(),
+      loadCurrencyForSubtasks(),
+    ]);
   const assignWarnMax = automation.assignWarnMax ?? DEFAULT_ASSIGN_WARN_MAX;
+  const paymentCurrency = toSubtaskPaymentCurrency(paymentSetting);
 
   return (
-    <Suspense
-      fallback={
-        <BoardCanvas
+    <div className={APP_BOARD_SHELL_CLASS}>
+      <Suspense
+        fallback={
+          <BoardCanvas
+            steps={steps}
+            tasks={withProgressPending(tasks)}
+            teams={teams}
+            interactive={interactive}
+            assignWarnMax={assignWarnMax}
+            assignedCountByColaboratorId={{}}
+            paymentCurrency={paymentCurrency}
+          />
+        }
+      >
+        <BoardWithProgress
           steps={steps}
-          tasks={withProgressPending(tasks)}
+          tasks={tasks}
           teams={teams}
           interactive={interactive}
           assignWarnMax={assignWarnMax}
-          assignedCountByColaboratorId={{}}
+          paymentCurrency={paymentCurrency}
         />
-      }
-    >
-      <BoardWithProgress
-        steps={steps}
-        tasks={tasks}
-        teams={teams}
-        interactive={interactive}
-        assignWarnMax={assignWarnMax}
-      />
-    </Suspense>
+      </Suspense>
+    </div>
   );
 }

@@ -40,11 +40,15 @@ vi.mock("@/lib/strapi/task-automation-setting", () => ({
     producingStepDocumentId: string;
     pausedStepDocumentId: string;
     finishedStepDocumentId: string;
+    reviewedStepDocumentId: string;
+    deliveredStepDocumentId: string;
   }) => ({
     waitingStep: values.waitingStepDocumentId || null,
     producingStep: values.producingStepDocumentId || null,
     pausedStep: values.pausedStepDocumentId || null,
     finishedStep: values.finishedStepDocumentId || null,
+    reviewedStep: values.reviewedStepDocumentId || null,
+    deliveredStep: values.deliveredStepDocumentId || null,
   }),
 }));
 
@@ -145,6 +149,8 @@ describe("settings/actions", () => {
       producingStepDocumentId: "step-2",
       pausedStepDocumentId: "",
       finishedStepDocumentId: "step-4",
+      reviewedStepDocumentId: "step-5",
+      deliveredStepDocumentId: "",
     });
 
     expect(strapiFetch).toHaveBeenCalledWith(
@@ -157,6 +163,8 @@ describe("settings/actions", () => {
             producingStep: "step-2",
             pausedStep: null,
             finishedStep: "step-4",
+            reviewedStep: "step-5",
+            deliveredStep: null,
           },
         }),
       }),

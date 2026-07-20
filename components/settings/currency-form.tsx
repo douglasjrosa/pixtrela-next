@@ -7,47 +7,35 @@ import { useTranslations } from "next-intl";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { currencyForSubtasksSchema } from "@/lib/schemas/currency-for-subtasks";
-import { currencyRatesFormSchema } from "@/lib/schemas/currency-rates";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 const SELECT_CLASS_NAME =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm";
 
-const currencySettingsFormSchema = currencyRatesFormSchema.merge(
-  currencyForSubtasksSchema,
-);
+type ActiveCurrencyFormInput = z.infer<typeof currencyForSubtasksSchema>;
 
-type CurrencySettingsFormInput = z.infer<typeof currencySettingsFormSchema>;
-
-export interface CurrencyRate {
+export interface ActiveCurrencyOption {
   documentId: string;
   title: string;
   pluralTitle: string;
-  currencyPerSecond: number;
 }
 
 export interface CurrencyFormProps {
-  currencies: CurrencyRate[];
+  currencies: ActiveCurrencyOption[];
   activeCurrencyDocumentId: string;
-  onSave: (values: CurrencySettingsFormInput) => void | Promise<void>;
+  onSave: (values: ActiveCurrencyFormInput) => void | Promise<void>;
 }
 
-function resolveCurrencyLabel(currency: CurrencyRate): string {
-  if (currency.pluralTitle.trim().length > 0) return currency.pluralTitle;
-  if (currency.title.trim().length > 0) return currency.title;
-  return currency.documentId;
-}
-
-function resolveCurrencyTitle(currency: CurrencyRate): string {
+function resolveCurrencyTitle(currency: ActiveCurrencyOption): string {
   if (currency.title.trim().length > 0) return currency.title;
   if (currency.pluralTitle.trim().length > 0) return currency.pluralTitle;
   return currency.documentId;
 }
 
+/** Selects which currency credits Stars when sub-tasks finish. */
 export function CurrencyForm({
   currencies,
   activeCurrencyDocumentId,
@@ -57,22 +45,14 @@ export function CurrencyForm({
   const tSettings = useTranslations("settings");
   const [isPending, startTransition] = useTransition();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<CurrencySettingsFormInput>({
-    resolver: zodResolver(currencySettingsFormSchema),
+  const { register, handleSubmit } = useForm<ActiveCurrencyFormInput>({
+    resolver: zodResolver(currencyForSubtasksSchema),
     defaultValues: {
       currencyDocumentId: activeCurrencyDocumentId,
-      rates: currencies.map((currency) => ({
-        documentId: currency.documentId,
-        currencyPerSecond: currency.currencyPerSecond,
-      })),
     },
   });
 
-  function onSubmit(values: CurrencySettingsFormInput): void {
+  function onSubmit(values: ActiveCurrencyFormInput): void {
     startTransition(async () => {
       try {
         await onSave(values);
@@ -86,7 +66,14 @@ export function CurrencyForm({
 
   return (
     <section className="max-w-sm space-y-4">
-      <h2 className="text-lg font-semibold">{tSettings("currency")}</h2>
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold">
+          {tSettings("currencyActiveHeading")}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {tSettings("currencyActiveDescription")}
+        </p>
+      </div>
 
       {currencies.length === 0 ? (
         <p className="text-sm text-muted-foreground">{tSettings("noCurrencies")}</p>
@@ -109,45 +96,6 @@ export function CurrencyForm({
               ))}
             </select>
           </div>
-
-          {currencies.map((currency, index) => {
-            const label = tSettings("currencyPerSecondFor", {
-              currency: resolveCurrencyLabel(currency),
-            });
-            const fieldError = errors.rates?.[index]?.currencyPerSecond;
-
-            return (
-              <div className="space-y-2" key={currency.documentId}>
-                <input
-                  type="hidden"
-                  {...register(`rates.${index}.documentId`)}
-                />
-                <div className="flex items-center gap-3">
-                  <Label
-                    htmlFor={`currency-rate-${currency.documentId}`}
-                    className="shrink-0"
-                  >
-                    {label}
-                  </Label>
-                  <Input
-                    id={`currency-rate-${currency.documentId}`}
-                    className="flex-1"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    {...register(`rates.${index}.currencyPerSecond`, {
-                      valueAsNumber: true,
-                    })}
-                  />
-                </div>
-                {fieldError ? (
-                  <p className="text-sm text-destructive">
-                    {fieldError.message}
-                  </p>
-                ) : null}
-              </div>
-            );
-          })}
 
           <Button type="submit" disabled={isPending}>
             {tCommon("save")}

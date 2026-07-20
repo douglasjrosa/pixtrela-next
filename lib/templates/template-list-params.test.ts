@@ -11,20 +11,20 @@ describe("parseTemplateListSearchParams", () => {
   it("applies empty defaults when params are empty", () => {
     const filters = parseTemplateListSearchParams({});
     expect(filters.q).toBeUndefined();
-    expect(filters.code).toBeUndefined();
   });
 
-  it("parses q and code", () => {
-    const filters = parseTemplateListSearchParams({
-      q: "mont",
-      code: "100",
-    });
+  it("parses q", () => {
+    const filters = parseTemplateListSearchParams({ q: "mont" });
     expect(filters.q).toBe("mont");
-    expect(filters.code).toBe("100");
   });
 
   it("ignores q shorter than 3 characters", () => {
     const filters = parseTemplateListSearchParams({ q: "ab" });
+    expect(filters.q).toBeUndefined();
+  });
+
+  it("ignores legacy code query param", () => {
+    const filters = parseTemplateListSearchParams({ code: "100" });
     expect(filters.q).toBeUndefined();
   });
 });
@@ -37,19 +37,16 @@ describe("serializeTemplateListSearchParams", () => {
     expect(params.toString()).toBe("");
   });
 
-  it("includes set filters", () => {
-    const params = serializeTemplateListSearchParams({
-      q: "mont",
-      code: "100",
-    });
+  it("includes q when set", () => {
+    const params = serializeTemplateListSearchParams({ q: "mont" });
     expect(params.get("q")).toBe("mont");
-    expect(params.get("code")).toBe("100");
+    expect(params.has("code")).toBe(false);
   });
 });
 
 describe("templateListFilterKey", () => {
-  it("joins q and code", () => {
-    expect(templateListFilterKey({ q: "a", code: "b" })).toBe("a|b");
-    expect(templateListFilterKey({})).toBe("|");
+  it("uses q only", () => {
+    expect(templateListFilterKey({ q: "a" })).toBe("a");
+    expect(templateListFilterKey({})).toBe("");
   });
 });

@@ -90,7 +90,7 @@ describe("UserManager", () => {
         manageableRoles={["colaborator", "leader", "manager", "admin"]}
       />,
     );
-    expect(screen.getByText("Maria")).toBeInTheDocument();
+    expect(screen.getAllByText("Maria").length).toBeGreaterThan(0);
   });
 
   it("hides user form by default", () => {
@@ -148,7 +148,7 @@ describe("UserManager", () => {
         canSetPassword={false}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
     expect(screen.queryByLabelText("Senha")).not.toBeInTheDocument();
   });
 
@@ -170,7 +170,7 @@ describe("UserManager", () => {
     expect(screen.queryByText("Administrador")).not.toBeInTheDocument();
   });
 
-  it("shows delete action when canDelete is true", () => {
+  it("shows delete action in edit modal when canDelete is true", () => {
     renderWithIntl(
       <UserManager
         users={[users[0]!]}
@@ -181,6 +181,8 @@ describe("UserManager", () => {
         manageableRoles={["colaborator"]}
       />,
     );
+    expect(screen.queryByRole("button", { name: "Excluir" })).toBeNull();
+    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
     expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
   });
 
@@ -194,7 +196,7 @@ describe("UserManager", () => {
         manageableRoles={["colaborator"]}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Editar usuário" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toHaveValue("Maria");
@@ -211,8 +213,8 @@ describe("UserManager", () => {
         manageableRoles={["colaborator"]}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
-    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -227,7 +229,7 @@ describe("UserManager", () => {
         manageableRoles={["colaborator"]}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
     fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Maria Silva" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => {
@@ -261,8 +263,8 @@ describe("UserManager", () => {
         manageableRoles={["colaborator"]}
       />,
     );
-    expect(screen.queryByRole("button", { name: "Admin" })).not.toBeInTheDocument();
-    expect(screen.getByText("Admin")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Admin" })).not.toBeInTheDocument();
+    expect(screen.getAllByText("Admin").length).toBeGreaterThan(0);
   });
 
   it("blocks create when code is already used by another user", async () => {
@@ -302,7 +304,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => {
@@ -428,7 +430,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
     fireEvent.change(screen.getByLabelText("Nome"), {
       target: { value: "Maria Silva" },
     });
@@ -460,7 +462,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
 
     expect(
       screen.getByRole("button", { name: "Gravar link no cartão NFC" }),
@@ -498,7 +500,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
     fireEvent.click(
       screen.getByRole("button", {
         name: "Visualizar painel do kiosk do colaborador",
@@ -523,7 +525,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
 
     expect(
       screen.queryByRole("button", {
@@ -547,7 +549,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
     fireEvent.click(
       screen.getByRole("button", { name: "Gravar link no cartão NFC" }),
     );
@@ -584,7 +586,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
     fireEvent.click(
       screen.getByRole("button", { name: "Gravar link no cartão NFC" }),
     );

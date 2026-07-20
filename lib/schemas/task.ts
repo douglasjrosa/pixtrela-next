@@ -7,6 +7,8 @@ export const TASK_STATUSES = [
   "producing",
   "paused",
   "finished",
+  "reviewed",
+  "delivered",
 ] as const;
 
 export const taskFormSchema = z.object({

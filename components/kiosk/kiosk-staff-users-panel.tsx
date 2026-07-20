@@ -11,11 +11,11 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 import { cn } from "@/lib/utils";
 
 import {
-  saveKioskColaboratorAvatar,
+  saveKioskColaboratorFacePhoto,
   saveKioskColaboratorPassword,
   type KioskColaboratorPasswordResult,
 } from "@/app/kiosk/staff/[userId]/users/actions";
-import { KioskColaboratorAvatarForm } from "./kiosk-colaborator-avatar-form";
+import { KioskColaboratorFacePhotoForm } from "./kiosk-colaborator-face-photo-form";
 import { KioskColaboratorPasswordForm } from "./kiosk-colaborator-password-form";
 import { KioskSessionExitButton } from "./kiosk-session-exit-button";
 
@@ -37,7 +37,7 @@ export interface KioskStaffColaboratorRow {
   documentId: string;
   name: string;
   code: number;
-  avatarUrl?: string | null;
+  facePhotoUrl?: string | null;
 }
 
 export interface KioskStaffUsersPanelProps {
@@ -55,14 +55,16 @@ export function KioskStaffUsersPanel({
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [avatarUrls, setAvatarUrls] = useState<Record<string, string | null>>({});
+  const [facePhotoUrls, setFacePhotoUrls] = useState<
+    Record<string, string | null>
+  >({});
 
   const selectedColaborator = colaborators.find(
     (colaborator) => colaborator.documentId === selectedId,
   );
-  const selectedAvatarUrl =
+  const selectedFacePhotoUrl =
     selectedId !== null
-      ? avatarUrls[selectedId] ?? selectedColaborator?.avatarUrl ?? null
+      ? facePhotoUrls[selectedId] ?? selectedColaborator?.facePhotoUrl ?? null
       : null;
 
   function handleSelect(documentId: string): void {
@@ -73,26 +75,26 @@ export function KioskStaffUsersPanel({
     setSelectedId(null);
   }
 
-  async function handleSaveAvatar(
+  async function handleSaveFacePhoto(
     colaboratorDocumentId: string,
     file: File,
   ): Promise<boolean> {
     setPending(true);
     try {
-      const result = await saveKioskColaboratorAvatar(
+      const result = await saveKioskColaboratorFacePhoto(
         userId,
         colaboratorDocumentId,
         file,
       );
       if (!result.ok) {
-        showErrorToast(t("staffAvatarForbidden"));
+        showErrorToast(t("staffFacePhotoForbidden"));
         return false;
       }
-      setAvatarUrls((current) => ({
+      setFacePhotoUrls((current) => ({
         ...current,
-        [colaboratorDocumentId]: result.avatarUrl,
+        [colaboratorDocumentId]: result.facePhotoUrl,
       }));
-      showSuccessToast(t("staffAvatarSaved"));
+      showSuccessToast(t("staffFacePhotoSaved"));
       return true;
     } finally {
       setPending(false);
@@ -144,13 +146,20 @@ export function KioskStaffUsersPanel({
         </p>
       ) : selectedColaborator ? (
         <div className="space-y-4">
-          <Button type="button" variant="link" className="h-auto p-0" onClick={handleBackToList}>
+          <Button
+            type="button"
+            variant="link"
+            className="h-auto p-0"
+            onClick={handleBackToList}
+          >
             {t("staffBackToList")}
           </Button>
-          <KioskColaboratorAvatarForm
-            avatarUrl={selectedAvatarUrl}
+          <KioskColaboratorFacePhotoForm
+            facePhotoUrl={selectedFacePhotoUrl}
             disabled={pending}
-            onSave={(file) => handleSaveAvatar(selectedColaborator.documentId, file)}
+            onSave={(file) =>
+              handleSaveFacePhoto(selectedColaborator.documentId, file)
+            }
           />
           <KioskColaboratorPasswordForm
             colaboratorName={selectedColaborator.name}
@@ -170,7 +179,10 @@ export function KioskStaffUsersPanel({
             </thead>
             <tbody>
               {colaborators.map((colaborator) => (
-                <tr key={colaborator.documentId} className="border-b last:border-b-0">
+                <tr
+                  key={colaborator.documentId}
+                  className="border-b last:border-b-0"
+                >
                   <td colSpan={2} className="p-0">
                     <button
                       type="button"

@@ -16,6 +16,7 @@ export const STRAPI_TAGS = {
   users: "strapi:users",
   exchanges: "strapi:exchanges",
   dashboardRanking: "strapi:dashboard:ranking",
+  routeThemes: "strapi:route-themes",
 } as const;
 
 export function balanceTag(userId: string): string {

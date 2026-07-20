@@ -11,27 +11,22 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
 
-export interface CurrencyOption {
-  documentId: string;
-  name: string;
-  title?: string | null;
-}
+import { AwardsListView } from "./awards-list-view";
+import { AwardsToolbar } from "./awards-toolbar";
+import {
+  currencyLabel,
+  type AwardRow,
+  type CurrencyOption,
+} from "./types";
 
-export interface AwardRow {
-  documentId: string;
-  name: string;
-  title?: string | null;
-  description?: string | null;
-  warnings?: string | null;
-  imageId?: number | null;
-  imageUrl?: string | null;
-  values: AwardFormInput["values"];
-}
+export type { AwardRow, CurrencyOption } from "./types";
 
 export interface AwardManagerProps {
   awards: AwardRow[];
@@ -72,27 +67,14 @@ function toFormValues(
   };
 }
 
-function currencyLabel(currency: CurrencyOption): string {
-  return currency.title ?? currency.name;
-}
-
-function formatValueRow(
-  entry: AwardFormInput["values"][number],
-  currencies: CurrencyOption[],
-): string {
-  const currency = currencies.find(
-    (option) => option.documentId === entry.currencyDocumentId,
-  );
-  const label = currency ? currencyLabel(currency) : "—";
-  return `${entry.numberOf} ${label}`;
-}
-
 interface AwardFormDialogProps {
   editingAward: AwardRow | null;
   currencies: CurrencyOption[];
   isPending: boolean;
+  showDelete: boolean;
   onClose: () => void;
   onSubmit: (values: AwardFormInput) => void;
+  onDelete?: () => void;
   onUploadImage: (formData: FormData) => Promise<number>;
 }
 
@@ -100,8 +82,10 @@ function AwardFormDialog({
   editingAward,
   currencies,
   isPending,
+  showDelete,
   onClose,
   onSubmit,
+  onDelete,
   onUploadImage,
 }: AwardFormDialogProps) {
   const tCommon = useTranslations("common");
@@ -161,153 +145,160 @@ function AwardFormDialog({
     "focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
     "disabled:opacity-50",
   );
+  const formId = "award-form";
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={formTitleId}
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border bg-background p-4 shadow-lg"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="grid gap-4 sm:grid-cols-2"
+    <FormModalShell
+      open
+      title={isEditing ? tAwards("editAward") : tAwards("newAward")}
+      titleId={formTitleId}
+      onClose={onClose}
+      disabled={isPending}
+      footerStart={
+        showDelete && onDelete ? (
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={isPending}
+            onClick={onDelete}
+          >
+            {tCommon("delete")}
+          </Button>
+        ) : undefined
+      }
+      footerEnd={
+        <Button
+          type="submit"
+          form={formId}
+          disabled={isPending || currencies.length === 0}
         >
-          <h2 id={formTitleId} className="sm:col-span-2 text-lg font-semibold">
-            {isEditing ? tAwards("editAward") : tAwards("newAward")}
-          </h2>
+          {tCommon("save")}
+        </Button>
+      }
+    >
+      <form
+        id={formId}
+        onSubmit={handleSubmit(onSubmit)}
+        className="grid gap-4 sm:grid-cols-2"
+      >
+        {uploadMessage ? (
+          <p
+            role="status"
+            className="sm:col-span-2 text-sm text-muted-foreground"
+          >
+            {uploadMessage}
+          </p>
+        ) : null}
 
-          {uploadMessage ? (
-            <p
-              role="status"
-              className="sm:col-span-2 text-sm text-muted-foreground"
-            >
-              {uploadMessage}
+        <div className="space-y-2">
+          <Label htmlFor="name">{tAwards("name")}</Label>
+          <Input id="name" {...register("name")} />
+          {errors.name ? (
+            <p className="text-sm text-destructive">{errors.name.message}</p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="title">{tAwards("titleField")}</Label>
+          <Input id="title" {...register("title")} />
+        </div>
+
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="description">{tAwards("description")}</Label>
+          <textarea
+            id="description"
+            className={textareaClass}
+            {...register("description")}
+          />
+        </div>
+
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="warnings">{tAwards("warnings")}</Label>
+          <textarea
+            id="warnings"
+            className={textareaClass}
+            {...register("warnings")}
+          />
+        </div>
+
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="image">{tAwards("image")}</Label>
+          <Input
+            id="image"
+            type="file"
+            accept="image/*"
+            disabled={isPending}
+            onChange={handleImageChange}
+          />
+          <p className="text-xs text-muted-foreground">{tAwards("imageHint")}</p>
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt=""
+              role="presentation"
+              className="mt-2 h-24 w-24 rounded-md border object-cover"
+            />
+          ) : null}
+          {imageId ? (
+            <p className="text-xs text-muted-foreground">
+              {tAwards("imageAttached")}
             </p>
           ) : null}
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="name">{tAwards("name")}</Label>
-            <Input id="name" {...register("name")} />
-            {errors.name ? (
-              <p className="text-sm text-destructive">{errors.name.message}</p>
-            ) : null}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="title">{tAwards("titleField")}</Label>
-            <Input id="title" {...register("title")} />
-          </div>
-
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="description">{tAwards("description")}</Label>
-            <textarea
-              id="description"
-              className={textareaClass}
-              {...register("description")}
-            />
-          </div>
-
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="warnings">{tAwards("warnings")}</Label>
-            <textarea
-              id="warnings"
-              className={textareaClass}
-              {...register("warnings")}
-            />
-          </div>
-
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="image">{tAwards("image")}</Label>
-            <Input
-              id="image"
-              type="file"
-              accept="image/*"
-              disabled={isPending}
-              onChange={handleImageChange}
-            />
-            <p className="text-xs text-muted-foreground">{tAwards("imageHint")}</p>
-            {previewUrl ? (
-              <img
-                src={previewUrl}
-                alt=""
-                role="presentation"
-                className="mt-2 h-24 w-24 rounded-md border object-cover"
+        <div className="space-y-4 sm:col-span-2">
+          <Label>{tAwards("values")}</Label>
+          {fields.map((field, index) => (
+            <div key={field.id} className="flex flex-wrap gap-2">
+              <Input
+                type="number"
+                min={1}
+                className="w-28"
+                aria-label={tAwards("numberOf")}
+                {...register(`values.${index}.numberOf`, { valueAsNumber: true })}
               />
-            ) : null}
-            {imageId ? (
-              <p className="text-xs text-muted-foreground">
-                {tAwards("imageAttached")}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="space-y-4 sm:col-span-2">
-            <Label>{tAwards("values")}</Label>
-            {fields.map((field, index) => (
-              <div key={field.id} className="flex flex-wrap gap-2">
-                <Input
-                  type="number"
-                  min={1}
-                  className="w-28"
-                  aria-label={tAwards("numberOf")}
-                  {...register(`values.${index}.numberOf`, { valueAsNumber: true })}
-                />
-                <select
-                  className="flex h-9 min-w-40 flex-1 rounded-md border border-input bg-transparent px-3 text-sm"
-                  aria-label={tAwards("currency")}
-                  {...register(`values.${index}.currencyDocumentId`)}
+              <select
+                className={
+                  "flex h-9 min-w-40 flex-1 rounded-md border border-input " +
+                  "bg-transparent px-3 text-sm"
+                }
+                aria-label={tAwards("currency")}
+                {...register(`values.${index}.currencyDocumentId`)}
+              >
+                {currencies.map((currency) => (
+                  <option key={currency.documentId} value={currency.documentId}>
+                    {currencyLabel(currency)}
+                  </option>
+                ))}
+              </select>
+              {fields.length > 1 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => remove(index)}
                 >
-                  {currencies.map((currency) => (
-                    <option key={currency.documentId} value={currency.documentId}>
-                      {currencyLabel(currency)}
-                    </option>
-                  ))}
-                </select>
-                {fields.length > 1 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => remove(index)}
-                  >
-                    {tCommon("delete")}
-                  </Button>
-                ) : null}
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                append({
-                  numberOf: 1,
-                  currencyDocumentId: currencies[0]?.documentId ?? "",
-                })
-              }
-            >
-              {tAwards("addValue")}
-            </Button>
-          </div>
-
-          <div className="flex gap-2 sm:col-span-2">
-            <Button type="submit" disabled={isPending || currencies.length === 0}>
-              {tCommon("save")}
-            </Button>
-            <Button type="button" variant="outline" onClick={onClose}>
-              {tCommon("cancel")}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+                  {tCommon("delete")}
+                </Button>
+              ) : null}
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              append({
+                numberOf: 1,
+                currencyDocumentId: currencies[0]?.documentId ?? "",
+              })
+            }
+          >
+            {tAwards("addValue")}
+          </Button>
+        </div>
+      </form>
+    </FormModalShell>
   );
 }
 
@@ -325,6 +316,8 @@ export function AwardManager({
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [nameQuery, setNameQuery] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
 
@@ -334,17 +327,20 @@ export function AwardManager({
   function closeForm(): void {
     setFormOpen(false);
     setEditingId(null);
+    setDeleteOpen(false);
   }
 
   function startCreate(): void {
     setEditingId(null);
     setMessage(null);
+    setDeleteOpen(false);
     setFormOpen(true);
   }
 
   function startEdit(award: AwardRow): void {
     setEditingId(award.documentId);
     setMessage(null);
+    setDeleteOpen(false);
     setFormOpen(true);
   }
 
@@ -361,28 +357,36 @@ export function AwardManager({
     });
   }
 
-  function handleDelete(documentId: string): void {
-    if (!window.confirm(tCommon("delete"))) return;
+  function handleConfirmDelete(): void {
+    if (!editingId) return;
     startTransition(async () => {
-      await onDelete(documentId);
+      await onDelete(editingId);
       setMessage(tAwards("deleted"));
+      closeForm();
       router.refresh();
     });
   }
 
   const formDialogKey = editingId ?? "new";
+  const query = nameQuery.trim().toLowerCase();
+  const visibleAwards =
+    query.length === 0
+      ? awards
+      : awards.filter((award) => award.name.toLowerCase().includes(query));
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{tAwards("title")}</h1>
+    <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
+      <div className="flex shrink-0 items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold max-[500px]:text-lg">{tAwards("title")}</h1>
         <Button type="button" variant="outline" onClick={startCreate}>
           {tAwards("newAward")}
         </Button>
       </div>
 
+      <AwardsToolbar value={nameQuery} onChange={setNameQuery} />
+
       {message ? (
-        <p role="status" className="text-sm text-muted-foreground">
+        <p role="status" className="shrink-0 text-sm text-muted-foreground">
           {message}
         </p>
       ) : null}
@@ -393,56 +397,33 @@ export function AwardManager({
           editingAward={editingAward}
           currencies={currencies}
           isPending={isPending}
+          showDelete={Boolean(canDelete && editingAward)}
           onClose={closeForm}
           onSubmit={onSubmit}
+          onDelete={() => setDeleteOpen(true)}
           onUploadImage={onUploadImage}
         />
       ) : null}
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="py-2">{tAwards("name")}</th>
-            <th>{tAwards("starCost")}</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {awards.map((award) => (
-            <tr key={award.documentId} className="border-b">
-              <td className="py-2">
-                <button
-                  type="button"
-                  className="text-left hover:underline"
-                  onClick={() => startEdit(award)}
-                >
-                  {award.name}
-                </button>
-              </td>
-              <td>
-                {award.values.length > 0
-                  ? award.values
-                      .map((entry) => formatValueRow(entry, currencies))
-                      .join(", ")
-                  : "—"}
-              </td>
-              <td>
-                {canDelete ? (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    disabled={isPending}
-                    onClick={() => handleDelete(award.documentId)}
-                  >
-                    {tCommon("delete")}
-                  </Button>
-                ) : null}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ConfirmDialog
+        open={deleteOpen}
+        title={tAwards("deleteTitle")}
+        description={tAwards("deleteConfirm")}
+        confirmLabel={tCommon("delete")}
+        disabled={isPending}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeleteOpen(false)}
+      />
+
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <AwardsListView
+            awards={visibleAwards}
+            currencies={currencies}
+            onOpen={startEdit}
+          />
+        </div>
+      </div>
     </div>
   );
 }

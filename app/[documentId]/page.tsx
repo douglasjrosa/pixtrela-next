@@ -2,10 +2,12 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
-import { CurrencyBalance } from "@/components/balance/currency-balance";
+import { redeemAward } from "@/app/(app)/exchange/actions";
+import { StarBalanceDetails } from "@/components/colaborator/star-balance-details";
+import { StarBalanceHero } from "@/components/colaborator/star-balance-hero";
 import { DashboardInsightsBlock } from "@/components/dashboard/dashboard-insights-block";
 import { AwardCard } from "@/components/exchange/award-card";
-import { redeemAward } from "@/app/(app)/exchange/actions";
+import { ExchangeWindowBanner } from "@/components/exchange/exchange-window-banner";
 import { loadColaboratorPrivateHome } from "@/lib/colaborator/private-home-data";
 import { loadColaboratorInsights } from "@/lib/dashboard/load-colaborator-insights";
 import { loadMonthlyRanking } from "@/lib/dashboard/load-monthly-ranking";
@@ -37,11 +39,31 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
   const colaboratorName = session.user.name ?? "";
 
   return (
-    <section className="space-y-10 p-6">
-      <div className="max-w-md space-y-2">
-        <h1 className="text-2xl font-bold">{tBalance("title")}</h1>
-        <CurrencyBalance {...balance} />
+    <section className="space-y-8">
+      <div className="space-y-3">
+        <h1 className="sr-only">{tBalance("title")}</h1>
+        <StarBalanceHero
+          balance={balance.balance}
+          currencyLabel={balance.currencyLabel}
+        />
+        <StarBalanceDetails
+          balance={balance.balance}
+          previousBalance={balance.previousBalance}
+          totalIncome={balance.totalIncome}
+          totalOutcome={balance.totalOutcome}
+        />
       </div>
+
+      {windowOpen ? (
+        <a
+          href="#colaborator-store"
+          className="flex min-h-12 w-full items-center justify-center rounded-2xl
+            bg-[var(--star-gold)] px-4 text-center text-base font-bold
+            text-[var(--star-gold-foreground)] active:scale-[0.98]"
+        >
+          {tExchange("scrollToStore")}
+        </a>
+      ) : null}
 
       <DashboardInsightsBlock
         ranking={ranking}
@@ -53,17 +75,16 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
         insights={insights}
       />
 
-      <div className="space-y-4">
-        <h2 className="text-2xl font-bold">{tExchange("title")}</h2>
-        {!windowOpen && team ? (
-          <p role="alert" className="text-sm text-destructive">
-            {tExchange("windowClosed", {
-              first: team.exchangesFirstDay,
-              last: team.exchangesLastDay,
-            })}
-          </p>
+      <div id="colaborator-store" className="scroll-mt-4 space-y-4">
+        <h2 className="text-xl font-semibold">{tExchange("title")}</h2>
+        {team ? (
+          <ExchangeWindowBanner
+            windowOpen={windowOpen}
+            firstDay={team.exchangesFirstDay}
+            lastDay={team.exchangesLastDay}
+          />
         ) : null}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4">
           {awards.map((award) => (
             <AwardCard
               key={award.id}
@@ -81,26 +102,22 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
         {history.length === 0 ? (
           <p className="text-sm text-muted-foreground">{tHistory("empty")}</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="py-2">{tHistory("date")}</th>
-                <th>{tHistory("award")}</th>
-                <th>{tHistory("qty")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((entry) => (
-                <tr key={entry.documentId} className="border-b">
-                  <td className="py-2">
+          <ul className="space-y-2">
+            {history.map((entry) => (
+              <li
+                key={entry.documentId}
+                className="flex items-center justify-between rounded-2xl border bg-card px-4 py-3 text-sm"
+              >
+                <div>
+                  <p className="font-medium">{entry.awardTitle}</p>
+                  <p className="text-muted-foreground">
                     {formatDateTimePtBr(entry.timestamp)}
-                  </td>
-                  <td>{entry.awardTitle}</td>
-                  <td>{entry.qty}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </p>
+                </div>
+                <span className="tabular-nums">×{entry.qty}</span>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </section>

@@ -7,10 +7,8 @@ import { KioskIdleScreen } from "./kiosk-idle-screen";
 describe("KioskIdleScreen", () => {
   it("shows idle message translation", () => {
     renderWithIntl(<KioskIdleScreen />);
-    expect(
-      screen.getByText(
-        "Aproxime o seu cartão ou digite seu código e senha.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /equipe|cartão|código/i,
+    );
   });
 });

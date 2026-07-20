@@ -98,7 +98,13 @@ export function KanbanBoard({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveTask(null)}
-    >      <div className="flex gap-4 overflow-x-auto p-4">
+    >
+      <div
+        className={
+          "flex h-full min-h-0 flex-1 gap-4 overflow-x-auto p-4 " +
+          "max-[500px]:gap-2 max-[500px]:p-2"
+        }
+      >
         {steps.map((step) => {
           const stepTasks = tasksInStep(toKanbanTaskOrderItems(tasks), step.id);
           const stepCards = stepTasks

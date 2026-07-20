@@ -3,12 +3,14 @@
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { isTeamActive } from "@/lib/business/team-active";
 import { formatDatePtBr } from "@/lib/format/datetime";
 import {
   DEFAULT_EXCHANGES_FIRST_DAY,
@@ -16,23 +18,12 @@ import {
   teamFormSchema,
   type TeamFormInput,
 } from "@/lib/schemas/team";
-import { cn } from "@/lib/utils";
 
-export interface UserOption {
-  documentId: string;
-  name: string;
-}
+import { TeamsListView } from "./teams-list-view";
+import { TeamsToolbar } from "./teams-toolbar";
+import type { TeamRow, UserOption } from "./types";
 
-export interface TeamRow {
-  documentId: string;
-  name: string;
-  exchangesFirstDay: number;
-  exchangesLastDay: number;
-  since: string | null;
-  untill: string | null;
-  leader?: UserOption | null;
-  colaborators?: UserOption[];
-}
+export type { TeamRow, UserOption } from "./types";
 
 export interface TeamManagerProps {
   teams: TeamRow[];
@@ -40,6 +31,7 @@ export interface TeamManagerProps {
   colaborators: UserOption[];
   onCreate: (values: TeamFormInput) => void | Promise<void>;
   onUpdate: (documentId: string, values: TeamFormInput) => void | Promise<void>;
+  onDelete: (documentId: string) => void | Promise<void>;
 }
 
 const EMPTY_FORM: TeamFormInput = {
@@ -56,92 +48,87 @@ function toDateInputValue(value: string | null | undefined): string {
   return value.slice(0, 10);
 }
 
-export function TeamManager({
-  teams,
+function toFormValues(team: TeamRow): TeamFormInput {
+  return {
+    name: team.name,
+    exchangesFirstDay: team.exchangesFirstDay,
+    exchangesLastDay: team.exchangesLastDay,
+    leaderDocumentId: team.leader?.documentId ?? "",
+    colaboratorDocumentIds:
+      team.colaborators?.map((colaborator) => colaborator.documentId) ?? [],
+    untill: toDateInputValue(team.untill),
+  };
+}
+
+interface TeamFormDialogProps {
+  editingTeam: TeamRow | null;
+  leaders: UserOption[];
+  colaborators: UserOption[];
+  isPending: boolean;
+  showDelete: boolean;
+  onClose: () => void;
+  onSubmit: (values: TeamFormInput) => void;
+  onDelete?: () => void;
+}
+
+function TeamFormDialog({
+  editingTeam,
   leaders,
   colaborators,
-  onCreate,
-  onUpdate,
-}: TeamManagerProps) {
+  isPending,
+  showDelete,
+  onClose,
+  onSubmit,
+  onDelete,
+}: TeamFormDialogProps) {
   const tCommon = useTranslations("common");
   const tTeams = useTranslations("teams");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
+  const isEditing = editingTeam !== null;
+  const formId = "team-form";
+  const formTitleId = "team-form-title";
 
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors },
   } = useForm<TeamFormInput>({
     resolver: zodResolver(teamFormSchema),
-    defaultValues: EMPTY_FORM,
+    defaultValues: isEditing ? toFormValues(editingTeam) : EMPTY_FORM,
   });
 
-  const editingTeam = editingId
-    ? teams.find((team) => team.documentId === editingId)
-    : null;
-
-  function startCreate(): void {
-    setEditingId(null);
-    reset(EMPTY_FORM);
-    setMessage(null);
-  }
-
-  function startEdit(team: TeamRow): void {
-    setEditingId(team.documentId);
-    reset({
-      name: team.name,
-      exchangesFirstDay: team.exchangesFirstDay,
-      exchangesLastDay: team.exchangesLastDay,
-      leaderDocumentId: team.leader?.documentId ?? "",
-      colaboratorDocumentIds:
-        team.colaborators?.map((colaborator) => colaborator.documentId) ?? [],
-      untill: toDateInputValue(team.untill),
-    });
-    setMessage(null);
-  }
-
-  function onSubmit(values: TeamFormInput): void {
-    startTransition(async () => {
-      if (editingId) {
-        await onUpdate(editingId, values);
-      } else {
-        await onCreate(values);
-      }
-      setMessage(tTeams("saved"));
-      setEditingId(null);
-      reset(EMPTY_FORM);
-    });
-  }
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{tTeams("title")}</h1>
-        <Button type="button" variant="outline" onClick={startCreate}>
-          {tTeams("newTeam")}
+    <FormModalShell
+      open
+      title={isEditing ? tTeams("editTeam") : tTeams("newTeam")}
+      titleId={formTitleId}
+      onClose={onClose}
+      disabled={isPending}
+      footerStart={
+        showDelete && onDelete ? (
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={isPending}
+            onClick={onDelete}
+          >
+            {tCommon("delete")}
+          </Button>
+        ) : undefined
+      }
+      footerEnd={
+        <Button type="submit" form={formId} disabled={isPending}>
+          {isEditing ? tCommon("save") : tCommon("create")}
         </Button>
-      </div>
-
-      {message ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          {message}
-        </p>
-      ) : null}
-
+      }
+    >
       <form
+        id={formId}
         onSubmit={handleSubmit(onSubmit)}
-        className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2"
+        className="grid gap-4 sm:grid-cols-2"
       >
-        <h2 className="sm:col-span-2 text-lg font-semibold">
-          {editingId ? tCommon("edit") : tTeams("newTeam")}
-        </h2>
-
         <div className="space-y-2">
           <Label htmlFor="name">{tTeams("name")}</Label>
-          <Input id="name" {...register("name")} />
+          <Input id="name" disabled={isPending} {...register("name")} />
           {errors.name ? (
             <p className="text-sm text-destructive">{errors.name.message}</p>
           ) : null}
@@ -154,6 +141,7 @@ export function TeamManager({
             type="number"
             min={1}
             max={31}
+            disabled={isPending}
             {...register("exchangesFirstDay", { valueAsNumber: true })}
           />
         </div>
@@ -165,6 +153,7 @@ export function TeamManager({
             type="number"
             min={1}
             max={31}
+            disabled={isPending}
             {...register("exchangesLastDay", { valueAsNumber: true })}
           />
         </div>
@@ -173,7 +162,11 @@ export function TeamManager({
           <Label htmlFor="leaderDocumentId">{tTeams("leader")}</Label>
           <select
             id="leaderDocumentId"
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            disabled={isPending}
+            className={
+              "flex h-9 w-full rounded-md border border-input " +
+              "bg-transparent px-3 text-sm"
+            }
             {...register("leaderDocumentId")}
           >
             <option value="" />
@@ -195,8 +188,15 @@ export function TeamManager({
             </div>
             <div className="space-y-2">
               <Label htmlFor="untill">{tTeams("untill")}</Label>
-              <Input id="untill" type="date" {...register("untill")} />
-              <p className="text-xs text-muted-foreground">{tTeams("untillHint")}</p>
+              <Input
+                id="untill"
+                type="date"
+                disabled={isPending}
+                {...register("untill")}
+              />
+              <p className="text-xs text-muted-foreground">
+                {tTeams("untillHint")}
+              </p>
             </div>
           </>
         ) : null}
@@ -206,69 +206,145 @@ export function TeamManager({
           <select
             id="colaboratorDocumentIds"
             multiple
-            className="flex min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+            disabled={isPending}
+            className={
+              "flex min-h-24 w-full rounded-md border border-input " +
+              "bg-transparent px-3 py-2 text-sm"
+            }
             {...register("colaboratorDocumentIds")}
           >
             {colaborators.map((colaborator) => (
-              <option key={colaborator.documentId} value={colaborator.documentId}>
+              <option
+                key={colaborator.documentId}
+                value={colaborator.documentId}
+              >
                 {colaborator.name}
               </option>
             ))}
           </select>
         </div>
-
-        <div className="flex gap-2 sm:col-span-2">
-          <Button type="submit" disabled={isPending}>
-            {tCommon("save")}
-          </Button>
-          {editingId ? (
-            <Button type="button" variant="outline" onClick={startCreate}>
-              {tCommon("cancel")}
-            </Button>
-          ) : null}
-        </div>
       </form>
+    </FormModalShell>
+  );
+}
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="py-2">{tTeams("name")}</th>
-            <th>{tTeams("since")}</th>
-            <th>{tTeams("untill")}</th>
-            <th>{tTeams("status")}</th>
-            <th>{tTeams("exchangesFirstDay")}</th>
-            <th>{tTeams("exchangesLastDay")}</th>
-            <th>{tTeams("leader")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {teams.map((team) => {
-            const active = isTeamActive(team.untill);
-            return (
-              <tr
-                key={team.documentId}
-                className={cn("border-b", !active && "text-muted-foreground")}
-              >
-                <td className="py-2">
-                  <button
-                    type="button"
-                    className="text-left hover:underline"
-                    onClick={() => startEdit(team)}
-                  >
-                    {team.name}
-                  </button>
-                </td>
-                <td>{formatDatePtBr(team.since)}</td>
-                <td>{formatDatePtBr(team.untill)}</td>
-                <td>{active ? tTeams("active") : tTeams("inactive")}</td>
-                <td>{team.exchangesFirstDay}</td>
-                <td>{team.exchangesLastDay}</td>
-                <td>{team.leader?.name ?? "—"}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+export function TeamManager({
+  teams,
+  leaders,
+  colaborators,
+  onCreate,
+  onUpdate,
+  onDelete,
+}: TeamManagerProps) {
+  const tCommon = useTranslations("common");
+  const tTeams = useTranslations("teams");
+  const router = useRouter();
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [nameQuery, setNameQuery] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [message, setMessage] = useState<string | null>(null);
+
+  const editingTeam =
+    teams.find((team) => team.documentId === editingId) ?? null;
+
+  function closeForm(): void {
+    setFormOpen(false);
+    setEditingId(null);
+    setDeleteOpen(false);
+  }
+
+  function startCreate(): void {
+    setEditingId(null);
+    setMessage(null);
+    setDeleteOpen(false);
+    setFormOpen(true);
+  }
+
+  function startEdit(team: TeamRow): void {
+    setEditingId(team.documentId);
+    setMessage(null);
+    setDeleteOpen(false);
+    setFormOpen(true);
+  }
+
+  function onSubmit(values: TeamFormInput): void {
+    startTransition(async () => {
+      if (editingId) {
+        await onUpdate(editingId, values);
+      } else {
+        await onCreate(values);
+      }
+      setMessage(tTeams("saved"));
+      closeForm();
+      router.refresh();
+    });
+  }
+
+  function handleConfirmDelete(): void {
+    if (!editingId) return;
+    startTransition(async () => {
+      await onDelete(editingId);
+      setMessage(tTeams("deleted"));
+      closeForm();
+      router.refresh();
+    });
+  }
+
+  const formDialogKey = editingId ?? "new";
+  const query = nameQuery.trim().toLowerCase();
+  const visibleTeams =
+    query.length === 0
+      ? teams
+      : teams.filter((team) => team.name.toLowerCase().includes(query));
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
+      <div className="flex shrink-0 items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold max-[500px]:text-lg">{tTeams("title")}</h1>
+        <Button type="button" variant="outline" onClick={startCreate}>
+          {tTeams("newTeam")}
+        </Button>
+      </div>
+
+      <TeamsToolbar value={nameQuery} onChange={setNameQuery} />
+
+      {message ? (
+        <p role="status" className="shrink-0 text-sm text-muted-foreground">
+          {message}
+        </p>
+      ) : null}
+
+      {formOpen ? (
+        <TeamFormDialog
+          key={formDialogKey}
+          editingTeam={editingTeam}
+          leaders={leaders}
+          colaborators={colaborators}
+          isPending={isPending}
+          showDelete={Boolean(editingTeam)}
+          onClose={closeForm}
+          onSubmit={onSubmit}
+          onDelete={() => setDeleteOpen(true)}
+        />
+      ) : null}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title={tTeams("deleteTitle")}
+        description={tTeams("deleteConfirm")}
+        confirmLabel={tCommon("delete")}
+        disabled={isPending}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeleteOpen(false)}
+      />
+
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <TeamsListView teams={visibleTeams} onOpen={startEdit} />
+        </div>
+      </div>
     </div>
   );
 }

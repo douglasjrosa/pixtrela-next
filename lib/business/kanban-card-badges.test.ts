@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   countOpenColaborators,
+  countUniqueColaboratorIds,
   countUnassignedSubTasks,
 } from "./kanban-card-badges";
 
@@ -54,6 +55,16 @@ describe("countOpenColaborators", () => {
         },
       ]),
     ).toBe(1);
+  });
+});
+
+describe("countUniqueColaboratorIds", () => {
+  it("counts unique ids and ignores duplicates", () => {
+    expect(countUniqueColaboratorIds(["u-1", "u-2", "u-1"])).toBe(2);
+  });
+
+  it("returns 0 for an empty list", () => {
+    expect(countUniqueColaboratorIds([])).toBe(0);
   });
 });
 

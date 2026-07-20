@@ -14,6 +14,7 @@ import {
 import { ACTIVE_TEAM_FILTER } from "@/lib/business/team-active";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
 import { loadCurrencyForSubtasks } from "@/lib/strapi/currency-for-subtasks";
+import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 import { balanceTag, STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { redeemAward } from "./actions";
 
@@ -28,6 +29,7 @@ interface AwardEntity {
   title?: string;
   name: string;
   description?: string;
+  image?: { url?: string } | null;
   Value?: { numberOf?: number; currency?: { name?: string } }[];
 }
 
@@ -103,6 +105,7 @@ async function loadExchange(userId: string | undefined): Promise<ExchangeData> {
       {
         fields: ["documentId", "name", "title", "description"],
         populate: {
+          image: { fields: ["url"] },
           Value: { populate: { currency: { fields: ["name"] } } },
         },
       },
@@ -159,6 +162,7 @@ async function loadExchange(userId: string | undefined): Promise<ExchangeData> {
         cost: paymentCurrencyName
           ? exchangeCost(prices, paymentCurrencyName, 1)
           : 0,
+        imageUrl: resolveStrapiMediaUrl(award.image?.url),
       };
     });
 

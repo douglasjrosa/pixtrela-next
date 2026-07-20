@@ -10,6 +10,8 @@ describe("taskAutomationFormSchema", () => {
         producingStepDocumentId: "",
         pausedStepDocumentId: "step-3",
         finishedStepDocumentId: "step-4",
+        reviewedStepDocumentId: "step-5",
+        deliveredStepDocumentId: "",
         assignWarnMax: 4,
       }),
     ).toEqual({
@@ -17,6 +19,8 @@ describe("taskAutomationFormSchema", () => {
       producingStepDocumentId: "",
       pausedStepDocumentId: "step-3",
       finishedStepDocumentId: "step-4",
+      reviewedStepDocumentId: "step-5",
+      deliveredStepDocumentId: "",
       assignWarnMax: 4,
     });
   });
@@ -28,6 +32,8 @@ describe("taskAutomationFormSchema", () => {
         producingStepDocumentId: "",
         pausedStepDocumentId: "",
         finishedStepDocumentId: "",
+        reviewedStepDocumentId: "",
+        deliveredStepDocumentId: "",
         assignWarnMax: 2.5,
       }).success,
     ).toBe(false);

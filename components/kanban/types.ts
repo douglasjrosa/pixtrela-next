@@ -10,10 +10,12 @@ export interface KanbanTask {
   documentId: string;
   name: string;
   qty: number;
-  status: "waiting" | "producing" | "paused" | "finished";
+  status: "waiting" | "producing" | "paused" | "finished" | "reviewed" | "delivered";
   stepId: number | null;
   index: number;
   deliveryDate?: string | null;
+  /** When the task became finished (last sub-task stop). */
+  endedAt?: string | null;
   totalExpectedTime: number;
   totalTimeSpent: number;
   /** When true, show progress skeleton (Suspense fallback). */
@@ -24,6 +26,8 @@ export interface KanbanTask {
   activeColaboratorCount?: number;
   /** Unfinished sub-tasks with zero assignees. */
   unassignedSubTaskCount?: number;
+  /** Unique colaborators who worked on this finished task. */
+  participantCount?: number;
 }
 
 
