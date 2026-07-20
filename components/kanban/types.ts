@@ -1,4 +1,5 @@
 import type { BoardTaskProgressInput } from "@/lib/business/task-progress";
+import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
 export interface KanbanStep {
   id: number;
@@ -39,7 +40,7 @@ export interface BoardSubTaskAssignee {
 export interface BoardSubTaskSummary {
   documentId: string;
   name: string;
-  status: KanbanTask["status"];
+  status: SubTaskFormInput["status"];
   sharingType: "qty" | "duration";
   expectedTime: number;
   timeSpent: number;

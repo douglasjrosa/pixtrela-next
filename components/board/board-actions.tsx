@@ -310,6 +310,7 @@ export function BoardActions({
       {selectedTask ? (
         <KanbanSubtaskCreateModal
           open={createOpen}
+          taskName={selectedTaskDisplayTitle}
           saving={savingCreate}
           teams={teams}
           dependencyOptions={dependencyOptions}

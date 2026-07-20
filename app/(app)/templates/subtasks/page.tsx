@@ -5,6 +5,7 @@ import { SubTaskPresetManager } from "@/components/subtask-presets/subtask-prese
 import type { Role } from "@/lib/auth/nav";
 import { canManageTemplates } from "@/lib/auth/permissions";
 import { listSubTaskPresets } from "@/app/(app)/sub-task-presets/actions";
+import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 
 export default async function TemplateSubtasksPage() {
@@ -15,7 +16,7 @@ export default async function TemplateSubtasksPage() {
     return <ForbiddenMessage />;
   }
 
-  let presets = [];
+  let presets: SubTaskPreset[] = [];
   try {
     presets = await listSubTaskPresets();
   } catch (error) {
