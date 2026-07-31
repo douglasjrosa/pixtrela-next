@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
+import { KioskColaboratorHeader } from "@/components/kiosk/kiosk-colaborator-header";
 import { KioskDailyQueue } from "@/components/kiosk/kiosk-daily-queue";
 import {
   formatRemainingWorkerNames,
@@ -19,12 +20,16 @@ const START_FLASH_MS = 300;
 
 export interface KioskPanelClientProps {
   colaboratorId: string;
+  colaboratorName: string;
+  avatarUrl?: string | null;
   subTasks: KioskSubTask[];
   readOnly?: boolean;
 }
 
 export function KioskPanelClient({
   colaboratorId,
+  colaboratorName,
+  avatarUrl = null,
   subTasks,
   readOnly = false,
 }: KioskPanelClientProps) {
@@ -70,13 +75,18 @@ export function KioskPanelClient({
   }
 
   return (
-    <KioskDailyQueue
-      subTasks={subTasks}
-      readOnly={readOnly}
-      pending={pending}
-      flashDocumentId={flashDocumentId}
-      onStart={readOnly ? undefined : handleStart}
-      onExit={readOnly ? undefined : handleExit}
-    />
+    <div>
+      {colaboratorName ? (
+        <KioskColaboratorHeader name={colaboratorName} avatarUrl={avatarUrl} />
+      ) : null}
+      <KioskDailyQueue
+        subTasks={subTasks}
+        readOnly={readOnly}
+        pending={pending}
+        flashDocumentId={flashDocumentId}
+        onStart={readOnly ? undefined : handleStart}
+        onExit={readOnly ? undefined : handleExit}
+      />
+    </div>
   );
 }

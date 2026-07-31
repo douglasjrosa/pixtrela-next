@@ -19,6 +19,7 @@ import type { BoardProgressPollSnapshot } from "@/lib/board/progress-poll";
 import {
   listActivitySessions,
   listOpenActivityStartedAts,
+  listOpenColaboratorDocumentIds,
   type ActivitySessionRef,
   type KanbanProgressStatus,
 } from "@/lib/business/task-progress";
@@ -203,6 +204,7 @@ export async function loadBoardSubtasks(
       expectedTime: subtask.expectedTime ?? 0,
       timeSpent: subtask.timeSpent ?? 0,
       openActivityStartedAts: listOpenActivityStartedAts(activityRefs),
+      producingColaboratorIds: listOpenColaboratorDocumentIds(activityRefs),
       sessions: listActivitySessions(activityRefs),
       assignedTo:
         subtask.assignedTo?.map((user) => ({

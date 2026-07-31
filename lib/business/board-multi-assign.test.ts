@@ -28,6 +28,7 @@ function subtaskStub(
     activationStatus: "unlocked",
     assignedTo: [],
     openActivityStartedAts: [],
+    producingColaboratorIds: [],
     sessions: [],
     ...partial,
   };

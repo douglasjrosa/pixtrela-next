@@ -7,10 +7,13 @@ import { canDeleteUsers, canManageRole } from "@/lib/business/roles";
 import { buildUserFormSchema, type UserFormInput } from "@/lib/schemas/user";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
+import { strapiUpload } from "@/lib/strapi/upload";
 import {
   buildCreateUserPayload,
   buildUpdateUserPayload,
 } from "@/lib/users/create-user-payload";
+
+export type UserImageType = "avatar" | "facePhoto";
 
 async function assertCanView(): Promise<Role> {
   const session = await auth();
@@ -37,12 +40,14 @@ function sanitizePasswordFields(
   actorRole: Role,
 ): Partial<UserFormInput> {
   if (!canSetUserPassword(actorRole)) {
-    const { password: _password, ...rest } = raw;
-    return rest;
+    const sanitized = { ...raw };
+    delete sanitized.password;
+    return sanitized;
   }
   if (raw.password === "") {
-    const { password: _password, ...rest } = raw;
-    return rest;
+    const sanitized = { ...raw };
+    delete sanitized.password;
+    return sanitized;
   }
   return raw;
 }
@@ -127,6 +132,41 @@ export async function deleteUser(userId: number): Promise<void> {
   await strapiFetch(`/users/${userId}`, {
     method: "DELETE",
     strapiCache: { noStore: true },
+  });
+  invalidateUsers();
+}
+
+export async function updateUserImage(
+  userId: number,
+  imageType: UserImageType,
+  formData: FormData,
+): Promise<void> {
+  const actorRole = await assertCanView();
+  if (actorRole !== "admin") {
+    throw new Error("forbidden");
+  }
+  if (imageType !== "avatar" && imageType !== "facePhoto") {
+    throw new Error("invalid");
+  }
+
+  const currentRole = await loadUserRole(userId);
+  if (!canManageRole(actorRole, currentRole)) {
+    throw new Error("forbidden");
+  }
+
+  const entry = formData.get("file");
+  if (!(entry instanceof File) || entry.size === 0) {
+    throw new Error("invalid");
+  }
+  if (!entry.type.startsWith("image/")) {
+    throw new Error("invalid");
+  }
+
+  const mediaId = await strapiUpload(entry);
+  await strapiFetch(`/users/${userId}`, {
+    method: "PUT",
+    strapiCache: { noStore: true },
+    body: JSON.stringify({ [imageType]: mediaId }),
   });
   invalidateUsers();
 }

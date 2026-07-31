@@ -45,6 +45,8 @@ export interface BoardSubTaskSummary {
   expectedTime: number;
   timeSpent: number;
   openActivityStartedAts: string[];
+  /** Colaborators with an open started activity on this sub-task. */
+  producingColaboratorIds: string[];
   sessions: import("@/lib/business/task-progress").ActivitySession[];
   assignedTo: BoardSubTaskAssignee[];
 }

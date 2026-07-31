@@ -9,4 +9,6 @@ export interface UserRow {
   email?: string | null;
   code: number;
   roleType: UserFormInput["roleType"];
+  avatarUrl?: string | null;
+  facePhotoUrl?: string | null;
 }

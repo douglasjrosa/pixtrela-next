@@ -153,21 +153,22 @@ export function FormModalShell({
             )}
           >
             <div className="flex min-h-0 flex-1 flex-col gap-4">{children}</div>
-            {showFooter ? (
-              <div
-                className={cn(
-                  "mt-4 flex flex-wrap items-center justify-between gap-3",
-                  "border-t pt-4",
-                )}
-              >
-                <div className="flex flex-wrap gap-2">
-                  {footerStart ?? <span />}
-                </div>
-                <div className="flex flex-wrap gap-2">{footerEnd}</div>
-              </div>
-            ) : null}
           </div>
         </div>
+        {showFooter ? (
+          <div
+            data-slot="form-modal-footer"
+            className={cn(
+              "flex shrink-0 flex-wrap items-center justify-between gap-3",
+              "border-t bg-background px-4 py-3",
+            )}
+          >
+            <div className="flex flex-wrap gap-2">
+              {footerStart ?? <span />}
+            </div>
+            <div className="flex flex-wrap gap-2">{footerEnd}</div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

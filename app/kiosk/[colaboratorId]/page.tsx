@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import type { Role } from "@/lib/auth/nav";
+import { loadKioskColaboratorProfile } from "@/lib/kiosk/load-colaborator-profile";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
@@ -73,11 +74,16 @@ export default async function KioskColaboratorPage({ params }: PageProps) {
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
   const readOnly = role === "admin";
-  const subTasks = await loadAssignedSubTasks(colaboratorId);
+  const [subTasks, profile] = await Promise.all([
+    loadAssignedSubTasks(colaboratorId),
+    loadKioskColaboratorProfile(colaboratorId),
+  ]);
 
   return (
     <KioskPanelClient
       colaboratorId={colaboratorId}
+      colaboratorName={profile?.name ?? ""}
+      avatarUrl={profile?.avatarUrl ?? null}
       subTasks={subTasks}
       readOnly={readOnly}
     />

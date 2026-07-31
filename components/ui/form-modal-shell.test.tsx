@@ -51,6 +51,13 @@ describe("FormModalShell", () => {
     expect(
       screen.queryByRole("button", { name: "Cancelar" }),
     ).not.toBeInTheDocument();
+
+    const body = document.querySelector('[data-slot="form-modal-body"]');
+    const footer = document.querySelector('[data-slot="form-modal-footer"]');
+    expect(footer).toBeTruthy();
+    expect(body?.contains(footer)).toBe(false);
+    expect(footer?.className).toContain("shrink-0");
+    expect(footer?.className).toContain("bg-background");
   });
 
   it("gives the scroll body a min-height so short viewports can scroll chrome away", () => {

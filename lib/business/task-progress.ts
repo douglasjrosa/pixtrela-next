@@ -177,24 +177,51 @@ export function resolveSubTaskRemainingSeconds(
 /**
  * Open session starts: latest action per (subTask, colaborator) is "started".
  */
-export function listOpenActivityStartedAts(
+function resolveOpenActivitySessions(
   activities: readonly ActivitySessionRef[],
-): string[] {
+): Map<string, { colaboratorDocumentId: string; startedAt: string }> {
   const sorted = [...activities].sort((left, right) =>
     left.timestamp.localeCompare(right.timestamp),
   );
-  const openBySession = new Map<string, string>();
+  const openBySession = new Map<
+    string,
+    { colaboratorDocumentId: string; startedAt: string }
+  >();
 
   for (const activity of sorted) {
     const key = `${activity.subTaskDocumentId}:${activity.colaboratorDocumentId}`;
     if (activity.action === "started") {
-      openBySession.set(key, activity.timestamp);
+      openBySession.set(key, {
+        colaboratorDocumentId: activity.colaboratorDocumentId,
+        startedAt: activity.timestamp,
+      });
       continue;
     }
     openBySession.delete(key);
   }
 
-  return [...openBySession.values()];
+  return openBySession;
+}
+
+export function listOpenActivityStartedAts(
+  activities: readonly ActivitySessionRef[],
+): string[] {
+  return [...resolveOpenActivitySessions(activities).values()].map(
+    (session) => session.startedAt,
+  );
+}
+
+/** Unique colaborators with an open started session (no stop yet). */
+export function listOpenColaboratorDocumentIds(
+  activities: readonly ActivitySessionRef[],
+): string[] {
+  return [
+    ...new Set(
+      [...resolveOpenActivitySessions(activities).values()].map(
+        (session) => session.colaboratorDocumentId,
+      ),
+    ),
+  ];
 }
 
 type OpenSessionDraft = {

@@ -6,6 +6,7 @@ import {
   isOverExpected,
   listActivitySessions,
   listOpenActivityStartedAts,
+  listOpenColaboratorDocumentIds,
   needsLiveBoardProgress,
   resolveLatestSessionFinishedAt,
   sumSessionQty,
@@ -134,6 +135,39 @@ describe("listOpenActivityStartedAts", () => {
       "2026-07-16T11:00:00.000Z",
       "2026-07-16T11:30:00.000Z",
     ]);
+  });
+});
+
+describe("listOpenColaboratorDocumentIds", () => {
+  it("returns unique colaborators with open sessions", () => {
+    const ids = listOpenColaboratorDocumentIds([
+      {
+        subTaskDocumentId: "st-1",
+        colaboratorDocumentId: "u-1",
+        action: "started",
+        timestamp: "2026-07-16T10:00:00.000Z",
+      },
+      {
+        subTaskDocumentId: "st-1",
+        colaboratorDocumentId: "u-1",
+        action: "stoped",
+        timestamp: "2026-07-16T10:05:00.000Z",
+      },
+      {
+        subTaskDocumentId: "st-1",
+        colaboratorDocumentId: "u-2",
+        action: "started",
+        timestamp: "2026-07-16T11:00:00.000Z",
+      },
+      {
+        subTaskDocumentId: "st-1",
+        colaboratorDocumentId: "u-1",
+        action: "started",
+        timestamp: "2026-07-16T11:30:00.000Z",
+      },
+    ]);
+
+    expect(ids.sort()).toEqual(["u-1", "u-2"]);
   });
 });
 
