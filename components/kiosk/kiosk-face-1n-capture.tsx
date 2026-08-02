@@ -6,10 +6,7 @@ import { useTranslations } from "next-intl";
 import { FaceOvalFrame } from "@/components/kiosk/face-oval-frame";
 import { Button } from "@/components/ui/button";
 import { detectSingleFaceDescriptor } from "@/lib/kiosk/face/detect-single-descriptor";
-import {
-  FACE_VERIFY_THROTTLE_MS,
-  FACE_VERIFY_TIMEOUT_MS,
-} from "@/lib/kiosk/face/face-match-constants";
+import { FACE_VERIFY_THROTTLE_MS } from "@/lib/kiosk/face/face-match-constants";
 import { loadFaceModels } from "@/lib/kiosk/face/load-face-models";
 import { stopMediaStream } from "@/lib/kiosk/face/verify-face-against-photo";
 
@@ -20,14 +17,13 @@ export type Face1nCaptureStatus =
   | "multiple_faces"
   | "too_small"
   | "identifying"
-  | "timeout"
   | "failed";
 
 export interface KioskFace1nCaptureProps {
   onProbeReady: (descriptor: number[]) => void | Promise<void>;
   onCancel: () => void;
-  onFallbackCode: () => void;
   disabled?: boolean;
+  unidentifiedMessage?: string | null;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -42,24 +38,26 @@ function statusMessageKey(status: Face1nCaptureStatus): string {
   if (status === "no_face") return "faceVerifyNoFace";
   if (status === "multiple_faces") return "faceVerifyMultipleFaces";
   if (status === "too_small") return "faceVerifyTooSmall";
-  if (status === "timeout") return "face1nTimeout";
   return "face1nFailed";
 }
 
 /**
- * Samples the camera until one face descriptor is obtained, then hands it off.
+ * Keeps the camera open and samples probes until cancelled by the parent.
  */
 export function KioskFace1nCapture({
   onProbeReady,
   onCancel,
-  onFallbackCode,
   disabled = false,
+  unidentifiedMessage = null,
 }: KioskFace1nCaptureProps) {
   const t = useTranslations("kiosk");
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const onProbeReadyRef = useRef(onProbeReady);
   const [status, setStatus] = useState<Face1nCaptureStatus>("preparing");
+
+  onProbeReadyRef.current = onProbeReady;
 
   useEffect(() => {
     const abort = new AbortController();
@@ -91,13 +89,7 @@ export function KioskFace1nCapture({
         await video.play();
         setStatus("looking");
 
-        const startedAt = Date.now();
         while (!cancelled && !abort.signal.aborted) {
-          if (Date.now() - startedAt >= FACE_VERIFY_TIMEOUT_MS) {
-            setStatus("timeout");
-            return;
-          }
-
           const detection = await detectSingleFaceDescriptor(video);
           if (cancelled || abort.signal.aborted) return;
 
@@ -108,10 +100,10 @@ export function KioskFace1nCapture({
           }
 
           setStatus("identifying");
-          stopMediaStream(streamRef.current);
-          streamRef.current = null;
-          await onProbeReady(Array.from(detection.descriptor));
-          return;
+          await onProbeReadyRef.current(Array.from(detection.descriptor));
+          if (cancelled || abort.signal.aborted) return;
+          setStatus("looking");
+          await sleep(FACE_VERIFY_THROTTLE_MS);
         }
       } catch {
         if (!cancelled) setStatus("failed");
@@ -126,7 +118,6 @@ export function KioskFace1nCapture({
       stopMediaStream(streamRef.current);
       streamRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleCancel(): void {
@@ -136,17 +127,7 @@ export function KioskFace1nCapture({
     onCancel();
   }
 
-  function handleFallback(): void {
-    abortRef.current?.abort();
-    stopMediaStream(streamRef.current);
-    streamRef.current = null;
-    onFallbackCode();
-  }
-
   const statusKey = statusMessageKey(status);
-
-  const showFallback =
-    status === "timeout" || status === "failed" || disabled;
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4">
@@ -168,18 +149,18 @@ export function KioskFace1nCapture({
       </div>
 
       <p role="status" className="text-center text-sm">
-        {t(statusKey)}
+        {unidentifiedMessage ? unidentifiedMessage : t(statusKey)}
       </p>
 
       <div className="flex flex-wrap justify-center gap-2">
-        <Button type="button" variant="outline" onClick={handleCancel}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          onClick={handleCancel}
+        >
           {t("faceVerifyCancel")}
         </Button>
-        {showFallback ? (
-          <Button type="button" onClick={handleFallback}>
-            {t("faceVerifyUseCode")}
-          </Button>
-        ) : null}
       </div>
     </div>
   );

@@ -4,17 +4,19 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
 import { KioskHomeClient } from "@/app/kiosk/kiosk-home-client";
+import { KioskIdleProvider } from "@/components/kiosk/kiosk-idle-provider";
 
 vi.mock("@/components/kiosk/kiosk-face-1n-capture", () => ({
   KioskFace1nCapture: ({
     onProbeReady,
-    onFallbackCode,
+    unidentifiedMessage,
   }: {
     onProbeReady: (descriptor: number[]) => void;
-    onFallbackCode: () => void;
+    unidentifiedMessage?: string | null;
   }) => (
     <div>
       <h2>Quem é você?</h2>
+      {unidentifiedMessage ? <p>{unidentifiedMessage}</p> : null}
       <button
         type="button"
         onClick={() =>
@@ -22,9 +24,6 @@ vi.mock("@/components/kiosk/kiosk-face-1n-capture", () => ({
         }
       >
         mock-probe
-      </button>
-      <button type="button" onClick={onFallbackCode}>
-        Usar código e senha
       </button>
     </div>
   ),
@@ -62,10 +61,29 @@ const replace = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace }),
+  usePathname: () => "/kiosk",
 }));
 
+function renderHome() {
+  return renderWithIntl(
+    <KioskIdleProvider sessionIdleMs={60_000}>
+      <KioskHomeClient />
+    </KioskIdleProvider>,
+  );
+}
+
 describe("KioskHomeClient", () => {
-  it("shows 1:N camera first and welcomes on unique match", async () => {
+  it("shows camera and password chooser first", () => {
+    renderHome();
+    expect(
+      screen.getByRole("button", { name: "Reconhecimento facial" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Código e senha" }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens camera and welcomes on unique match", async () => {
     const user = userEvent.setup();
     identifyKioskUserByFace.mockResolvedValue({
       ok: true,
@@ -79,7 +97,10 @@ describe("KioskHomeClient", () => {
       },
     });
 
-    renderWithIntl(<KioskHomeClient />);
+    renderHome();
+    await user.click(
+      screen.getByRole("button", { name: "Reconhecimento facial" }),
+    );
 
     await waitFor(() => {
       expect(
@@ -119,8 +140,10 @@ describe("KioskHomeClient", () => {
       ],
     });
 
-    renderWithIntl(<KioskHomeClient />);
-
+    renderHome();
+    await user.click(
+      screen.getByRole("button", { name: "Reconhecimento facial" }),
+    );
     await user.click(screen.getByRole("button", { name: "mock-probe" }));
 
     await waitFor(() => {
@@ -139,11 +162,11 @@ describe("KioskHomeClient", () => {
     });
   });
 
-  it("opens code form from fallback", async () => {
+  it("opens code form from password chooser", async () => {
     const user = userEvent.setup();
-    renderWithIntl(<KioskHomeClient />);
+    renderHome();
 
-    await user.click(screen.getByRole("button", { name: "Usar código e senha" }));
+    await user.click(screen.getByRole("button", { name: "Código e senha" }));
 
     await waitFor(() => {
       expect(screen.getByLabelText("Código")).toBeInTheDocument();

@@ -1,3 +1,6 @@
+/** How long to show "unidentified" while camera keeps scanning. */
+export const FACE_1N_NONE_MESSAGE_MS = 3_000;
+
 /** Euclidean distance below this means faces match (1:1). */
 export const FACE_MATCH_DISTANCE_THRESHOLD = 0.55;
 

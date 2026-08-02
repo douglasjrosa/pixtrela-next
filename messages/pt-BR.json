@@ -535,6 +535,10 @@
   },
   "kiosk": {
     "idleMessage": "Olhe para a câmera para entrar, aproxime o cartão NFC ou use código e senha.",
+    "homeChooserHint": "Escolha como entrar. Você também pode aproximar o cartão NFC.",
+    "homeChooserCamera": "Reconhecimento facial",
+    "homeChooserPassword": "Código e senha",
+    "homeBackToChooser": "Voltar ao início",
     "directoryPickTeam": "Escolha sua equipe",
     "directoryPickMember": "Quem é você?",
     "directoryBackTeams": "Voltar às equipes",
@@ -550,7 +554,7 @@
     "face1nLooking": "Alinhe o rosto no oval e olhe para a câmera.",
     "face1nTimeout": "Não encontramos um rosto a tempo. Tente de novo ou use o código.",
     "face1nFailed": "Não foi possível iniciar o reconhecimento facial.",
-    "face1nNone": "Não encontramos correspondência. Tente de novo ou use código e senha.",
+    "face1nNone": "Usuário não identificado. Continue alinhado à câmera.",
     "face1nRetryCamera": "Voltar para a câmera",
     "faceAmbiguousTitle": "Qual é você?",
     "faceAmbiguousHint": "Encontramos mais de uma pessoa parecida. Toque no seu nome.",
@@ -626,6 +630,7 @@
     "idleLockOpen": "Sessão do totem ativa",
     "idleLockClosed": "Sessão do totem encerrada",
     "idleLockHome": "Totem aguardando identificação",
+    "idleLockAuth": "Tempo para identificação em andamento",
     "idleLockButton": "Encerrar sessão do totem"
   },
   "activities": {

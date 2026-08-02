@@ -26,7 +26,7 @@ function resolveIndicatorStyle(phase: KioskIdlePhase): {
   Icon: typeof LockOpen;
   iconClass: string;
   strokeClass: string;
-  ariaKey: "idleLockOpen" | "idleLockClosed" | "idleLockHome";
+  ariaKey: "idleLockOpen" | "idleLockClosed" | "idleLockHome" | "idleLockAuth";
   animateGauge: boolean;
   displayProgress: number;
   isInteractive: boolean;
@@ -55,6 +55,18 @@ function resolveIndicatorStyle(phase: KioskIdlePhase): {
     };
   }
 
+  if (phase === "auth") {
+    return {
+      Icon: LockOpen,
+      iconClass: "text-success",
+      strokeClass: "stroke-success",
+      ariaKey: "idleLockAuth",
+      animateGauge: true,
+      displayProgress: 0,
+      isInteractive: true,
+    };
+  }
+
   return {
     Icon: LockOpen,
     iconClass: "text-success",
@@ -71,7 +83,7 @@ export function KioskIdleLockIndicator() {
   const { progress, phase, lockSession } = useKioskIdleContext();
   const style = resolveIndicatorStyle(phase);
   const displayProgress =
-    phase === "active" ? progress : style.displayProgress;
+    phase === "active" || phase === "auth" ? progress : style.displayProgress;
   const dashOffset = CIRCUMFERENCE * (1 - displayProgress);
   const Icon = style.Icon;
 
@@ -97,10 +109,12 @@ export function KioskIdleLockIndicator() {
           r={RADIUS}
           fill="none"
           className={
-            phase === "active" ? "stroke-muted" : LOCKED_STROKE_CLASS
+            phase === "active" || phase === "auth"
+              ? "stroke-muted"
+              : LOCKED_STROKE_CLASS
           }
           strokeWidth={STROKE_WIDTH}
-          opacity={phase === "active" ? 1 : 0.35}
+          opacity={phase === "active" || phase === "auth" ? 1 : 0.35}
         />
         <circle
           cx={CENTER}

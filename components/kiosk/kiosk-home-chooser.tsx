@@ -1,0 +1,46 @@
+"use client";
+
+import { Camera, KeyRound } from "lucide-react";
+import { useTranslations } from "next-intl";
+
+import { Button } from "@/components/ui/button";
+
+export interface KioskHomeChooserProps {
+  onCamera: () => void;
+  onPassword: () => void;
+}
+
+export function KioskHomeChooser({
+  onCamera,
+  onPassword,
+}: KioskHomeChooserProps) {
+  const t = useTranslations("kiosk");
+
+  return (
+    <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-8 py-6">
+      <p className="max-w-sm text-center text-lg font-medium leading-snug">
+        {t("homeChooserHint")}
+      </p>
+      <div className="grid w-full gap-4 sm:grid-cols-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="flex h-36 flex-col gap-3 text-base"
+          onClick={onCamera}
+        >
+          <Camera className="size-12" aria-hidden strokeWidth={1.5} />
+          {t("homeChooserCamera")}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="flex h-36 flex-col gap-3 text-base"
+          onClick={onPassword}
+        >
+          <KeyRound className="size-12" aria-hidden strokeWidth={1.5} />
+          {t("homeChooserPassword")}
+        </Button>
+      </div>
+    </div>
+  );
+}

@@ -21,13 +21,17 @@ import {
 const ACTIVITY_EVENTS = ["mousedown", "keydown", "touchstart", "scroll"] as const;
 const LOCK_NAV_DELAY_MS = 150;
 
-export type KioskIdlePhase = "home" | "active" | "expiring";
+export type KioskIdlePhase = "home" | "active" | "auth" | "expiring";
 
 type KioskIdleContextValue = {
   progress: number;
   phase: KioskIdlePhase;
   reset: () => void;
   lockSession: () => void;
+  /** Fixed countdown (no activity reset). Used on home camera/code flows. */
+  startAuthCountdown: (onExpire: () => void) => void;
+  clearAuthCountdown: () => void;
+  setAuthCancelHandler: (handler: (() => void) | null) => void;
 };
 
 const KioskIdleContext = createContext<KioskIdleContextValue | null>(null);
@@ -51,25 +55,81 @@ export function KioskIdleProvider({
   const pathname = usePathname();
   const isHomeScreen = pathname === KIOSK_HOME_PATH;
   const [progress, setProgress] = useState(isHomeScreen ? 1 : 0);
-  const [phase, setPhase] = useState<KioskIdlePhase>(isHomeScreen ? "home" : "active");
+  const [phase, setPhase] = useState<KioskIdlePhase>(
+    isHomeScreen ? "home" : "active",
+  );
   const isExpiringRef = useRef(false);
+  const phaseRef = useRef<KioskIdlePhase>(isHomeScreen ? "home" : "active");
+  const authExpireRef = useRef<(() => void) | null>(null);
+  const authCancelRef = useRef<(() => void) | null>(null);
   const controllerRef = useRef<ReturnType<typeof createKioskIdleController> | null>(
     null,
   );
 
+  const setPhaseSafe = useCallback((next: KioskIdlePhase) => {
+    phaseRef.current = next;
+    setPhase(next);
+  }, []);
+
+  const clearController = useCallback(() => {
+    controllerRef.current?.clear();
+    controllerRef.current = null;
+  }, []);
+
+  const clearAuthCountdown = useCallback(() => {
+    authExpireRef.current = null;
+    clearController();
+    if (pathname === KIOSK_HOME_PATH) {
+      setPhaseSafe("home");
+      setProgress(1);
+    }
+  }, [clearController, pathname, setPhaseSafe]);
+
+  const startAuthCountdown = useCallback(
+    (onExpire: () => void) => {
+      if (pathname !== KIOSK_HOME_PATH) return;
+      isExpiringRef.current = false;
+      authExpireRef.current = onExpire;
+      clearController();
+      setPhaseSafe("auth");
+      setProgress(0);
+
+      const controller = createKioskIdleController({
+        durationMs: sessionIdleMs,
+        onProgress: (value) => {
+          setProgress(value);
+        },
+        onIdle: () => {
+          const expire = authExpireRef.current;
+          authExpireRef.current = null;
+          clearController();
+          expire?.();
+        },
+      });
+      controllerRef.current = controller;
+      controller.reset();
+    },
+    [clearController, pathname, sessionIdleMs, setPhaseSafe],
+  );
+
+  const setAuthCancelHandler = useCallback((handler: (() => void) | null) => {
+    authCancelRef.current = handler;
+  }, []);
+
   const reset = useCallback(() => {
     if (isExpiringRef.current) return;
+    if (phaseRef.current === "auth") return;
     isExpiringRef.current = false;
-    setPhase("active");
+    setPhaseSafe("active");
     controllerRef.current?.reset();
-  }, []);
+  }, [setPhaseSafe]);
 
   const expireSession = useCallback(
     (immediate: boolean) => {
       if (isExpiringRef.current || isHomeScreen) return;
       isExpiringRef.current = true;
-      controllerRef.current?.clear();
-      setPhase("expiring");
+      clearController();
+      setPhaseSafe("expiring");
       setProgress(1);
       if (immediate) {
         router.replace(KIOSK_HOME_PATH);
@@ -79,23 +139,29 @@ export function KioskIdleProvider({
         router.replace(KIOSK_HOME_PATH);
       }, LOCK_NAV_DELAY_MS);
     },
-    [isHomeScreen, router],
+    [clearController, isHomeScreen, router, setPhaseSafe],
   );
 
   const lockSession = useCallback(() => {
+    if (phaseRef.current === "auth") {
+      clearAuthCountdown();
+      authCancelRef.current?.();
+      return;
+    }
     expireSession(true);
-  }, [expireSession]);
+  }, [clearAuthCountdown, expireSession]);
 
   useEffect(() => {
     if (isHomeScreen) {
-      controllerRef.current?.clear();
-      controllerRef.current = null;
+      if (phaseRef.current === "auth") return;
+      clearController();
       isExpiringRef.current = false;
       setProgress(1);
-      setPhase("home");
+      setPhaseSafe("home");
       return;
     }
 
+    authExpireRef.current = null;
     const controller = createKioskIdleController({
       durationMs: sessionIdleMs,
       onProgress: (value) => {
@@ -109,11 +175,12 @@ export function KioskIdleProvider({
 
     controllerRef.current = controller;
     isExpiringRef.current = false;
-    setPhase("active");
+    setPhaseSafe("active");
     controller.reset();
 
     function handleActivity(): void {
       if (isExpiringRef.current) return;
+      if (phaseRef.current === "auth") return;
       controller.reset();
     }
 
@@ -128,11 +195,33 @@ export function KioskIdleProvider({
         window.removeEventListener(event, handleActivity);
       });
     };
-  }, [isHomeScreen, router, expireSession, sessionIdleMs]);
+  }, [
+    isHomeScreen,
+    expireSession,
+    sessionIdleMs,
+    clearController,
+    setPhaseSafe,
+  ]);
 
   const value = useMemo(
-    () => ({ progress, phase, reset, lockSession }),
-    [progress, phase, reset, lockSession],
+    () => ({
+      progress,
+      phase,
+      reset,
+      lockSession,
+      startAuthCountdown,
+      clearAuthCountdown,
+      setAuthCancelHandler,
+    }),
+    [
+      progress,
+      phase,
+      reset,
+      lockSession,
+      startAuthCountdown,
+      clearAuthCountdown,
+      setAuthCancelHandler,
+    ],
   );
 
   return (

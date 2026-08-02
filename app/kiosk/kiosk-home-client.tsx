@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -10,7 +10,9 @@ import { KioskFace1nCapture } from "@/components/kiosk/kiosk-face-1n-capture";
 import { KioskFaceAmbiguousList } from "@/components/kiosk/kiosk-face-ambiguous-list";
 import { KioskFaceVerify } from "@/components/kiosk/kiosk-face-verify";
 import { KioskFaceWelcome } from "@/components/kiosk/kiosk-face-welcome";
-import { KioskIdleScreen } from "@/components/kiosk/kiosk-idle-screen";
+import { KioskHomeChooser } from "@/components/kiosk/kiosk-home-chooser";
+import { useKioskIdleContext } from "@/components/kiosk/kiosk-idle-provider";
+import { FACE_1N_NONE_MESSAGE_MS } from "@/lib/kiosk/face/face-match-constants";
 import { loadFaceModels } from "@/lib/kiosk/face/load-face-models";
 import { buildKioskColaboratorPath } from "@/lib/kiosk/kiosk-link";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
@@ -21,25 +23,80 @@ import {
   type KioskFaceIdentifyCandidate,
 } from "./actions";
 
-type HomeStep = "face1n" | "ambiguous" | "face1to1" | "welcome" | "code";
-
-const NONE_RETRY_BEFORE_CODE = 2;
+type HomeStep =
+  | "choose"
+  | "face1n"
+  | "ambiguous"
+  | "face1to1"
+  | "welcome"
+  | "code";
 
 export function KioskHomeClient() {
   const t = useTranslations("kiosk");
   const router = useRouter();
-  const [step, setStep] = useState<HomeStep>("face1n");
+  const {
+    startAuthCountdown,
+    clearAuthCountdown,
+    setAuthCancelHandler,
+  } = useKioskIdleContext();
+  const [step, setStep] = useState<HomeStep>("choose");
   const [selectedMember, setSelectedMember] =
     useState<KioskFaceIdentifyCandidate | null>(null);
   const [candidates, setCandidates] = useState<KioskFaceIdentifyCandidate[]>(
     [],
   );
   const [pending, setPending] = useState(false);
-  const [noneAttempts, setNoneAttempts] = useState(0);
-  const [face1nKey, setFace1nKey] = useState(0);
+  const [unidentifiedMessage, setUnidentifiedMessage] = useState<string | null>(
+    null,
+  );
   const [errorKey, setErrorKey] = useState<
-    "invalidCredentials" | "forbidden" | "face1nNone" | null
+    "invalidCredentials" | "forbidden" | null
   >(null);
+  const noneMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  const clearNoneMessageTimer = useCallback(() => {
+    if (noneMessageTimerRef.current) {
+      clearTimeout(noneMessageTimerRef.current);
+      noneMessageTimerRef.current = null;
+    }
+  }, []);
+
+  const goHome = useCallback(() => {
+    clearNoneMessageTimer();
+    clearAuthCountdown();
+    setSelectedMember(null);
+    setCandidates([]);
+    setUnidentifiedMessage(null);
+    setErrorKey(null);
+    setPending(false);
+    setStep("choose");
+  }, [clearAuthCountdown, clearNoneMessageTimer]);
+
+  const openCode = useCallback(() => {
+    clearNoneMessageTimer();
+    setSelectedMember(null);
+    setCandidates([]);
+    setUnidentifiedMessage(null);
+    setErrorKey(null);
+    setStep("code");
+    startAuthCountdown(() => {
+      goHome();
+    });
+  }, [clearNoneMessageTimer, goHome, startAuthCountdown]);
+
+  const openCamera = useCallback(() => {
+    clearNoneMessageTimer();
+    setSelectedMember(null);
+    setCandidates([]);
+    setUnidentifiedMessage(null);
+    setErrorKey(null);
+    setStep("face1n");
+    startAuthCountdown(() => {
+      openCode();
+    });
+  }, [clearNoneMessageTimer, openCode, startAuthCountdown]);
 
   useEffect(() => {
     void loadFaceModels().catch(() => {
@@ -47,29 +104,27 @@ export function KioskHomeClient() {
     });
   }, []);
 
-  const openCodeFallback = useCallback(() => {
-    setSelectedMember(null);
-    setCandidates([]);
-    setStep("code");
-  }, []);
-
-  const restartFace1n = useCallback(() => {
-    setSelectedMember(null);
-    setCandidates([]);
-    setErrorKey(null);
-    setFace1nKey((key) => key + 1);
-    setStep("face1n");
-  }, []);
+  useEffect(() => {
+    setAuthCancelHandler(() => {
+      goHome();
+    });
+    return () => {
+      setAuthCancelHandler(null);
+      clearNoneMessageTimer();
+    };
+  }, [clearNoneMessageTimer, goHome, setAuthCancelHandler]);
 
   const navigateToColaborator = useCallback(() => {
     if (!selectedMember) return;
+    clearAuthCountdown();
     router.replace(buildKioskColaboratorPath(selectedMember.documentId));
-  }, [router, selectedMember]);
+  }, [clearAuthCountdown, router, selectedMember]);
 
   const handleFaceSuccess = useCallback(() => {
     if (!selectedMember) return;
+    clearAuthCountdown();
     setStep("welcome");
-  }, [selectedMember]);
+  }, [clearAuthCountdown, selectedMember]);
 
   async function handleProbeReady(descriptor: number[]): Promise<void> {
     setPending(true);
@@ -78,36 +133,36 @@ export function KioskHomeClient() {
     setPending(false);
 
     if (!result.ok) {
-      setErrorKey("forbidden");
-      openCodeFallback();
+      setUnidentifiedMessage(t("face1nNone"));
+      clearNoneMessageTimer();
+      noneMessageTimerRef.current = setTimeout(() => {
+        setUnidentifiedMessage(null);
+      }, FACE_1N_NONE_MESSAGE_MS);
       return;
     }
 
     if (result.status === "match") {
+      clearNoneMessageTimer();
+      clearAuthCountdown();
       setSelectedMember(result.match);
-      setNoneAttempts(0);
+      setUnidentifiedMessage(null);
       setStep("welcome");
       return;
     }
 
     if (result.status === "ambiguous") {
+      clearNoneMessageTimer();
+      setUnidentifiedMessage(null);
       setCandidates(result.candidates);
-      setNoneAttempts(0);
       setStep("ambiguous");
       return;
     }
 
-    const nextAttempts = noneAttempts + 1;
-    setNoneAttempts(nextAttempts);
-    if (nextAttempts >= NONE_RETRY_BEFORE_CODE) {
-      setErrorKey("face1nNone");
-      openCodeFallback();
-      return;
-    }
-
-    setErrorKey("face1nNone");
-    setFace1nKey((key) => key + 1);
-    setStep("face1n");
+    setUnidentifiedMessage(t("face1nNone"));
+    clearNoneMessageTimer();
+    noneMessageTimerRef.current = setTimeout(() => {
+      setUnidentifiedMessage(null);
+    }, FACE_1N_NONE_MESSAGE_MS);
   }
 
   function handleSelectAmbiguous(candidate: KioskFaceIdentifyCandidate): void {
@@ -127,6 +182,7 @@ export function KioskHomeClient() {
       setErrorKey(result.error);
       return;
     }
+    clearAuthCountdown();
     router.replace(result.path);
   }
 
@@ -149,8 +205,8 @@ export function KioskHomeClient() {
         referenceDescriptor={selectedMember.faceVector}
         facePhotoUrl={selectedMember.facePhotoUrl}
         onSuccess={handleFaceSuccess}
-        onCancel={restartFace1n}
-        onFallbackCode={openCodeFallback}
+        onCancel={openCamera}
+        onFallbackCode={openCode}
       />
     );
   }
@@ -161,35 +217,40 @@ export function KioskHomeClient() {
         candidates={candidates}
         pending={pending}
         onSelect={handleSelectAmbiguous}
-        onRetry={restartFace1n}
-        onFallbackCode={openCodeFallback}
+        onRetry={openCamera}
+        onFallbackCode={openCode}
       />
     );
   }
 
   if (step === "face1n") {
     return (
+      <KioskFace1nCapture
+        disabled={pending}
+        unidentifiedMessage={unidentifiedMessage}
+        onProbeReady={(descriptor) => void handleProbeReady(descriptor)}
+        onCancel={goHome}
+      />
+    );
+  }
+
+  if (step === "code") {
+    return (
       <div className="flex flex-col gap-6">
-        <KioskFace1nCapture
-          key={face1nKey}
-          disabled={pending}
-          onProbeReady={(descriptor) => void handleProbeReady(descriptor)}
-          onCancel={openCodeFallback}
-          onFallbackCode={openCodeFallback}
-        />
-        {errorKey === "face1nNone" ? (
+        {errorKey ? (
           <p role="alert" className="text-center text-sm text-destructive">
-            {t("face1nNone")}
+            {t(errorKey)}
           </p>
         ) : null}
-        <div className="border-t pt-4 text-center">
+        <KioskColaboratorForm onSubmit={handleSubmit} pending={pending} />
+        <div className="text-center">
           <Button
             type="button"
             variant="link"
             className="h-auto p-0"
-            onClick={openCodeFallback}
+            onClick={goHome}
           >
-            {t("directoryShowCode")}
+            {t("homeBackToChooser")}
           </Button>
         </div>
       </div>
@@ -197,31 +258,6 @@ export function KioskHomeClient() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <KioskIdleScreen />
-
-      {errorKey && errorKey !== "face1nNone" ? (
-        <p role="alert" className="text-center text-sm text-destructive">
-          {t(errorKey)}
-        </p>
-      ) : errorKey === "face1nNone" ? (
-        <p role="alert" className="text-center text-sm text-destructive">
-          {t("face1nNone")}
-        </p>
-      ) : null}
-
-      <KioskColaboratorForm onSubmit={handleSubmit} pending={pending} />
-
-      <div className="border-t pt-4 text-center">
-        <Button
-          type="button"
-          variant="link"
-          className="h-auto p-0"
-          onClick={restartFace1n}
-        >
-          {t("face1nRetryCamera")}
-        </Button>
-      </div>
-    </div>
+    <KioskHomeChooser onCamera={openCamera} onPassword={openCode} />
   );
 }
