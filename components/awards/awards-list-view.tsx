@@ -29,7 +29,8 @@ export function AwardsListView({
       <table className="hidden w-full text-sm md:table">
         <thead>
           <tr className="border-b text-left">
-            <th className="py-2">{tAwards("name")}</th>
+            <th className="w-12 py-2 pr-3" aria-hidden />
+            <th className="py-2">{tAwards("titleField")}</th>
             <th>{tAwards("starCost")}</th>
           </tr>
         </thead>

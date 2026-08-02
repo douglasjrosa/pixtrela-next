@@ -2,6 +2,7 @@ import type { KeyboardEvent } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { AwardListImage } from "./award-list-image";
 import {
   formatAwardValueRow,
   type AwardRow,
@@ -15,12 +16,18 @@ export interface AwardListRowProps {
   onOpen: (award: AwardRow) => void;
 }
 
+function awardDisplayTitle(award: AwardRow): string {
+  const title = award.title?.trim();
+  return title || award.name;
+}
+
 export function AwardListRow({
   award,
   currencies,
   variant,
   onOpen,
 }: AwardListRowProps) {
+  const displayTitle = awardDisplayTitle(award);
   const costLabel =
     award.values.length > 0
       ? award.values
@@ -35,7 +42,7 @@ export function AwardListRow({
   const interaction = {
     tabIndex: 0 as const,
     role: "link" as const,
-    "aria-label": award.name,
+    "aria-label": displayTitle,
     onClick: openAward,
     onKeyDown: (event: KeyboardEvent) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -54,7 +61,10 @@ export function AwardListRow({
           "focus-visible:bg-muted/40 focus-visible:outline-none",
         )}
       >
-        <td className="py-2">{award.name}</td>
+        <td className="w-12 py-2 pr-3">
+          <AwardListImage label={displayTitle} imageUrl={award.imageUrl} />
+        </td>
+        <td className="py-2">{displayTitle}</td>
         <td>{costLabel}</td>
       </tr>
     );
@@ -68,8 +78,13 @@ export function AwardListRow({
         "focus-visible:bg-muted/40 focus-visible:outline-none",
       )}
     >
-      <div className="text-base font-medium">{award.name}</div>
-      <div className="text-muted-foreground text-sm">{costLabel}</div>
+      <div className="flex items-center gap-3">
+        <AwardListImage label={displayTitle} imageUrl={award.imageUrl} />
+        <div className="min-w-0 flex-1">
+          <div className="text-base font-medium">{displayTitle}</div>
+          <div className="text-muted-foreground text-sm">{costLabel}</div>
+        </div>
+      </div>
     </li>
   );
 }

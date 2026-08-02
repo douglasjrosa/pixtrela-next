@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
+import { FaceOvalFrame } from "@/components/kiosk/face-oval-frame";
 import { Button } from "@/components/ui/button";
 import { loadReferenceFaceDescriptor } from "@/lib/kiosk/face/load-reference-descriptor";
 import { loadFaceModels } from "@/lib/kiosk/face/load-face-models";
@@ -162,12 +163,7 @@ export function KioskFaceVerify({
           muted
           autoPlay
         />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 flex items-center justify-center"
-        >
-          <div className="h-[70%] w-[62%] rounded-[50%] border-2 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
-        </div>
+        <FaceOvalFrame />
       </div>
 
       <p role="status" className="text-center text-sm">

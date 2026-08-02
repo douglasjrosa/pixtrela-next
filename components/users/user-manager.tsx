@@ -36,6 +36,7 @@ import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 import type { UserRow } from "./types";
+import { UserMediaFields } from "./user-media-fields";
 import { UsersListView } from "./users-list-view";
 import { UsersToolbar } from "./users-toolbar";
 
@@ -46,6 +47,8 @@ export interface UserManagerProps {
   onCreate: (values: UserFormInput) => void | Promise<void>;
   onUpdate: (userId: number, values: UserFormInput) => void | Promise<void>;
   onDelete?: (userId: number) => void | Promise<void>;
+  onSaveAvatar?: (userId: number, file: File) => boolean | Promise<boolean>;
+  onSaveFacePhoto?: (userId: number, file: File) => boolean | Promise<boolean>;
   canDelete: boolean;
   /** Precomputed on the server — do not pass predicate functions from RSC. */
   manageableRoles: UserFormInput["roleType"][];
@@ -63,6 +66,7 @@ const EMPTY_FORM: UserFormInput = {
   password: "",
   code: 0,
   roleType: "colaborator",
+  greetingGender: "masculine",
 };
 
 function roleOptionsForUser(
@@ -127,6 +131,8 @@ interface UserFormDialogProps {
   onDelete?: () => void;
   onPreviewKioskColaborator: (documentId: string) => void;
   onWriteKioskNfc: (documentId: string) => Promise<void>;
+  onSaveAvatar?: (userId: number, file: File) => boolean | Promise<boolean>;
+  onSaveFacePhoto?: (userId: number, file: File) => boolean | Promise<boolean>;
   nfcWriteDisabled: boolean;
 }
 
@@ -145,6 +151,8 @@ function UserFormDialog({
   onDelete,
   onPreviewKioskColaborator,
   onWriteKioskNfc,
+  onSaveAvatar,
+  onSaveFacePhoto,
   nfcWriteDisabled,
 }: UserFormDialogProps) {
   const tCommon = useTranslations("common");
@@ -168,6 +176,7 @@ function UserFormDialog({
         password: "",
         code: editingUser.code,
         roleType: editingUser.roleType,
+        greetingGender: editingUser.greetingGender ?? "masculine",
       }
     : EMPTY_FORM;
 
@@ -350,6 +359,31 @@ function UserFormDialog({
             ))}
           </select>
         </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="greetingGender">{tUsers("greetingGender")}</Label>
+          <select
+            id="greetingGender"
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            {...register("greetingGender")}
+          >
+            <option value="masculine">{tUsers("greetingGenderMasculine")}</option>
+            <option value="feminine">{tUsers("greetingGenderFeminine")}</option>
+          </select>
+          <p className="text-xs text-muted-foreground">
+            {tUsers("greetingGenderHint")}
+          </p>
+        </div>
+
+        {isEditing && editingUser && onSaveAvatar && onSaveFacePhoto ? (
+          <UserMediaFields
+            avatarUrl={editingUser.avatarUrl}
+            facePhotoUrl={editingUser.facePhotoUrl}
+            disabled={isPending}
+            onSaveAvatar={(file) => onSaveAvatar(editingUser.id, file)}
+            onSaveFacePhoto={(file) => onSaveFacePhoto(editingUser.id, file)}
+          />
+        ) : null}
       </form>
     </FormModalShell>
   );
@@ -360,6 +394,8 @@ export function UserManager({
   onCreate,
   onUpdate,
   onDelete,
+  onSaveAvatar,
+  onSaveFacePhoto,
   canDelete,
   manageableRoles,
   canWriteKioskNfc = false,
@@ -539,6 +575,24 @@ export function UserManager({
           onDelete={() => setDeleteOpen(true)}
           onPreviewKioskColaborator={handlePreviewKioskColaborator}
           onWriteKioskNfc={handleWriteKioskNfc}
+          onSaveAvatar={
+            onSaveAvatar
+              ? async (userId, file) => {
+                  const ok = await onSaveAvatar(userId, file);
+                  if (ok) router.refresh();
+                  return ok;
+                }
+              : undefined
+          }
+          onSaveFacePhoto={
+            onSaveFacePhoto
+              ? async (userId, file) => {
+                  const ok = await onSaveFacePhoto(userId, file);
+                  if (ok) router.refresh();
+                  return ok;
+                }
+              : undefined
+          }
           nfcWriteDisabled={nfcWriteDisabled}
         />
       ) : null}

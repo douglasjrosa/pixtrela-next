@@ -16,6 +16,9 @@ export function buildCreateUserPayload(data: UserFormInput): Record<string, unkn
     code: data.code,
     roleType: data.roleType,
     confirmed: true,
+    ...(data.greetingGender
+      ? { greetingGender: data.greetingGender }
+      : {}),
   };
 }
 
@@ -32,5 +35,8 @@ export function buildUpdateUserPayload(
   if (data.password) payload.password = data.password;
   if (data.code !== undefined) payload.code = data.code;
   if (data.roleType) payload.roleType = data.roleType;
+  if (data.greetingGender !== undefined) {
+    payload.greetingGender = data.greetingGender;
+  }
   return payload;
 }

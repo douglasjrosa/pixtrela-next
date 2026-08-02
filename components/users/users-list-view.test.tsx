@@ -13,6 +13,7 @@ const users: UserRow[] = [
     username: "maria.1234",
     code: 1234,
     roleType: "colaborator",
+    avatarUrl: "http://127.0.0.1:1337/uploads/maria.jpg",
   },
   {
     id: 2,
@@ -50,5 +51,22 @@ describe("UsersListView", () => {
     expect(onOpen).toHaveBeenCalledWith(users[0]);
     expect(screen.queryByRole("link", { name: "Admin" })).toBeNull();
     expect(screen.getAllByText("Admin").length).toBeGreaterThan(0);
+  });
+
+  it("renders a circular avatar cell before the name column", () => {
+    renderWithIntl(
+      <UsersListView
+        users={users}
+        manageableRoles={["colaborator"]}
+        onOpen={vi.fn()}
+      />,
+    );
+
+    const avatar = screen.getAllByRole("img", { name: "Maria" })[0]!;
+    expect(avatar).toHaveAttribute(
+      "src",
+      "http://127.0.0.1:1337/uploads/maria.jpg",
+    );
+    expect(avatar.className).toMatch(/rounded-full/);
   });
 });

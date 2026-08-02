@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { KioskColaboratorForm } from "@/components/kiosk/kiosk-colaborator-form";
 import { KioskFaceVerify } from "@/components/kiosk/kiosk-face-verify";
+import { KioskFaceWelcome } from "@/components/kiosk/kiosk-face-welcome";
 import { KioskIdleScreen } from "@/components/kiosk/kiosk-idle-screen";
 import { KioskMemberPicker } from "@/components/kiosk/kiosk-member-picker";
 import { KioskTeamPicker } from "@/components/kiosk/kiosk-team-picker";
@@ -23,7 +24,7 @@ import {
   identifyKioskUserByCode,
 } from "./actions";
 
-type HomeStep = "teams" | "members" | "face";
+type HomeStep = "teams" | "members" | "face" | "welcome";
 
 export function KioskHomeClient() {
   const t = useTranslations("kiosk");
@@ -52,10 +53,15 @@ export function KioskHomeClient() {
     })();
   }, []);
 
-  const handleFaceSuccess = useCallback(() => {
+  const navigateToColaborator = useCallback(() => {
     if (!selectedMember) return;
     router.replace(buildKioskColaboratorPath(selectedMember.documentId));
   }, [router, selectedMember]);
+
+  const handleFaceSuccess = useCallback(() => {
+    if (!selectedMember) return;
+    setStep("welcome");
+  }, [selectedMember]);
 
   async function handleSelectTeam(team: KioskDirectoryTeam): Promise<void> {
     setPending(true);
@@ -86,6 +92,18 @@ export function KioskHomeClient() {
       return;
     }
     router.replace(result.path);
+  }
+
+  if (step === "welcome" && selectedMember) {
+    return (
+      <KioskFaceWelcome
+        name={selectedMember.name}
+        greetingGender={selectedMember.greetingGender}
+        avatarUrl={selectedMember.avatarUrl}
+        facePhotoUrl={selectedMember.facePhotoUrl}
+        onDone={navigateToColaborator}
+      />
+    );
   }
 
   if (step === "face" && selectedMember?.facePhotoUrl) {

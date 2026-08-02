@@ -17,21 +17,36 @@ vi.mock("@/lib/ui/app-toast", () => ({
   showSuccessToast: vi.fn(),
 }));
 
+vi.mock("@/components/kiosk/face-oval-capture", () => ({
+  FaceOvalCapture: ({
+    onCapture,
+  }: {
+    onCapture: (file: File) => void;
+  }) => (
+    <button
+      type="button"
+      onClick={() =>
+        onCapture(new File(["photo"], "photo.jpg", { type: "image/jpeg" }))
+      }
+    >
+      mock-capture
+    </button>
+  ),
+}));
+
 describe("KioskColaboratorFacePhotoForm", () => {
-  it("calls onSave when face validation passes", async () => {
+  it("calls onSave when face validation passes after oval capture", async () => {
     const onSave = vi.fn().mockResolvedValue(true);
     renderWithIntl(
       <KioskColaboratorFacePhotoForm onSave={onSave} facePhotoUrl={null} />,
     );
 
-    const file = new File(["photo"], "photo.jpg", { type: "image/jpeg" });
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(input, { target: { files: [file] } });
-
+    fireEvent.click(screen.getByRole("button", { name: "Tirar foto" }));
+    fireEvent.click(screen.getByRole("button", { name: "mock-capture" }));
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith(file);
+      expect(onSave).toHaveBeenCalled();
     });
   });
 });

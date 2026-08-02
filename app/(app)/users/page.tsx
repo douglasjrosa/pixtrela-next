@@ -14,8 +14,15 @@ import {
 import { canDeleteUsers, manageableTargetRoles } from "@/lib/business/roles";
 import type { UserFormInput } from "@/lib/schemas/user";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
+import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 
-import { createUser, deleteUser, updateUser } from "./actions";
+import {
+  createUser,
+  deleteUser,
+  saveUserAvatarFile,
+  saveUserFacePhotoFile,
+  updateUser,
+} from "./actions";
 
 interface UserEntity {
   documentId?: string;
@@ -25,6 +32,9 @@ interface UserEntity {
   email?: string | null;
   code?: number;
   roleType?: UserFormInput["roleType"];
+  greetingGender?: "masculine" | "feminine" | null;
+  avatar?: { url?: string } | null;
+  facePhoto?: { url?: string } | null;
 }
 
 async function loadUsers(): Promise<UserRow[]> {
@@ -33,7 +43,20 @@ async function loadUsers(): Promise<UserRow[]> {
       "/users",
       { strapiCache: { tags: [STRAPI_TAGS.users], revalidate: 60 } },
       {
-        fields: ["documentId", "id", "name", "username", "email", "code", "roleType"],
+        fields: [
+          "documentId",
+          "id",
+          "name",
+          "username",
+          "email",
+          "code",
+          "roleType",
+          "greetingGender",
+        ],
+        populate: {
+          avatar: { fields: ["url"] },
+          facePhoto: { fields: ["url"] },
+        },
       },
     );
     return res.map((user) => ({
@@ -44,6 +67,9 @@ async function loadUsers(): Promise<UserRow[]> {
       email: user.email ?? null,
       code: user.code ?? 0,
       roleType: user.roleType ?? "colaborator",
+      greetingGender: user.greetingGender ?? null,
+      avatarUrl: resolveStrapiMediaUrl(user.avatar?.url ?? null),
+      facePhotoUrl: resolveStrapiMediaUrl(user.facePhoto?.url ?? null),
     }));
   } catch (error) {
     rethrowIfNavigationError(error);
@@ -69,6 +95,8 @@ export default async function UsersPage() {
         onCreate={createUser}
         onUpdate={updateUser}
         onDelete={deleteUser}
+        onSaveAvatar={saveUserAvatarFile}
+        onSaveFacePhoto={saveUserFacePhotoFile}
         canDelete={canDeleteUsers(actorRole)}
         manageableRoles={manageableTargetRoles(actorRole)}
         canWriteKioskNfc={canWriteKioskNfc(actorRole)}

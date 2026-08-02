@@ -30,6 +30,8 @@ vi.mock("@/app/kiosk/actions", () => ({
         documentId: "c1",
         name: "Ana",
         facePhotoUrl: "http://127.0.0.1:1337/uploads/a.jpg",
+        avatarUrl: "http://127.0.0.1:1337/uploads/av.jpg",
+        greetingGender: "feminine",
       },
     ],
   })),

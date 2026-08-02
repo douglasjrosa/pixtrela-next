@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Camera, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { FaceOvalCapture } from "@/components/kiosk/face-oval-capture";
 import { Button } from "@/components/ui/button";
 import { validateFacePhotoHasSingleFace } from "@/lib/kiosk/face/validate-face-photo-file";
 import { compressProfileImage } from "@/lib/media/compress-profile-image";
@@ -23,37 +24,21 @@ export function KioskColaboratorFacePhotoForm({
 }: KioskColaboratorFacePhotoFormProps) {
   const t = useTranslations("kiosk");
   const tCommon = useTranslations("common");
-  const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
 
   const currentUrl =
     previewUrl ?? resolveStrapiMediaUrl(facePhotoUrl ?? null) ?? null;
 
-  function handlePickFile(): void {
-    inputRef.current?.click();
-  }
-
-  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>): void {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
+  function applyCapturedFile(file: File): void {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
     }
     setPendingFile(file);
     setPreviewUrl(URL.createObjectURL(file));
-  }
-
-  function handleRetake(): void {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
-    setPreviewUrl(null);
-    setPendingFile(null);
-    handlePickFile();
+    setCaptureOpen(false);
   }
 
   async function handleSave(): Promise<void> {
@@ -76,6 +61,22 @@ export function KioskColaboratorFacePhotoForm({
     } finally {
       setIsSaving(false);
     }
+  }
+
+  if (captureOpen) {
+    return (
+      <section className="space-y-4 rounded-lg border bg-card p-4">
+        <div className="space-y-1">
+          <h3 className="text-base font-semibold">{t("staffFacePhotoTitle")}</h3>
+          <p className="text-sm text-muted-foreground">{t("staffFacePhotoHint")}</p>
+        </div>
+        <FaceOvalCapture
+          disabled={disabled || isSaving}
+          onCancel={() => setCaptureOpen(false)}
+          onCapture={applyCapturedFile}
+        />
+      </section>
+    );
   }
 
   return (
@@ -101,20 +102,11 @@ export function KioskColaboratorFacePhotoForm({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            capture="user"
-            className="hidden"
-            disabled={disabled || isSaving}
-            onChange={handleFileChange}
-          />
           <Button
             type="button"
             variant="outline"
             disabled={disabled || isSaving}
-            onClick={handlePickFile}
+            onClick={() => setCaptureOpen(true)}
           >
             <Camera className="size-4" aria-hidden />
             {t("staffFacePhotoTake")}
@@ -125,7 +117,7 @@ export function KioskColaboratorFacePhotoForm({
                 type="button"
                 variant="outline"
                 disabled={disabled || isSaving}
-                onClick={handleRetake}
+                onClick={() => setCaptureOpen(true)}
               >
                 <RotateCcw className="size-4" aria-hidden />
                 {t("staffFacePhotoRetake")}

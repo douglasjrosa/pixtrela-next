@@ -11,6 +11,8 @@ export type KioskDirectoryColaborator = {
   documentId: string;
   name: string;
   facePhotoUrl: string | null;
+  avatarUrl: string | null;
+  greetingGender: "masculine" | "feminine" | null;
 };
 
 interface StrapiList<T> {
@@ -41,6 +43,8 @@ export async function loadKioskDirectoryTeamColaborators(
     return (res.data ?? []).map((colaborator) => ({
       ...colaborator,
       facePhotoUrl: resolveStrapiMediaUrl(colaborator.facePhotoUrl),
+      avatarUrl: resolveStrapiMediaUrl(colaborator.avatarUrl ?? null),
+      greetingGender: colaborator.greetingGender ?? null,
     }));
   } catch (error) {
     rethrowIfNavigationError(error);

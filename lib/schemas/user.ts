@@ -17,6 +17,8 @@ export const USER_ROLES = [
   "kiosk",
 ] as const;
 
+export const GREETING_GENDERS = ["masculine", "feminine"] as const;
+
 export const USER_CODE_NOT_UNIQUE_KEY = "codeNotUnique";
 export const USER_LOGIN_NOT_UNIQUE_KEY = "loginNotUnique";
 
@@ -34,6 +36,7 @@ export function buildUserFormSchema(options?: { requirePassword?: boolean }) {
       : optionalPasswordSchema,
     code: z.number().int().min(0),
     roleType: z.enum(USER_ROLES),
+    greetingGender: z.enum(GREETING_GENDERS).optional().nullable(),
   });
 }
 

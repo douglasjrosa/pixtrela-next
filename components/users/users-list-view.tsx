@@ -36,6 +36,7 @@ export function UsersListView({
       <table className="hidden w-full text-sm md:table">
         <thead>
           <tr className="border-b text-left">
+            <th className="w-12 py-2 pr-3" aria-hidden />
             <th className="py-2">{tUsers("name")}</th>
             <th>{tUsers("code")}</th>
             <th>{tUsers("role")}</th>

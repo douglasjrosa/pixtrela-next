@@ -6,7 +6,9 @@ import { canViewUsers, canSetUserPassword } from "@/lib/auth/permissions";
 import { canDeleteUsers, canManageRole } from "@/lib/business/roles";
 import { buildUserFormSchema, type UserFormInput } from "@/lib/schemas/user";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
+import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
+import { strapiUpload } from "@/lib/strapi/upload";
 import {
   buildCreateUserPayload,
   buildUpdateUserPayload,
@@ -106,6 +108,77 @@ export async function updateUser(
     body: JSON.stringify(buildUpdateUserPayload(data)),
   });
   invalidateUsers();
+}
+
+export type UserMediaUploadResult =
+  | { ok: true; url: string | null }
+  | { ok: false };
+
+async function uploadUserMediaField(
+  userId: number,
+  field: "avatar" | "facePhoto",
+  file: File,
+): Promise<UserMediaUploadResult> {
+  const actorRole = await assertCanView();
+  const currentRole = await loadUserRole(userId);
+  if (!canManageRole(actorRole, currentRole)) {
+    return { ok: false };
+  }
+
+  if (!(file instanceof File) || file.size === 0 || !file.type.startsWith("image/")) {
+    return { ok: false };
+  }
+
+  try {
+    const mediaId = await strapiUpload(file);
+    const updated = await strapiFetch<{
+      avatar?: { url?: string } | null;
+      facePhoto?: { url?: string } | null;
+    }>(`/users/${userId}`, {
+      method: "PUT",
+      strapiCache: { noStore: true },
+      body: JSON.stringify({ [field]: mediaId }),
+    });
+    invalidateUsers();
+    const media = field === "avatar" ? updated.avatar : updated.facePhoto;
+    return {
+      ok: true,
+      url: resolveStrapiMediaUrl(media?.url ?? null),
+    };
+  } catch {
+    return { ok: false };
+  }
+}
+
+export async function saveUserAvatar(
+  userId: number,
+  file: File,
+): Promise<UserMediaUploadResult> {
+  return uploadUserMediaField(userId, "avatar", file);
+}
+
+export async function saveUserFacePhoto(
+  userId: number,
+  file: File,
+): Promise<UserMediaUploadResult> {
+  return uploadUserMediaField(userId, "facePhoto", file);
+}
+
+/** Client-friendly wrappers for the users edit form. */
+export async function saveUserAvatarFile(
+  userId: number,
+  file: File,
+): Promise<boolean> {
+  const result = await saveUserAvatar(userId, file);
+  return result.ok;
+}
+
+export async function saveUserFacePhotoFile(
+  userId: number,
+  file: File,
+): Promise<boolean> {
+  const result = await saveUserFacePhoto(userId, file);
+  return result.ok;
 }
 
 export async function deactivateUser(userId: number): Promise<void> {
