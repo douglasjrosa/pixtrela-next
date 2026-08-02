@@ -46,6 +46,7 @@ const subtasks = [
     expectedTime: 120,
     timeSpent: 30,
     openActivityStartedAts: ["2026-07-16T11:00:00.000Z"],
+    producingColaboratorIds: ["u-1"],
     assignedTo: [{ documentId: "u-1", name: "Ana" }],
   }),
   boardSubTaskSummaryStub({
@@ -129,6 +130,44 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(screen.queryByText("0/0")).not.toBeInTheDocument();
     expect(screen.queryByText("Embalar")).not.toBeInTheDocument();
     expect(screen.queryByText("Histórico")).not.toBeInTheDocument();
+  });
+
+  it("shows assignee name badges under pending subtask titles", () => {
+    renderModal();
+
+    const pintarCard = screen.getByRole("button", { name: /Pintar/ });
+    expect(
+      within(pintarCard).getByLabelText("Atribuído a"),
+    ).toBeInTheDocument();
+    expect(within(pintarCard).getByText("Ana")).toHaveClass("bg-success");
+
+    const soldarCard = screen.getByRole("button", { name: /Soldar/ });
+    expect(
+      within(soldarCard).queryByLabelText("Atribuído a"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps non-producing assignee badges muted", () => {
+    renderModal({
+      subtasks: [
+        boardSubTaskSummaryStub({
+          documentId: "st-mix",
+          name: "Montagem",
+          status: "producing",
+          openActivityStartedAts: ["2026-07-16T11:00:00.000Z"],
+          producingColaboratorIds: ["u-1"],
+          assignedTo: [
+            { documentId: "u-1", name: "Ana" },
+            { documentId: "u-2", name: "Bob" },
+          ],
+        }),
+      ],
+    });
+
+    const card = screen.getByRole("button", { name: /Montagem/ });
+    expect(within(card).getByText("Ana")).toHaveClass("bg-success");
+    expect(within(card).getByText("Bob")).toHaveClass("bg-muted");
+    expect(within(card).getByText("Bob")).not.toHaveClass("bg-success");
   });
 
   it("selects pending tab by default when pending subtasks exist", () => {
@@ -527,26 +566,41 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(onAddSubtask).toHaveBeenCalledOnce();
   });
 
-  it("asks before enabling multi-select when the form is dirty", async () => {
+  it("enables multi-select without exit confirm even when the form is dirty", async () => {
     const user = userEvent.setup();
     renderModal({ dirty: true });
 
     await user.click(screen.getByRole("switch", { name: "Multi-seleção" }));
 
-    expect(showConfirmToast).toHaveBeenCalledOnce();
-    expect(
-      screen.queryByRole("button", { name: "Atribuir subtarefas" }),
-    ).not.toBeInTheDocument();
-
-    const options = showConfirmToast.mock.calls[0][0] as {
-      onYes: () => void;
-    };
-    await act(async () => {
-      options.onYes();
-    });
+    expect(showConfirmToast).not.toHaveBeenCalled();
     expect(
       screen.getByRole("button", { name: "Atribuir subtarefas" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Multi-seleção" })).toBeChecked();
+  });
+
+  it("disables multi-select and clears local selection without confirm", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.click(screen.getByRole("switch", { name: "Multi-seleção" }));
+    await user.click(screen.getByRole("button", { name: /Soldar/ }));
+    await user.click(screen.getByRole("button", { name: "Ana" }));
+
+    expect(
+      screen.getByRole("button", { name: "Atribuir subtarefas" }),
+    ).toBeEnabled();
+
+    await user.click(screen.getByRole("switch", { name: "Multi-seleção" }));
+
+    expect(showConfirmToast).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("heading", { name: "Sair da multi-seleção" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Atribuir subtarefas" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Multi-seleção" })).not.toBeChecked();
   });
 
   it("closes immediately when the form is not dirty", async () => {

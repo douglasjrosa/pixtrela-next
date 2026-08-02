@@ -99,19 +99,54 @@ function SubTaskCardHeader({
   status,
   statusLabel,
   workingCount,
+  assignedTo,
+  producingColaboratorIds,
 }: {
   name: string;
   status: BoardSubTaskSummary["status"];
   statusLabel: string;
   workingCount: number;
+  assignedTo: BoardSubTaskSummary["assignedTo"];
+  producingColaboratorIds: readonly string[];
 }) {
   const tKanban = useTranslations("kanban");
+  const tSubtasks = useTranslations("subtasks");
   const isProducing = status === PRODUCING_STATUS;
   const showActive = isProducing && workingCount > 0;
+  const producingIdSet = new Set(producingColaboratorIds);
 
   return (
     <div className="mb-3 flex flex-col gap-1 md:flex-row md:items-start md:justify-between md:gap-2">
-      <span className="w-full font-medium md:min-w-0 md:flex-1">{name}</span>
+      <div className="flex w-full min-w-0 flex-col gap-1.5 md:flex-1">
+        <span className="font-medium">{name}</span>
+        {assignedTo.length > 0 ? (
+          <ul
+            className="flex flex-wrap gap-1"
+            aria-label={tSubtasks("assignedTo")}
+          >
+            {assignedTo.map((assignee) => {
+              const isAssigneeProducing = producingIdSet.has(
+                assignee.documentId,
+              );
+              return (
+                <li key={assignee.documentId} className="min-w-0">
+                  <CardBadge
+                    title={assignee.name}
+                    className={cn(
+                      "max-w-full truncate px-1.5 py-0 text-xs font-medium",
+                      isAssigneeProducing
+                        ? "border-transparent bg-success text-success-foreground"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {assignee.name}
+                  </CardBadge>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+      </div>
       <CardBadge
         className={cn(
           "inline-flex w-fit shrink-0 items-center gap-1 self-start md:self-end",
@@ -307,17 +342,17 @@ export function KanbanTaskSubtasksModal({
   }
 
   function handleMultiEnabledChange(enabled: boolean): void {
+    // Toggle resets local multi/focus UI only. Committed assignee drafts
+    // (1:1 clicks or "Assign Subtasks") stay in parent state.
     if (!enabled) {
-      requestExitMulti("disable-multi");
+      clearMultiState();
       return;
     }
-    confirmIfDirty(() => {
-      setMultiEnabled(true);
-      setSelectedSubtaskIds([]);
-      setSelectedCollaboratorIds([]);
-      setSelectedSubtaskId(null);
-      setSelectedCollaboratorId(null);
-    });
+    setMultiEnabled(true);
+    setSelectedSubtaskIds([]);
+    setSelectedCollaboratorIds([]);
+    setSelectedSubtaskId(null);
+    setSelectedCollaboratorId(null);
   }
 
   function handleMainTabChange(next: MainTab): void {
@@ -738,6 +773,10 @@ export function KanbanTaskSubtasksModal({
                               statusLabel={tStatus(subtask.status)}
                               workingCount={
                                 subtask.openActivityStartedAts.length
+                              }
+                              assignedTo={subtask.assignedTo}
+                              producingColaboratorIds={
+                                subtask.producingColaboratorIds
                               }
                             />
                             <SubTaskProgressBar

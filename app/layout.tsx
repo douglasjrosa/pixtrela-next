@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Comfortaa, Lilita_One } from "next/font/google";
+import { Comfortaa, Merriweather_Sans } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 
@@ -20,10 +20,10 @@ const comfortaa = Comfortaa({
   weight: ["300", "400", "500", "600", "700"],
 });
 
-const lilitaOne = Lilita_One({
-  variable: "--font-lilita",
+const merriweatherSans = Merriweather_Sans({
+  variable: "--font-merriweather-sans",
   subsets: ["latin"],
-  weight: "400",
+  weight: ["700"],
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -62,7 +62,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${comfortaa.variable} ${lilitaOne.variable} h-full antialiased`}
+      className={`${comfortaa.variable} ${merriweatherSans.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">
         <SerwistProvider swUrl="/serwist/sw.js">

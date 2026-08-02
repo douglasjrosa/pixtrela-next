@@ -203,6 +203,47 @@ describe("UserManager", () => {
     expect(screen.getByLabelText("Código")).toHaveValue(1234);
   });
 
+  it("uses compact modal height and shows user image fields for admin", () => {
+    renderWithIntl(
+      <UserManager
+        users={users}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onUpdateImage={vi.fn()}
+        canDelete={false}
+        manageableRoles={["colaborator"]}
+        canManageImages
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+
+    const body = document.querySelector('[data-slot="form-modal-body"]');
+    expect(body?.firstElementChild?.className).not.toContain(
+      "min-h-[calc(90dvh-3.5rem)]",
+    );
+    expect(screen.getByLabelText("Imagem de avatar")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Imagem para reconhecimento facial"),
+    ).toBeInTheDocument();
+  });
+
+  it("hides user image fields without image management permission", () => {
+    renderWithIntl(
+      <UserManager
+        users={users}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onUpdateImage={vi.fn()}
+        canDelete={false}
+        manageableRoles={["colaborator"]}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    expect(screen.queryByLabelText("Imagem de avatar")).not.toBeInTheDocument();
+  });
+
   it("closes modal on cancel", () => {
     renderWithIntl(
       <UserManager

@@ -16,13 +16,11 @@ import type { UserFormInput } from "@/lib/schemas/user";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 
-import {
-  createUser,
-  deleteUser,
-  saveUserAvatarFile,
-  saveUserFacePhotoFile,
-  updateUser,
-} from "./actions";
+import { createUser, deleteUser, updateUser, updateUserImage } from "./actions";
+
+interface MediaEntity {
+  url?: string | null;
+}
 
 interface UserEntity {
   documentId?: string;
@@ -33,8 +31,8 @@ interface UserEntity {
   code?: number;
   roleType?: UserFormInput["roleType"];
   greetingGender?: "masculine" | "feminine" | null;
-  avatar?: { url?: string } | null;
-  facePhoto?: { url?: string } | null;
+  avatar?: MediaEntity | null;
+  facePhoto?: MediaEntity | null;
 }
 
 async function loadUsers(): Promise<UserRow[]> {
@@ -94,15 +92,15 @@ export default async function UsersPage() {
         users={users}
         onCreate={createUser}
         onUpdate={updateUser}
+        onUpdateImage={updateUserImage}
         onDelete={deleteUser}
-        onSaveAvatar={saveUserAvatarFile}
-        onSaveFacePhoto={saveUserFacePhotoFile}
         canDelete={canDeleteUsers(actorRole)}
         manageableRoles={manageableTargetRoles(actorRole)}
         canWriteKioskNfc={canWriteKioskNfc(actorRole)}
         canPreviewKioskColaborator={canPreviewKioskColaborator(actorRole)}
         canSetPassword={canSetUserPassword(actorRole)}
         canEditUserLogin={canEditUserLogin(actorRole)}
+        canManageImages={actorRole === "admin"}
       />
     </section>
   );

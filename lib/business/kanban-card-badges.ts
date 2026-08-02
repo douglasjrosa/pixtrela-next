@@ -1,4 +1,7 @@
-import type { ActivitySessionRef } from "@/lib/business/task-progress";
+import {
+  listOpenColaboratorDocumentIds,
+  type ActivitySessionRef,
+} from "@/lib/business/task-progress";
 
 export type UnassignedSubTaskInput = {
   assignedCount: number;
@@ -10,21 +13,7 @@ export type UnassignedSubTaskInput = {
 export function countOpenColaborators(
   activities: readonly ActivitySessionRef[],
 ): number {
-  const sorted = [...activities].sort((left, right) =>
-    left.timestamp.localeCompare(right.timestamp),
-  );
-  const openBySession = new Map<string, string>();
-
-  for (const activity of sorted) {
-    const key = `${activity.subTaskDocumentId}:${activity.colaboratorDocumentId}`;
-    if (activity.action === "started") {
-      openBySession.set(key, activity.colaboratorDocumentId);
-      continue;
-    }
-    openBySession.delete(key);
-  }
-
-  return new Set(openBySession.values()).size;
+  return listOpenColaboratorDocumentIds(activities).length;
 }
 
 /** Unique colaborators who appear in any activity on the task. */

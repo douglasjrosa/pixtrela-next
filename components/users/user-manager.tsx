@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Nfc, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -36,7 +36,10 @@ import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 import type { UserRow } from "./types";
-import { UserMediaFields } from "./user-media-fields";
+import {
+  UserMediaFields,
+  type UserImageType,
+} from "./user-media-fields";
 import { UsersListView } from "./users-list-view";
 import { UsersToolbar } from "./users-toolbar";
 
@@ -46,9 +49,12 @@ export interface UserManagerProps {
   users: UserRow[];
   onCreate: (values: UserFormInput) => void | Promise<void>;
   onUpdate: (userId: number, values: UserFormInput) => void | Promise<void>;
+  onUpdateImage?: (
+    userId: number,
+    imageType: UserImageType,
+    formData: FormData,
+  ) => void | Promise<void>;
   onDelete?: (userId: number) => void | Promise<void>;
-  onSaveAvatar?: (userId: number, file: File) => boolean | Promise<boolean>;
-  onSaveFacePhoto?: (userId: number, file: File) => boolean | Promise<boolean>;
   canDelete: boolean;
   /** Precomputed on the server — do not pass predicate functions from RSC. */
   manageableRoles: UserFormInput["roleType"][];
@@ -58,6 +64,8 @@ export interface UserManagerProps {
   canSetPassword?: boolean;
   /** Admin-only manual login override in create/edit modal. */
   canEditUserLogin?: boolean;
+  /** Admin-only avatar and face recognition image management. */
+  canManageImages?: boolean;
 }
 
 const EMPTY_FORM: UserFormInput = {
@@ -131,9 +139,13 @@ interface UserFormDialogProps {
   onDelete?: () => void;
   onPreviewKioskColaborator: (documentId: string) => void;
   onWriteKioskNfc: (documentId: string) => Promise<void>;
-  onSaveAvatar?: (userId: number, file: File) => boolean | Promise<boolean>;
-  onSaveFacePhoto?: (userId: number, file: File) => boolean | Promise<boolean>;
+  onUpdateImage?: (
+    userId: number,
+    imageType: UserImageType,
+    file: File,
+  ) => void | Promise<void>;
   nfcWriteDisabled: boolean;
+  canManageImages: boolean;
 }
 
 function UserFormDialog({
@@ -151,9 +163,9 @@ function UserFormDialog({
   onDelete,
   onPreviewKioskColaborator,
   onWriteKioskNfc,
-  onSaveAvatar,
-  onSaveFacePhoto,
+  onUpdateImage,
   nfcWriteDisabled,
+  canManageImages,
 }: UserFormDialogProps) {
   const tCommon = useTranslations("common");
   const tUsers = useTranslations("users");
@@ -185,17 +197,17 @@ function UserFormDialog({
   const {
     register,
     handleSubmit,
+    control,
     setValue,
     trigger,
-    watch,
     formState: { errors },
   } = useForm<UserFormInput>({
     resolver: zodResolver(formSchema),
     defaultValues,
   });
 
-  const name = watch("name");
-  const code = watch("code");
+  const name = useWatch({ control, name: "name" });
+  const code = useWatch({ control, name: "code" });
 
   useEffect(() => {
     const prev = prevNameCodeRef.current;
@@ -254,6 +266,7 @@ function UserFormDialog({
       titleId={formTitleId}
       onClose={onClose}
       disabled={isPending}
+      fillBody={false}
       headerActions={headerActions}
       footerStart={
         showDelete && onDelete ? (
@@ -375,13 +388,15 @@ function UserFormDialog({
           </p>
         </div>
 
-        {isEditing && editingUser && onSaveAvatar && onSaveFacePhoto ? (
+        {isEditing && canManageImages && onUpdateImage ? (
           <UserMediaFields
+            userName={editingUser.name}
             avatarUrl={editingUser.avatarUrl}
             facePhotoUrl={editingUser.facePhotoUrl}
             disabled={isPending}
-            onSaveAvatar={(file) => onSaveAvatar(editingUser.id, file)}
-            onSaveFacePhoto={(file) => onSaveFacePhoto(editingUser.id, file)}
+            onUpload={(imageType, file) =>
+              onUpdateImage(editingUser.id, imageType, file)
+            }
           />
         ) : null}
       </form>
@@ -393,15 +408,15 @@ export function UserManager({
   users,
   onCreate,
   onUpdate,
+  onUpdateImage,
   onDelete,
-  onSaveAvatar,
-  onSaveFacePhoto,
   canDelete,
   manageableRoles,
   canWriteKioskNfc = false,
   canPreviewKioskColaborator = false,
   canSetPassword = false,
   canEditUserLogin = false,
+  canManageImages = false,
 }: UserManagerProps) {
   const tCommon = useTranslations("common");
   const tUsers = useTranslations("users");
@@ -533,6 +548,18 @@ export function UserManager({
     router.push(buildKioskColaboratorPath(documentId));
   }
 
+  async function handleUpdateImage(
+    userId: number,
+    imageType: UserImageType,
+    file: File,
+  ): Promise<void> {
+    if (!onUpdateImage) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    await onUpdateImage(userId, imageType, formData);
+    router.refresh();
+  }
+
   const roleOptions = roleOptionsForUser(editingUser, manageableRoles);
   const formDialogKey = editingUserId ?? "new";
   const query = nameQuery.trim().toLowerCase();
@@ -575,25 +602,9 @@ export function UserManager({
           onDelete={() => setDeleteOpen(true)}
           onPreviewKioskColaborator={handlePreviewKioskColaborator}
           onWriteKioskNfc={handleWriteKioskNfc}
-          onSaveAvatar={
-            onSaveAvatar
-              ? async (userId, file) => {
-                  const ok = await onSaveAvatar(userId, file);
-                  if (ok) router.refresh();
-                  return ok;
-                }
-              : undefined
-          }
-          onSaveFacePhoto={
-            onSaveFacePhoto
-              ? async (userId, file) => {
-                  const ok = await onSaveFacePhoto(userId, file);
-                  if (ok) router.refresh();
-                  return ok;
-                }
-              : undefined
-          }
+          onUpdateImage={onUpdateImage ? handleUpdateImage : undefined}
           nfcWriteDisabled={nfcWriteDisabled}
+          canManageImages={canManageImages}
         />
       ) : null}
 

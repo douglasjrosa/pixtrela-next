@@ -10,6 +10,7 @@ export function boardSubTaskSummaryStub(
     expectedTime: 0,
     timeSpent: 0,
     openActivityStartedAts: [],
+    producingColaboratorIds: [],
     sessions: [],
     assignedTo: [],
     ...partial,

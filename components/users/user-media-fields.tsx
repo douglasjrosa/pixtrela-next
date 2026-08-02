@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Camera, ImagePlus, RotateCcw } from "lucide-react";
+import { Camera, User } from "lucide-react";
+import { useState, type ChangeEvent } from "react";
 import { useTranslations } from "next-intl";
 
 import { FaceOvalCapture } from "@/components/kiosk/face-oval-capture";
@@ -11,227 +11,205 @@ import { compressProfileImage } from "@/lib/media/compress-profile-image";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
+export type UserImageType = "avatar" | "facePhoto";
+
 export interface UserMediaFieldsProps {
+  userName: string;
   avatarUrl?: string | null;
   facePhotoUrl?: string | null;
   disabled?: boolean;
-  onSaveAvatar: (file: File) => boolean | Promise<boolean>;
-  onSaveFacePhoto: (file: File) => boolean | Promise<boolean>;
+  onUpload: (imageType: UserImageType, file: File) => void | Promise<void>;
+}
+
+type ImageFieldProps = {
+  imageType: UserImageType;
+  imageUrl?: string | null;
+  userName: string;
+  disabled: boolean;
+  pending: boolean;
+  onChooseFile: () => void;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  inputId: string;
+  chooseLabel: string;
+};
+
+function UserImageField({
+  imageType,
+  imageUrl,
+  userName,
+  disabled,
+  pending,
+  onChooseFile,
+  onChange,
+  inputId,
+  chooseLabel,
+}: ImageFieldProps) {
+  const t = useTranslations("users");
+  const isAvatar = imageType === "avatar";
+  const resolvedUrl = resolveStrapiMediaUrl(imageUrl ?? null);
+
+  return (
+    <section className="flex min-w-0 items-center gap-3 rounded-lg border p-3">
+      <div
+        className={
+          "flex size-20 shrink-0 items-center justify-center overflow-hidden " +
+          "rounded-full border bg-background"
+        }
+      >
+        {resolvedUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={resolvedUrl}
+            alt={
+              isAvatar
+                ? t("avatarAlt", { name: userName })
+                : t("facePhotoAlt", { name: userName })
+            }
+            className="size-full object-cover"
+          />
+        ) : isAvatar ? (
+          <User className="size-8 text-muted-foreground" aria-hidden />
+        ) : (
+          <Camera className="size-8 text-muted-foreground" aria-hidden />
+        )}
+      </div>
+
+      <div className="min-w-0 space-y-2">
+        <div>
+          <h3 className="font-medium">
+            {isAvatar ? t("avatarTitle") : t("facePhotoTitle")}
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            {isAvatar ? t("avatarHint") : t("facePhotoHint")}
+          </p>
+        </div>
+        <input
+          id={inputId}
+          type="file"
+          accept="image/*"
+          capture={isAvatar ? "user" : undefined}
+          className="sr-only"
+          aria-label={
+            isAvatar ? t("avatarInputLabel") : t("facePhotoInputLabel")
+          }
+          disabled={disabled || pending}
+          onChange={onChange}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={disabled || pending}
+          onClick={onChooseFile}
+        >
+          {pending ? t("imageUploading") : chooseLabel}
+        </Button>
+      </div>
+    </section>
+  );
 }
 
 export function UserMediaFields({
+  userName,
   avatarUrl,
   facePhotoUrl,
   disabled = false,
-  onSaveAvatar,
-  onSaveFacePhoto,
+  onUpload,
 }: UserMediaFieldsProps) {
   const t = useTranslations("users");
-  const tKiosk = useTranslations("kiosk");
-  const tCommon = useTranslations("common");
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [pendingAvatar, setPendingAvatar] = useState<File | null>(null);
-  const [facePreview, setFacePreview] = useState<string | null>(null);
-  const [pendingFace, setPendingFace] = useState<File | null>(null);
+  const [urls, setUrls] = useState({
+    avatar: avatarUrl,
+    facePhoto: facePhotoUrl,
+  });
+  const [pendingType, setPendingType] = useState<UserImageType | null>(null);
   const [faceCaptureOpen, setFaceCaptureOpen] = useState(false);
-  const [savingAvatar, setSavingAvatar] = useState(false);
-  const [savingFace, setSavingFace] = useState(false);
 
-  const currentAvatar =
-    avatarPreview ?? resolveStrapiMediaUrl(avatarUrl ?? null) ?? null;
-  const currentFace =
-    facePreview ?? resolveStrapiMediaUrl(facePhotoUrl ?? null) ?? null;
+  async function uploadImage(
+    imageType: UserImageType,
+    file: File,
+  ): Promise<void> {
+    setPendingType(imageType);
+    try {
+      const compressed = await compressProfileImage(file);
+      if (imageType === "facePhoto") {
+        const validation = await validateFacePhotoHasSingleFace(compressed);
+        if (!validation.ok) {
+          if (validation.reason === "multiple_faces") {
+            showErrorToast(t("facePhotoMultipleFaces"));
+          } else if (validation.reason === "no_face") {
+            showErrorToast(t("facePhotoNoFace"));
+          } else {
+            showErrorToast(t("imageSaveFailed"));
+          }
+          return;
+        }
+      }
 
-  function handleAvatarFileChange(
-    event: React.ChangeEvent<HTMLInputElement>,
-  ): void {
+      await onUpload(imageType, compressed);
+      setUrls((current) => ({
+        ...current,
+        [imageType]: URL.createObjectURL(compressed),
+      }));
+      showSuccessToast(t("imageSaved"));
+    } catch {
+      showErrorToast(t("imageSaveFailed"));
+    } finally {
+      setPendingType(null);
+    }
+  }
+
+  async function handleImageChange(
+    imageType: UserImageType,
+    event: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    setPendingAvatar(file);
-    setAvatarPreview(URL.createObjectURL(file));
+    await uploadImage(imageType, file);
   }
 
-  async function handleSaveAvatar(): Promise<void> {
-    if (!pendingAvatar) return;
-    setSavingAvatar(true);
-    try {
-      const compressed = await compressProfileImage(pendingAvatar);
-      const ok = await onSaveAvatar(compressed);
-      if (ok) {
-        showSuccessToast(t("avatarSaved"));
-        setPendingAvatar(null);
-      } else {
-        showErrorToast(t("avatarSaveFailed"));
-      }
-    } catch {
-      showErrorToast(t("avatarSaveFailed"));
-    } finally {
-      setSavingAvatar(false);
-    }
-  }
-
-  async function applyFaceFile(file: File): Promise<void> {
-    if (facePreview) URL.revokeObjectURL(facePreview);
-    setPendingFace(file);
-    setFacePreview(URL.createObjectURL(file));
+  async function handleFaceCapture(file: File): Promise<void> {
     setFaceCaptureOpen(false);
-  }
-
-  async function handleSaveFace(): Promise<void> {
-    if (!pendingFace) return;
-    setSavingFace(true);
-    try {
-      const compressed = await compressProfileImage(pendingFace);
-      const validation = await validateFacePhotoHasSingleFace(compressed);
-      if (validation.ok === false) {
-        if (validation.reason === "multiple_faces") {
-          showErrorToast(tKiosk("staffFacePhotoMultipleFaces"));
-        } else if (validation.reason === "no_face") {
-          showErrorToast(tKiosk("staffFacePhotoNoFace"));
-        } else {
-          showErrorToast(t("facePhotoSaveFailed"));
-        }
-        return;
-      }
-      const ok = await onSaveFacePhoto(compressed);
-      if (ok) {
-        showSuccessToast(t("facePhotoSaved"));
-        setPendingFace(null);
-      } else {
-        showErrorToast(t("facePhotoSaveFailed"));
-      }
-    } catch {
-      showErrorToast(t("facePhotoSaveFailed"));
-    } finally {
-      setSavingFace(false);
-    }
+    await uploadImage("facePhoto", file);
   }
 
   if (faceCaptureOpen) {
     return (
-      <div className="col-span-full space-y-3 rounded-lg border bg-card p-4">
-        <h3 className="text-sm font-semibold">{t("facePhotoTitle")}</h3>
+      <div className="space-y-3 sm:col-span-2">
+        <h3 className="font-medium">{t("facePhotoTitle")}</h3>
         <FaceOvalCapture
-          disabled={disabled || savingFace}
+          disabled={disabled || pendingType === "facePhoto"}
           onCancel={() => setFaceCaptureOpen(false)}
-          onCapture={(file) => void applyFaceFile(file)}
+          onCapture={(file) => void handleFaceCapture(file)}
         />
       </div>
     );
   }
 
   return (
-    <div className="col-span-full grid gap-4 sm:grid-cols-2">
-      <section className="space-y-3 rounded-lg border bg-card p-4">
-        <div className="space-y-1">
-          <h3 className="text-sm font-semibold">{t("avatarTitle")}</h3>
-          <p className="text-xs text-muted-foreground">{t("avatarHint")}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex size-20 items-center justify-center overflow-hidden rounded-full border bg-background">
-            {currentAvatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={currentAvatar}
-                alt=""
-                className="size-full object-cover"
-              />
-            ) : (
-              <ImagePlus className="size-6 text-muted-foreground" aria-hidden />
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/*"
-              capture="user"
-              className="hidden"
-              disabled={disabled || savingAvatar}
-              onChange={handleAvatarFileChange}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={disabled || savingAvatar}
-              onClick={() => avatarInputRef.current?.click()}
-            >
-              <Camera className="size-4" aria-hidden />
-              {t("avatarTake")}
-            </Button>
-            {pendingAvatar ? (
-              <Button
-                type="button"
-                size="sm"
-                disabled={disabled || savingAvatar}
-                onClick={() => void handleSaveAvatar()}
-              >
-                {tCommon("save")}
-              </Button>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      <section className="space-y-3 rounded-lg border bg-card p-4">
-        <div className="space-y-1">
-          <h3 className="text-sm font-semibold">{t("facePhotoTitle")}</h3>
-          <p className="text-xs text-muted-foreground">{t("facePhotoHint")}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex size-20 items-center justify-center overflow-hidden rounded-full border bg-background">
-            {currentFace ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={currentFace}
-                alt=""
-                className="size-full object-cover"
-              />
-            ) : (
-              <Camera className="size-6 text-muted-foreground" aria-hidden />
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={disabled || savingFace}
-              onClick={() => setFaceCaptureOpen(true)}
-            >
-              <Camera className="size-4" aria-hidden />
-              {pendingFace || currentFace ? t("facePhotoRetake") : t("facePhotoTake")}
-            </Button>
-            {pendingFace ? (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={disabled || savingFace}
-                  onClick={() => setFaceCaptureOpen(true)}
-                >
-                  <RotateCcw className="size-4" aria-hidden />
-                  {tKiosk("staffFacePhotoRetake")}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={disabled || savingFace}
-                  onClick={() => void handleSaveFace()}
-                >
-                  {tCommon("save")}
-                </Button>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </section>
+    <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+      <UserImageField
+        imageType="avatar"
+        imageUrl={urls.avatar}
+        userName={userName}
+        disabled={disabled}
+        pending={pendingType === "avatar"}
+        inputId="user-avatar"
+        chooseLabel={t("imageChoose")}
+        onChooseFile={() => document.getElementById("user-avatar")?.click()}
+        onChange={(event) => void handleImageChange("avatar", event)}
+      />
+      <UserImageField
+        imageType="facePhoto"
+        imageUrl={urls.facePhoto}
+        userName={userName}
+        disabled={disabled}
+        pending={pendingType === "facePhoto"}
+        inputId="user-facePhoto"
+        chooseLabel={t("facePhotoTake")}
+        onChooseFile={() => setFaceCaptureOpen(true)}
+        onChange={(event) => void handleImageChange("facePhoto", event)}
+      />
     </div>
   );
 }
