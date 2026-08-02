@@ -99,6 +99,7 @@ export async function saveKioskColaboratorFacePhoto(
   staffUserId: string,
   colaboratorDocumentId: string,
   raw: unknown,
+  faceVector?: number[],
 ): Promise<KioskColaboratorFacePhotoResult> {
   const session = await auth();
   if (session?.user?.role !== "kiosk" || !session.jwt) {
@@ -122,6 +123,7 @@ export async function saveKioskColaboratorFacePhoto(
         fileBase64: buffer.toString("base64"),
         mimeType: raw.type,
         fileName: raw.name,
+        faceVector: faceVector ?? null,
       }),
     },
   );

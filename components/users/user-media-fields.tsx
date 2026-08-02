@@ -6,19 +6,27 @@ import { useTranslations } from "next-intl";
 
 import { FaceOvalCapture } from "@/components/kiosk/face-oval-capture";
 import { Button } from "@/components/ui/button";
-import { validateFacePhotoHasSingleFace } from "@/lib/kiosk/face/validate-face-photo-file";
+import { extractFaceDescriptorFromFile } from "@/lib/kiosk/face/extract-face-descriptor";
 import { compressProfileImage } from "@/lib/media/compress-profile-image";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 export type UserImageType = "avatar" | "facePhoto";
 
+export type UserMediaUploadOptions = {
+  faceVector?: number[];
+};
+
 export interface UserMediaFieldsProps {
   userName: string;
   avatarUrl?: string | null;
   facePhotoUrl?: string | null;
   disabled?: boolean;
-  onUpload: (imageType: UserImageType, file: File) => void | Promise<void>;
+  onUpload: (
+    imageType: UserImageType,
+    file: File,
+    options?: UserMediaUploadOptions,
+  ) => void | Promise<void>;
 }
 
 type ImageFieldProps = {
@@ -131,21 +139,30 @@ export function UserMediaFields({
     setPendingType(imageType);
     try {
       const compressed = await compressProfileImage(file);
+      let faceVector: number[] | undefined;
       if (imageType === "facePhoto") {
-        const validation = await validateFacePhotoHasSingleFace(compressed);
-        if (!validation.ok) {
-          if (validation.reason === "multiple_faces") {
+        const extracted = await extractFaceDescriptorFromFile(compressed);
+        if (!extracted.ok) {
+          if (extracted.reason === "multiple_faces") {
             showErrorToast(t("facePhotoMultipleFaces"));
-          } else if (validation.reason === "no_face") {
+          } else if (
+            extracted.reason === "no_face" ||
+            extracted.reason === "too_small"
+          ) {
             showErrorToast(t("facePhotoNoFace"));
           } else {
             showErrorToast(t("imageSaveFailed"));
           }
           return;
         }
+        faceVector = extracted.faceVector;
       }
 
-      await onUpload(imageType, compressed);
+      await onUpload(
+        imageType,
+        compressed,
+        faceVector ? { faceVector } : undefined,
+      );
       setUrls((current) => ({
         ...current,
         [imageType]: URL.createObjectURL(compressed),

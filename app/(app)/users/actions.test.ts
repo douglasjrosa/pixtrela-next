@@ -47,6 +47,32 @@ describe("updateUserImage", () => {
     expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:users");
   });
 
+  it("uploads face photo with faceVector when provided", async () => {
+    auth.mockResolvedValue({ user: { role: "admin" }, jwt: "token" });
+    strapiFetch
+      .mockResolvedValueOnce([{ id: 10, roleType: "colaborator" }])
+      .mockResolvedValueOnce({});
+    strapiUpload.mockResolvedValue(26);
+    const faceVector = Array.from({ length: 128 }, (_, i) => i / 128);
+    const formData = new FormData();
+    formData.append(
+      "file",
+      new File(["face"], "face.png", { type: "image/png" }),
+    );
+    formData.append("faceVector", JSON.stringify(faceVector));
+
+    const { updateUserImage } = await import("./actions");
+    await updateUserImage(10, "facePhoto", formData);
+
+    expect(strapiFetch).toHaveBeenLastCalledWith(
+      "/users/10",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ facePhoto: 26, faceVector }),
+      }),
+    );
+  });
+
   it("rejects image updates from non-admin users", async () => {
     auth.mockResolvedValue({ user: { role: "manager" }, jwt: "token" });
     const formData = new FormData();

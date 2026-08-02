@@ -15,7 +15,10 @@ import {
 
 export interface KioskFaceVerifyProps {
   colaboratorName: string;
-  facePhotoUrl: string;
+  /** Preferred when available (ambiguous 1:N shortlist). */
+  referenceDescriptor?: number[] | Float32Array | null;
+  /** Fallback reference source when descriptor is not provided. */
+  facePhotoUrl?: string | null;
   onSuccess: () => void;
   onCancel: () => void;
   onFallbackCode: () => void;
@@ -42,6 +45,7 @@ function statusMessageKey(
 
 export function KioskFaceVerify({
   colaboratorName,
+  referenceDescriptor,
   facePhotoUrl,
   onSuccess,
   onCancel,
@@ -55,6 +59,10 @@ export function KioskFaceVerify({
   const [phase, setPhase] = useState<"preparing" | "camera" | "done">("preparing");
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
+  const referenceKey = referenceDescriptor
+    ? `vector:${Array.from(referenceDescriptor).slice(0, 4).join(",")}`
+    : facePhotoUrl ?? "";
+
   useEffect(() => {
     const abort = new AbortController();
     abortRef.current = abort;
@@ -64,7 +72,17 @@ export function KioskFaceVerify({
     async function run(): Promise<void> {
       try {
         await loadFaceModels();
-        const reference = await loadReferenceFaceDescriptor(facePhotoUrl);
+        const reference =
+          referenceDescriptor && referenceDescriptor.length > 0
+            ? referenceDescriptor
+            : facePhotoUrl
+              ? await loadReferenceFaceDescriptor(facePhotoUrl)
+              : null;
+        if (!reference) {
+          setPhase("done");
+          setErrorKey("faceVerifyFailed");
+          return;
+        }
         if (cancelled || abort.signal.aborted) return;
 
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -127,9 +145,9 @@ export function KioskFaceVerify({
       stopMediaStream(streamRef.current);
       streamRef.current = null;
     };
-    // Intentionally only re-run when the reference photo changes.
+    // Intentionally re-run when the reference identity changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [facePhotoUrl]);
+  }, [referenceKey]);
 
   function handleCancel(): void {
     abortRef.current?.abort();

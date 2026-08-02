@@ -8,8 +8,12 @@ vi.mock("@/lib/media/compress-profile-image", () => ({
   compressProfileImage: (file: File) => Promise.resolve(file),
 }));
 
-vi.mock("@/lib/kiosk/face/validate-face-photo-file", () => ({
-  validateFacePhotoHasSingleFace: () => Promise.resolve({ ok: true }),
+vi.mock("@/lib/kiosk/face/extract-face-descriptor", () => ({
+  extractFaceDescriptorFromFile: () =>
+    Promise.resolve({
+      ok: true,
+      faceVector: Array.from({ length: 128 }, (_, i) => i / 128),
+    }),
 }));
 
 describe("UserMediaFields", () => {
@@ -44,11 +48,11 @@ describe("UserMediaFields", () => {
     });
 
     await waitFor(() => {
-      expect(onUpload).toHaveBeenCalledWith("avatar", file);
+      expect(onUpload).toHaveBeenCalledWith("avatar", file, undefined);
     });
   });
 
-  it("validates and uploads the selected face photo", async () => {
+  it("validates and uploads the selected face photo with faceVector", async () => {
     const onUpload = vi.fn().mockResolvedValue(undefined);
     const file = new File(["face"], "face.png", { type: "image/png" });
 
@@ -62,7 +66,13 @@ describe("UserMediaFields", () => {
     );
 
     await waitFor(() => {
-      expect(onUpload).toHaveBeenCalledWith("facePhoto", file);
+      expect(onUpload).toHaveBeenCalledWith(
+        "facePhoto",
+        file,
+        expect.objectContaining({
+          faceVector: expect.any(Array),
+        }),
+      );
     });
   });
 });

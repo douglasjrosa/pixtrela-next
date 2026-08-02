@@ -12,7 +12,9 @@ import {
   type KioskDirectoryTeam,
 } from "@/lib/kiosk/load-directory";
 import { kioskIdentifySchema } from "@/lib/schemas/kiosk-identify";
+import { FACE_DESCRIPTOR_LENGTH } from "@/lib/kiosk/face/face-match-constants";
 import { strapiFetch } from "@/lib/strapi";
+import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 
 interface KioskIdentifyResponse {
   documentId: string;
@@ -110,4 +112,85 @@ export async function fetchKioskDirectoryColaborators(
 
   const colaborators = await loadKioskDirectoryTeamColaborators(teamDocumentId);
   return { ok: true, colaborators };
+}
+
+export type KioskFaceIdentifyCandidate = {
+  documentId: string;
+  name: string;
+  greetingGender: "masculine" | "feminine" | null;
+  avatarUrl: string | null;
+  facePhotoUrl: string | null;
+  faceVector?: number[];
+};
+
+export type KioskFaceIdentifyResult =
+  | { ok: true; status: "match"; match: KioskFaceIdentifyCandidate }
+  | {
+      ok: true;
+      status: "ambiguous";
+      candidates: KioskFaceIdentifyCandidate[];
+    }
+  | { ok: true; status: "none" }
+  | { ok: false; error: "forbidden" | "invalid" };
+
+function resolveCandidateMedia(
+  candidate: KioskFaceIdentifyCandidate,
+): KioskFaceIdentifyCandidate {
+  return {
+    ...candidate,
+    avatarUrl: resolveStrapiMediaUrl(candidate.avatarUrl),
+    facePhotoUrl: resolveStrapiMediaUrl(candidate.facePhotoUrl),
+  };
+}
+
+export async function identifyKioskUserByFace(
+  descriptor: number[],
+): Promise<KioskFaceIdentifyResult> {
+  const session = await auth();
+  if (session?.user?.role !== "kiosk") {
+    return { ok: false, error: "forbidden" };
+  }
+
+  if (
+    !Array.isArray(descriptor) ||
+    descriptor.length !== FACE_DESCRIPTOR_LENGTH ||
+    descriptor.some((value) => typeof value !== "number" || !Number.isFinite(value))
+  ) {
+    return { ok: false, error: "invalid" };
+  }
+
+  try {
+    const data = await strapiFetch<{
+      status: "match" | "ambiguous" | "none";
+      match?: KioskFaceIdentifyCandidate;
+      candidates?: KioskFaceIdentifyCandidate[];
+    }>("/kiosk/face-identify", {
+      method: "POST",
+      strapiCache: { noStore: true },
+      redirectOnUnauthorized: false,
+      body: JSON.stringify({ descriptor }),
+    });
+
+    if (data.status === "match" && data.match?.documentId) {
+      return {
+        ok: true,
+        status: "match",
+        match: resolveCandidateMedia(data.match),
+      };
+    }
+
+    if (data.status === "ambiguous" && Array.isArray(data.candidates)) {
+      return {
+        ok: true,
+        status: "ambiguous",
+        candidates: data.candidates
+          .filter((row) => row.documentId && row.faceVector)
+          .map(resolveCandidateMedia),
+      };
+    }
+
+    return { ok: true, status: "none" };
+  } catch {
+    return { ok: false, error: "invalid" };
+  }
 }

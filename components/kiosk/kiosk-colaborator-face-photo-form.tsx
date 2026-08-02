@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { FaceOvalCapture } from "@/components/kiosk/face-oval-capture";
 import { Button } from "@/components/ui/button";
-import { validateFacePhotoHasSingleFace } from "@/lib/kiosk/face/validate-face-photo-file";
+import { extractFaceDescriptorFromFile } from "@/lib/kiosk/face/extract-face-descriptor";
 import { compressProfileImage } from "@/lib/media/compress-profile-image";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 import { showErrorToast } from "@/lib/ui/app-toast";
@@ -14,7 +14,10 @@ import { showErrorToast } from "@/lib/ui/app-toast";
 export interface KioskColaboratorFacePhotoFormProps {
   facePhotoUrl?: string | null;
   disabled?: boolean;
-  onSave: (file: File) => boolean | Promise<boolean>;
+  onSave: (
+    file: File,
+    options?: { faceVector: number[] },
+  ) => boolean | Promise<boolean>;
 }
 
 export function KioskColaboratorFacePhotoForm({
@@ -46,18 +49,21 @@ export function KioskColaboratorFacePhotoForm({
     setIsSaving(true);
     try {
       const compressed = await compressProfileImage(pendingFile);
-      const validation = await validateFacePhotoHasSingleFace(compressed);
-      if (validation.ok === false) {
-        if (validation.reason === "multiple_faces") {
+      const extracted = await extractFaceDescriptorFromFile(compressed);
+      if (extracted.ok === false) {
+        if (extracted.reason === "multiple_faces") {
           showErrorToast(t("staffFacePhotoMultipleFaces"));
-        } else if (validation.reason === "no_face") {
+        } else if (
+          extracted.reason === "no_face" ||
+          extracted.reason === "too_small"
+        ) {
           showErrorToast(t("staffFacePhotoNoFace"));
         } else {
           showErrorToast(t("staffFacePhotoForbidden"));
         }
         return;
       }
-      await onSave(compressed);
+      await onSave(compressed, { faceVector: extracted.faceVector });
     } finally {
       setIsSaving(false);
     }

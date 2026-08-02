@@ -34,7 +34,7 @@ vi.mock("@/lib/kiosk/face/verify-face-against-photo", () => ({
 }));
 
 describe("KioskFaceVerify", () => {
-  it("renders title and privacy notice", () => {
+  it("renders title and privacy notice with referenceDescriptor", () => {
     Object.defineProperty(navigator, "mediaDevices", {
       configurable: true,
       value: {
@@ -47,7 +47,7 @@ describe("KioskFaceVerify", () => {
     const { unmount } = renderWithIntl(
       <KioskFaceVerify
         colaboratorName="Ana"
-        facePhotoUrl="http://localhost:1337/uploads/a.jpg"
+        referenceDescriptor={Array.from({ length: 128 }, () => 0.1)}
         onSuccess={vi.fn()}
         onCancel={vi.fn()}
         onFallbackCode={vi.fn()}

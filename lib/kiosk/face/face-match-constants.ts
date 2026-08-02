@@ -1,6 +1,14 @@
 /** Euclidean distance below this means faces match (1:1). */
 export const FACE_MATCH_DISTANCE_THRESHOLD = 0.55;
 
+/**
+ * Minimum gap between best and second-best distance for a unique 1:N match.
+ */
+export const FACE_1N_AMBIGUITY_MARGIN = 0.1;
+
+/** face-api recognition net descriptor length. */
+export const FACE_DESCRIPTOR_LENGTH = 128;
+
 /** Frames to sample during a verification attempt. */
 export const FACE_VERIFY_FRAME_COUNT = 8;
 

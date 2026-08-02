@@ -143,6 +143,7 @@ interface UserFormDialogProps {
     userId: number,
     imageType: UserImageType,
     file: File,
+    options?: { faceVector?: number[] },
   ) => void | Promise<void>;
   nfcWriteDisabled: boolean;
   canManageImages: boolean;
@@ -394,8 +395,8 @@ function UserFormDialog({
             avatarUrl={editingUser.avatarUrl}
             facePhotoUrl={editingUser.facePhotoUrl}
             disabled={isPending}
-            onUpload={(imageType, file) =>
-              onUpdateImage(editingUser.id, imageType, file)
+            onUpload={(imageType, file, options) =>
+              onUpdateImage(editingUser.id, imageType, file, options)
             }
           />
         ) : null}
@@ -552,10 +553,14 @@ export function UserManager({
     userId: number,
     imageType: UserImageType,
     file: File,
+    options?: { faceVector?: number[] },
   ): Promise<void> {
     if (!onUpdateImage) return;
     const formData = new FormData();
     formData.append("file", file);
+    if (options?.faceVector) {
+      formData.append("faceVector", JSON.stringify(options.faceVector));
+    }
     await onUpdateImage(userId, imageType, formData);
     router.refresh();
   }

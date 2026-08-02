@@ -8,8 +8,11 @@ vi.mock("@/lib/media/compress-profile-image", () => ({
   compressProfileImage: vi.fn(async (file: File) => file),
 }));
 
-vi.mock("@/lib/kiosk/face/validate-face-photo-file", () => ({
-  validateFacePhotoHasSingleFace: vi.fn(async () => ({ ok: true })),
+vi.mock("@/lib/kiosk/face/extract-face-descriptor", () => ({
+  extractFaceDescriptorFromFile: vi.fn(async () => ({
+    ok: true,
+    faceVector: Array.from({ length: 128 }, (_, i) => i / 128),
+  })),
 }));
 
 vi.mock("@/lib/ui/app-toast", () => ({
@@ -35,7 +38,7 @@ vi.mock("@/components/kiosk/face-oval-capture", () => ({
 }));
 
 describe("KioskColaboratorFacePhotoForm", () => {
-  it("calls onSave when face validation passes after oval capture", async () => {
+  it("calls onSave with faceVector when extraction passes", async () => {
     const onSave = vi.fn().mockResolvedValue(true);
     renderWithIntl(
       <KioskColaboratorFacePhotoForm onSave={onSave} facePhotoUrl={null} />,
@@ -46,7 +49,10 @@ describe("KioskColaboratorFacePhotoForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalled();
+      expect(onSave).toHaveBeenCalledWith(
+        expect.any(File),
+        expect.objectContaining({ faceVector: expect.any(Array) }),
+      );
     });
   });
 });

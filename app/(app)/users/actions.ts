@@ -16,6 +16,27 @@ import {
 
 export type UserImageType = "avatar" | "facePhoto";
 
+const FACE_DESCRIPTOR_LENGTH = 128;
+
+function parseFaceVectorFromFormData(formData: FormData): number[] | null {
+  const raw = formData.get("faceVector");
+  if (typeof raw !== "string" || raw.length === 0) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length !== FACE_DESCRIPTOR_LENGTH) {
+      return null;
+    }
+    const vector: number[] = [];
+    for (const value of parsed) {
+      if (typeof value !== "number" || !Number.isFinite(value)) return null;
+      vector.push(value);
+    }
+    return vector;
+  } catch {
+    return null;
+  }
+}
+
 async function assertCanView(): Promise<Role> {
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
@@ -122,6 +143,7 @@ async function uploadUserMediaField(
   userId: number,
   field: "avatar" | "facePhoto",
   file: File,
+  faceVector?: number[] | null,
 ): Promise<UserMediaUploadResult> {
   const actorRole = await assertCanView();
   const currentRole = await loadUserRole(userId);
@@ -135,13 +157,17 @@ async function uploadUserMediaField(
 
   try {
     const mediaId = await strapiUpload(file);
+    const payload: Record<string, unknown> = { [field]: mediaId };
+    if (field === "facePhoto") {
+      payload.faceVector = faceVector ?? null;
+    }
     const updated = await strapiFetch<{
       avatar?: { url?: string } | null;
       facePhoto?: { url?: string } | null;
     }>(`/users/${userId}`, {
       method: "PUT",
       strapiCache: { noStore: true },
-      body: JSON.stringify({ [field]: mediaId }),
+      body: JSON.stringify(payload),
     });
     invalidateUsers();
     const media = field === "avatar" ? updated.avatar : updated.facePhoto;
@@ -235,10 +261,18 @@ export async function updateUserImage(
   }
 
   const mediaId = await strapiUpload(entry);
+  const payload: Record<string, unknown> = { [imageType]: mediaId };
+  if (imageType === "facePhoto") {
+    const faceVector = parseFaceVectorFromFormData(formData);
+    if (formData.has("faceVector") && !faceVector) {
+      throw new Error("invalid");
+    }
+    payload.faceVector = faceVector;
+  }
   await strapiFetch(`/users/${userId}`, {
     method: "PUT",
     strapiCache: { noStore: true },
-    body: JSON.stringify({ [imageType]: mediaId }),
+    body: JSON.stringify(payload),
   });
   invalidateUsers();
 }

@@ -78,6 +78,7 @@ export function KioskStaffUsersPanel({
   async function handleSaveFacePhoto(
     colaboratorDocumentId: string,
     file: File,
+    options?: { faceVector: number[] },
   ): Promise<boolean> {
     setPending(true);
     try {
@@ -85,6 +86,7 @@ export function KioskStaffUsersPanel({
         userId,
         colaboratorDocumentId,
         file,
+        options?.faceVector,
       );
       if (!result.ok) {
         showErrorToast(t("staffFacePhotoForbidden"));
@@ -157,8 +159,8 @@ export function KioskStaffUsersPanel({
           <KioskColaboratorFacePhotoForm
             facePhotoUrl={selectedFacePhotoUrl}
             disabled={pending}
-            onSave={(file) =>
-              handleSaveFacePhoto(selectedColaborator.documentId, file)
+            onSave={(file, options) =>
+              handleSaveFacePhoto(selectedColaborator.documentId, file, options)
             }
           />
           <KioskColaboratorPasswordForm

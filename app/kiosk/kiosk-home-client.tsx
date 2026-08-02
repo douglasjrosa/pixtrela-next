@@ -6,51 +6,59 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { KioskColaboratorForm } from "@/components/kiosk/kiosk-colaborator-form";
+import { KioskFace1nCapture } from "@/components/kiosk/kiosk-face-1n-capture";
+import { KioskFaceAmbiguousList } from "@/components/kiosk/kiosk-face-ambiguous-list";
 import { KioskFaceVerify } from "@/components/kiosk/kiosk-face-verify";
 import { KioskFaceWelcome } from "@/components/kiosk/kiosk-face-welcome";
 import { KioskIdleScreen } from "@/components/kiosk/kiosk-idle-screen";
-import { KioskMemberPicker } from "@/components/kiosk/kiosk-member-picker";
-import { KioskTeamPicker } from "@/components/kiosk/kiosk-team-picker";
 import { loadFaceModels } from "@/lib/kiosk/face/load-face-models";
 import { buildKioskColaboratorPath } from "@/lib/kiosk/kiosk-link";
-import type {
-  KioskDirectoryColaborator,
-  KioskDirectoryTeam,
-} from "@/lib/kiosk/load-directory";
+import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 
 import {
-  fetchKioskDirectoryColaborators,
-  fetchKioskDirectoryTeams,
   identifyKioskUserByCode,
+  identifyKioskUserByFace,
+  type KioskFaceIdentifyCandidate,
 } from "./actions";
 
-type HomeStep = "teams" | "members" | "face" | "welcome";
+type HomeStep = "face1n" | "ambiguous" | "face1to1" | "welcome" | "code";
+
+const NONE_RETRY_BEFORE_CODE = 2;
 
 export function KioskHomeClient() {
   const t = useTranslations("kiosk");
   const router = useRouter();
-  const [step, setStep] = useState<HomeStep>("teams");
-  const [teams, setTeams] = useState<KioskDirectoryTeam[]>([]);
-  const [members, setMembers] = useState<KioskDirectoryColaborator[]>([]);
-  const [selectedTeam, setSelectedTeam] = useState<KioskDirectoryTeam | null>(
-    null,
-  );
+  const [step, setStep] = useState<HomeStep>("face1n");
   const [selectedMember, setSelectedMember] =
-    useState<KioskDirectoryColaborator | null>(null);
+    useState<KioskFaceIdentifyCandidate | null>(null);
+  const [candidates, setCandidates] = useState<KioskFaceIdentifyCandidate[]>(
+    [],
+  );
   const [pending, setPending] = useState(false);
-  const [codeOpen, setCodeOpen] = useState(false);
+  const [noneAttempts, setNoneAttempts] = useState(0);
+  const [face1nKey, setFace1nKey] = useState(0);
   const [errorKey, setErrorKey] = useState<
-    "invalidCredentials" | "forbidden" | null
+    "invalidCredentials" | "forbidden" | "face1nNone" | null
   >(null);
 
   useEffect(() => {
     void loadFaceModels().catch(() => {
       /* models warm-up is best-effort */
     });
-    void (async () => {
-      const result = await fetchKioskDirectoryTeams();
-      if (result.ok) setTeams(result.teams);
-    })();
+  }, []);
+
+  const openCodeFallback = useCallback(() => {
+    setSelectedMember(null);
+    setCandidates([]);
+    setStep("code");
+  }, []);
+
+  const restartFace1n = useCallback(() => {
+    setSelectedMember(null);
+    setCandidates([]);
+    setErrorKey(null);
+    setFace1nKey((key) => key + 1);
+    setStep("face1n");
   }, []);
 
   const navigateToColaborator = useCallback(() => {
@@ -63,20 +71,48 @@ export function KioskHomeClient() {
     setStep("welcome");
   }, [selectedMember]);
 
-  async function handleSelectTeam(team: KioskDirectoryTeam): Promise<void> {
+  async function handleProbeReady(descriptor: number[]): Promise<void> {
     setPending(true);
-    setSelectedTeam(team);
-    const result = await fetchKioskDirectoryColaborators(team.documentId);
+    setErrorKey(null);
+    const result = await identifyKioskUserByFace(descriptor);
     setPending(false);
-    if (!result.ok) return;
-    setMembers(result.colaborators);
-    setStep("members");
+
+    if (!result.ok) {
+      setErrorKey("forbidden");
+      openCodeFallback();
+      return;
+    }
+
+    if (result.status === "match") {
+      setSelectedMember(result.match);
+      setNoneAttempts(0);
+      setStep("welcome");
+      return;
+    }
+
+    if (result.status === "ambiguous") {
+      setCandidates(result.candidates);
+      setNoneAttempts(0);
+      setStep("ambiguous");
+      return;
+    }
+
+    const nextAttempts = noneAttempts + 1;
+    setNoneAttempts(nextAttempts);
+    if (nextAttempts >= NONE_RETRY_BEFORE_CODE) {
+      setErrorKey("face1nNone");
+      openCodeFallback();
+      return;
+    }
+
+    setErrorKey("face1nNone");
+    setFace1nKey((key) => key + 1);
+    setStep("face1n");
   }
 
-  function handleSelectMember(member: KioskDirectoryColaborator): void {
-    if (!member.facePhotoUrl) return;
-    setSelectedMember(member);
-    setStep("face");
+  function handleSelectAmbiguous(candidate: KioskFaceIdentifyCandidate): void {
+    setSelectedMember(candidate);
+    setStep("face1to1");
   }
 
   async function handleSubmit(values: {
@@ -99,29 +135,64 @@ export function KioskHomeClient() {
       <KioskFaceWelcome
         name={selectedMember.name}
         greetingGender={selectedMember.greetingGender}
-        avatarUrl={selectedMember.avatarUrl}
-        facePhotoUrl={selectedMember.facePhotoUrl}
+        avatarUrl={resolveStrapiMediaUrl(selectedMember.avatarUrl)}
+        facePhotoUrl={resolveStrapiMediaUrl(selectedMember.facePhotoUrl)}
         onDone={navigateToColaborator}
       />
     );
   }
 
-  if (step === "face" && selectedMember?.facePhotoUrl) {
+  if (step === "face1to1" && selectedMember) {
     return (
       <KioskFaceVerify
         colaboratorName={selectedMember.name}
+        referenceDescriptor={selectedMember.faceVector}
         facePhotoUrl={selectedMember.facePhotoUrl}
         onSuccess={handleFaceSuccess}
-        onCancel={() => {
-          setSelectedMember(null);
-          setStep("members");
-        }}
-        onFallbackCode={() => {
-          setSelectedMember(null);
-          setStep(selectedTeam ? "members" : "teams");
-          setCodeOpen(true);
-        }}
+        onCancel={restartFace1n}
+        onFallbackCode={openCodeFallback}
       />
+    );
+  }
+
+  if (step === "ambiguous") {
+    return (
+      <KioskFaceAmbiguousList
+        candidates={candidates}
+        pending={pending}
+        onSelect={handleSelectAmbiguous}
+        onRetry={restartFace1n}
+        onFallbackCode={openCodeFallback}
+      />
+    );
+  }
+
+  if (step === "face1n") {
+    return (
+      <div className="flex flex-col gap-6">
+        <KioskFace1nCapture
+          key={face1nKey}
+          disabled={pending}
+          onProbeReady={(descriptor) => void handleProbeReady(descriptor)}
+          onCancel={openCodeFallback}
+          onFallbackCode={openCodeFallback}
+        />
+        {errorKey === "face1nNone" ? (
+          <p role="alert" className="text-center text-sm text-destructive">
+            {t("face1nNone")}
+          </p>
+        ) : null}
+        <div className="border-t pt-4 text-center">
+          <Button
+            type="button"
+            variant="link"
+            className="h-auto p-0"
+            onClick={openCodeFallback}
+          >
+            {t("directoryShowCode")}
+          </Button>
+        </div>
+      </div>
     );
   }
 
@@ -129,50 +200,27 @@ export function KioskHomeClient() {
     <div className="flex flex-col gap-6">
       <KioskIdleScreen />
 
-      {step === "teams" ? (
-        <KioskTeamPicker
-          teams={teams}
-          pending={pending}
-          onSelect={(team) => void handleSelectTeam(team)}
-        />
+      {errorKey && errorKey !== "face1nNone" ? (
+        <p role="alert" className="text-center text-sm text-destructive">
+          {t(errorKey)}
+        </p>
+      ) : errorKey === "face1nNone" ? (
+        <p role="alert" className="text-center text-sm text-destructive">
+          {t("face1nNone")}
+        </p>
       ) : null}
 
-      {step === "members" ? (
-        <KioskMemberPicker
-          members={members}
-          pending={pending}
-          onSelect={handleSelectMember}
-          onBack={() => {
-            setSelectedTeam(null);
-            setMembers([]);
-            setStep("teams");
-          }}
-        />
-      ) : null}
+      <KioskColaboratorForm onSubmit={handleSubmit} pending={pending} />
 
-      <div className="border-t pt-4">
+      <div className="border-t pt-4 text-center">
         <Button
           type="button"
           variant="link"
-          className="mx-auto flex h-auto p-0"
-          onClick={() => setCodeOpen((open) => !open)}
+          className="h-auto p-0"
+          onClick={restartFace1n}
         >
-          {codeOpen ? t("directoryHideCode") : t("directoryShowCode")}
+          {t("face1nRetryCamera")}
         </Button>
-
-        {codeOpen ? (
-          <div className="mt-4">
-            {errorKey ? (
-              <p
-                role="alert"
-                className="mb-4 text-center text-sm text-destructive"
-              >
-                {t(errorKey)}
-              </p>
-            ) : null}
-            <KioskColaboratorForm onSubmit={handleSubmit} pending={pending} />
-          </div>
-        ) : null}
       </div>
     </div>
   );
