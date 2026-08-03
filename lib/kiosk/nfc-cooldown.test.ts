@@ -1,18 +1,18 @@
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
 
 import {
-  clearNfcWriteCooldown,
-  getNfcWriteCooldownRemainingMs,
-  isNfcWriteOnCooldown,
-  NFC_WRITE_COOLDOWN_MS,
-  startNfcWriteCooldown,
-  waitForNfcWriteCooldown,
+  clearNfcCooldown,
+  getNfcCooldownRemainingMs,
+  isNfcOnCooldown,
+  NFC_COOLDOWN_MS,
+  startNfcCooldown,
+  waitForNfcCooldown,
 } from "./nfc-cooldown";
 
-describe("nfc write cooldown", () => {
+describe("nfc cooldown", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    clearNfcWriteCooldown();
+    clearNfcCooldown();
   });
 
   afterEach(() => {
@@ -20,24 +20,24 @@ describe("nfc write cooldown", () => {
   });
 
   it("starts inactive", () => {
-    expect(isNfcWriteOnCooldown()).toBe(false);
-    expect(getNfcWriteCooldownRemainingMs()).toBe(0);
+    expect(isNfcOnCooldown()).toBe(false);
+    expect(getNfcCooldownRemainingMs()).toBe(0);
   });
 
-  it("blocks writes for the configured duration", () => {
-    startNfcWriteCooldown();
-    expect(isNfcWriteOnCooldown()).toBe(true);
-    expect(getNfcWriteCooldownRemainingMs()).toBe(NFC_WRITE_COOLDOWN_MS);
+  it("blocks for the configured duration", () => {
+    startNfcCooldown();
+    expect(isNfcOnCooldown()).toBe(true);
+    expect(getNfcCooldownRemainingMs()).toBe(NFC_COOLDOWN_MS);
 
-    vi.advanceTimersByTime(NFC_WRITE_COOLDOWN_MS);
-    expect(isNfcWriteOnCooldown()).toBe(false);
+    vi.advanceTimersByTime(NFC_COOLDOWN_MS);
+    expect(isNfcOnCooldown()).toBe(false);
   });
 
   it("waits until cooldown expires", async () => {
-    startNfcWriteCooldown(2000);
-    const waitPromise = waitForNfcWriteCooldown();
+    startNfcCooldown(2000);
+    const waitPromise = waitForNfcCooldown();
     vi.advanceTimersByTime(2000);
     await waitPromise;
-    expect(isNfcWriteOnCooldown()).toBe(false);
+    expect(isNfcOnCooldown()).toBe(false);
   });
 });

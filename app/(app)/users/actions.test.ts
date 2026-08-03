@@ -88,3 +88,64 @@ describe("updateUserImage", () => {
     expect(strapiUpload).not.toHaveBeenCalled();
   });
 });
+
+describe("pairUserTag", () => {
+  beforeEach(() => {
+    auth.mockReset();
+    strapiFetch.mockReset();
+    revalidateStrapiTags.mockReset();
+    vi.resetModules();
+  });
+
+  it("pairs a normalized tag when admin manages the user", async () => {
+    auth.mockResolvedValue({ user: { role: "admin" }, jwt: "token" });
+    strapiFetch
+      .mockResolvedValueOnce([{ id: 10, roleType: "colaborator" }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce({});
+
+    const { pairUserTag } = await import("./actions");
+    const result = await pairUserTag(10, "04:a3:b2:c1");
+
+    expect(result).toEqual({ ok: true, userTag: "04A3B2C1" });
+    expect(strapiFetch).toHaveBeenLastCalledWith(
+      "/users/10",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ userTag: "04A3B2C1" }),
+      }),
+    );
+    expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:users");
+  });
+
+  it("returns conflict when another user already has the tag", async () => {
+    auth.mockResolvedValue({ user: { role: "manager" }, jwt: "token" });
+    strapiFetch
+      .mockResolvedValueOnce([{ id: 10, roleType: "colaborator" }])
+      .mockResolvedValueOnce([{ id: 99 }]);
+
+    const { pairUserTag } = await import("./actions");
+    const result = await pairUserTag(10, "AABBCCDD");
+
+    expect(result).toEqual({ ok: false, error: "conflict" });
+  });
+
+  it("returns forbidden for roles that cannot pair tags", async () => {
+    auth.mockResolvedValue({ user: { role: "leader" }, jwt: "token" });
+
+    const { pairUserTag } = await import("./actions");
+    const result = await pairUserTag(10, "AABBCCDD");
+
+    expect(result).toEqual({ ok: false, error: "forbidden" });
+    expect(strapiFetch).not.toHaveBeenCalled();
+  });
+
+  it("returns invalid for short tags", async () => {
+    auth.mockResolvedValue({ user: { role: "admin" }, jwt: "token" });
+
+    const { pairUserTag } = await import("./actions");
+    const result = await pairUserTag(10, "AB");
+
+    expect(result).toEqual({ ok: false, error: "invalid" });
+  });
+});

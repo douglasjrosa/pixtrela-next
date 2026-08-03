@@ -6,17 +6,23 @@ import { UserManager, type UserRow } from "@/components/users/user-manager";
 import type { Role } from "@/lib/auth/nav";
 import {
   canEditUserLogin,
+  canPairUserTag,
   canPreviewKioskColaborator,
   canSetUserPassword,
   canViewUsers,
-  canWriteKioskNfc,
 } from "@/lib/auth/permissions";
 import { canDeleteUsers, manageableTargetRoles } from "@/lib/business/roles";
 import type { UserFormInput } from "@/lib/schemas/user";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 
-import { createUser, deleteUser, updateUser, updateUserImage } from "./actions";
+import {
+  createUser,
+  deleteUser,
+  pairUserTag,
+  updateUser,
+  updateUserImage,
+} from "./actions";
 
 interface MediaEntity {
   url?: string | null;
@@ -96,11 +102,12 @@ export default async function UsersPage() {
         onDelete={deleteUser}
         canDelete={canDeleteUsers(actorRole)}
         manageableRoles={manageableTargetRoles(actorRole)}
-        canWriteKioskNfc={canWriteKioskNfc(actorRole)}
+        canPairUserTag={canPairUserTag(actorRole)}
         canPreviewKioskColaborator={canPreviewKioskColaborator(actorRole)}
         canSetPassword={canSetUserPassword(actorRole)}
         canEditUserLogin={canEditUserLogin(actorRole)}
         canManageImages={actorRole === "admin"}
+        onPairUserTag={pairUserTag}
       />
     </section>
   );

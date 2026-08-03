@@ -2,7 +2,11 @@
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
-import { canViewUsers, canSetUserPassword } from "@/lib/auth/permissions";
+import {
+  canViewUsers,
+  canSetUserPassword,
+  canPairUserTag,
+} from "@/lib/auth/permissions";
 import { canDeleteUsers, canManageRole } from "@/lib/business/roles";
 import { buildUserFormSchema, type UserFormInput } from "@/lib/schemas/user";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
@@ -13,6 +17,7 @@ import {
   buildCreateUserPayload,
   buildUpdateUserPayload,
 } from "@/lib/users/create-user-payload";
+import { normalizeUserTag } from "@/lib/kiosk/user-tag";
 
 export type UserImageType = "avatar" | "facePhoto";
 
@@ -133,6 +138,64 @@ export async function updateUser(
     body: JSON.stringify(buildUpdateUserPayload(data)),
   });
   invalidateUsers();
+}
+
+export type PairUserTagResult =
+  | { ok: true; userTag: string }
+  | { ok: false; error: "forbidden" | "invalid" | "conflict" };
+
+/**
+ * Pairs an NFC key-fob UID (`userTag`) to a user. Rejects if another user
+ * already owns the same tag.
+ */
+export async function pairUserTag(
+  userId: number,
+  rawTag: string,
+): Promise<PairUserTagResult> {
+  const session = await auth();
+  const actorRole = session?.user?.role as Role | undefined;
+  if (!canPairUserTag(actorRole)) {
+    return { ok: false, error: "forbidden" };
+  }
+
+  const userTag = normalizeUserTag(rawTag);
+  if (!userTag) {
+    return { ok: false, error: "invalid" };
+  }
+
+  const currentRole = await loadUserRole(userId);
+  if (!canManageRole(actorRole!, currentRole)) {
+    return { ok: false, error: "forbidden" };
+  }
+
+  const conflicts = await strapiFetch<Array<{ id: number }>>(
+    "/users",
+    { strapiCache: { noStore: true } },
+    {
+      filters: {
+        userTag: { $eq: userTag },
+        id: { $ne: userId },
+      },
+      fields: ["id"],
+      pagination: { pageSize: 1 },
+    },
+  );
+  if (conflicts.length > 0) {
+    return { ok: false, error: "conflict" };
+  }
+
+  try {
+    await strapiFetch(`/users/${userId}`, {
+      method: "PUT",
+      strapiCache: { noStore: true },
+      body: JSON.stringify({ userTag }),
+    });
+  } catch {
+    return { ok: false, error: "conflict" };
+  }
+
+  invalidateUsers();
+  return { ok: true, userTag };
 }
 
 export type UserMediaUploadResult =

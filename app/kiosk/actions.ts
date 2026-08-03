@@ -12,6 +12,7 @@ import {
   type KioskDirectoryTeam,
 } from "@/lib/kiosk/load-directory";
 import { kioskIdentifySchema } from "@/lib/schemas/kiosk-identify";
+import { kioskTagIdentifySchema } from "@/lib/schemas/kiosk-tag-identify";
 import { FACE_DESCRIPTOR_LENGTH } from "@/lib/kiosk/face/face-match-constants";
 import { strapiFetch } from "@/lib/strapi";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
@@ -72,20 +73,47 @@ export async function identifyKioskUserByCode(
   };
 }
 
-/** @deprecated Use identifyKioskUserByCode */
-export async function identifyColaboratorByCode(
-  code: number,
-  password: string,
-): Promise<
-  | { ok: true; colaboratorId: string }
-  | { ok: false; error: "invalidCredentials" | "forbidden" }
-> {
-  const result = await identifyKioskUserByCode(code, password);
-  if (!result.ok) return result;
-  if (result.role !== "colaborator") {
+export async function identifyKioskUserByTag(
+  rawTag: string,
+): Promise<KioskIdentifyResult> {
+  const session = await auth();
+  if (session?.user?.role !== "kiosk") {
+    return { ok: false, error: "forbidden" };
+  }
+
+  const parsed = kioskTagIdentifySchema.safeParse({ userTag: rawTag });
+  if (!parsed.success) {
     return { ok: false, error: "invalidCredentials" };
   }
-  return { ok: true, colaboratorId: result.documentId };
+
+  let identifyData: KioskIdentifyResponse | undefined;
+  try {
+    identifyData = await strapiFetch<KioskIdentifyResponse>(
+      "/kiosk/tag-identify",
+      {
+        method: "POST",
+        strapiCache: { noStore: true },
+        redirectOnUnauthorized: false,
+        body: JSON.stringify({ userTag: parsed.data.userTag }),
+      },
+    );
+  } catch {
+    return { ok: false, error: "invalidCredentials" };
+  }
+
+  if (!identifyData?.documentId || !identifyData.role) {
+    return { ok: false, error: "invalidCredentials" };
+  }
+
+  return {
+    ok: true,
+    documentId: identifyData.documentId,
+    role: identifyData.role,
+    path: resolveKioskPathAfterIdentify(
+      identifyData.documentId,
+      identifyData.role,
+    ),
+  };
 }
 
 export async function fetchKioskDirectoryTeams(): Promise<

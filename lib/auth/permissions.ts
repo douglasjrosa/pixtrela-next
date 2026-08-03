@@ -66,8 +66,8 @@ export function canViewUsers(role: Role | undefined): boolean {
   return isAtLeast(role, "leader");
 }
 
-/** Write kiosk NFC tag on user edit: admin and manager only. */
-export function canWriteKioskNfc(role: Role | undefined): boolean {
+/** Pair NFC key fob (userTag) on user edit: admin and manager only. */
+export function canPairUserTag(role: Role | undefined): boolean {
   return role === "admin" || role === "manager";
 }
 

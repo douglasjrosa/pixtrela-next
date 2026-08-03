@@ -15,11 +15,13 @@ import { useKioskIdleContext } from "@/components/kiosk/kiosk-idle-provider";
 import { FACE_1N_NONE_MESSAGE_MS } from "@/lib/kiosk/face/face-match-constants";
 import { loadFaceModels } from "@/lib/kiosk/face/load-face-models";
 import { buildKioskColaboratorPath } from "@/lib/kiosk/kiosk-link";
+import { isNfcReadSupported, watchNfcSerialNumbers } from "@/lib/kiosk/nfc-read";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 
 import {
   identifyKioskUserByCode,
   identifyKioskUserByFace,
+  identifyKioskUserByTag,
   type KioskFaceIdentifyCandidate,
 } from "./actions";
 
@@ -105,14 +107,56 @@ export function KioskHomeClient() {
   }, []);
 
   useEffect(() => {
+    if (step !== "choose") return;
+    if (!isNfcReadSupported()) return;
+
+    let cancelled = false;
+    const identifyingRef = { current: false };
+
+    const { stop } = watchNfcSerialNumbers({
+      onTag: (userTag) => {
+        if (cancelled || identifyingRef.current) return;
+        identifyingRef.current = true;
+        void (async () => {
+          const result = await identifyKioskUserByTag(userTag);
+          if (cancelled) return;
+          if (!result.ok) {
+            setUnidentifiedMessage(t("tagNotFound"));
+            clearNoneMessageTimer();
+            noneMessageTimerRef.current = setTimeout(() => {
+              setUnidentifiedMessage(null);
+            }, FACE_1N_NONE_MESSAGE_MS);
+            identifyingRef.current = false;
+            return;
+          }
+          clearAuthCountdown();
+          router.replace(result.path);
+        })();
+      },
+    });
+
+    return () => {
+      cancelled = true;
+      stop();
+    };
+  }, [
+    step,
+    t,
+    router,
+    clearAuthCountdown,
+    clearNoneMessageTimer,
+  ]);
+
+  useEffect(() => {
     setAuthCancelHandler(() => {
       goHome();
     });
     return () => {
       setAuthCancelHandler(null);
+      clearAuthCountdown();
       clearNoneMessageTimer();
     };
-  }, [clearNoneMessageTimer, goHome, setAuthCancelHandler]);
+  }, [clearAuthCountdown, clearNoneMessageTimer, goHome, setAuthCancelHandler]);
 
   const navigateToColaborator = useCallback(() => {
     if (!selectedMember) return;
@@ -258,6 +302,10 @@ export function KioskHomeClient() {
   }
 
   return (
-    <KioskHomeChooser onCamera={openCamera} onPassword={openCode} />
+    <KioskHomeChooser
+      onCamera={openCamera}
+      onPassword={openCode}
+      message={unidentifiedMessage}
+    />
   );
 }

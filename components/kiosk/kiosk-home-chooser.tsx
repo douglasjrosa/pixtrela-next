@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button";
 export interface KioskHomeChooserProps {
   onCamera: () => void;
   onPassword: () => void;
+  message?: string | null;
 }
 
 export function KioskHomeChooser({
   onCamera,
   onPassword,
+  message,
 }: KioskHomeChooserProps) {
   const t = useTranslations("kiosk");
 
@@ -21,6 +23,11 @@ export function KioskHomeChooser({
       <p className="max-w-sm text-center text-lg font-medium leading-snug">
         {t("homeChooserHint")}
       </p>
+      {message ? (
+        <p role="status" className="text-center text-sm text-muted-foreground">
+          {message}
+        </p>
+      ) : null}
       <div className="grid w-full gap-4 sm:grid-cols-2">
         <Button
           type="button"

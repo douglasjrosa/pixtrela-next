@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   canAccessRoute,
   canEditUserLogin,
+  canPairUserTag,
   canPreviewKioskColaborator,
   canSetUserPassword,
-  canWriteKioskNfc,
   canDeactivateTasks,
   canDeleteTasks,
   canExchange,
@@ -121,16 +121,16 @@ describe("canEditUserLogin", () => {
   });
 });
 
-describe("canWriteKioskNfc", () => {
+describe("canPairUserTag", () => {
   it("allows admin and manager", () => {
-    expect(canWriteKioskNfc("admin")).toBe(true);
-    expect(canWriteKioskNfc("manager")).toBe(true);
+    expect(canPairUserTag("admin")).toBe(true);
+    expect(canPairUserTag("manager")).toBe(true);
   });
 
   it("denies leader and below", () => {
-    expect(canWriteKioskNfc("leader")).toBe(false);
-    expect(canWriteKioskNfc("colaborator")).toBe(false);
-    expect(canWriteKioskNfc("kiosk")).toBe(false);
+    expect(canPairUserTag("leader")).toBe(false);
+    expect(canPairUserTag("colaborator")).toBe(false);
+    expect(canPairUserTag("kiosk")).toBe(false);
   });
 });
 

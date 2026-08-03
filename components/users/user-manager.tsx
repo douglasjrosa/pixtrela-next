@@ -15,16 +15,15 @@ import { Label } from "@/components/ui/label";
 import { buildDefaultLogin } from "@/lib/business/default-login";
 import { buildKioskColaboratorPath } from "@/lib/kiosk/kiosk-link";
 import {
-  getNfcWriteCooldownRemainingMs,
-  isNfcWriteOnCooldown,
-  waitForNfcWriteCooldown,
+  getNfcCooldownRemainingMs,
+  isNfcOnCooldown,
 } from "@/lib/kiosk/nfc-cooldown";
 import {
-  isNfcWriteSupported,
-  mapNfcWriteError,
-  NfcWriteError,
-  writeKioskColaboratorLinkToNfc,
-} from "@/lib/kiosk/nfc-write";
+  isNfcReadSupported,
+  mapNfcReadError,
+  NfcReadError,
+  readNfcSerialNumberOnce,
+} from "@/lib/kiosk/nfc-read";
 import {
   USER_CODE_NOT_UNIQUE_KEY,
   USER_LOGIN_NOT_UNIQUE_KEY,
@@ -58,7 +57,7 @@ export interface UserManagerProps {
   canDelete: boolean;
   /** Precomputed on the server — do not pass predicate functions from RSC. */
   manageableRoles: UserFormInput["roleType"][];
-  canWriteKioskNfc?: boolean;
+  canPairUserTag?: boolean;
   canPreviewKioskColaborator?: boolean;
   /** Admin-only password field in create/edit modal. */
   canSetPassword?: boolean;
@@ -66,6 +65,10 @@ export interface UserManagerProps {
   canEditUserLogin?: boolean;
   /** Admin-only avatar and face recognition image management. */
   canManageImages?: boolean;
+  onPairUserTag?: (
+    userId: number,
+    userTag: string,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 const EMPTY_FORM: UserFormInput = {
@@ -129,7 +132,7 @@ interface UserFormDialogProps {
   editingUser: UserRow | null;
   roleOptions: UserFormInput["roleType"][];
   isPending: boolean;
-  canWriteKioskNfc: boolean;
+  canPairUserTag: boolean;
   canPreviewKioskColaborator: boolean;
   canSetPassword: boolean;
   canEditUserLogin: boolean;
@@ -138,14 +141,14 @@ interface UserFormDialogProps {
   onSubmit: (values: UserFormInput) => void;
   onDelete?: () => void;
   onPreviewKioskColaborator: (documentId: string) => void;
-  onWriteKioskNfc: (documentId: string) => Promise<void>;
+  onPairUserTag: (userId: number) => Promise<void>;
   onUpdateImage?: (
     userId: number,
     imageType: UserImageType,
     file: File,
     options?: { faceVector?: number[] },
   ) => void | Promise<void>;
-  nfcWriteDisabled: boolean;
+  nfcPairDisabled: boolean;
   canManageImages: boolean;
 }
 
@@ -154,7 +157,7 @@ function UserFormDialog({
   editingUser,
   roleOptions,
   isPending,
-  canWriteKioskNfc,
+  canPairUserTag,
   canPreviewKioskColaborator,
   canSetPassword,
   canEditUserLogin,
@@ -163,9 +166,9 @@ function UserFormDialog({
   onSubmit,
   onDelete,
   onPreviewKioskColaborator,
-  onWriteKioskNfc,
+  onPairUserTag,
   onUpdateImage,
-  nfcWriteDisabled,
+  nfcPairDisabled,
   canManageImages,
 }: UserFormDialogProps) {
   const tCommon = useTranslations("common");
@@ -230,7 +233,7 @@ function UserFormDialog({
   const formId = "user-form";
 
   const headerActions =
-    (canPreviewKioskColaborator || canWriteKioskNfc) && editingUser ? (
+    (canPreviewKioskColaborator || canPairUserTag) && editingUser ? (
       <div className="flex shrink-0 gap-1">
         {canPreviewKioskColaborator ? (
           <Button
@@ -244,15 +247,15 @@ function UserFormDialog({
             <Eye className="size-4" aria-hidden />
           </Button>
         ) : null}
-        {canWriteKioskNfc ? (
+        {canPairUserTag ? (
           <Button
             type="button"
             variant="outline"
             size="icon"
             className="size-8"
-            aria-label={tUsers("writeKioskNfc")}
-            disabled={nfcWriteDisabled}
-            onClick={() => void onWriteKioskNfc(editingUser.documentId)}
+            aria-label={tUsers("pairUserTag")}
+            disabled={nfcPairDisabled}
+            onClick={() => void onPairUserTag(editingUser.id)}
           >
             <Nfc className="size-4" aria-hidden />
           </Button>
@@ -413,11 +416,12 @@ export function UserManager({
   onDelete,
   canDelete,
   manageableRoles,
-  canWriteKioskNfc = false,
+  canPairUserTag = false,
   canPreviewKioskColaborator = false,
   canSetPassword = false,
   canEditUserLogin = false,
   canManageImages = false,
+  onPairUserTag,
 }: UserManagerProps) {
   const tCommon = useTranslations("common");
   const tUsers = useTranslations("users");
@@ -428,15 +432,15 @@ export function UserManager({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
-  const [nfcWriting, setNfcWriting] = useState(false);
+  const [nfcPairing, setNfcPairing] = useState(false);
   const [nfcCooldownTick, setNfcCooldownTick] = useState(0);
 
-  const nfcWriteDisabled = nfcWriting || isNfcWriteOnCooldown();
+  const nfcPairDisabled = nfcPairing || isNfcOnCooldown();
 
   useEffect(() => {
-    if (!isNfcWriteOnCooldown()) return;
+    if (!isNfcOnCooldown()) return;
     const intervalId = window.setInterval(() => {
-      if (isNfcWriteOnCooldown()) {
+      if (isNfcOnCooldown()) {
         setNfcCooldownTick(Date.now());
         return;
       }
@@ -444,7 +448,7 @@ export function UserManager({
       window.clearInterval(intervalId);
     }, 250);
     return () => window.clearInterval(intervalId);
-  }, [nfcWriting, nfcCooldownTick]);
+  }, [nfcPairing, nfcCooldownTick]);
 
   const editingUser =
     users.find((user) => user.id === editingUserId) ?? null;
@@ -506,41 +510,53 @@ export function UserManager({
     });
   }
 
-  async function handleWriteKioskNfc(documentId: string): Promise<void> {
-    if (isNfcWriteOnCooldown()) {
-      const seconds = Math.ceil(getNfcWriteCooldownRemainingMs() / 1000);
+  async function handlePairUserTag(userId: number): Promise<void> {
+    if (isNfcOnCooldown()) {
+      const seconds = Math.ceil(getNfcCooldownRemainingMs() / 1000);
       showErrorToast(tUsers("nfcCooldownActive", { seconds }));
       return;
     }
 
-    if (!isNfcWriteSupported()) {
+    if (!isNfcReadSupported()) {
       showErrorToast(tUsers("nfcNotSupported"));
       return;
     }
 
-    setNfcWriting(true);
+    if (!onPairUserTag) {
+      showErrorToast(tUsers("nfcReadFailed"));
+      return;
+    }
+
+    setNfcPairing(true);
     showSuccessToast(tUsers("nfcHoldTagNear"));
 
     try {
-      await writeKioskColaboratorLinkToNfc(
-        documentId,
-        window.location.origin,
-      );
-      showSuccessToast(tUsers("nfcRemoveCard"));
+      const userTag = await readNfcSerialNumberOnce();
+      const result = await onPairUserTag(userId, userTag);
+      if (!result.ok) {
+        if (result.error === "conflict") {
+          showErrorToast(tUsers("nfcTagConflict"));
+        } else if (result.error === "invalid") {
+          showErrorToast(tUsers("nfcTagInvalid"));
+        } else {
+          showErrorToast(tUsers("nfcReadFailed"));
+        }
+        return;
+      }
       setNfcCooldownTick(Date.now());
-      await waitForNfcWriteCooldown();
-      showSuccessToast(tUsers("nfcTagWritten"));
+      showSuccessToast(tUsers("nfcTagPaired"));
+      router.refresh();
     } catch (error) {
       const code =
-        error instanceof NfcWriteError ? error.code : mapNfcWriteError(error);
+        error instanceof NfcReadError ? error.code : mapNfcReadError(error);
       if (code === "cooldown") {
-        const seconds = Math.ceil(getNfcWriteCooldownRemainingMs() / 1000);
+        const seconds = Math.ceil(getNfcCooldownRemainingMs() / 1000);
         showErrorToast(tUsers("nfcCooldownActive", { seconds }));
       } else {
-        showErrorToast(tUsers("nfcWriteFailed"));
+        showErrorToast(tUsers("nfcReadFailed"));
       }
     } finally {
-      setNfcWriting(false);
+      setNfcPairing(false);
       setNfcCooldownTick(Date.now());
     }
   }
@@ -597,7 +613,7 @@ export function UserManager({
           editingUser={editingUser}
           roleOptions={roleOptions}
           isPending={isPending}
-          canWriteKioskNfc={canWriteKioskNfc}
+          canPairUserTag={canPairUserTag}
           canPreviewKioskColaborator={canPreviewKioskColaborator}
           canSetPassword={canSetPassword}
           canEditUserLogin={canEditUserLogin}
@@ -606,9 +622,9 @@ export function UserManager({
           onSubmit={onSubmit}
           onDelete={() => setDeleteOpen(true)}
           onPreviewKioskColaborator={handlePreviewKioskColaborator}
-          onWriteKioskNfc={handleWriteKioskNfc}
+          onPairUserTag={handlePairUserTag}
           onUpdateImage={onUpdateImage ? handleUpdateImage : undefined}
-          nfcWriteDisabled={nfcWriteDisabled}
+          nfcPairDisabled={nfcPairDisabled}
           canManageImages={canManageImages}
         />
       ) : null}

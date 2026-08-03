@@ -8,11 +8,10 @@ const refresh = vi.fn();
 const push = vi.fn();
 const showSuccessToast = vi.fn();
 const showErrorToast = vi.fn();
-const isNfcWriteSupported = vi.fn();
-const writeKioskColaboratorLinkToNfc = vi.fn();
-const isNfcWriteOnCooldown = vi.fn();
-const getNfcWriteCooldownRemainingMs = vi.fn();
-const waitForNfcWriteCooldown = vi.fn();
+const isNfcReadSupported = vi.fn();
+const readNfcSerialNumberOnce = vi.fn();
+const isNfcOnCooldown = vi.fn();
+const getNfcCooldownRemainingMs = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh, push }),
@@ -24,26 +23,25 @@ vi.mock("@/lib/ui/app-toast", () => ({
 }));
 
 vi.mock("@/lib/kiosk/nfc-cooldown", () => ({
-  isNfcWriteOnCooldown: () => isNfcWriteOnCooldown(),
-  getNfcWriteCooldownRemainingMs: () => getNfcWriteCooldownRemainingMs(),
-  waitForNfcWriteCooldown: () => waitForNfcWriteCooldown(),
+  isNfcOnCooldown: () => isNfcOnCooldown(),
+  getNfcCooldownRemainingMs: () => getNfcCooldownRemainingMs(),
 }));
 
-vi.mock("@/lib/kiosk/nfc-write", () => ({
-  isNfcWriteSupported: () => isNfcWriteSupported(),
-  mapNfcWriteError: (error: unknown) =>
+vi.mock("@/lib/kiosk/nfc-read", () => ({
+  isNfcReadSupported: () => isNfcReadSupported(),
+  mapNfcReadError: (error: unknown) =>
     error instanceof Error && error.message === "denied"
       ? "permissionDenied"
-      : "writeFailed",
-  NfcWriteError: class NfcWriteError extends Error {
+      : "readFailed",
+  NfcReadError: class NfcReadError extends Error {
     code: string;
     constructor(code: string) {
       super(code);
       this.code = code;
     }
   },
-  writeKioskColaboratorLinkToNfc: (...args: unknown[]) =>
-    writeKioskColaboratorLinkToNfc(...args),
+  readNfcSerialNumberOnce: (...args: unknown[]) =>
+    readNfcSerialNumberOnce(...args),
 }));
 
 const users = [
@@ -69,15 +67,11 @@ describe("UserManager", () => {
   beforeEach(() => {
     showSuccessToast.mockReset();
     showErrorToast.mockReset();
-    isNfcWriteSupported.mockReturnValue(true);
-    isNfcWriteOnCooldown.mockReturnValue(false);
-    getNfcWriteCooldownRemainingMs.mockReturnValue(0);
-    waitForNfcWriteCooldown.mockResolvedValue(undefined);
-    writeKioskColaboratorLinkToNfc.mockReset();
-    writeKioskColaboratorLinkToNfc.mockResolvedValue({
-      url: "http://localhost/kiosk/u1",
-      api: "NDEFReader",
-    });
+    isNfcReadSupported.mockReturnValue(true);
+    isNfcOnCooldown.mockReturnValue(false);
+    getNfcCooldownRemainingMs.mockReturnValue(0);
+    readNfcSerialNumberOnce.mockReset();
+    readNfcSerialNumberOnce.mockResolvedValue("04A3B2C1");
   });
 
   it("renders user list", () => {
@@ -491,7 +485,7 @@ describe("UserManager", () => {
     });
   });
 
-  it("shows NFC write button when canWriteKioskNfc and editing", () => {
+  it("shows NFC pair button when canPairUserTag and editing", () => {
     renderWithIntl(
       <UserManager
         users={users}
@@ -499,18 +493,19 @@ describe("UserManager", () => {
         onUpdate={vi.fn()}
         canDelete={false}
         manageableRoles={["colaborator"]}
-        canWriteKioskNfc
+        canPairUserTag
+        onPairUserTag={vi.fn()}
       />,
     );
 
     fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
 
     expect(
-      screen.getByRole("button", { name: "Gravar link no cartão NFC" }),
+      screen.getByRole("button", { name: "Vincular chaveiro NFC" }),
     ).toBeInTheDocument();
   });
 
-  it("hides NFC write button on create modal", () => {
+  it("hides NFC pair button on create modal", () => {
     renderWithIntl(
       <UserManager
         users={users}
@@ -518,14 +513,15 @@ describe("UserManager", () => {
         onUpdate={vi.fn()}
         canDelete={false}
         manageableRoles={["colaborator"]}
-        canWriteKioskNfc
+        canPairUserTag
+        onPairUserTag={vi.fn()}
       />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Novo usuário" }));
 
     expect(
-      screen.queryByRole("button", { name: "Gravar link no cartão NFC" }),
+      screen.queryByRole("button", { name: "Vincular chaveiro NFC" }),
     ).not.toBeInTheDocument();
   });
 
@@ -550,7 +546,7 @@ describe("UserManager", () => {
 
     expect(push).toHaveBeenCalledWith("/kiosk/u1");
     expect(
-      screen.queryByRole("button", { name: "Gravar link no cartão NFC" }),
+      screen.queryByRole("button", { name: "Vincular chaveiro NFC" }),
     ).not.toBeInTheDocument();
   });
 
@@ -562,7 +558,8 @@ describe("UserManager", () => {
         onUpdate={vi.fn()}
         canDelete={false}
         manageableRoles={["colaborator"]}
-        canWriteKioskNfc
+        canPairUserTag
+        onPairUserTag={vi.fn()}
       />,
     );
 
@@ -574,11 +571,13 @@ describe("UserManager", () => {
       }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Gravar link no cartão NFC" }),
+      screen.getByRole("button", { name: "Vincular chaveiro NFC" }),
     ).toBeInTheDocument();
   });
 
-  it("writes kiosk link to NFC tag when NFC button is clicked", async () => {
+  it("pairs NFC tag when NFC button is clicked", async () => {
+    const onPairUserTag = vi.fn().mockResolvedValue({ ok: true });
+
     renderWithIntl(
       <UserManager
         users={users}
@@ -586,35 +585,32 @@ describe("UserManager", () => {
         onUpdate={vi.fn()}
         canDelete={false}
         manageableRoles={["colaborator"]}
-        canWriteKioskNfc
+        canPairUserTag
+        onPairUserTag={onPairUserTag}
       />,
     );
 
     fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
     fireEvent.click(
-      screen.getByRole("button", { name: "Gravar link no cartão NFC" }),
+      screen.getByRole("button", { name: "Vincular chaveiro NFC" }),
     );
 
     await waitFor(() => {
-      expect(writeKioskColaboratorLinkToNfc).toHaveBeenCalledWith(
-        "u1",
-        window.location.origin,
-      );
+      expect(readNfcSerialNumberOnce).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(onPairUserTag).toHaveBeenCalledWith(1, "04A3B2C1");
     });
     expect(showSuccessToast).toHaveBeenCalledWith(
-      "Aproxime o cartão NFC do celular…",
+      "Aproxime o chaveiro NFC do celular…",
     );
     expect(showSuccessToast).toHaveBeenCalledWith(
-      "Afaste o cartão do celular por alguns segundos.",
+      "Chaveiro NFC vinculado ao usuário.",
     );
-    expect(showSuccessToast).toHaveBeenCalledWith(
-      "Link gravado no cartão NFC.",
-    );
-    expect(waitForNfcWriteCooldown).toHaveBeenCalled();
   });
 
   it("shows error toast when NFC is not supported", async () => {
-    isNfcWriteSupported.mockReturnValue(false);
+    isNfcReadSupported.mockReturnValue(false);
 
     renderWithIntl(
       <UserManager
@@ -623,20 +619,21 @@ describe("UserManager", () => {
         onUpdate={vi.fn()}
         canDelete={false}
         manageableRoles={["colaborator"]}
-        canWriteKioskNfc
+        canPairUserTag
+        onPairUserTag={vi.fn()}
       />,
     );
 
     fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
     fireEvent.click(
-      screen.getByRole("button", { name: "Gravar link no cartão NFC" }),
+      screen.getByRole("button", { name: "Vincular chaveiro NFC" }),
     );
 
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(
-        "Seu dispositivo ou navegador não suporta gravação NFC. Use Chrome no Android.",
+        "Seu dispositivo ou navegador não suporta NFC. Use Chrome no Android.",
       );
     });
-    expect(writeKioskColaboratorLinkToNfc).not.toHaveBeenCalled();
+    expect(readNfcSerialNumberOnce).not.toHaveBeenCalled();
   });
 });

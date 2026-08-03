@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { cleanup, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
@@ -44,6 +44,9 @@ vi.mock("@/lib/kiosk/face/load-face-models", () => ({
 
 const identifyKioskUserByFace = vi.fn();
 const identifyKioskUserByCode = vi.fn();
+const identifyKioskUserByTag = vi.fn();
+const watchNfcSerialNumbers = vi.fn(() => ({ stop: vi.fn() }));
+const isNfcReadSupported = vi.fn(() => false);
 
 vi.mock("@/app/kiosk/actions", () => ({
   fetchKioskDirectoryTeams: vi.fn(async () => ({ ok: true, teams: [] })),
@@ -55,6 +58,14 @@ vi.mock("@/app/kiosk/actions", () => ({
     identifyKioskUserByFace(...args),
   identifyKioskUserByCode: (...args: unknown[]) =>
     identifyKioskUserByCode(...args),
+  identifyKioskUserByTag: (...args: unknown[]) =>
+    identifyKioskUserByTag(...args),
+}));
+
+vi.mock("@/lib/kiosk/nfc-read", () => ({
+  isNfcReadSupported: () => isNfcReadSupported(),
+  watchNfcSerialNumbers: (...args: unknown[]) =>
+    watchNfcSerialNumbers(...args),
 }));
 
 const replace = vi.fn();
@@ -73,6 +84,20 @@ function renderHome() {
 }
 
 describe("KioskHomeClient", () => {
+  beforeEach(() => {
+    replace.mockReset();
+    identifyKioskUserByFace.mockReset();
+    identifyKioskUserByCode.mockReset();
+    identifyKioskUserByTag.mockReset();
+    watchNfcSerialNumbers.mockReset();
+    watchNfcSerialNumbers.mockReturnValue({ stop: vi.fn() });
+    isNfcReadSupported.mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
   it("shows camera and password chooser first", () => {
     renderHome();
     expect(
@@ -171,6 +196,67 @@ describe("KioskHomeClient", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("Código")).toBeInTheDocument();
       expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+    });
+  });
+
+  it("navigates when NFC tag identifies a user on choose step", async () => {
+    isNfcReadSupported.mockReturnValue(true);
+    identifyKioskUserByTag.mockResolvedValue({
+      ok: true,
+      documentId: "c1",
+      role: "colaborator",
+      path: "/kiosk/c1",
+    });
+
+    let onTag: ((userTag: string) => void) | null = null;
+    watchNfcSerialNumbers.mockImplementation(
+      (options: { onTag: (userTag: string) => void }) => {
+        onTag = options.onTag;
+        return { stop: vi.fn() };
+      },
+    );
+
+    renderHome();
+
+    await waitFor(() => {
+      expect(watchNfcSerialNumbers).toHaveBeenCalled();
+    });
+
+    onTag?.("04A3B2C1");
+
+    await waitFor(() => {
+      expect(identifyKioskUserByTag).toHaveBeenCalledWith("04A3B2C1");
+      expect(replace).toHaveBeenCalledWith("/kiosk/c1");
+    });
+  });
+
+  it("shows tagNotFound when NFC tag is unknown", async () => {
+    isNfcReadSupported.mockReturnValue(true);
+    identifyKioskUserByTag.mockResolvedValue({
+      ok: false,
+      error: "invalidCredentials",
+    });
+
+    let onTag: ((userTag: string) => void) | null = null;
+    watchNfcSerialNumbers.mockImplementation(
+      (options: { onTag: (userTag: string) => void }) => {
+        onTag = options.onTag;
+        return { stop: vi.fn() };
+      },
+    );
+
+    renderHome();
+
+    await waitFor(() => {
+      expect(watchNfcSerialNumbers).toHaveBeenCalled();
+    });
+
+    onTag?.("DEADBEEF");
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Chaveiro não reconhecido/i),
+      ).toBeInTheDocument();
     });
   });
 });
