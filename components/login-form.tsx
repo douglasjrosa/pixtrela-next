@@ -7,24 +7,12 @@ import { getSession, signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { KIOSK_HOME_PATH } from "@/lib/auth/colaborator-routes";
 import type { Role } from "@/lib/auth/nav";
-
+import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { loginSchema, type LoginInput } from "@/lib/schemas/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-function resolvePostLoginDestination(
-  role: Role | undefined,
-  userId: string | undefined,
-  callbackUrl: string | null,
-): string {
-  if (role === "kiosk") return KIOSK_HOME_PATH;
-  if (role === "colaborator" && userId) return `/${userId}`;
-  if (callbackUrl?.startsWith("/")) return callbackUrl;
-  return "/";
-}
 
 export function LoginForm() {
   const t = useTranslations("auth");
@@ -59,7 +47,11 @@ export function LoginForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="login">{t("login")}</Label>
-        <Input id="login" placeholder={t("loginPlaceholder")} {...register("login")} />
+        <Input
+          id="login"
+          placeholder={t("loginPlaceholder")}
+          {...register("login")}
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">{t("password")}</Label>

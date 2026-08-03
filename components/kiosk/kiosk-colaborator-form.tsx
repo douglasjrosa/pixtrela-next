@@ -16,13 +16,15 @@ import { KioskActionButton } from "./kiosk-action-button";
 export interface KioskColaboratorFormProps {
   onSubmit: (values: KioskIdentifyInput) => void | Promise<void>;
   pending?: boolean;
+  messagesNamespace?: "kiosk" | "auth";
 }
 
 export function KioskColaboratorForm({
   onSubmit,
   pending,
+  messagesNamespace = "kiosk",
 }: KioskColaboratorFormProps) {
-  const t = useTranslations("kiosk");
+  const t = useTranslations(messagesNamespace);
 
   const {
     register,

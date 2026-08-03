@@ -37,7 +37,16 @@
     "signOut": "Sair",
     "invalidCredentials": "Login ou senha inválidos.",
     "sessionExpired": "Sua sessão expirou. Entre novamente para continuar.",
-    "loginPlaceholder": "ex.: maria.9876"
+    "loginPlaceholder": "ex.: maria.9876",
+    "homeChooserHint": "Escolha como entrar. Você também pode aproximar o chaveiro NFC.",
+    "homeChooserCamera": "Reconhecimento facial",
+    "homeChooserPassword": "Código e senha",
+    "homeChooserUsername": "Entrar com usuário e senha",
+    "homeBackToChooser": "Voltar ao início",
+    "tagNotFound": "Chaveiro não reconhecido. Tente novamente ou use outro método.",
+    "code": "Código",
+    "enter": "Entrar",
+    "forbidden": "Não foi possível identificar o usuário."
   },
   "nav": {
     "panel": "Painel",

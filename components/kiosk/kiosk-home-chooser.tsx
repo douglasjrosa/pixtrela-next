@@ -9,14 +9,19 @@ export interface KioskHomeChooserProps {
   onCamera: () => void;
   onPassword: () => void;
   message?: string | null;
+  /** i18n namespace; defaults to kiosk. */
+  messagesNamespace?: "kiosk" | "auth";
+  onUsernameLogin?: () => void;
 }
 
 export function KioskHomeChooser({
   onCamera,
   onPassword,
   message,
+  messagesNamespace = "kiosk",
+  onUsernameLogin,
 }: KioskHomeChooserProps) {
-  const t = useTranslations("kiosk");
+  const t = useTranslations(messagesNamespace);
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-8 py-6">
@@ -48,6 +53,16 @@ export function KioskHomeChooser({
           {t("homeChooserPassword")}
         </Button>
       </div>
+      {onUsernameLogin ? (
+        <Button
+          type="button"
+          variant="link"
+          className="h-auto p-0"
+          onClick={onUsernameLogin}
+        >
+          {t("homeChooserUsername")}
+        </Button>
+      ) : null}
     </div>
   );
 }

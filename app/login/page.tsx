@@ -1,7 +1,8 @@
 import { getTranslations } from "next-intl/server";
+import { Suspense } from "react";
 
+import { LoginEntryClient } from "@/components/auth/login-entry-client";
 import { SessionExpiredNotice } from "@/components/auth/session-expired-notice";
-import { LoginForm } from "@/components/login-form";
 import {
   Card,
   CardContent,
@@ -18,14 +19,16 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { reason } = await searchParams;
 
   return (
-    <main className="w-full max-w-sm">
+    <main className="w-full max-w-lg">
       <Card className="w-full">
         <CardHeader>
           <CardTitle>{t("loginTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <SessionExpiredNotice reason={reason} />
-          <LoginForm />
+          <Suspense fallback={null}>
+            <LoginEntryClient />
+          </Suspense>
         </CardContent>
       </Card>
     </main>
