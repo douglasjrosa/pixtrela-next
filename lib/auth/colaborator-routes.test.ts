@@ -25,7 +25,10 @@ describe("resolveRouteAccess", () => {
   it("redirects unlogged users on private path to login", () => {
     expect(
       resolveRouteAccess("/col-1", { isAuthenticated: false }),
-    ).toEqual({ action: "redirect", destination: LOGIN_PATH });
+    ).toEqual({
+      action: "redirect",
+      destination: `${LOGIN_PATH}?callbackUrl=%2Fcol-1`,
+    });
   });
 
   it("redirects unlogged users on kiosk paths to login with callback", () => {
@@ -242,5 +245,14 @@ describe("resolveRouteAccess profile", () => {
         userId: "lead-1",
       }),
     ).toEqual({ action: "redirect", destination: "/lead-1/profile" });
+  });
+
+  it("redirects unlogged profile visits to login with callback", () => {
+    expect(
+      resolveRouteAccess("/col-1/profile", { isAuthenticated: false }),
+    ).toEqual({
+      action: "redirect",
+      destination: `${LOGIN_PATH}?callbackUrl=%2Fcol-1%2Fprofile`,
+    });
   });
 });

@@ -31,6 +31,12 @@ describe("resolvePostLoginDestination", () => {
     );
   });
 
+  it("allows colaborator own profile callback", () => {
+    expect(
+      resolvePostLoginDestination("colaborator", "c1", "/c1/profile"),
+    ).toBe("/c1/profile");
+  });
+
   it("prefers relative callback for staff when accessible", () => {
     expect(resolvePostLoginDestination("admin", "a1", "/board")).toBe("/board");
   });

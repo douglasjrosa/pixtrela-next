@@ -21,16 +21,28 @@ export function stashWelcomePayload(payload: WelcomePayload): void {
   window.sessionStorage.setItem(WELCOME_SESSION_KEY, JSON.stringify(payload));
 }
 
-/** Reads and clears a pending welcome payload, if any. */
-export function consumeWelcomePayload(): WelcomePayload | null {
+/** Reads a pending welcome payload without clearing it. */
+export function peekWelcomePayload(): WelcomePayload | null {
   if (typeof window === "undefined") return null;
   const raw = window.sessionStorage.getItem(WELCOME_SESSION_KEY);
   if (!raw) return null;
-  window.sessionStorage.removeItem(WELCOME_SESSION_KEY);
   try {
     const parsed: unknown = JSON.parse(raw);
     return isWelcomePayload(parsed) ? parsed : null;
   } catch {
     return null;
   }
+}
+
+/** Clears a pending welcome payload, if any. */
+export function clearWelcomePayload(): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(WELCOME_SESSION_KEY);
+}
+
+/** Reads and clears a pending welcome payload, if any. */
+export function consumeWelcomePayload(): WelcomePayload | null {
+  const payload = peekWelcomePayload();
+  if (payload) clearWelcomePayload();
+  return payload;
 }

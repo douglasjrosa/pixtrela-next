@@ -110,6 +110,12 @@ export function ProfileClient({
         personalOk = result?.ok === true;
         if (!personalOk) {
           personalFailedReason = result?.error ?? "failed";
+          if (personalFailedReason === "emailTaken") {
+            showErrorToast(t("emailTaken"));
+          } else {
+            showErrorToast(t("personalSaveFailed"));
+          }
+          return;
         }
       }
 
@@ -126,14 +132,6 @@ export function ProfileClient({
         return;
       }
 
-      if (!personalOk && personalFailedReason === "emailTaken") {
-        showErrorToast(t("emailTaken"));
-        return;
-      }
-      if (!personalOk) {
-        showErrorToast(t("personalSaveFailed"));
-        return;
-      }
       if (
         passwordFailedReason === "invalidCurrent" ||
         passwordFailedReason === "passwordMismatch" ||

@@ -40,7 +40,8 @@ describe("WelcomeOverlayHost", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Bem vinda Ana!")).toBeInTheDocument();
-    expect(window.sessionStorage.getItem(WELCOME_SESSION_KEY)).toBeNull();
+    // Payload stays until onDone so Strict Mode remounts still see it.
+    expect(window.sessionStorage.getItem(WELCOME_SESSION_KEY)).toBeTruthy();
   });
 
   it("clears the modal after the welcome duration", () => {
@@ -55,6 +56,7 @@ describe("WelcomeOverlayHost", () => {
     });
 
     expect(screen.queryByRole("dialog")).toBeNull();
+    expect(window.sessionStorage.getItem(WELCOME_SESSION_KEY)).toBeNull();
     vi.useRealTimers();
   });
 });

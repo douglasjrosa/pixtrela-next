@@ -37,8 +37,6 @@ export function resolvePostLoginDestination(
   callbackUrl: string | null,
 ): string {
   const fallback = defaultHomeForRole(role, userId);
-  if (role === "kiosk" || role === "colaborator") return fallback;
-
   const safeCallback = sanitizeCallbackUrl(callbackUrl);
   if (!safeCallback) return fallback;
 

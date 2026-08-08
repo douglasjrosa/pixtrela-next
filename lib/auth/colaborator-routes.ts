@@ -123,7 +123,7 @@ export function resolveRouteAccess(
 
   if (isUserProfilePath(pathname)) {
     if (!isAuthenticated) {
-      return redirectTo(LOGIN_PATH, pathname);
+      return redirectTo(buildLoginRedirect(pathname), pathname);
     }
     if (isKiosk) {
       return redirectTo(KIOSK_HOME_PATH, pathname);
@@ -139,7 +139,7 @@ export function resolveRouteAccess(
 
   if (isColaboratorPrivatePath(pathname)) {
     if (!isAuthenticated) {
-      return redirectTo(LOGIN_PATH, pathname);
+      return redirectTo(buildLoginRedirect(pathname), pathname);
     }
     if (isKiosk) {
       return redirectTo(KIOSK_HOME_PATH, pathname);

@@ -83,6 +83,8 @@
     "personalSaveFailed": "Não foi possível salvar os dados pessoais.",
     "invalidEmail": "Informe um e-mail válido.",
     "invalidPhone": "Informe um celular válido com DDD.",
+    "invalidFirstName": "Informe o nome.",
+    "invalidLastName": "Informe o sobrenome.",
     "emailTaken": "Este e-mail já está em uso.",
     "passwordTitle": "Alterar senha",
     "currentPassword": "Senha atual",

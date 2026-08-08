@@ -2,8 +2,10 @@ import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 
 import {
   WELCOME_SESSION_KEY,
+  clearWelcomePayload,
   consumeWelcomePayload,
   isWelcomePayload,
+  peekWelcomePayload,
   stashWelcomePayload,
 } from "./welcome-session";
 
@@ -46,5 +48,13 @@ describe("welcome-session", () => {
       avatarUrl: "/uploads/a.jpg",
     });
     expect(consumeWelcomePayload()).toBeNull();
+  });
+
+  it("peeks without clearing until clearWelcomePayload", () => {
+    stashWelcomePayload({ name: "Bruno" });
+    expect(peekWelcomePayload()?.name).toBe("Bruno");
+    expect(peekWelcomePayload()?.name).toBe("Bruno");
+    clearWelcomePayload();
+    expect(peekWelcomePayload()).toBeNull();
   });
 });

@@ -104,7 +104,7 @@ export const ProfilePersonalForm = forwardRef<
         />
         {errors.name ? (
           <p className="text-sm text-destructive" role="alert">
-            {t("firstName")}
+            {t("invalidFirstName")}
           </p>
         ) : null}
       </div>
@@ -119,7 +119,7 @@ export const ProfilePersonalForm = forwardRef<
         />
         {errors.lastName ? (
           <p className="text-sm text-destructive" role="alert">
-            {t("lastName")}
+            {t("invalidLastName")}
           </p>
         ) : null}
       </div>
