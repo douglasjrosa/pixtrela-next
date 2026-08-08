@@ -35,7 +35,7 @@ describe("AwardsListView", () => {
     const image = screen.getAllByRole("img", { name: "Arroz 5kg" })[0]!;
     expect(image).toHaveAttribute(
       "src",
-      "http://127.0.0.1:1337/uploads/arroz.jpg",
+      "/api/strapi-media?path=%2Fuploads%2Farroz.jpg",
     );
     expect(image.className).toMatch(/rounded-full/);
   });

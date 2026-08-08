@@ -140,7 +140,7 @@ export function KioskFace1nCapture({
       <div className="relative mx-auto aspect-[3/4] w-full max-w-xs overflow-hidden rounded-2xl bg-black">
         <video
           ref={videoRef}
-          className="size-full object-cover"
+          className="size-full -scale-x-100 object-cover"
           playsInline
           muted
           autoPlay

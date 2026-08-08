@@ -31,7 +31,10 @@ describe("AwardCard", () => {
     );
     expect(screen.getByText("Arroz 5kg")).toBeInTheDocument();
     expect(screen.getByText("100")).toBeInTheDocument();
-    expect(screen.getByRole("img")).toHaveAttribute("src", "/uploads/arroz.png");
+    expect(screen.getByRole("img")).toHaveAttribute(
+      "src",
+      "/api/strapi-media?path=%2Fuploads%2Farroz.png",
+    );
   });
 
   it("shows remaining stars bar when unaffordable", () => {

@@ -19,7 +19,7 @@ describe("KioskColaboratorHeader", () => {
     expect(screen.getByRole("heading", { name: "Ana Silva" })).toBeInTheDocument();
     expect(screen.getByRole("presentation")).toHaveAttribute(
       "src",
-      expect.stringContaining("/uploads/ana.jpg"),
+      "/api/strapi-media?path=%2Fuploads%2Fana.jpg",
     );
   });
 

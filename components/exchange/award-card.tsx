@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { toBrowserStrapiMediaUrl } from "@/lib/strapi/browser-media-url";
 import { cn } from "@/lib/utils";
 
 import { ExchangeButton } from "./exchange-button";
@@ -32,6 +33,7 @@ export function AwardCard({ award, windowOpen, balance, onRedeem }: AwardCardPro
   const affordable = balance >= award.cost && award.cost > 0;
   const remaining = Math.max(0, award.cost - balance);
   const progress = award.cost > 0 ? Math.min(1, balance / award.cost) : 0;
+  const imageSrc = toBrowserStrapiMediaUrl(award.imageUrl);
 
   function handleRedeem() {
     setMessage(null);
@@ -53,10 +55,10 @@ export function AwardCard({ award, windowOpen, balance, onRedeem }: AwardCardPro
       )}
     >
       <div className="relative flex h-40 items-center justify-center bg-muted">
-        {award.imageUrl ? (
+        {imageSrc ? (
           // eslint-disable-next-line @next/next/no-img-element -- Strapi host varies by env
           <img
-            src={award.imageUrl}
+            src={imageSrc}
             alt={t("imageAlt", { title: award.title })}
             className="h-full w-full object-cover"
           />

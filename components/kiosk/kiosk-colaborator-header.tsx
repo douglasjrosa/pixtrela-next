@@ -3,7 +3,7 @@
 import { User } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
+import { toBrowserStrapiMediaUrl } from "@/lib/strapi/browser-media-url";
 import { cn } from "@/lib/utils";
 
 export interface KioskColaboratorHeaderProps {
@@ -19,7 +19,7 @@ export function KioskColaboratorHeader({
   className,
 }: KioskColaboratorHeaderProps) {
   const t = useTranslations("kiosk");
-  const photoUrl = resolveStrapiMediaUrl(avatarUrl ?? null);
+  const photoUrl = toBrowserStrapiMediaUrl(avatarUrl ?? null);
 
   return (
     <header

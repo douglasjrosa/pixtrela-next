@@ -22,7 +22,7 @@ describe("KioskFaceWelcome", () => {
     expect(screen.getByText("Bem vinda Ana!")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Ana Silva/i })).toHaveAttribute(
       "src",
-      "http://127.0.0.1:1337/uploads/a.jpg",
+      "/api/strapi-media?path=%2Fuploads%2Fa.jpg",
     );
 
     act(() => {

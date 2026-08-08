@@ -65,7 +65,7 @@ describe("UsersListView", () => {
     const avatar = screen.getAllByRole("img", { name: "Maria" })[0]!;
     expect(avatar).toHaveAttribute(
       "src",
-      "http://127.0.0.1:1337/uploads/maria.jpg",
+      "/api/strapi-media?path=%2Fuploads%2Fmaria.jpg",
     );
     expect(avatar.className).toMatch(/rounded-full/);
   });

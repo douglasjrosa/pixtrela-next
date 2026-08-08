@@ -1,6 +1,6 @@
 import { ImageIcon } from "lucide-react";
 
-import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
+import { toBrowserStrapiMediaUrl } from "@/lib/strapi/browser-media-url";
 
 export interface AwardListImageProps {
   label: string;
@@ -9,7 +9,7 @@ export interface AwardListImageProps {
 
 /** Circular award thumbnail for list rows. */
 export function AwardListImage({ label, imageUrl }: AwardListImageProps) {
-  const url = resolveStrapiMediaUrl(imageUrl ?? null);
+  const url = toBrowserStrapiMediaUrl(imageUrl ?? null);
 
   return (
     <span

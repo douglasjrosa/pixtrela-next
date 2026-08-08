@@ -1,6 +1,6 @@
 export type GreetingGender = "masculine" | "feminine";
 
-export const KIOSK_FACE_WELCOME_MS = 2000;
+export const KIOSK_FACE_WELCOME_MS = 800;
 
 /** First token of a display name (e.g. "Ana Silva" → "Ana"). */
 export function firstNameFromDisplayName(name: string): string {

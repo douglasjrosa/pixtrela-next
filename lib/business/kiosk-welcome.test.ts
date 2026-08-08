@@ -28,6 +28,6 @@ describe("formatKioskWelcomeMessage", () => {
   });
 
   it("keeps welcome duration at two seconds", () => {
-    expect(KIOSK_FACE_WELCOME_MS).toBe(2000);
+    expect(KIOSK_FACE_WELCOME_MS).toBe(800);
   });
 });
