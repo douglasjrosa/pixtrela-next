@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import { defaultCache } from "@serwist/turbopack/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { CacheFirst, ExpirationPlugin, Serwist } from "serwist";
+import { CacheFirst, ExpirationPlugin, NetworkOnly, Serwist } from "serwist";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -21,6 +21,12 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
+    {
+      // Server Actions must always hit the network with an untouched body.
+      matcher: ({ request }) => Boolean(request.headers.get("next-action")),
+      method: "POST" as const,
+      handler: new NetworkOnly(),
+    },
     {
       matcher: ({ url }) => url.pathname.startsWith("/models/face-api/"),
       handler: new CacheFirst({

@@ -108,7 +108,7 @@ describe("KioskHomeClient", () => {
     ).toBeInTheDocument();
   });
 
-  it("opens camera and welcomes on unique match", async () => {
+  it("opens camera and navigates on unique match", async () => {
     const user = userEvent.setup();
     identifyKioskUserByFace.mockResolvedValue({
       ok: true,
@@ -136,7 +136,7 @@ describe("KioskHomeClient", () => {
     await user.click(screen.getByRole("button", { name: "mock-probe" }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Bem vinda Ana/i)).toBeInTheDocument();
+      expect(replace).toHaveBeenCalledWith("/kiosk/c1");
     });
   });
 

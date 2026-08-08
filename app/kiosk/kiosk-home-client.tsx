@@ -9,7 +9,6 @@ import { KioskColaboratorForm } from "@/components/kiosk/kiosk-colaborator-form"
 import { KioskFace1nCapture } from "@/components/kiosk/kiosk-face-1n-capture";
 import { KioskFaceAmbiguousList } from "@/components/kiosk/kiosk-face-ambiguous-list";
 import { KioskFaceVerify } from "@/components/kiosk/kiosk-face-verify";
-import { KioskFaceWelcome } from "@/components/kiosk/kiosk-face-welcome";
 import { KioskHomeChooser } from "@/components/kiosk/kiosk-home-chooser";
 import { useKioskIdleContext } from "@/components/kiosk/kiosk-idle-provider";
 import { FACE_1N_NONE_MESSAGE_MS } from "@/lib/kiosk/face/face-match-constants";
@@ -17,12 +16,14 @@ import { loadFaceModels } from "@/lib/kiosk/face/load-face-models";
 import { buildKioskColaboratorPath } from "@/lib/kiosk/kiosk-link";
 import { isNfcReadSupported, watchNfcSerialNumbers } from "@/lib/kiosk/nfc-read";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
+import { stashWelcomePayload } from "@/lib/welcome/welcome-session";
 
 import {
   identifyKioskUserByCode,
   identifyKioskUserByFace,
   identifyKioskUserByTag,
   type KioskFaceIdentifyCandidate,
+  type KioskWelcomeProfile,
 } from "./actions";
 
 type HomeStep =
@@ -30,7 +31,6 @@ type HomeStep =
   | "face1n"
   | "ambiguous"
   | "face1to1"
-  | "welcome"
   | "code";
 
 export function KioskHomeClient() {
@@ -130,6 +130,9 @@ export function KioskHomeClient() {
             return;
           }
           clearAuthCountdown();
+          if (result.welcome) {
+            stashWelcomePayload(result.welcome);
+          }
           router.replace(result.path);
         })();
       },
@@ -158,17 +161,35 @@ export function KioskHomeClient() {
     };
   }, [clearAuthCountdown, clearNoneMessageTimer, goHome, setAuthCancelHandler]);
 
-  const navigateToColaborator = useCallback(() => {
-    if (!selectedMember) return;
-    clearAuthCountdown();
-    router.replace(buildKioskColaboratorPath(selectedMember.documentId));
-  }, [clearAuthCountdown, router, selectedMember]);
+  const navigateToColaborator = useCallback(
+    (member: KioskFaceIdentifyCandidate) => {
+      clearAuthCountdown();
+      stashWelcomePayload({
+        name: member.name,
+        greetingGender: member.greetingGender,
+        avatarUrl: resolveStrapiMediaUrl(member.avatarUrl),
+        facePhotoUrl: resolveStrapiMediaUrl(member.facePhotoUrl),
+      });
+      router.replace(buildKioskColaboratorPath(member.documentId));
+    },
+    [clearAuthCountdown, router],
+  );
+
+  const navigateWithWelcome = useCallback(
+    (path: string, welcome: KioskWelcomeProfile | null) => {
+      clearAuthCountdown();
+      if (welcome) {
+        stashWelcomePayload(welcome);
+      }
+      router.replace(path);
+    },
+    [clearAuthCountdown, router],
+  );
 
   const handleFaceSuccess = useCallback(() => {
     if (!selectedMember) return;
-    clearAuthCountdown();
-    setStep("welcome");
-  }, [clearAuthCountdown, selectedMember]);
+    navigateToColaborator(selectedMember);
+  }, [navigateToColaborator, selectedMember]);
 
   async function handleProbeReady(descriptor: number[]): Promise<void> {
     setPending(true);
@@ -187,10 +208,9 @@ export function KioskHomeClient() {
 
     if (result.status === "match") {
       clearNoneMessageTimer();
-      clearAuthCountdown();
       setSelectedMember(result.match);
       setUnidentifiedMessage(null);
-      setStep("welcome");
+      navigateToColaborator(result.match);
       return;
     }
 
@@ -226,20 +246,7 @@ export function KioskHomeClient() {
       setErrorKey(result.error);
       return;
     }
-    clearAuthCountdown();
-    router.replace(result.path);
-  }
-
-  if (step === "welcome" && selectedMember) {
-    return (
-      <KioskFaceWelcome
-        name={selectedMember.name}
-        greetingGender={selectedMember.greetingGender}
-        avatarUrl={resolveStrapiMediaUrl(selectedMember.avatarUrl)}
-        facePhotoUrl={resolveStrapiMediaUrl(selectedMember.facePhotoUrl)}
-        onDone={navigateToColaborator}
-      />
-    );
+    navigateWithWelcome(result.path, result.welcome);
   }
 
   if (step === "face1to1" && selectedMember) {

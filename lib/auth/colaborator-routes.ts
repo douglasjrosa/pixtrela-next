@@ -1,4 +1,10 @@
+import {
+  buildProfilePath,
+  isUserProfilePath as isProfilePathShape,
+} from "@/lib/profile/profile-path";
+
 import type { Role } from "./nav";
+import { canAccessOwnProfile } from "./profile-access";
 
 export const KIOSK_HOME_PATH = "/kiosk";
 export const LOGIN_PATH = "/login";
@@ -22,6 +28,8 @@ const RESERVED_ROOT_SEGMENTS = new Set([
   "users",
   "awards",
   "settings",
+  "profile",
+  "totem",
   "api",
   "serwist",
 ]);
@@ -53,11 +61,18 @@ export function isColaboratorPrivatePath(pathname: string): boolean {
   return !RESERVED_ROOT_SEGMENTS.has(segment);
 }
 
+/** True for `/{documentId}/profile`. */
+export function isUserProfilePath(pathname: string): boolean {
+  return isProfilePathShape(pathname, RESERVED_ROOT_SEGMENTS);
+}
+
 export function canColaboratorAccessPath(
   pathname: string,
   documentId: string,
 ): boolean {
-  return pathname === `/${documentId}`;
+  return (
+    pathname === `/${documentId}` || pathname === buildProfilePath(documentId)
+  );
 }
 
 interface RouteAccessInput {
@@ -66,10 +81,17 @@ interface RouteAccessInput {
   userId?: string;
 }
 
+function redirectTo(destination: string, pathname: string): RouteAccessDecision {
+  if (destination === pathname) return { action: "allow" };
+  const destPath = destination.split("?")[0] ?? destination;
+  if (destPath === pathname) return { action: "allow" };
+  return { action: "redirect", destination };
+}
+
 /**
  * Resolves middleware access for all roles.
  * Kiosk: only /kiosk and /kiosk/* when authenticated as kiosk.
- * Colaborator: only /[ownDocumentId].
+ * Colaborator: only /[ownDocumentId] (+ own profile).
  */
 export function resolveRouteAccess(
   pathname: string,
@@ -85,10 +107,7 @@ export function resolveRouteAccess(
 
   if (isKioskPath(pathname)) {
     if (!isAuthenticated) {
-      return {
-        action: "redirect",
-        destination: buildLoginRedirect(KIOSK_HOME_PATH),
-      };
+      return redirectTo(buildLoginRedirect(KIOSK_HOME_PATH), pathname);
     }
     if (isKiosk) {
       return { action: "allow" };
@@ -97,46 +116,62 @@ export function resolveRouteAccess(
       return { action: "allow" };
     }
     if (isColaborator && userId) {
-      return { action: "redirect", destination: `/${userId}` };
+      return redirectTo(`/${userId}`, pathname);
     }
-    return { action: "redirect", destination: "/" };
+    return redirectTo("/", pathname);
+  }
+
+  if (isUserProfilePath(pathname)) {
+    if (!isAuthenticated) {
+      return redirectTo(LOGIN_PATH, pathname);
+    }
+    if (isKiosk) {
+      return redirectTo(KIOSK_HOME_PATH, pathname);
+    }
+    if (!canAccessOwnProfile(role)) {
+      return redirectTo("/", pathname);
+    }
+    if (userId && pathname !== buildProfilePath(userId)) {
+      return redirectTo(buildProfilePath(userId), pathname);
+    }
+    return { action: "allow" };
   }
 
   if (isColaboratorPrivatePath(pathname)) {
     if (!isAuthenticated) {
-      return { action: "redirect", destination: LOGIN_PATH };
+      return redirectTo(LOGIN_PATH, pathname);
     }
     if (isKiosk) {
-      return { action: "redirect", destination: KIOSK_HOME_PATH };
+      return redirectTo(KIOSK_HOME_PATH, pathname);
     }
     if (isColaborator && userId && pathname !== `/${userId}`) {
-      return { action: "redirect", destination: `/${userId}` };
+      return redirectTo(`/${userId}`, pathname);
     }
     if (!isColaborator && isAuthenticated) {
-      return { action: "redirect", destination: "/" };
+      return redirectTo("/", pathname);
     }
     return { action: "allow" };
   }
 
   if (isKiosk) {
-    return { action: "redirect", destination: KIOSK_HOME_PATH };
+    return redirectTo(KIOSK_HOME_PATH, pathname);
   }
 
   if (isColaborator) {
     if (!isAuthenticated) {
-      return { action: "redirect", destination: LOGIN_PATH };
+      return redirectTo(LOGIN_PATH, pathname);
     }
     if (pathname === "/") {
       return { action: "allow" };
     }
     if (userId) {
-      return { action: "redirect", destination: `/${userId}` };
+      return redirectTo(`/${userId}`, pathname);
     }
-    return { action: "redirect", destination: LOGIN_PATH };
+    return redirectTo(LOGIN_PATH, pathname);
   }
 
   if (!isAuthenticated) {
-    return { action: "redirect", destination: LOGIN_PATH };
+    return redirectTo(LOGIN_PATH, pathname);
   }
 
   return { action: "allow" };

@@ -5,7 +5,7 @@ import type { ButtonHTMLAttributes } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type KioskActionVariant = "gold" | "produce" | "outline";
+export type KioskActionVariant = "primary" | "produce" | "outline";
 
 export interface KioskActionButtonProps
   extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -13,14 +13,14 @@ export interface KioskActionButtonProps
 }
 
 const VARIANT_CLASS: Record<KioskActionVariant, string> = {
-  gold:
-    "bg-[var(--star-gold)] text-[var(--star-gold-foreground)] hover:bg-[var(--star-gold)]/90",
+  /** Relies on Button default (`bg-primary`). */
+  primary: "",
   produce: "bg-[var(--success)] text-white hover:bg-[var(--success)]/90",
   outline: "border-2 bg-card",
 };
 
 export function KioskActionButton({
-  actionVariant = "gold",
+  actionVariant = "primary",
   className,
   type = "button",
   ...props

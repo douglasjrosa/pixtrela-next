@@ -1,3 +1,5 @@
+import { canAccessOwnProfile } from "./profile-access";
+
 export type Role = "admin" | "manager" | "leader" | "colaborator" | "kiosk";
 
 export interface NavItem {
@@ -38,10 +40,26 @@ const NAV_RULES: NavRule[] = [
   },
 ];
 
+export interface NavItemsOptions {
+  userId?: string;
+}
+
 /**
  * Navigation items a given role is allowed to see.
  */
-export function navItemsForRole(role: Role): NavItem[] {
+export function navItemsForRole(
+  role: Role,
+  options: NavItemsOptions = {},
+): NavItem[] {
   if (role === "kiosk") return [];
-  return NAV_RULES.filter((rule) => rule.show(role)).map((rule) => rule.item);
+  const items = NAV_RULES.filter((rule) => rule.show(role)).map(
+    (rule) => rule.item,
+  );
+  if (canAccessOwnProfile(role) && options.userId) {
+    items.push({
+      href: `/${options.userId}/profile`,
+      labelKey: "profile",
+    });
+  }
+  return items;
 }

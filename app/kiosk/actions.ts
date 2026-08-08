@@ -20,11 +20,42 @@ import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 interface KioskIdentifyResponse {
   documentId: string;
   role: KioskIdentifiedRole;
+  welcome?: {
+    name: string;
+    greetingGender: "masculine" | "feminine" | null;
+    avatarUrl: string | null;
+    facePhotoUrl: string | null;
+  } | null;
 }
 
+export type KioskWelcomeProfile = {
+  name: string;
+  greetingGender: "masculine" | "feminine" | null;
+  avatarUrl: string | null;
+  facePhotoUrl: string | null;
+};
+
 export type KioskIdentifyResult =
-  | { ok: true; documentId: string; role: KioskIdentifiedRole; path: string }
+  | {
+      ok: true;
+      documentId: string;
+      role: KioskIdentifiedRole;
+      path: string;
+      welcome: KioskWelcomeProfile | null;
+    }
   | { ok: false; error: "invalidCredentials" | "forbidden" };
+
+function resolveWelcome(
+  welcome: KioskIdentifyResponse["welcome"],
+): KioskWelcomeProfile | null {
+  if (!welcome?.name) return null;
+  return {
+    name: welcome.name,
+    greetingGender: welcome.greetingGender ?? null,
+    avatarUrl: resolveStrapiMediaUrl(welcome.avatarUrl),
+    facePhotoUrl: resolveStrapiMediaUrl(welcome.facePhotoUrl),
+  };
+}
 
 export async function identifyKioskUserByCode(
   code: number,
@@ -70,6 +101,7 @@ export async function identifyKioskUserByCode(
       identifyData.documentId,
       identifyData.role,
     ),
+    welcome: resolveWelcome(identifyData.welcome),
   };
 }
 
@@ -113,6 +145,7 @@ export async function identifyKioskUserByTag(
       identifyData.documentId,
       identifyData.role,
     ),
+    welcome: resolveWelcome(identifyData.welcome),
   };
 }
 

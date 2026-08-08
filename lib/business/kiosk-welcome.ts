@@ -1,6 +1,8 @@
 export type GreetingGender = "masculine" | "feminine";
 
 export const KIOSK_FACE_WELCOME_MS = 800;
+/** Fade-out length at the end of the welcome screen. */
+export const KIOSK_FACE_WELCOME_FADE_MS = 300;
 
 /** First token of a display name (e.g. "Ana Silva" → "Ana"). */
 export function firstNameFromDisplayName(name: string): string {

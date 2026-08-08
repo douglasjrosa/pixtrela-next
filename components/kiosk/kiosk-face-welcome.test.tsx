@@ -20,6 +20,7 @@ describe("KioskFaceWelcome", () => {
     );
 
     expect(screen.getByText("Bem vinda Ana!")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Ana Silva/i })).toHaveAttribute(
       "src",
       "/api/strapi-media?path=%2Fuploads%2Fa.jpg",
@@ -32,6 +33,37 @@ describe("KioskFaceWelcome", () => {
 
     act(() => {
       vi.advanceTimersByTime(1);
+    });
+    expect(onDone).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
+  });
+
+  it("fades the whole modal before calling onDone", () => {
+    vi.useFakeTimers();
+    const onDone = vi.fn();
+
+    renderWithIntl(
+      <KioskFaceWelcome
+        name="Ana"
+        onDone={onDone}
+        durationMs={1000}
+        fadeMs={300}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("data-fading", "false");
+    expect(dialog.className).toMatch(/fixed/);
+
+    act(() => {
+      vi.advanceTimersByTime(700);
+    });
+    expect(dialog).toHaveAttribute("data-fading", "true");
+    expect(onDone).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(300);
     });
     expect(onDone).toHaveBeenCalledTimes(1);
 

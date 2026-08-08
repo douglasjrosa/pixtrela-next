@@ -1,21 +1,47 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { cleanup, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
-import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
+import { renderWithIntl } from "@/test/test-utils";
+import { LoginForm } from "./login-form";
 
-describe("resolvePostLoginDestination", () => {
-  it("redirects kiosk role to /kiosk", () => {
-    expect(resolvePostLoginDestination("kiosk", "kiosk-1", null)).toBe("/kiosk");
+const replace = vi.fn();
+const signIn = vi.fn();
+const getSession = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock("next-auth/react", () => ({
+  signIn: (...args: unknown[]) => signIn(...args),
+  getSession: (...args: unknown[]) => getSession(...args),
+}));
+
+describe("LoginForm", () => {
+  beforeEach(() => {
+    cleanup();
+    replace.mockReset();
+    signIn.mockReset();
+    getSession.mockReset();
   });
 
-  it("redirects colaborator to private path", () => {
-    expect(resolvePostLoginDestination("colaborator", "col-1", null)).toBe(
-      "/col-1",
-    );
-  });
+  it("navigates to the role home after credentials sign-in", async () => {
+    const user = userEvent.setup();
+    signIn.mockResolvedValue({ error: null });
+    getSession.mockResolvedValue({
+      user: { id: "col-1", role: "colaborator" },
+    });
 
-  it("uses callbackUrl for staff when provided", () => {
-    expect(resolvePostLoginDestination("manager", "mgr-1", "/board")).toBe(
-      "/board",
-    );
+    renderWithIntl(<LoginForm />);
+    await user.type(screen.getByLabelText("Login"), "maria");
+    await user.type(screen.getByLabelText("Senha"), "secret1");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    await waitFor(() => {
+      expect(signIn).toHaveBeenCalled();
+      expect(replace).toHaveBeenCalledWith("/col-1");
+    });
   });
 });

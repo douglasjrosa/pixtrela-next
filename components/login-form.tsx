@@ -28,7 +28,11 @@ export function LoginForm() {
 
   async function onSubmit(values: LoginInput) {
     setFormError(null);
-    const result = await signIn("credentials", { ...values, redirect: false });
+    const result = await signIn("credentials", {
+      ...values,
+      redirect: false,
+      callbackUrl: "/",
+    });
     if (result?.error) {
       setFormError(t("invalidCredentials"));
       return;
@@ -39,8 +43,7 @@ export function LoginForm() {
       session?.user?.id,
       callbackUrl,
     );
-    router.push(destination);
-    router.refresh();
+    router.replace(destination);
   }
 
   return (

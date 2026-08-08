@@ -20,7 +20,8 @@ export function AppNav() {
   const t = useTranslations();
   const { data: session } = useSession();
   const role = (session?.user?.role ?? "colaborator") as Role;
-  const items = navItemsForRole(role);
+  const userId = session?.user?.id;
+  const items = navItemsForRole(role, { userId });
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [layoutMode, setLayoutMode] = useState<NavLayoutMode>("desktop");

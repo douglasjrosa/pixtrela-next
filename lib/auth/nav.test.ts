@@ -10,6 +10,15 @@ describe("navItemsForRole", () => {
     expect(hrefs("colaborator")).toEqual(["/"]);
   });
 
+  it("includes profile when userId is provided for eligible roles", () => {
+    expect(navItemsForRole("colaborator", { userId: "col-1" }).map((i) => i.href))
+      .toEqual(["/", "/col-1/profile"]);
+    expect(navItemsForRole("manager", { userId: "mgr-1" }).map((i) => i.href))
+      .toContain("/mgr-1/profile");
+    expect(navItemsForRole("admin", { userId: "admin-1" }).map((i) => i.href))
+      .not.toContain("/admin-1/profile");
+  });
+
   it("shows users and tasks to leader but not templates", () => {
     const result = hrefs("leader");
     expect(result).toContain("/");

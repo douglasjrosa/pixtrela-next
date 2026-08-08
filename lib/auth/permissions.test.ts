@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canAccessOwnProfile,
   canAccessRoute,
   canEditUserLogin,
   canPairUserTag,
@@ -148,6 +149,7 @@ describe("canAccessRoute", () => {
   it("restricts colaborator to own private path", () => {
     expect(canAccessRoute("colaborator", "/balance", "col-1")).toBe(false);
     expect(canAccessRoute("colaborator", "/col-1", "col-1")).toBe(true);
+    expect(canAccessRoute("colaborator", "/col-1/profile", "col-1")).toBe(true);
     expect(canAccessRoute("colaborator", "/kiosk", "col-1")).toBe(false);
     expect(canAccessRoute("manager", "/balance")).toBe(false);
   });
@@ -161,5 +163,22 @@ describe("canAccessRoute", () => {
 
   it("allows board for staff roles", () => {
     expect(canAccessRoute("leader", "/board")).toBe(true);
+  });
+
+  it("allows own profile for manager and leader", () => {
+    expect(canAccessRoute("manager", "/mgr-1/profile", "mgr-1")).toBe(true);
+    expect(canAccessRoute("leader", "/lead-1/profile", "lead-1")).toBe(true);
+    expect(canAccessRoute("manager", "/other/profile", "mgr-1")).toBe(false);
+    expect(canAccessRoute("admin", "/admin-1/profile", "admin-1")).toBe(false);
+  });
+});
+
+describe("canAccessOwnProfile", () => {
+  it("allows colaborator, leader and manager only", () => {
+    expect(canAccessOwnProfile("colaborator")).toBe(true);
+    expect(canAccessOwnProfile("leader")).toBe(true);
+    expect(canAccessOwnProfile("manager")).toBe(true);
+    expect(canAccessOwnProfile("admin")).toBe(false);
+    expect(canAccessOwnProfile("kiosk")).toBe(false);
   });
 });

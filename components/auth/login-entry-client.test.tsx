@@ -5,8 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithIntl } from "@/test/test-utils";
 import { LoginEntryClient } from "./login-entry-client";
 
-const push = vi.fn();
-const refresh = vi.fn();
+const replace = vi.fn();
 const signIn = vi.fn();
 const getSession = vi.fn();
 const loginByCode = vi.fn();
@@ -16,7 +15,7 @@ const watchNfcSerialNumbers = vi.fn(() => ({ stop: vi.fn() }));
 const isNfcReadSupported = vi.fn(() => false);
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push, refresh }),
+  useRouter: () => ({ replace }),
   useSearchParams: () => new URLSearchParams(),
 }));
 
@@ -45,8 +44,7 @@ vi.mock("@/lib/kiosk/face/load-face-models", () => ({
 describe("LoginEntryClient", () => {
   beforeEach(() => {
     cleanup();
-    push.mockReset();
-    refresh.mockReset();
+    replace.mockReset();
     signIn.mockReset();
     getSession.mockReset();
     loginByCode.mockReset();
@@ -108,9 +106,13 @@ describe("LoginEntryClient", () => {
       expect(loginByCode).toHaveBeenCalledWith(1234, "secret1");
       expect(signIn).toHaveBeenCalledWith(
         "credentials",
-        expect.objectContaining({ jwt: "token", redirect: false }),
+        expect.objectContaining({
+          jwt: "token",
+          redirect: false,
+          callbackUrl: "/",
+        }),
       );
-      expect(push).toHaveBeenCalledWith("/u1");
+      expect(replace).toHaveBeenCalledWith("/u1");
     });
   });
 });

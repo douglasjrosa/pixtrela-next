@@ -2,8 +2,12 @@ import {
   canColaboratorAccessPath,
   isColaboratorPrivatePath,
   isKioskPath,
+  isUserProfilePath,
 } from "./colaborator-routes";
 import type { Role } from "./nav";
+import { canAccessOwnProfile } from "./profile-access";
+
+export { canAccessOwnProfile } from "./profile-access";
 
 const RANK: Record<Role, number> = {
   kiosk: 0,
@@ -122,6 +126,12 @@ export function canAccessRoute(
       return isColaboratorPrivatePath(pathname) || pathname === "/";
     }
     return canColaboratorAccessPath(pathname, userId) || pathname === "/";
+  }
+
+  if (isUserProfilePath(pathname)) {
+    if (!canAccessOwnProfile(role)) return false;
+    if (!userId) return false;
+    return pathname === `/${userId}/profile`;
   }
   const guard = ROUTE_GUARDS.find((g) => pathname.startsWith(g.prefix));
   if (!guard) return true;

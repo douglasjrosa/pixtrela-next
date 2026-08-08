@@ -76,7 +76,7 @@ export function KioskColaboratorForm({
         ) : null}
       </div>
 
-      <KioskActionButton type="submit" disabled={pending} actionVariant="gold">
+      <KioskActionButton type="submit" disabled={pending} actionVariant="primary">
         {t("enter")}
       </KioskActionButton>
     </form>

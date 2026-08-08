@@ -8,10 +8,12 @@ import { StarBalanceHero } from "@/components/colaborator/star-balance-hero";
 import { DashboardInsightsBlock } from "@/components/dashboard/dashboard-insights-block";
 import { AwardCard } from "@/components/exchange/award-card";
 import { ExchangeWindowBanner } from "@/components/exchange/exchange-window-banner";
+import { buttonVariants } from "@/components/ui/button";
 import { loadColaboratorPrivateHome } from "@/lib/colaborator/private-home-data";
 import { loadColaboratorInsights } from "@/lib/dashboard/load-colaborator-insights";
 import { loadMonthlyRanking } from "@/lib/dashboard/load-monthly-ranking";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
+import { cn } from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{ documentId: string }>;
@@ -57,9 +59,10 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
       {windowOpen ? (
         <a
           href="#colaborator-store"
-          className="flex min-h-12 w-full items-center justify-center rounded-2xl
-            bg-[var(--star-gold)] px-4 text-center text-base font-bold
-            text-[var(--star-gold-foreground)] active:scale-[0.98]"
+          className={cn(
+            buttonVariants({ variant: "default", size: "lg" }),
+            "min-h-12 w-full rounded-2xl px-4 text-base font-bold active:scale-[0.98]",
+          )}
         >
           {tExchange("scrollToStore")}
         </a>

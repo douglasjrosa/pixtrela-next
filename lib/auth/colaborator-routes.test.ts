@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   isColaboratorPrivatePath,
   isKioskPanelPath,
+  isUserProfilePath,
   KIOSK_HOME_PATH,
   LOGIN_PATH,
   resolveRouteAccess,
@@ -186,5 +187,60 @@ describe("isKioskPanelPath", () => {
   it("detects kiosk document routes only", () => {
     expect(isKioskPanelPath("/kiosk/col-1")).toBe(true);
     expect(isKioskPanelPath("/kiosk")).toBe(false);
+  });
+});
+
+describe("isUserProfilePath", () => {
+  it("matches profile nested under document id", () => {
+    expect(isUserProfilePath("/col-1/profile")).toBe(true);
+    expect(isUserProfilePath("/board/profile")).toBe(false);
+  });
+});
+
+describe("resolveRouteAccess profile", () => {
+  it("allows colaborator, leader and manager on own profile", () => {
+    expect(
+      resolveRouteAccess("/col-1/profile", {
+        isAuthenticated: true,
+        role: "colaborator",
+        userId: "col-1",
+      }),
+    ).toEqual({ action: "allow" });
+
+    expect(
+      resolveRouteAccess("/mgr-1/profile", {
+        isAuthenticated: true,
+        role: "manager",
+        userId: "mgr-1",
+      }),
+    ).toEqual({ action: "allow" });
+  });
+
+  it("redirects admin and kiosk away from profile", () => {
+    expect(
+      resolveRouteAccess("/admin-1/profile", {
+        isAuthenticated: true,
+        role: "admin",
+        userId: "admin-1",
+      }),
+    ).toEqual({ action: "redirect", destination: "/" });
+
+    expect(
+      resolveRouteAccess("/kiosk-1/profile", {
+        isAuthenticated: true,
+        role: "kiosk",
+        userId: "kiosk-1",
+      }),
+    ).toEqual({ action: "redirect", destination: KIOSK_HOME_PATH });
+  });
+
+  it("redirects to own profile when visiting another id", () => {
+    expect(
+      resolveRouteAccess("/other/profile", {
+        isAuthenticated: true,
+        role: "leader",
+        userId: "lead-1",
+      }),
+    ).toEqual({ action: "redirect", destination: "/lead-1/profile" });
   });
 });

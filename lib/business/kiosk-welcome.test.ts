@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  KIOSK_FACE_WELCOME_FADE_MS,
   KIOSK_FACE_WELCOME_MS,
   firstNameFromDisplayName,
   formatKioskWelcomeMessage,
@@ -27,7 +28,9 @@ describe("formatKioskWelcomeMessage", () => {
     );
   });
 
-  it("keeps welcome duration at two seconds", () => {
+  it("keeps welcome duration and fade timing", () => {
     expect(KIOSK_FACE_WELCOME_MS).toBe(800);
+    expect(KIOSK_FACE_WELCOME_FADE_MS).toBe(300);
+    expect(KIOSK_FACE_WELCOME_FADE_MS).toBeLessThan(KIOSK_FACE_WELCOME_MS);
   });
 });

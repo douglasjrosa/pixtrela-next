@@ -19,10 +19,18 @@ export type AuthLoginUser = {
   roleType: string;
 };
 
+export type AuthWelcomeProfile = {
+  name: string;
+  greetingGender: "masculine" | "feminine" | null;
+  avatarUrl: string | null;
+  facePhotoUrl: string | null;
+};
+
 export type AuthLoginSuccess = {
   ok: true;
   jwt: string;
   user: AuthLoginUser;
+  welcome: AuthWelcomeProfile | null;
 };
 
 export type AuthLoginFailure = {
@@ -60,6 +68,36 @@ function resolveCandidateMedia(candidate: AuthFaceCandidate): AuthFaceCandidate 
   };
 }
 
+function resolveWelcome(
+  welcome: AuthWelcomeProfile | null | undefined,
+  fallback?: AuthFaceCandidate | AuthLoginUser | null,
+): AuthWelcomeProfile | null {
+  if (welcome?.name) {
+    return {
+      name: welcome.name,
+      greetingGender: welcome.greetingGender ?? null,
+      avatarUrl: resolveStrapiMediaUrl(welcome.avatarUrl),
+      facePhotoUrl: resolveStrapiMediaUrl(welcome.facePhotoUrl),
+    };
+  }
+  if (fallback && "name" in fallback && fallback.name) {
+    return {
+      name: fallback.name,
+      greetingGender:
+        "greetingGender" in fallback ? (fallback.greetingGender ?? null) : null,
+      avatarUrl:
+        "avatarUrl" in fallback
+          ? resolveStrapiMediaUrl(fallback.avatarUrl ?? null)
+          : null,
+      facePhotoUrl:
+        "facePhotoUrl" in fallback
+          ? resolveStrapiMediaUrl(fallback.facePhotoUrl ?? null)
+          : null,
+    };
+  }
+  return null;
+}
+
 async function postAuthIdentify<T>(
   path: string,
   body: unknown,
@@ -89,14 +127,20 @@ export async function loginByCode(
     return { ok: false, error: "invalidCredentials" };
   }
 
-  const data = await postAuthIdentify<{ jwt: string; user: AuthLoginUser }>(
-    "/auth/login-by-code",
-    parsed.data,
-  );
+  const data = await postAuthIdentify<{
+    jwt: string;
+    user: AuthLoginUser;
+    welcome?: AuthWelcomeProfile | null;
+  }>("/auth/login-by-code", parsed.data);
   if (!data?.jwt || !data.user?.documentId) {
     return { ok: false, error: "invalidCredentials" };
   }
-  return { ok: true, jwt: data.jwt, user: data.user };
+  return {
+    ok: true,
+    jwt: data.jwt,
+    user: data.user,
+    welcome: resolveWelcome(data.welcome, data.user),
+  };
 }
 
 export async function loginByTag(
@@ -107,14 +151,20 @@ export async function loginByTag(
     return { ok: false, error: "invalidCredentials" };
   }
 
-  const data = await postAuthIdentify<{ jwt: string; user: AuthLoginUser }>(
-    "/auth/login-by-tag",
-    { userTag: parsed.data.userTag },
-  );
+  const data = await postAuthIdentify<{
+    jwt: string;
+    user: AuthLoginUser;
+    welcome?: AuthWelcomeProfile | null;
+  }>("/auth/login-by-tag", { userTag: parsed.data.userTag });
   if (!data?.jwt || !data.user?.documentId) {
     return { ok: false, error: "invalidCredentials" };
   }
-  return { ok: true, jwt: data.jwt, user: data.user };
+  return {
+    ok: true,
+    jwt: data.jwt,
+    user: data.user,
+    welcome: resolveWelcome(data.welcome, data.user),
+  };
 }
 
 export async function loginByFace(
@@ -147,12 +197,14 @@ export async function loginByFace(
   }
 
   if (data.status === "match" && data.jwt && data.user && data.match) {
+    const match = resolveCandidateMedia(data.match);
     return {
       ok: true,
       status: "match",
       jwt: data.jwt,
       user: data.user,
-      match: resolveCandidateMedia(data.match),
+      match,
+      welcome: resolveWelcome(null, match),
     };
   }
 
@@ -189,11 +241,13 @@ export async function loginByFaceConfirm(
     return { ok: false, error: "invalidCredentials" };
   }
 
+  const match = resolveCandidateMedia(data.match);
   return {
     ok: true,
     status: "match",
     jwt: data.jwt,
     user: data.user,
-    match: resolveCandidateMedia(data.match),
+    match,
+    welcome: resolveWelcome(null, match),
   };
 }

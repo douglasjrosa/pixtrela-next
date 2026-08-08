@@ -11,14 +11,13 @@ import { KioskColaboratorForm } from "@/components/kiosk/kiosk-colaborator-form"
 import { KioskFace1nCapture } from "@/components/kiosk/kiosk-face-1n-capture";
 import { KioskFaceAmbiguousList } from "@/components/kiosk/kiosk-face-ambiguous-list";
 import { KioskFaceVerify } from "@/components/kiosk/kiosk-face-verify";
-import { KioskFaceWelcome } from "@/components/kiosk/kiosk-face-welcome";
 import { KioskHomeChooser } from "@/components/kiosk/kiosk-home-chooser";
 import type { Role } from "@/lib/auth/nav";
 import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { FACE_1N_NONE_MESSAGE_MS } from "@/lib/kiosk/face/face-match-constants";
 import { loadFaceModels } from "@/lib/kiosk/face/load-face-models";
 import { isNfcReadSupported, watchNfcSerialNumbers } from "@/lib/kiosk/nfc-read";
-import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
+import { stashWelcomePayload } from "@/lib/welcome/welcome-session";
 
 import {
   loginByCode,
@@ -26,6 +25,7 @@ import {
   loginByFaceConfirm,
   loginByTag,
   type AuthFaceCandidate,
+  type AuthWelcomeProfile,
 } from "@/app/login/actions";
 
 type LoginStep =
@@ -33,12 +33,15 @@ type LoginStep =
   | "face1n"
   | "ambiguous"
   | "face1to1"
-  | "welcome"
   | "code"
   | "username";
 
 async function establishSessionFromJwt(jwt: string): Promise<boolean> {
-  const result = await signIn("credentials", { jwt, redirect: false });
+  const result = await signIn("credentials", {
+    jwt,
+    redirect: false,
+    callbackUrl: "/",
+  });
   return !result?.error;
 }
 
@@ -59,8 +62,8 @@ export function LoginEntryClient() {
   const [errorKey, setErrorKey] = useState<
     "invalidCredentials" | "forbidden" | null
   >(null);
-  const [pendingJwt, setPendingJwt] = useState<string | null>(null);
   const lastProbeRef = useRef<number[] | null>(null);
+  const finishingRef = useRef(false);
   const noneMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -74,23 +77,31 @@ export function LoginEntryClient() {
 
   const goHome = useCallback(() => {
     clearNoneMessageTimer();
+    finishingRef.current = false;
     setSelectedMember(null);
     setCandidates([]);
     setUnidentifiedMessage(null);
     setErrorKey(null);
     setPending(false);
-    setPendingJwt(null);
     lastProbeRef.current = null;
     setStep("choose");
   }, [clearNoneMessageTimer]);
 
   const finishWithJwt = useCallback(
-    async (jwt: string) => {
+    async (jwt: string, welcome?: AuthWelcomeProfile | null) => {
+      if (finishingRef.current) return;
+      finishingRef.current = true;
+      setPending(true);
       const ok = await establishSessionFromJwt(jwt);
       if (!ok) {
+        finishingRef.current = false;
+        setPending(false);
         setErrorKey("invalidCredentials");
         setStep("choose");
         return;
+      }
+      if (welcome) {
+        stashWelcomePayload(welcome);
       }
       const session = await getSession();
       const destination = resolvePostLoginDestination(
@@ -98,8 +109,8 @@ export function LoginEntryClient() {
         session?.user?.id,
         callbackUrl,
       );
-      router.push(destination);
-      router.refresh();
+      // Avoid refresh-while-push races that re-POST Server Actions mid-redirect.
+      router.replace(destination);
     },
     [callbackUrl, router],
   );
@@ -137,7 +148,7 @@ export function LoginEntryClient() {
 
     const { stop } = watchNfcSerialNumbers({
       onTag: (userTag) => {
-        if (cancelled || identifyingRef.current) return;
+        if (cancelled || identifyingRef.current || finishingRef.current) return;
         identifyingRef.current = true;
         void (async () => {
           const result = await loginByTag(userTag);
@@ -151,7 +162,7 @@ export function LoginEntryClient() {
             identifyingRef.current = false;
             return;
           }
-          await finishWithJwt(result.jwt);
+          await finishWithJwt(result.jwt, result.welcome);
         })();
       },
     });
@@ -168,13 +179,8 @@ export function LoginEntryClient() {
     };
   }, [clearNoneMessageTimer]);
 
-  const navigateAfterWelcome = useCallback(() => {
-    if (!pendingJwt) return;
-    void finishWithJwt(pendingJwt);
-  }, [finishWithJwt, pendingJwt]);
-
   const handleFaceSuccess = useCallback(() => {
-    if (!selectedMember) return;
+    if (!selectedMember || finishingRef.current) return;
     const probe = lastProbeRef.current;
     if (!probe) {
       setErrorKey("invalidCredentials");
@@ -184,23 +190,25 @@ export function LoginEntryClient() {
     setPending(true);
     void (async () => {
       const result = await loginByFaceConfirm(selectedMember.documentId, probe);
+      if (finishingRef.current) return;
       setPending(false);
       if (!result.ok || result.status !== "match") {
         setErrorKey("invalidCredentials");
         setStep("face1n");
         return;
       }
-      setPendingJwt(result.jwt);
       setSelectedMember(result.match);
-      setStep("welcome");
+      await finishWithJwt(result.jwt, result.welcome);
     })();
-  }, [selectedMember]);
+  }, [finishWithJwt, selectedMember]);
 
   async function handleProbeReady(descriptor: number[]): Promise<void> {
+    if (finishingRef.current || pending) return;
     lastProbeRef.current = descriptor;
     setPending(true);
     setErrorKey(null);
     const result = await loginByFace(descriptor);
+    if (finishingRef.current) return;
     setPending(false);
 
     if (!result.ok) {
@@ -215,9 +223,8 @@ export function LoginEntryClient() {
     if (result.status === "match") {
       clearNoneMessageTimer();
       setSelectedMember(result.match);
-      setPendingJwt(result.jwt);
       setUnidentifiedMessage(null);
-      setStep("welcome");
+      await finishWithJwt(result.jwt, result.welcome);
       return;
     }
 
@@ -245,15 +252,17 @@ export function LoginEntryClient() {
     code: number;
     password: string;
   }): Promise<void> {
+    if (finishingRef.current || pending) return;
     setErrorKey(null);
     setPending(true);
     const result = await loginByCode(values.code, values.password);
+    if (finishingRef.current) return;
     setPending(false);
     if (!result.ok) {
       setErrorKey(result.error);
       return;
     }
-    await finishWithJwt(result.jwt);
+    await finishWithJwt(result.jwt, result.welcome);
   }
 
   if (step === "username") {
@@ -271,18 +280,6 @@ export function LoginEntryClient() {
           </Button>
         </div>
       </div>
-    );
-  }
-
-  if (step === "welcome" && selectedMember) {
-    return (
-      <KioskFaceWelcome
-        name={selectedMember.name}
-        greetingGender={selectedMember.greetingGender}
-        avatarUrl={resolveStrapiMediaUrl(selectedMember.avatarUrl)}
-        facePhotoUrl={resolveStrapiMediaUrl(selectedMember.facePhotoUrl)}
-        onDone={navigateAfterWelcome}
-      />
     );
   }
 

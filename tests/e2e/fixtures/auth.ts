@@ -23,6 +23,9 @@ export async function loginAs(
   password: string,
 ): Promise<void> {
   await page.goto("/login");
+  await page
+    .getByRole("button", { name: /usuário e senha|username/i })
+    .click();
   await page.getByLabel(/Login/i).fill(login);
   await page.getByLabel(/Senha/i).fill(password);
   await page.getByRole("button", { name: /Entrar/i }).click();
