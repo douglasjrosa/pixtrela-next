@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -29,10 +29,15 @@ export function SubTaskDependenciesModal({
   const tCommon = useTranslations("common");
   const tSubtasks = useTranslations("subtasks");
   const [draftIds, setDraftIds] = useState<string[]>(selectedIds);
-
-  useEffect(() => {
-    if (open) setDraftIds(selectedIds);
-  }, [open, selectedIds]);
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [prevSelectedIds, setPrevSelectedIds] = useState(selectedIds);
+  if (open && (open !== prevOpen || selectedIds !== prevSelectedIds)) {
+    setPrevOpen(open);
+    setPrevSelectedIds(selectedIds);
+    setDraftIds(selectedIds);
+  } else if (open !== prevOpen) {
+    setPrevOpen(open);
+  }
 
   if (!open) return null;
 

@@ -45,16 +45,12 @@ export function SubTaskNamePresetField({
   const [presets, setPresets] = useState<SubTaskPreset[]>([]);
   const [isSearching, startSearch] = useTransition();
 
-  useEffect(() => {
-    if (!enabled || disabled) {
-      setPresets([]);
-      return;
-    }
+  const canSearch =
+    enabled && !disabled && shouldSearchSubTaskPresets(value);
+  const visiblePresets = canSearch ? presets : [];
 
-    if (!shouldSearchSubTaskPresets(value)) {
-      setPresets([]);
-      return;
-    }
+  useEffect(() => {
+    if (!canSearch) return;
 
     const handle = window.setTimeout(() => {
       startSearch(async () => {
@@ -68,10 +64,9 @@ export function SubTaskNamePresetField({
     }, PRESET_SEARCH_DEBOUNCE_MS);
 
     return () => window.clearTimeout(handle);
-  }, [value, enabled, disabled]);
+  }, [value, canSearch]);
 
-  const showSuggestions =
-    enabled && !disabled && shouldSearchSubTaskPresets(value);
+  const showSuggestions = canSearch;
 
   return (
     <div className="relative space-y-2">
@@ -96,21 +91,22 @@ export function SubTaskNamePresetField({
             "bg-background shadow-md",
           )}
         >
-          {isSearching && presets.length === 0 ? (
+          {isSearching && visiblePresets.length === 0 ? (
             <p className="px-3 py-2 text-sm text-muted-foreground" role="status">
               {tSubtasks("presetsLoading")}
             </p>
           ) : null}
-          {!isSearching && presets.length === 0 ? (
+          {!isSearching && visiblePresets.length === 0 ? (
             <p className="px-3 py-2 text-sm text-muted-foreground" role="status">
               {tSubtasks("presetsEmpty")}
             </p>
           ) : null}
-          {presets.map((preset) => (
+          {visiblePresets.map((preset) => (
             <button
               key={preset.documentId}
               type="button"
               role="option"
+              aria-selected={false}
               className={cn(
                 "flex w-full px-3 py-2 text-left text-sm",
                 "hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",

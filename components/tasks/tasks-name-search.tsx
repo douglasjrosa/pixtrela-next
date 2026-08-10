@@ -24,10 +24,12 @@ export function TasksNameSearch() {
     Object.fromEntries(searchParams.entries()),
   );
   const [value, setValue] = useState(filters.q ?? "");
-
-  useEffect(() => {
-    setValue(filters.q ?? "");
-  }, [filters.q]);
+  const qFromUrl = filters.q ?? "";
+  const [prevQFromUrl, setPrevQFromUrl] = useState(qFromUrl);
+  if (qFromUrl !== prevQFromUrl) {
+    setPrevQFromUrl(qFromUrl);
+    setValue(qFromUrl);
+  }
 
   useEffect(() => {
     const handle = window.setTimeout(() => {

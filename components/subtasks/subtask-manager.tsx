@@ -304,7 +304,9 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
     const [orderedSubtasks, setOrderedSubtasks] = useState(subtasks);
     const [removedDocumentIds, setRemovedDocumentIds] = useState<string[]>([]);
     const removedDocumentIdsRef = useRef(removedDocumentIds);
-    removedDocumentIdsRef.current = removedDocumentIds;
+    useEffect(() => {
+      removedDocumentIdsRef.current = removedDocumentIds;
+    }, [removedDocumentIds]);
     const flushInFlightRef = useRef(false);
     const persistedDraftIdsRef = useRef(new Set<string>());
     const [editingKey, setEditingKey] = useState<string | null>(null);

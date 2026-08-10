@@ -341,7 +341,8 @@ export async function authenticateUser(
   if (!user || user.blocked || !user.active) return null;
   const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) return null;
-  const { passwordHash: _hash, ...safe } = user;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- omit hash from auth result
+  const { passwordHash, ...safe } = user;
   return safe;
 }
 

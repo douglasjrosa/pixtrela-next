@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import { loadMoreTasks } from "@/app/(app)/tasks/actions";
@@ -32,12 +32,14 @@ export function TasksListWithLoadMore({
   const [page, setPage] = useState(initialPage);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
+  const listResetKey = `${filterKey}:${initialPage}:${initialHasMore}:${initialTasks}`;
+  const [prevListResetKey, setPrevListResetKey] = useState(listResetKey);
+  if (listResetKey !== prevListResetKey) {
+    setPrevListResetKey(listResetKey);
     setExtraTasks([]);
     setPage(initialPage);
     setHasMore(initialHasMore);
-  }, [filterKey, initialTasks, initialPage, initialHasMore]);
+  }
 
   const tasks = [...initialTasks, ...extraTasks];
 

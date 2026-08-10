@@ -11,6 +11,7 @@ export interface CurrencyMediaIconProps {
 export function CurrencyMediaIcon({ url, className }: CurrencyMediaIconProps) {
   if (url) {
     return (
+      // eslint-disable-next-line @next/next/no-img-element -- external currency icon URL
       <img
         src={url}
         alt=""

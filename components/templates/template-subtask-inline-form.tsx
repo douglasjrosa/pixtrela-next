@@ -104,6 +104,8 @@ export function TemplateSubTaskInlineForm({
   }, [formKey, reset]);
 
   useEffect(() => {
+    // React Hook Form watch() is the supported subscription API for form sync.
+    // eslint-disable-next-line react-hooks/incompatible-library -- RHF watch subscribe
     const subscription = watch((values) => {
       onChange(
         parseFormValues(values as TemplateSubTaskFormInput, currentRowKey),

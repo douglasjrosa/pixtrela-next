@@ -31,17 +31,24 @@ export function useBoardProgressPoll(
   const [assignedCounts, setAssignedCounts] = useState(
     assignedCountByColaboratorId,
   );
+  const [prevTasks, setPrevTasks] = useState(tasks);
+  if (tasks !== prevTasks) {
+    setPrevTasks(tasks);
+    setPolledTasks(tasks);
+  }
+  const [prevAssignedCounts, setPrevAssignedCounts] = useState(
+    assignedCountByColaboratorId,
+  );
+  if (assignedCountByColaboratorId !== prevAssignedCounts) {
+    setPrevAssignedCounts(assignedCountByColaboratorId);
+    setAssignedCounts(assignedCountByColaboratorId);
+  }
   const tasksRef = useRef(tasks);
   const pollRef = useRef(pollBoardProgress);
 
   useEffect(() => {
     tasksRef.current = tasks;
-    setPolledTasks(tasks);
   }, [tasks]);
-
-  useEffect(() => {
-    setAssignedCounts(assignedCountByColaboratorId);
-  }, [assignedCountByColaboratorId]);
 
   useEffect(() => {
     pollRef.current = pollBoardProgress;

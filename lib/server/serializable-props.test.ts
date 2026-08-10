@@ -43,7 +43,7 @@ describe("RSC client props (non-action)", () => {
   it("flags render-prop children as non-serializable RSC payload", () => {
     const badPayload = {
       tasks: [],
-      children: (_liveTasks: unknown) => null,
+      children: () => null,
     };
     expect(hasNoFunctionValues(badPayload)).toBe(false);
   });

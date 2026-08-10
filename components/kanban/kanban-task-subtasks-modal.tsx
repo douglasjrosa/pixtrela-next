@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { User, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -215,6 +215,7 @@ export function KanbanTaskSubtasksModal({
   const tBalance = useTranslations("balance");
 
   const [mainTab, setMainTab] = useState<MainTab>("pending");
+  const [preferFinishedTab, setPreferFinishedTab] = useState(false);
   const [focusMode, setFocusMode] = useState<FocusMode>("subtasks");
   const [selectedSubtaskId, setSelectedSubtaskId] = useState<string | null>(
     null,
@@ -233,51 +234,39 @@ export function KanbanTaskSubtasksModal({
   const [infoSubtask, setInfoSubtask] = useState<BoardSubTaskSummary | null>(
     null,
   );
-  const userSelectedFinishedRef = useRef(false);
-
-  useEffect(() => {
-    if (!open) {
-      userSelectedFinishedRef.current = false;
-      return;
-    }
-    setFocusMode("subtasks");
-    setSelectedSubtaskId(null);
-    setSelectedCollaboratorId(null);
-    setMultiEnabled(false);
-    setSelectedSubtaskIds([]);
-    setSelectedCollaboratorIds([]);
-    setExitConfirmOpen(false);
-    setPendingExitAction(null);
-    setInfoSubtask(null);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const split = splitSubtasksByFinished(subtasks);
-    if (split.pending.length === 0 && split.finished.length > 0) {
-      setMainTab("finished");
-      return;
-    }
-    if (split.finished.length === 0) {
-      userSelectedFinishedRef.current = false;
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setFocusMode("subtasks");
+      setSelectedSubtaskId(null);
+      setSelectedCollaboratorId(null);
+      setMultiEnabled(false);
+      setSelectedSubtaskIds([]);
+      setSelectedCollaboratorIds([]);
+      setExitConfirmOpen(false);
+      setPendingExitAction(null);
+      setInfoSubtask(null);
       setMainTab("pending");
-      return;
+      setPreferFinishedTab(false);
     }
-    if (!userSelectedFinishedRef.current) {
-      setMainTab("pending");
-    }
-  }, [open, subtasks]);
+  }
 
   if (!open) return null;
 
   const { pending, finished } = splitSubtasksByFinished(subtasks);
   const hasPendingSubtasks = pending.length > 0;
   const hasFinishedSubtasks = finished.length > 0;
+  if (!hasFinishedSubtasks && preferFinishedTab) {
+    setPreferFinishedTab(false);
+  }
   const activeMainTab: MainTab = !hasFinishedSubtasks
     ? "pending"
     : !hasPendingSubtasks
       ? "finished"
-      : mainTab;
+      : preferFinishedTab
+        ? "finished"
+        : mainTab;
   const selectedSubtask =
     pending.find((item) => item.documentId === selectedSubtaskId) ?? null;
   const selectedAssigneeIds = selectedSubtask
@@ -313,7 +302,7 @@ export function KanbanTaskSubtasksModal({
   function applyExitAction(action: PendingExitAction): void {
     clearMultiState();
     if (action === "go-finished") {
-      userSelectedFinishedRef.current = true;
+      setPreferFinishedTab(true);
       setMainTab("finished");
     }
     setExitConfirmOpen(false);
@@ -360,13 +349,13 @@ export function KanbanTaskSubtasksModal({
 
   function handleMainTabChange(next: MainTab): void {
     if (next !== "finished") {
-      userSelectedFinishedRef.current = false;
+      setPreferFinishedTab(false);
       setMainTab(next);
       return;
     }
     if (dirty) {
       confirmIfDirty(() => {
-        userSelectedFinishedRef.current = true;
+        setPreferFinishedTab(true);
         if (multiEnabled) {
           applyExitAction("go-finished");
           return;
@@ -379,7 +368,7 @@ export function KanbanTaskSubtasksModal({
       requestExitMulti("go-finished");
       return;
     }
-    userSelectedFinishedRef.current = true;
+    setPreferFinishedTab(true);
     setMainTab("finished");
   }
 

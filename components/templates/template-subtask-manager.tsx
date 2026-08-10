@@ -235,6 +235,8 @@ export function TemplateSubTaskManager({
   );
 
   useEffect(() => {
+    // Draft-aware sync when parent server rows change identity.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- props-to-local merge
     setOrderedSubtasks((current) => {
       const drafts = current.filter((item) => item.isDraft);
       if (drafts.length === 0) return subtasks;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { KanbanBoard } from "@/components/kanban/kanban-board";
@@ -76,6 +76,11 @@ export function BoardActions({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [orderedTasks, setOrderedTasks] = useState(tasks);
+  const [prevTasks, setPrevTasks] = useState(tasks);
+  if (tasks !== prevTasks) {
+    setPrevTasks(tasks);
+    setOrderedTasks(tasks);
+  }
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
   const [subtasks, setSubtasks] = useState<BoardSubTaskSummary[]>([]);
   const [assigneesBaseline, setAssigneesBaseline] = useState<
@@ -95,10 +100,6 @@ export function BoardActions({
       ),
     [assignedCountByColaboratorId, subtasks, assigneesBaseline],
   );
-
-  useEffect(() => {
-    setOrderedTasks(tasks);
-  }, [tasks]);
 
   function handleApplyOrder(
     updates: { documentId: string; index: number; stepId: number | null }[],

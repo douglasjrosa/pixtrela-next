@@ -67,27 +67,29 @@ async function TasksListSection({
 }: {
   filters: TaskListFilters;
 }) {
+  let initialTasks: Awaited<
+    ReturnType<typeof loadTaskListPage>
+  >["tasks"] = [];
+  let initialHasMore = false;
+  let initialPage = 1;
+
   try {
     const page = await loadTaskListPage(filters, 1);
-    return (
-      <TasksListWithLoadMore
-        filters={filters}
-        initialTasks={page.tasks}
-        initialHasMore={page.hasMore}
-        initialPage={page.page}
-      />
-    );
+    initialTasks = page.tasks;
+    initialHasMore = page.hasMore;
+    initialPage = page.page;
   } catch (error) {
     rethrowIfNavigationError(error);
-    return (
-      <TasksListWithLoadMore
-        filters={filters}
-        initialTasks={[]}
-        initialHasMore={false}
-        initialPage={1}
-      />
-    );
   }
+
+  return (
+    <TasksListWithLoadMore
+      filters={filters}
+      initialTasks={initialTasks}
+      initialHasMore={initialHasMore}
+      initialPage={initialPage}
+    />
+  );
 }
 
 export default async function TasksPage({ searchParams }: TasksPageProps) {

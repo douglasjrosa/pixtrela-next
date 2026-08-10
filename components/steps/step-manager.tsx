@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import {
   DndContext,
@@ -134,14 +134,15 @@ export function StepManager({
   const tCommon = useTranslations("common");
   const tSteps = useTranslations("steps");
   const [orderedSteps, setOrderedSteps] = useState(steps);
+  const [prevSteps, setPrevSteps] = useState(steps);
+  if (steps !== prevSteps) {
+    setPrevSteps(steps);
+    setOrderedSteps(steps);
+  }
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    setOrderedSteps(steps);
-  }, [steps]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),

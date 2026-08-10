@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { KioskFaceWelcome } from "@/components/kiosk/kiosk-face-welcome";
@@ -14,13 +14,12 @@ import {
 export function WelcomeOverlayHost() {
   const pathname = usePathname();
   const [payload, setPayload] = useState<WelcomePayload | null>(null);
-
-  useEffect(() => {
-    // Peek only: Strict Mode remounts must still find the payload.
-    // Clear when the modal finishes (onDone), not on first paint.
+  const [prevPathname, setPrevPathname] = useState<string | null>(null);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
     const next = peekWelcomePayload();
     if (next) setPayload(next);
-  }, [pathname]);
+  }
 
   const handleDone = useCallback(() => {
     clearWelcomePayload();

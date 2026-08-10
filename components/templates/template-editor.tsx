@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -48,6 +48,11 @@ export function TemplateEditor({
   const [isPending, startTransition] = useTransition();
   const [isLoadingTemplate, startLoadTransition] = useTransition();
   const [subtasks, setSubtasks] = useState(initialSubtasks);
+  const [prevInitialSubtasks, setPrevInitialSubtasks] = useState(initialSubtasks);
+  if (initialSubtasks !== prevInitialSubtasks) {
+    setPrevInitialSubtasks(initialSubtasks);
+    setSubtasks(initialSubtasks);
+  }
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const {
@@ -61,10 +66,6 @@ export function TemplateEditor({
     ),
     defaultValues: template,
   });
-
-  useEffect(() => {
-    setSubtasks(initialSubtasks);
-  }, [initialSubtasks]);
 
   function handleSave(
     values: Pick<TemplateTaskFormInput, "name" | "code">,

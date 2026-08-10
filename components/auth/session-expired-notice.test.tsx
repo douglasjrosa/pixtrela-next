@@ -19,7 +19,6 @@ describe("SessionExpiredNotice", () => {
 
   it("renders nothing for other reasons", async () => {
     const { renderWithIntl } = await import("@/test/test-utils");
-    const { screen } = await import("@testing-library/react");
 
     const { container } = renderWithIntl(
       <SessionExpiredNotice reason="other" />,
