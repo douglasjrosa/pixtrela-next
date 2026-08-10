@@ -1,0 +1,17 @@
+{
+  "name": "optimize-workflow",
+  "version": "0.1.0",
+  "description": "Solo-developer optimize workflow: consolidate the dev branch and master into a review branch, reconcile new features against bug fixes, get lint/tests green while cleaning up the code, then ship to master (production).",
+  "author": {
+    "name": "nicolasrosa2505"
+  },
+  "keywords": [
+    "workflow",
+    "git",
+    "optimize",
+    "merge",
+    "solo"
+  ],
+  "license": "MIT",
+  "logo": "assets/logo.svg"
+}
