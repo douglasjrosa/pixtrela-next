@@ -198,6 +198,26 @@ export const kioskSettings = pgTable("kiosk_settings", {
 export const taskAutomationSettings = pgTable("task_automation_settings", {
   id: uuid("id").defaultRandom().primaryKey(),
   enabled: boolean("enabled").default(false).notNull(),
+  waitingStepId: uuid("waiting_step_id").references(() => steps.id, {
+    onDelete: "set null",
+  }),
+  producingStepId: uuid("producing_step_id").references(() => steps.id, {
+    onDelete: "set null",
+  }),
+  pausedStepId: uuid("paused_step_id").references(() => steps.id, {
+    onDelete: "set null",
+  }),
+  finishedStepId: uuid("finished_step_id").references(() => steps.id, {
+    onDelete: "set null",
+  }),
+  reviewedStepId: uuid("reviewed_step_id").references(() => steps.id, {
+    onDelete: "set null",
+  }),
+  deliveredStepId: uuid("delivered_step_id").references(() => steps.id, {
+    onDelete: "set null",
+  }),
+  // Matches DEFAULT_ASSIGN_WARN_MAX in lib/business/assign-warn-max.ts.
+  assignWarnMax: integer("assign_warn_max").default(4).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

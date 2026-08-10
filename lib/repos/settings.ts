@@ -7,7 +7,12 @@ import {
   routeThemes,
   taskAutomationSettings,
 } from "@/drizzle/schema";
+import {
+  DEFAULT_ASSIGN_WARN_MAX,
+  normalizeAssignWarnMax,
+} from "@/lib/business/assign-warn-max";
 import { getDb, type Db } from "@/lib/db/client";
+import type { TaskAutomationFormInput } from "@/lib/schemas/task-automation";
 
 export async function getKioskSettings(db: Db = getDb()) {
   const [row] = await db.select().from(kioskSettings).limit(1);
@@ -37,6 +42,66 @@ export async function upsertKioskSettings(
 export async function getTaskAutomationSettings(db: Db = getDb()) {
   const [row] = await db.select().from(taskAutomationSettings).limit(1);
   return row ?? null;
+}
+
+function toStepId(value: string): string | null {
+  return value && value.length > 0 ? value : null;
+}
+
+export async function loadTaskAutomationFormValues(
+  db: Db = getDb(),
+): Promise<TaskAutomationFormInput> {
+  const row = await getTaskAutomationSettings(db);
+  if (!row) {
+    return {
+      waitingStepDocumentId: "",
+      producingStepDocumentId: "",
+      pausedStepDocumentId: "",
+      finishedStepDocumentId: "",
+      reviewedStepDocumentId: "",
+      deliveredStepDocumentId: "",
+      assignWarnMax: DEFAULT_ASSIGN_WARN_MAX,
+    };
+  }
+  return {
+    waitingStepDocumentId: row.waitingStepId ?? "",
+    producingStepDocumentId: row.producingStepId ?? "",
+    pausedStepDocumentId: row.pausedStepId ?? "",
+    finishedStepDocumentId: row.finishedStepId ?? "",
+    reviewedStepDocumentId: row.reviewedStepId ?? "",
+    deliveredStepDocumentId: row.deliveredStepId ?? "",
+    assignWarnMax: normalizeAssignWarnMax(row.assignWarnMax),
+  };
+}
+
+export async function upsertTaskAutomationSettings(
+  values: TaskAutomationFormInput,
+  db: Db = getDb(),
+) {
+  const patch = {
+    waitingStepId: toStepId(values.waitingStepDocumentId),
+    producingStepId: toStepId(values.producingStepDocumentId),
+    pausedStepId: toStepId(values.pausedStepDocumentId),
+    finishedStepId: toStepId(values.finishedStepDocumentId),
+    reviewedStepId: toStepId(values.reviewedStepDocumentId),
+    deliveredStepId: toStepId(values.deliveredStepDocumentId),
+    assignWarnMax: normalizeAssignWarnMax(values.assignWarnMax),
+  };
+
+  const existing = await getTaskAutomationSettings(db);
+  if (!existing) {
+    const [created] = await db
+      .insert(taskAutomationSettings)
+      .values(patch)
+      .returning();
+    return created;
+  }
+  const [updated] = await db
+    .update(taskAutomationSettings)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(taskAutomationSettings.id, existing.id))
+    .returning();
+  return updated;
 }
 
 export async function listRouteThemes(db: Db = getDb()) {
