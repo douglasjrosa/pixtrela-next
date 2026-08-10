@@ -83,6 +83,7 @@ function CurrencyFormModalContent({
   }, [defaultValues, reset]);
 
   useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeButtonRef.current?.focus();
 

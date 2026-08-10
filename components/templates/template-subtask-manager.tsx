@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   DndContext,
@@ -222,15 +222,6 @@ export function TemplateSubTaskManager({
   const tTasks = useTranslations("tasks");
   const tStatus = useTranslations("tasks.status");
   const [orderedSubtasks, setOrderedSubtasks] = useState(subtasks);
-  const [prevSubtasks, setPrevSubtasks] = useState(subtasks);
-  if (subtasks !== prevSubtasks) {
-    setPrevSubtasks(subtasks);
-    setOrderedSubtasks((current) => {
-      const drafts = current.filter((item) => item.isDraft);
-      if (drafts.length === 0) return subtasks;
-      return mergeServerTemplateSubTasksWithDrafts(subtasks, drafts);
-    });
-  }
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [newSubtaskDraft, setNewSubtaskDraft] =
     useState<TemplateSubTaskFormInput>(EMPTY_FORM);
@@ -242,6 +233,16 @@ export function TemplateSubTaskManager({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+
+  useEffect(() => {
+    // Draft-aware sync when parent server rows change identity.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- props-to-local merge
+    setOrderedSubtasks((current) => {
+      const drafts = current.filter((item) => item.isDraft);
+      if (drafts.length === 0) return subtasks;
+      return mergeServerTemplateSubTasksWithDrafts(subtasks, drafts);
+    });
+  }, [subtasks]);
 
   function commitRows(rows: TemplateSubTaskRow[]): void {
     setOrderedSubtasks(rows);

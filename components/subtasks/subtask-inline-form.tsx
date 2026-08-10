@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
+import { Controller, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
@@ -88,6 +88,7 @@ export function SubTaskInlineForm({
     register,
     reset,
     control,
+    watch,
     getValues,
     setValue,
     trigger,
@@ -120,17 +121,17 @@ export function SubTaskInlineForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formKey, reset]);
 
-  const watchedValues = useWatch({ control });
-
   useEffect(() => {
-    if (watchedValues === undefined) return;
-    onChange(
-      parseFormValues(watchedValues as SubTaskFormInput, currentDocumentId),
-    );
-  }, [watchedValues, onChange, currentDocumentId]);
+    // React Hook Form watch() is the supported subscription API for form sync.
+    // eslint-disable-next-line react-hooks/incompatible-library -- RHF watch subscribe
+    const subscription = watch((values) => {
+      onChange(parseFormValues(values as SubTaskFormInput, currentDocumentId));
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, onChange, currentDocumentId]);
 
-  const activationStatus = useWatch({ control, name: "activationStatus" });
-  const dependencyIds = useWatch({ control, name: "dependencyIds" }) ?? [];
+  const activationStatus = watch("activationStatus");
+  const dependencyIds = watch("dependencyIds") ?? [];
   const isDisabled = activationStatus === "disabled";
   const fieldId = (name: string): string => `${formKey}-${name}`;
 
