@@ -1,6 +1,6 @@
 ---
 name: optimize-merge
-description: Reconcile Git merge conflicts during the /optimize cycle for a solo developer. Use whenever merging dev and master into the review branch, or whenever a conflict appears while running /optimize. Conflicts are always between new features/edits (dev) and bug fixes (master/review), and both sides must be preserved.
+description: Reconcile Git merge conflicts during the /optimize or /optimize-min cycle for a solo developer. Use whenever merging dev and master into the review branch, or whenever a conflict appears while running /optimize or /optimize-min. Conflicts are always between new features/edits (dev) and bug fixes (master/review), and both sides must be preserved.
 ---
 
 # optimize-merge

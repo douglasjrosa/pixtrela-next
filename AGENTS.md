@@ -52,10 +52,15 @@ If migrate fails, fix and push again; do not leave prod schema behind the app.
 Same `DATABASE_URL` → `179.0.179.210:5433` (VPS postgres-dev). No local Docker
 Desktop Postgres. `npm run db:tunnel` is legacy-only.
 
-## /optimize (project command)
+## /optimize (project commands)
 
-Slash command: `.cursor/commands/optimize.md`. Merge conflicts during that
-cycle: skill `.cursor/skills/optimize-merge/SKILL.md`. Both travel with the
+- **Full test gate:** `.cursor/commands/optimize.md` — runs `npm run lint` and
+  the full Vitest suite (`npm test`).
+- **Affected tests only:** `.cursor/commands/optimize-min.md` — same release
+  flow; Vitest with `--changed origin/master` instead of the full suite.
+
+Merge conflicts during either cycle: skill
+`.cursor/skills/optimize-merge/SKILL.md`. Commands and skill travel with the
 repo (any machine that clones `pixtrela-next`).
 
 ## Docs
