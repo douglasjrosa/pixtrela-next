@@ -1,6 +1,11 @@
+import { getTranslations } from "next-intl/server";
+
 import { ThemeSettingsManager } from "@/components/settings/theme-settings-manager";
 import { isDrizzleBackend } from "@/lib/db/backend";
-import { listRouteThemes as listRouteThemesRepo } from "@/lib/repos/settings";
+import {
+  ensureRouteThemes,
+  listRouteThemes as listRouteThemesRepo,
+} from "@/lib/repos/settings";
 import { loadRouteThemes } from "@/lib/strapi/route-themes";
 import {
   DEFAULT_BACKGROUND_COLOR_OPACITY,
@@ -22,6 +27,8 @@ import {
   normalizeParallaxBleed,
   normalizeParallaxIntensity,
   normalizeSurfaceColor,
+  ROUTE_THEME_KEYS,
+  type RouteThemeKey,
   type RouteThemeView,
 } from "@/lib/themes/match-route-theme";
 
@@ -32,6 +39,12 @@ import {
 
 async function loadThemes(): Promise<RouteThemeView[]> {
   if (isDrizzleBackend()) {
+    const t = await getTranslations("settings.themeRoutes");
+    const labels = Object.fromEntries(
+      ROUTE_THEME_KEYS.map((key) => [key, t(key)]),
+    ) as Record<RouteThemeKey, string>;
+    await ensureRouteThemes(labels);
+
     const rows = await listRouteThemesRepo();
     const themes: RouteThemeView[] = [];
     for (const row of rows) {
@@ -39,7 +52,7 @@ async function loadThemes(): Promise<RouteThemeView[]> {
       themes.push({
         documentId: row.id,
         routeKey: row.routeKey,
-        label: row.label,
+        label: labels[row.routeKey] ?? row.label,
         backgroundColor: row.backgroundColor ?? null,
         backgroundColorOpacity: normalizeOpacity(
           row.backgroundColorOpacity ?? DEFAULT_BACKGROUND_COLOR_OPACITY,
