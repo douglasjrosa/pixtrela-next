@@ -48,8 +48,8 @@ any error or warning.
 2. Promote to production and push:
    `git checkout master && git merge --no-ff review && git push origin master`.
    Pushing to `master` triggers the production deploy.
-3. If the GitHub repository does not exist yet (account `nicolasrosa2505`),
-   create it and push.
+3. If the GitHub repository does not exist yet, create it under the GitHub
+   account that owns this project and push (do not assume a fixed account).
 
 ## 5. Continue on dev
 
