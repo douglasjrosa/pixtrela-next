@@ -18,7 +18,7 @@ async function main(): Promise<void> {
     .limit(1);
 
   if (existing) {
-    // eslint-disable-next-line no-console -- seed CLI
+     
     console.log(`E2E manager "${LOGIN}" already exists`);
     await closeDb();
     return;
@@ -31,13 +31,13 @@ async function main(): Promise<void> {
     role: "manager",
     email: "e2e-manager@pixtrela.local",
   });
-  // eslint-disable-next-line no-console -- seed CLI
+   
   console.log(`Created E2E manager "${LOGIN}"`);
   await closeDb();
 }
 
 main().catch(async (error) => {
-  // eslint-disable-next-line no-console -- seed CLI
+   
   console.error(error);
   await closeDb();
   process.exit(1);

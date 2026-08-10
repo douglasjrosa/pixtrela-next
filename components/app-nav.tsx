@@ -71,9 +71,7 @@ export function AppNav() {
     };
   }, [updateLayoutMode]);
 
-  useEffect(() => {
-    if (layoutMode === "desktop") setMenuOpen(false);
-  }, [layoutMode]);
+  const effectiveMenuOpen = menuOpen && layoutMode !== "desktop";
 
   function handleSignOut(): void {
     void signOut({ callbackUrl: "/login" });
@@ -129,7 +127,7 @@ export function AppNav() {
                   variant="outline"
                   size="icon"
                   aria-label={t("nav.openMenu")}
-                  aria-expanded={menuOpen}
+                  aria-expanded={effectiveMenuOpen}
                   aria-haspopup="dialog"
                   onClick={() => setMenuOpen(true)}
                 >
@@ -156,7 +154,7 @@ export function AppNav() {
       <div className={APP_NAV_HEIGHT_CLASS} aria-hidden />
 
       <AppNavMobileMenu
-        open={menuOpen}
+        open={effectiveMenuOpen}
         items={items}
         onOpenChange={setMenuOpen}
         onSignOut={handleSignOut}

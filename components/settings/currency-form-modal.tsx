@@ -8,7 +8,7 @@ import {
   useTransition,
   type ChangeEvent,
 } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -38,8 +38,14 @@ export interface CurrencyFormModalProps {
 
 export function CurrencyFormModal({
   open,
+  ...props
+}: CurrencyFormModalProps) {
+  if (!open) return null;
+  return <CurrencyFormModalContent key={props.formKey} open {...props} />;
+}
+
+function CurrencyFormModalContent({
   title,
-  formKey,
   defaultValues,
   initialIconUrl = null,
   saving = false,
@@ -48,7 +54,7 @@ export function CurrencyFormModal({
   onSave,
   onDelete,
   onUploadIcon,
-}: CurrencyFormModalProps) {
+}: Omit<CurrencyFormModalProps, "open"> & { open: true }) {
   const tCommon = useTranslations("common");
   const tSettings = useTranslations("settings");
   const titleId = useId();
@@ -63,27 +69,20 @@ export function CurrencyFormModal({
     handleSubmit,
     reset,
     setValue,
-    watch,
+    control,
     formState: { errors },
   } = useForm<CurrencyFormInput>({
     resolver: zodResolver(currencyFormSchema),
     defaultValues,
   });
 
-  const iconMediaId = watch("iconMediaId");
+  const iconMediaId = useWatch({ control, name: "iconMediaId" });
 
   useEffect(() => {
-    if (!open) return;
     reset(defaultValues);
-    setPreviewUrl(initialIconUrl);
-    setUploadMessage(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- formKey drives reset
-  }, [open, formKey, reset]);
+  }, [defaultValues, reset]);
 
   useEffect(() => {
-    if (!open) return;
-
-    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeButtonRef.current?.focus();
 
@@ -96,7 +95,7 @@ export function CurrencyFormModal({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, onClose, saving]);
+  }, [onClose, saving]);
 
   function handleIconChange(event: ChangeEvent<HTMLInputElement>): void {
     const file = event.target.files?.[0];
@@ -117,8 +116,6 @@ export function CurrencyFormModal({
       }
     });
   }
-
-  if (!open) return null;
 
   return (
     <div

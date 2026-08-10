@@ -304,22 +304,14 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
     const [orderedSubtasks, setOrderedSubtasks] = useState(subtasks);
     const [removedDocumentIds, setRemovedDocumentIds] = useState<string[]>([]);
     const removedDocumentIdsRef = useRef(removedDocumentIds);
-    removedDocumentIdsRef.current = removedDocumentIds;
+    useEffect(() => {
+      removedDocumentIdsRef.current = removedDocumentIds;
+    }, [removedDocumentIds]);
     const flushInFlightRef = useRef(false);
     const persistedDraftIdsRef = useRef(new Set<string>());
-    const [editingKey, setEditingKey] = useState<string | null>(null);
-    const [newSubtaskDraft, setNewSubtaskDraft] =
-      useState<SubTaskFormInput>(EMPTY_FORM);
-    const [message, setMessage] = useState<string | null>(null);
-
-    const sensors = useSensors(
-      useSensor(PointerSensor),
-      useSensor(KeyboardSensor, {
-        coordinateGetter: sortableKeyboardCoordinates,
-      }),
-    );
-
-    useEffect(() => {
+    const [prevSubtasks, setPrevSubtasks] = useState(subtasks);
+    if (subtasks !== prevSubtasks) {
+      setPrevSubtasks(subtasks);
       setOrderedSubtasks((current) => {
         const drafts = current.filter(
           (item) =>
@@ -332,7 +324,18 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
           merged.filter((item) => !removed.has(item.documentId)),
         );
       });
-    }, [subtasks]);
+    }
+    const [editingKey, setEditingKey] = useState<string | null>(null);
+    const [newSubtaskDraft, setNewSubtaskDraft] =
+      useState<SubTaskFormInput>(EMPTY_FORM);
+    const [message, setMessage] = useState<string | null>(null);
+
+    const sensors = useSensors(
+      useSensor(PointerSensor),
+      useSensor(KeyboardSensor, {
+        coordinateGetter: sortableKeyboardCoordinates,
+      }),
+    );
 
     const isBusy = disabled;
 

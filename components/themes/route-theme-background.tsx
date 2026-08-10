@@ -53,10 +53,10 @@ export function RouteThemeBackground({
   const direction = theme?.parallaxDirection ?? DEFAULT_PARALLAX_DIRECTION;
   const bleed = theme?.parallaxBleed ?? DEFAULT_PARALLAX_BLEED;
   const [parallaxOffset, setParallaxOffset] = useState(0);
+  const displayParallaxOffset = useParallax ? parallaxOffset : 0;
 
   useEffect(() => {
     if (!useParallax) {
-      setParallaxOffset(0);
       return;
     }
 
@@ -90,7 +90,7 @@ export function RouteThemeBackground({
             ...imageStyle,
             top: `${geometry.topPercent}%`,
             height: `${geometry.heightPercent}%`,
-            transform: `translate3d(0, ${parallaxOffset}px, 0)`,
+            transform: `translate3d(0, ${displayParallaxOffset}px, 0)`,
           }}
         />
         {overlayRgba ? (

@@ -138,17 +138,17 @@ async function main(): Promise<void> {
       tasks: await countOrZero(source, "tasks"),
       files: await countOrZero(source, "files"),
     };
-    // eslint-disable-next-line no-console -- ETL CLI
+     
     console.log("Strapi source inventory:", inventory);
 
     const usersMigrated = await migrateUsers(source, target);
-    // eslint-disable-next-line no-console -- ETL CLI
+     
     console.log(`Migrated/upserted users: ${usersMigrated}`);
-    // eslint-disable-next-line no-console -- ETL CLI
+     
     console.log(
       "Next: copy strapi/public/uploads → next/storage/uploads, then set AUTH_STRAPI_FALLBACK=0.",
     );
-    // eslint-disable-next-line no-console -- ETL CLI
+     
     console.log("See CUTOVER.md for remaining domain mappers.");
   } finally {
     await source.end({ timeout: 5 });
@@ -157,7 +157,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  // eslint-disable-next-line no-console -- ETL CLI
+   
   console.error(error);
   process.exit(1);
 });

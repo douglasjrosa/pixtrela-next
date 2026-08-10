@@ -23,27 +23,29 @@ async function TemplatesListSection({
 }: {
   filters: TemplateListFilters;
 }) {
+  let initialTemplates: Awaited<
+    ReturnType<typeof loadTemplateListPage>
+  >["templates"] = [];
+  let initialHasMore = false;
+  let initialPage = 1;
+
   try {
     const page = await loadTemplateListPage(filters, 1);
-    return (
-      <TemplatesListWithLoadMore
-        filters={filters}
-        initialTemplates={page.templates}
-        initialHasMore={page.hasMore}
-        initialPage={page.page}
-      />
-    );
+    initialTemplates = page.templates;
+    initialHasMore = page.hasMore;
+    initialPage = page.page;
   } catch (error) {
     rethrowIfNavigationError(error);
-    return (
-      <TemplatesListWithLoadMore
-        filters={filters}
-        initialTemplates={[]}
-        initialHasMore={false}
-        initialPage={1}
-      />
-    );
   }
+
+  return (
+    <TemplatesListWithLoadMore
+      filters={filters}
+      initialTemplates={initialTemplates}
+      initialHasMore={initialHasMore}
+      initialPage={initialPage}
+    />
+  );
 }
 
 export default async function TemplateTasksPage({

@@ -18,20 +18,28 @@ export function SubTaskSessionsLoader({
   loadSessions,
 }: SubTaskSessionsLoaderProps) {
   const t = useTranslations("subtasks");
-  const [sessions, setSessions] = useState<ActivitySession[] | null>(null);
+  const [loadState, setLoadState] = useState<{
+    subTaskDocumentId: string;
+    sessions: ActivitySession[] | null;
+  }>({ subTaskDocumentId, sessions: null });
+
+  if (loadState.subTaskDocumentId !== subTaskDocumentId) {
+    setLoadState({ subTaskDocumentId, sessions: null });
+  }
 
   useEffect(() => {
     let cancelled = false;
-    setSessions(null);
     void loadSessions(subTaskDocumentId).then((loaded) => {
-      if (!cancelled) setSessions(loaded);
+      if (!cancelled) {
+        setLoadState({ subTaskDocumentId, sessions: loaded });
+      }
     });
     return () => {
       cancelled = true;
     };
   }, [subTaskDocumentId, loadSessions]);
 
-  if (sessions === null) {
+  if (loadState.sessions === null) {
     return (
       <p className="text-sm text-muted-foreground" role="status">
         {t("sessionsLoading")}
@@ -39,5 +47,10 @@ export function SubTaskSessionsLoader({
     );
   }
 
-  return <SubTaskSessionsPanel sessions={sessions} sharingType={sharingType} />;
+  return (
+    <SubTaskSessionsPanel
+      sessions={loadState.sessions}
+      sharingType={sharingType}
+    />
+  );
 }

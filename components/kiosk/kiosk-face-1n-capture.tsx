@@ -57,7 +57,9 @@ export function KioskFace1nCapture({
   const onProbeReadyRef = useRef(onProbeReady);
   const [status, setStatus] = useState<Face1nCaptureStatus>("preparing");
 
-  onProbeReadyRef.current = onProbeReady;
+  useEffect(() => {
+    onProbeReadyRef.current = onProbeReady;
+  }, [onProbeReady]);
 
   useEffect(() => {
     const abort = new AbortController();

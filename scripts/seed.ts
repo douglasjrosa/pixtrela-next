@@ -37,10 +37,10 @@ async function main(): Promise<void> {
       email: "admin@pixtrela.local",
       code: 0,
     });
-    // eslint-disable-next-line no-console -- seed CLI feedback
+     
     console.log(`Created admin user "${ADMIN_USERNAME}"`);
   } else {
-    // eslint-disable-next-line no-console -- seed CLI feedback
+     
     console.log(`Admin user "${ADMIN_USERNAME}" already exists`);
   }
 
@@ -60,12 +60,12 @@ async function main(): Promise<void> {
       email: "code1111@pixtrela.local",
       code: DEMO_CODE,
     });
-    // eslint-disable-next-line no-console -- seed CLI feedback
+     
     console.log(
       `Created code-login user "${DEMO_CODE_USERNAME}" (code ${DEMO_CODE})`,
     );
   } else {
-    // eslint-disable-next-line no-console -- seed CLI feedback
+     
     console.log(`Code-login user "${DEMO_CODE_USERNAME}" already exists`);
   }
 
@@ -108,13 +108,13 @@ async function main(): Promise<void> {
     await db.insert(kioskSettings).values({ sessionIdleSeconds: 120 });
   }
 
-  // eslint-disable-next-line no-console -- seed CLI feedback
+   
   console.log("Seed complete.");
   await closeDb();
 }
 
 main().catch(async (error) => {
-  // eslint-disable-next-line no-console -- seed CLI feedback
+   
   console.error(error);
   await closeDb();
   process.exit(1);

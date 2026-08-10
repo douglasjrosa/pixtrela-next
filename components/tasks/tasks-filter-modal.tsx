@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -33,12 +33,18 @@ export function TasksFilterModal({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [draft, setDraft] = useState<TaskListFilters>(initialFilters);
-
-  useEffect(() => {
-    if (open) {
-      setDraft(initialFilters);
-    }
-  }, [open, initialFilters]);
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [prevInitialFilters, setPrevInitialFilters] = useState(initialFilters);
+  if (
+    open &&
+    (open !== prevOpen || initialFilters !== prevInitialFilters)
+  ) {
+    setPrevOpen(open);
+    setPrevInitialFilters(initialFilters);
+    setDraft(initialFilters);
+  } else if (open !== prevOpen) {
+    setPrevOpen(open);
+  }
 
   if (!open) return null;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -63,15 +63,19 @@ export function KanbanSubtaskCreateModal({
   const tKanban = useTranslations("kanban");
   const [draft, setDraft] = useState<SubTaskFormInput>(EMPTY_FORM);
   const [addToTemplate, setAddToTemplate] = useState(false);
-  const [formKey, setFormKey] = useState("kanban-create-subtask-0");
-
-  useEffect(() => {
-    if (open) {
-      setDraft(EMPTY_FORM);
-      setAddToTemplate(false);
-      setFormKey(`kanban-create-subtask-${Date.now()}`);
-    }
-  }, [open]);
+  const [resetNonce, setResetNonce] = useState(0);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) setResetNonce((nonce) => nonce + 1);
+  }
+  const [appliedResetNonce, setAppliedResetNonce] = useState(0);
+  if (resetNonce !== appliedResetNonce) {
+    setAppliedResetNonce(resetNonce);
+    setDraft(EMPTY_FORM);
+    setAddToTemplate(false);
+  }
+  const formKey = `kanban-create-subtask-${resetNonce}`;
 
   if (!open) return null;
 

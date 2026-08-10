@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useForm, type Resolver } from "react-hook-form";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
@@ -69,7 +69,7 @@ export function TemplateSubTaskInlineForm({
   const {
     register,
     reset,
-    watch,
+    control,
     getValues,
     setValue,
     formState: { errors },
@@ -103,16 +103,17 @@ export function TemplateSubTaskInlineForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formKey, reset]);
 
-  useEffect(() => {
-    const subscription = watch((values) => {
-      onChange(
-        parseFormValues(values as TemplateSubTaskFormInput, currentRowKey),
-      );
-    });
-    return () => subscription.unsubscribe();
-  }, [watch, onChange, currentRowKey]);
+  const watchedValues = useWatch({ control });
 
-  const dependencyIds = watch("dependencyIds") ?? [];
+  useEffect(() => {
+    if (watchedValues === undefined) return;
+    onChange(
+      parseFormValues(watchedValues as TemplateSubTaskFormInput, currentRowKey),
+    );
+  }, [watchedValues, onChange, currentRowKey]);
+
+  const dependencyIds = useWatch({ control, name: "dependencyIds" }) ?? [];
+  const nameValue = useWatch({ control, name: "name" }) ?? "";
   const fieldId = (name: string): string => `${formKey}-${name}`;
 
   return (
@@ -132,7 +133,7 @@ export function TemplateSubTaskInlineForm({
         <SubTaskNamePresetField
           id={fieldId("name")}
           label={tSubtasks("name")}
-          value={watch("name") ?? ""}
+          value={nameValue}
           enabled
           disabled={disabled}
           errorMessage={errors.name?.message}

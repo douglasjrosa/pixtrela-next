@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import { loadMoreTemplates } from "@/app/(app)/templates/actions";
@@ -32,12 +32,15 @@ export function TemplatesListWithLoadMore({
   const [page, setPage] = useState(initialPage);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
+  const listResetKey =
+    `${filterKey}:${initialPage}:${initialHasMore}:${initialTemplates}`;
+  const [prevListResetKey, setPrevListResetKey] = useState(listResetKey);
+  if (listResetKey !== prevListResetKey) {
+    setPrevListResetKey(listResetKey);
     setExtraTemplates([]);
     setPage(initialPage);
     setHasMore(initialHasMore);
-  }, [filterKey, initialTemplates, initialPage, initialHasMore]);
+  }
 
   const templates = [...initialTemplates, ...extraTemplates];
 

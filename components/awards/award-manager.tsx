@@ -5,7 +5,7 @@ import {
   useTransition,
   type ChangeEvent,
 } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -105,7 +105,6 @@ function AwardFormDialog({
     handleSubmit,
     control,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<AwardFormInput>({
     resolver: zodResolver(awardFormSchema),
@@ -119,7 +118,7 @@ function AwardFormDialog({
     name: "values",
   });
 
-  const imageId = watch("imageId");
+  const imageId = useWatch({ control, name: "imageId" });
 
   function handleImageChange(event: ChangeEvent<HTMLInputElement>): void {
     const file = event.target.files?.[0];
@@ -234,6 +233,7 @@ function AwardFormDialog({
           />
           <p className="text-xs text-muted-foreground">{tAwards("imageHint")}</p>
           {previewUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- blob preview URL
             <img
               src={previewUrl}
               alt=""

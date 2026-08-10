@@ -71,6 +71,29 @@ export function KioskIdleProvider({
     setPhase(next);
   }, []);
 
+  const [prevIsHomeScreen, setPrevIsHomeScreen] = useState(isHomeScreen);
+  if (isHomeScreen !== prevIsHomeScreen) {
+    setPrevIsHomeScreen(isHomeScreen);
+    if (isHomeScreen) {
+      if (phase !== "auth") {
+        setProgress(1);
+        setPhase("home");
+      }
+    } else if (phase !== "auth" && phase !== "expiring") {
+      setPhase("active");
+    }
+  }
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+
+  useEffect(() => {
+    if (!isHomeScreen) return;
+    if (phase === "auth") return;
+    isExpiringRef.current = false;
+  }, [isHomeScreen, phase]);
+
   const clearController = useCallback(() => {
     controllerRef.current?.clear();
     controllerRef.current = null;
@@ -156,8 +179,6 @@ export function KioskIdleProvider({
       if (phaseRef.current === "auth") return;
       clearController();
       isExpiringRef.current = false;
-      setProgress(1);
-      setPhaseSafe("home");
       return;
     }
 
@@ -175,7 +196,6 @@ export function KioskIdleProvider({
 
     controllerRef.current = controller;
     isExpiringRef.current = false;
-    setPhaseSafe("active");
     controller.reset();
 
     function handleActivity(): void {
