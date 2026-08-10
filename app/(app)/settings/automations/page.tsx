@@ -3,10 +3,9 @@ import {
   type StepOption,
 } from "@/components/settings/task-automation-form";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
-import { DEFAULT_ASSIGN_WARN_MAX } from "@/lib/business/assign-warn-max";
 import { isDrizzleBackend } from "@/lib/db/backend";
+import { loadTaskAutomationFormValues } from "@/lib/repos/settings";
 import { listSteps as listStepsRepo } from "@/lib/repos/steps";
-import type { TaskAutomationFormInput } from "@/lib/schemas/task-automation";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { loadTaskAutomationSetting } from "@/lib/strapi/task-automation-setting";
 
@@ -20,16 +19,6 @@ interface StepEntity {
   documentId: string;
   name: string;
 }
-
-const EMPTY_AUTOMATION: TaskAutomationFormInput = {
-  waitingStepDocumentId: "",
-  producingStepDocumentId: "",
-  pausedStepDocumentId: "",
-  finishedStepDocumentId: "",
-  reviewedStepDocumentId: "",
-  deliveredStepDocumentId: "",
-  assignWarnMax: DEFAULT_ASSIGN_WARN_MAX,
-};
 
 async function loadSteps(): Promise<StepOption[]> {
   if (isDrizzleBackend()) {
@@ -65,7 +54,7 @@ export default async function SettingsAutomationsPage() {
   const [steps, taskAutomation] = await Promise.all([
     loadSteps(),
     isDrizzleBackend()
-      ? Promise.resolve(EMPTY_AUTOMATION)
+      ? loadTaskAutomationFormValues()
       : loadTaskAutomationSetting(),
   ]);
 
