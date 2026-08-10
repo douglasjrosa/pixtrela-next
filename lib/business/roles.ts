@@ -1,7 +1,7 @@
 import type { Role } from "@/lib/auth/nav";
 
 const MANAGEABLE_ROLES: Record<Role, Role[]> = {
-  admin: ["manager", "leader", "colaborator", "kiosk"],
+  admin: ["admin", "manager", "leader", "colaborator", "kiosk"],
   manager: ["leader", "colaborator"],
   leader: ["colaborator"],
   colaborator: [],
