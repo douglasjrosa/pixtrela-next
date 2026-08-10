@@ -1,0 +1,15 @@
+---
+description: Cursor Cloud Agent bootstrap for pixtrela-next (no SSH tunnel)
+globs:
+alwaysApply: true
+---
+
+# Cloud Agent / remote Next
+
+Follow root `AGENTS.md` and `docs/CLOUD-AGENT.md`.
+
+- `DATABASE_URL` must be **VPS postgres-dev**: host `179.0.179.210`, port **5433**,
+  DB `pixtrela_dev`. Do **not** open an SSH tunnel.
+- Bootstrap: `./scripts/cloud-agent-bootstrap.sh` then `npm run dev`; forward 3000.
+- Never use prod `:5432` / DB `pixtrela` while developing.
+- On user commit+push: push triggers Vercel deploy + GitHub Action migrate prod.

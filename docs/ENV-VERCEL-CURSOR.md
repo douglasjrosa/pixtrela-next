@@ -4,72 +4,62 @@
 
 | Layer | Where | Database |
 |-------|--------|----------|
-| Next.js production | Vercel | `postgres-prod` on VPS (`DATABASE_URL` + SSL) |
-| Next.js development | Cursor Cloud VM | `postgres-dev` via SSH tunnel → `127.0.0.1:5433` |
-| Browser preview | Your laptop | Cursor **port forward 3000** → VM `npm run dev` |
+| Next.js production | Vercel | `postgres-prod` on VPS (`:5432` / DB `pixtrela`) |
+| Next.js development | Cursor Cloud / laptop | `postgres-dev` on VPS (`:5433` / DB `pixtrela_dev`) — **no tunnel** |
+| Browser preview | Your laptop | Cursor **port forward 3000** → `npm run dev` |
 
-See also [`docs/VPS-POSTGRES.md`](VPS-POSTGRES.md) and
-[`scripts/dev-db-tunnel.sh`](../scripts/dev-db-tunnel.sh).
+Templates:
+
+- App secrets: [`.env.example`](../.env.example) → `.env.local` / Vercel / Cursor Secrets
+- VPS Postgres: [`env.db.example`](../env.db.example) → `.env.db` on the VPS
+- Cloud Agents: [`CLOUD-AGENT.md`](CLOUD-AGENT.md), [`AGENTS.md`](../AGENTS.md)
 
 ## Vercel (Production / Preview)
-
-Set in the Vercel project → Settings → Environment Variables:
 
 | Variable | Production value |
 |----------|------------------|
 | `DATA_BACKEND` | `drizzle` |
-| `AUTH_STRAPI_FALLBACK` | `0` after cutover (`1` only during coexistence) |
-| `DATABASE_URL` | `postgresql://USER:PASS@VPS_HOST:5432/pixtrela?sslmode=require` |
-| `AUTH_SECRET` | Strong secret (≠ dev) |
-| `AUTH_URL` | Canonical site URL, e.g. `https://pixtrela.com` |
+| `AUTH_STRAPI_FALLBACK` | `0` |
+| `DATABASE_URL` | `postgresql://USER:PASS@VPS_HOST:5432/pixtrela` (+ `sslmode=require` when TLS is on) |
+| `AUTH_SECRET` | Strong secret |
+| `AUTH_URL` | Canonical site URL |
 | `AUTH_TRUST_HOST` | `true` |
-| `MEDIA_DRIVER` | `s3` (recommended) + `S3_*` keys |
-| `STRAPI_URL` / `STRAPI_SYNC_API_TOKEN` | Only while coexistence; remove after cutover |
-| `CRM_WEBHOOK_SECRET` / `LEGACY_RBX_*` | If still used |
+| `MEDIA_DRIVER` / `S3_*` / `MEDIA_PUBLIC_BASE_URL` | Cloudflare R2 (`pixtrela-media`) |
 
-Deploy checklist:
+Push to `master` → Vercel deploys the app. GitHub Action **Deploy prod DB** runs
+`drizzle-kit migrate` using secret `DATABASE_URL_PROD`.
 
-1. Prod migrations applied.
-2. Redeploy Next.
-3. Smoke: login + create a step.
+## Cursor Cloud (development)
 
-## Cursor Cloud VM (development)
-
-### Secrets
-
-Prefer Cursor **Environment Variables** / Secrets for the VM, or a gitignored
-`next/.env.local`:
+Cursor **My Secrets** (All repositories or this repo):
 
 ```env
 DATA_BACKEND=drizzle
 AUTH_STRAPI_FALLBACK=0
-AUTH_SECRET=dev-cloud-secret-change-me
+AUTH_SECRET=...
 AUTH_TRUST_HOST=true
-# Must match the URL you open after Cursor port-forward (usually localhost:3000).
 AUTH_URL=http://localhost:3000
-DATABASE_URL=postgresql://DEV_USER:DEV_PASS@127.0.0.1:5433/pixtrela_dev
-MEDIA_DRIVER=local
+DATABASE_URL=postgresql://pixtrela:DEV_PASS@179.0.179.210:5433/pixtrela_dev
+MEDIA_DRIVER=s3
+S3_BUCKET=pixtrela-media
+S3_REGION=auto
+S3_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+S3_ACCESS_KEY_ID=...
+S3_SECRET_ACCESS_KEY=...
+MEDIA_PUBLIC_BASE_URL=https://media.pixtrela.ribermax.com.br
+S3_FORCE_PATH_STYLE=true
 ```
 
-### Daily loop
+Bootstrap (agent does this — see `AGENTS.md`):
 
 ```bash
-# 1) Tunnel VPS postgres-dev → local 5433 on the VM
-export PIXTRELA_VPS_SSH=deploy@your-vps.example
-./scripts/dev-db-tunnel.sh   # leave running
-
-# 2) App
-cd next
-npm ci
-npm run db:migrate
-npm run db:seed
+./scripts/cloud-agent-bootstrap.sh
 npm run dev
 ```
 
-3. In Cursor UI: **Forward port 3000** and open the forwarded URL in the browser.
-4. Never point the Cloud VM `DATABASE_URL` at **prod**.
+Forward port **3000**. Never point the Cloud Agent at **prod** Postgres (`:5432`).
 
-### Auth.js host tip
+## GitHub Actions
 
-If the forwarded URL is not `http://localhost:3000`, set `AUTH_URL` to that
-exact origin to avoid callback / redirect loops.
+Repo secret `DATABASE_URL_PROD` = production connection string (`:5432` / `pixtrela`).
+Workflow: [`.github/workflows/deploy-prod-db.yml`](../.github/workflows/deploy-prod-db.yml).

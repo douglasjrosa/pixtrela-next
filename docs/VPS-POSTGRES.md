@@ -1,13 +1,12 @@
 # VPS Postgres (prod + dev containers)
 
-Greenfield Postgres runs as **two Docker containers** on the Strapi VPS via
-[`docker-compose.db.yml`](../docker-compose.db.yml). Strapi's legacy DB is
-untouched.
+Greenfield Postgres runs as **two Docker containers** on the Pixtrela VPS via
+[`docker-compose.db.yml`](../docker-compose.db.yml).
 
 ## Install (once on the VPS)
 
 1. Install Docker Engine + Compose plugin.
-2. Clone or copy the repo (or just the compose files) onto the VPS.
+2. Copy compose + env onto the VPS (e.g. `/var/www/pixtrela/postgres/`).
 3. Create secrets:
 
    ```bash
@@ -23,50 +22,40 @@ untouched.
    docker compose -f docker-compose.db.yml --env-file .env.db ps
    ```
 
-5. Apply schema (from a machine that can reach the DB):
+5. Apply schema from any machine that can reach the VPS:
 
    ```bash
-   # Prod — prefer migrate, never db:push in production
-   DATABASE_URL='postgresql://USER:PASS@VPS_HOST:5432/pixtrela?sslmode=require' \
-     npm run db:migrate --prefix next
+   # Prod (Vercel / CI)
+   DATABASE_URL='postgresql://USER:PASS@VPS_HOST:5432/pixtrela' \
+     npm run db:migrate
 
-   # Dev (via SSH tunnel to 5433 — see scripts/dev-db-tunnel.sh)
-   DATABASE_URL='postgresql://USER:PASS@127.0.0.1:5433/pixtrela_dev' \
-     npm run db:migrate --prefix next
-   DATABASE_URL='...' npm run db:seed --prefix next
+   # Dev (Cursor Cloud / laptop — public :5433, no tunnel)
+   DATABASE_URL='postgresql://USER:PASS@VPS_HOST:5433/pixtrela_dev' \
+     npm run db:migrate
+   DATABASE_URL='...' npm run db:seed
    ```
 
 ## Firewall
 
 | Port | Bind | Policy |
 |------|------|--------|
-| `5432` (prod) | `0.0.0.0` | Allow only known clients (Vercel egress / office VPN). Prefer `sslmode=require`. |
-| `5433` (dev) | `127.0.0.1` | **Do not** open on the WAN. Access via SSH `-L 5433`. |
-
-Example UFW (adjust source CIDRs):
+| `5432` (prod) | `0.0.0.0` | Prefer restrict to Vercel egress / known IPs. Prefer `sslmode=require`. |
+| `5433` (dev) | `0.0.0.0` | Open for Cursor Cloud Agents + laptop. Strong `DEV_PG_PASSWORD`. |
 
 ```bash
 ufw allow OpenSSH
-# Optional: restrict Postgres prod to specific nets
+ufw allow 5433/tcp comment 'pixtrela postgres-dev'
+# Optional: lock prod to known CIDRs
 # ufw allow from VERCEL_OR_OFFICE_CIDR to any port 5432 proto tcp
 ufw enable
 ```
 
 ## SSL for production
 
-Vercel must use `?sslmode=require` (or `verify-full` with a real cert). Options:
+Vercel should use `?sslmode=require` when TLS is enabled on Postgres. Until then,
+keep firewall tight on `5432`.
 
-1. **Postgres SSL** — mount server cert/key into `postgres-prod` and set
-   `ssl=on` via a custom `postgresql.conf` / `command`.
-2. **Stunnel / reverse TLS terminator** in front of 5432.
-3. **Managed Postgres** (Neon/Supabase) if self-hosted TLS is too heavy — keep
-   `postgres-dev` on the VPS for Cursor Cloud.
+## Cursor Cloud
 
-Until TLS is configured, treat prod DB exposure as temporary and keep the
-firewall tight.
-
-## Coexistence with Strapi
-
-Strapi keeps its existing MySQL/Postgres volume. Do **not** point Strapi at
-`pixtrela_pg_prod` / `pixtrela_pg_dev`. After cutover, stop Strapi writes and
-run ETL into prod Postgres (`CUTOVER.md`).
+See [`CLOUD-AGENT.md`](CLOUD-AGENT.md) and root [`AGENTS.md`](../AGENTS.md).
+No SSH tunnel: `DATABASE_URL` → `VPS_HOST:5433/pixtrela_dev`.
