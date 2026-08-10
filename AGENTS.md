@@ -57,3 +57,20 @@ Same `DATABASE_URL` host `179.0.179.210:5433` works without a tunnel.
 - `docs/ENV-VERCEL-CURSOR.md` — env matrix
 - `docs/VPS-POSTGRES.md` — dual Postgres on VPS
 - `docs/CLOUD-AGENT.md` — Cloud Agent checklist
+
+## Cursor Cloud specific instructions
+
+Dependency install runs automatically on VM startup. `scripts/cloud-agent-bootstrap.sh`
+still works for a full bootstrap (install + `db:migrate` + `db:seed`), but it uses
+`npm ci`, which fails if `package-lock.json` drifts from `package.json`; if it errors on
+a missing package, run `npm install` instead.
+
+- Start the app with `npm run dev` (Next.js + Turbopack on port 3000; forward it in
+  Cursor Cloud). The dev server does not need `db:seed` to have run, but the seeded
+  logins documented above require it.
+- `MEDIA_PUBLIC_BASE_URL` may be unset in the cloud env; the app boots and core flows
+  (login, dashboards, users) work without it. Only R2 media serving needs it.
+- Scripts (`lint`, `test`, `db:*`) read `DATABASE_URL` from the injected env — no `.env`
+  file is required. Tests (`npm test`) hit the dev DB and take ~3 min.
+- `npm run lint` currently reports pre-existing errors/warnings unrelated to setup; it is
+  not a clean gate.
