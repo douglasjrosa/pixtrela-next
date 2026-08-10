@@ -98,8 +98,15 @@ export function mergeServerTemplateSubTasksWithDrafts(
 ): TemplateSubTaskRow[] {
   if (drafts.length === 0) return serverRows;
 
+  // Skip drafts already present in the server rows. The parent echoes committed
+  // drafts back through the `subtasks` prop, so re-inserting them here would
+  // produce duplicate `rowKey`s.
+  const existingKeys = new Set(serverRows.map((row) => row.rowKey));
+  const newDrafts = drafts.filter((draft) => !existingKeys.has(draft.rowKey));
+  if (newDrafts.length === 0) return serverRows;
+
   const merged = [...serverRows];
-  for (const draft of [...drafts].sort((a, b) => a.index - b.index)) {
+  for (const draft of [...newDrafts].sort((a, b) => a.index - b.index)) {
     const insertAt = Math.min(Math.max(draft.index, 0), merged.length);
     merged.splice(insertAt, 0, draft);
   }
