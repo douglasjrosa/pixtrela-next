@@ -1,4 +1,6 @@
+import { isDrizzleBackend } from "@/lib/db/backend";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import { findUserAvatarUrl, findUserById } from "@/lib/repos/users";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 
@@ -21,6 +23,24 @@ interface ProfileEntity {
 export async function loadKioskColaboratorProfile(
   colaboratorId: string,
 ): Promise<KioskColaboratorProfile | null> {
+  if (isDrizzleBackend()) {
+    try {
+      const user = await findUserById(colaboratorId);
+      if (!user || user.role !== "colaborator" || !user.active || user.blocked) {
+        return null;
+      }
+      const avatarUrl = await findUserAvatarUrl(colaboratorId);
+      return {
+        documentId: user.id,
+        name: user.name,
+        avatarUrl,
+      };
+    } catch (error) {
+      rethrowIfNavigationError(error);
+      return null;
+    }
+  }
+
   try {
     const res = await strapiFetch<StrapiSingle<ProfileEntity>>(
       `/kiosk/colaborators/${colaboratorId}`,

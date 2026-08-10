@@ -1,10 +1,18 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
+
 import { auth } from "@/auth";
 import { buildTemplateFromBox } from "@/lib/business/template-from-box";
 import { fetchBoxTemplateData } from "@/lib/legacy/rbx-client";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTemplates } from "@/lib/auth/permissions";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import {
+  createTemplateTask as createTemplateTaskRepo,
+  deleteTemplateTask as deleteTemplateTaskRepo,
+  updateTemplateTask as updateTemplateTaskRepo,
+} from "@/lib/repos/templates";
 import { templateListFiltersSchema } from "@/lib/schemas/template-list-filters";
 import {
   templateTaskFormSchema,
@@ -19,22 +27,30 @@ import {
   type TemplateListPageResult,
 } from "@/lib/templates/load-template-list-page";
 
-interface StrapiOne<T> {
-  data: T;
-}
-
-interface TemplateEntity {
-  documentId: string;
-  name: string;
-  code: string;
-  subTask?: TemplateSubTaskComponentInput[] | null;
-}
-
 async function assertCanManage(): Promise<void> {
   const session = await auth();
   if (!canManageTemplates(session?.user?.role as Role | undefined)) {
     throw new Error("forbidden");
   }
+}
+
+function dependencyIndexesFrom(
+  dependencies: TemplateSubTaskComponentInput["dependencies"],
+): number[] {
+  if (!Array.isArray(dependencies)) return [];
+  return dependencies.filter((value): value is number => typeof value === "number");
+}
+
+function toRepoSubTasks(subTasks: TemplateSubTaskComponentInput[]) {
+  return subTasks.map((row, index) => ({
+    name: row.name,
+    qty: row.qty,
+    sharingType: row.sharingType,
+    maxSameTimeWorkers: row.maxSameTimeWorkers,
+    index,
+    expectedTime: row.expectedTime,
+    dependencyIndexes: dependencyIndexesFrom(row.dependencies),
+  }));
 }
 
 function toStrapiPayload(input: TemplateTaskFormInput) {
@@ -54,6 +70,10 @@ function toStrapiPayload(input: TemplateTaskFormInput) {
 }
 
 function invalidateTemplates(templateDocumentId?: string): void {
+  if (isDrizzleBackend()) {
+    revalidateTag("drizzle:templates", "default");
+    return;
+  }
   const { tags, paths } = LIST_CACHE_CONTRACT.templateTasks;
   const detailPaths = templateDocumentId
     ? [`/templates/tasks/${templateDocumentId}`]
@@ -70,24 +90,6 @@ export async function loadMoreTemplates(
   return loadTemplateListPage(filters, page);
 }
 
-async function fetchTemplateEntity(
-  documentId: string,
-): Promise<TemplateEntity | null> {
-  try {
-    const res = await strapiFetch<StrapiOne<TemplateEntity>>(
-      `/template-tasks/${documentId}`,
-      { strapiCache: { noStore: true } },
-      {
-        fields: ["documentId", "name", "code"],
-        populate: { subTask: true },
-      },
-    );
-    return res.data;
-  } catch {
-    return null;
-  }
-}
-
 export async function createTemplate(
   raw: Pick<TemplateTaskFormInput, "name" | "code">,
 ): Promise<string> {
@@ -95,6 +97,17 @@ export async function createTemplate(
   const data = templateTaskFormSchema
     .pick({ name: true, code: true })
     .parse(raw);
+
+  if (isDrizzleBackend()) {
+    const created = await createTemplateTaskRepo({
+      name: data.name,
+      code: data.code,
+      subTasks: [],
+    });
+    invalidateTemplates();
+    return created.id;
+  }
+
   const res = await strapiFetch<{ data: { documentId: string } }>(
     "/template-tasks",
     {
@@ -115,45 +128,24 @@ export async function updateTemplate(
 ): Promise<void> {
   await assertCanManage();
   const data = templateTaskFormSchema.parse(raw);
+
+  if (isDrizzleBackend()) {
+    await updateTemplateTaskRepo({
+      id: documentId,
+      name: data.name,
+      code: data.code,
+      subTasks: toRepoSubTasks(data.subTask ?? []),
+    });
+    invalidateTemplates(documentId);
+    return;
+  }
+
   await strapiFetch(`/template-tasks/${documentId}`, {
     method: "PUT",
     strapiCache: { noStore: true },
     body: JSON.stringify({ data: toStrapiPayload(data) }),
   });
   invalidateTemplates(documentId);
-}
-
-export async function updateTemplateMetadata(
-  documentId: string,
-  raw: Pick<TemplateTaskFormInput, "name" | "code">,
-): Promise<void> {
-  await assertCanManage();
-  const metadata = templateTaskFormSchema
-    .pick({ name: true, code: true })
-    .parse(raw);
-  const template = await fetchTemplateEntity(documentId);
-  if (!template) throw new Error("not_found");
-
-  await updateTemplate(documentId, {
-    name: metadata.name,
-    code: metadata.code,
-    subTask: template.subTask ?? [],
-  });
-}
-
-export async function saveTemplateSubtasks(
-  documentId: string,
-  subtasks: TemplateSubTaskComponentInput[],
-): Promise<void> {
-  await assertCanManage();
-  const template = await fetchTemplateEntity(documentId);
-  if (!template) throw new Error("not_found");
-
-  await updateTemplate(documentId, {
-    name: template.name,
-    code: template.code,
-    subTask: subtasks,
-  });
 }
 
 /**
@@ -175,6 +167,13 @@ export async function loadTemplateFromLegacy(
 
 export async function deleteTemplate(documentId: string): Promise<void> {
   await assertCanManage();
+
+  if (isDrizzleBackend()) {
+    await deleteTemplateTaskRepo(documentId);
+    invalidateTemplates(documentId);
+    return;
+  }
+
   await strapiFetch(`/template-tasks/${documentId}`, {
     method: "DELETE",
     strapiCache: { noStore: true },

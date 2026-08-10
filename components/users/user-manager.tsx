@@ -47,14 +47,21 @@ export type { UserRow } from "./types";
 export interface UserManagerProps {
   users: UserRow[];
   onCreate: (values: UserFormInput) => void | Promise<void>;
-  onUpdate: (userId: number, values: UserFormInput) => void | Promise<void>;
+  onUpdate: (
+    userId: UserRow["id"],
+    values: UserFormInput,
+  ) => void | Promise<void>;
   onUpdateImage?: (
-    userId: number,
+    userId: UserRow["id"],
     imageType: UserImageType,
     formData: FormData,
   ) => void | Promise<void>;
-  onDelete?: (userId: number) => void | Promise<void>;
+  onDelete?: (userId: UserRow["id"]) => void | Promise<void>;
+  /** Soft-deactivate (blocked). Target must be a manageable role. */
+  onDeactivate?: (userId: UserRow["id"]) => void | Promise<void>;
   canDelete: boolean;
+  /** Show deactivate for manageable active users. Hard delete uses `canDelete`. */
+  canDeactivate?: boolean;
   /** Precomputed on the server — do not pass predicate functions from RSC. */
   manageableRoles: UserFormInput["roleType"][];
   canPairUserTag?: boolean;
@@ -66,7 +73,7 @@ export interface UserManagerProps {
   /** Admin-only avatar and face recognition image management. */
   canManageImages?: boolean;
   onPairUserTag?: (
-    userId: number,
+    userId: UserRow["id"],
     userTag: string,
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
@@ -137,13 +144,15 @@ interface UserFormDialogProps {
   canSetPassword: boolean;
   canEditUserLogin: boolean;
   showDelete: boolean;
+  showDeactivate: boolean;
   onClose: () => void;
   onSubmit: (values: UserFormInput) => void;
   onDelete?: () => void;
+  onDeactivate?: () => void;
   onPreviewKioskColaborator: (documentId: string) => void;
-  onPairUserTag: (userId: number) => Promise<void>;
+  onPairUserTag: (userId: UserRow["id"]) => Promise<void>;
   onUpdateImage?: (
-    userId: number,
+    userId: UserRow["id"],
     imageType: UserImageType,
     file: File,
     options?: { faceVector?: number[] },
@@ -162,9 +171,11 @@ function UserFormDialog({
   canSetPassword,
   canEditUserLogin,
   showDelete,
+  showDeactivate,
   onClose,
   onSubmit,
   onDelete,
+  onDeactivate,
   onPreviewKioskColaborator,
   onPairUserTag,
   onUpdateImage,
@@ -273,15 +284,29 @@ function UserFormDialog({
       fillBody={false}
       headerActions={headerActions}
       footerStart={
-        showDelete && onDelete ? (
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={isPending}
-            onClick={onDelete}
-          >
-            {tCommon("delete")}
-          </Button>
+        showDeactivate || showDelete ? (
+          <div className="flex flex-wrap gap-2">
+            {showDeactivate && onDeactivate ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isPending}
+                onClick={onDeactivate}
+              >
+                {tUsers("deactivate")}
+              </Button>
+            ) : null}
+            {showDelete && onDelete ? (
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={isPending}
+                onClick={onDelete}
+              >
+                {tCommon("delete")}
+              </Button>
+            ) : null}
+          </div>
         ) : undefined
       }
       footerEnd={
@@ -414,7 +439,9 @@ export function UserManager({
   onUpdate,
   onUpdateImage,
   onDelete,
+  onDeactivate,
   canDelete,
+  canDeactivate = false,
   manageableRoles,
   canPairUserTag = false,
   canPreviewKioskColaborator = false,
@@ -427,9 +454,12 @@ export function UserManager({
   const tUsers = useTranslations("users");
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
-  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [editingUserId, setEditingUserId] = useState<UserRow["id"] | null>(
+    null,
+  );
   const [nameQuery, setNameQuery] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [nfcPairing, setNfcPairing] = useState(false);
@@ -457,12 +487,14 @@ export function UserManager({
     setFormOpen(false);
     setEditingUserId(null);
     setDeleteOpen(false);
+    setDeactivateOpen(false);
   }
 
   function startCreate(): void {
     setEditingUserId(null);
     setMessage(null);
     setDeleteOpen(false);
+    setDeactivateOpen(false);
     setFormOpen(true);
   }
 
@@ -470,6 +502,7 @@ export function UserManager({
     setEditingUserId(user.id);
     setMessage(null);
     setDeleteOpen(false);
+    setDeactivateOpen(false);
     setFormOpen(true);
   }
 
@@ -510,7 +543,22 @@ export function UserManager({
     });
   }
 
-  async function handlePairUserTag(userId: number): Promise<void> {
+  function handleConfirmDeactivate(): void {
+    if (!onDeactivate || editingUserId === null) return;
+    startTransition(async () => {
+      try {
+        await onDeactivate(editingUserId);
+        setMessage(tUsers("deactivated"));
+        closeForm();
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tUsers("saveFailed"));
+      }
+    });
+  }
+
+  async function handlePairUserTag(userId: UserRow["id"]): Promise<void> {
     if (isNfcOnCooldown()) {
       const seconds = Math.ceil(getNfcCooldownRemainingMs() / 1000);
       showErrorToast(tUsers("nfcCooldownActive", { seconds }));
@@ -566,7 +614,7 @@ export function UserManager({
   }
 
   async function handleUpdateImage(
-    userId: number,
+    userId: UserRow["id"],
     imageType: UserImageType,
     file: File,
     options?: { faceVector?: number[] },
@@ -583,6 +631,13 @@ export function UserManager({
 
   const roleOptions = roleOptionsForUser(editingUser, manageableRoles);
   const formDialogKey = editingUserId ?? "new";
+  const canDeactivateEditingUser = Boolean(
+    canDeactivate &&
+      onDeactivate &&
+      editingUser &&
+      !editingUser.blocked &&
+      manageableRoles.includes(editingUser.roleType),
+  );
   const query = nameQuery.trim().toLowerCase();
   const visibleUsers =
     query.length === 0
@@ -618,9 +673,11 @@ export function UserManager({
           canSetPassword={canSetPassword}
           canEditUserLogin={canEditUserLogin}
           showDelete={Boolean(canDelete && onDelete && editingUser)}
+          showDeactivate={canDeactivateEditingUser}
           onClose={closeForm}
           onSubmit={onSubmit}
           onDelete={() => setDeleteOpen(true)}
+          onDeactivate={() => setDeactivateOpen(true)}
           onPreviewKioskColaborator={handlePreviewKioskColaborator}
           onPairUserTag={handlePairUserTag}
           onUpdateImage={onUpdateImage ? handleUpdateImage : undefined}
@@ -637,6 +694,16 @@ export function UserManager({
         disabled={isPending}
         onConfirm={handleConfirmDelete}
         onClose={() => setDeleteOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={deactivateOpen}
+        title={tUsers("deactivateTitle")}
+        description={tUsers("deactivateConfirm")}
+        confirmLabel={tUsers("deactivate")}
+        disabled={isPending}
+        onConfirm={handleConfirmDeactivate}
+        onClose={() => setDeactivateOpen(false)}
       />
 
       <div className="flex min-h-0 flex-1 flex-col">

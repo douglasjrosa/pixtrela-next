@@ -13,7 +13,7 @@ export interface AwardListRowProps {
   award: AwardRow;
   currencies: CurrencyOption[];
   variant: "table" | "mobile";
-  onOpen: (award: AwardRow) => void;
+  onOpen?: (award: AwardRow) => void;
 }
 
 function awardDisplayTitle(award: AwardRow): string {
@@ -34,38 +34,41 @@ export function AwardListRow({
           .map((entry) => formatAwardValueRow(entry, currencies))
           .join(", ")
       : "—";
+  const interactive = Boolean(onOpen);
 
   function openAward(): void {
-    onOpen(award);
+    onOpen?.(award);
   }
 
-  const interaction = {
-    tabIndex: 0 as const,
-    role: "link" as const,
-    "aria-label": displayTitle,
-    onClick: openAward,
-    onKeyDown: (event: KeyboardEvent) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        openAward();
+  const interaction = interactive
+    ? {
+        tabIndex: 0 as const,
+        role: "link" as const,
+        "aria-label": displayTitle,
+        onClick: openAward,
+        onKeyDown: (event: KeyboardEvent) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openAward();
+          }
+        },
       }
-    },
-  };
+    : {};
 
   if (variant === "table") {
     return (
       <tr
         {...interaction}
         className={cn(
-          "border-b cursor-pointer hover:bg-muted/40",
-          "focus-visible:bg-muted/40 focus-visible:outline-none",
+          "border-b",
+          interactive && "cursor-pointer hover:bg-muted/40",
         )}
       >
         <td className="w-12 py-2 pr-3">
           <AwardListImage label={displayTitle} imageUrl={award.imageUrl} />
         </td>
-        <td className="py-2">{displayTitle}</td>
-        <td>{costLabel}</td>
+        <td className="py-2 font-medium">{displayTitle}</td>
+        <td className="tabular-nums text-muted-foreground">{costLabel}</td>
       </tr>
     );
   }
@@ -74,16 +77,14 @@ export function AwardListRow({
     <li
       {...interaction}
       className={cn(
-        "list-none border-b py-3 cursor-pointer hover:bg-muted/40",
-        "focus-visible:bg-muted/40 focus-visible:outline-none",
+        "flex items-center gap-3 border-b py-3",
+        interactive && "cursor-pointer hover:bg-muted/40",
       )}
     >
-      <div className="flex items-center gap-3">
-        <AwardListImage label={displayTitle} imageUrl={award.imageUrl} />
-        <div className="min-w-0 flex-1">
-          <div className="text-base font-medium">{displayTitle}</div>
-          <div className="text-muted-foreground text-sm">{costLabel}</div>
-        </div>
+      <AwardListImage label={displayTitle} imageUrl={award.imageUrl} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">{displayTitle}</p>
+        <p className="text-sm text-muted-foreground tabular-nums">{costLabel}</p>
       </div>
     </li>
   );

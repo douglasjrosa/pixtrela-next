@@ -28,6 +28,11 @@ export async function loginStrapi(
   return data.jwt;
 }
 
+/** Meets DEACTIVATION_REASON_MIN_LENGTH (100) for task lifecycle validation. */
+const E2E_TASK_DEACTIVATION_REASON =
+  "E2E cleanup: deactivate duplicate create-task fixture so the manager " +
+  "create flow can run repeatedly without leaving active clones.";
+
 /** Deactivates active tasks with the given name so create E2E can run repeatedly. */
 export async function deactivateActiveTasksByName(
   jwt: string,
@@ -54,7 +59,12 @@ export async function deactivateActiveTasksByName(
           Authorization: `Bearer ${jwt}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ data: { active: false } }),
+        body: JSON.stringify({
+          data: {
+            active: false,
+            reasonForDeactivation: E2E_TASK_DEACTIVATION_REASON,
+          },
+        }),
       });
       if (!res.ok) {
         throw new Error(`Strapi task deactivate failed (${res.status})`);

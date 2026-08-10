@@ -21,7 +21,10 @@ export const routeThemeFormSchema = z.object({
     })
     .optional(),
   backgroundColorOpacity: z.number().int().min(0).max(100).optional(),
-  backgroundImageId: z.number().int().positive().nullable().optional(),
+  backgroundImageId: z
+    .union([z.number().int().positive(), z.string().uuid()])
+    .nullable()
+    .optional(),
   clearBackgroundImage: z.boolean().optional(),
   backgroundSize: z.enum(BACKGROUND_SIZES).optional(),
   backgroundPosition: z.enum(BACKGROUND_POSITIONS).optional(),

@@ -1,0 +1,57 @@
+# Dual Postgres on the Strapi VPS (production + development).
+# Usage:
+#   cp .env.db.example .env.db   # set strong passwords
+#   docker compose -f docker-compose.db.yml --env-file .env.db up -d
+#
+# Local laptop convenience (single DB on 5432) remains in docker-compose.yml.
+
+services:
+  postgres-prod:
+    image: postgres:16-alpine
+    container_name: pixtrela-postgres-prod
+    restart: unless-stopped
+    ports:
+      # Reachable by Vercel — lock down with firewall + SSL (see docs/VPS-POSTGRES.md).
+      - "${PROD_PG_HOST_BIND:-0.0.0.0}:${PROD_PG_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${PROD_PG_USER:?set PROD_PG_USER in .env.db}
+      POSTGRES_PASSWORD: ${PROD_PG_PASSWORD:?set PROD_PG_PASSWORD in .env.db}
+      POSTGRES_DB: ${PROD_PG_DB:-pixtrela}
+    volumes:
+      - pixtrela_pg_prod:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-dev:
+    image: postgres:16-alpine
+    container_name: pixtrela-postgres-dev
+    restart: unless-stopped
+    ports:
+      # Localhost only on the VPS — Cursor Cloud reaches it via SSH -L 5433.
+      - "127.0.0.1:${DEV_PG_PORT:-5433}:5432"
+    environment:
+      POSTGRES_USER: ${DEV_PG_USER:?set DEV_PG_USER in .env.db}
+      POSTGRES_PASSWORD: ${DEV_PG_PASSWORD:?set DEV_PG_PASSWORD in .env.db}
+      POSTGRES_DB: ${DEV_PG_DB:-pixtrela_dev}
+    volumes:
+      - pixtrela_pg_dev:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pixtrela_pg_prod:
+  pixtrela_pg_dev:

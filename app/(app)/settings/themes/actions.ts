@@ -1,8 +1,15 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
+
 import { auth } from "@/auth";
+import { mediaAssets } from "@/drizzle/schema";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import { getDb } from "@/lib/db/client";
+import { storeMedia } from "@/lib/media/store-media";
+import { updateRouteTheme as updateRouteThemeRepo } from "@/lib/repos/settings";
 import {
   routeThemeFormSchema,
   type RouteThemeFormInput,
@@ -39,29 +46,14 @@ async function assertCanManage(): Promise<void> {
 }
 
 function invalidateThemes(): void {
+  if (isDrizzleBackend()) {
+    revalidateTag("drizzle:route-themes");
+    return;
+  }
   revalidateStrapiTags(STRAPI_TAGS.routeThemes);
 }
 
-export async function uploadRouteThemeImage(formData: FormData): Promise<number> {
-  await assertCanManage();
-  const entry = formData.get("file");
-  if (!(entry instanceof Blob) || entry.size === 0) {
-    throw new Error("invalid");
-  }
-  const mimeType = entry.type || "image/jpeg";
-  const file =
-    entry instanceof File
-      ? entry
-      : new File([entry], "route-theme.jpg", { type: mimeType });
-  return strapiUpload(file);
-}
-
-export async function updateRouteTheme(
-  documentId: string,
-  raw: RouteThemeFormInput,
-): Promise<void> {
-  await assertCanManage();
-  const data = routeThemeFormSchema.parse(raw);
+function buildRouteThemePayload(data: RouteThemeFormInput) {
   const payload: Record<string, unknown> = {
     backgroundColor: data.backgroundColor?.trim()
       ? data.backgroundColor.trim()
@@ -101,6 +93,77 @@ export async function updateRouteTheme(
     payload.backgroundImage = null;
   } else if (data.backgroundImageId) {
     payload.backgroundImage = data.backgroundImageId;
+  }
+  return payload;
+}
+
+export async function uploadRouteThemeImage(
+  formData: FormData,
+): Promise<number | string> {
+  await assertCanManage();
+  const entry = formData.get("file");
+  if (!(entry instanceof Blob) || entry.size === 0) {
+    throw new Error("invalid");
+  }
+  const mimeType = entry.type || "image/jpeg";
+
+  if (isDrizzleBackend()) {
+    const buffer = Buffer.from(await entry.arrayBuffer());
+    const extension = mimeType.includes("png") ? "png" : "jpg";
+    const stored = await storeMedia({ bytes: buffer, mimeType, extension });
+    const db = getDb();
+    const [media] = await db
+      .insert(mediaAssets)
+      .values({
+        storageKey: stored.storageKey,
+        url: stored.url,
+        mimeType: stored.mimeType,
+        byteSize: stored.byteSize,
+      })
+      .returning({ id: mediaAssets.id });
+    return media.id;
+  }
+
+  const file =
+    entry instanceof File
+      ? entry
+      : new File([entry], "route-theme.jpg", { type: mimeType });
+  return strapiUpload(file);
+}
+
+export async function updateRouteTheme(
+  documentId: string,
+  raw: RouteThemeFormInput,
+): Promise<void> {
+  await assertCanManage();
+  const data = routeThemeFormSchema.parse(raw);
+  const payload = buildRouteThemePayload(data);
+
+  if (isDrizzleBackend()) {
+    await updateRouteThemeRepo({
+      id: documentId,
+      backgroundColor: payload.backgroundColor as string | null,
+      backgroundColorOpacity: payload.backgroundColorOpacity as number,
+      backgroundSize: payload.backgroundSize as string,
+      backgroundPosition: payload.backgroundPosition as string,
+      backgroundRepeat: payload.backgroundRepeat as string,
+      backgroundMotion: payload.backgroundMotion as string,
+      parallaxIntensity: payload.parallaxIntensity as number,
+      parallaxDirection: payload.parallaxDirection as string,
+      parallaxBleed: payload.parallaxBleed as number,
+      contentMarginMobile: payload.contentMarginMobile as string,
+      contentMarginDesktop: payload.contentMarginDesktop as string,
+      foregroundColor: payload.foregroundColor as string,
+      surfaceColor: payload.surfaceColor as string,
+      surfaceColorOpacity: payload.surfaceColorOpacity as number,
+      clearBackgroundImage: data.clearBackgroundImage,
+      backgroundImageMediaId:
+        typeof data.backgroundImageId === "string"
+          ? data.backgroundImageId
+          : undefined,
+    });
+    invalidateThemes();
+    return;
   }
 
   await strapiFetch(`/route-themes/${documentId}`, {

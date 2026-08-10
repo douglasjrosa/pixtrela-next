@@ -4,7 +4,10 @@ export const currencyFormSchema = z.object({
   name: z.string().min(1),
   title: z.string().min(1),
   pluralTitle: z.string().min(1),
-  iconMediaId: z.number().int().positive().nullable().optional(),
+  iconMediaId: z
+    .union([z.number().int().positive(), z.string().uuid()])
+    .nullable()
+    .optional(),
   currencyPerSecond: z.number().min(0),
 });
 

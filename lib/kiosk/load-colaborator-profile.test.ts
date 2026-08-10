@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 
 const strapiFetch = vi.fn();
 
+vi.mock("@/lib/db/backend", () => ({
+  isDrizzleBackend: () => false,
+}));
+
 vi.mock("@/lib/strapi", () => ({
   STRAPI_TAGS: { users: "strapi:users" },
   strapiFetch,

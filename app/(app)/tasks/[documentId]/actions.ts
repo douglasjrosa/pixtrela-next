@@ -1,10 +1,23 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
+
 import { auth } from "@/auth";
 import { normalizeSubTaskCreateValues } from "@/lib/business/subtask-create-fields";
 import { getNextSubTaskIndex, buildSubTaskIndexUpdates } from "@/lib/business/subtask-order";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTasks } from "@/lib/auth/permissions";
+import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import {
+  createSubTaskForTask,
+  deleteSubTaskById,
+  getSubTaskById,
+  listSubTaskIdsForTask,
+  listSubTasksWithRelationsForTask,
+  updateSubTaskFields,
+  updateSubTaskIndex,
+} from "@/lib/repos/tasks";
 import {
   subTaskFormSchema,
   type SubTaskFormInput,
@@ -50,6 +63,10 @@ function toStrapiPayload(
 }
 
 function invalidateSubTasks(): void {
+  if (isDrizzleBackend()) {
+    revalidateTag("drizzle:tasks");
+    return;
+  }
   revalidateStrapiTags(STRAPI_TAGS.subTasks, STRAPI_TAGS.tasks);
 }
 
@@ -68,9 +85,32 @@ interface SubTaskEntity {
   assignedTo?: { documentId: string }[] | null;
 }
 
+function mapDrizzleSubTaskToEntity(
+  row: Awaited<ReturnType<typeof listSubTasksWithRelationsForTask>>[number],
+): SubTaskEntity {
+  return {
+    documentId: row.id,
+    name: row.name,
+    qty: row.qty,
+    index: row.index,
+    expectedTime: row.expectedTime,
+    sharingType: row.sharingType,
+    maxSameTimeWorkers: row.maxSameTimeWorkers,
+    status: row.status,
+    activationStatus: fromDrizzleActivationStatus(row.activationStatus),
+    reasonForDisabling: row.reasonForDeactivation,
+    dependencies: row.dependencyIds,
+    assignedTo: row.assignedToIds.map((documentId) => ({ documentId })),
+  };
+}
+
 async function fetchSubTasksForTask(
   taskDocumentId: string,
 ): Promise<SubTaskEntity[]> {
+  if (isDrizzleBackend()) {
+    const rows = await listSubTasksWithRelationsForTask(taskDocumentId);
+    return rows.map(mapDrizzleSubTaskToEntity);
+  }
   const res = await strapiFetch<StrapiList<SubTaskEntity>>(
     "/sub-tasks",
     { strapiCache: { noStore: true } },
@@ -98,6 +138,11 @@ async function fetchSubTasksForTask(
 }
 
 async function fetchSubTaskIndex(documentId: string): Promise<number> {
+  if (isDrizzleBackend()) {
+    const subtask = await getSubTaskById(documentId);
+    if (!subtask) throw new Error("notFound");
+    return subtask.index;
+  }
   const res = await strapiFetch<{ data: { index: number } }>(
     `/sub-tasks/${documentId}`,
     { strapiCache: { noStore: true } },
@@ -107,6 +152,9 @@ async function fetchSubTaskIndex(documentId: string): Promise<number> {
 }
 
 async function fetchSubTaskIds(taskDocumentId: string): Promise<string[]> {
+  if (isDrizzleBackend()) {
+    return listSubTaskIdsForTask(taskDocumentId);
+  }
   const res = await strapiFetch<StrapiList<{ documentId: string }>>(
     "/sub-tasks",
     { strapiCache: { noStore: true } },
@@ -135,6 +183,22 @@ export async function createSubTask(
   );
   const indexes = subtasks.map((subtask) => subtask.index);
   const nextIndex = getNextSubTaskIndex(indexes.map((index) => ({ index })));
+
+  if (isDrizzleBackend()) {
+    const created = await createSubTaskForTask(taskDocumentId, data, nextIndex);
+    const insertAt = options?.insertAtIndex;
+    if (insertAt !== undefined) {
+      const orderedDocumentIds = [
+        ...subtasks.slice(0, insertAt).map((subtask) => subtask.documentId),
+        created.id,
+        ...subtasks.slice(insertAt).map((subtask) => subtask.documentId),
+      ];
+      await reorderSubTasks(taskDocumentId, orderedDocumentIds);
+      return;
+    }
+    invalidateSubTasks();
+    return;
+  }
 
   const created = await strapiFetch<{ data: { documentId: string } }>(
     "/sub-tasks",
@@ -169,6 +233,11 @@ export async function updateSubTask(
   await assertCanManage();
   const data = subTaskFormSchema.parse(raw);
   const currentIndex = await fetchSubTaskIndex(documentId);
+  if (isDrizzleBackend()) {
+    await updateSubTaskFields(documentId, taskDocumentId, data, currentIndex);
+    invalidateSubTasks();
+    return;
+  }
   await strapiFetch(`/sub-tasks/${documentId}`, {
     method: "PUT",
     strapiCache: { noStore: true },
@@ -197,6 +266,14 @@ export async function reorderSubTasks(
   }
 
   const updates = buildSubTaskIndexUpdates(orderedDocumentIds);
+  if (isDrizzleBackend()) {
+    for (const { documentId, index } of updates) {
+      await updateSubTaskIndex(documentId, index, taskDocumentId);
+    }
+    invalidateSubTasks();
+    return;
+  }
+
   for (const { documentId, index } of updates) {
     await strapiFetch(`/sub-tasks/${documentId}`, {
       method: "PUT",
@@ -209,6 +286,11 @@ export async function reorderSubTasks(
 
 export async function deleteSubTask(documentId: string): Promise<void> {
   await assertCanManage();
+  if (isDrizzleBackend()) {
+    await deleteSubTaskById(documentId);
+    invalidateSubTasks();
+    return;
+  }
   await strapiFetch(`/sub-tasks/${documentId}`, {
     method: "DELETE",
     strapiCache: { noStore: true },

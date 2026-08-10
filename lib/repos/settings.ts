@@ -1,0 +1,165 @@
+import { eq } from "drizzle-orm";
+
+import {
+  currencies,
+  currencyForSubtasks,
+  kioskSettings,
+  routeThemes,
+  taskAutomationSettings,
+} from "@/drizzle/schema";
+import { getDb, type Db } from "@/lib/db/client";
+
+export async function getKioskSettings(db: Db = getDb()) {
+  const [row] = await db.select().from(kioskSettings).limit(1);
+  return row ?? null;
+}
+
+export async function upsertKioskSettings(
+  sessionIdleSeconds: number,
+  db: Db = getDb(),
+) {
+  const existing = await getKioskSettings(db);
+  if (!existing) {
+    const [created] = await db
+      .insert(kioskSettings)
+      .values({ sessionIdleSeconds })
+      .returning();
+    return created;
+  }
+  const [updated] = await db
+    .update(kioskSettings)
+    .set({ sessionIdleSeconds, updatedAt: new Date() })
+    .where(eq(kioskSettings.id, existing.id))
+    .returning();
+  return updated;
+}
+
+export async function getTaskAutomationSettings(db: Db = getDb()) {
+  const [row] = await db.select().from(taskAutomationSettings).limit(1);
+  return row ?? null;
+}
+
+export async function listRouteThemes(db: Db = getDb()) {
+  return db.select().from(routeThemes).orderBy(routeThemes.label);
+}
+
+export async function createRouteTheme(
+  input: { routeKey: string; label: string },
+  db: Db = getDb(),
+) {
+  const [row] = await db
+    .insert(routeThemes)
+    .values({
+      routeKey: input.routeKey.trim(),
+      label: input.label.trim(),
+    })
+    .returning();
+  return row;
+}
+
+export async function getCurrencyForSubtasks(db: Db = getDb()) {
+  const [row] = await db
+    .select({
+      id: currencyForSubtasks.id,
+      currencyId: currencyForSubtasks.currencyId,
+      currencyName: currencies.name,
+      currencyTitle: currencies.title,
+      currencyPluralTitle: currencies.pluralTitle,
+      currencyPerSecond: currencies.currencyPerSecond,
+      iconMediaId: currencies.iconMediaId,
+    })
+    .from(currencyForSubtasks)
+    .innerJoin(currencies, eq(currencyForSubtasks.currencyId, currencies.id))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function upsertCurrencyForSubtasks(
+  currencyId: string | null,
+  db: Db = getDb(),
+) {
+  const [existing] = await db.select().from(currencyForSubtasks).limit(1);
+  if (!currencyId) {
+    if (existing) {
+      await db
+        .delete(currencyForSubtasks)
+        .where(eq(currencyForSubtasks.id, existing.id));
+    }
+    return null;
+  }
+  if (!existing) {
+    const [created] = await db
+      .insert(currencyForSubtasks)
+      .values({ currencyId })
+      .returning();
+    return created;
+  }
+  const [updated] = await db
+    .update(currencyForSubtasks)
+    .set({ currencyId, updatedAt: new Date() })
+    .where(eq(currencyForSubtasks.id, existing.id))
+    .returning();
+  return updated;
+}
+
+const PAGE_MARGIN_INDEX: Record<string, number> = {
+  none: 0,
+  sm: 1,
+  md: 2,
+  lg: 3,
+  xl: 4,
+};
+
+export type UpdateRouteThemeInput = {
+  id: string;
+  backgroundColor: string | null;
+  backgroundColorOpacity: number;
+  backgroundSize: string;
+  backgroundPosition: string;
+  backgroundRepeat: string;
+  backgroundMotion: string;
+  parallaxIntensity: number;
+  parallaxDirection: string;
+  parallaxBleed: number;
+  contentMarginMobile: string;
+  contentMarginDesktop: string;
+  foregroundColor: string;
+  surfaceColor: string;
+  surfaceColorOpacity: number;
+  backgroundImageMediaId?: string | null;
+  clearBackgroundImage?: boolean;
+};
+
+export async function updateRouteTheme(
+  input: UpdateRouteThemeInput,
+  db: Db = getDb(),
+): Promise<void> {
+  const patch: Partial<typeof routeThemes.$inferInsert> & {
+    updatedAt: Date;
+  } = {
+    backgroundColor: input.backgroundColor,
+    backgroundColorOpacity: input.backgroundColorOpacity,
+    backgroundSize: input.backgroundSize,
+    backgroundPosition: input.backgroundPosition,
+    backgroundRepeat: input.backgroundRepeat,
+    backgroundMotion: input.backgroundMotion,
+    parallaxIntensity: input.parallaxIntensity,
+    parallaxDirection: input.parallaxDirection,
+    parallaxBleed: input.parallaxBleed,
+    contentMarginMobile: PAGE_MARGIN_INDEX[input.contentMarginMobile] ?? 2,
+    contentMarginDesktop: PAGE_MARGIN_INDEX[input.contentMarginDesktop] ?? 3,
+    foregroundColor: input.foregroundColor,
+    surfaceColor: input.surfaceColor,
+    surfaceColorOpacity: input.surfaceColorOpacity,
+    updatedAt: new Date(),
+  };
+  if (input.clearBackgroundImage) {
+    patch.backgroundImageMediaId = null;
+  } else if (input.backgroundImageMediaId) {
+    patch.backgroundImageMediaId = input.backgroundImageMediaId;
+  }
+  await db
+    .update(routeThemes)
+    .set(patch)
+    .where(eq(routeThemes.id, input.id));
+}

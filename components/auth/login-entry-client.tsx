@@ -45,6 +45,17 @@ async function establishSessionFromJwt(jwt: string): Promise<boolean> {
   return !result?.error;
 }
 
+async function establishSessionFromLoginTicket(
+  loginTicket: string,
+): Promise<boolean> {
+  const result = await signIn("credentials", {
+    loginTicket,
+    redirect: false,
+    callbackUrl: "/",
+  });
+  return !result?.error;
+}
+
 export function LoginEntryClient() {
   const t = useTranslations("auth");
   const router = useRouter();
@@ -87,12 +98,21 @@ export function LoginEntryClient() {
     setStep("choose");
   }, [clearNoneMessageTimer]);
 
-  const finishWithJwt = useCallback(
-    async (jwt: string, welcome?: AuthWelcomeProfile | null) => {
+  const finishWithSession = useCallback(
+    async (params: {
+      jwt?: string;
+      loginTicket?: string;
+      welcome?: AuthWelcomeProfile | null;
+    }) => {
       if (finishingRef.current) return;
       finishingRef.current = true;
       setPending(true);
-      const ok = await establishSessionFromJwt(jwt);
+      let ok = false;
+      if (params.jwt) {
+        ok = await establishSessionFromJwt(params.jwt);
+      } else if (params.loginTicket) {
+        ok = await establishSessionFromLoginTicket(params.loginTicket);
+      }
       if (!ok) {
         finishingRef.current = false;
         setPending(false);
@@ -100,8 +120,8 @@ export function LoginEntryClient() {
         setStep("choose");
         return;
       }
-      if (welcome) {
-        stashWelcomePayload(welcome);
+      if (params.welcome) {
+        stashWelcomePayload(params.welcome);
       }
       const session = await getSession();
       const destination = resolvePostLoginDestination(
@@ -162,7 +182,11 @@ export function LoginEntryClient() {
             identifyingRef.current = false;
             return;
           }
-          await finishWithJwt(result.jwt, result.welcome);
+          await finishWithSession({
+            jwt: result.jwt || undefined,
+            loginTicket: result.loginTicket,
+            welcome: result.welcome,
+          });
         })();
       },
     });
@@ -171,7 +195,7 @@ export function LoginEntryClient() {
       cancelled = true;
       stop();
     };
-  }, [step, t, clearNoneMessageTimer, finishWithJwt]);
+  }, [step, t, clearNoneMessageTimer, finishWithSession]);
 
   useEffect(() => {
     return () => {
@@ -198,9 +222,13 @@ export function LoginEntryClient() {
         return;
       }
       setSelectedMember(result.match);
-      await finishWithJwt(result.jwt, result.welcome);
+      await finishWithSession({
+        jwt: result.jwt || undefined,
+        loginTicket: result.loginTicket,
+        welcome: result.welcome,
+      });
     })();
-  }, [finishWithJwt, selectedMember]);
+  }, [finishWithSession, selectedMember]);
 
   async function handleProbeReady(descriptor: number[]): Promise<void> {
     if (finishingRef.current || pending) return;
@@ -224,7 +252,11 @@ export function LoginEntryClient() {
       clearNoneMessageTimer();
       setSelectedMember(result.match);
       setUnidentifiedMessage(null);
-      await finishWithJwt(result.jwt, result.welcome);
+      await finishWithSession({
+        jwt: result.jwt || undefined,
+        loginTicket: result.loginTicket,
+        welcome: result.welcome,
+      });
       return;
     }
 
@@ -262,7 +294,11 @@ export function LoginEntryClient() {
       setErrorKey(result.error);
       return;
     }
-    await finishWithJwt(result.jwt, result.welcome);
+    await finishWithSession({
+      jwt: result.jwt || undefined,
+      loginTicket: result.loginTicket,
+      welcome: result.welcome,
+    });
   }
 
   if (step === "username") {

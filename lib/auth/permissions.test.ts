@@ -11,6 +11,7 @@ import {
   canDeleteTasks,
   canExchange,
   canManageAwards,
+  canViewAwards,
   canManageTasks,
   canManageTemplates,
   canManageTeams,
@@ -91,6 +92,22 @@ describe("canManageAwards", () => {
   it("allows admin only", () => {
     expect(canManageAwards("admin")).toBe(true);
     expect(canManageAwards("manager")).toBe(false);
+  });
+});
+
+describe("canViewAwards", () => {
+  it("allows manager and admin", () => {
+    expect(canViewAwards("admin")).toBe(true);
+    expect(canViewAwards("manager")).toBe(true);
+    expect(canViewAwards("leader")).toBe(false);
+  });
+});
+
+describe("canAccessRoute teams", () => {
+  it("allows teams only for admin and manager", () => {
+    expect(canAccessRoute("admin", "/teams")).toBe(true);
+    expect(canAccessRoute("manager", "/teams")).toBe(true);
+    expect(canAccessRoute("leader", "/teams")).toBe(false);
   });
 });
 

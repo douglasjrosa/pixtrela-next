@@ -14,6 +14,7 @@
   },
   "common": {
     "loading": "Carregando...",
+    "retry": "Tentar novamente",
     "save": "Salvar",
     "cancel": "Cancelar",
     "confirm": "Confirmar",
@@ -164,6 +165,7 @@
   "kanban": {
     "title": "Quadro de produção",
     "empty": "Sem tarefas nesta etapa.",
+    "noSteps": "Nenhuma etapa cadastrada. Configure as etapas em Configurações.",
     "subtasksEmpty": "Nenhuma subtarefa nesta tarefa.",
     "createTitle": "Nova subtarefa",
     "addSubtask": "Adicionar subtarefa",
@@ -248,7 +250,9 @@
     "starsRemaining": "Faltam {count} Estrelas",
     "redeemCelebration": "Você conquistou {award}",
     "daysRemaining": "Faltam {days} dias para resgatar",
-    "imageAlt": "Imagem do prêmio {title}"
+    "imageAlt": "Imagem do prêmio {title}",
+    "emptyAwards": "Nenhum prêmio disponível no momento.",
+    "redeemFailed": "Não foi possível concluir a troca. Tente novamente."
   },
   "users": {
     "title": "Usuários",
@@ -276,6 +280,8 @@
     "saved": "Usuário salvo.",
     "deactivated": "Usuário desativado.",
     "deleted": "Usuário excluído.",
+    "deactivateTitle": "Desativar usuário",
+    "deactivateConfirm": "Desativar este usuário? Ele não poderá mais entrar.",
     "deleteTitle": "Excluir usuário",
     "deleteConfirm": "Excluir permanentemente este usuário?",
     "searchByName": "Buscar por nome",
@@ -358,7 +364,8 @@
     "saved": "Etapa salva.",
     "deleted": "Etapa excluída.",
     "deleteTitle": "Excluir etapa",
-    "deleteConfirm": "Excluir permanentemente esta etapa?"
+    "deleteConfirm": "Excluir permanentemente esta etapa?",
+    "empty": "Nenhuma etapa cadastrada."
   },
   "subtasks": {
     "title": "Subtarefas",
@@ -440,7 +447,8 @@
     "deleteTitle": "Excluir equipe",
     "deleteConfirm": "Excluir permanentemente esta equipe?",
     "searchByName": "Buscar por nome",
-    "empty": "Nenhuma equipe encontrada."
+    "empty": "Nenhuma equipe encontrada.",
+    "listLoading": "Carregando equipes..."
   },
   "awards": {
     "title": "Prêmios",
@@ -465,7 +473,8 @@
     "deleteTitle": "Excluir prêmio",
     "deleteConfirm": "Excluir permanentemente este prêmio?",
     "searchByName": "Buscar por nome",
-    "empty": "Nenhum prêmio encontrado."
+    "empty": "Nenhum prêmio encontrado.",
+    "listLoading": "Carregando prêmios..."
   },
   "settings": {
     "title": "Configurações",
@@ -695,6 +704,8 @@
   "errors": {
     "generic": "Algo deu errado. Tente novamente.",
     "forbidden": "Você não tem permissão para acessar este recurso.",
+    "forbiddenTitle": "Acesso negado",
+    "backHome": "Voltar ao início",
     "notFound": "Não encontrado."
   }
 }

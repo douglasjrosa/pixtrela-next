@@ -8,6 +8,11 @@ import { TemplateEditor } from "@/components/templates/template-editor";
 import { mapTemplateComponentsToRows } from "@/lib/business/template-subtask-map";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTemplates } from "@/lib/auth/permissions";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import {
+  findTemplateById,
+  listTemplateSubTasks,
+} from "@/lib/repos/templates";
 import type { TemplateSubTaskComponentInput } from "@/lib/schemas/template-task";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
@@ -29,6 +34,27 @@ interface PageProps {
 async function loadTemplate(
   documentId: string,
 ): Promise<TemplateEntity | null> {
+  if (isDrizzleBackend()) {
+    const template = await findTemplateById(documentId);
+    if (!template || !template.active) return null;
+    const subTasks = await listTemplateSubTasks(documentId);
+    return {
+      documentId: template.id,
+      name: template.name,
+      code: template.code,
+      subTask: subTasks.map((row) => ({
+        name: row.name,
+        qty: row.qty,
+        sharingType: row.sharingType,
+        maxSameTimeWorkers: row.maxSameTimeWorkers,
+        index: row.index,
+        expectedTime: row.expectedTime,
+        dependencies:
+          row.dependencyIndexes.length > 0 ? row.dependencyIndexes : null,
+      })),
+    };
+  }
+
   try {
     const res = await strapiFetch<StrapiOne<TemplateEntity>>(
       `/template-tasks/${documentId}`,

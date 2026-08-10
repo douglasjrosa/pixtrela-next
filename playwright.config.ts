@@ -6,8 +6,10 @@ loadEnvConfig(process.cwd());
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
+  // Live Next+Strapi create flows (template copy) are slow; keep load modest.
+  workers: process.env.CI ? 1 : 2,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 2 : 1,
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",

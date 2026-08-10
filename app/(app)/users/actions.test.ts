@@ -6,12 +6,78 @@ const strapiUpload = vi.fn();
 const revalidateStrapiTags = vi.fn();
 
 vi.mock("@/auth", () => ({ auth }));
+vi.mock("@/lib/db/backend", () => ({
+  isDrizzleBackend: () => false,
+}));
 vi.mock("@/lib/strapi", () => ({
   STRAPI_TAGS: { users: "strapi:users" },
   strapiFetch,
 }));
 vi.mock("@/lib/strapi/revalidate", () => ({ revalidateStrapiTags }));
 vi.mock("@/lib/strapi/upload", () => ({ strapiUpload }));
+
+describe("deactivateUser", () => {
+  beforeEach(() => {
+    auth.mockReset();
+    strapiFetch.mockReset();
+    revalidateStrapiTags.mockReset();
+    vi.resetModules();
+  });
+
+  it("blocks a manageable user for manager", async () => {
+    auth.mockResolvedValue({ user: { role: "manager" }, jwt: "token" });
+    strapiFetch
+      .mockResolvedValueOnce([{ id: 10, roleType: "colaborator" }])
+      .mockResolvedValueOnce({});
+
+    const { deactivateUser } = await import("./actions");
+    await deactivateUser(10);
+
+    expect(strapiFetch).toHaveBeenLastCalledWith(
+      "/users/10",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ blocked: true }),
+      }),
+    );
+    expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:users");
+  });
+
+  it("allows leader to deactivate colaborator", async () => {
+    auth.mockResolvedValue({ user: { role: "leader" }, jwt: "token" });
+    strapiFetch
+      .mockResolvedValueOnce([{ id: 11, roleType: "colaborator" }])
+      .mockResolvedValueOnce({});
+
+    const { deactivateUser } = await import("./actions");
+    await deactivateUser(11);
+
+    expect(strapiFetch).toHaveBeenLastCalledWith(
+      "/users/11",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ blocked: true }),
+      }),
+    );
+  });
+
+  it("rejects deactivating a role the actor cannot manage", async () => {
+    auth.mockResolvedValue({ user: { role: "manager" }, jwt: "token" });
+    strapiFetch.mockResolvedValueOnce([{ id: 12, roleType: "manager" }]);
+
+    const { deactivateUser } = await import("./actions");
+    await expect(deactivateUser(12)).rejects.toThrow("forbidden");
+    expect(strapiFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects when actor cannot view users", async () => {
+    auth.mockResolvedValue({ user: { role: "colaborator" }, jwt: "token" });
+
+    const { deactivateUser } = await import("./actions");
+    await expect(deactivateUser(10)).rejects.toThrow("forbidden");
+    expect(strapiFetch).not.toHaveBeenCalled();
+  });
+});
 
 describe("updateUserImage", () => {
   beforeEach(() => {

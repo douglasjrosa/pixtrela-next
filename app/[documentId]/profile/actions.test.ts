@@ -2,9 +2,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMock = vi.fn();
 const fetchMock = vi.fn();
+const isDrizzleBackend = vi.fn(() => false);
+const changeUserPassword = vi.fn();
+const updateUserPersonal = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: () => authMock(),
+}));
+
+vi.mock("@/lib/db/backend", () => ({
+  isDrizzleBackend: () => isDrizzleBackend(),
+}));
+
+vi.mock("@/lib/repos/users", () => ({
+  changeUserPassword: (...args: unknown[]) => changeUserPassword(...args),
+  updateUserPersonal: (...args: unknown[]) => updateUserPersonal(...args),
+  findUserAvatarUrl: vi.fn(),
+  findUserById: vi.fn(),
+  setUserAvatarMedia: vi.fn(),
 }));
 
 vi.mock("@/lib/strapi", () => ({
@@ -93,5 +108,28 @@ describe("profile actions", () => {
       expect.stringContaining("/api/profile/personal"),
       expect.objectContaining({ method: "PUT" }),
     );
+  });
+
+  it("changes password via drizzle repo", async () => {
+    isDrizzleBackend.mockReturnValue(true);
+    authMock.mockResolvedValue({
+      user: { id: "col-1", role: "colaborator" },
+    });
+    changeUserPassword.mockResolvedValue("ok");
+
+    const { changeOwnPassword } = await import(
+      "@/app/[documentId]/profile/actions"
+    );
+    const result = await changeOwnPassword({
+      currentPassword: "oldpass1",
+      password: "newpass1",
+      passwordConfirmation: "newpass1",
+    });
+    expect(result).toEqual({ ok: true });
+    expect(changeUserPassword).toHaveBeenCalledWith({
+      id: "col-1",
+      currentPassword: "oldpass1",
+      newPassword: "newpass1",
+    });
   });
 });

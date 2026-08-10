@@ -1,4 +1,6 @@
+import { isDrizzleBackend } from "@/lib/db/backend";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import { listRouteThemes as listRouteThemesRepo } from "@/lib/repos/settings";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import {
@@ -36,7 +38,6 @@ import {
   type RouteThemeKey,
   type RouteThemeView,
 } from "@/lib/themes/match-route-theme";
-
 interface StrapiList<T> {
   data: T[];
 }
@@ -137,7 +138,77 @@ function mapTheme(entity: RouteThemeEntity): RouteThemeView | null {
   };
 }
 
+async function loadDrizzleRouteThemes(): Promise<RouteThemeView[]> {
+  const rows = await listRouteThemesRepo();
+  const themes: RouteThemeView[] = [];
+  for (const row of rows) {
+    if (!isRouteThemeKey(row.routeKey)) continue;
+    themes.push({
+      documentId: row.id,
+      routeKey: row.routeKey,
+      label: row.label,
+      backgroundColor: row.backgroundColor ?? null,
+      backgroundColorOpacity: normalizeOpacity(
+        row.backgroundColorOpacity ?? DEFAULT_BACKGROUND_COLOR_OPACITY,
+      ),
+      backgroundImageUrl: null,
+      backgroundSize: asEnum(
+        row.backgroundSize,
+        BACKGROUND_SIZES,
+        DEFAULT_BACKGROUND_SIZE,
+      ) as BackgroundSize,
+      backgroundPosition: asEnum(
+        row.backgroundPosition,
+        BACKGROUND_POSITIONS,
+        DEFAULT_BACKGROUND_POSITION,
+      ) as BackgroundPosition,
+      backgroundRepeat: asEnum(
+        row.backgroundRepeat,
+        BACKGROUND_REPEATS,
+        DEFAULT_BACKGROUND_REPEAT,
+      ) as BackgroundRepeat,
+      backgroundMotion: asEnum(
+        row.backgroundMotion,
+        BACKGROUND_MOTIONS,
+        DEFAULT_BACKGROUND_MOTION,
+      ) as BackgroundMotion,
+      parallaxIntensity: normalizeParallaxIntensity(
+        row.parallaxIntensity ?? DEFAULT_PARALLAX_INTENSITY,
+      ),
+      parallaxDirection: asEnum(
+        row.parallaxDirection,
+        PARALLAX_DIRECTIONS,
+        DEFAULT_PARALLAX_DIRECTION,
+      ) as ParallaxDirection,
+      parallaxBleed: normalizeParallaxBleed(
+        row.parallaxBleed ?? DEFAULT_PARALLAX_BLEED,
+      ),
+      contentMarginMobile: DEFAULT_PAGE_MARGIN_MOBILE,
+      contentMarginDesktop: DEFAULT_PAGE_MARGIN_DESKTOP,
+      foregroundColor: normalizeForegroundColor(
+        row.foregroundColor ?? DEFAULT_FOREGROUND_COLOR,
+      ),
+      surfaceColor: normalizeSurfaceColor(
+        row.surfaceColor ?? DEFAULT_SURFACE_COLOR,
+      ),
+      surfaceColorOpacity: normalizeOpacity(
+        row.surfaceColorOpacity ?? DEFAULT_SURFACE_COLOR_OPACITY,
+      ),
+    });
+  }
+  return themes;
+}
+
 export async function loadRouteThemes(): Promise<RouteThemeView[]> {
+  if (isDrizzleBackend()) {
+    try {
+      return await loadDrizzleRouteThemes();
+    } catch (error) {
+      rethrowIfNavigationError(error);
+      return [];
+    }
+  }
+
   try {
     const res = await strapiFetch<StrapiList<RouteThemeEntity>>(
       "/route-themes",

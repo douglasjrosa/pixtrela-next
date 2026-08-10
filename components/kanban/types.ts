@@ -42,6 +42,8 @@ export interface BoardSubTaskSummary {
   name: string;
   status: SubTaskFormInput["status"];
   sharingType: "qty" | "duration";
+  /** Base piece count on the sub-task (before task.qty scaling). */
+  qty: number;
   expectedTime: number;
   timeSpent: number;
   openActivityStartedAts: string[];

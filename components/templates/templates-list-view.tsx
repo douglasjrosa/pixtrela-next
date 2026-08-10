@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 
+import { ListEmptyMessage } from "@/components/ui/list-empty-message";
+
 import { TemplateListRowView } from "./template-list-row";
 import type { TemplateListRow } from "./types";
 
@@ -13,9 +15,7 @@ export function TemplatesListView({ templates }: TemplatesListViewProps) {
   const tTemplates = useTranslations("templates");
 
   if (templates.length === 0) {
-    return (
-      <p className="text-muted-foreground py-6 text-sm">{tTemplates("empty")}</p>
-    );
+    return <ListEmptyMessage>{tTemplates("empty")}</ListEmptyMessage>;
   }
 
   return (

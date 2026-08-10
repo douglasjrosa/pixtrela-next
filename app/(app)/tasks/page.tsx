@@ -1,7 +1,7 @@
 import { Suspense } from "react";
-import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
+import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { TasksListSkeleton } from "@/components/tasks/tasks-list-skeleton";
 import { TasksListWithLoadMore } from "@/components/tasks/tasks-list-with-load-more";
 import { TasksPageHeader } from "@/components/tasks/tasks-page-header";
@@ -13,7 +13,9 @@ import {
 } from "@/components/layout/app-page-layout";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTasks } from "@/lib/auth/permissions";
+import { isDrizzleBackend } from "@/lib/db/backend";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import { listSteps as listStepsRepo } from "@/lib/repos/steps";
 import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { loadTaskListPage } from "@/lib/tasks/load-task-list-page";
@@ -36,6 +38,14 @@ interface TasksPageProps {
 }
 
 async function loadSteps(): Promise<StepOption[]> {
+  if (isDrizzleBackend()) {
+    const rows = await listStepsRepo();
+    return rows.map((step) => ({
+      documentId: step.id,
+      name: step.name,
+    }));
+  }
+
   try {
     const res = await strapiFetch<StrapiList<StepEntity>>(
       "/steps",
@@ -81,16 +91,11 @@ async function TasksListSection({
 }
 
 export default async function TasksPage({ searchParams }: TasksPageProps) {
-  const t = await getTranslations("errors");
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
 
   if (!canManageTasks(role)) {
-    return (
-      <section className="p-6">
-        <p className="text-destructive">{t("forbidden")}</p>
-      </section>
-    );
+    return <ForbiddenMessage />;
   }
 
   const params = await searchParams;

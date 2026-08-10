@@ -115,4 +115,43 @@ describe("LoginEntryClient", () => {
       expect(replace).toHaveBeenCalledWith("/u1");
     });
   });
+
+  it("establishes a session from loginTicket when jwt is empty", async () => {
+    const user = userEvent.setup();
+    loginByCode.mockResolvedValue({
+      ok: true,
+      jwt: "",
+      loginTicket: "ticket-abc",
+      user: {
+        id: 0,
+        documentId: "u2",
+        username: "code.1111",
+        email: null,
+        name: "Demo",
+        roleType: "manager",
+      },
+    });
+    signIn.mockResolvedValue({ error: null });
+    getSession.mockResolvedValue({
+      user: { id: "u2", role: "manager" },
+    });
+
+    renderWithIntl(<LoginEntryClient />);
+    await user.click(screen.getByRole("button", { name: "Código e senha" }));
+    await user.type(screen.getByLabelText("Código"), "1111");
+    await user.type(screen.getByLabelText("Senha"), "111111");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    await waitFor(() => {
+      expect(signIn).toHaveBeenCalledWith(
+        "credentials",
+        expect.objectContaining({
+          loginTicket: "ticket-abc",
+          redirect: false,
+          callbackUrl: "/",
+        }),
+      );
+      expect(replace).toHaveBeenCalledWith("/");
+    });
+  });
 });

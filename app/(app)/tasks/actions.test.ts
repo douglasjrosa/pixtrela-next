@@ -7,6 +7,10 @@ vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "manager" } })),
 }));
 
+vi.mock("@/lib/db/backend", () => ({
+  isDrizzleBackend: () => false,
+}));
+
 vi.mock("@/lib/strapi", () => ({
   strapiFetch,
   STRAPI_TAGS: { tasks: "strapi:tasks" },

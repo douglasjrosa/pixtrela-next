@@ -29,4 +29,11 @@ describe("toBrowserStrapiMediaUrl", () => {
     const proxy = "/api/strapi-media?path=%2Fuploads%2Fa.jpg";
     expect(toBrowserStrapiMediaUrl(proxy)).toBe(proxy);
   });
+
+  it("passes through local drizzle media URLs", () => {
+    expect(toBrowserStrapiMediaUrl("/api/media/abc.jpg")).toBe(
+      "/api/media/abc.jpg",
+    );
+    expect(toBrowserStrapiMediaUrl("photo.webp")).toBe("/api/media/photo.webp");
+  });
 });

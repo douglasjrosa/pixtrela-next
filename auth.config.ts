@@ -74,18 +74,18 @@ export const authConfig = {
     },
     jwt({ token, user }) {
       if (user) {
-        token.jwt = user.jwt;
+        token.jwt = user.jwt ?? "";
         token.role = user.role;
         token.id = user.id;
       }
       return token;
     },
     session({ session, token }) {
-      if (!token.jwt || !token.role) {
+      if (!token.role || !token.id) {
         return session;
       }
 
-      session.jwt = token.jwt as string;
+      session.jwt = typeof token.jwt === "string" ? token.jwt : "";
       if (session.user) {
         session.user.role = token.role as string;
         session.user.id = token.id as string;

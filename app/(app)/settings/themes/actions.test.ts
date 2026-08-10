@@ -6,6 +6,9 @@ const revalidateStrapiTags = vi.fn();
 const strapiUpload = vi.fn();
 
 vi.mock("@/auth", () => ({ auth: () => auth() }));
+vi.mock("@/lib/db/backend", () => ({
+  isDrizzleBackend: () => false,
+}));
 vi.mock("@/lib/strapi", () => ({
   STRAPI_TAGS: { routeThemes: "strapi:route-themes" },
   strapiFetch: (...args: unknown[]) => strapiFetch(...args),

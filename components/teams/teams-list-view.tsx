@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 
+import { ListEmptyMessage } from "@/components/ui/list-empty-message";
+
 import { TeamListRow } from "./team-list-row";
 import type { TeamRow } from "./types";
 
@@ -14,9 +16,7 @@ export function TeamsListView({ teams, onOpen }: TeamsListViewProps) {
   const tTeams = useTranslations("teams");
 
   if (teams.length === 0) {
-    return (
-      <p className="text-muted-foreground py-6 text-sm">{tTeams("empty")}</p>
-    );
+    return <ListEmptyMessage>{tTeams("empty")}</ListEmptyMessage>;
   }
 
   return (

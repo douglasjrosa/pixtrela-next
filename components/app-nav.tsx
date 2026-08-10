@@ -8,7 +8,7 @@ import { useTranslations } from "next-intl";
 
 import { AppNavMobileMenu } from "@/components/app-nav-mobile-menu";
 import { Button } from "@/components/ui/button";
-import { navItemsForRole, type Role } from "@/lib/auth/nav";
+import { homeHrefForRole, navItemsForRole, type Role } from "@/lib/auth/nav";
 import {
   resolveNavLayoutMode,
   type NavLayoutMode,
@@ -22,6 +22,7 @@ export function AppNav() {
   const role = (session?.user?.role ?? "colaborator") as Role;
   const userId = session?.user?.id;
   const items = navItemsForRole(role, { userId });
+  const homeHref = homeHrefForRole(role, userId);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [layoutMode, setLayoutMode] = useState<NavLayoutMode>("desktop");
@@ -91,7 +92,7 @@ export function AppNav() {
           className={`flex items-center gap-3 px-4 ${APP_NAV_HEIGHT_CLASS}`}
           aria-label={t("app.name")}
         >
-          <Link href="/" className="shrink-0 font-bold">
+          <Link href={homeHref} className="shrink-0 font-bold">
             {t("app.name")}
           </Link>
 

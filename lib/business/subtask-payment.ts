@@ -1,6 +1,6 @@
 /**
  * Potential currency a sub-task can generate when completed.
- * Matches Strapi `calculateCurrencyAmount` pool size.
+ * Matches Strapi pool size: expectedTime × currencyPerSecond.
  */
 export function calculateSubtaskPayment(
   expectedTime: number,
@@ -34,28 +34,36 @@ export type ColaboratorEarningsInput = {
   totalQty: number;
   expectedTime: number;
   currencyPerSecond: number;
+  /**
+   * Target pieces for qty sharing (`subTask.qty * task.qty`).
+   * Falls back to `totalQty` when omitted (incomplete preview).
+   */
+  targetQty?: number;
 };
 
 /**
- * Collaborator share of the sub-task currency pool (ceil), by duration or qty.
- * Matches Strapi duration credits; qty uses pool share by pieces produced.
+ * Collaborator earnings preview aligned with Strapi work-currency:
+ * - duration: ceil share of expectedTime × rate by time spent
+ * - qty: pieces × (expectedTime / targetQty) × rate (no ceil)
  */
 export function calculateColaboratorEarnings(
   input: ColaboratorEarningsInput,
 ): number {
-  const pool = calculateSubtaskPayment(
-    input.expectedTime,
-    input.currencyPerSecond,
-  );
-  if (pool <= 0) return 0;
+  const rate = Math.max(0, input.currencyPerSecond);
+  const expected = Math.max(0, input.expectedTime);
+  if (rate <= 0 || expected <= 0) return 0;
 
   if (input.sharingType === "qty") {
-    const totalQty = Math.max(0, input.totalQty);
-    if (totalQty <= 0) return 0;
-    const qty = Math.max(0, input.colaboratorQty);
-    return Math.ceil((qty / totalQty) * pool);
+    const pieces = Math.max(0, Math.floor(Number(input.colaboratorQty) || 0));
+    if (pieces <= 0) return 0;
+    const target = Math.max(
+      1,
+      Math.floor(Number(input.targetQty ?? input.totalQty) || 0) || 1,
+    );
+    return pieces * (expected / target) * rate;
   }
 
+  const pool = expected * rate;
   const totalDuration = Math.max(0, input.totalDurationSec);
   if (totalDuration <= 0) return 0;
   const duration = Math.max(0, input.colaboratorDurationSec);

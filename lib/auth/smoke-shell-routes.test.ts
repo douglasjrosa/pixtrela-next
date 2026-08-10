@@ -11,8 +11,15 @@ describe("smokeShellHrefsForRole", () => {
     expect(hrefs).not.toContain("/settings/steps");
   });
 
-  it("returns only panel for colaborator nav", () => {
+  it("returns panel root for colaborator without userId", () => {
     expect(smokeShellHrefsForRole("colaborator")).toEqual(["/"]);
+  });
+
+  it("returns private home routes for colaborator with userId", () => {
+    expect(smokeShellHrefsForRole("colaborator", "col-1")).toEqual([
+      "/col-1",
+      "/col-1/profile",
+    ]);
   });
 
   it("returns kiosk home for kiosk role", () => {

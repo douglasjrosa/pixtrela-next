@@ -7,6 +7,10 @@ vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "jwt" })),
 }));
 
+vi.mock("@/lib/db/backend", () => ({
+  isDrizzleBackend: () => false,
+}));
+
 vi.mock("@/lib/strapi", () => ({
   STRAPI_TAGS: {
     currencies: "strapi:currencies",
@@ -93,29 +97,6 @@ describe("settings/actions", () => {
       }),
     );
     expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:kiosk-setting");
-  });
-
-  it("updateCurrencyRates PUTs each currency document path", async () => {
-    mockStrapiFetch({
-      "PUT /currencies/cur-1": { data: { documentId: "cur-1" } },
-      "PUT /currencies/cur-2": { data: { documentId: "cur-2" } },
-    });
-
-    const { updateCurrencyRates } = await import("./actions");
-    await updateCurrencyRates([
-      { documentId: "cur-1", currencyPerSecond: 2 },
-      { documentId: "cur-2", currencyPerSecond: 0.75 },
-    ]);
-
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/currencies/cur-1",
-      expect.objectContaining({ method: "PUT" }),
-    );
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/currencies/cur-2",
-      expect.objectContaining({ method: "PUT" }),
-    );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:currencies");
   });
 
   it("updateCurrencyForSubtasks PUTs single-type path", async () => {

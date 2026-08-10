@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 
-import { redirectToLogin } from "@/lib/auth/session";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import { isAuthenticatedSession, redirectToLogin } from "@/lib/auth/session";
 import { buildStrapiQuery, type StrapiQueryParams } from "./strapi/query";
 
 const STRAPI_URL = process.env.STRAPI_URL ?? "http://127.0.0.1:1337";
@@ -31,6 +32,10 @@ export async function strapiFetch<T>(
   init?: StrapiFetchInit,
   query?: StrapiQueryParams,
 ): Promise<T> {
+  // Cutover guard: block Strapi HTTP when fallback is disabled.
+  const { assertStrapiHttpAllowed } = await import("./strapi/migration-guard");
+  assertStrapiHttpAllowed();
+
   const session = await auth();
   const {
     strapiCache,
@@ -42,8 +47,17 @@ export async function strapiFetch<T>(
   headers.set("Content-Type", "application/json");
 
   const jwt = session?.jwt;
-  if (requireAuth && !jwt) {
-    redirectToLogin();
+  if (requireAuth) {
+    if (!isAuthenticatedSession(session)) {
+      redirectToLogin();
+    }
+    // Drizzle sessions have no Strapi JWT — callers must use the Drizzle DAL.
+    if (!jwt && isDrizzleBackend()) {
+      throw new Error(`strapiUnavailable:drizzleSession (${path})`);
+    }
+    if (!jwt) {
+      redirectToLogin();
+    }
   }
   if (jwt) {
     headers.set("Authorization", `Bearer ${jwt}`);
@@ -65,7 +79,15 @@ export async function strapiFetch<T>(
     requestInit.cache = "no-store";
   }
 
-  const response = await fetch(url, requestInit);
+  let response: Response;
+  try {
+    response = await fetch(url, requestInit);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "network error";
+    throw new Error(`Strapi request failed (network): ${path}: ${message}`);
+  }
+
   if (response.status === 401 && jwt && redirectOnUnauthorized) {
     redirectToLogin();
   }

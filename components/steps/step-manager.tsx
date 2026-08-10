@@ -225,38 +225,42 @@ export function StepManager({
         </p>
       ) : null}
 
-      <DndContext
-        id={STEP_DND_CONTEXT_ID}
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left">
-              <th className="w-10 py-2" aria-hidden />
-              <th className="py-2">{tSteps("name")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <SortableContext
-              items={orderedSteps.map((step) => step.documentId)}
-              strategy={verticalListSortingStrategy}
-            >
-              {orderedSteps.map((step) => (
-                <SortableStepRow
-                  key={step.documentId}
-                  step={step}
-                  dragLabel={tSteps("dragToReorder")}
-                  openLabel={tSteps("openStep")}
-                  disabled={isPending}
-                  onOpen={openEdit}
-                />
-              ))}
-            </SortableContext>
-          </tbody>
-        </table>
-      </DndContext>
+      {orderedSteps.length === 0 ? (
+        <p className="text-muted-foreground py-6 text-sm">{tSteps("empty")}</p>
+      ) : (
+        <DndContext
+          id={STEP_DND_CONTEXT_ID}
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left">
+                <th className="w-10 py-2" aria-hidden />
+                <th className="py-2">{tSteps("name")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <SortableContext
+                items={orderedSteps.map((step) => step.documentId)}
+                strategy={verticalListSortingStrategy}
+              >
+                {orderedSteps.map((step) => (
+                  <SortableStepRow
+                    key={step.documentId}
+                    step={step}
+                    dragLabel={tSteps("dragToReorder")}
+                    openLabel={tSteps("openStep")}
+                    disabled={isPending}
+                    onOpen={openEdit}
+                  />
+                ))}
+              </SortableContext>
+            </tbody>
+          </table>
+        </DndContext>
+      )}
 
       <StepFormModal
         open={modal.mode !== "closed"}

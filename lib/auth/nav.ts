@@ -21,7 +21,7 @@ interface NavRule {
 }
 
 const NAV_RULES: NavRule[] = [
-  { item: { href: "/", labelKey: "panel" }, show: () => true },
+  { item: { href: "/", labelKey: "panel" }, show: (r) => r !== "colaborator" },
   { item: { href: "/board", labelKey: "board" }, show: (r) => r !== "colaborator" },
   {
     item: { href: "/tasks", labelKey: "tasks" },
@@ -44,6 +44,13 @@ export interface NavItemsOptions {
   userId?: string;
 }
 
+/** Brand / home destination after login for the role. */
+export function homeHrefForRole(role: Role, userId?: string): string {
+  if (role === "kiosk") return "/kiosk";
+  if (role === "colaborator" && userId) return `/${userId}`;
+  return "/";
+}
+
 /**
  * Navigation items a given role is allowed to see.
  */
@@ -52,6 +59,19 @@ export function navItemsForRole(
   options: NavItemsOptions = {},
 ): NavItem[] {
   if (role === "kiosk") return [];
+
+  if (role === "colaborator") {
+    const { userId } = options;
+    if (!userId) {
+      return [{ href: "/", labelKey: "panel" }];
+    }
+    return [
+      { href: `/${userId}`, labelKey: "myBalance" },
+      { href: `/${userId}#colaborator-store`, labelKey: "exchange" },
+      { href: `/${userId}/profile`, labelKey: "profile" },
+    ];
+  }
+
   const items = NAV_RULES.filter((rule) => rule.show(role)).map(
     (rule) => rule.item,
   );

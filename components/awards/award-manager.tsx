@@ -34,7 +34,9 @@ export interface AwardManagerProps {
   onCreate: (values: AwardFormInput) => void | Promise<void>;
   onUpdate: (documentId: string, values: AwardFormInput) => void | Promise<void>;
   onDelete: (documentId: string) => void | Promise<void>;
-  onUploadImage: (formData: FormData) => Promise<number>;
+  onUploadImage: (formData: FormData) => Promise<number | string>;
+  /** When false, catalog is read-only (manager view). */
+  canManage?: boolean;
   canDelete: boolean;
 }
 
@@ -75,7 +77,7 @@ interface AwardFormDialogProps {
   onClose: () => void;
   onSubmit: (values: AwardFormInput) => void;
   onDelete?: () => void;
-  onUploadImage: (formData: FormData) => Promise<number>;
+  onUploadImage: (formData: FormData) => Promise<number | string>;
 }
 
 function AwardFormDialog({
@@ -309,6 +311,7 @@ export function AwardManager({
   onUpdate,
   onDelete,
   onUploadImage,
+  canManage = true,
   canDelete,
 }: AwardManagerProps) {
   const tCommon = useTranslations("common");
@@ -378,9 +381,11 @@ export function AwardManager({
     <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
       <div className="flex shrink-0 items-center justify-between gap-3">
         <h1 className="text-2xl font-bold max-[500px]:text-lg">{tAwards("title")}</h1>
-        <Button type="button" variant="outline" onClick={startCreate}>
-          {tAwards("newAward")}
-        </Button>
+        {canManage ? (
+          <Button type="button" variant="outline" onClick={startCreate}>
+            {tAwards("newAward")}
+          </Button>
+        ) : null}
       </div>
 
       <AwardsToolbar value={nameQuery} onChange={setNameQuery} />
@@ -420,7 +425,7 @@ export function AwardManager({
           <AwardsListView
             awards={visibleAwards}
             currencies={currencies}
-            onOpen={startEdit}
+            onOpen={canManage ? startEdit : undefined}
           />
         </div>
       </div>

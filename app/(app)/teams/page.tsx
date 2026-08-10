@@ -5,6 +5,9 @@ import { APP_LIST_PAGE_SHELL_CLASS } from "@/components/layout/app-page-layout";
 import { TeamManager, type TeamRow, type UserOption } from "@/components/teams/team-manager";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTeams } from "@/lib/auth/permissions";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import { listTeamsWithMembers } from "@/lib/repos/teams";
+import { listUsersByRole } from "@/lib/repos/users";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
 import { createTeam, deleteTeam, updateTeam } from "./actions";
@@ -32,6 +35,22 @@ interface UserEntity {
 }
 
 async function loadTeams(): Promise<TeamRow[]> {
+  if (isDrizzleBackend()) {
+    const rows = await listTeamsWithMembers();
+    return rows
+      .filter((team) => team.active)
+      .map((team) => ({
+        documentId: team.id,
+        name: team.name,
+        exchangesFirstDay: team.exchangesFirstDay,
+        exchangesLastDay: team.exchangesLastDay,
+        since: team.since,
+        untill: team.until,
+        leader: team.leader,
+        colaborators: team.colaborators,
+      }));
+  }
+
   try {
     const res = await strapiFetch<StrapiList<TeamEntity>>(
       "/teams",
@@ -78,6 +97,17 @@ async function loadTeams(): Promise<TeamRow[]> {
 }
 
 async function loadUsersByRole(roleType: Role): Promise<UserOption[]> {
+  if (isDrizzleBackend()) {
+    if (roleType !== "leader" && roleType !== "colaborator") return [];
+    const rows = await listUsersByRole(roleType);
+    return rows
+      .filter((user) => user.active && !user.blocked)
+      .map((user) => ({
+        documentId: user.id,
+        name: user.name,
+      }));
+  }
+
   try {
     const res = await strapiFetch<UserEntity[]>(
       "/users",

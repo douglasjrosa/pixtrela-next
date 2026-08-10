@@ -2,13 +2,15 @@
 
 import { useTranslations } from "next-intl";
 
+import { ListEmptyMessage } from "@/components/ui/list-empty-message";
+
 import { AwardListRow } from "./award-list-row";
 import type { AwardRow, CurrencyOption } from "./types";
 
 export interface AwardsListViewProps {
   awards: AwardRow[];
   currencies: CurrencyOption[];
-  onOpen: (award: AwardRow) => void;
+  onOpen?: (award: AwardRow) => void;
 }
 
 export function AwardsListView({
@@ -19,9 +21,7 @@ export function AwardsListView({
   const tAwards = useTranslations("awards");
 
   if (awards.length === 0) {
-    return (
-      <p className="text-muted-foreground py-6 text-sm">{tAwards("empty")}</p>
-    );
+    return <ListEmptyMessage>{tAwards("empty")}</ListEmptyMessage>;
   }
 
   return (

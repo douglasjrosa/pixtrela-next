@@ -1,5 +1,13 @@
 import type { TemplateListRow } from "@/components/templates/types";
-import type { TemplateListFilters } from "@/lib/schemas/template-list-filters";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import {
+  listTemplateTasks,
+  type TemplateTaskListItem,
+} from "@/lib/repos/templates";
+import {
+  TEMPLATE_LIST_PAGE_SIZE,
+  type TemplateListFilters,
+} from "@/lib/schemas/template-list-filters";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
 import { buildTemplateListQuery } from "./build-template-list-query";
@@ -39,13 +47,45 @@ function mapTemplateEntity(template: TemplateEntity): TemplateListRow {
   };
 }
 
+function mapDrizzleItem(item: TemplateTaskListItem): TemplateListRow {
+  return {
+    documentId: item.id,
+    name: item.name,
+    code: item.code,
+    subTaskCount: item.subTaskCount,
+  };
+}
+
+async function loadDrizzleTemplateListPage(
+  filters: TemplateListFilters,
+  page: number,
+): Promise<TemplateListPageResult> {
+  const resolvedPage = Math.max(1, page);
+  const { items, total } = await listTemplateTasks({
+    q: filters.q,
+    page: resolvedPage,
+    pageSize: TEMPLATE_LIST_PAGE_SIZE,
+  });
+  const pageCount = Math.max(1, Math.ceil(total / TEMPLATE_LIST_PAGE_SIZE));
+  return {
+    templates: items.map(mapDrizzleItem),
+    page: resolvedPage,
+    pageCount,
+    hasMore: resolvedPage < pageCount,
+  };
+}
+
 /**
- * Loads one page of filtered template-tasks via Strapi REST + cache tags.
+ * Loads one page of filtered template-tasks (Drizzle or Strapi REST).
  */
 export async function loadTemplateListPage(
   filters: TemplateListFilters,
   page: number,
 ): Promise<TemplateListPageResult> {
+  if (isDrizzleBackend()) {
+    return loadDrizzleTemplateListPage(filters, page);
+  }
+
   const res = await strapiFetch<StrapiListResponse>(
     "/template-tasks",
     { strapiCache: { tags: [STRAPI_TAGS.templateTasks], revalidate: 30 } },

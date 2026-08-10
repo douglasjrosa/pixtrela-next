@@ -9,6 +9,10 @@ vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "jwt" })),
 }));
 
+vi.mock("@/lib/db/backend", () => ({
+  isDrizzleBackend: () => false,
+}));
+
 vi.mock("@/lib/strapi", () => ({
   STRAPI_TAGS: {
     currencies: "strapi:currencies",

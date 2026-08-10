@@ -1,11 +1,15 @@
 import { test, expect } from "@playwright/test";
 
 import { e2eUsers, loginAs } from "./fixtures/auth";
-import { createTaskE2ePayload, stepLabelPattern } from "./fixtures/task-data";
+import { createTaskE2ePayload } from "./fixtures/task-data";
+import { deactivateActiveTasksByName as deactivateDrizzle } from "./fixtures/drizzle";
 import {
-  deactivateActiveTasksByName,
+  deactivateActiveTasksByName as deactivateStrapi,
   loginStrapi,
 } from "./fixtures/strapi";
+
+const isDrizzleE2e =
+  (process.env.DATA_BACKEND ?? "drizzle").trim().toLowerCase() !== "strapi";
 
 test.describe("Tasks module", () => {
   test("tasks page requires authentication", async ({ page }) => {
@@ -14,7 +18,8 @@ test.describe("Tasks module", () => {
   });
 
   test("manager can create a new task", async ({ page }) => {
-    test.setTimeout(120_000);
+    // Template subtask copy on create can take >30s under concurrent suite load.
+    test.setTimeout(180_000);
 
     const { login, password } = e2eUsers.manager;
     test.skip(
@@ -22,8 +27,12 @@ test.describe("Tasks module", () => {
       "E2E_MANAGER_LOGIN and E2E_MANAGER_PASSWORD required",
     );
 
-    const jwt = await loginStrapi(login, password);
-    await deactivateActiveTasksByName(jwt, createTaskE2ePayload.name);
+    if (isDrizzleE2e) {
+      await deactivateDrizzle(createTaskE2ePayload.name);
+    } else {
+      const jwt = await loginStrapi(login, password);
+      await deactivateStrapi(jwt, createTaskE2ePayload.name);
+    }
 
     await loginAs(page, login, password);
     await page.goto("/tasks", { waitUntil: "domcontentloaded" });
@@ -32,23 +41,16 @@ test.describe("Tasks module", () => {
     ).toBeVisible({ timeout: 60_000 });
 
     await page.getByRole("button", { name: "Nova tarefa" }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
 
-    const nameInput = page.getByLabel("Nome");
-    const qtyInput = page.getByLabel("Quantidade");
-    const dateInput = page.getByLabel("Data de entrega");
-    const stepSelect = page.locator("#stepDocumentId");
-    const statusSelect = page.locator("#status");
-    const codeInput = page.getByLabel("Código do modelo");
+    const nameInput = dialog.getByRole("textbox", { name: "Nome" });
+    const qtyInput = dialog.getByLabel("Quantidade");
+    const dateInput = dialog.getByLabel("Data de entrega");
+    const codeInput = dialog.getByLabel("Código do modelo");
 
-    const stepLabels = await stepSelect.locator("option").allTextContents();
-    const stepLabel = stepLabels.find(
-      (label) => stepLabelPattern.test(label) && label.trim() !== "",
-    );
-    expect(
-      stepLabel,
-      `No step matching ${stepLabelPattern} in: ${stepLabels.join(", ")}`,
-    ).toBeTruthy();
+    // Create form has no visible step/status controls (hidden defaults).
+    await expect(dialog.getByLabel("Status")).toHaveCount(0);
 
     // The dev server hydrates/re-streams late, resetting fields set too early.
     // Re-fill the whole form until the text values stick, proving React settled.
@@ -56,8 +58,6 @@ test.describe("Tasks module", () => {
       await nameInput.fill(createTaskE2ePayload.name);
       await qtyInput.fill(createTaskE2ePayload.qty);
       await dateInput.fill(createTaskE2ePayload.deliveryDate);
-      await stepSelect.selectOption({ label: stepLabel! });
-      await statusSelect.selectOption({ label: createTaskE2ePayload.statusLabel });
       await codeInput.fill(createTaskE2ePayload.templateTaskCode);
 
       await expect(nameInput).toHaveValue(createTaskE2ePayload.name, {
@@ -68,25 +68,24 @@ test.describe("Tasks module", () => {
       });
     }).toPass({ timeout: 40_000 });
 
-    const activeMatchingRows = page
-      .getByRole("row")
-      .filter({
-        has: page.getByRole("button", {
-          name: createTaskE2ePayload.name,
-          exact: true,
-        }),
+    // List rows are rendered as links (not table row + button).
+    const taskRow = page
+      .getByRole("link", {
+        name: createTaskE2ePayload.name,
+        exact: true,
       })
-      .filter({ hasNot: page.getByText("Inativa") });
+      .filter({ hasNotText: "Inativa" });
 
-    await expect(activeMatchingRows).toHaveCount(0);
+    await expect(taskRow).toHaveCount(0);
 
-    const saveButton = page.getByRole("button", { name: "Salvar" });
+    const saveButton = dialog.getByRole("button", { name: "Salvar" });
     await expect(saveButton).toBeEnabled();
     await saveButton.click();
 
-    await expect(activeMatchingRows).toHaveCount(1, { timeout: 60_000 });
+    // Create copies template subtasks; keep ample time under suite load.
+    await expect(dialog).toBeHidden({ timeout: 90_000 });
+    await expect(taskRow).toHaveCount(1, { timeout: 60_000 });
 
-    const taskRow = activeMatchingRows.first();
     await expect(taskRow).toContainText(createTaskE2ePayload.qty);
     await expect(taskRow).toContainText(createTaskE2ePayload.deliveryDatePtBr);
     await expect(taskRow).toContainText(createTaskE2ePayload.statusLabel);

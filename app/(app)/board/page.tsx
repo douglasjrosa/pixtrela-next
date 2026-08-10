@@ -9,11 +9,15 @@ import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager
 import type { Role } from "@/lib/auth/nav";
 import { canMoveBoardTasks } from "@/lib/auth/permissions";
 import { DEFAULT_ASSIGN_WARN_MAX } from "@/lib/business/assign-warn-max";
+import { loadDrizzleBoardData } from "@/lib/board/load-board-data";
 import { loadBoardProgressByTaskId } from "@/lib/board/load-board-progress";
 import {
   shouldShowKanbanTaskProgress,
 } from "@/lib/business/task-progress";
 import { ACTIVE_TEAM_FILTER } from "@/lib/business/team-active";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import { getCurrencyForSubtasks } from "@/lib/repos/settings";
+import { listTeamsWithMembers } from "@/lib/repos/teams";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import {
   loadCurrencyForSubtasks,
@@ -78,6 +82,10 @@ function mapTaskEntity(task: TaskEntity): KanbanTask {
 }
 
 async function loadBoard(): Promise<{ steps: KanbanStep[]; tasks: KanbanTask[] }> {
+  if (isDrizzleBackend()) {
+    const { steps, tasks } = await loadDrizzleBoardData();
+    return { steps, tasks };
+  }
   try {
     const [stepsRes, tasksRes] = await Promise.all([
       strapiFetch<StrapiList<StepEntity>>(
@@ -117,6 +125,16 @@ async function loadBoard(): Promise<{ steps: KanbanStep[]; tasks: KanbanTask[] }
 }
 
 async function loadTeamsForAssignment(): Promise<TeamAssignmentOption[]> {
+  if (isDrizzleBackend()) {
+    const rows = await listTeamsWithMembers();
+    return rows
+      .filter((team) => team.active)
+      .map((team) => ({
+        documentId: team.id,
+        name: team.name,
+        members: team.colaborators,
+      }));
+  }
   try {
     const res = await strapiFetch<StrapiList<TeamEntity>>(
       "/teams",
@@ -141,6 +159,32 @@ async function loadTeamsForAssignment(): Promise<TeamAssignmentOption[]> {
     rethrowIfNavigationError(error);
     return [];
   }
+}
+
+async function loadBoardPaymentCurrency(): Promise<SubtaskPaymentCurrency> {
+  if (isDrizzleBackend()) {
+    const row = await getCurrencyForSubtasks();
+    if (!row) {
+      return toSubtaskPaymentCurrency({
+        currencyDocumentId: "",
+        currencyName: "",
+        currencyTitle: "",
+        currencyPluralTitle: "",
+        currencyIconUrl: null,
+        currencyPerSecond: 0,
+      });
+    }
+    return toSubtaskPaymentCurrency({
+      currencyDocumentId: row.currencyId,
+      currencyName: row.currencyName,
+      currencyTitle: row.currencyTitle ?? "",
+      currencyPluralTitle: row.currencyPluralTitle ?? "",
+      currencyIconUrl: null,
+      currencyPerSecond: row.currencyPerSecond,
+    });
+  }
+  const setting = await loadCurrencyForSubtasks();
+  return toSubtaskPaymentCurrency(setting);
 }
 
 function withProgressPending(tasks: KanbanTask[]): KanbanTask[] {
@@ -258,15 +302,14 @@ export default async function BoardPage() {
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
   const interactive = canMoveBoardTasks(role);
-  const [{ steps, tasks }, teams, automation, paymentSetting] =
+  const [{ steps, tasks }, teams, automation, paymentCurrency] =
     await Promise.all([
       loadBoard(),
       interactive ? loadTeamsForAssignment() : Promise.resolve([]),
       loadTaskAutomationSetting(),
-      loadCurrencyForSubtasks(),
+      loadBoardPaymentCurrency(),
     ]);
   const assignWarnMax = automation.assignWarnMax ?? DEFAULT_ASSIGN_WARN_MAX;
-  const paymentCurrency = toSubtaskPaymentCurrency(paymentSetting);
 
   return (
     <div className={APP_BOARD_SHELL_CLASS}>

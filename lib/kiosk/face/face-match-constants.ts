@@ -9,6 +9,9 @@ export const FACE_MATCH_DISTANCE_THRESHOLD = 0.55;
  */
 export const FACE_1N_AMBIGUITY_MARGIN = 0.1;
 
+/** Max candidates returned on ambiguous 1:N identify. */
+export const FACE_1N_MAX_AMBIGUOUS_CANDIDATES = 5;
+
 /** face-api recognition net descriptor length. */
 export const FACE_DESCRIPTOR_LENGTH = 128;
 

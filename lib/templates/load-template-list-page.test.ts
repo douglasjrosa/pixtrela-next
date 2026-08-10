@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const strapiFetch = vi.fn();
 
+vi.mock("@/lib/db/backend", () => ({
+  isDrizzleBackend: () => false,
+}));
+
 vi.mock("@/lib/strapi", () => ({
   STRAPI_TAGS: { templateTasks: "strapi:template-tasks" },
   strapiFetch: (...args: unknown[]) => strapiFetch(...args),

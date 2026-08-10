@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 
+import { ListEmptyMessage } from "@/components/ui/list-empty-message";
+
 import type { TaskRow } from "./types";
 import { TaskListRow } from "./task-list-row";
 
@@ -13,9 +15,7 @@ export function TasksListView({ tasks }: TasksListViewProps) {
   const tManage = useTranslations("tasks.manage");
 
   if (tasks.length === 0) {
-    return (
-      <p className="text-muted-foreground py-6 text-sm">{tManage("empty")}</p>
-    );
+    return <ListEmptyMessage>{tManage("empty")}</ListEmptyMessage>;
   }
 
   return (

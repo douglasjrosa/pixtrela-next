@@ -50,6 +50,11 @@ export function canManageAwards(role: Role | undefined): boolean {
   return role === "admin";
 }
 
+/** View awards catalog: manager and above (CRUD still admin-only). */
+export function canViewAwards(role: Role | undefined): boolean {
+  return isAtLeast(role, "manager");
+}
+
 /** Settings (currency): admin only. */
 export function canManageSettings(role: Role | undefined): boolean {
   return role === "admin";
@@ -105,8 +110,8 @@ const ROUTE_GUARDS: { prefix: string; check: (role: Role | undefined) => boolean
   { prefix: "/exchange", check: canExchange },
   { prefix: "/tasks", check: canManageTasks },
   { prefix: "/templates", check: canManageTemplates },
-  { prefix: "/teams", check: (r) => canManageTeams(r) || r === "leader" },
-  { prefix: "/awards", check: (r) => canManageAwards(r) || isAtLeast(r, "manager") },
+  { prefix: "/teams", check: canManageTeams },
+  { prefix: "/awards", check: canViewAwards },
   { prefix: "/settings", check: canManageSettings },
   { prefix: "/users", check: canViewUsers },
 ];

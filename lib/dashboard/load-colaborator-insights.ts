@@ -1,3 +1,4 @@
+import { isDrizzleBackend } from "@/lib/db/backend";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { dashboardColaboratorTag, strapiFetch } from "@/lib/strapi";
 
@@ -19,6 +20,11 @@ export async function loadColaboratorInsights(
   month?: string,
 ): Promise<ColaboratorInsightsData> {
   if (!documentId) return EMPTY_INSIGHTS;
+
+  // Full insights charts are not yet ported to Drizzle; keep the page usable.
+  if (isDrizzleBackend()) {
+    return { ...EMPTY_INSIGHTS, colaboratorDocumentId: documentId };
+  }
 
   const query = month ? `?month=${encodeURIComponent(month)}` : "";
 

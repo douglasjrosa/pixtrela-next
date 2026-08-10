@@ -6,6 +6,9 @@ import {
   CurrencyManager,
   type CurrencyRow,
 } from "@/components/settings/currency-manager";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import { listCurrencies as listCurrenciesRepo } from "@/lib/repos/awards";
+import { getCurrencyForSubtasks } from "@/lib/repos/settings";
 import { loadCurrencyForSubtasks } from "@/lib/strapi/currency-for-subtasks";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
@@ -32,6 +35,19 @@ interface CurrencyEntity {
 }
 
 async function loadCurrencies(): Promise<CurrencyRow[]> {
+  if (isDrizzleBackend()) {
+    const rows = await listCurrenciesRepo();
+    return rows.map((currency) => ({
+      documentId: currency.id,
+      name: currency.name,
+      title: currency.title ?? "",
+      pluralTitle: currency.pluralTitle ?? "",
+      iconMediaId: null,
+      iconMediaUrl: null,
+      currencyPerSecond: Number(currency.currencyPerSecond ?? 0),
+    }));
+  }
+
   try {
     const res = await strapiFetch<StrapiList<CurrencyEntity>>(
       "/currencies",
@@ -69,10 +85,19 @@ async function loadCurrencies(): Promise<CurrencyRow[]> {
   }
 }
 
+async function loadActiveCurrencyDocumentId(): Promise<string> {
+  if (isDrizzleBackend()) {
+    const setting = await getCurrencyForSubtasks();
+    return setting?.currencyId ?? "";
+  }
+  const active = await loadCurrencyForSubtasks();
+  return active.currencyDocumentId;
+}
+
 export default async function SettingsCurrencyPage() {
-  const [currencies, activeCurrency] = await Promise.all([
+  const [currencies, activeCurrencyDocumentId] = await Promise.all([
     loadCurrencies(),
-    loadCurrencyForSubtasks(),
+    loadActiveCurrencyDocumentId(),
   ]);
 
   return (
@@ -86,7 +111,7 @@ export default async function SettingsCurrencyPage() {
       />
       <CurrencyForm
         currencies={currencies}
-        activeCurrencyDocumentId={activeCurrency.currencyDocumentId}
+        activeCurrencyDocumentId={activeCurrencyDocumentId}
         onSave={updateCurrencyForSubtasks}
       />
     </div>

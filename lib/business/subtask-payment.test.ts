@@ -43,7 +43,22 @@ describe("calculateColaboratorEarnings", () => {
     ).toBe(60);
   });
 
-  it("ceil-splits the pool by qty share for qty sharing", () => {
+  it("pays qty pieces using expectedTime / targetQty × rate (Strapi)", () => {
+    expect(
+      calculateColaboratorEarnings({
+        sharingType: "qty",
+        colaboratorDurationSec: 10,
+        colaboratorQty: 5,
+        totalDurationSec: 40,
+        totalQty: 5,
+        targetQty: 20,
+        expectedTime: 300,
+        currencyPerSecond: 1,
+      }),
+    ).toBe(75);
+  });
+
+  it("falls back to totalQty as target when targetQty is omitted", () => {
     expect(
       calculateColaboratorEarnings({
         sharingType: "qty",

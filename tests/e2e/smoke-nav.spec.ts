@@ -43,7 +43,9 @@ test.describe("Authenticated shell smoke", () => {
         page.getByText(/Internal Server Error|Application error/i),
       ).toHaveCount(0);
 
-      for (const href of smokeShellHrefsForRole("colaborator")) {
+      const path = new URL(page.url()).pathname;
+      const userId = path.startsWith("/") ? path.slice(1).split("/")[0] : "";
+      for (const href of smokeShellHrefsForRole("colaborator", userId || undefined)) {
         await assertShellRouteLoads(page, href);
       }
     });

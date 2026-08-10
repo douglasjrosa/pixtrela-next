@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 import {
   DndContext,
@@ -56,6 +57,7 @@ export function KanbanBoard({
   onApplyOrder,
   onTaskClick,
 }: KanbanBoardProps) {
+  const t = useTranslations("kanban");
   const [activeTask, setActiveTask] = useState<KanbanTask | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -88,6 +90,14 @@ export function KanbanBoard({
     const updates = collectKanbanTaskUpdates(before, result.tasks);
     if (updates.length === 0) return;
     void onApplyOrder?.(updates);
+  }
+
+  if (steps.length === 0) {
+    return (
+      <p className="text-muted-foreground p-6 text-sm" role="status">
+        {t("noSteps")}
+      </p>
+    );
   }
 
   return (

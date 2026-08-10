@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
+
 import { createSubTask, updateSubTask } from "@/app/(app)/tasks/[documentId]/actions";
 import { auth } from "@/auth";
 import type { BoardSubTaskSummary } from "@/components/kanban/types";
@@ -14,7 +16,15 @@ import {
   canManageTemplates,
   canMoveBoardTasks,
 } from "@/lib/auth/permissions";
+import { isAuthenticatedSession } from "@/lib/auth/session";
+import {
+  buildStepKanbanLookup,
+  resolveStepUuidFromKanbanId,
+} from "@/lib/board/kanban-drizzle-ids";
 import { loadBoardProgressByTaskId } from "@/lib/board/load-board-progress";
+import {
+  resolveDrizzleTaskIdByKanbanNumericId,
+} from "@/lib/board/load-board-data";
 import type { BoardProgressPollSnapshot } from "@/lib/board/progress-poll";
 import {
   listActivitySessions,
@@ -23,6 +33,20 @@ import {
   type ActivitySessionRef,
   type KanbanProgressStatus,
 } from "@/lib/business/task-progress";
+import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import { listSteps as listStepsRepo } from "@/lib/repos/steps";
+import {
+  findTemplateByCode,
+  updateTemplateTask,
+} from "@/lib/repos/templates";
+import {
+  getTaskById,
+  getSubTaskById,
+  listBoardSubtaskRows,
+  listSubTasksWithRelationsForTask,
+  updateTaskBoardFields,
+} from "@/lib/repos/tasks";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import type { TemplateSubTaskComponentInput } from "@/lib/schemas/template-task";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
@@ -41,6 +65,7 @@ interface BoardSubTaskEntity {
   name: string;
   status: BoardSubTaskSummary["status"];
   sharingType?: "qty" | "duration";
+  qty?: number;
   expectedTime?: number;
   timeSpent?: number;
   assignedTo?: { documentId: string; name?: string }[] | null;
@@ -82,11 +107,65 @@ async function assertCanManageBoardSubtasks(): Promise<void> {
   }
 }
 
+function invalidateBoardTasks(): void {
+  if (isDrizzleBackend()) {
+    revalidateTag("drizzle:tasks");
+    revalidateTag("drizzle:steps");
+    return;
+  }
+  revalidateStrapiTags(STRAPI_TAGS.tasks, STRAPI_TAGS.steps);
+}
+
+function mapBoardSubtasksFromDrizzle(
+  bundle: Awaited<ReturnType<typeof listBoardSubtaskRows>>,
+): BoardSubTaskSummary[] {
+  if (!bundle || bundle.rows.length === 0) return [];
+
+  const { rows, assigneeRows, activityRows } = bundle;
+  const assigneesBySubTask = new Map<string, { documentId: string; name: string }[]>();
+  for (const row of assigneeRows) {
+    const list = assigneesBySubTask.get(row.subTaskId) ?? [];
+    list.push({ documentId: row.userId, name: row.name });
+    assigneesBySubTask.set(row.subTaskId, list);
+  }
+
+  const activitiesBySubTask = new Map<string, ActivitySessionRef[]>();
+  for (const activity of activityRows) {
+    const list = activitiesBySubTask.get(activity.subTaskId) ?? [];
+    list.push({
+      subTaskDocumentId: activity.subTaskId,
+      colaboratorDocumentId: activity.colaboratorId,
+      colaboratorName: activity.colaboratorName,
+      action: activity.action,
+      timestamp: activity.timestamp.toISOString(),
+      qty: activity.qty,
+    });
+    activitiesBySubTask.set(activity.subTaskId, list);
+  }
+
+  return rows.map((subtask) => {
+    const activityRefs = activitiesBySubTask.get(subtask.id) ?? [];
+    return {
+      documentId: subtask.id,
+      name: subtask.name,
+      status: subtask.status,
+      sharingType: subtask.sharingType === "qty" ? "qty" : "duration",
+      qty: Math.max(1, Math.floor(Number(subtask.qty) || 0) || 1),
+      expectedTime: subtask.expectedTime ?? 0,
+      timeSpent: subtask.timeSpent ?? 0,
+      openActivityStartedAts: listOpenActivityStartedAts(activityRefs),
+      producingColaboratorIds: listOpenColaboratorDocumentIds(activityRefs),
+      sessions: listActivitySessions(activityRefs),
+      assignedTo: assigneesBySubTask.get(subtask.id) ?? [],
+    };
+  });
+}
+
 export async function pollBoardProgress(
   tasks: ReadonlyArray<{ documentId: string; status: KanbanProgressStatus }>,
 ): Promise<BoardProgressPollSnapshot> {
   const session = await auth();
-  if (!session?.jwt) {
+  if (!isAuthenticatedSession(session)) {
     throw new Error("unauthorized");
   }
 
@@ -97,27 +176,38 @@ export async function pollBoardProgress(
   const totalsByTaskId: BoardProgressPollSnapshot["totalsByTaskId"] = {};
 
   if (documentIds.length > 0) {
-    const tasksRes = await strapiFetch<
-      StrapiList<{
-        documentId: string;
-        totalTimeSpent?: number;
-        totalExpectedTime?: number;
-      }>
-    >(
-      "/tasks",
-      { strapiCache: { noStore: true } },
-      {
-        fields: ["documentId", "totalTimeSpent", "totalExpectedTime"],
-        filters: { documentId: { $in: documentIds } },
-        pagination: { pageSize: 200 },
-      },
-    );
+    if (isDrizzleBackend()) {
+      for (const taskId of documentIds) {
+        const task = await getTaskById(taskId);
+        if (!task) continue;
+        totalsByTaskId[taskId] = {
+          totalTimeSpent: task.totalTimeSpent ?? 0,
+          totalExpectedTime: task.totalExpectedTime ?? 0,
+        };
+      }
+    } else {
+      const tasksRes = await strapiFetch<
+        StrapiList<{
+          documentId: string;
+          totalTimeSpent?: number;
+          totalExpectedTime?: number;
+        }>
+      >(
+        "/tasks",
+        { strapiCache: { noStore: true } },
+        {
+          fields: ["documentId", "totalTimeSpent", "totalExpectedTime"],
+          filters: { documentId: { $in: documentIds } },
+          pagination: { pageSize: 200 },
+        },
+      );
 
-    for (const task of tasksRes.data) {
-      totalsByTaskId[task.documentId] = {
-        totalTimeSpent: task.totalTimeSpent ?? 0,
-        totalExpectedTime: task.totalExpectedTime ?? 0,
-      };
+      for (const task of tasksRes.data) {
+        totalsByTaskId[task.documentId] = {
+          totalTimeSpent: task.totalTimeSpent ?? 0,
+          totalExpectedTime: task.totalExpectedTime ?? 0,
+        };
+      }
     }
   }
 
@@ -135,6 +225,11 @@ export async function loadBoardSubtasks(
 ): Promise<BoardSubTaskSummary[]> {
   await assertCanManageBoardSubtasks();
 
+  if (isDrizzleBackend()) {
+    const bundle = await listBoardSubtaskRows(taskDocumentId);
+    return mapBoardSubtasksFromDrizzle(bundle);
+  }
+
   const res = await strapiFetch<StrapiList<BoardSubTaskEntity>>(
     "/sub-tasks",
     { strapiCache: { noStore: true } },
@@ -144,6 +239,7 @@ export async function loadBoardSubtasks(
         "name",
         "status",
         "sharingType",
+        "qty",
         "expectedTime",
         "timeSpent",
       ],
@@ -201,6 +297,7 @@ export async function loadBoardSubtasks(
       name: subtask.name,
       status: subtask.status,
       sharingType: subtask.sharingType === "qty" ? "qty" : "duration",
+      qty: Math.max(1, Math.floor(Number(subtask.qty) || 0) || 1),
       expectedTime: subtask.expectedTime ?? 0,
       timeSpent: subtask.timeSpent ?? 0,
       openActivityStartedAts: listOpenActivityStartedAts(activityRefs),
@@ -218,6 +315,26 @@ export async function loadBoardSubtasks(
 async function fetchSubTaskForUpdate(
   documentId: string,
 ): Promise<SubTaskEntity | null> {
+  if (isDrizzleBackend()) {
+    const subtask = await getSubTaskById(documentId);
+    if (!subtask) return null;
+    const siblings = await listSubTasksWithRelationsForTask(subtask.taskId);
+    const row = siblings.find((item) => item.id === documentId);
+    if (!row) return null;
+    return {
+      documentId: row.id,
+      name: row.name,
+      qty: row.qty,
+      expectedTime: row.expectedTime,
+      sharingType: row.sharingType,
+      maxSameTimeWorkers: row.maxSameTimeWorkers,
+      status: row.status,
+      activationStatus: fromDrizzleActivationStatus(row.activationStatus),
+      reasonForDisabling: row.reasonForDeactivation,
+      dependencies: row.dependencyIds,
+      assignedTo: row.assignedToIds.map((id) => ({ documentId: id })),
+    };
+  }
   try {
     const res = await strapiFetch<{ data: SubTaskEntity }>(
       `/sub-tasks/${documentId}`,
@@ -279,6 +396,11 @@ export async function createBoardSubtask(
 async function fetchTaskTemplateCode(
   taskDocumentId: string,
 ): Promise<string | null> {
+  if (isDrizzleBackend()) {
+    const task = await getTaskById(taskDocumentId);
+    const code = task?.templateTaskCode?.trim();
+    return code ? code : null;
+  }
   const res = await strapiFetch<{ data: { templateTaskCode?: string | null } }>(
     `/tasks/${taskDocumentId}`,
     { strapiCache: { noStore: true } },
@@ -294,6 +416,26 @@ async function fetchTemplateByCode(code: string): Promise<{
   code: string;
   subTask: TemplateSubTaskComponentInput[];
 } | null> {
+  if (isDrizzleBackend()) {
+    const template = await findTemplateByCode(code);
+    if (!template) return null;
+    const { listTemplateSubTasks } = await import("@/lib/repos/templates");
+    const subTaskRows = await listTemplateSubTasks(template.id);
+    return {
+      documentId: template.id,
+      name: template.name,
+      code: template.code,
+      subTask: subTaskRows.map((row) => ({
+        name: row.name,
+        qty: row.qty,
+        index: row.index,
+        expectedTime: row.expectedTime,
+        sharingType: row.sharingType,
+        maxSameTimeWorkers: row.maxSameTimeWorkers,
+        dependencyIndexes: row.dependencyIndexes ?? [],
+      })),
+    };
+  }
   const res = await strapiFetch<
     StrapiList<{
       documentId: string;
@@ -326,6 +468,11 @@ async function fetchTemplateByCode(code: string): Promise<{
 async function fetchTaskSubtaskRefs(
   taskDocumentId: string,
 ): Promise<{ documentId: string; name: string }[]> {
+  if (isDrizzleBackend()) {
+    const { listSubTasksForTask } = await import("@/lib/repos/tasks");
+    const rows = await listSubTasksForTask(taskDocumentId);
+    return rows.map((row) => ({ documentId: row.id, name: row.name }));
+  }
   const res = await strapiFetch<
     StrapiList<{ documentId: string; name: string }>
   >(
@@ -372,6 +519,25 @@ async function appendBoardSubtaskToTaskTemplate(
     dependencyIndexes,
   );
 
+  if (isDrizzleBackend()) {
+    await updateTemplateTask({
+      id: template.documentId,
+      name: template.name,
+      code: template.code,
+      subTasks: nextSubTasks.map((row) => ({
+        name: row.name,
+        qty: row.qty,
+        index: row.index,
+        expectedTime: row.expectedTime,
+        sharingType: row.sharingType,
+        maxSameTimeWorkers: row.maxSameTimeWorkers,
+        dependencyIndexes: row.dependencyIndexes ?? [],
+      })),
+    });
+    revalidateTag("drizzle:templates");
+    return;
+  }
+
   await strapiFetch(`/template-tasks/${template.documentId}`, {
     method: "PUT",
     strapiCache: { noStore: true },
@@ -384,6 +550,10 @@ async function appendBoardSubtaskToTaskTemplate(
     }),
   });
 
+  if (isDrizzleBackend()) {
+    revalidateTag("drizzle:templates");
+    return;
+  }
   revalidateStrapiTags(STRAPI_TAGS.templateTasks);
 }
 
@@ -428,6 +598,25 @@ export async function applyBoardTaskOrder(
   if (updates.length === 0) return;
   await assertCanMove();
 
+  if (isDrizzleBackend()) {
+    const stepLookup = buildStepKanbanLookup(await listStepsRepo());
+    for (const update of updates) {
+      let stepUuid: string | null | undefined;
+      if (update.stepId != null) {
+        stepUuid = resolveStepUuidFromKanbanId(stepLookup, update.stepId);
+        if (!stepUuid) {
+          throw new Error("notFound");
+        }
+      }
+      await updateTaskBoardFields(update.documentId, {
+        index: update.index,
+        stepId: update.stepId != null ? stepUuid : undefined,
+      });
+    }
+    invalidateBoardTasks();
+    return;
+  }
+
   for (const update of updates) {
     const data: { index: number; step?: string } = { index: update.index };
     if (update.stepId != null) {
@@ -453,6 +642,23 @@ export async function moveTaskToStep(
   stepId: number,
 ): Promise<void> {
   await assertCanMove();
+
+  if (isDrizzleBackend()) {
+    const [taskDocumentId, stepLookup] = await Promise.all([
+      resolveDrizzleTaskIdByKanbanNumericId(taskId),
+      listStepsRepo().then((steps) => buildStepKanbanLookup(steps)),
+    ]);
+    const stepDocumentId = resolveStepUuidFromKanbanId(stepLookup, stepId);
+    if (!taskDocumentId || !stepDocumentId) {
+      throw new Error("notFound");
+    }
+    await updateTaskBoardFields(taskDocumentId, {
+      index: (await getTaskById(taskDocumentId))?.index ?? 0,
+      stepId: stepDocumentId,
+    });
+    invalidateBoardTasks();
+    return;
+  }
 
   const [taskDocumentId, stepDocumentId] = await Promise.all([
     resolveDocumentId("/tasks", taskId),

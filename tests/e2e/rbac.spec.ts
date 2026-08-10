@@ -16,8 +16,8 @@ test.describe("RBAC route guards", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("exchange redirects unauthenticated users to login", async ({ page }) => {
-    await page.goto("/exchange");
+  test("awards redirects unauthenticated users to login", async ({ page }) => {
+    await page.goto("/awards");
     await expect(page).toHaveURL(/\/login/);
   });
 });

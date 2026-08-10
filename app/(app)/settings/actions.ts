@@ -1,10 +1,16 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
+
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import {
+  upsertCurrencyForSubtasks,
+  upsertKioskSettings,
+} from "@/lib/repos/settings";
 import type { CurrencyForSubtasksInput } from "@/lib/schemas/currency-for-subtasks";
-import type { CurrencyRateInput } from "@/lib/schemas/currency-rates";
 import type { TaskAutomationFormInput } from "@/lib/schemas/task-automation";
 import {
   CURRENCY_FOR_SUBTASKS_API_PATH,
@@ -25,31 +31,16 @@ async function assertCanManage(): Promise<void> {
   }
 }
 
-export async function updateCurrencyRates(
-  rates: CurrencyRateInput[],
-): Promise<void> {
-  await assertCanManage();
-  if (rates.length === 0) return;
-
-  await Promise.all(
-    rates.map((rate) =>
-      strapiFetch(`/currencies/${rate.documentId}`, {
-        method: "PUT",
-        strapiCache: { noStore: true },
-        body: JSON.stringify({
-          data: { currencyPerSecond: rate.currencyPerSecond },
-        }),
-      }),
-    ),
-  );
-
-  revalidateStrapiTags(STRAPI_TAGS.currencies);
-}
-
 export async function updateCurrencyForSubtasks(
   values: CurrencyForSubtasksInput,
 ): Promise<void> {
   await assertCanManage();
+
+  if (isDrizzleBackend()) {
+    await upsertCurrencyForSubtasks(values.currencyDocumentId || null);
+    revalidateTag("drizzle:currency-for-subtasks");
+    return;
+  }
 
   await strapiFetch(CURRENCY_FOR_SUBTASKS_API_PATH, {
     method: "PUT",
@@ -67,6 +58,12 @@ export async function updateKioskSessionIdleSeconds(
 ): Promise<void> {
   await assertCanManage();
 
+  if (isDrizzleBackend()) {
+    await upsertKioskSettings(sessionIdleSeconds);
+    revalidateTag("drizzle:kiosk-setting");
+    return;
+  }
+
   await strapiFetch(KIOSK_SETTING_API_PATH, {
     method: "PUT",
     strapiCache: { noStore: true },
@@ -80,6 +77,12 @@ export async function updateTaskAutomationSetting(
   values: TaskAutomationFormInput,
 ): Promise<void> {
   await assertCanManage();
+
+  // Drizzle schema only stores `enabled` today; keep Strapi write path until
+  // step-mapping columns are ported.
+  if (isDrizzleBackend()) {
+    throw new Error("task_automation_drizzle_pending");
+  }
 
   await strapiFetch(TASK_AUTOMATION_SETTING_API_PATH, {
     method: "PUT",

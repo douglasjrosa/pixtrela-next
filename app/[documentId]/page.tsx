@@ -87,17 +87,21 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
             lastDay={team.exchangesLastDay}
           />
         ) : null}
-        <div className="grid grid-cols-1 gap-4">
-          {awards.map((award) => (
-            <AwardCard
-              key={award.id}
-              award={award}
-              windowOpen={windowOpen}
-              balance={spendableBalance}
-              onRedeem={redeemAward}
-            />
-          ))}
-        </div>
+        {awards.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{tExchange("emptyAwards")}</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {awards.map((award) => (
+              <AwardCard
+                key={award.id}
+                award={award}
+                windowOpen={windowOpen}
+                balance={spendableBalance}
+                onRedeem={redeemAward}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <section className="space-y-4">

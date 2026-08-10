@@ -12,12 +12,15 @@ import {
   canViewUsers,
 } from "@/lib/auth/permissions";
 import { canDeleteUsers, manageableTargetRoles } from "@/lib/business/roles";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import { listUsers as listUsersRepo } from "@/lib/repos/users";
 import type { UserFormInput } from "@/lib/schemas/user";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 
 import {
   createUser,
+  deactivateUser,
   deleteUser,
   pairUserTag,
   updateUser,
@@ -37,11 +40,30 @@ interface UserEntity {
   code?: number;
   roleType?: UserFormInput["roleType"];
   greetingGender?: "masculine" | "feminine" | null;
+  blocked?: boolean;
   avatar?: MediaEntity | null;
   facePhoto?: MediaEntity | null;
 }
 
 async function loadUsers(): Promise<UserRow[]> {
+  if (isDrizzleBackend()) {
+    const rows = await listUsersRepo();
+    return rows.map((user) => ({
+      id: user.id,
+      documentId: user.id,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      code: user.code,
+      roleType: user.role,
+      greetingGender:
+        user.greetingGender === "neutral" ? null : user.greetingGender,
+      blocked: user.blocked || !user.active,
+      avatarUrl: null,
+      facePhotoUrl: null,
+    }));
+  }
+
   try {
     const res = await strapiFetch<UserEntity[]>(
       "/users",
@@ -56,6 +78,7 @@ async function loadUsers(): Promise<UserRow[]> {
           "code",
           "roleType",
           "greetingGender",
+          "blocked",
         ],
         populate: {
           avatar: { fields: ["url"] },
@@ -72,6 +95,7 @@ async function loadUsers(): Promise<UserRow[]> {
       code: user.code ?? 0,
       roleType: user.roleType ?? "colaborator",
       greetingGender: user.greetingGender ?? null,
+      blocked: Boolean(user.blocked),
       avatarUrl: resolveStrapiMediaUrl(user.avatar?.url ?? null),
       facePhotoUrl: resolveStrapiMediaUrl(user.facePhoto?.url ?? null),
     }));
@@ -100,7 +124,9 @@ export default async function UsersPage() {
         onUpdate={updateUser}
         onUpdateImage={updateUserImage}
         onDelete={deleteUser}
+        onDeactivate={deactivateUser}
         canDelete={canDeleteUsers(actorRole)}
+        canDeactivate
         manageableRoles={manageableTargetRoles(actorRole)}
         canPairUserTag={canPairUserTag(actorRole)}
         canPreviewKioskColaborator={canPreviewKioskColaborator(actorRole)}

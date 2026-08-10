@@ -11,6 +11,8 @@ export default defineConfig({
     fileParallelism: false,
     pool: "threads",
     maxWorkers: 1,
+    // Windows can leave open handles (postgres/fetch); force process exit.
+    forceExit: true,
     setupFiles: ["./vitest.setup.ts"],
     include: ["**/*.{test,spec}.{ts,tsx}"],
     exclude: ["node_modules", ".next", "tests/e2e/**"],

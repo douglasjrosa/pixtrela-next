@@ -1,18 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { navItemsForRole } from "./nav";
+import { homeHrefForRole, navItemsForRole } from "./nav";
 
 function hrefs(role: Parameters<typeof navItemsForRole>[0]) {
   return navItemsForRole(role).map((item) => item.href);
 }
 
 describe("navItemsForRole", () => {
-  it("shows panel link to colaborator", () => {
+  it("sends colaborator home links to private path when userId is set", () => {
+    expect(navItemsForRole("colaborator", { userId: "col-1" }).map((i) => i.href))
+      .toEqual(["/col-1", "/col-1#colaborator-store", "/col-1/profile"]);
+    expect(
+      navItemsForRole("colaborator", { userId: "col-1" }).map((i) => i.labelKey),
+    ).toEqual(["myBalance", "exchange", "profile"]);
+  });
+
+  it("falls back to panel root when colaborator has no userId", () => {
     expect(hrefs("colaborator")).toEqual(["/"]);
   });
 
-  it("includes profile when userId is provided for eligible roles", () => {
-    expect(navItemsForRole("colaborator", { userId: "col-1" }).map((i) => i.href))
-      .toEqual(["/", "/col-1/profile"]);
+  it("includes profile when userId is provided for staff eligible roles", () => {
     expect(navItemsForRole("manager", { userId: "mgr-1" }).map((i) => i.href))
       .toContain("/mgr-1/profile");
     expect(navItemsForRole("admin", { userId: "admin-1" }).map((i) => i.href))
@@ -52,5 +58,13 @@ describe("navItemsForRole", () => {
         "/settings/steps",
       ]),
     );
+  });
+});
+
+describe("homeHrefForRole", () => {
+  it("routes colaborator and kiosk to their homes", () => {
+    expect(homeHrefForRole("colaborator", "col-1")).toBe("/col-1");
+    expect(homeHrefForRole("kiosk")).toBe("/kiosk");
+    expect(homeHrefForRole("manager")).toBe("/");
   });
 });

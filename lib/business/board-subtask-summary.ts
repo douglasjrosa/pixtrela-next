@@ -7,6 +7,7 @@ export function boardSubTaskSummaryStub(
 ): BoardSubTaskSummary {
   return {
     sharingType: "duration",
+    qty: 1,
     expectedTime: 0,
     timeSpent: 0,
     openActivityStartedAts: [],

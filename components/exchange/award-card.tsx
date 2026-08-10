@@ -41,8 +41,13 @@ export function AwardCard({ award, windowOpen, balance, onRedeem }: AwardCardPro
       try {
         await onRedeem(award.id, award.currency, 1);
         setMessage(t("redeemCelebration", { award: award.title }));
-      } catch {
-        setMessage(t("insufficient"));
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : "";
+        setMessage(
+          detail.toLowerCase().includes("insufficient")
+            ? t("insufficient")
+            : t("redeemFailed"),
+        );
       }
     });
   }

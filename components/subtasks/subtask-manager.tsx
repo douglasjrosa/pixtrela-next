@@ -650,7 +650,7 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
                 isCreate={editingSubtask.isDraft === true}
                 hideHeading
                 hideStatus
-                hideActivationStatus
+                hideActivationStatus={editingSubtask.isDraft === true}
                 hideAssignees
                 plain
                 disabled={isBusy}

@@ -21,6 +21,8 @@ export interface SubTaskSessionsPanelProps {
   sharingType: SharingType;
   expectedTime?: number;
   timeSpent?: number;
+  /** subTask.qty × task.qty target pieces for qty payment preview. */
+  targetQty?: number;
   paymentCurrency?: SubtaskPaymentCurrency | null;
   /** When true, totals appear above the sessions table (info modal). */
   totalsFirst?: boolean;
@@ -31,6 +33,7 @@ export function SubTaskSessionsPanel({
   sharingType,
   expectedTime = 0,
   timeSpent = 0,
+  targetQty,
   paymentCurrency = null,
   totalsFirst = false,
 }: SubTaskSessionsPanelProps) {
@@ -114,6 +117,7 @@ export function SubTaskSessionsPanel({
                 colaboratorQty: total.totalQty,
                 totalDurationSec,
                 totalQty,
+                targetQty,
                 expectedTime,
                 currencyPerSecond,
               });

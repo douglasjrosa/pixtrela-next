@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
+
 import { auth } from "@/auth";
 import {
   buildStepIndexUpdates,
@@ -7,6 +9,14 @@ import {
 } from "@/lib/business/step-order";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import {
+  createStep as createStepRepo,
+  deleteStep as deleteStepRepo,
+  listSteps as listStepsRepo,
+  updateStepIndex,
+  updateStepName,
+} from "@/lib/repos/steps";
 import {
   stepNameFormSchema,
   type StepNameFormInput,
@@ -26,10 +36,18 @@ async function assertCanManage(): Promise<void> {
 }
 
 function invalidateSteps(): void {
+  if (isDrizzleBackend()) {
+    revalidateTag("drizzle:steps");
+    return;
+  }
   revalidateStrapiTags(STRAPI_TAGS.steps);
 }
 
 async function fetchStepIndexes(): Promise<number[]> {
+  if (isDrizzleBackend()) {
+    const rows = await listStepsRepo();
+    return rows.map((step) => step.index);
+  }
   const res = await strapiFetch<StrapiList<{ index: number }>>(
     "/steps",
     { strapiCache: { noStore: true } },
@@ -42,6 +60,10 @@ async function fetchStepIndexes(): Promise<number[]> {
 }
 
 async function fetchStepIds(): Promise<string[]> {
+  if (isDrizzleBackend()) {
+    const rows = await listStepsRepo();
+    return rows.map((step) => step.id);
+  }
   const res = await strapiFetch<StrapiList<{ documentId: string }>>(
     "/steps",
     { strapiCache: { noStore: true } },
@@ -58,6 +80,13 @@ export async function createStep(raw: StepNameFormInput): Promise<void> {
   const { name } = stepNameFormSchema.parse(raw);
   const indexes = await fetchStepIndexes();
   const index = getNextStepIndex(indexes.map((value) => ({ index: value })));
+
+  if (isDrizzleBackend()) {
+    await createStepRepo({ name, index });
+    invalidateSteps();
+    return;
+  }
+
   await strapiFetch("/steps", {
     method: "POST",
     strapiCache: { noStore: true },
@@ -72,6 +101,13 @@ export async function updateStep(
 ): Promise<void> {
   await assertCanManage();
   const { name } = stepNameFormSchema.parse(raw);
+
+  if (isDrizzleBackend()) {
+    await updateStepName(documentId, name);
+    invalidateSteps();
+    return;
+  }
+
   await strapiFetch(`/steps/${documentId}`, {
     method: "PUT",
     strapiCache: { noStore: true },
@@ -97,6 +133,14 @@ export async function reorderSteps(
   }
 
   const updates = buildStepIndexUpdates(orderedDocumentIds);
+  if (isDrizzleBackend()) {
+    for (const { documentId, index } of updates) {
+      await updateStepIndex(documentId, index);
+    }
+    invalidateSteps();
+    return;
+  }
+
   for (const { documentId, index } of updates) {
     await strapiFetch(`/steps/${documentId}`, {
       method: "PUT",
@@ -109,6 +153,13 @@ export async function reorderSteps(
 
 export async function deleteStep(documentId: string): Promise<void> {
   await assertCanManage();
+
+  if (isDrizzleBackend()) {
+    await deleteStepRepo(documentId);
+    invalidateSteps();
+    return;
+  }
+
   await strapiFetch(`/steps/${documentId}`, {
     method: "DELETE",
     strapiCache: { noStore: true },

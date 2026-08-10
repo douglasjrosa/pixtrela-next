@@ -22,4 +22,14 @@ describe("awardFormSchema", () => {
       }),
     ).toMatchObject({ warnings: "Validade limitada.", imageId: 3 });
   });
+
+  it("accepts uuid imageId for drizzle media", () => {
+    expect(
+      awardFormSchema.parse({
+        name: "Açúcar",
+        imageId: "550e8400-e29b-41d4-a716-446655440000",
+        values: [{ numberOf: 10, currencyDocumentId: "c1" }],
+      }).imageId,
+    ).toBe("550e8400-e29b-41d4-a716-446655440000");
+  });
 });

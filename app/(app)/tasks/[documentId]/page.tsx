@@ -20,9 +20,23 @@ import { parseSubTaskDependencyIds } from "@/lib/business/subtask-dependencies";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import type { TaskFormInput } from "@/lib/schemas/task";
 import { ACTIVE_TEAM_FILTER } from "@/lib/business/team-active";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
+import { listSteps } from "@/lib/repos/steps";
+import {
+  getTaskById,
+  listSubTasksWithRelationsForTask,
+} from "@/lib/repos/tasks";
+import { listTeamsWithMembers } from "@/lib/repos/teams";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
-import { createSubTask, deleteSubTask, loadSubTaskSessionsAction, reorderSubTasks, updateSubTask } from "./actions";
+import {
+  createSubTask,
+  deleteSubTask,
+  loadSubTaskSessionsAction,
+  reorderSubTasks,
+  updateSubTask,
+} from "./actions";
 
 interface StrapiList<T> {
   data: T[];
@@ -90,6 +104,36 @@ function mapTaskEntity(task: TaskEntity): TaskRow {
 }
 
 async function loadTask(taskDocumentId: string): Promise<TaskRow | null> {
+  if (isDrizzleBackend()) {
+    try {
+      const task = await getTaskById(taskDocumentId);
+      if (!task) return null;
+      let step: TaskRow["step"] = null;
+      if (task.stepId) {
+        const steps = await listSteps();
+        const match = steps.find((row) => row.id === task.stepId);
+        if (match) step = { documentId: match.id, name: match.name };
+      }
+      return {
+        documentId: task.id,
+        name: task.name,
+        qty: task.qty,
+        deliveryDate: task.deliveryDate,
+        index: task.index,
+        status: task.status,
+        active: task.active,
+        reasonForDeactivation: task.reasonForDeactivation ?? "",
+        templateTaskCode: task.templateTaskCode,
+        totalExpectedTime: task.totalExpectedTime,
+        totalTimeSpent: task.totalTimeSpent,
+        step,
+      };
+    } catch (error) {
+      rethrowIfNavigationError(error);
+      return null;
+    }
+  }
+
   try {
     const res = await strapiFetch<StrapiOne<TaskEntity>>(
       `/tasks/${taskDocumentId}`,
@@ -119,6 +163,19 @@ async function loadTask(taskDocumentId: string): Promise<TaskRow | null> {
 }
 
 async function loadSteps(): Promise<StepOption[]> {
+  if (isDrizzleBackend()) {
+    try {
+      const steps = await listSteps();
+      return steps.map((step) => ({
+        documentId: step.id,
+        name: step.name,
+      }));
+    } catch (error) {
+      rethrowIfNavigationError(error);
+      return [];
+    }
+  }
+
   try {
     const res = await strapiFetch<StrapiList<StepEntity>>(
       "/steps",
@@ -136,6 +193,30 @@ async function loadSteps(): Promise<StepOption[]> {
 }
 
 async function loadSubTasks(taskDocumentId: string): Promise<SubTaskRow[]> {
+  if (isDrizzleBackend()) {
+    try {
+      const rows = await listSubTasksWithRelationsForTask(taskDocumentId);
+      return rows.map((subtask) => ({
+        documentId: subtask.id,
+        name: subtask.name,
+        qty: subtask.qty,
+        index: subtask.index,
+        expectedTime: subtask.expectedTime,
+        timeSpent: subtask.timeSpent ?? 0,
+        sharingType: subtask.sharingType ?? "duration",
+        maxSameTimeWorkers: subtask.maxSameTimeWorkers ?? 1,
+        status: subtask.status,
+        activationStatus: fromDrizzleActivationStatus(subtask.activationStatus),
+        reasonForDisabling: subtask.reasonForDisabling ?? "",
+        dependencyIds: subtask.dependencyIds,
+        assignedToIds: subtask.assignedToIds,
+      }));
+    } catch (error) {
+      rethrowIfNavigationError(error);
+      return [];
+    }
+  }
+
   try {
     const res = await strapiFetch<StrapiList<SubTaskEntity>>(
       "/sub-tasks",
@@ -188,6 +269,25 @@ interface TeamEntity {
 }
 
 async function loadTeamsForAssignment(): Promise<TeamAssignmentOption[]> {
+  if (isDrizzleBackend()) {
+    try {
+      const teams = await listTeamsWithMembers();
+      return teams
+        .filter((team) => team.active)
+        .map((team) => ({
+          documentId: team.id,
+          name: team.name,
+          members: team.colaborators.map((colaborator) => ({
+            documentId: colaborator.documentId,
+            name: colaborator.name,
+          })),
+        }));
+    } catch (error) {
+      rethrowIfNavigationError(error);
+      return [];
+    }
+  }
+
   try {
     const res = await strapiFetch<StrapiList<TeamEntity>>(
       "/teams",

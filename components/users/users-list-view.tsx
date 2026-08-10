@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 
+import { ListEmptyMessage } from "@/components/ui/list-empty-message";
+
 import { UserListRow } from "./user-list-row";
 import type { UserRow } from "./types";
 
@@ -26,9 +28,7 @@ export function UsersListView({
   const tUsers = useTranslations("users");
 
   if (users.length === 0) {
-    return (
-      <p className="text-muted-foreground py-6 text-sm">{tUsers("empty")}</p>
-    );
+    return <ListEmptyMessage>{tUsers("empty")}</ListEmptyMessage>;
   }
 
   return (

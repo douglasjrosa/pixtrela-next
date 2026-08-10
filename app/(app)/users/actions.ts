@@ -1,6 +1,9 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
+
 import { auth } from "@/auth";
+import { mediaAssets } from "@/drizzle/schema";
 import type { Role } from "@/lib/auth/nav";
 import {
   canViewUsers,
@@ -8,20 +11,36 @@ import {
   canPairUserTag,
 } from "@/lib/auth/permissions";
 import { canDeleteUsers, canManageRole } from "@/lib/business/roles";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import { getDb } from "@/lib/db/client";
+import { normalizeUserTag } from "@/lib/kiosk/user-tag";
+import { storeMedia } from "@/lib/media/store-media";
+import {
+  createUser as createUserRepo,
+  deactivateUser as deactivateUserRepo,
+  findUserById,
+  findUserIdByTag,
+  setUserAvatarMedia,
+  setUserFacePhotoMedia,
+  setUserTag,
+  updateUserAccount,
+  type UserRole,
+} from "@/lib/repos/users";
 import { buildUserFormSchema, type UserFormInput } from "@/lib/schemas/user";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
-import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
 import { strapiUpload } from "@/lib/strapi/upload";
 import {
   buildCreateUserPayload,
   buildUpdateUserPayload,
+  deriveUserEmail,
 } from "@/lib/users/create-user-payload";
-import { normalizeUserTag } from "@/lib/kiosk/user-tag";
 
 export type UserImageType = "avatar" | "facePhoto";
+export type UserId = number | string;
 
 const FACE_DESCRIPTOR_LENGTH = 128;
+const USER_DEACTIVATION_REASON = "deactivated_by_manager";
 
 function parseFaceVectorFromFormData(formData: FormData): number[] | null {
   const raw = formData.get("faceVector");
@@ -59,6 +78,10 @@ async function assertCanManageTargetRole(targetRole: Role): Promise<void> {
 }
 
 function invalidateUsers(): void {
+  if (isDrizzleBackend()) {
+    revalidateTag("drizzle:users");
+    return;
+  }
   revalidateStrapiTags(STRAPI_TAGS.users);
 }
 
@@ -79,6 +102,10 @@ function sanitizePasswordFields(
   return raw;
 }
 
+function toUserIdString(userId: UserId): string {
+  return String(userId);
+}
+
 export async function createUser(raw: UserFormInput): Promise<void> {
   const actorRole = await assertCanView();
   const sanitized = sanitizePasswordFields(raw, actorRole);
@@ -86,6 +113,20 @@ export async function createUser(raw: UserFormInput): Promise<void> {
     requirePassword: canSetUserPassword(actorRole),
   }).parse(sanitized);
   await assertCanManageTargetRole(data.roleType as Role);
+
+  if (isDrizzleBackend()) {
+    await createUserRepo({
+      username: data.username,
+      password: data.password!,
+      name: data.name,
+      role: data.roleType as UserRole,
+      email: deriveUserEmail(data.username),
+      code: data.code,
+      greetingGender: data.greetingGender ?? "neutral",
+    });
+    invalidateUsers();
+    return;
+  }
 
   await strapiFetch("/users", {
     method: "POST",
@@ -100,7 +141,13 @@ interface StrapiUserEntity {
   roleType?: Role;
 }
 
-async function loadUserRole(userId: number): Promise<Role> {
+async function loadUserRole(userId: UserId): Promise<Role> {
+  if (isDrizzleBackend()) {
+    const user = await findUserById(toUserIdString(userId));
+    if (!user) throw new Error("forbidden");
+    return user.role as Role;
+  }
+
   const users = await strapiFetch<StrapiUserEntity[]>(
     "/users",
     { strapiCache: { noStore: true } },
@@ -117,7 +164,7 @@ async function loadUserRole(userId: number): Promise<Role> {
 }
 
 export async function updateUser(
-  userId: number,
+  userId: UserId,
   raw: Partial<UserFormInput>,
 ): Promise<void> {
   const actorRole = await assertCanView();
@@ -130,6 +177,21 @@ export async function updateUser(
   const data = buildUserFormSchema().partial().parse(sanitized);
   if (data.roleType && !canManageRole(actorRole, data.roleType as Role)) {
     throw new Error("forbidden");
+  }
+
+  if (isDrizzleBackend()) {
+    await updateUserAccount({
+      id: toUserIdString(userId),
+      name: data.name,
+      username: data.username,
+      email: data.username ? deriveUserEmail(data.username) : undefined,
+      password: data.password,
+      code: data.code,
+      role: data.roleType as UserRole | undefined,
+      greetingGender: data.greetingGender,
+    });
+    invalidateUsers();
+    return;
   }
 
   await strapiFetch(`/users/${userId}`, {
@@ -149,7 +211,7 @@ export type PairUserTagResult =
  * already owns the same tag.
  */
 export async function pairUserTag(
-  userId: number,
+  userId: UserId,
   rawTag: string,
 ): Promise<PairUserTagResult> {
   const session = await auth();
@@ -166,6 +228,20 @@ export async function pairUserTag(
   const currentRole = await loadUserRole(userId);
   if (!canManageRole(actorRole!, currentRole)) {
     return { ok: false, error: "forbidden" };
+  }
+
+  if (isDrizzleBackend()) {
+    const ownerId = await findUserIdByTag(userTag);
+    if (ownerId && ownerId !== toUserIdString(userId)) {
+      return { ok: false, error: "conflict" };
+    }
+    try {
+      await setUserTag(toUserIdString(userId), userTag);
+    } catch {
+      return { ok: false, error: "conflict" };
+    }
+    invalidateUsers();
+    return { ok: true, userTag };
   }
 
   const conflicts = await strapiFetch<Array<{ id: number }>>(
@@ -198,84 +274,19 @@ export async function pairUserTag(
   return { ok: true, userTag };
 }
 
-export type UserMediaUploadResult =
-  | { ok: true; url: string | null }
-  | { ok: false };
-
-async function uploadUserMediaField(
-  userId: number,
-  field: "avatar" | "facePhoto",
-  file: File,
-  faceVector?: number[] | null,
-): Promise<UserMediaUploadResult> {
+export async function deactivateUser(userId: UserId): Promise<void> {
   const actorRole = await assertCanView();
   const currentRole = await loadUserRole(userId);
   if (!canManageRole(actorRole, currentRole)) {
-    return { ok: false };
+    throw new Error("forbidden");
   }
 
-  if (!(file instanceof File) || file.size === 0 || !file.type.startsWith("image/")) {
-    return { ok: false };
-  }
-
-  try {
-    const mediaId = await strapiUpload(file);
-    const payload: Record<string, unknown> = { [field]: mediaId };
-    if (field === "facePhoto") {
-      payload.faceVector = faceVector ?? null;
-    }
-    const updated = await strapiFetch<{
-      avatar?: { url?: string } | null;
-      facePhoto?: { url?: string } | null;
-    }>(`/users/${userId}`, {
-      method: "PUT",
-      strapiCache: { noStore: true },
-      body: JSON.stringify(payload),
-    });
+  if (isDrizzleBackend()) {
+    await deactivateUserRepo(toUserIdString(userId), USER_DEACTIVATION_REASON);
     invalidateUsers();
-    const media = field === "avatar" ? updated.avatar : updated.facePhoto;
-    return {
-      ok: true,
-      url: resolveStrapiMediaUrl(media?.url ?? null),
-    };
-  } catch {
-    return { ok: false };
+    return;
   }
-}
 
-export async function saveUserAvatar(
-  userId: number,
-  file: File,
-): Promise<UserMediaUploadResult> {
-  return uploadUserMediaField(userId, "avatar", file);
-}
-
-export async function saveUserFacePhoto(
-  userId: number,
-  file: File,
-): Promise<UserMediaUploadResult> {
-  return uploadUserMediaField(userId, "facePhoto", file);
-}
-
-/** Client-friendly wrappers for the users edit form. */
-export async function saveUserAvatarFile(
-  userId: number,
-  file: File,
-): Promise<boolean> {
-  const result = await saveUserAvatar(userId, file);
-  return result.ok;
-}
-
-export async function saveUserFacePhotoFile(
-  userId: number,
-  file: File,
-): Promise<boolean> {
-  const result = await saveUserFacePhoto(userId, file);
-  return result.ok;
-}
-
-export async function deactivateUser(userId: number): Promise<void> {
-  await assertCanView();
   await strapiFetch(`/users/${userId}`, {
     method: "PUT",
     strapiCache: { noStore: true },
@@ -284,12 +295,19 @@ export async function deactivateUser(userId: number): Promise<void> {
   invalidateUsers();
 }
 
-export async function deleteUser(userId: number): Promise<void> {
+export async function deleteUser(userId: UserId): Promise<void> {
   const session = await auth();
   const actorRole = session?.user?.role as Role | undefined;
   if (!actorRole || !canDeleteUsers(actorRole)) {
     throw new Error("forbidden");
   }
+
+  if (isDrizzleBackend()) {
+    await deactivateUserRepo(toUserIdString(userId), USER_DEACTIVATION_REASON);
+    invalidateUsers();
+    return;
+  }
+
   await strapiFetch(`/users/${userId}`, {
     method: "DELETE",
     strapiCache: { noStore: true },
@@ -298,7 +316,7 @@ export async function deleteUser(userId: number): Promise<void> {
 }
 
 export async function updateUserImage(
-  userId: number,
+  userId: UserId,
   imageType: UserImageType,
   formData: FormData,
 ): Promise<void> {
@@ -313,6 +331,42 @@ export async function updateUserImage(
   const currentRole = await loadUserRole(userId);
   if (!canManageRole(actorRole, currentRole)) {
     throw new Error("forbidden");
+  }
+
+  if (isDrizzleBackend()) {
+    const entry = formData.get("file");
+    if (!(entry instanceof Blob) || entry.size === 0) {
+      throw new Error("invalid");
+    }
+    if (!entry.type.startsWith("image/")) {
+      throw new Error("invalid");
+    }
+    const mimeType = entry.type || "image/jpeg";
+    const buffer = Buffer.from(await entry.arrayBuffer());
+    const extension = mimeType.includes("png") ? "png" : "jpg";
+    const stored = await storeMedia({ bytes: buffer, mimeType, extension });
+    const db = getDb();
+    const [media] = await db
+      .insert(mediaAssets)
+      .values({
+        storageKey: stored.storageKey,
+        url: stored.url,
+        mimeType: stored.mimeType,
+        byteSize: stored.byteSize,
+      })
+      .returning({ id: mediaAssets.id });
+    const userIdStr = toUserIdString(userId);
+    if (imageType === "avatar") {
+      await setUserAvatarMedia(userIdStr, media.id, db);
+    } else {
+      const faceVector = parseFaceVectorFromFormData(formData);
+      if (formData.has("faceVector") && !faceVector) {
+        throw new Error("invalid");
+      }
+      await setUserFacePhotoMedia(userIdStr, media.id, faceVector, db);
+    }
+    invalidateUsers();
+    return;
   }
 
   const entry = formData.get("file");

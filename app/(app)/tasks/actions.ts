@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
+
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
 import {
@@ -8,6 +10,16 @@ import {
   canManageTasks,
 } from "@/lib/auth/permissions";
 import { getNextTaskIndex } from "@/lib/business/task-order";
+import { isDrizzleBackend } from "@/lib/db/backend";
+import { findTemplateByCode } from "@/lib/repos/templates";
+import {
+  createTask as createTaskRepo,
+  deleteTaskById,
+  getTaskById,
+  listTasks as listTasksRepo,
+  setTaskActive,
+  updateTaskFields,
+} from "@/lib/repos/tasks";
 import {
   taskDeactivationSchema,
   taskFormSchema,
@@ -61,12 +73,20 @@ function toStrapiPayload(
 }
 
 function invalidateTasks(taskDocumentId?: string): void {
+  if (isDrizzleBackend()) {
+    revalidateTag("drizzle:tasks");
+    return;
+  }
   const { tags, paths } = LIST_CACHE_CONTRACT.tasks;
   const detailPaths = taskDocumentId ? [`/tasks/${taskDocumentId}`] : [];
   revalidateStrapiTags(...tags, { paths: [...paths, ...detailPaths] });
 }
 
 async function fetchTaskIndexes(): Promise<number[]> {
+  if (isDrizzleBackend()) {
+    const rows = await listTasksRepo();
+    return rows.map((task) => task.index);
+  }
   const res = await strapiFetch<StrapiList<{ index: number }>>(
     "/tasks",
     { strapiCache: { noStore: true } },
@@ -80,6 +100,11 @@ async function fetchTaskIndexes(): Promise<number[]> {
 }
 
 async function fetchTaskIndex(documentId: string): Promise<number> {
+  if (isDrizzleBackend()) {
+    const task = await getTaskById(documentId);
+    if (!task) throw new Error("notFound");
+    return task.index;
+  }
   const res = await strapiFetch<{ data: { index: number } }>(
     `/tasks/${documentId}`,
     { strapiCache: { noStore: true } },
@@ -102,6 +127,21 @@ export async function createTask(raw: TaskFormInput): Promise<void> {
   const data = taskFormSchema.parse(raw);
   const indexes = await fetchTaskIndexes();
   const index = getNextTaskIndex(indexes.map((value) => ({ index: value })));
+
+  if (isDrizzleBackend()) {
+    await createTaskRepo({
+      name: data.name,
+      qty: data.qty,
+      deliveryDate: data.deliveryDate || null,
+      stepId: data.stepDocumentId || null,
+      status: data.status,
+      templateTaskCode: data.templateTaskCode || null,
+      index,
+    });
+    invalidateTasks();
+    return;
+  }
+
   await strapiFetch("/tasks", {
     method: "POST",
     strapiCache: { noStore: true },
@@ -119,6 +159,18 @@ export async function updateTask(
   const index = await fetchTaskIndex(documentId);
   // Omit step so status→step automation owns the board column (hidden form
   // stepDocumentId would otherwise overwrite the mapped step after update).
+  if (isDrizzleBackend()) {
+    await updateTaskFields(documentId, {
+      name: data.name,
+      qty: data.qty,
+      deliveryDate: data.deliveryDate || null,
+      status: data.status,
+      templateTaskCode: data.templateTaskCode || null,
+    });
+    invalidateTasks(documentId);
+    return;
+  }
+
   await strapiFetch(`/tasks/${documentId}`, {
     method: "PUT",
     strapiCache: { noStore: true },
@@ -135,13 +187,19 @@ export async function deactivateTask(
 ): Promise<void> {
   await assertCanDeactivate();
   const parsed = taskDeactivationSchema.parse({ reasonForDeactivation });
+  const reason = parsed.reasonForDeactivation.trim();
+  if (isDrizzleBackend()) {
+    await setTaskActive(documentId, false, reason);
+    invalidateTasks(documentId);
+    return;
+  }
   await strapiFetch(`/tasks/${documentId}`, {
     method: "PUT",
     strapiCache: { noStore: true },
     body: JSON.stringify({
       data: {
         active: false,
-        reasonForDeactivation: parsed.reasonForDeactivation.trim(),
+        reasonForDeactivation: reason,
       },
     }),
   });
@@ -154,13 +212,19 @@ export async function reactivateTask(
 ): Promise<void> {
   await assertCanDeactivate();
   const parsed = taskDeactivationSchema.parse({ reasonForDeactivation });
+  const reason = parsed.reasonForDeactivation.trim();
+  if (isDrizzleBackend()) {
+    await setTaskActive(documentId, true, reason);
+    invalidateTasks(documentId);
+    return;
+  }
   await strapiFetch(`/tasks/${documentId}`, {
     method: "PUT",
     strapiCache: { noStore: true },
     body: JSON.stringify({
       data: {
         active: true,
-        reasonForDeactivation: parsed.reasonForDeactivation.trim(),
+        reasonForDeactivation: reason,
       },
     }),
   });
@@ -174,6 +238,14 @@ export async function lookupTemplateNameByCode(
   const trimmed = code.trim();
   if (!trimmed) {
     throw new Error("missingCode");
+  }
+
+  if (isDrizzleBackend()) {
+    const template = await findTemplateByCode(trimmed);
+    if (!template) {
+      throw new Error("not_found");
+    }
+    return { name: template.name };
   }
 
   const res = await strapiFetch<StrapiList<{ name: string }>>(
@@ -199,6 +271,11 @@ export async function deleteTask(documentId: string): Promise<void> {
   const session = await auth();
   if (!canDeleteTasks(session?.user?.role as Role | undefined)) {
     throw new Error("forbidden");
+  }
+  if (isDrizzleBackend()) {
+    await deleteTaskById(documentId);
+    invalidateTasks();
+    return;
   }
   await strapiFetch(`/tasks/${documentId}`, {
     method: "DELETE",

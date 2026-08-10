@@ -12,7 +12,7 @@ export interface AwardRow {
   title?: string | null;
   description?: string | null;
   warnings?: string | null;
-  imageId?: number | null;
+  imageId?: number | string | null;
   imageUrl?: string | null;
   values: AwardFormInput["values"];
 }

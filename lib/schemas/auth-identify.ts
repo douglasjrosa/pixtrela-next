@@ -34,3 +34,8 @@ export const loginByFaceConfirmSchema = z.object({
 export const jwtCredentialSchema = z.object({
   jwt: z.string().min(1),
 });
+
+/** Credentials path for Drizzle identify (code/tag/face) without Strapi JWT. */
+export const loginTicketCredentialSchema = z.object({
+  loginTicket: z.string().min(1),
+});

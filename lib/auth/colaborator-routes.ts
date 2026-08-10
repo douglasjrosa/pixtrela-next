@@ -29,7 +29,6 @@ const RESERVED_ROOT_SEGMENTS = new Set([
   "awards",
   "settings",
   "profile",
-  "totem",
   "api",
   "serwist",
 ]);

@@ -214,7 +214,7 @@ describe("SubTaskManager", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("hides status fields when editing an existing subtask", async () => {
+  it("hides workflow status but shows activation when editing", async () => {
     const user = userEvent.setup();
 
     renderWithIntl(
@@ -234,8 +234,8 @@ describe("SubTaskManager", () => {
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).queryByLabelText("Status")).not.toBeInTheDocument();
     expect(
-      within(dialog).queryByLabelText("Status de ativação"),
-    ).not.toBeInTheDocument();
+      within(dialog).getByLabelText("Status de ativação"),
+    ).toBeInTheDocument();
   });
 
   it("shows total qty as sub-task qty times task qty", () => {
