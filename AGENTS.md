@@ -47,10 +47,16 @@ When the user asks to **commit and push**:
 
 If migrate fails, fix and push again; do not leave prod schema behind the app.
 
-## Local laptop (optional)
+## Local laptop
 
-Same `DATABASE_URL` host `179.0.179.210:5433` works without a tunnel.
-`npm run db:tunnel` is optional legacy for localhost-only binds.
+Same `DATABASE_URL` → `179.0.179.210:5433` (VPS postgres-dev). No local Docker
+Desktop Postgres. `npm run db:tunnel` is legacy-only.
+
+## /optimize (project command)
+
+Slash command: `.cursor/commands/optimize.md`. Merge conflicts during that
+cycle: skill `.cursor/skills/optimize-merge/SKILL.md`. Both travel with the
+repo (any machine that clones `pixtrela-next`).
 
 ## Docs
 
