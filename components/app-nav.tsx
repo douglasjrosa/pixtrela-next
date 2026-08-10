@@ -107,9 +107,7 @@ export function AppNav() {
             >
               {items.map((item) => (
                 <li key={`measure-${item.href}`}>
-                  <span className="inline-flex items-center px-2 py-1">
-                    {t(`nav.${item.labelKey}`)}
-                  </span>
+                  <span>{t(`nav.${item.labelKey}`)}</span>
                 </li>
               ))}
             </ul>
@@ -118,13 +116,7 @@ export function AppNav() {
               <ul className="flex gap-3 overflow-hidden text-sm">
                 {items.map((item) => (
                   <li key={item.href} className="shrink-0">
-                    <Link
-                      href={item.href}
-                      className={
-                        "inline-flex items-center rounded-md px-2 py-1 " +
-                        "transition-colors hover:bg-muted hover:text-foreground"
-                      }
-                    >
+                    <Link href={item.href} className="hover:underline">
                       {t(`nav.${item.labelKey}`)}
                     </Link>
                   </li>
