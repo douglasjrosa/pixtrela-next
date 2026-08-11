@@ -23,6 +23,7 @@ export interface RouteThemeContentFrameProps {
 /**
  * Client frame that applies per-route content margins from the matched theme.
  * Does not wrap AppNav — only the main content surface.
+ * Page scroll is document-level; the surface grows with content.
  */
 export function RouteThemeContentFrame({
   themes,
@@ -38,7 +39,10 @@ export function RouteThemeContentFrame({
 
   return (
     <main className={cn("relative z-10", frameClass, className)}>
-      <div className={cn(surfaceClassName, radiusClass)} style={panelStyle}>
+      <div
+        className={cn(surfaceClassName, radiusClass)}
+        style={panelStyle}
+      >
         {children}
       </div>
     </main>

@@ -16,6 +16,7 @@ import { isDrizzleBackend } from "@/lib/db/backend";
 import { listUsers as listUsersRepo } from "@/lib/repos/users";
 import type { UserFormInput } from "@/lib/schemas/user";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
+import { toBrowserMediaUrl } from "@/lib/strapi/browser-media-url";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 
 import {
@@ -59,8 +60,8 @@ async function loadUsers(): Promise<UserRow[]> {
       greetingGender:
         user.greetingGender === "neutral" ? null : user.greetingGender,
       blocked: user.blocked || !user.active,
-      avatarUrl: null,
-      facePhotoUrl: null,
+      avatarUrl: toBrowserMediaUrl(user.avatarUrl),
+      facePhotoUrl: toBrowserMediaUrl(user.facePhotoUrl),
     }));
   }
 

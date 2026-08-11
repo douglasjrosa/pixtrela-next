@@ -1,20 +1,21 @@
 /**
- * Shared layout tokens for staff routes under the fixed AppNav (h-14 = 3.5rem).
+ * Shared layout tokens for staff routes under the AppNav (h-14 = 3.5rem).
  * Short-viewport rules (`max-[500px]`) target landscape phones (~375px tall).
  *
- * Page shells fill the opaque content surface from `(app)/layout.tsx`
- * (theme background shows in the outer padding around that surface).
+ * The document scrolls (page scroll). Route theme backgrounds paint behind the
+ * content surface; margins on the main frame keep the theme visible around it.
  */
 
-/** Fills the staff content surface (flex parent under AppNav). */
-export const APP_CONTENT_HEIGHT_CLASS = "min-h-0 flex-1";
+/** Grows with page content under the nav. */
+export const APP_CONTENT_HEIGHT_CLASS = "flex-1";
 
 /**
  * Opaque panel over route theme backgrounds.
  * Radius comes from `routeThemeContentSurfaceRadiusClass(theme)`.
+ * No overflow lock — the page scrolls, not the card.
  */
 export const APP_CONTENT_SURFACE_CLASS = [
-  "flex min-h-0 flex-1 flex-col overflow-auto",
+  "flex flex-1 flex-col",
   "border text-card-foreground shadow-sm",
 ].join(" ");
 
@@ -23,7 +24,7 @@ export const APP_CONTENT_SURFACE_CLASS = [
  */
 export const APP_CONTENT_FRAME_CLASS = "flex flex-1 flex-col p-3 sm:p-4";
 
-/** Locked viewport page shell used by list/management routes. */
+/** List/management routes: natural page height under the nav. */
 export const APP_LIST_PAGE_SHELL_CLASS = [
   "flex",
   APP_CONTENT_HEIGHT_CLASS,
@@ -39,7 +40,7 @@ export const APP_LIST_PAGE_CHROME_CLASS =
 
 /** Inner stack (header + toolbar + list) inside a list page or section layout. */
 export const APP_LIST_PAGE_STACK_CLASS = [
-  "flex min-h-0 flex-1 flex-col gap-4",
+  "flex flex-1 flex-col gap-4",
   "max-[500px]:gap-2",
 ].join(" ");
 
@@ -57,9 +58,12 @@ export const APP_SECTION_TABS_COMPACT_CLASS = [
   "[&_a]:max-[500px]:min-h-8 [&_a]:max-[500px]:px-2 [&_a]:max-[500px]:text-xs",
 ].join(" ");
 
-/** Board canvas locked under the nav; columns scroll internally. */
+/**
+ * Board canvas: locked under the nav with internal column scroll.
+ * Uses viewport height so kanban columns scroll inside the board.
+ */
 export const APP_BOARD_SHELL_CLASS = [
   "flex",
-  APP_CONTENT_HEIGHT_CLASS,
+  "h-[calc(100dvh-3.5rem)] min-h-0",
   "flex-col overflow-hidden",
 ].join(" ");

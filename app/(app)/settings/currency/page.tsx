@@ -10,6 +10,7 @@ import { isDrizzleBackend } from "@/lib/db/backend";
 import { listCurrencies as listCurrenciesRepo } from "@/lib/repos/awards";
 import { getCurrencyForSubtasks } from "@/lib/repos/settings";
 import { loadCurrencyForSubtasks } from "@/lib/strapi/currency-for-subtasks";
+import { toBrowserMediaUrl } from "@/lib/strapi/browser-media-url";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
@@ -42,8 +43,8 @@ async function loadCurrencies(): Promise<CurrencyRow[]> {
       name: currency.name,
       title: currency.title ?? "",
       pluralTitle: currency.pluralTitle ?? "",
-      iconMediaId: null,
-      iconMediaUrl: null,
+      iconMediaId: currency.iconMediaId,
+      iconMediaUrl: toBrowserMediaUrl(currency.iconMediaUrl),
       currencyPerSecond: Number(currency.currencyPerSecond ?? 0),
     }));
   }

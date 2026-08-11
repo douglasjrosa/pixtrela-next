@@ -1,9 +1,10 @@
-import { eq } from "drizzle-orm";
+import { eq, getTableColumns } from "drizzle-orm";
 
 import {
   currencies,
   currencyForSubtasks,
   kioskSettings,
+  mediaAssets,
   routeThemes,
   taskAutomationSettings,
 } from "@/drizzle/schema";
@@ -109,7 +110,17 @@ export async function upsertTaskAutomationSettings(
 }
 
 export async function listRouteThemes(db: Db = getDb()) {
-  return db.select().from(routeThemes).orderBy(routeThemes.label);
+  return db
+    .select({
+      ...getTableColumns(routeThemes),
+      backgroundImageUrl: mediaAssets.url,
+    })
+    .from(routeThemes)
+    .leftJoin(
+      mediaAssets,
+      eq(routeThemes.backgroundImageMediaId, mediaAssets.id),
+    )
+    .orderBy(routeThemes.label);
 }
 
 /**
@@ -210,7 +221,6 @@ export type UpdateRouteThemeInput = {
   backgroundMotion: string;
   parallaxIntensity: number;
   parallaxDirection: string;
-  parallaxBleed: number;
   contentMarginMobile: string;
   contentMarginDesktop: string;
   foregroundColor: string;
@@ -235,7 +245,6 @@ export async function updateRouteTheme(
     backgroundMotion: input.backgroundMotion,
     parallaxIntensity: input.parallaxIntensity,
     parallaxDirection: input.parallaxDirection,
-    parallaxBleed: input.parallaxBleed,
     contentMarginMobile: PAGE_MARGIN_INDEX[input.contentMarginMobile] ?? 2,
     contentMarginDesktop: PAGE_MARGIN_INDEX[input.contentMarginDesktop] ?? 3,
     foregroundColor: input.foregroundColor,

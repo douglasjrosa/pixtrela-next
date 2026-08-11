@@ -1,6 +1,7 @@
 import { isDrizzleBackend } from "@/lib/db/backend";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { listRouteThemes as listRouteThemesRepo } from "@/lib/repos/settings";
+import { toBrowserMediaUrl } from "@/lib/strapi/browser-media-url";
 import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import {
@@ -15,7 +16,6 @@ import {
   DEFAULT_BACKGROUND_SIZE,
   DEFAULT_PAGE_MARGIN_DESKTOP,
   DEFAULT_PAGE_MARGIN_MOBILE,
-  DEFAULT_PARALLAX_BLEED,
   DEFAULT_PARALLAX_DIRECTION,
   DEFAULT_PARALLAX_INTENSITY,
   DEFAULT_FOREGROUND_COLOR,
@@ -24,7 +24,6 @@ import {
   isRouteThemeKey,
   normalizeForegroundColor,
   normalizeOpacity,
-  normalizeParallaxBleed,
   normalizeParallaxIntensity,
   normalizeSurfaceColor,
   PAGE_MARGINS,
@@ -54,7 +53,6 @@ interface RouteThemeEntity {
   backgroundMotion?: string | null;
   parallaxIntensity?: number | null;
   parallaxDirection?: string | null;
-  parallaxBleed?: number | null;
   contentMarginMobile?: string | null;
   contentMarginDesktop?: string | null;
   foregroundColor?: string | null;
@@ -113,9 +111,6 @@ function mapTheme(entity: RouteThemeEntity): RouteThemeView | null {
       PARALLAX_DIRECTIONS,
       DEFAULT_PARALLAX_DIRECTION,
     ) as ParallaxDirection,
-    parallaxBleed: normalizeParallaxBleed(
-      entity.parallaxBleed ?? DEFAULT_PARALLAX_BLEED,
-    ),
     contentMarginMobile: asEnum(
       entity.contentMarginMobile,
       PAGE_MARGINS,
@@ -151,7 +146,7 @@ async function loadDrizzleRouteThemes(): Promise<RouteThemeView[]> {
       backgroundColorOpacity: normalizeOpacity(
         row.backgroundColorOpacity ?? DEFAULT_BACKGROUND_COLOR_OPACITY,
       ),
-      backgroundImageUrl: null,
+      backgroundImageUrl: toBrowserMediaUrl(row.backgroundImageUrl),
       backgroundSize: asEnum(
         row.backgroundSize,
         BACKGROUND_SIZES,
@@ -180,9 +175,6 @@ async function loadDrizzleRouteThemes(): Promise<RouteThemeView[]> {
         PARALLAX_DIRECTIONS,
         DEFAULT_PARALLAX_DIRECTION,
       ) as ParallaxDirection,
-      parallaxBleed: normalizeParallaxBleed(
-        row.parallaxBleed ?? DEFAULT_PARALLAX_BLEED,
-      ),
       contentMarginMobile: DEFAULT_PAGE_MARGIN_MOBILE,
       contentMarginDesktop: DEFAULT_PAGE_MARGIN_DESKTOP,
       foregroundColor: normalizeForegroundColor(
@@ -229,7 +221,6 @@ export async function loadRouteThemes(): Promise<RouteThemeView[]> {
           "backgroundMotion",
           "parallaxIntensity",
           "parallaxDirection",
-          "parallaxBleed",
           "contentMarginMobile",
           "contentMarginDesktop",
           "foregroundColor",

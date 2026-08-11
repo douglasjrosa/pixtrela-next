@@ -4,30 +4,79 @@ import postgres from "postgres";
 import * as schema from "@/drizzle/schema";
 
 const DEFAULT_DATABASE_URL =
-  "postgresql://pixtrela:pixtrela@127.0.0.1:5432/pixtrela";
+  "postgresql://[REDACTED]:[REDACTED]@127.0.0.1:5432/[REDACTED]";
 
-let client: ReturnType<typeof postgres> | null = null;
-let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
+const PRODUCTION_POOL_MAX = 10;
+const DEVELOPMENT_POOL_MAX = 2;
+const POOL_IDLE_TIMEOUT_SECONDS = 20;
+const POOL_CONNECT_TIMEOUT_SECONDS = 10;
+
+type PgClient = ReturnType<typeof postgres>;
+type PgDb = ReturnType<typeof drizzle<typeof schema>>;
+
+const globalCache = globalThis as typeof globalThis & {
+  __appPgClient?: PgClient;
+  __appPgDb?: PgDb;
+};
+
+let client: PgClient | null = null;
+let dbInstance: PgDb | null = null;
 
 export function getDatabaseUrl(): string {
   return process.env.DATABASE_URL?.trim() || DEFAULT_DATABASE_URL;
 }
 
+function poolMaxSize(): number {
+  return process.env.NODE_ENV === "production"
+    ? PRODUCTION_POOL_MAX
+    : DEVELOPMENT_POOL_MAX;
+}
+
+function readCachedDb(): PgDb | undefined {
+  if (process.env.NODE_ENV !== "production") {
+    return globalCache.__appPgDb;
+  }
+  return dbInstance ?? undefined;
+}
+
+function storeDb(nextClient: PgClient, nextDb: PgDb): void {
+  if (process.env.NODE_ENV !== "production") {
+    globalCache.__appPgClient = nextClient;
+    globalCache.__appPgDb = nextDb;
+    return;
+  }
+  client = nextClient;
+  dbInstance = nextDb;
+}
+
 export function getDb() {
-  if (dbInstance) return dbInstance;
+  const cached = readCachedDb();
+  if (cached) return cached;
+
   const url = getDatabaseUrl();
-  client = postgres(url, { max: 10 });
-  dbInstance = drizzle(client, { schema });
-  return dbInstance;
+  const nextClient = postgres(url, {
+    max: poolMaxSize(),
+    idle_timeout: POOL_IDLE_TIMEOUT_SECONDS,
+    connect_timeout: POOL_CONNECT_TIMEOUT_SECONDS,
+  });
+  const nextDb = drizzle(nextClient, { schema });
+  storeDb(nextClient, nextDb);
+  return nextDb;
 }
 
 export type Db = ReturnType<typeof getDb>;
 
 /** Closes the pooled connection (tests / scripts). */
 export async function closeDb(): Promise<void> {
-  if (client) {
-    await client.end({ timeout: 5 });
-    client = null;
-    dbInstance = null;
+  const toClose =
+    process.env.NODE_ENV !== "production"
+      ? globalCache.__appPgClient
+      : client;
+  if (toClose) {
+    await toClose.end({ timeout: 5 });
   }
+  globalCache.__appPgClient = undefined;
+  globalCache.__appPgDb = undefined;
+  client = null;
+  dbInstance = null;
 }

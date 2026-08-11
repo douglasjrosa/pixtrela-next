@@ -10,11 +10,11 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   computeParallaxOffset,
-  DEFAULT_PARALLAX_BLEED,
   DEFAULT_PARALLAX_DIRECTION,
   DEFAULT_PARALLAX_INTENSITY,
   matchRouteTheme,
-  parallaxLayerGeometry,
+  maxParallaxTravelPx,
+  parallaxLayerPixelGeometry,
   routeThemeColorOverlayRgba,
   routeThemeImageOnlyStyle,
   routeThemeLayeredStyle,
@@ -29,9 +29,17 @@ export interface RouteThemeBackgroundProps {
   className?: string;
 }
 
+type ParallaxLayerBox = {
+  topPx: number;
+  heightPx: number;
+};
+
 /**
  * Client-only background layer. Does not wrap page content.
- * Supports scroll, fixed, and parallax image motion.
+ *
+ * - scroll: paints with the document (absolute, full page height)
+ * - fixed: locked to the viewport
+ * - parallax: fixed viewport layer shifted by window.scrollY
  */
 export function RouteThemeBackground({
   themes = [],
@@ -51,36 +59,53 @@ export function RouteThemeBackground({
   const useFixed = hasImage && motion === "fixed";
   const intensity = theme?.parallaxIntensity ?? DEFAULT_PARALLAX_INTENSITY;
   const direction = theme?.parallaxDirection ?? DEFAULT_PARALLAX_DIRECTION;
-  const bleed = theme?.parallaxBleed ?? DEFAULT_PARALLAX_BLEED;
   const [parallaxOffset, setParallaxOffset] = useState(0);
-  const displayParallaxOffset = useParallax ? parallaxOffset : 0;
+  const [layerBox, setLayerBox] = useState<ParallaxLayerBox>({
+    topPx: 0,
+    heightPx: 0,
+  });
 
   useEffect(() => {
     if (!useParallax) {
       return;
     }
 
-    function onScroll(): void {
+    function syncParallax(): void {
+      const viewportHeight = window.innerHeight;
+      const scrollRange = Math.max(
+        0,
+        document.documentElement.scrollHeight - viewportHeight,
+      );
+      const maxTravel = maxParallaxTravelPx(scrollRange, intensity);
+      setLayerBox(
+        parallaxLayerPixelGeometry({
+          viewportHeight,
+          maxTravelPx: maxTravel,
+        }),
+      );
       setParallaxOffset(
         computeParallaxOffset(window.scrollY, intensity, direction),
       );
     }
 
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    syncParallax();
+    window.addEventListener("scroll", syncParallax, { passive: true });
+    window.addEventListener("resize", syncParallax, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", syncParallax);
+      window.removeEventListener("resize", syncParallax);
+    };
   }, [useParallax, intensity, direction]);
 
   if (useParallax && theme) {
     const imageStyle = routeThemeImageOnlyStyle(theme) as CSSProperties;
     const overlayRgba = routeThemeColorOverlayRgba(theme);
-    const geometry = parallaxLayerGeometry(bleed);
 
     return (
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute inset-0 z-0 overflow-hidden",
+          "pointer-events-none fixed inset-0 z-0 overflow-hidden",
           className,
         )}
       >
@@ -88,9 +113,9 @@ export function RouteThemeBackground({
           className="absolute inset-x-0 will-change-transform"
           style={{
             ...imageStyle,
-            top: `${geometry.topPercent}%`,
-            height: `${geometry.heightPercent}%`,
-            transform: `translate3d(0, ${displayParallaxOffset}px, 0)`,
+            top: `${layerBox.topPx}px`,
+            height: `${layerBox.heightPx}px`,
+            transform: `translate3d(0, ${parallaxOffset}px, 0)`,
           }}
         />
         {overlayRgba ? (
@@ -117,7 +142,7 @@ export function RouteThemeBackground({
       aria-hidden
       className={cn(
         "pointer-events-none z-0",
-        useFixed ? "fixed inset-0" : "absolute inset-0",
+        useFixed ? "fixed inset-0" : "absolute inset-0 min-h-full",
         !hasCustom && fallbackClassName,
         className,
       )}

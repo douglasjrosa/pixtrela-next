@@ -10,15 +10,17 @@ import {
 } from "./app-page-layout";
 
 describe("app-page-layout", () => {
-  it("fills the opaque content surface under the fixed nav", () => {
-    expect(APP_CONTENT_HEIGHT_CLASS).toBe("min-h-0 flex-1");
+  it("lets the page scroll with the theme visible around content", () => {
+    expect(APP_CONTENT_HEIGHT_CLASS).toBe("flex-1");
     expect(APP_CONTENT_FRAME_CLASS).toContain("p-3");
     expect(APP_CONTENT_SURFACE_CLASS).toContain("border");
+    expect(APP_CONTENT_SURFACE_CLASS).not.toContain("overflow-auto");
     expect(APP_CONTENT_SURFACE_CLASS).not.toContain("bg-card");
     expect(APP_CONTENT_SURFACE_CLASS).not.toContain("rounded-2xl");
     expect(APP_LIST_PAGE_SHELL_CLASS).toContain(APP_CONTENT_HEIGHT_CLASS);
     expect(APP_LIST_PAGE_SHELL_CLASS).toContain("max-[500px]:p-3");
     expect(APP_LIST_PAGE_TITLE_CLASS).toContain("max-[500px]:text-lg");
     expect(APP_BOARD_SHELL_CLASS).toContain("overflow-hidden");
+    expect(APP_BOARD_SHELL_CLASS).toContain("100dvh");
   });
 });
