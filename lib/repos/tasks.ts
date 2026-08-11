@@ -32,6 +32,8 @@ export type CreateTaskInput = {
   status?: "waiting" | "producing" | "paused" | "finished" | "reviewed" | "delivered";
   templateTaskCode?: string | null;
   index?: number;
+  crmPedidoId?: number | null;
+  crmItemKey?: string | null;
 };
 
 export async function createTask(
@@ -50,6 +52,8 @@ export async function createTask(
         status: input.status ?? "waiting",
         templateTaskCode: input.templateTaskCode ?? null,
         index: input.index ?? 0,
+        crmPedidoId: input.crmPedidoId ?? null,
+        crmItemKey: input.crmItemKey ?? null,
       })
       .returning();
 
@@ -165,6 +169,49 @@ export async function listActiveTasksForBoard(db: Db = getDb()) {
 export async function getTaskById(id: string, db: Db = getDb()) {
   const [row] = await db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
   return row ?? null;
+}
+
+export type CrmPedidoTaskRecord = {
+  id: string;
+  name: string;
+  qty: number;
+  deliveryDate: string | null;
+};
+
+export async function findTaskByCrmItemKey(
+  crmItemKey: string,
+  db: Db = getDb(),
+): Promise<CrmPedidoTaskRecord | null> {
+  const [row] = await db
+    .select({
+      id: tasks.id,
+      name: tasks.name,
+      qty: tasks.qty,
+      deliveryDate: tasks.deliveryDate,
+    })
+    .from(tasks)
+    .where(eq(tasks.crmItemKey, crmItemKey))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function updateCrmPedidoTaskFields(
+  id: string,
+  input: { name: string; qty: number; deliveryDate?: string | null },
+  db: Db = getDb(),
+) {
+  const [row] = await db
+    .update(tasks)
+    .set({
+      name: input.name.trim(),
+      qty: Math.max(1, input.qty),
+      deliveryDate: input.deliveryDate ?? null,
+      updatedAt: new Date(),
+    })
+    .where(eq(tasks.id, id))
+    .returning();
+  if (!row) throw new Error("taskNotFound");
+  return row;
 }
 
 export type UpdateTaskInput = {

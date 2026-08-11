@@ -8,18 +8,13 @@ sys-rbx-backend when `Bpedido` is set or relevant fields change.
 | Variable | Description |
 |----------|-------------|
 | `CRM_WEBHOOK_SECRET` | Shared HMAC secret (must match `PIXTRELA_WEBHOOK_SECRET` on CRM) |
-| `STRAPI_SYNC_API_TOKEN` | Pixtrela Strapi API token with write access (see below) |
 | `LEGACY_RBX_URL` / `LEGACY_RBX_TOKEN` | Legacy box template API (subtasks by `prodId`) |
+| `DATABASE_URL` | Postgres (Drizzle); tasks are written directly to the DB |
 
-## Pixtrela Strapi API token
+## Data backend
 
-Create a **Full access** or custom API token in Pixtrela Strapi admin with:
-
-- `task`: find, findOne, create, update
-- `template-task`: find, findOne, create, update
-- `step`: find (read default queue step)
-
-Store as `STRAPI_SYNC_API_TOKEN` on Vercel / server env. Never expose to the browser.
+CRM webhooks write tasks via **Drizzle** (`DATA_BACKEND=drizzle`). No Strapi API
+token is required.
 
 ## Webhook endpoint
 
@@ -46,8 +41,8 @@ Header: `X-Pixtrela-Signature: sha256=<hmac-hex>` (HMAC-SHA256 of the raw JSON b
 3. For each item: ensure `template-task` for `prodId` (legacy RBX if missing).
 4. **Create** task when `crmItemKey` (`pedidoId:index`) does not exist.
 5. **Update** existing task fields `name`, `qty`, `deliveryDate` only (no step/status/subtask changes).
-6. Strapi task `afterCreate` lifecycle copies template subtasks on first create.
-7. `revalidateTag(strapi:tasks)` invalidates board/tasks cache when tasks change.
+6. Template subtasks are copied from the template on first create (Drizzle transaction).
+7. `revalidateTag(drizzle:tasks)` invalidates board/tasks cache when tasks change.
 
 ## Idempotency
 

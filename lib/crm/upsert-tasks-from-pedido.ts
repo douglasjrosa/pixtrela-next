@@ -2,7 +2,14 @@ import { ensureTemplateTaskForProdId } from "@/lib/business/ensure-template-for-
 import { resolveDefaultStepDocumentId } from "@/lib/business/default-task-step";
 import { getNextTaskIndex } from "@/lib/business/task-order";
 import { mapPedidoToTaskDrafts } from "@/lib/crm/map-pedido-to-tasks";
-import { strapiServiceFetch } from "@/lib/strapi/service-fetch";
+import { listSteps } from "@/lib/repos/steps";
+import {
+  createTask,
+  findTaskByCrmItemKey,
+  listActiveTasksForBoard,
+  updateCrmPedidoTaskFields,
+  type CrmPedidoTaskRecord,
+} from "@/lib/repos/tasks";
 
 export interface CrmPedidoWebhookPayload {
   pedidoId: number;
@@ -18,111 +25,28 @@ export interface UpsertTasksFromPedidoResult {
   skipped: number;
 }
 
-interface StrapiList<T> {
-  data: T[];
-}
-
-interface StepEntity {
-  documentId: string;
-  name: string;
-}
-
-interface TaskIndexEntity {
-  index: number;
-}
-
-interface ExistingTaskEntity {
-  documentId: string;
-  name: string;
-  qty: number;
-  deliveryDate?: string | null;
-}
-
 export function isEligiblePedidoPayload(payload: CrmPedidoWebhookPayload): boolean {
   return Boolean(payload.Bpedido?.trim());
 }
 
-async function loadDefaultStepDocumentId(): Promise<string> {
-  const res = await strapiServiceFetch<StrapiList<StepEntity>>("/steps", {
-    query: {
-      fields: ["documentId", "name"],
-      sort: "index:asc",
-      pagination: { pageSize: 50 },
-    },
-  });
-  const stepDocumentId = resolveDefaultStepDocumentId(res.data);
-  if (!stepDocumentId) {
+async function loadDefaultStepId(): Promise<string> {
+  const steps = await listSteps();
+  const stepId = resolveDefaultStepDocumentId(
+    steps.map((step) => ({ documentId: step.id, name: step.name })),
+  );
+  if (!stepId) {
     throw new Error("no_default_step");
   }
-  return stepDocumentId;
+  return stepId;
 }
 
 async function loadTaskIndexes(): Promise<number[]> {
-  const res = await strapiServiceFetch<StrapiList<TaskIndexEntity>>("/tasks", {
-    query: {
-      fields: ["index"],
-      filters: { active: { $eq: true } },
-      pagination: { pageSize: 500 },
-    },
-  });
-  return res.data.map((task) => task.index);
-}
-
-async function findTaskByCrmItemKey(
-  crmItemKey: string,
-): Promise<ExistingTaskEntity | null> {
-  const res = await strapiServiceFetch<StrapiList<ExistingTaskEntity>>("/tasks", {
-    query: {
-      fields: ["documentId", "name", "qty", "deliveryDate", "crmItemKey"],
-      filters: { crmItemKey: { $eq: crmItemKey } },
-      pagination: { pageSize: 1 },
-    },
-  });
-  return res.data[0] ?? null;
-}
-
-async function createTaskFromDraft(
-  draft: ReturnType<typeof mapPedidoToTaskDrafts>[number],
-  stepDocumentId: string,
-  index: number,
-): Promise<void> {
-  await strapiServiceFetch("/tasks", {
-    method: "POST",
-    body: JSON.stringify({
-      data: {
-        name: draft.name,
-        qty: draft.qty,
-        deliveryDate: draft.deliveryDate,
-        index,
-        status: "waiting",
-        templateTaskCode: draft.templateTaskCode,
-        step: stepDocumentId,
-        active: true,
-        crmPedidoId: draft.crmPedidoId,
-        crmItemKey: draft.crmItemKey,
-      },
-    }),
-  });
-}
-
-async function updateTaskFromDraft(
-  documentId: string,
-  draft: ReturnType<typeof mapPedidoToTaskDrafts>[number],
-): Promise<void> {
-  await strapiServiceFetch(`/tasks/${documentId}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      data: {
-        name: draft.name,
-        qty: draft.qty,
-        deliveryDate: draft.deliveryDate,
-      },
-    }),
-  });
+  const rows = await listActiveTasksForBoard();
+  return rows.map((task) => task.index);
 }
 
 function taskNeedsUpdate(
-  existing: ExistingTaskEntity,
+  existing: CrmPedidoTaskRecord,
   draft: ReturnType<typeof mapPedidoToTaskDrafts>[number],
 ): boolean {
   return (
@@ -154,7 +78,7 @@ export async function upsertTasksFromPedido(
     return { created: 0, updated: 0, skipped: 0 };
   }
 
-  const defaultStepDocumentId = await loadDefaultStepDocumentId();
+  const defaultStepId = await loadDefaultStepId();
   const taskIndexes = await loadTaskIndexes();
 
   let created = 0;
@@ -166,7 +90,11 @@ export async function upsertTasksFromPedido(
 
     if (existing) {
       if (taskNeedsUpdate(existing, draft)) {
-        await updateTaskFromDraft(existing.documentId, draft);
+        await updateCrmPedidoTaskFields(existing.id, {
+          name: draft.name,
+          qty: draft.qty,
+          deliveryDate: draft.deliveryDate,
+        });
         updated += 1;
       } else {
         skipped += 1;
@@ -177,7 +105,17 @@ export async function upsertTasksFromPedido(
     await ensureTemplateTaskForProdId(draft.prodId, draft.name);
     const index = getNextTaskIndex(taskIndexes.map((value) => ({ index: value })));
     taskIndexes.push(index);
-    await createTaskFromDraft(draft, defaultStepDocumentId, index);
+    await createTask({
+      name: draft.name,
+      qty: draft.qty,
+      deliveryDate: draft.deliveryDate,
+      index,
+      status: "waiting",
+      templateTaskCode: draft.templateTaskCode,
+      stepId: defaultStepId,
+      crmPedidoId: draft.crmPedidoId,
+      crmItemKey: draft.crmItemKey,
+    });
     created += 1;
   }
 

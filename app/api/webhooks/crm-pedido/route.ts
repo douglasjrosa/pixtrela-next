@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 
 import { processCrmPedidoWebhook } from "@/lib/crm/handle-crm-pedido-webhook";
-import { STRAPI_TAGS } from "@/lib/strapi";
 
 export const runtime = "nodejs";
 
@@ -27,7 +26,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   const result = await processCrmPedidoWebhook(rawBody, signature, secret);
 
   if (result.revalidateTasks) {
-    revalidateTag(STRAPI_TAGS.tasks, "default");
+    revalidateTag("drizzle:tasks", "default");
+    revalidateTag("drizzle:steps", "default");
   }
 
   return NextResponse.json(result.body, { status: result.status });

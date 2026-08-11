@@ -1,10 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const strapiServiceFetch = vi.fn();
+const listSteps = vi.fn();
+const listActiveTasksForBoard = vi.fn();
+const findTaskByCrmItemKey = vi.fn();
+const createTask = vi.fn();
+const updateCrmPedidoTaskFields = vi.fn();
 const ensureTemplateTaskForProdId = vi.fn();
 
-vi.mock("@/lib/strapi/service-fetch", () => ({
-  strapiServiceFetch: (...args: unknown[]) => strapiServiceFetch(...args),
+vi.mock("@/lib/repos/steps", () => ({
+  listSteps: (...args: unknown[]) => listSteps(...args),
+}));
+
+vi.mock("@/lib/repos/tasks", () => ({
+  listActiveTasksForBoard: (...args: unknown[]) => listActiveTasksForBoard(...args),
+  findTaskByCrmItemKey: (...args: unknown[]) => findTaskByCrmItemKey(...args),
+  createTask: (...args: unknown[]) => createTask(...args),
+  updateCrmPedidoTaskFields: (...args: unknown[]) => updateCrmPedidoTaskFields(...args),
 }));
 
 vi.mock("@/lib/business/ensure-template-for-prod-id", () => ({
@@ -26,22 +37,11 @@ const BASE_PAYLOAD: CrmPedidoWebhookPayload = {
   empresaNome: "Max Brasil",
 };
 
-function mockStrapiForCreate(): void {
-  strapiServiceFetch.mockImplementation(async (path: string, init?: { method?: string }) => {
-    if (path === "/steps") {
-      return { data: [{ documentId: "step-1", name: "Fila de produção" }] };
-    }
-    if (path === "/tasks" && !init?.method) {
-      return { data: [{ index: 0 }] };
-    }
-    if (path === "/tasks" && init?.method === "POST") {
-      return { data: { documentId: "task-new" } };
-    }
-    if (path.startsWith("/tasks") && init?.method === "PUT") {
-      return { data: { documentId: "task-1" } };
-    }
-    return { data: [] };
-  });
+function mockDefaultsForCreate(): void {
+  listSteps.mockResolvedValue([{ id: "step-1", name: "Fila de produção", index: 0 }]);
+  listActiveTasksForBoard.mockResolvedValue([{ index: 0 }]);
+  findTaskByCrmItemKey.mockResolvedValue(null);
+  createTask.mockResolvedValue({ id: "task-new" });
 }
 
 describe("isEligiblePedidoPayload", () => {
@@ -57,35 +57,23 @@ describe("isEligiblePedidoPayload", () => {
 
 describe("upsertTasksFromPedido", () => {
   beforeEach(() => {
-    strapiServiceFetch.mockReset();
+    listSteps.mockReset();
+    listActiveTasksForBoard.mockReset();
+    findTaskByCrmItemKey.mockReset();
+    createTask.mockReset();
+    updateCrmPedidoTaskFields.mockReset();
     ensureTemplateTaskForProdId.mockReset();
-    ensureTemplateTaskForProdId.mockResolvedValue(undefined);
+    ensureTemplateTaskForProdId.mockResolvedValue("template-1");
   });
 
   it("skips when Bpedido is empty", async () => {
     const result = await upsertTasksFromPedido({ ...BASE_PAYLOAD, Bpedido: "" });
     expect(result).toEqual({ created: 0, updated: 0, skipped: 0 });
-    expect(strapiServiceFetch).not.toHaveBeenCalled();
+    expect(listSteps).not.toHaveBeenCalled();
   });
 
   it("creates a new task when crmItemKey does not exist", async () => {
-    mockStrapiForCreate();
-    strapiServiceFetch.mockImplementation(async (path: string, init?: { method?: string }) => {
-      if (path === "/steps") {
-        return { data: [{ documentId: "step-1", name: "Fila de produção" }] };
-      }
-      if (path === "/tasks" && !init?.method) {
-        const body = init as { query?: { filters?: { crmItemKey?: unknown } } } | undefined;
-        if (body?.query?.filters?.crmItemKey) {
-          return { data: [] };
-        }
-        return { data: [{ index: 0 }] };
-      }
-      if (path === "/tasks" && init?.method === "POST") {
-        return { data: { documentId: "task-new" } };
-      }
-      return { data: [] };
-    });
+    mockDefaultsForCreate();
 
     const result = await upsertTasksFromPedido(BASE_PAYLOAD);
 
@@ -95,37 +83,27 @@ describe("upsertTasksFromPedido", () => {
       123,
       "Max Brasil - Caixotona",
     );
-    const postCall = strapiServiceFetch.mock.calls.find(
-      ([, init]) => (init as { method?: string })?.method === "POST",
-    );
-    expect(postCall).toBeDefined();
-    const body = JSON.parse((postCall![1] as { body: string }).body);
-    expect(body.data.crmItemKey).toBe("42:0");
-    expect(body.data.crmPedidoId).toBe(42);
+    expect(createTask).toHaveBeenCalledWith({
+      name: "Max Brasil - Caixotona",
+      qty: 10,
+      deliveryDate: "2026-07-15",
+      index: 1,
+      status: "waiting",
+      templateTaskCode: "123",
+      stepId: "step-1",
+      crmPedidoId: 42,
+      crmItemKey: "42:0",
+    });
   });
 
   it("updates an existing task when crmItemKey matches", async () => {
-    strapiServiceFetch.mockImplementation(async (path: string, init?: { method?: string }) => {
-      if (path === "/steps") {
-        return { data: [{ documentId: "step-1", name: "Fila de produção" }] };
-      }
-      if (path === "/tasks" && !init?.method) {
-        return {
-          data: [
-            {
-              documentId: "task-1",
-              name: "Old name",
-              qty: 5,
-              deliveryDate: "2026-01-01",
-              crmItemKey: "42:0",
-            },
-          ],
-        };
-      }
-      if (path === "/tasks/task-1" && init?.method === "PUT") {
-        return { data: { documentId: "task-1" } };
-      }
-      return { data: [{ index: 0 }] };
+    listSteps.mockResolvedValue([{ id: "step-1", name: "Fila de produção", index: 0 }]);
+    listActiveTasksForBoard.mockResolvedValue([{ index: 0 }]);
+    findTaskByCrmItemKey.mockResolvedValue({
+      id: "task-1",
+      name: "Old name",
+      qty: 5,
+      deliveryDate: "2026-01-01",
     });
 
     const result = await upsertTasksFromPedido(BASE_PAYLOAD);
@@ -133,34 +111,21 @@ describe("upsertTasksFromPedido", () => {
     expect(result.created).toBe(0);
     expect(result.updated).toBe(1);
     expect(ensureTemplateTaskForProdId).not.toHaveBeenCalled();
-    const putCall = strapiServiceFetch.mock.calls.find(
-      ([path, init]) => path === "/tasks/task-1" && (init as { method?: string })?.method === "PUT",
-    );
-    const body = JSON.parse((putCall![1] as { body: string }).body);
-    expect(body.data.name).toBe("Max Brasil - Caixotona");
-    expect(body.data.qty).toBe(10);
-    expect(body.data.templateTaskCode).toBeUndefined();
+    expect(updateCrmPedidoTaskFields).toHaveBeenCalledWith("task-1", {
+      name: "Max Brasil - Caixotona",
+      qty: 10,
+      deliveryDate: "2026-07-15",
+    });
   });
 
   it("is idempotent when payload is unchanged", async () => {
-    strapiServiceFetch.mockImplementation(async (path: string, init?: { method?: string }) => {
-      if (path === "/steps") {
-        return { data: [{ documentId: "step-1", name: "Fila de produção" }] };
-      }
-      if (path === "/tasks" && !init?.method) {
-        return {
-          data: [
-            {
-              documentId: "task-1",
-              name: "Max Brasil - Caixotona",
-              qty: 10,
-              deliveryDate: "2026-07-15",
-              crmItemKey: "42:0",
-            },
-          ],
-        };
-      }
-      return { data: [{ index: 0 }] };
+    listSteps.mockResolvedValue([{ id: "step-1", name: "Fila de produção", index: 0 }]);
+    listActiveTasksForBoard.mockResolvedValue([{ index: 0 }]);
+    findTaskByCrmItemKey.mockResolvedValue({
+      id: "task-1",
+      name: "Max Brasil - Caixotona",
+      qty: 10,
+      deliveryDate: "2026-07-15",
     });
 
     const first = await upsertTasksFromPedido(BASE_PAYLOAD);
@@ -168,10 +133,6 @@ describe("upsertTasksFromPedido", () => {
 
     expect(first).toEqual({ created: 0, updated: 0, skipped: 1 });
     expect(second).toEqual({ created: 0, updated: 0, skipped: 1 });
-    expect(
-      strapiServiceFetch.mock.calls.filter(
-        ([, init]) => (init as { method?: string })?.method === "PUT",
-      ),
-    ).toHaveLength(0);
+    expect(updateCrmPedidoTaskFields).not.toHaveBeenCalled();
   });
 });
