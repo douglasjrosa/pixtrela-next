@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { isAllowedStrapiMediaUrl } from "@/lib/kiosk/face/is-allowed-strapi-media-url";
+import { isTrustedPublicMediaUrl } from "@/lib/media/trusted-public-origin";
 
 const STRAPI_URL = (process.env.STRAPI_URL ?? "http://127.0.0.1:1337").replace(
   /\/$/,
@@ -16,8 +17,10 @@ function resolveUpstreamTarget(request: Request): string | null {
   }
 
   const url = searchParams.get("url");
-  if (!url || !isAllowedStrapiMediaUrl(url, STRAPI_URL)) return null;
-  return url;
+  if (!url) return null;
+  if (isAllowedStrapiMediaUrl(url, STRAPI_URL)) return url;
+  if (isTrustedPublicMediaUrl(url)) return url;
+  return null;
 }
 
 /**

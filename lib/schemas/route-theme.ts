@@ -32,7 +32,6 @@ export const routeThemeFormSchema = z.object({
   backgroundMotion: z.enum(BACKGROUND_MOTIONS).optional(),
   parallaxIntensity: z.number().int().min(0).max(100).optional(),
   parallaxDirection: z.enum(PARALLAX_DIRECTIONS).optional(),
-  parallaxBleed: z.number().int().min(10).max(40).optional(),
   contentMarginMobile: z.enum(PAGE_MARGINS).optional(),
   contentMarginDesktop: z.enum(PAGE_MARGINS).optional(),
   foregroundColor: z

@@ -4,7 +4,7 @@ import { User } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
-import { toBrowserStrapiMediaUrl } from "@/lib/strapi/browser-media-url";
+import { toKioskFaceMediaProxyUrl } from "@/lib/kiosk/face/face-media-proxy-url";
 import { cn } from "@/lib/utils";
 
 export type KioskMemberOption = {
@@ -44,7 +44,7 @@ export function KioskMemberPicker({
       ) : (
         <ul className="grid gap-2 sm:grid-cols-2">
           {members.map((member) => {
-            const photoUrl = toBrowserStrapiMediaUrl(member.facePhotoUrl);
+            const photoUrl = toKioskFaceMediaProxyUrl(member.facePhotoUrl);
             const canVerify = Boolean(photoUrl);
             return (
               <li key={member.documentId}>

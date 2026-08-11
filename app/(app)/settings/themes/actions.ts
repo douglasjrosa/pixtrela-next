@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import { mediaAssets } from "@/drizzle/schema";
@@ -25,7 +25,6 @@ import {
   DEFAULT_BACKGROUND_SIZE,
   DEFAULT_PAGE_MARGIN_DESKTOP,
   DEFAULT_PAGE_MARGIN_MOBILE,
-  DEFAULT_PARALLAX_BLEED,
   DEFAULT_PARALLAX_DIRECTION,
   DEFAULT_PARALLAX_INTENSITY,
   DEFAULT_FOREGROUND_COLOR,
@@ -33,7 +32,6 @@ import {
   DEFAULT_SURFACE_COLOR_OPACITY,
   normalizeForegroundColor,
   normalizeOpacity,
-  normalizeParallaxBleed,
   normalizeParallaxIntensity,
   normalizeSurfaceColor,
 } from "@/lib/themes/match-route-theme";
@@ -48,6 +46,7 @@ async function assertCanManage(): Promise<void> {
 function invalidateThemes(): void {
   if (isDrizzleBackend()) {
     revalidateTag("drizzle:route-themes");
+    revalidatePath("/", "layout");
     return;
   }
   revalidateStrapiTags(STRAPI_TAGS.routeThemes);
@@ -69,9 +68,6 @@ function buildRouteThemePayload(data: RouteThemeFormInput) {
       data.parallaxIntensity ?? DEFAULT_PARALLAX_INTENSITY,
     ),
     parallaxDirection: data.parallaxDirection ?? DEFAULT_PARALLAX_DIRECTION,
-    parallaxBleed: normalizeParallaxBleed(
-      data.parallaxBleed ?? DEFAULT_PARALLAX_BLEED,
-    ),
     contentMarginMobile: data.contentMarginMobile ?? DEFAULT_PAGE_MARGIN_MOBILE,
     contentMarginDesktop:
       data.contentMarginDesktop ?? DEFAULT_PAGE_MARGIN_DESKTOP,
@@ -150,7 +146,6 @@ export async function updateRouteTheme(
       backgroundMotion: payload.backgroundMotion as string,
       parallaxIntensity: payload.parallaxIntensity as number,
       parallaxDirection: payload.parallaxDirection as string,
-      parallaxBleed: payload.parallaxBleed as number,
       contentMarginMobile: payload.contentMarginMobile as string,
       contentMarginDesktop: payload.contentMarginDesktop as string,
       foregroundColor: payload.foregroundColor as string,

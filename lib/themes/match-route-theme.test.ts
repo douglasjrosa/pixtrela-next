@@ -5,11 +5,13 @@ import {
   hasVisibleColorOverlay,
   hexToRgba,
   matchRouteTheme,
+  maxParallaxTravelPx,
   normalizeOpacity,
-  normalizeParallaxBleed,
   normalizeParallaxIntensity,
   parallaxLayerGeometry,
+  parallaxLayerPixelGeometry,
   resolveRouteThemeKey,
+  routeThemeColorOverlayRgba,
   routeThemeContentFrameClass,
   routeThemeContentSurfaceRadiusClass,
   routeThemeForegroundStyle,
@@ -28,7 +30,6 @@ const baseTheme = {
   backgroundMotion: "scroll" as const,
   parallaxIntensity: 35,
   parallaxDirection: "normal" as const,
-  parallaxBleed: 20,
   contentMarginMobile: "md" as const,
   contentMarginDesktop: "lg" as const,
   foregroundColor: "#002555",
@@ -58,7 +59,6 @@ const themes: RouteThemeView[] = [
     backgroundMotion: "scroll",
     parallaxIntensity: 35,
     parallaxDirection: "normal",
-    parallaxBleed: 20,
     contentMarginMobile: "md",
     contentMarginDesktop: "lg",
     foregroundColor: "#002555",
@@ -109,7 +109,7 @@ describe("routeThemeLayeredStyle", () => {
   it("puts color gradient above the image url", () => {
     expect(routeThemeLayeredStyle(themes[1])).toEqual({
       backgroundImage:
-        "linear-gradient(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.4)), url(https://cdn.example/bg.png)",
+        'linear-gradient(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.4)), url("https://cdn.example/bg.png")',
       backgroundSize: "auto, contain",
       backgroundPosition: "center, top",
       backgroundRepeat: "no-repeat, repeat",
@@ -124,7 +124,22 @@ describe("routeThemeLayeredStyle", () => {
         backgroundColorOpacity: 0,
       }),
     ).toEqual({
-      backgroundImage: "url(https://cdn.example/bg.png)",
+      backgroundImage: 'url("https://cdn.example/bg.png")',
+      backgroundSize: "contain",
+      backgroundPosition: "top",
+      backgroundRepeat: "repeat",
+      backgroundAttachment: "scroll",
+    });
+  });
+
+  it("shows the image without a solid color veil at 100% opacity", () => {
+    expect(
+      routeThemeLayeredStyle({
+        ...themes[1],
+        backgroundColorOpacity: 100,
+      }),
+    ).toEqual({
+      backgroundImage: 'url("https://cdn.example/bg.png")',
       backgroundSize: "contain",
       backgroundPosition: "top",
       backgroundRepeat: "repeat",
@@ -140,7 +155,7 @@ describe("routeThemeLayeredStyle", () => {
         backgroundMotion: "fixed",
       }),
     ).toEqual({
-      backgroundImage: "url(https://cdn.example/bg.png)",
+      backgroundImage: 'url("https://cdn.example/bg.png")',
       backgroundSize: "contain",
       backgroundPosition: "top",
       backgroundRepeat: "repeat",
@@ -152,6 +167,26 @@ describe("routeThemeLayeredStyle", () => {
     expect(routeThemeLayeredStyle(themes[0])).toEqual({
       backgroundColor: "rgba(17, 34, 51, 1)",
     });
+  });
+});
+
+describe("routeThemeColorOverlayRgba", () => {
+  it("skips a solid veil over a background image at 100% opacity", () => {
+    expect(
+      routeThemeColorOverlayRgba({
+        ...themes[1],
+        backgroundColorOpacity: 100,
+      }),
+    ).toBeNull();
+  });
+
+  it("keeps a partial tint over a background image", () => {
+    expect(
+      routeThemeColorOverlayRgba({
+        ...themes[1],
+        backgroundColorOpacity: 40,
+      }),
+    ).toBe("rgba(255, 255, 255, 0.4)");
   });
 });
 
@@ -172,12 +207,10 @@ describe("normalizeOpacity", () => {
 });
 
 describe("parallax helpers", () => {
-  it("clamps intensity and bleed", () => {
+  it("clamps intensity", () => {
     expect(normalizeParallaxIntensity(-5)).toBe(0);
     expect(normalizeParallaxIntensity(200)).toBe(100);
     expect(normalizeParallaxIntensity(undefined)).toBe(35);
-    expect(normalizeParallaxBleed(5)).toBe(10);
-    expect(normalizeParallaxBleed(90)).toBe(40);
   });
 
   it("computes offset from intensity and direction", () => {
@@ -186,10 +219,24 @@ describe("parallax helpers", () => {
     expect(computeParallaxOffset(100, 0, "normal")).toBe(0);
   });
 
-  it("builds layer geometry from bleed", () => {
-    expect(parallaxLayerGeometry(20)).toEqual({
-      topPercent: -20,
-      heightPercent: 140,
+  it("builds layer geometry from the fixed safety bleed", () => {
+    expect(parallaxLayerGeometry()).toEqual({
+      topPercent: -10,
+      heightPercent: 120,
+    });
+  });
+
+  it("grows pixel geometry with max travel so 100% intensity stays covered", () => {
+    expect(maxParallaxTravelPx(800, 100)).toBe(800);
+    expect(maxParallaxTravelPx(800, 50)).toBe(400);
+    expect(
+      parallaxLayerPixelGeometry({
+        viewportHeight: 1000,
+        maxTravelPx: 800,
+      }),
+    ).toEqual({
+      topPx: -900,
+      heightPx: 2800,
     });
   });
 });

@@ -6,6 +6,7 @@ import {
   ensureRouteThemes,
   listRouteThemes as listRouteThemesRepo,
 } from "@/lib/repos/settings";
+import { toBrowserMediaUrl } from "@/lib/strapi/browser-media-url";
 import { loadRouteThemes } from "@/lib/strapi/route-themes";
 import {
   DEFAULT_BACKGROUND_COLOR_OPACITY,
@@ -16,7 +17,6 @@ import {
   DEFAULT_FOREGROUND_COLOR,
   DEFAULT_PAGE_MARGIN_DESKTOP,
   DEFAULT_PAGE_MARGIN_MOBILE,
-  DEFAULT_PARALLAX_BLEED,
   DEFAULT_PARALLAX_DIRECTION,
   DEFAULT_PARALLAX_INTENSITY,
   DEFAULT_SURFACE_COLOR,
@@ -24,7 +24,6 @@ import {
   isRouteThemeKey,
   normalizeForegroundColor,
   normalizeOpacity,
-  normalizeParallaxBleed,
   normalizeParallaxIntensity,
   normalizeSurfaceColor,
   ROUTE_THEME_KEYS,
@@ -57,7 +56,7 @@ async function loadThemes(): Promise<RouteThemeView[]> {
         backgroundColorOpacity: normalizeOpacity(
           row.backgroundColorOpacity ?? DEFAULT_BACKGROUND_COLOR_OPACITY,
         ),
-        backgroundImageUrl: null,
+        backgroundImageUrl: toBrowserMediaUrl(row.backgroundImageUrl),
         backgroundSize:
           (row.backgroundSize as RouteThemeView["backgroundSize"]) ||
           DEFAULT_BACKGROUND_SIZE,
@@ -76,9 +75,6 @@ async function loadThemes(): Promise<RouteThemeView[]> {
         parallaxDirection:
           (row.parallaxDirection as RouteThemeView["parallaxDirection"]) ||
           DEFAULT_PARALLAX_DIRECTION,
-        parallaxBleed: normalizeParallaxBleed(
-          row.parallaxBleed ?? DEFAULT_PARALLAX_BLEED,
-        ),
         contentMarginMobile: DEFAULT_PAGE_MARGIN_MOBILE,
         contentMarginDesktop: DEFAULT_PAGE_MARGIN_DESKTOP,
         foregroundColor: normalizeForegroundColor(
@@ -109,7 +105,9 @@ export default async function SettingsThemesPage() {
     await updateRouteTheme(documentId, values);
   }
 
-  async function handleUpload(formData: FormData): Promise<number> {
+  async function handleUpload(
+    formData: FormData,
+  ): Promise<number | string> {
     "use server";
     return uploadRouteThemeImage(formData);
   }

@@ -131,6 +131,17 @@ export function UserMediaFields({
   });
   const [pendingType, setPendingType] = useState<UserImageType | null>(null);
   const [faceCaptureOpen, setFaceCaptureOpen] = useState(false);
+  const [prevMediaUrls, setPrevMediaUrls] = useState({
+    avatar: avatarUrl,
+    facePhoto: facePhotoUrl,
+  });
+  if (
+    avatarUrl !== prevMediaUrls.avatar ||
+    facePhotoUrl !== prevMediaUrls.facePhoto
+  ) {
+    setPrevMediaUrls({ avatar: avatarUrl, facePhoto: facePhotoUrl });
+    setUrls({ avatar: avatarUrl, facePhoto: facePhotoUrl });
+  }
 
   async function uploadImage(
     imageType: UserImageType,

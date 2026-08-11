@@ -545,8 +545,6 @@
       "normal": "Na mesma direção da rolagem",
       "reverse": "Na direção oposta"
     },
-    "themesParallaxBleed": "Folga da imagem",
-    "themesParallaxBleedValue": "{value}% — margem extra para o deslocamento",
     "themesMarginMobile": "Margem da página (mobile)",
     "themesMarginDesktop": "Margem da página (desktop)",
     "themesForegroundColor": "Cor do texto",

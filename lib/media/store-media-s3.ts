@@ -36,7 +36,9 @@ export async function storeMediaS3(input: {
     }),
   );
 
-  const publicBase = process.env.S3_PUBLIC_URL?.replace(/\/$/, "");
+  const publicBase =
+    process.env.S3_PUBLIC_URL?.replace(/\/$/, "") ||
+    process.env.MEDIA_PUBLIC_BASE_URL?.replace(/\/$/, "");
   const url = publicBase
     ? `${publicBase}/${storageKey}`
     : `/api/media/${storageKey}`;
