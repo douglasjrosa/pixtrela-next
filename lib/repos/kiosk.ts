@@ -19,6 +19,7 @@ import {
   findUserById,
   findUserFacePhotoUrl,
   verifyPassword,
+  type GreetingGender,
   type UserRole,
 } from "@/lib/repos/users";
 
@@ -58,7 +59,7 @@ const KIOSK_IDENTIFIABLE_ROLES = new Set<UserRole>([
 ]);
 
 function toWelcomeGender(
-  gender: GreetingGender | "male" | "female" | "neutral" | null,
+  gender: string | GreetingGender | "male" | "female" | "neutral" | null,
 ): "masculine" | "feminine" | null {
   if (gender === "masculine" || gender === "male") return "masculine";
   if (gender === "feminine" || gender === "female") return "feminine";

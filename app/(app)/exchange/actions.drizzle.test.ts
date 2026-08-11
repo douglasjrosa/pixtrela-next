@@ -55,7 +55,7 @@ describe("exchange/actions drizzle", () => {
       currencyId: "currency-star",
       qty: 2,
     });
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:exchanges");
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:balances");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:exchanges", "default");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:balances", "default");
   });
 });

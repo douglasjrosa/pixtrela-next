@@ -79,7 +79,7 @@ async function assertCanManageTargetRole(targetRole: Role): Promise<void> {
 
 function invalidateUsers(): void {
   if (isDrizzleBackend()) {
-    revalidateTag("drizzle:users");
+    revalidateTag("drizzle:users", "default");
     return;
   }
   revalidateStrapiTags(STRAPI_TAGS.users);

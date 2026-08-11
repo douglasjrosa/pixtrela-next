@@ -33,7 +33,7 @@ export interface CurrencyFormModalProps {
   onClose: () => void;
   onSave: (values: CurrencyFormInput) => void;
   onDelete?: () => void;
-  onUploadIcon: (formData: FormData) => Promise<number>;
+  onUploadIcon: (formData: FormData) => Promise<number | string>;
 }
 
 export function CurrencyFormModal({

@@ -8,6 +8,7 @@ import { loadTaskAutomationFormValues } from "@/lib/repos/settings";
 import { listSteps as listStepsRepo } from "@/lib/repos/steps";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { loadTaskAutomationSetting } from "@/lib/strapi/task-automation-setting";
+import type { TaskAutomationFormInput } from "@/lib/schemas/task-automation";
 
 import { updateTaskAutomationSetting } from "../actions";
 

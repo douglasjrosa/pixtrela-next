@@ -128,14 +128,14 @@ describe("users/actions drizzle CRUD", () => {
     expect(updateUserAccount).toHaveBeenCalledWith(
       expect.objectContaining({ id: "u1", name: "Maria Silva" }),
     );
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:users");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 
   it("deleteUser deactivates via repo for admin", async () => {
     const { deleteUser } = await import("./actions");
     await deleteUser("u1");
     expect(deactivateUserRepo).toHaveBeenCalledWith("u1", expect.any(String));
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:users");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 
   it("pairUserTag sets tag when no conflict", async () => {
@@ -176,6 +176,6 @@ describe("users/actions drizzle CRUD", () => {
     await updateUserImage("u1", "avatar", formData);
 
     expect(setUserAvatarMedia).toHaveBeenCalledWith("u1", "media-1", expect.anything());
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:users");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 });

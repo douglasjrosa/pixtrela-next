@@ -85,7 +85,7 @@ describe("tasks/[documentId]/actions drizzle subtasks", () => {
       expect.objectContaining({ name: "Corte" }),
       0,
     );
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks", "default");
   });
 
   it("updateSubTask persists via repo", async () => {

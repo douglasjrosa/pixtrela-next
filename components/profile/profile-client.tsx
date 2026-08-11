@@ -109,7 +109,8 @@ export function ProfileClient({
         const result = await personalRef.current?.submit();
         personalOk = result?.ok === true;
         if (!personalOk) {
-          personalFailedReason = result?.error ?? "failed";
+          personalFailedReason =
+            result && !result.ok ? (result.error ?? "failed") : "failed";
           if (personalFailedReason === "emailTaken") {
             showErrorToast(t("emailTaken"));
           } else {
@@ -123,7 +124,8 @@ export function ProfileClient({
         const result = await passwordRef.current?.submit();
         passwordOk = result?.ok === true;
         if (!passwordOk) {
-          passwordFailedReason = result?.error ?? "failed";
+          passwordFailedReason =
+            result && !result.ok ? (result.error ?? "failed") : "failed";
         }
       }
 

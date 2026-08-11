@@ -27,7 +27,7 @@ export async function createTeamAction(input: {
     throw new Error("createTeamAction requires DATA_BACKEND=drizzle");
   }
   const team = await createTeam(input);
-  revalidateTag("drizzle:teams");
+  revalidateTag("drizzle:teams", "default");
   return team;
 }
 
@@ -45,7 +45,7 @@ export async function createTemplateTaskAction(input: {
     throw new Error("createTemplateTaskAction requires DATA_BACKEND=drizzle");
   }
   const template = await createTemplateTask(input);
-  revalidateTag("drizzle:templates");
+  revalidateTag("drizzle:templates", "default");
   return template;
 }
 

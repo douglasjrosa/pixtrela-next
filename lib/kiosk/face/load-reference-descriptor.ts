@@ -10,6 +10,9 @@ export async function loadReferenceFaceDescriptor(
   const sameOriginUrl = photoUrl.startsWith("/")
     ? photoUrl
     : toKioskFaceMediaProxyUrl(photoUrl);
+  if (!sameOriginUrl) {
+    throw new Error("reference_load_failed");
+  }
 
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image();

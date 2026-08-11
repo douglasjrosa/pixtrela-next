@@ -53,7 +53,7 @@ function toStrapiPayload(input: CurrencyFormInput) {
 
 function invalidateCurrencies(): void {
   if (isDrizzleBackend()) {
-    revalidateTag("drizzle:currencies");
+    revalidateTag("drizzle:currencies", "default");
     return;
   }
   revalidateStrapiTags(STRAPI_TAGS.currencies);
@@ -159,7 +159,7 @@ export async function deleteCurrency(documentId: string): Promise<void> {
     const active = await getCurrencyForSubtasks();
     if (active?.currencyId === documentId) {
       await upsertCurrencyForSubtasks(null);
-      revalidateTag("drizzle:currency-for-subtasks");
+      revalidateTag("drizzle:currency-for-subtasks", "default");
     }
     const db = getDb();
     await db.delete(currencies).where(eq(currencies.id, documentId));
