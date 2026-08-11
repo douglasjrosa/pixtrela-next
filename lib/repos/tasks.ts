@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, eq, inArray, max } from "drizzle-orm";
 
 import {
   activities,
@@ -18,6 +18,7 @@ import {
   scaleExpectedTimeByTaskQty,
 } from "@/lib/domain/work-currency";
 import { getDb, type Db } from "@/lib/db/client";
+import type { TasksRevision } from "@/lib/tasks/tasks-revision";
 import {
   creditBalanceIncome,
   getOrCreateMonthlyBalance,
@@ -32,6 +33,8 @@ export type CreateTaskInput = {
   status?: "waiting" | "producing" | "paused" | "finished" | "reviewed" | "delivered";
   templateTaskCode?: string | null;
   index?: number;
+  crmPedidoId?: number | null;
+  crmItemKey?: string | null;
 };
 
 export async function createTask(
@@ -50,6 +53,8 @@ export async function createTask(
         status: input.status ?? "waiting",
         templateTaskCode: input.templateTaskCode ?? null,
         index: input.index ?? 0,
+        crmPedidoId: input.crmPedidoId ?? null,
+        crmItemKey: input.crmItemKey ?? null,
       })
       .returning();
 
@@ -162,9 +167,69 @@ export async function listActiveTasksForBoard(db: Db = getDb()) {
     .orderBy(asc(tasks.index));
 }
 
+export async function getActiveTasksRevision(
+  db: Db = getDb(),
+): Promise<TasksRevision> {
+  const [row] = await db
+    .select({
+      count: count(),
+      maxUpdatedAt: max(tasks.updatedAt),
+    })
+    .from(tasks)
+    .where(eq(tasks.active, true));
+
+  return {
+    count: row?.count ?? 0,
+    maxUpdatedAt: row?.maxUpdatedAt?.toISOString() ?? null,
+  };
+}
+
 export async function getTaskById(id: string, db: Db = getDb()) {
   const [row] = await db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
   return row ?? null;
+}
+
+export type CrmPedidoTaskRecord = {
+  id: string;
+  name: string;
+  qty: number;
+  deliveryDate: string | null;
+};
+
+export async function findTaskByCrmItemKey(
+  crmItemKey: string,
+  db: Db = getDb(),
+): Promise<CrmPedidoTaskRecord | null> {
+  const [row] = await db
+    .select({
+      id: tasks.id,
+      name: tasks.name,
+      qty: tasks.qty,
+      deliveryDate: tasks.deliveryDate,
+    })
+    .from(tasks)
+    .where(eq(tasks.crmItemKey, crmItemKey))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function updateCrmPedidoTaskFields(
+  id: string,
+  input: { name: string; qty: number; deliveryDate?: string | null },
+  db: Db = getDb(),
+) {
+  const [row] = await db
+    .update(tasks)
+    .set({
+      name: input.name.trim(),
+      qty: Math.max(1, input.qty),
+      deliveryDate: input.deliveryDate ?? null,
+      updatedAt: new Date(),
+    })
+    .where(eq(tasks.id, id))
+    .returning();
+  if (!row) throw new Error("taskNotFound");
+  return row;
 }
 
 export type UpdateTaskInput = {

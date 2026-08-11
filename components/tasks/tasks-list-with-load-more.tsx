@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { loadMoreTasks } from "@/app/(app)/tasks/actions";
 import { Button } from "@/components/ui/button";
+import { useTasksRevisionRefresh } from "@/hooks/use-tasks-revision-refresh";
 import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
 import { taskListFilterKey } from "@/lib/tasks/task-list-params";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
@@ -26,6 +27,8 @@ export function TasksListWithLoadMore({
   initialHasMore,
   initialPage,
 }: TasksListWithLoadMoreProps) {
+  useTasksRevisionRefresh();
+
   const tManage = useTranslations("tasks.manage");
   const filterKey = taskListFilterKey(filters);
   const [extraTasks, setExtraTasks] = useState<TaskRow[]>([]);
