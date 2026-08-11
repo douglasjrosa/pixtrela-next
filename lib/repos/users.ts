@@ -1,4 +1,5 @@
 import { and, asc, eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import bcrypt from "bcryptjs";
 
 import { mediaAssets, users } from "@/drizzle/schema";
@@ -48,9 +49,13 @@ function mapUserRow(row: {
   blocked: boolean;
   active: boolean;
   greetingGender: DbGreetingGender;
+  avatarUrl?: string | null;
+  facePhotoUrl?: string | null;
 }): UserRecord {
   return {
     ...row,
+    avatarUrl: row.avatarUrl ?? null,
+    facePhotoUrl: row.facePhotoUrl ?? null,
     greetingGender: fromDbGreetingGender(row.greetingGender),
   };
 }
@@ -67,6 +72,8 @@ export type UserRecord = {
   blocked: boolean;
   active: boolean;
   greetingGender: GreetingGender;
+  avatarUrl: string | null;
+  facePhotoUrl: string | null;
 };
 
 export type CreateUserInput = {
@@ -101,6 +108,9 @@ export type UpdateUserAccountInput = {
   blocked?: boolean;
 };
 
+const avatarMedia = alias(mediaAssets, "avatar_media");
+const facePhotoMedia = alias(mediaAssets, "face_photo_media");
+
 const USER_COLUMNS = {
   id: users.id,
   username: users.username,
@@ -113,6 +123,12 @@ const USER_COLUMNS = {
   blocked: users.blocked,
   active: users.active,
   greetingGender: users.greetingGender,
+} as const;
+
+const USER_LIST_COLUMNS = {
+  ...USER_COLUMNS,
+  avatarUrl: avatarMedia.url,
+  facePhotoUrl: facePhotoMedia.url,
 } as const;
 
 export async function hashPassword(password: string): Promise<string> {
@@ -150,10 +166,18 @@ export async function createUser(
 
 export async function listUsers(db: Db = getDb()): Promise<UserRecord[]> {
   const rows = await db
-    .select(USER_COLUMNS)
+    .select(USER_LIST_COLUMNS)
     .from(users)
+    .leftJoin(avatarMedia, eq(users.avatarMediaId, avatarMedia.id))
+    .leftJoin(facePhotoMedia, eq(users.facePhotoMediaId, facePhotoMedia.id))
     .orderBy(asc(users.name));
-  return rows.map(mapUserRow);
+  return rows.map((row) =>
+    mapUserRow({
+      ...row,
+      avatarUrl: row.avatarUrl ?? null,
+      facePhotoUrl: row.facePhotoUrl ?? null,
+    }),
+  );
 }
 
 export async function listUsersByRole(

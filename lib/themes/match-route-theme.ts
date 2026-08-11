@@ -55,9 +55,8 @@ export const DEFAULT_PARALLAX_INTENSITY = 35;
 export const MIN_PARALLAX_INTENSITY = 0;
 export const MAX_PARALLAX_INTENSITY = 100;
 export const DEFAULT_PARALLAX_DIRECTION: ParallaxDirection = "normal";
-export const DEFAULT_PARALLAX_BLEED = 20;
-export const MIN_PARALLAX_BLEED = 10;
-export const MAX_PARALLAX_BLEED = 40;
+/** Fixed safety pad (% of viewport) beyond travel-based layer sizing. */
+export const FIXED_PARALLAX_SAFETY_BLEED_PERCENT = 10;
 
 /** @deprecated Prefer parallaxScrollFactor(intensity). */
 export const PARALLAX_SCROLL_FACTOR = DEFAULT_PARALLAX_INTENSITY / 100;
@@ -109,7 +108,6 @@ export interface RouteThemeView {
   backgroundMotion: BackgroundMotion;
   parallaxIntensity: number;
   parallaxDirection: ParallaxDirection;
-  parallaxBleed: number;
   contentMarginMobile: PageMargin;
   contentMarginDesktop: PageMargin;
   foregroundColor: string;
@@ -311,17 +309,6 @@ export function normalizeParallaxIntensity(
   );
 }
 
-export function normalizeParallaxBleed(
-  value: number | null | undefined,
-): number {
-  return clampInt(
-    value,
-    MIN_PARALLAX_BLEED,
-    MAX_PARALLAX_BLEED,
-    DEFAULT_PARALLAX_BLEED,
-  );
-}
-
 /** Maps 0–100 intensity to a scroll multiplier (0–1). */
 export function parallaxScrollFactor(intensity: number): number {
   return normalizeParallaxIntensity(intensity) / 100;
@@ -337,15 +324,40 @@ export function computeParallaxOffset(
 }
 
 /** Extra vertical room so the image can travel without showing gaps. */
-export function parallaxLayerGeometry(bleedPercent: number): {
+export function parallaxLayerGeometry(): {
   topPercent: number;
   heightPercent: number;
 } {
-  const bleed = normalizeParallaxBleed(bleedPercent);
+  const bleed = FIXED_PARALLAX_SAFETY_BLEED_PERCENT;
   return {
     topPercent: -bleed,
     heightPercent: 100 + bleed * 2,
   };
+}
+
+/**
+ * Pixel geometry that grows with max travel (intensity × page scroll range)
+ * so high-intensity parallax never reveals gaps behind a repeating image.
+ */
+export function parallaxLayerPixelGeometry(input: {
+  viewportHeight: number;
+  maxTravelPx: number;
+}): { topPx: number; heightPx: number } {
+  const viewport = Math.max(0, input.viewportHeight);
+  const travel = Math.max(0, input.maxTravelPx);
+  const bleedPad = (FIXED_PARALLAX_SAFETY_BLEED_PERCENT / 100) * viewport;
+  const pad = travel + bleedPad;
+  return {
+    topPx: -pad,
+    heightPx: viewport + pad * 2,
+  };
+}
+
+export function maxParallaxTravelPx(
+  scrollRangePx: number,
+  intensity: number,
+): number {
+  return Math.max(0, scrollRangePx) * parallaxScrollFactor(intensity);
 }
 
 export function hasVisibleColorOverlay(theme: RouteThemeView): boolean {
@@ -377,10 +389,25 @@ export function hexToRgba(hex: string, opacityPercent: number): string | null {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function backgroundCssUrl(raw: string): string {
+  const escaped = raw.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return `url("${escaped}")`;
+}
+
+function skipsSolidColorOverBackgroundImage(theme: RouteThemeView): boolean {
+  return (
+    Boolean(theme.backgroundImageUrl) &&
+    normalizeOpacity(theme.backgroundColorOpacity) >= 100
+  );
+}
+
 function colorOverlayGradient(theme: RouteThemeView): string | null {
   if (!theme.backgroundColor) return null;
   const opacity = normalizeOpacity(theme.backgroundColorOpacity);
   if (opacity === FULLY_TRANSPARENT_OPACITY) return null;
+  if (skipsSolidColorOverBackgroundImage(theme)) {
+    return null;
+  }
   const rgba = hexToRgba(theme.backgroundColor, opacity);
   if (!rgba) return null;
   return `linear-gradient(${rgba}, ${rgba})`;
@@ -405,7 +432,7 @@ export function routeThemeLayeredStyle(theme: RouteThemeView | null): {
   const motion = theme.backgroundMotion || DEFAULT_BACKGROUND_MOTION;
   const colorLayer = colorOverlayGradient(theme);
   const imageLayer = theme.backgroundImageUrl
-    ? `url(${theme.backgroundImageUrl})`
+    ? backgroundCssUrl(theme.backgroundImageUrl)
     : null;
   const attachment =
     motion === "fixed" ? "fixed" : motion === "parallax" ? "scroll" : "scroll";
@@ -455,7 +482,7 @@ export function routeThemeImageOnlyStyle(theme: RouteThemeView | null): {
   const repeat = theme.backgroundRepeat || DEFAULT_BACKGROUND_REPEAT;
   const motion = theme.backgroundMotion || DEFAULT_BACKGROUND_MOTION;
   return {
-    backgroundImage: `url(${theme.backgroundImageUrl})`,
+    backgroundImage: backgroundCssUrl(theme.backgroundImageUrl),
     backgroundSize: size,
     backgroundPosition: position,
     backgroundRepeat: repeat,
@@ -469,6 +496,9 @@ export function routeThemeColorOverlayRgba(
   if (!theme?.backgroundColor) return null;
   const opacity = normalizeOpacity(theme.backgroundColorOpacity);
   if (opacity === FULLY_TRANSPARENT_OPACITY) return null;
+  if (skipsSolidColorOverBackgroundImage(theme)) {
+    return null;
+  }
   return hexToRgba(theme.backgroundColor, opacity);
 }
 

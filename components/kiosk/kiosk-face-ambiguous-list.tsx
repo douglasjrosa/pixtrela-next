@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import type { KioskFaceIdentifyCandidate } from "@/app/kiosk/actions";
-import { toBrowserStrapiMediaUrl } from "@/lib/strapi/browser-media-url";
+import { toKioskFaceMediaProxyUrl } from "@/lib/kiosk/face/face-media-proxy-url";
 
 export interface KioskFaceAmbiguousListProps {
   candidates: KioskFaceIdentifyCandidate[];
@@ -34,8 +34,8 @@ export function KioskFaceAmbiguousList({
       <ul className="grid gap-2">
         {candidates.map((candidate) => {
           const photoUrl =
-            toBrowserStrapiMediaUrl(candidate.avatarUrl) ??
-            toBrowserStrapiMediaUrl(candidate.facePhotoUrl);
+            toKioskFaceMediaProxyUrl(candidate.avatarUrl) ??
+            toKioskFaceMediaProxyUrl(candidate.facePhotoUrl);
           return (
             <li key={candidate.documentId}>
               <Button

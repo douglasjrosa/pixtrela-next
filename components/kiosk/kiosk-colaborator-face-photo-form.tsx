@@ -8,7 +8,7 @@ import { FaceOvalCapture } from "@/components/kiosk/face-oval-capture";
 import { Button } from "@/components/ui/button";
 import { extractFaceDescriptorFromFile } from "@/lib/kiosk/face/extract-face-descriptor";
 import { compressProfileImage } from "@/lib/media/compress-profile-image";
-import { toBrowserStrapiMediaUrl } from "@/lib/strapi/browser-media-url";
+import { toKioskFaceMediaProxyUrl } from "@/lib/kiosk/face/face-media-proxy-url";
 import { showErrorToast } from "@/lib/ui/app-toast";
 
 export interface KioskColaboratorFacePhotoFormProps {
@@ -33,7 +33,7 @@ export function KioskColaboratorFacePhotoForm({
   const [captureOpen, setCaptureOpen] = useState(false);
 
   const currentUrl =
-    previewUrl ?? toBrowserStrapiMediaUrl(facePhotoUrl ?? null) ?? null;
+    previewUrl ?? toKioskFaceMediaProxyUrl(facePhotoUrl ?? null) ?? null;
 
   function applyCapturedFile(file: File): void {
     if (previewUrl) {

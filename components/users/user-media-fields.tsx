@@ -1,7 +1,7 @@
 "use client";
 
 import { Camera, User } from "lucide-react";
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { useTranslations } from "next-intl";
 
 import { FaceOvalCapture } from "@/components/kiosk/face-oval-capture";
@@ -131,6 +131,10 @@ export function UserMediaFields({
   });
   const [pendingType, setPendingType] = useState<UserImageType | null>(null);
   const [faceCaptureOpen, setFaceCaptureOpen] = useState(false);
+
+  useEffect(() => {
+    setUrls({ avatar: avatarUrl, facePhoto: facePhotoUrl });
+  }, [avatarUrl, facePhotoUrl]);
 
   async function uploadImage(
     imageType: UserImageType,

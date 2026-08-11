@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTag = vi.fn();
+const revalidatePath = vi.fn();
 const updateRouteThemeRepo = vi.fn();
 const storeMedia = vi.fn();
 const getDb = vi.fn();
@@ -15,6 +16,7 @@ vi.mock("@/lib/db/backend", () => ({
 
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
+  revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
 vi.mock("@/lib/repos/settings", () => ({

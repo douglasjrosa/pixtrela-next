@@ -104,8 +104,11 @@ export async function listCurrencies(db: Db = getDb()) {
       title: currencies.title,
       pluralTitle: currencies.pluralTitle,
       currencyPerSecond: currencies.currencyPerSecond,
+      iconMediaId: currencies.iconMediaId,
+      iconMediaUrl: mediaAssets.url,
     })
     .from(currencies)
+    .leftJoin(mediaAssets, eq(currencies.iconMediaId, mediaAssets.id))
     .orderBy(currencies.name);
 }
 

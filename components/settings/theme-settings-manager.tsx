@@ -25,7 +25,6 @@ import {
   DEFAULT_BACKGROUND_SIZE,
   DEFAULT_PAGE_MARGIN_DESKTOP,
   DEFAULT_PAGE_MARGIN_MOBILE,
-  DEFAULT_PARALLAX_BLEED,
   DEFAULT_PARALLAX_DIRECTION,
   DEFAULT_PARALLAX_INTENSITY,
   DEFAULT_FOREGROUND_COLOR,
@@ -33,9 +32,7 @@ import {
   DEFAULT_SURFACE_COLOR_OPACITY,
   FULLY_TRANSPARENT_OPACITY,
   hexToRgba,
-  MAX_PARALLAX_BLEED,
   MAX_PARALLAX_INTENSITY,
-  MIN_PARALLAX_BLEED,
   MIN_PARALLAX_INTENSITY,
   PAGE_MARGINS,
   PARALLAX_DIRECTIONS,
@@ -52,7 +49,7 @@ import { cn } from "@/lib/utils";
 export interface ThemeSettingsManagerProps {
   themes: RouteThemeView[];
   onSave: (documentId: string, values: RouteThemeFormInput) => Promise<void>;
-  onUploadImage: (formData: FormData) => Promise<number>;
+  onUploadImage: (formData: FormData) => Promise<number | string>;
 }
 
 interface ThemeDraft {
@@ -67,7 +64,6 @@ interface ThemeDraft {
   motion: BackgroundMotion;
   parallaxIntensity: number;
   parallaxDirection: ParallaxDirection;
-  parallaxBleed: number;
   contentMarginMobile: PageMargin;
   contentMarginDesktop: PageMargin;
   foregroundColor: string;
@@ -89,7 +85,6 @@ function draftFromTheme(theme: RouteThemeView): ThemeDraft {
     motion: theme.backgroundMotion || DEFAULT_BACKGROUND_MOTION,
     parallaxIntensity: theme.parallaxIntensity ?? DEFAULT_PARALLAX_INTENSITY,
     parallaxDirection: theme.parallaxDirection || DEFAULT_PARALLAX_DIRECTION,
-    parallaxBleed: theme.parallaxBleed ?? DEFAULT_PARALLAX_BLEED,
     contentMarginMobile:
       theme.contentMarginMobile || DEFAULT_PAGE_MARGIN_MOBILE,
     contentMarginDesktop:
@@ -235,7 +230,6 @@ export function ThemeSettingsManager({
         backgroundMotion: values.motion,
         parallaxIntensity: values.parallaxIntensity,
         parallaxDirection: values.parallaxDirection,
-        parallaxBleed: values.parallaxBleed,
         contentMarginMobile: values.contentMarginMobile,
         contentMarginDesktop: values.contentMarginDesktop,
         foregroundColor: values.foregroundColor,
@@ -789,7 +783,7 @@ export function ThemeSettingsManager({
             ) : null}
 
             {showImageOptions && draft.motion === "parallax" ? (
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="theme-parallax-intensity">
                     {t("themesParallaxIntensity")}
@@ -837,30 +831,6 @@ export function ThemeSettingsManager({
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="theme-parallax-bleed">
-                    {t("themesParallaxBleed")}
-                  </Label>
-                  <Input
-                    id="theme-parallax-bleed"
-                    type="range"
-                    min={MIN_PARALLAX_BLEED}
-                    max={MAX_PARALLAX_BLEED}
-                    value={draft.parallaxBleed}
-                    disabled={busy}
-                    onChange={(event) =>
-                      patchDraft({
-                        parallaxBleed: Number(event.target.value),
-                        message: null,
-                      })
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t("themesParallaxBleedValue", {
-                      value: draft.parallaxBleed,
-                    })}
-                  </p>
                 </div>
               </div>
             ) : null}
