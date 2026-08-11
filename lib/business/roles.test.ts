@@ -6,6 +6,7 @@ describe("manageableTargetRoles", () => {
   it("returns assignable roles for actor", () => {
     expect(manageableTargetRoles("leader")).toEqual(["colaborator"]);
     expect(manageableTargetRoles("admin")).toEqual([
+      "admin",
       "manager",
       "leader",
       "colaborator",
@@ -15,7 +16,8 @@ describe("manageableTargetRoles", () => {
 });
 
 describe("canManageRole", () => {
-  it("allows admin to manage all lower roles including kiosk", () => {
+  it("allows admin to manage all roles including other admins", () => {
+    expect(canManageRole("admin", "admin")).toBe(true);
     expect(canManageRole("admin", "manager")).toBe(true);
     expect(canManageRole("admin", "colaborator")).toBe(true);
     expect(canManageRole("admin", "kiosk")).toBe(true);

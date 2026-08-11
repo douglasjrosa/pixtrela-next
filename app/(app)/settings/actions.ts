@@ -9,6 +9,7 @@ import { isDrizzleBackend } from "@/lib/db/backend";
 import {
   upsertCurrencyForSubtasks,
   upsertKioskSettings,
+  upsertTaskAutomationSettings,
 } from "@/lib/repos/settings";
 import type { CurrencyForSubtasksInput } from "@/lib/schemas/currency-for-subtasks";
 import type { TaskAutomationFormInput } from "@/lib/schemas/task-automation";
@@ -78,10 +79,10 @@ export async function updateTaskAutomationSetting(
 ): Promise<void> {
   await assertCanManage();
 
-  // Drizzle schema only stores `enabled` today; keep Strapi write path until
-  // step-mapping columns are ported.
   if (isDrizzleBackend()) {
-    throw new Error("task_automation_drizzle_pending");
+    await upsertTaskAutomationSettings(values);
+    revalidateTag("drizzle:task-automation-setting");
+    return;
   }
 
   await strapiFetch(TASK_AUTOMATION_SETTING_API_PATH, {

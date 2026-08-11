@@ -8,6 +8,13 @@
       "when": 1786259900217,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786399779179,
+      "tag": "0001_task_automation_step_mappings",
+      "breakpoints": true
     }
   ]
 }

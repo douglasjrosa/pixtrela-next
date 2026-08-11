@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const revalidateTag = vi.fn();
 const upsertCurrencyForSubtasks = vi.fn();
 const upsertKioskSettings = vi.fn();
+const upsertTaskAutomationSettings = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "jwt" })),
@@ -20,6 +21,8 @@ vi.mock("@/lib/repos/settings", () => ({
   upsertCurrencyForSubtasks: (...args: unknown[]) =>
     upsertCurrencyForSubtasks(...args),
   upsertKioskSettings: (...args: unknown[]) => upsertKioskSettings(...args),
+  upsertTaskAutomationSettings: (...args: unknown[]) =>
+    upsertTaskAutomationSettings(...args),
 }));
 
 vi.mock("@/lib/strapi", () => ({
@@ -33,6 +36,7 @@ describe("settings/actions drizzle paths", () => {
     revalidateTag.mockReset();
     upsertCurrencyForSubtasks.mockReset();
     upsertKioskSettings.mockReset();
+    upsertTaskAutomationSettings.mockReset();
   });
 
   it("updateCurrencyForSubtasks upserts and revalidates", async () => {
@@ -49,17 +53,21 @@ describe("settings/actions drizzle paths", () => {
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:kiosk-setting");
   });
 
-  it("updateTaskAutomationSetting rejects on drizzle backend", async () => {
+  it("updateTaskAutomationSetting upserts and revalidates on drizzle backend", async () => {
     const { updateTaskAutomationSetting } = await import("./actions");
-    await expect(
-      updateTaskAutomationSetting({
-        waitingStepDocumentId: "s1",
-        producingStepDocumentId: "",
-        pausedStepDocumentId: "",
-        finishedStepDocumentId: "",
-        reviewedStepDocumentId: "",
-        deliveredStepDocumentId: "",
-      }),
-    ).rejects.toThrow("task_automation_drizzle_pending");
+    const values = {
+      waitingStepDocumentId: "s1",
+      producingStepDocumentId: "",
+      pausedStepDocumentId: "",
+      finishedStepDocumentId: "",
+      reviewedStepDocumentId: "",
+      deliveredStepDocumentId: "",
+      assignWarnMax: 4,
+    };
+    await updateTaskAutomationSetting(values);
+    expect(upsertTaskAutomationSettings).toHaveBeenCalledWith(values);
+    expect(revalidateTag).toHaveBeenCalledWith(
+      "drizzle:task-automation-setting",
+    );
   });
 });
