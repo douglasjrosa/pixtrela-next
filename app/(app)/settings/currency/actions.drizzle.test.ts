@@ -122,7 +122,7 @@ describe("settings/currency/actions drizzle CRUD", () => {
         currencyPerSecond: 2,
       }),
     );
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:currencies");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:currencies", "default");
   });
 
   it("uploadCurrencyIcon stores media and returns id", async () => {

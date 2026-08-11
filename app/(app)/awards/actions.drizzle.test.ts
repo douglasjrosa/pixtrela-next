@@ -77,7 +77,7 @@ describe("awards/actions drizzle CRUD", () => {
         prices: [{ currencyId: "cur-1", numberOf: 10 }],
       }),
     );
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
   });
 
   it("deleteAward soft-deactivates the award", async () => {
@@ -91,7 +91,7 @@ describe("awards/actions drizzle CRUD", () => {
     expect(set).toHaveBeenCalledWith(
       expect.objectContaining({ active: false }),
     );
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
   });
 
   it("updateAward updates row and replaces prices", async () => {
@@ -120,7 +120,7 @@ describe("awards/actions drizzle CRUD", () => {
       [{ currencyId: "cur-1", numberOf: 5 }],
       expect.anything(),
     );
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
   });
 
   it("uploadAwardImage stores media and returns drizzle id", async () => {

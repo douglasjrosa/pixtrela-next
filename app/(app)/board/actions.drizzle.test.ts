@@ -85,8 +85,8 @@ describe("board/actions drizzle", () => {
       index: 0,
       stepId: "step-uuid",
     });
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks");
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks", "default");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps", "default");
   });
 
   it("loadBoardSubtasks reads drizzle bundle", async () => {

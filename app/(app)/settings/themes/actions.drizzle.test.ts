@@ -65,7 +65,7 @@ describe("settings/themes/actions drizzle paths", () => {
         clearBackgroundImage: true,
       }),
     );
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:route-themes");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:route-themes", "default");
   });
 
   it("uploadRouteThemeImage stores media and returns id", async () => {

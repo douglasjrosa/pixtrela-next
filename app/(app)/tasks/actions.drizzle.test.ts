@@ -88,7 +88,7 @@ describe("tasks/actions drizzle CRUD", () => {
         index: 2,
       }),
     );
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks", "default");
   });
 
   it("updateTask updates fields without step", async () => {
@@ -104,7 +104,7 @@ describe("tasks/actions drizzle CRUD", () => {
       status: "producing",
       templateTaskCode: null,
     });
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks", "default");
   });
 
   it("deactivateTask sets active false via repo", async () => {

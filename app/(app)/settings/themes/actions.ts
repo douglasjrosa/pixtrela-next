@@ -45,7 +45,7 @@ async function assertCanManage(): Promise<void> {
 
 function invalidateThemes(): void {
   if (isDrizzleBackend()) {
-    revalidateTag("drizzle:route-themes");
+    revalidateTag("drizzle:route-themes", "default");
     revalidatePath("/", "layout");
     return;
   }

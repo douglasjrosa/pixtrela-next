@@ -43,14 +43,14 @@ describe("settings/actions drizzle paths", () => {
     const { updateCurrencyForSubtasks } = await import("./actions");
     await updateCurrencyForSubtasks({ currencyDocumentId: "cur-1" });
     expect(upsertCurrencyForSubtasks).toHaveBeenCalledWith("cur-1");
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:currency-for-subtasks");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:currency-for-subtasks", "default");
   });
 
   it("updateKioskSessionIdleSeconds upserts kiosk settings", async () => {
     const { updateKioskSessionIdleSeconds } = await import("./actions");
     await updateKioskSessionIdleSeconds(90);
     expect(upsertKioskSettings).toHaveBeenCalledWith(90);
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:kiosk-setting");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:kiosk-setting", "default");
   });
 
   it("updateTaskAutomationSetting upserts and revalidates on drizzle backend", async () => {
@@ -68,6 +68,7 @@ describe("settings/actions drizzle paths", () => {
     expect(upsertTaskAutomationSettings).toHaveBeenCalledWith(values);
     expect(revalidateTag).toHaveBeenCalledWith(
       "drizzle:task-automation-setting",
+      "default",
     );
   });
 });

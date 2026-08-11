@@ -74,7 +74,7 @@ function toStrapiPayload(
 
 function invalidateTasks(taskDocumentId?: string): void {
   if (isDrizzleBackend()) {
-    revalidateTag("drizzle:tasks");
+    revalidateTag("drizzle:tasks", "default");
     return;
   }
   const { tags, paths } = LIST_CACHE_CONTRACT.tasks;

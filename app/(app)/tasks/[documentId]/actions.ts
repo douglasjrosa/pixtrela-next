@@ -64,7 +64,7 @@ function toStrapiPayload(
 
 function invalidateSubTasks(): void {
   if (isDrizzleBackend()) {
-    revalidateTag("drizzle:tasks");
+    revalidateTag("drizzle:tasks", "default");
     return;
   }
   revalidateStrapiTags(STRAPI_TAGS.subTasks, STRAPI_TAGS.tasks);

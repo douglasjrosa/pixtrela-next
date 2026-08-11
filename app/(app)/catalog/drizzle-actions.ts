@@ -18,7 +18,7 @@ export async function createStepAction(input: { name: string; index?: number }) 
     throw new Error("createStepAction requires DATA_BACKEND=drizzle");
   }
   const step = await createStep(input);
-  revalidateTag("drizzle:steps");
+  revalidateTag("drizzle:steps", "default");
   return step;
 }
 
@@ -39,6 +39,6 @@ export async function createAwardAction(input: {
     throw new Error("createAwardAction requires DATA_BACKEND=drizzle");
   }
   const award = await createAward(input);
-  revalidateTag("drizzle:awards");
+  revalidateTag("drizzle:awards", "default");
   return award;
 }

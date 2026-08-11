@@ -1,3 +1,5 @@
+import { describe } from "vitest";
+
 /**
  * Integration test helper.
  * Opt-in via RUN_DB_TESTS=1 (and DATABASE_URL) so the default `npm test`

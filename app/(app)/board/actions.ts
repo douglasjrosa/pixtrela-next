@@ -56,6 +56,13 @@ interface StrapiList<T> {
   data: T[];
 }
 
+function dependencyIndexesFrom(
+  dependencies: TemplateSubTaskComponentInput["dependencies"],
+): number[] {
+  if (!Array.isArray(dependencies)) return [];
+  return dependencies.filter((value): value is number => typeof value === "number");
+}
+
 interface IdEntity {
   documentId: string;
 }
@@ -109,8 +116,8 @@ async function assertCanManageBoardSubtasks(): Promise<void> {
 
 function invalidateBoardTasks(): void {
   if (isDrizzleBackend()) {
-    revalidateTag("drizzle:tasks");
-    revalidateTag("drizzle:steps");
+    revalidateTag("drizzle:tasks", "default");
+    revalidateTag("drizzle:steps", "default");
     return;
   }
   revalidateStrapiTags(STRAPI_TAGS.tasks, STRAPI_TAGS.steps);
@@ -531,10 +538,10 @@ async function appendBoardSubtaskToTaskTemplate(
         expectedTime: row.expectedTime,
         sharingType: row.sharingType,
         maxSameTimeWorkers: row.maxSameTimeWorkers,
-        dependencyIndexes: row.dependencyIndexes ?? [],
+        dependencyIndexes: dependencyIndexesFrom(row.dependencies),
       })),
     });
-    revalidateTag("drizzle:templates");
+    revalidateTag("drizzle:templates", "default");
     return;
   }
 
@@ -551,7 +558,7 @@ async function appendBoardSubtaskToTaskTemplate(
   });
 
   if (isDrizzleBackend()) {
-    revalidateTag("drizzle:templates");
+    revalidateTag("drizzle:templates", "default");
     return;
   }
   revalidateStrapiTags(STRAPI_TAGS.templateTasks);

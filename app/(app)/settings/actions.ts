@@ -39,7 +39,7 @@ export async function updateCurrencyForSubtasks(
 
   if (isDrizzleBackend()) {
     await upsertCurrencyForSubtasks(values.currencyDocumentId || null);
-    revalidateTag("drizzle:currency-for-subtasks");
+    revalidateTag("drizzle:currency-for-subtasks", "default");
     return;
   }
 
@@ -61,7 +61,7 @@ export async function updateKioskSessionIdleSeconds(
 
   if (isDrizzleBackend()) {
     await upsertKioskSettings(sessionIdleSeconds);
-    revalidateTag("drizzle:kiosk-setting");
+    revalidateTag("drizzle:kiosk-setting", "default");
     return;
   }
 
@@ -81,7 +81,7 @@ export async function updateTaskAutomationSetting(
 
   if (isDrizzleBackend()) {
     await upsertTaskAutomationSettings(values);
-    revalidateTag("drizzle:task-automation-setting");
+    revalidateTag("drizzle:task-automation-setting", "default");
     return;
   }
 

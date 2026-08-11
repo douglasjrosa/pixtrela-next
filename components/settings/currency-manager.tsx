@@ -16,7 +16,7 @@ export interface CurrencyRow {
   name: string;
   title: string;
   pluralTitle: string;
-  iconMediaId: number | null;
+  iconMediaId: number | string | null;
   iconMediaUrl: string | null;
   currencyPerSecond: number;
 }
@@ -29,7 +29,7 @@ export interface CurrencyManagerProps {
     values: CurrencyFormInput,
   ) => void | Promise<void>;
   onDelete: (documentId: string) => void | Promise<void>;
-  onUploadIcon: (formData: FormData) => Promise<number>;
+  onUploadIcon: (formData: FormData) => Promise<number | string>;
 }
 
 const EMPTY_FORM: CurrencyFormInput = {

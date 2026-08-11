@@ -45,7 +45,7 @@ function toStrapiPayload(input: AwardFormInput) {
 
 function invalidateAwards(): void {
   if (isDrizzleBackend()) {
-    revalidateTag("drizzle:awards");
+    revalidateTag("drizzle:awards", "default");
     return;
   }
   revalidateStrapiTags(STRAPI_TAGS.awards);

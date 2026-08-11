@@ -30,7 +30,7 @@ export async function createTaskAction(input: {
     throw new Error("createTaskAction requires DATA_BACKEND=drizzle");
   }
   const task = await createTask(input);
-  revalidateTag("drizzle:tasks");
+  revalidateTag("drizzle:tasks", "default");
   return task;
 }
 
@@ -58,8 +58,8 @@ export async function recordActivityAction(input: {
     throw new Error("recordActivityAction requires DATA_BACKEND=drizzle");
   }
   const activity = await recordActivity(input);
-  revalidateTag("drizzle:activities");
-  revalidateTag("drizzle:balances");
+  revalidateTag("drizzle:activities", "default");
+  revalidateTag("drizzle:balances", "default");
   return activity;
 }
 
@@ -83,8 +83,8 @@ export async function redeemAwardAction(input: {
     throw new Error("redeemAwardAction requires DATA_BACKEND=drizzle");
   }
   const result = await redeemAward(input);
-  revalidateTag("drizzle:exchanges");
-  revalidateTag("drizzle:balances");
+  revalidateTag("drizzle:exchanges", "default");
+  revalidateTag("drizzle:balances", "default");
   return result;
 }
 

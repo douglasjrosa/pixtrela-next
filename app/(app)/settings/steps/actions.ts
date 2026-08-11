@@ -37,7 +37,7 @@ async function assertCanManage(): Promise<void> {
 
 function invalidateSteps(): void {
   if (isDrizzleBackend()) {
-    revalidateTag("drizzle:steps");
+    revalidateTag("drizzle:steps", "default");
     return;
   }
   revalidateStrapiTags(STRAPI_TAGS.steps);

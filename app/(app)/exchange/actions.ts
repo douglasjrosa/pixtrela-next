@@ -30,8 +30,8 @@ export async function redeemAward(awardId: string, currency: string, qty: number
       currencyId: currency,
       qty,
     });
-    revalidateTag("drizzle:exchanges");
-    revalidateTag("drizzle:balances");
+    revalidateTag("drizzle:exchanges", "default");
+    revalidateTag("drizzle:balances", "default");
     return;
   }
 

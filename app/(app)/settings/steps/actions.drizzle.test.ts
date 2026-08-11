@@ -57,14 +57,14 @@ describe("settings/steps/actions drizzle CRUD", () => {
     await createStep({ name: "B" });
 
     expect(createStepRepo).toHaveBeenCalledWith({ name: "B", index: 3 });
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps", "default");
   });
 
   it("updateStep renames via repo", async () => {
     const { updateStep } = await import("./actions");
     await updateStep("s1", { name: "Produção" });
     expect(updateStepName).toHaveBeenCalledWith("s1", "Produção");
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps", "default");
   });
 
   it("reorderSteps updates indexes via repo", async () => {
@@ -82,6 +82,6 @@ describe("settings/steps/actions drizzle CRUD", () => {
     const { deleteStep } = await import("./actions");
     await deleteStep("s1");
     expect(deleteStepRepo).toHaveBeenCalledWith("s1");
-    expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps", "default");
   });
 });

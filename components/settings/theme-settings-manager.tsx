@@ -55,7 +55,7 @@ export interface ThemeSettingsManagerProps {
 interface ThemeDraft {
   color: string;
   opacity: number;
-  imageId: number | null;
+  imageId: number | string | null;
   previewUrl: string | null;
   clearImage: boolean;
   size: BackgroundSize;
