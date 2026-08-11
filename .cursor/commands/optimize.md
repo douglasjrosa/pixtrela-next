@@ -42,12 +42,28 @@ Then run the project's own checks and iterate until they all pass (for example
 `npm run lint` and `npm test`, or the equivalent for the project). Do not ignore
 any error or warning.
 
+## Commit messages
+
+Every commit in this cycle must describe the **actual changes** (features, fixes,
+refactors, config), not the `/optimize` workflow.
+
+- **Do** write subjects from the diff (e.g. `fix revalidateTag cache profile for
+  Next 16`, `sync user media URLs without setState in effect`).
+- **Do not** use `optimize`, `/optimize`, `review release`, `release gate`, or
+  similar meta labels in commit subjects or bodies.
+
+Before committing on `review`, read `git diff` (or `git log origin/master..HEAD`)
+and name what changed. If you make multiple logical fixes, use separate commits
+with specific messages rather than one vague cleanup commit.
+
 ## 4. Ship to master (production)
 
-1. Commit the reviewed result on `review` with a clear English message.
+1. Commit any remaining reviewed work on `review` using the rules above.
 2. Promote to production and push:
-   `git checkout master && git merge --no-ff review && git push origin master`.
-   Pushing to `master` triggers the production deploy.
+   `git checkout master && git merge --no-ff review -m "Merge branch 'review': <short summary of what ships>" && git push origin master`.
+   The merge message must summarize the **integrated work** (features, fixes,
+   config), not `/optimize` or `review release`. Pushing to `master` triggers the
+   production deploy.
 3. If the GitHub repository does not exist yet, create it under the GitHub
    account that owns this project and push (do not assume a fixed account).
 
