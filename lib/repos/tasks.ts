@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, eq, inArray, max } from "drizzle-orm";
 
 import {
   activities,
@@ -18,6 +18,7 @@ import {
   scaleExpectedTimeByTaskQty,
 } from "@/lib/domain/work-currency";
 import { getDb, type Db } from "@/lib/db/client";
+import type { TasksRevision } from "@/lib/tasks/tasks-revision";
 import {
   creditBalanceIncome,
   getOrCreateMonthlyBalance,
@@ -164,6 +165,23 @@ export async function listActiveTasksForBoard(db: Db = getDb()) {
     .from(tasks)
     .where(eq(tasks.active, true))
     .orderBy(asc(tasks.index));
+}
+
+export async function getActiveTasksRevision(
+  db: Db = getDb(),
+): Promise<TasksRevision> {
+  const [row] = await db
+    .select({
+      count: count(),
+      maxUpdatedAt: max(tasks.updatedAt),
+    })
+    .from(tasks)
+    .where(eq(tasks.active, true));
+
+  return {
+    count: row?.count ?? 0,
+    maxUpdatedAt: row?.maxUpdatedAt?.toISOString() ?? null,
+  };
 }
 
 export async function getTaskById(id: string, db: Db = getDb()) {

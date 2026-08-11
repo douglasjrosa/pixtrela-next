@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { processCrmPedidoWebhook } from "@/lib/crm/handle-crm-pedido-webhook";
 
@@ -30,6 +30,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (result.revalidateTasks) {
     revalidateTag("drizzle:tasks", "default");
     revalidateTag("drizzle:steps", "default");
+    revalidatePath("/board");
+    revalidatePath("/tasks");
   }
 
   return NextResponse.json(result.body, { status: result.status });
