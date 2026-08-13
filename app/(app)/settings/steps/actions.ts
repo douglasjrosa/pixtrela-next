@@ -5,7 +5,6 @@ import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import {
   applyAutoStepTaskOrdering,
-  applyAutoStepTaskOrderingAfterTaskChange,
 } from "@/lib/business/apply-step-task-order";
 import { isAutoStepTaskOrder } from "@/lib/schemas/step-task-order-by";
 import {

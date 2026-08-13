@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
   STEP_TASK_ORDER_BY_VALUES,
-  type StepTaskOrderBy,
 } from "@/lib/schemas/step-task-order-by";
 import {
   stepNameFormSchema,

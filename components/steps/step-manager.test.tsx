@@ -2,12 +2,23 @@ import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+const refresh = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
+}));
+
 import { renderWithIntl } from "@/test/test-utils";
 import { resolveStepReorder, StepManager } from "./step-manager";
 
 const steps = [
   { documentId: "s1", name: "Fila", index: 0, orderBy: "manual" as const },
-  { documentId: "s2", name: "Produção", index: 1, orderBy: "manual" as const },
+  {
+    documentId: "s2",
+    name: "Produção",
+    index: 1,
+    orderBy: "delivery_date_asc" as const,
+  },
 ];
 
 describe("resolveStepReorder", () => {
@@ -35,6 +46,8 @@ describe("StepManager", () => {
       />,
     );
     expect(screen.getByText("Fila")).toBeInTheDocument();
+    expect(screen.getByText("Manual (aleatório)")).toBeInTheDocument();
+    expect(screen.getByText("Data de entrega - Crescente")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -149,6 +162,9 @@ describe("StepManager", () => {
 
     await waitFor(() => {
       expect(onCreate).toHaveBeenCalledWith({ name: "Corte", orderBy: "manual" });
+    });
+    await waitFor(() => {
+      expect(refresh).toHaveBeenCalled();
     });
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
