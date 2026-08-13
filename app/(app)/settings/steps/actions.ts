@@ -4,6 +4,11 @@ import { revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import {
+  applyAutoStepTaskOrdering,
+  applyAutoStepTaskOrderingAfterTaskChange,
+} from "@/lib/business/apply-step-task-order";
+import { isAutoStepTaskOrder } from "@/lib/schemas/step-task-order-by";
+import {
   buildStepIndexUpdates,
   getNextStepIndex,
 } from "@/lib/business/step-order";
@@ -13,9 +18,10 @@ import { isDrizzleBackend } from "@/lib/db/backend";
 import {
   createStep as createStepRepo,
   deleteStep as deleteStepRepo,
+  getStepById,
   listSteps as listStepsRepo,
+  updateStepFields,
   updateStepIndex,
-  updateStepName,
 } from "@/lib/repos/steps";
 import {
   stepNameFormSchema,
@@ -38,6 +44,7 @@ async function assertCanManage(): Promise<void> {
 function invalidateSteps(): void {
   if (isDrizzleBackend()) {
     revalidateTag("drizzle:steps", "default");
+    revalidateTag("drizzle:tasks", "default");
     return;
   }
   revalidateStrapiTags(STRAPI_TAGS.steps);
@@ -77,12 +84,15 @@ async function fetchStepIds(): Promise<string[]> {
 
 export async function createStep(raw: StepNameFormInput): Promise<void> {
   await assertCanManage();
-  const { name } = stepNameFormSchema.parse(raw);
+  const { name, orderBy } = stepNameFormSchema.parse(raw);
   const indexes = await fetchStepIndexes();
   const index = getNextStepIndex(indexes.map((value) => ({ index: value })));
 
   if (isDrizzleBackend()) {
-    await createStepRepo({ name, index });
+    const created = await createStepRepo({ name, index, taskOrderBy: orderBy });
+    if (orderBy !== "manual") {
+      await applyAutoStepTaskOrdering({ stepIds: [created.id] });
+    }
     invalidateSteps();
     return;
   }
@@ -100,10 +110,18 @@ export async function updateStep(
   raw: StepNameFormInput,
 ): Promise<void> {
   await assertCanManage();
-  const { name } = stepNameFormSchema.parse(raw);
+  const { name, orderBy } = stepNameFormSchema.parse(raw);
 
   if (isDrizzleBackend()) {
-    await updateStepName(documentId, name);
+    const existing = await getStepById(documentId);
+    await updateStepFields(documentId, { name, taskOrderBy: orderBy });
+    if (
+      existing &&
+      existing.taskOrderBy !== orderBy &&
+      isAutoStepTaskOrder(orderBy)
+    ) {
+      await applyAutoStepTaskOrdering({ stepIds: [documentId] });
+    }
     invalidateSteps();
     return;
   }

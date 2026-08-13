@@ -1,9 +1,11 @@
 import type { BoardTaskProgressInput } from "@/lib/business/task-progress";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
+import type { StepTaskOrderBy } from "@/lib/schemas/step-task-order-by";
 
 export interface KanbanStep {
   id: number;
   name: string;
+  taskOrderBy: StepTaskOrderBy;
 }
 
 export interface KanbanTask {

@@ -21,6 +21,9 @@ import {
   buildStepKanbanLookup,
   resolveStepUuidFromKanbanId,
 } from "@/lib/board/kanban-drizzle-ids";
+import {
+  applyAutoStepTaskOrderingAfterTaskChange,
+} from "@/lib/business/apply-step-task-order";
 import { loadBoardProgressByTaskId } from "@/lib/board/load-board-progress";
 import {
   resolveDrizzleTaskIdByKanbanNumericId,
@@ -621,6 +624,21 @@ export async function applyBoardTaskOrder(
 
   if (isDrizzleBackend()) {
     const stepLookup = buildStepKanbanLookup(await listStepsRepo());
+    const beforeByDocumentId = new Map<
+      string,
+      { stepId: string | null; deliveryDate: string | null }
+    >();
+
+    for (const update of updates) {
+      const task = await getTaskById(update.documentId);
+      if (task) {
+        beforeByDocumentId.set(update.documentId, {
+          stepId: task.stepId,
+          deliveryDate: task.deliveryDate,
+        });
+      }
+    }
+
     for (const update of updates) {
       let stepUuid: string | null | undefined;
       if (update.stepId != null) {
@@ -634,6 +652,21 @@ export async function applyBoardTaskOrder(
         stepId: update.stepId != null ? stepUuid : undefined,
       });
     }
+
+    for (const update of updates) {
+      const before = beforeByDocumentId.get(update.documentId);
+      if (!before) continue;
+      const afterTask = await getTaskById(update.documentId);
+      if (!afterTask) continue;
+      await applyAutoStepTaskOrderingAfterTaskChange({
+        before,
+        after: {
+          stepId: afterTask.stepId,
+          deliveryDate: afterTask.deliveryDate,
+        },
+      });
+    }
+
     invalidateBoardTasks();
     return;
   }
@@ -673,10 +706,23 @@ export async function moveTaskToStep(
     if (!taskDocumentId || !stepDocumentId) {
       throw new Error("notFound");
     }
+    const before = await getTaskById(taskDocumentId);
     await updateTaskBoardFields(taskDocumentId, {
-      index: (await getTaskById(taskDocumentId))?.index ?? 0,
+      index: before?.index ?? 0,
       stepId: stepDocumentId,
     });
+    if (before) {
+      await applyAutoStepTaskOrderingAfterTaskChange({
+        before: {
+          stepId: before.stepId,
+          deliveryDate: before.deliveryDate,
+        },
+        after: {
+          stepId: stepDocumentId,
+          deliveryDate: before.deliveryDate,
+        },
+      });
+    }
     invalidateBoardTasks();
     return;
   }

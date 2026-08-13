@@ -44,6 +44,14 @@ export const subTaskStatusEnum = pgEnum("sub_task_status", [
   "finished",
 ]);
 
+export const stepTaskOrderByEnum = pgEnum("step_task_order_by", [
+  "manual",
+  "delivery_date_asc",
+  "delivery_date_desc",
+  "created_at_asc",
+  "created_at_desc",
+]);
+
 export const activationStatusEnum = pgEnum("activation_status", [
   "inactive",
   "active",
@@ -96,6 +104,7 @@ export const steps = pgTable("steps", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 128 }).notNull(),
   index: integer("index").default(0).notNull(),
+  taskOrderBy: stepTaskOrderByEnum("task_order_by").default("manual").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

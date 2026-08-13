@@ -23,6 +23,7 @@ import {
   tasksInStep,
   type KanbanTaskOrderItem,
 } from "@/lib/business/kanban-task-order";
+import { isAutoStepTaskOrder } from "@/lib/schemas/step-task-order-by";
 
 import { KanbanCardDragOverlay } from "./kanban-card";
 import { KanbanColumn } from "./kanban-column";
@@ -80,12 +81,31 @@ export function KanbanBoard({
   function handleDragEnd(event: DragEndEvent): void {
     setActiveTask(null);
     const before = toKanbanTaskOrderItems(tasks);
-    const result = resolveKanbanDragEnd(      before,
+    const result = resolveKanbanDragEnd(
+      before,
       steps,
       event.active.id,
       event.over?.id,
     );
     if (result.type !== "updates") return;
+
+    const activeTaskId = parseKanbanTaskId(event.active.id);
+    const overTaskId = parseKanbanTaskId(event.over?.id);
+    if (activeTaskId != null && overTaskId != null) {
+      const active = tasks.find((task) => task.id === activeTaskId);
+      const over = tasks.find((task) => task.id === overTaskId);
+      if (
+        active &&
+        over &&
+        active.stepId === over.stepId &&
+        active.stepId != null
+      ) {
+        const step = steps.find((item) => item.id === active.stepId);
+        if (step && isAutoStepTaskOrder(step.taskOrderBy)) {
+          return;
+        }
+      }
+    }
 
     const updates = collectKanbanTaskUpdates(before, result.tasks);
     if (updates.length === 0) return;

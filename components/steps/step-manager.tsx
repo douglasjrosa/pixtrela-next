@@ -31,6 +31,7 @@ export interface StepRow {
   documentId: string;
   name: string;
   index: number;
+  orderBy: StepNameFormInput["orderBy"];
 }
 
 export interface StepManagerProps {
@@ -41,7 +42,7 @@ export interface StepManagerProps {
   onDelete: (documentId: string) => void | Promise<void>;
 }
 
-const EMPTY_FORM: StepNameFormInput = { name: "" };
+const EMPTY_FORM: StepNameFormInput = { name: "", orderBy: "manual" };
 const STEP_DND_CONTEXT_ID = "step-manager-dnd";
 
 type ModalState =
@@ -201,7 +202,9 @@ export function StepManager({
       : "step-create";
 
   const defaultValues: StepNameFormInput =
-    modal.mode === "edit" ? { name: modal.step.name } : EMPTY_FORM;
+    modal.mode === "edit"
+      ? { name: modal.step.name, orderBy: modal.step.orderBy }
+      : EMPTY_FORM;
 
   return (
     <div className="space-y-6">

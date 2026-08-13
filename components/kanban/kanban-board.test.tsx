@@ -6,8 +6,8 @@ import { KanbanBoard } from "./kanban-board";
 import type { KanbanStep, KanbanTask } from "./types";
 
 const steps: KanbanStep[] = [
-  { id: 1, name: "Fila de produção" },
-  { id: 2, name: "Produzindo" },
+  { id: 1, name: "Fila de produção", taskOrderBy: "manual" },
+  { id: 2, name: "Produzindo", taskOrderBy: "manual" },
 ];
 
 const tasks: KanbanTask[] = [

@@ -6,8 +6,8 @@ import { renderWithIntl } from "@/test/test-utils";
 import { resolveStepReorder, StepManager } from "./step-manager";
 
 const steps = [
-  { documentId: "s1", name: "Fila", index: 0 },
-  { documentId: "s2", name: "Produção", index: 1 },
+  { documentId: "s1", name: "Fila", index: 0, orderBy: "manual" as const },
+  { documentId: "s2", name: "Produção", index: 1, orderBy: "manual" as const },
 ];
 
 describe("resolveStepReorder", () => {
@@ -148,7 +148,7 @@ describe("StepManager", () => {
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => {
-      expect(onCreate).toHaveBeenCalledWith({ name: "Corte" });
+      expect(onCreate).toHaveBeenCalledWith({ name: "Corte", orderBy: "manual" });
     });
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

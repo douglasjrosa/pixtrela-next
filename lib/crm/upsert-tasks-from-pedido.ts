@@ -1,4 +1,5 @@
 import { ensureTemplateTaskForProdId } from "@/lib/business/ensure-template-for-prod-id";
+import { applyAutoStepTaskOrderingAfterTaskChange } from "@/lib/business/apply-step-task-order";
 import { resolveDefaultStepDocumentId } from "@/lib/business/default-task-step";
 import { getNextTaskIndex } from "@/lib/business/task-order";
 import { mapPedidoToTaskDrafts } from "@/lib/crm/map-pedido-to-tasks";
@@ -6,6 +7,7 @@ import { listSteps } from "@/lib/repos/steps";
 import {
   createTask,
   findTaskByCrmItemKey,
+  getTaskById,
   listActiveTasksForBoard,
   updateCrmPedidoTaskFields,
   type CrmPedidoTaskRecord,
@@ -90,11 +92,25 @@ export async function upsertTasksFromPedido(
 
     if (existing) {
       if (taskNeedsUpdate(existing, draft)) {
+        const before = await getTaskById(existing.id);
         await updateCrmPedidoTaskFields(existing.id, {
           name: draft.name,
           qty: draft.qty,
           deliveryDate: draft.deliveryDate,
         });
+        const after = await getTaskById(existing.id);
+        if (before && after) {
+          await applyAutoStepTaskOrderingAfterTaskChange({
+            before: {
+              stepId: before.stepId,
+              deliveryDate: before.deliveryDate,
+            },
+            after: {
+              stepId: after.stepId,
+              deliveryDate: after.deliveryDate,
+            },
+          });
+        }
         updated += 1;
       } else {
         skipped += 1;
@@ -115,6 +131,12 @@ export async function upsertTasksFromPedido(
       stepId: defaultStepId,
       crmPedidoId: draft.crmPedidoId,
       crmItemKey: draft.crmItemKey,
+    });
+    await applyAutoStepTaskOrderingAfterTaskChange({
+      after: {
+        stepId: defaultStepId,
+        deliveryDate: draft.deliveryDate,
+      },
     });
     created += 1;
   }

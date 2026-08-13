@@ -14,6 +14,7 @@ interface StepEntity {
   documentId: string;
   name: string;
   index: number;
+  taskOrderBy?: StepRow["orderBy"];
 }
 
 async function loadSteps(): Promise<StepRow[]> {
@@ -23,6 +24,7 @@ async function loadSteps(): Promise<StepRow[]> {
       documentId: step.id,
       name: step.name,
       index: step.index,
+      orderBy: step.taskOrderBy,
     }));
   }
 
@@ -36,6 +38,7 @@ async function loadSteps(): Promise<StepRow[]> {
       documentId: step.documentId,
       name: step.name,
       index: step.index,
+      orderBy: step.taskOrderBy ?? "manual",
     }));
   } catch (error) {
     rethrowIfNavigationError(error);
