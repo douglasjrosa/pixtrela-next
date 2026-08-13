@@ -64,6 +64,44 @@ export const PARALLAX_SCROLL_FACTOR = DEFAULT_PARALLAX_INTENSITY / 100;
 export const PAGE_MARGINS = ["none", "sm", "md", "lg", "xl"] as const;
 export type PageMargin = (typeof PAGE_MARGINS)[number];
 
+export const PAGE_MARGIN_INDEX: Record<PageMargin, number> = {
+  none: 0,
+  sm: 1,
+  md: 2,
+  lg: 3,
+  xl: 4,
+};
+
+const PAGE_MARGIN_BY_INDEX: Record<number, PageMargin> = {
+  0: "none",
+  1: "sm",
+  2: "md",
+  3: "lg",
+  4: "xl",
+};
+
+export function pageMarginToStoredIndex(margin: PageMargin): number {
+  return PAGE_MARGIN_INDEX[margin];
+}
+
+export function pageMarginFromStoredIndex(
+  value: number | null | undefined,
+  fallback: PageMargin,
+): PageMargin {
+  if (value == null || !Number.isFinite(value)) return fallback;
+  return PAGE_MARGIN_BY_INDEX[Math.round(value)] ?? fallback;
+}
+
+export function asPageMargin(
+  value: string | null | undefined,
+  fallback: PageMargin,
+): PageMargin {
+  if (value && (PAGE_MARGINS as readonly string[]).includes(value)) {
+    return value as PageMargin;
+  }
+  return fallback;
+}
+
 /** Mobile default matches previous frame padding (p-3). */
 export const DEFAULT_PAGE_MARGIN_MOBILE: PageMargin = "md";
 /** Desktop default: grandes (spacing * 15). */

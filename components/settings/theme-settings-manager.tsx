@@ -6,6 +6,7 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -154,6 +155,7 @@ export function ThemeSettingsManager({
   onSave,
   onUploadImage,
 }: ThemeSettingsManagerProps) {
+  const router = useRouter();
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   const [committed, setCommitted] = useState<Record<string, ThemeDraft>>(() =>
@@ -248,6 +250,7 @@ export function ThemeSettingsManager({
       }));
       setEditingId(null);
       setDraft(null);
+      router.refresh();
     } catch {
       patchDraft({ message: t("error") });
     } finally {

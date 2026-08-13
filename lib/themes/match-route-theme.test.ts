@@ -18,6 +18,8 @@ import {
   routeThemeSurfaceBackgroundStyle,
   normalizeForegroundColor,
   normalizeSurfaceColor,
+  pageMarginFromStoredIndex,
+  pageMarginToStoredIndex,
   routeThemeLayeredStyle,
   type RouteThemeView,
 } from "./match-route-theme";
@@ -238,6 +240,20 @@ describe("parallax helpers", () => {
       topPx: -900,
       heightPx: 2800,
     });
+  });
+});
+
+describe("pageMarginFromStoredIndex", () => {
+  it("maps stored numeric indexes back to margin tokens", () => {
+    expect(pageMarginFromStoredIndex(0, "md")).toBe("none");
+    expect(pageMarginFromStoredIndex(4, "md")).toBe("xl");
+    expect(pageMarginFromStoredIndex(null, "lg")).toBe("lg");
+  });
+
+  it("round-trips with pageMarginToStoredIndex", () => {
+    expect(pageMarginFromStoredIndex(pageMarginToStoredIndex("sm"), "md")).toBe(
+      "sm",
+    );
   });
 });
 

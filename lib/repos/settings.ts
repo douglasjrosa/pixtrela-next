@@ -15,7 +15,11 @@ import {
 import { getDb, type Db } from "@/lib/db/client";
 import type { TaskAutomationFormInput } from "@/lib/schemas/task-automation";
 import {
+  DEFAULT_PAGE_MARGIN_DESKTOP,
+  DEFAULT_PAGE_MARGIN_MOBILE,
   ROUTE_THEME_KEYS,
+  asPageMargin,
+  pageMarginToStoredIndex,
   type RouteThemeKey,
 } from "@/lib/themes/match-route-theme";
 
@@ -203,14 +207,6 @@ export async function upsertCurrencyForSubtasks(
   return updated;
 }
 
-const PAGE_MARGIN_INDEX: Record<string, number> = {
-  none: 0,
-  sm: 1,
-  md: 2,
-  lg: 3,
-  xl: 4,
-};
-
 export type UpdateRouteThemeInput = {
   id: string;
   backgroundColor: string | null;
@@ -245,8 +241,12 @@ export async function updateRouteTheme(
     backgroundMotion: input.backgroundMotion,
     parallaxIntensity: input.parallaxIntensity,
     parallaxDirection: input.parallaxDirection,
-    contentMarginMobile: PAGE_MARGIN_INDEX[input.contentMarginMobile] ?? 2,
-    contentMarginDesktop: PAGE_MARGIN_INDEX[input.contentMarginDesktop] ?? 3,
+    contentMarginMobile: pageMarginToStoredIndex(
+      asPageMargin(input.contentMarginMobile, DEFAULT_PAGE_MARGIN_MOBILE),
+    ),
+    contentMarginDesktop: pageMarginToStoredIndex(
+      asPageMargin(input.contentMarginDesktop, DEFAULT_PAGE_MARGIN_DESKTOP),
+    ),
     foregroundColor: input.foregroundColor,
     surfaceColor: input.surfaceColor,
     surfaceColorOpacity: input.surfaceColorOpacity,
