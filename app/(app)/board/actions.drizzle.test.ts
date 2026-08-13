@@ -112,19 +112,35 @@ describe("board/actions drizzle", () => {
     expect(result[0]?.documentId).toBe("sub-1");
   });
 
-  it("pollBoardProgress loads totals from task repo", async () => {
+  it("pollBoardProgress loads totals and layout from task repo", async () => {
     getTaskById.mockResolvedValue({
+      status: "producing",
+      stepId: "step-uuid",
+      index: 2,
+      name: "Caixa",
+      qty: 4,
+      deliveryDate: "2026-08-01",
+      endedAt: null,
       totalTimeSpent: 10,
       totalExpectedTime: 100,
     });
 
     const { pollBoardProgress } = await import("./actions");
     const snapshot = await pollBoardProgress([
-      { documentId: "task-1", status: "producing" },
+      { documentId: "task-1", status: "waiting" },
     ]);
     expect(snapshot.totalsByTaskId["task-1"]).toEqual({
       totalTimeSpent: 10,
       totalExpectedTime: 100,
+    });
+    expect(snapshot.layoutByTaskId["task-1"]).toEqual({
+      status: "producing",
+      stepId: 1,
+      index: 2,
+      name: "Caixa",
+      qty: 4,
+      deliveryDate: "2026-08-01",
+      endedAt: null,
     });
   });
 });

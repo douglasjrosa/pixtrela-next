@@ -50,6 +50,7 @@ describe("mergeBoardProgressPoll", () => {
       totalsByTaskId: {
         live: { totalTimeSpent: 40, totalExpectedTime: 120 },
       },
+      layoutByTaskId: {},
     });
 
     expect(merged[0]).toMatchObject({
@@ -88,6 +89,7 @@ describe("mergeBoardProgressPoll", () => {
       },
       assignedCountByColaboratorId: {},
       totalsByTaskId: {},
+      layoutByTaskId: {},
     });
 
     expect(merged[0]).toMatchObject({
@@ -99,5 +101,45 @@ describe("mergeBoardProgressPoll", () => {
     expect(merged[0].progressInput).toBe(waiting.progressInput);
     expect(merged[0].progressNowMs).toBeUndefined();
     expect(merged[0].progressPending).toBeUndefined();
+  });
+
+  it("merges task layout fields from the snapshot", () => {
+    const tasks = [
+      taskStub({
+        documentId: "task-1",
+        status: "waiting",
+        stepId: 0,
+        index: 0,
+        name: "Old name",
+      }),
+    ];
+
+    const merged = mergeBoardProgressPoll(tasks, {
+      nowMs: 1_700_000_000_000,
+      progressByTaskId: {},
+      badgesByTaskId: {},
+      assignedCountByColaboratorId: {},
+      totalsByTaskId: {},
+      layoutByTaskId: {
+        "task-1": {
+          status: "producing",
+          stepId: 2,
+          index: 5,
+          name: "New name",
+          qty: 3,
+          deliveryDate: "2026-08-01",
+          endedAt: null,
+        },
+      },
+    });
+
+    expect(merged[0]).toMatchObject({
+      status: "producing",
+      stepId: 2,
+      index: 5,
+      name: "New name",
+      qty: 3,
+      deliveryDate: "2026-08-01",
+    });
   });
 });
