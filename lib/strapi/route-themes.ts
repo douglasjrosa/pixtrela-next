@@ -26,6 +26,7 @@ import {
   normalizeOpacity,
   normalizeParallaxIntensity,
   normalizeSurfaceColor,
+  pageMarginFromStoredIndex,
   PAGE_MARGINS,
   PARALLAX_DIRECTIONS,
   type BackgroundMotion,
@@ -175,8 +176,14 @@ async function loadDrizzleRouteThemes(): Promise<RouteThemeView[]> {
         PARALLAX_DIRECTIONS,
         DEFAULT_PARALLAX_DIRECTION,
       ) as ParallaxDirection,
-      contentMarginMobile: DEFAULT_PAGE_MARGIN_MOBILE,
-      contentMarginDesktop: DEFAULT_PAGE_MARGIN_DESKTOP,
+      contentMarginMobile: pageMarginFromStoredIndex(
+        row.contentMarginMobile,
+        DEFAULT_PAGE_MARGIN_MOBILE,
+      ),
+      contentMarginDesktop: pageMarginFromStoredIndex(
+        row.contentMarginDesktop,
+        DEFAULT_PAGE_MARGIN_DESKTOP,
+      ),
       foregroundColor: normalizeForegroundColor(
         row.foregroundColor ?? DEFAULT_FOREGROUND_COLOR,
       ),

@@ -299,6 +299,23 @@ export async function updateTaskBoardFields(
   await db.update(tasks).set(patch).where(eq(tasks.id, id));
 }
 
+export async function applyTaskIndexUpdates(
+  updates: Array<{ id: string; index: number }>,
+  db: Db = getDb(),
+): Promise<void> {
+  if (updates.length === 0) return;
+
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    for (const update of updates) {
+      await tx
+        .update(tasks)
+        .set({ index: update.index, updatedAt: now })
+        .where(eq(tasks.id, update.id));
+    }
+  });
+}
+
 async function replaceSubTaskAssignees(
   subTaskId: string,
   userIds: string[],

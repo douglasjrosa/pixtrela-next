@@ -26,6 +26,7 @@ import {
   normalizeOpacity,
   normalizeParallaxIntensity,
   normalizeSurfaceColor,
+  pageMarginFromStoredIndex,
   ROUTE_THEME_KEYS,
   type RouteThemeKey,
   type RouteThemeView,
@@ -75,8 +76,14 @@ async function loadThemes(): Promise<RouteThemeView[]> {
         parallaxDirection:
           (row.parallaxDirection as RouteThemeView["parallaxDirection"]) ||
           DEFAULT_PARALLAX_DIRECTION,
-        contentMarginMobile: DEFAULT_PAGE_MARGIN_MOBILE,
-        contentMarginDesktop: DEFAULT_PAGE_MARGIN_DESKTOP,
+        contentMarginMobile: pageMarginFromStoredIndex(
+          row.contentMarginMobile,
+          DEFAULT_PAGE_MARGIN_MOBILE,
+        ),
+        contentMarginDesktop: pageMarginFromStoredIndex(
+          row.contentMarginDesktop,
+          DEFAULT_PAGE_MARGIN_DESKTOP,
+        ),
         foregroundColor: normalizeForegroundColor(
           row.foregroundColor ?? DEFAULT_FOREGROUND_COLOR,
         ),

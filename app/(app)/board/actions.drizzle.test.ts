@@ -5,6 +5,7 @@ const updateTaskBoardFields = vi.fn();
 const listStepsRepo = vi.fn();
 const listBoardSubtaskRows = vi.fn();
 const getTaskById = vi.fn();
+const applyAutoStepTaskOrderingAfterTaskChange = vi.fn();
 const createSubTask = vi.fn();
 const updateSubTask = vi.fn();
 const isDrizzleBackend = vi.fn(() => true);
@@ -62,6 +63,11 @@ vi.mock("@/lib/repos/tasks", () => ({
   listSubTasksWithRelationsForTask: vi.fn(),
 }));
 
+vi.mock("@/lib/business/apply-step-task-order", () => ({
+  applyAutoStepTaskOrderingAfterTaskChange: (...args: unknown[]) =>
+    applyAutoStepTaskOrderingAfterTaskChange(...args),
+}));
+
 describe("board/actions drizzle", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -70,10 +76,15 @@ describe("board/actions drizzle", () => {
     listStepsRepo.mockReset();
     listBoardSubtaskRows.mockReset();
     getTaskById.mockReset();
+    applyAutoStepTaskOrderingAfterTaskChange.mockReset();
     isDrizzleBackend.mockReturnValue(true);
     listStepsRepo.mockResolvedValue([
-      { id: "step-uuid", name: "Produção", index: 1 },
+      { id: "step-uuid", name: "Produção", index: 1, taskOrderBy: "manual" },
     ]);
+    getTaskById.mockResolvedValue({
+      stepId: "step-uuid",
+      deliveryDate: "2026-08-01",
+    });
   });
 
   it("applyBoardTaskOrder maps kanban step id to uuid", async () => {

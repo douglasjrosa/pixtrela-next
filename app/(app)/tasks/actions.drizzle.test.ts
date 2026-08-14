@@ -9,6 +9,7 @@ const listTasksRepo = vi.fn();
 const getTaskById = vi.fn();
 const findTemplateByCode = vi.fn();
 const loadTaskListPage = vi.fn();
+const applyAutoStepTaskOrderingAfterTaskChange = vi.fn();
 const isDrizzleBackend = vi.fn(() => true);
 
 vi.mock("@/auth", () => ({
@@ -49,6 +50,11 @@ vi.mock("@/lib/tasks/load-task-list-page", () => ({
   loadTaskListPage: (...args: unknown[]) => loadTaskListPage(...args),
 }));
 
+vi.mock("@/lib/business/apply-step-task-order", () => ({
+  applyAutoStepTaskOrderingAfterTaskChange: (...args: unknown[]) =>
+    applyAutoStepTaskOrderingAfterTaskChange(...args),
+}));
+
 describe("tasks/actions drizzle CRUD", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -61,6 +67,7 @@ describe("tasks/actions drizzle CRUD", () => {
     getTaskById.mockReset();
     findTemplateByCode.mockReset();
     loadTaskListPage.mockReset();
+    applyAutoStepTaskOrderingAfterTaskChange.mockReset();
     isDrizzleBackend.mockReturnValue(true);
   });
 
@@ -92,7 +99,17 @@ describe("tasks/actions drizzle CRUD", () => {
   });
 
   it("updateTask updates fields without step", async () => {
-    getTaskById.mockResolvedValue({ index: 3 });
+    getTaskById
+      .mockResolvedValueOnce({
+        index: 3,
+        stepId: "step-1",
+        deliveryDate: "2026-07-18",
+      })
+      .mockResolvedValueOnce({
+        index: 3,
+        stepId: "step-1",
+        deliveryDate: "2026-07-18",
+      });
 
     const { updateTask } = await import("./actions");
     await updateTask("task-1", { ...form, status: "producing" });

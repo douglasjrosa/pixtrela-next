@@ -4,7 +4,22 @@ import { stepFormSchema, stepNameFormSchema } from "./step";
 
 describe("stepNameFormSchema", () => {
   it("accepts a valid name", () => {
-    expect(stepNameFormSchema.parse({ name: "Fila" })).toEqual({ name: "Fila" });
+    expect(stepNameFormSchema.parse({ name: "Fila" })).toEqual({
+      name: "Fila",
+      orderBy: "manual",
+    });
+  });
+
+  it("accepts orderBy options", () => {
+    expect(
+      stepNameFormSchema.parse({
+        name: "Fila",
+        orderBy: "delivery_date_asc",
+      }),
+    ).toEqual({
+      name: "Fila",
+      orderBy: "delivery_date_asc",
+    });
   });
 
   it("rejects empty name", () => {
@@ -17,6 +32,7 @@ describe("stepFormSchema", () => {
     expect(stepFormSchema.parse({ name: "Fila", index: 0 })).toEqual({
       name: "Fila",
       index: 0,
+      orderBy: "manual",
     });
   });
 

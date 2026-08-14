@@ -10,6 +10,7 @@ import {
   canManageTasks,
 } from "@/lib/auth/permissions";
 import { getNextTaskIndex } from "@/lib/business/task-order";
+import { applyAutoStepTaskOrderingAfterTaskChange } from "@/lib/business/apply-step-task-order";
 import { isDrizzleBackend } from "@/lib/db/backend";
 import { findTemplateByCode } from "@/lib/repos/templates";
 import {
@@ -138,6 +139,14 @@ export async function createTask(raw: TaskFormInput): Promise<void> {
       templateTaskCode: data.templateTaskCode || null,
       index,
     });
+    if (data.stepDocumentId) {
+      await applyAutoStepTaskOrderingAfterTaskChange({
+        after: {
+          stepId: data.stepDocumentId,
+          deliveryDate: data.deliveryDate || null,
+        },
+      });
+    }
     invalidateTasks();
     return;
   }
@@ -160,6 +169,7 @@ export async function updateTask(
   // Omit step so status→step automation owns the board column (hidden form
   // stepDocumentId would otherwise overwrite the mapped step after update).
   if (isDrizzleBackend()) {
+    const before = await getTaskById(documentId);
     await updateTaskFields(documentId, {
       name: data.name,
       qty: data.qty,
@@ -167,6 +177,18 @@ export async function updateTask(
       status: data.status,
       templateTaskCode: data.templateTaskCode || null,
     });
+    if (before) {
+      await applyAutoStepTaskOrderingAfterTaskChange({
+        before: {
+          stepId: before.stepId,
+          deliveryDate: before.deliveryDate,
+        },
+        after: {
+          stepId: before.stepId,
+          deliveryDate: data.deliveryDate || null,
+        },
+      });
+    }
     invalidateTasks(documentId);
     return;
   }

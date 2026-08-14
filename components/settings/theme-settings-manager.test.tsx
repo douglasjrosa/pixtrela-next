@@ -2,6 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+const refresh = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
+}));
+
 import { renderWithIntl } from "@/test/test-utils";
 import type { RouteThemeView } from "@/lib/themes/match-route-theme";
 
@@ -111,6 +117,38 @@ describe("ThemeSettingsManager", () => {
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(onSave).toHaveBeenCalledOnce();
+    expect(refresh).toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("persists margin selections in the save payload", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderWithIntl(
+      <ThemeSettingsManager
+        themes={themes}
+        onSave={onSave}
+        onUploadImage={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getAllByRole("button", { name: /Editar tema de Login/i })[0]);
+    await user.selectOptions(
+      screen.getByLabelText("Margem da página (mobile)"),
+      "xl",
+    );
+    await user.selectOptions(
+      screen.getByLabelText("Margem da página (desktop)"),
+      "sm",
+    );
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      "doc-login",
+      expect.objectContaining({
+        contentMarginMobile: "xl",
+        contentMarginDesktop: "sm",
+      }),
+    );
   });
 });
