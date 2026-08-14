@@ -20,6 +20,7 @@ export async function loadDrizzleBoardData(): Promise<{
   const steps: KanbanStep[] = stepRows.map((step) => ({
     id: step.index,
     name: step.name,
+    taskOrderBy: step.taskOrderBy,
   }));
 
   const tasks: KanbanTask[] = taskRows.map((task) => ({

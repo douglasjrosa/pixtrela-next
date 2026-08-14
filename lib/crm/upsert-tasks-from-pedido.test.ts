@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const listSteps = vi.fn();
 const listActiveTasksForBoard = vi.fn();
 const findTaskByCrmItemKey = vi.fn();
+const getTaskById = vi.fn();
 const createTask = vi.fn();
 const updateCrmPedidoTaskFields = vi.fn();
 const ensureTemplateTaskForProdId = vi.fn();
+const applyAutoStepTaskOrderingAfterTaskChange = vi.fn();
 
 vi.mock("@/lib/repos/steps", () => ({
   listSteps: (...args: unknown[]) => listSteps(...args),
@@ -14,8 +16,14 @@ vi.mock("@/lib/repos/steps", () => ({
 vi.mock("@/lib/repos/tasks", () => ({
   listActiveTasksForBoard: (...args: unknown[]) => listActiveTasksForBoard(...args),
   findTaskByCrmItemKey: (...args: unknown[]) => findTaskByCrmItemKey(...args),
+  getTaskById: (...args: unknown[]) => getTaskById(...args),
   createTask: (...args: unknown[]) => createTask(...args),
   updateCrmPedidoTaskFields: (...args: unknown[]) => updateCrmPedidoTaskFields(...args),
+}));
+
+vi.mock("@/lib/business/apply-step-task-order", () => ({
+  applyAutoStepTaskOrderingAfterTaskChange: (...args: unknown[]) =>
+    applyAutoStepTaskOrderingAfterTaskChange(...args),
 }));
 
 vi.mock("@/lib/business/ensure-template-for-prod-id", () => ({
@@ -60,9 +68,11 @@ describe("upsertTasksFromPedido", () => {
     listSteps.mockReset();
     listActiveTasksForBoard.mockReset();
     findTaskByCrmItemKey.mockReset();
+    getTaskById.mockReset();
     createTask.mockReset();
     updateCrmPedidoTaskFields.mockReset();
     ensureTemplateTaskForProdId.mockReset();
+    applyAutoStepTaskOrderingAfterTaskChange.mockReset();
     ensureTemplateTaskForProdId.mockResolvedValue("template-1");
   });
 

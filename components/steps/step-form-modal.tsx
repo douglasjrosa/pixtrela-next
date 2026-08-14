@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -9,6 +9,10 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import {
+  STEP_TASK_ORDER_BY_VALUES,
+} from "@/lib/schemas/step-task-order-by";
 import {
   stepNameFormSchema,
   type StepNameFormInput,
@@ -49,7 +53,7 @@ export function StepFormModal({
     reset,
     formState: { errors },
   } = useForm<StepNameFormInput>({
-    resolver: zodResolver(stepNameFormSchema),
+    resolver: zodResolver(stepNameFormSchema) as Resolver<StepNameFormInput>,
     defaultValues,
   });
 
@@ -120,6 +124,28 @@ export function StepFormModal({
               <Input id="step-name" disabled={saving} {...register("name")} />
               {errors.name ? (
                 <p className="text-sm text-destructive">{errors.name.message}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="step-order-by">{tSteps("orderBy")}</Label>
+              <select
+                id="step-order-by"
+                disabled={saving}
+                className={cn(
+                  "flex h-9 w-full rounded-md border border-input",
+                  "bg-transparent px-3 text-sm",
+                )}
+                {...register("orderBy")}
+              >
+                {STEP_TASK_ORDER_BY_VALUES.map((value) => (
+                  <option key={value} value={value}>
+                    {tSteps(`orderByOptions.${value}`)}
+                  </option>
+                ))}
+              </select>
+              {errors.orderBy ? (
+                <p className="text-sm text-destructive">{errors.orderBy.message}</p>
               ) : null}
             </div>
           </form>

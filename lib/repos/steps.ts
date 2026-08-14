@@ -2,25 +2,31 @@ import { eq } from "drizzle-orm";
 
 import { steps, tasks } from "@/drizzle/schema";
 import { getDb, type Db } from "@/lib/db/client";
+import type { StepTaskOrderBy } from "@/lib/schemas/step-task-order-by";
 
 export type StepRecord = {
   id: string;
   name: string;
   index: number;
+  taskOrderBy: StepTaskOrderBy;
 };
 
 export type CreateStepInput = {
   name: string;
   index?: number;
+  taskOrderBy?: StepTaskOrderBy;
 };
+
+const STEP_COLUMNS = {
+  id: steps.id,
+  name: steps.name,
+  index: steps.index,
+  taskOrderBy: steps.taskOrderBy,
+} as const;
 
 export async function listSteps(db: Db = getDb()): Promise<StepRecord[]> {
   const rows = await db
-    .select({
-      id: steps.id,
-      name: steps.name,
-      index: steps.index,
-    })
+    .select(STEP_COLUMNS)
     .from(steps)
     .orderBy(steps.index, steps.name);
   return rows;
@@ -39,12 +45,9 @@ export async function createStep(
     .values({
       name,
       index: input.index ?? 0,
+      taskOrderBy: input.taskOrderBy ?? "manual",
     })
-    .returning({
-      id: steps.id,
-      name: steps.name,
-      index: steps.index,
-    });
+    .returning(STEP_COLUMNS);
   return row;
 }
 
@@ -53,11 +56,7 @@ export async function getStepById(
   db: Db = getDb(),
 ): Promise<StepRecord | null> {
   const [row] = await db
-    .select({
-      id: steps.id,
-      name: steps.name,
-      index: steps.index,
-    })
+    .select(STEP_COLUMNS)
     .from(steps)
     .where(eq(steps.id, id))
     .limit(1);
@@ -75,11 +74,41 @@ export async function updateStepName(
     .update(steps)
     .set({ name: trimmed, updatedAt: new Date() })
     .where(eq(steps.id, id))
-    .returning({
-      id: steps.id,
-      name: steps.name,
-      index: steps.index,
-    });
+    .returning(STEP_COLUMNS);
+  if (!row) throw new Error("stepNotFound");
+  return row;
+}
+
+export type UpdateStepFieldsInput = {
+  name?: string;
+  taskOrderBy?: StepTaskOrderBy;
+};
+
+export async function updateStepFields(
+  id: string,
+  input: UpdateStepFieldsInput,
+  db: Db = getDb(),
+): Promise<StepRecord> {
+  const patch: {
+    name?: string;
+    taskOrderBy?: StepTaskOrderBy;
+    updatedAt: Date;
+  } = { updatedAt: new Date() };
+
+  if (input.name !== undefined) {
+    const trimmed = input.name.trim();
+    if (!trimmed) throw new Error("stepNameRequired");
+    patch.name = trimmed;
+  }
+  if (input.taskOrderBy !== undefined) {
+    patch.taskOrderBy = input.taskOrderBy;
+  }
+
+  const [row] = await db
+    .update(steps)
+    .set(patch)
+    .where(eq(steps.id, id))
+    .returning(STEP_COLUMNS);
   if (!row) throw new Error("stepNotFound");
   return row;
 }

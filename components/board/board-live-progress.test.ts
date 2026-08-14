@@ -27,7 +27,7 @@ describe("BoardLiveProgress RSC data props", () => {
           totalTimeSpent: 10,
         },
       ],
-      steps: [{ id: 1, name: "Produção" }],
+      steps: [{ id: 1, name: "Produção", taskOrderBy: "manual" }],
       teams: [],
       interactive: true,
       assignWarnMax: 4,

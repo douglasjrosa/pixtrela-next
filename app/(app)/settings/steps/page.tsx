@@ -1,7 +1,7 @@
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { StepManager, type StepRow } from "@/components/steps/step-manager";
 import { isDrizzleBackend } from "@/lib/db/backend";
-import { listSteps as listStepsRepo } from "@/lib/repos/steps";
+import { loadCachedSettingsSteps } from "@/lib/steps/load-settings-steps";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
 import { createStep, deleteStep, reorderSteps, updateStep } from "./actions";
@@ -14,15 +14,17 @@ interface StepEntity {
   documentId: string;
   name: string;
   index: number;
+  taskOrderBy?: StepRow["orderBy"];
 }
 
 async function loadSteps(): Promise<StepRow[]> {
   if (isDrizzleBackend()) {
-    const rows = await listStepsRepo();
+    const rows = await loadCachedSettingsSteps();
     return rows.map((step) => ({
       documentId: step.id,
       name: step.name,
       index: step.index,
+      orderBy: step.taskOrderBy,
     }));
   }
 
@@ -36,6 +38,7 @@ async function loadSteps(): Promise<StepRow[]> {
       documentId: step.documentId,
       name: step.name,
       index: step.index,
+      orderBy: step.taskOrderBy ?? "manual",
     }));
   } catch (error) {
     rethrowIfNavigationError(error);

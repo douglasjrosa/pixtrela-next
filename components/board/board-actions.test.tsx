@@ -20,8 +20,8 @@ const paymentCurrency = {
 };
 
 const steps = [
-  { id: 1, name: "Fila de produção" },
-  { id: 2, name: "Produzindo" },
+  { id: 1, name: "Fila de produção", taskOrderBy: "manual" as const },
+  { id: 2, name: "Produzindo", taskOrderBy: "manual" as const },
 ];
 
 const tasks = [

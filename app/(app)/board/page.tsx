@@ -115,7 +115,11 @@ async function loadBoard(): Promise<{ steps: KanbanStep[]; tasks: KanbanTask[] }
       ),
     ]);
     return {
-      steps: stepsRes.data.map((step) => ({ id: step.id, name: step.name })),
+      steps: stepsRes.data.map((step) => ({
+        id: step.id,
+        name: step.name,
+        taskOrderBy: "manual" as const,
+      })),
       tasks: tasksRes.data.map(mapTaskEntity),
     };
   } catch (error) {

@@ -358,6 +358,14 @@
     "title": "Etapas de produção",
     "newStep": "Nova etapa",
     "name": "Nome",
+    "orderBy": "Ordenar por",
+    "orderByOptions": {
+      "manual": "Manual (aleatório)",
+      "delivery_date_asc": "Data de entrega - Crescente",
+      "delivery_date_desc": "Data de entrega - Decrescente",
+      "created_at_asc": "Data de criação - Crescente",
+      "created_at_desc": "Data de criação - Decrescente"
+    },
     "index": "Ordem",
     "dragToReorder": "Arrastar para reordenar",
     "openStep": "Abrir etapa",

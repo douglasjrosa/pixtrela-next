@@ -15,6 +15,13 @@
       "when": 1786399779179,
       "tag": "0001_task_automation_step_mappings",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786400000000,
+      "tag": "0002_step_task_order_by",
+      "breakpoints": true
     }
   ]
 }

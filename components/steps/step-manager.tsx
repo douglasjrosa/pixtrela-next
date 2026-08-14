@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   DndContext,
@@ -31,6 +32,7 @@ export interface StepRow {
   documentId: string;
   name: string;
   index: number;
+  orderBy: StepNameFormInput["orderBy"];
 }
 
 export interface StepManagerProps {
@@ -41,7 +43,7 @@ export interface StepManagerProps {
   onDelete: (documentId: string) => void | Promise<void>;
 }
 
-const EMPTY_FORM: StepNameFormInput = { name: "" };
+const EMPTY_FORM: StepNameFormInput = { name: "", orderBy: "manual" };
 const STEP_DND_CONTEXT_ID = "step-manager-dnd";
 
 type ModalState =
@@ -63,6 +65,7 @@ interface SortableStepRowProps {
   step: StepRow;
   dragLabel: string;
   openLabel: string;
+  orderByLabel: string;
   disabled: boolean;
   onOpen: (step: StepRow) => void;
 }
@@ -71,6 +74,7 @@ function SortableStepRow({
   step,
   dragLabel,
   openLabel,
+  orderByLabel,
   disabled,
   onOpen,
 }: SortableStepRowProps) {
@@ -117,8 +121,15 @@ function SortableStepRow({
         </button>
       </td>
       <td className="py-2">
-        <span className="sr-only">{openLabel}</span>
-        <span>{step.name}</span>
+        <div className="flex items-center justify-between gap-3">
+          <span>
+            <span className="sr-only">{openLabel}</span>
+            {step.name}
+          </span>
+          <span className="shrink-0 text-xs text-muted-foreground sm:text-sm">
+            {orderByLabel}
+          </span>
+        </div>
       </td>
     </tr>
   );
@@ -131,6 +142,7 @@ export function StepManager({
   onReorder,
   onDelete,
 }: StepManagerProps) {
+  const router = useRouter();
   const tCommon = useTranslations("common");
   const tSteps = useTranslations("steps");
   const [orderedSteps, setOrderedSteps] = useState(steps);
@@ -159,6 +171,10 @@ export function StepManager({
     setModal({ mode: "edit", step });
   }
 
+  function refreshSteps(): void {
+    router.refresh();
+  }
+
   function handleSave(values: StepNameFormInput): void {
     startTransition(async () => {
       if (modal.mode === "edit") {
@@ -168,6 +184,7 @@ export function StepManager({
       }
       setMessage(tSteps("saved"));
       closeModal();
+      refreshSteps();
     });
   }
 
@@ -178,6 +195,7 @@ export function StepManager({
       await onDelete(documentId);
       setMessage(tSteps("deleted"));
       closeModal();
+      refreshSteps();
     });
   }
 
@@ -192,6 +210,7 @@ export function StepManager({
     setOrderedSteps(nextOrder);
     startTransition(async () => {
       await onReorder(nextOrder.map((step) => step.documentId));
+      refreshSteps();
     });
   }
 
@@ -201,7 +220,9 @@ export function StepManager({
       : "step-create";
 
   const defaultValues: StepNameFormInput =
-    modal.mode === "edit" ? { name: modal.step.name } : EMPTY_FORM;
+    modal.mode === "edit"
+      ? { name: modal.step.name, orderBy: modal.step.orderBy }
+      : EMPTY_FORM;
 
   return (
     <div className="space-y-6">
@@ -253,6 +274,7 @@ export function StepManager({
                     step={step}
                     dragLabel={tSteps("dragToReorder")}
                     openLabel={tSteps("openStep")}
+                    orderByLabel={tSteps(`orderByOptions.${step.orderBy}`)}
                     disabled={isPending}
                     onOpen={openEdit}
                   />
