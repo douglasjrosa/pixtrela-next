@@ -1,5 +1,17 @@
+import type { KanbanTask } from "@/components/kanban/types";
 import type { BoardCardBadges } from "@/lib/board/load-board-progress";
 import type { BoardTaskProgressInput } from "@/lib/business/task-progress";
+
+export type BoardTaskLayoutSnapshot = Pick<
+  KanbanTask,
+  | "status"
+  | "stepId"
+  | "index"
+  | "name"
+  | "qty"
+  | "deliveryDate"
+  | "endedAt"
+>;
 
 export type BoardProgressPollSnapshot = {
   progressByTaskId: Record<string, BoardTaskProgressInput>;
@@ -9,5 +21,6 @@ export type BoardProgressPollSnapshot = {
     string,
     { totalTimeSpent: number; totalExpectedTime: number }
   >;
+  layoutByTaskId: Record<string, BoardTaskLayoutSnapshot>;
   nowMs: number;
 };

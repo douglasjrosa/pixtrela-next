@@ -2,25 +2,43 @@ import type { KanbanTask } from "@/components/kanban/types";
 import type { BoardProgressPollSnapshot } from "@/lib/board/progress-poll";
 import { needsLiveBoardProgress } from "@/lib/business/task-progress";
 
+function applyLayoutSnapshot(
+  task: KanbanTask,
+  snapshot: BoardProgressPollSnapshot,
+): KanbanTask {
+  const layout = snapshot.layoutByTaskId[task.documentId];
+  if (!layout) return task;
+  return {
+    ...task,
+    status: layout.status,
+    stepId: layout.stepId,
+    index: layout.index,
+    name: layout.name,
+    qty: layout.qty,
+    deliveryDate: layout.deliveryDate,
+    endedAt: layout.endedAt,
+  };
+}
+
 /**
  * Merges a no-store progress poll into board task rows.
- * Badge counts apply to every task in the snapshot (including waiting).
- * Progress bar fields apply only to live tasks with expected time.
+ * Layout fields, badge counts, and progress bars are refreshed from the snapshot.
  */
 export function mergeBoardProgressPoll(
   tasks: readonly KanbanTask[],
   snapshot: BoardProgressPollSnapshot,
 ): KanbanTask[] {
   return tasks.map((task) => {
+    const withLayout = applyLayoutSnapshot(task, snapshot);
     const badges = snapshot.badgesByTaskId[task.documentId];
     const withBadges: KanbanTask = badges
       ? {
-          ...task,
+          ...withLayout,
           activeColaboratorCount: badges.activeColaboratorCount,
           unassignedSubTaskCount: badges.unassignedSubTaskCount,
           participantCount: badges.participantCount,
         }
-      : task;
+      : withLayout;
 
     if (
       !needsLiveBoardProgress(withBadges.status) ||

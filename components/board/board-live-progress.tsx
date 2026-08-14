@@ -8,7 +8,7 @@ import {
   useBoardProgressPoll,
   type PollBoardProgressFn,
 } from "@/hooks/use-board-progress-poll";
-import { useTasksRevisionRefresh } from "@/hooks/use-tasks-revision-refresh";
+import { useBoardRevisionRefresh } from "@/hooks/use-board-revision-refresh";
 import type { SubtaskPaymentCurrency } from "@/lib/strapi/currency-for-subtasks";
 
 /** Data-only keys from the RSC page — must stay JSON-serializable (no render props). */
@@ -68,7 +68,7 @@ export function BoardLiveProgress({
   updateSubtaskAssignees,
   createSubtask,
 }: BoardLiveProgressProps) {
-  useTasksRevisionRefresh();
+  useBoardRevisionRefresh();
 
   const live = useBoardProgressPoll(
     tasks,

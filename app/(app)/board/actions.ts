@@ -181,15 +181,28 @@ export async function pollBoardProgress(
 
   const documentIds = tasks.map((task) => task.documentId);
   const totalsByTaskId: BoardProgressPollSnapshot["totalsByTaskId"] = {};
+  const layoutByTaskId: BoardProgressPollSnapshot["layoutByTaskId"] = {};
 
   if (documentIds.length > 0) {
     if (isDrizzleBackend()) {
+      const stepLookup = buildStepKanbanLookup(await listStepsRepo());
       for (const taskId of documentIds) {
         const task = await getTaskById(taskId);
         if (!task) continue;
         totalsByTaskId[taskId] = {
           totalTimeSpent: task.totalTimeSpent ?? 0,
           totalExpectedTime: task.totalExpectedTime ?? 0,
+        };
+        layoutByTaskId[taskId] = {
+          status: task.status,
+          stepId: task.stepId
+            ? (stepLookup.kanbanIdByStepUuid.get(task.stepId) ?? null)
+            : null,
+          index: task.index,
+          name: task.name,
+          qty: task.qty,
+          deliveryDate: task.deliveryDate,
+          endedAt: task.endedAt?.toISOString() ?? null,
         };
       }
     } else {
@@ -223,6 +236,7 @@ export async function pollBoardProgress(
     badgesByTaskId,
     assignedCountByColaboratorId,
     totalsByTaskId,
+    layoutByTaskId,
     nowMs: Date.now(),
   };
 }
