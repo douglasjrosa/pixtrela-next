@@ -24,6 +24,7 @@ import {
   createBoardSubtask,
   loadBoardSubtasks,
   pollBoardProgress,
+  reorderBoardSubtasks,
   updateBoardSubtaskAssignees,
 } from "./actions";
 
@@ -123,6 +124,7 @@ function BoardCanvas({
       pollBoardProgress={pollBoardProgress}
       applyBoardTaskOrder={applyBoardTaskOrder}
       loadSubtasks={loadBoardSubtasks}
+      reorderSubtasks={reorderBoardSubtasks}
       updateSubtaskAssignees={updateBoardSubtaskAssignees}
       createSubtask={createBoardSubtask}
     />

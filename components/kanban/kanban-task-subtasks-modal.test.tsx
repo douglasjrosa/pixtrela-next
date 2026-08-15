@@ -8,7 +8,7 @@ import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager
 import { boardSubTaskSummaryStub } from "@/lib/business/board-subtask-summary";
 import messages from "@/messages/pt-BR.json";
 import { renderWithIntl } from "@/test/test-utils";
-import { KanbanTaskSubtasksModal } from "./kanban-task-subtasks-modal";
+import { KanbanTaskSubtasksModal, resolveKanbanPendingSubtaskReorder } from "./kanban-task-subtasks-modal";
 
 const showSuccessToast = vi.fn();
 const showHintToast = vi.fn();
@@ -741,6 +741,40 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(
       screen.getByRole("button", { name: "Atribuir subtarefas" }),
     ).toBeEnabled();
+  });
+
+  it("shows drag handles when reorder is enabled", () => {
+    renderModal({ onReorder: vi.fn() });
+
+    expect(screen.getAllByLabelText("Arrastar para reordenar")).toHaveLength(2);
+  });
+
+  it("hides drag handles when reorder is not provided", () => {
+    renderModal();
+
+    expect(
+      screen.queryByLabelText("Arrastar para reordenar"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disables drag handles in multi-select mode", async () => {
+    const user = userEvent.setup();
+    renderModal({ onReorder: vi.fn() });
+
+    await user.click(screen.getByRole("switch", { name: "Multi-seleção" }));
+
+    for (const handle of screen.getAllByLabelText("Arrastar para reordenar")) {
+      expect(handle).toBeDisabled();
+    }
+  });
+
+  it("resolveKanbanPendingSubtaskReorder keeps finished rows in place", () => {
+    const reordered = resolveKanbanPendingSubtaskReorder(subtasks, "st-2", "st-1");
+    expect(reordered?.map((item) => item.documentId)).toEqual([
+      "st-2",
+      "st-1",
+      "st-3",
+    ]);
   });
 
   it("asks before leaving multi with a selection", async () => {

@@ -1,7 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { User, Users } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  type DragEndEvent,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, User, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { CurrencyMediaIcon } from "@/components/currency/currency-media-icon";
@@ -17,6 +33,10 @@ import {
   FormModalShell,
 } from "@/components/ui/form-modal-shell";
 import { StackedDateTime } from "@/components/ui/stacked-date-time";
+import {
+  reorderPendingSubtasksInPlace,
+  subtaskDocumentIdsInOrder,
+} from "@/lib/business/board-pending-subtask-order";
 import {
   isSubtaskAssignedTo,
   splitSubtasksByFinished,
@@ -60,6 +80,18 @@ type MainTab = "pending" | "finished";
 type FocusMode = "subtasks" | "teams";
 type PendingExitAction = "disable-multi" | "go-finished";
 
+const KANBAN_SUBTASK_DND_CONTEXT_ID = "kanban-subtasks-modal-dnd";
+
+/** Pure drag-end resolver for tests and KanbanTaskSubtasksModal. */
+export function resolveKanbanPendingSubtaskReorder(
+  subtasks: readonly BoardSubTaskSummary[],
+  activeId: unknown,
+  overId: unknown,
+): BoardSubTaskSummary[] | null {
+  if (typeof activeId !== "string" || typeof overId !== "string") return null;
+  return reorderPendingSubtasksInPlace(subtasks, activeId, overId);
+}
+
 const EMPTY_PAYMENT_CURRENCY: SubtaskPaymentCurrency = {
   iconUrl: null,
   currencyPerSecond: 0,
@@ -79,12 +111,14 @@ export interface KanbanTaskSubtasksModalProps {
   loading: boolean;
   dirty: boolean;
   saving: boolean;
+  reordering?: boolean;
   onClose: () => void;
   onAssigneesChange: (
     subtask: BoardSubTaskSummary,
     assignedToIds: string[],
   ) => void;
   onSave: () => void;
+  onReorder?: (orderedDocumentIds: string[]) => void | Promise<void>;
   onAddSubtask?: () => void;
 }
 
@@ -191,6 +225,151 @@ function SubTaskUnassignedFloatingBadge({
   );
 }
 
+function PendingSubtaskCard({
+  subtask,
+  highlighted,
+  saving,
+  statusLabel,
+  onClick,
+}: {
+  subtask: BoardSubTaskSummary;
+  highlighted: boolean;
+  saving: boolean;
+  statusLabel: string;
+  onClick: () => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        aria-pressed={highlighted}
+        disabled={saving}
+        className={cn(
+          "relative w-full rounded-lg border p-3 text-left transition-colors",
+          highlighted
+            ? "border-primary bg-primary/5"
+            : "bg-background hover:bg-muted/40",
+          saving && "opacity-50",
+        )}
+        onClick={onClick}
+      >
+        <SubTaskUnassignedFloatingBadge assignedCount={subtask.assignedTo.length} />
+        <SubTaskCardHeader
+          name={subtask.name}
+          status={subtask.status}
+          statusLabel={statusLabel}
+          workingCount={subtask.openActivityStartedAts.length}
+          assignedTo={subtask.assignedTo}
+          producingColaboratorIds={subtask.producingColaboratorIds}
+        />
+        <SubTaskProgressBar
+          status={subtask.status}
+          expectedTime={subtask.expectedTime}
+          timeSpent={subtask.timeSpent}
+          openActivityStartedAts={subtask.openActivityStartedAts}
+        />
+      </button>
+    </li>
+  );
+}
+
+interface SortablePendingSubtaskCardProps {
+  subtask: BoardSubTaskSummary;
+  highlighted: boolean;
+  dragDisabled: boolean;
+  saving: boolean;
+  dragLabel: string;
+  statusLabel: string;
+  onClick: () => void;
+}
+
+function SortablePendingSubtaskCard({
+  subtask,
+  highlighted,
+  dragDisabled,
+  saving,
+  dragLabel,
+  statusLabel,
+  onClick,
+}: SortablePendingSubtaskCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: subtask.documentId,
+    disabled: dragDisabled,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={isDragging ? "opacity-80" : undefined}
+    >
+      <div className="flex items-stretch gap-1">
+        <button
+          type="button"
+          className={cn(
+            "flex shrink-0 items-center rounded-lg border border-transparent px-1",
+            "text-muted-foreground hover:text-foreground",
+            dragDisabled
+              ? "cursor-not-allowed opacity-40"
+              : "cursor-grab active:cursor-grabbing",
+          )}
+          aria-label={dragLabel}
+          disabled={dragDisabled}
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-4" aria-hidden />
+        </button>
+        <button
+          type="button"
+          aria-pressed={highlighted}
+          disabled={saving}
+          className={cn(
+            "relative min-w-0 flex-1 rounded-lg border p-3 text-left transition-colors",
+            highlighted
+              ? "border-primary bg-primary/5"
+              : "bg-background hover:bg-muted/40",
+            saving && "opacity-50",
+          )}
+          onClick={onClick}
+        >
+          <SubTaskUnassignedFloatingBadge
+            assignedCount={subtask.assignedTo.length}
+          />
+          <SubTaskCardHeader
+            name={subtask.name}
+            status={subtask.status}
+            statusLabel={statusLabel}
+            workingCount={subtask.openActivityStartedAts.length}
+            assignedTo={subtask.assignedTo}
+            producingColaboratorIds={subtask.producingColaboratorIds}
+          />
+          <SubTaskProgressBar
+            status={subtask.status}
+            expectedTime={subtask.expectedTime}
+            timeSpent={subtask.timeSpent}
+            openActivityStartedAts={subtask.openActivityStartedAts}
+          />
+        </button>
+      </div>
+    </li>
+  );
+}
+
 export function KanbanTaskSubtasksModal({
   open,
   taskName,
@@ -203,9 +382,11 @@ export function KanbanTaskSubtasksModal({
   loading,
   dirty,
   saving,
+  reordering = false,
   onClose,
   onAssigneesChange,
   onSave,
+  onReorder,
   onAddSubtask,
 }: KanbanTaskSubtasksModalProps) {
   const tCommon = useTranslations("common");
@@ -252,9 +433,37 @@ export function KanbanTaskSubtasksModal({
     }
   }
 
+  const { pending, finished } = splitSubtasksByFinished(subtasks);
+  const pendingSubtaskIds = useMemo(
+    () => pending.map((item) => item.documentId),
+    [pending],
+  );
+  const dragDisabled =
+    !onReorder || multiEnabled || saving || loading || reordering;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      if (!onReorder) return;
+      const next = resolveKanbanPendingSubtaskReorder(
+        subtasks,
+        event.active.id,
+        event.over?.id,
+      );
+      if (!next) return;
+      void onReorder(subtaskDocumentIdsInOrder(next));
+    },
+    [onReorder, subtasks],
+  );
+
   if (!open) return null;
 
-  const { pending, finished } = splitSubtasksByFinished(subtasks);
   const hasPendingSubtasks = pending.length > 0;
   const hasFinishedSubtasks = finished.length > 0;
   if (!hasFinishedSubtasks && preferFinishedTab) {
@@ -738,51 +947,51 @@ export function KanbanTaskSubtasksModal({
                     <li className="text-sm text-muted-foreground" role="status">
                       {tKanban("subtasksEmpty")}
                     </li>
-                  ) : (
+                  ) : !onReorder ? (
                     pending.map((subtask) => {
                       const highlighted = isPendingSubtaskHighlighted(subtask);
                       return (
-                        <li key={subtask.documentId}>
-                          <button
-                            type="button"
-                            aria-pressed={highlighted}
-                            disabled={saving}
-                            className={cn(
-                              "relative w-full rounded-lg border p-3 text-left transition-colors",
-                              highlighted
-                                ? "border-primary bg-primary/5"
-                                : "bg-background hover:bg-muted/40",
-                              saving && "opacity-50",
-                            )}
-                            onClick={() => handlePendingSubtaskClick(subtask)}
-                          >
-                            <SubTaskUnassignedFloatingBadge
-                              assignedCount={subtask.assignedTo.length}
-                            />
-                            <SubTaskCardHeader
-                              name={subtask.name}
-                              status={subtask.status}
-                              statusLabel={tStatus(subtask.status)}
-                              workingCount={
-                                subtask.openActivityStartedAts.length
-                              }
-                              assignedTo={subtask.assignedTo}
-                              producingColaboratorIds={
-                                subtask.producingColaboratorIds
-                              }
-                            />
-                            <SubTaskProgressBar
-                              status={subtask.status}
-                              expectedTime={subtask.expectedTime}
-                              timeSpent={subtask.timeSpent}
-                              openActivityStartedAts={
-                                subtask.openActivityStartedAts
-                              }
-                            />
-                          </button>
-                        </li>
+                        <PendingSubtaskCard
+                          key={subtask.documentId}
+                          subtask={subtask}
+                          highlighted={highlighted}
+                          saving={saving}
+                          statusLabel={tStatus(subtask.status)}
+                          onClick={() => handlePendingSubtaskClick(subtask)}
+                        />
                       );
                     })
+                  ) : (
+                    <DndContext
+                      id={KANBAN_SUBTASK_DND_CONTEXT_ID}
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={pendingSubtaskIds}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {pending.map((subtask) => {
+                          const highlighted =
+                            isPendingSubtaskHighlighted(subtask);
+                          return (
+                            <SortablePendingSubtaskCard
+                              key={subtask.documentId}
+                              subtask={subtask}
+                              highlighted={highlighted}
+                              dragDisabled={dragDisabled}
+                              saving={saving}
+                              dragLabel={tSubtasks("dragToReorder")}
+                              statusLabel={tStatus(subtask.status)}
+                              onClick={() =>
+                                handlePendingSubtaskClick(subtask)
+                              }
+                            />
+                          );
+                        })}
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </ul>
               </section>

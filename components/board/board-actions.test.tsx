@@ -69,6 +69,7 @@ describe("BoardActions", () => {
         paymentCurrency={paymentCurrency}
         applyBoardTaskOrder={vi.fn()}
         loadSubtasks={vi.fn()}
+        reorderSubtasks={vi.fn()}
         updateSubtaskAssignees={vi.fn()}
         createSubtask={vi.fn()}
       />,
@@ -98,6 +99,7 @@ describe("BoardActions", () => {
         paymentCurrency={paymentCurrency}
         applyBoardTaskOrder={vi.fn()}
         loadSubtasks={loadSubtasks}
+        reorderSubtasks={vi.fn()}
         updateSubtaskAssignees={vi.fn()}
         createSubtask={vi.fn()}
       />,
@@ -157,6 +159,7 @@ describe("BoardActions", () => {
         paymentCurrency={paymentCurrency}
         applyBoardTaskOrder={vi.fn()}
         loadSubtasks={loadSubtasks}
+        reorderSubtasks={vi.fn()}
         updateSubtaskAssignees={updateSubtaskAssignees}
         createSubtask={vi.fn()}
       />,
@@ -217,6 +220,7 @@ describe("BoardActions", () => {
         paymentCurrency={paymentCurrency}
         applyBoardTaskOrder={vi.fn()}
         loadSubtasks={loadSubtasks}
+        reorderSubtasks={vi.fn()}
         updateSubtaskAssignees={vi.fn()}
         createSubtask={createSubtask}
       />,
@@ -270,6 +274,7 @@ describe("BoardActions", () => {
         paymentCurrency={paymentCurrency}
         applyBoardTaskOrder={vi.fn()}
         loadSubtasks={loadSubtasks}
+        reorderSubtasks={vi.fn()}
         updateSubtaskAssignees={vi.fn()}
         createSubtask={vi.fn()}
       />,

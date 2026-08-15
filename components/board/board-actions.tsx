@@ -59,6 +59,10 @@ export interface BoardActionsProps {
     values: SubTaskFormInput,
     options?: { addToTemplate?: boolean },
   ) => Promise<void>;
+  reorderSubtasks: (
+    taskDocumentId: string,
+    orderedDocumentIds: string[],
+  ) => Promise<void>;
 }
 
 export function BoardActions({
@@ -72,6 +76,7 @@ export function BoardActions({
   loadSubtasks,
   updateSubtaskAssignees,
   createSubtask,
+  reorderSubtasks,
 }: BoardActionsProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -90,6 +95,7 @@ export function BoardActions({
   const [savingAssignees, setSavingAssignees] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [savingCreate, setSavingCreate] = useState(false);
+  const [reorderingSubtasks, setReorderingSubtasks] = useState(false);
 
   const assignedCountsForUi = useMemo(
     () =>
@@ -161,6 +167,40 @@ export function BoardActions({
     setSavingAssignees(false);
     setCreateOpen(false);
     setSavingCreate(false);
+    setReorderingSubtasks(false);
+  }
+
+  function sortSubtasksByDocumentIds(
+    items: BoardSubTaskSummary[],
+    orderedDocumentIds: string[],
+  ): BoardSubTaskSummary[] {
+    const orderMap = new Map(
+      orderedDocumentIds.map((documentId, index) => [documentId, index]),
+    );
+    return [...items].sort(
+      (left, right) =>
+        (orderMap.get(left.documentId) ?? 0) -
+        (orderMap.get(right.documentId) ?? 0),
+    );
+  }
+
+  function handleReorderSubtasks(orderedDocumentIds: string[]): void {
+    if (!selectedTask) return;
+
+    const taskDocumentId = selectedTask.documentId;
+    const before = subtasks;
+    setSubtasks(sortSubtasksByDocumentIds(subtasks, orderedDocumentIds));
+    setReorderingSubtasks(true);
+
+    void (async () => {
+      try {
+        await reorderSubtasks(taskDocumentId, orderedDocumentIds);
+      } catch {
+        setSubtasks(before);
+      } finally {
+        setReorderingSubtasks(false);
+      }
+    })();
   }
 
   async function refreshSubtasksList(
@@ -303,9 +343,11 @@ export function BoardActions({
         loading={loadingSubtasks}
         dirty={hasAssigneeDraftChanges(subtasks, assigneesBaseline)}
         saving={savingAssignees}
+        reordering={reorderingSubtasks}
         onClose={handleCloseSubtasksModal}
         onAssigneesChange={handleAssigneesChange}
         onSave={handleSaveAssignees}
+        onReorder={handleReorderSubtasks}
         onAddSubtask={() => setCreateOpen(true)}
       />
 

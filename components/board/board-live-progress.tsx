@@ -50,6 +50,7 @@ type BoardLiveProgressProps = BoardLiveProgressDataProps & {
   pollBoardProgress: PollBoardProgressFn;
   applyBoardTaskOrder: BoardActionsProps["applyBoardTaskOrder"];
   loadSubtasks: BoardActionsProps["loadSubtasks"];
+  reorderSubtasks: BoardActionsProps["reorderSubtasks"];
   updateSubtaskAssignees: BoardActionsProps["updateSubtaskAssignees"];
   createSubtask: BoardActionsProps["createSubtask"];
 };
@@ -65,6 +66,7 @@ export function BoardLiveProgress({
   pollBoardProgress,
   applyBoardTaskOrder,
   loadSubtasks,
+  reorderSubtasks,
   updateSubtaskAssignees,
   createSubtask,
 }: BoardLiveProgressProps) {
@@ -88,6 +90,7 @@ export function BoardLiveProgress({
           paymentCurrency={paymentCurrency}
           applyBoardTaskOrder={applyBoardTaskOrder}
           loadSubtasks={loadSubtasks}
+          reorderSubtasks={reorderSubtasks}
           updateSubtaskAssignees={updateSubtaskAssignees}
           createSubtask={createSubtask}
         />

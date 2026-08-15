@@ -2,7 +2,11 @@
 
 import { revalidateTag } from "next/cache";
 
-import { createSubTask, updateSubTask } from "@/app/(app)/tasks/[documentId]/actions";
+import {
+  createSubTask,
+  reorderSubTasks,
+  updateSubTask,
+} from "@/app/(app)/tasks/[documentId]/actions";
 import { auth } from "@/auth";
 import type { BoardSubTaskSummary } from "@/components/kanban/types";
 import {
@@ -334,6 +338,14 @@ async function appendBoardSubtaskToTaskTemplate(
     })),
   });
   revalidateTag("drizzle:templates", "default");
+}
+
+export async function reorderBoardSubtasks(
+  taskDocumentId: string,
+  orderedDocumentIds: string[],
+): Promise<void> {
+  await assertCanManageBoardSubtasks();
+  await reorderSubTasks(taskDocumentId, orderedDocumentIds);
 }
 
 export async function updateBoardSubtaskAssignees(
