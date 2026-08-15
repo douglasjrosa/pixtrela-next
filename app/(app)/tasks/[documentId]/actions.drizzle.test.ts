@@ -31,10 +31,6 @@ vi.mock("@/lib/strapi/revalidate", () => ({
   revalidateStrapiTags: vi.fn(),
 }));
 
-vi.mock("@/lib/strapi/subtask-sessions", () => ({
-  loadSubTaskSessions: vi.fn(),
-}));
-
 vi.mock("@/lib/repos/tasks", () => ({
   createSubTaskForTask: (...args: unknown[]) => createSubTaskForTask(...args),
   updateSubTaskFields: (...args: unknown[]) => updateSubTaskFields(...args),
@@ -44,6 +40,7 @@ vi.mock("@/lib/repos/tasks", () => ({
     listSubTasksWithRelationsForTask(...args),
   listSubTaskIdsForTask: (...args: unknown[]) => listSubTaskIdsForTask(...args),
   getSubTaskById: (...args: unknown[]) => getSubTaskById(...args),
+  loadSubTaskSessions: vi.fn(),
 }));
 
 describe("tasks/[documentId]/actions drizzle subtasks", () => {

@@ -6,13 +6,13 @@
 | Strapi source | Next target | Tests | Status |
 |---------------|-------------|-------|--------|
 | `auth-identify/*` | `lib/repos/kiosk` + login actions | domain + e2e kiosk | done |
-| `kiosk/*` | `lib/repos/kiosk`, `lib/kiosk/*` | dual-path loaders | done |
+| `kiosk/*` | `lib/repos/kiosk-subtasks`, `lib/kiosk/*` | integration + e2e kiosk | done |
 | `dashboard/*` | `lib/dashboard/*` Drizzle SQL | monthly ranking dual-path | done |
 | `profile/*` | profile actions + repos/users | dual-path | done |
 | `balances/me/current` | `lib/repos/balances` | integration + private-home | done |
 | `exchange` create | `lib/repos/exchanges.redeemAward` | integration | done |
 | `task` find/findOne | `lib/repos/tasks` + load-task-list | dual-path | done |
-| lifecycle `activity` | `recordActivity` + domain work-currency | domain + integration | done |
+| lifecycle `activity` | `recordActivity` → kiosk start/stop + work-currency | domain + integration | done |
 | lifecycle `sub-task` / `task` | createTask template copy | integration | done |
 | awards / steps / settings | repos + settings pages | dual-path | done |
 | teams / templates | repos + app actions | dual-path | done |

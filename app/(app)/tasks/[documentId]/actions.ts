@@ -24,7 +24,7 @@ import {
 } from "@/lib/schemas/sub-task";
 import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
-import { loadSubTaskSessions } from "@/lib/strapi/subtask-sessions";
+import { loadSubTaskSessions } from "@/lib/repos/tasks";
 import type { ActivitySession } from "@/lib/business/task-progress";
 
 interface StrapiList<T> {
