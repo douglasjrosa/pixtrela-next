@@ -1,8 +1,8 @@
 /**
  * Same-origin URLs for face-api / <img crossOrigin="anonymous">.
- * R2 public URLs are not CORS-enabled; proxy via `/api/strapi-media`.
+ * R2 public URLs are not CORS-enabled; proxy via `/api/kiosk/face-media`.
  */
-import { toBrowserMediaUrl } from "@/lib/strapi/browser-media-url";
+import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 
 export function toKioskFaceMediaProxyUrl(
   absoluteUrl: string | null | undefined,
@@ -13,7 +13,7 @@ export function toKioskFaceMediaProxyUrl(
     return browser;
   }
   if (browser.startsWith("http://") || browser.startsWith("https://")) {
-    return `/api/strapi-media?url=${encodeURIComponent(browser)}`;
+    return `/api/kiosk/face-media?url=${encodeURIComponent(browser)}`;
   }
   return browser;
 }

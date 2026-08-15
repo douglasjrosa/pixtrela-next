@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
 import { RouteThemeFrame } from "@/components/themes/route-theme-frame";
-import { loadRouteThemes } from "@/lib/strapi/route-themes";
+import { loadRouteThemes } from "@/lib/themes/load-route-themes";
 import { cn } from "@/lib/utils";
 import {
   routeThemeContentFrameClass,

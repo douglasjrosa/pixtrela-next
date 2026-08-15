@@ -5,7 +5,6 @@ import {
   resolveKioskPathAfterIdentify,
   type KioskIdentifiedRole,
 } from "@/lib/business/kiosk-identify-route";
-import { isDrizzleBackend } from "@/lib/db/backend";
 import {
   loadKioskDirectoryTeamColaborators,
   loadKioskDirectoryTeams,
@@ -22,20 +21,7 @@ import {
 } from "@/lib/repos/kiosk";
 import { kioskIdentifySchema } from "@/lib/schemas/kiosk-identify";
 import { kioskTagIdentifySchema } from "@/lib/schemas/kiosk-tag-identify";
-import { toBrowserMediaUrl } from "@/lib/strapi/browser-media-url";
-import { strapiFetch } from "@/lib/strapi";
-import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
-
-interface KioskIdentifyResponse {
-  documentId: string;
-  role: KioskIdentifiedRole;
-  welcome?: {
-    name: string;
-    greetingGender: "masculine" | "feminine" | null;
-    avatarUrl: string | null;
-    facePhotoUrl: string | null;
-  } | null;
-}
+import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 
 export type KioskWelcomeProfile = {
   name: string;
@@ -53,18 +39,6 @@ export type KioskIdentifyResult =
       welcome: KioskWelcomeProfile | null;
     }
   | { ok: false; error: "invalidCredentials" | "forbidden" };
-
-function resolveWelcomeFromStrapi(
-  welcome: KioskIdentifyResponse["welcome"],
-): KioskWelcomeProfile | null {
-  if (!welcome?.name) return null;
-  return {
-    name: welcome.name,
-    greetingGender: welcome.greetingGender ?? null,
-    avatarUrl: resolveStrapiMediaUrl(welcome.avatarUrl),
-    facePhotoUrl: resolveStrapiMediaUrl(welcome.facePhotoUrl),
-  };
-}
 
 function resolveWelcomeFromDrizzle(
   welcome: DrizzleWelcomeProfile | null,
@@ -106,45 +80,15 @@ export async function identifyKioskUserByCode(
     return { ok: false, error: "invalidCredentials" };
   }
 
-  if (isDrizzleBackend()) {
-    const identified = await identifyUserAtKioskByCode(parsed.data);
-    if (!identified) {
-      return { ok: false, error: "invalidCredentials" };
-    }
-    const role = identified.role as KioskIdentifiedRole;
-    const welcome = resolveWelcomeFromDrizzle(
-      await loadKioskWelcomeProfile(identified.id),
-    );
-    return buildIdentifySuccess(identified.id, role, welcome);
-  }
-
-  let identifyData: KioskIdentifyResponse | undefined;
-  try {
-    identifyData = await strapiFetch<KioskIdentifyResponse>(
-      "/kiosk/identify",
-      {
-        method: "POST",
-        strapiCache: { noStore: true },
-        redirectOnUnauthorized: false,
-        body: JSON.stringify({
-          code: parsed.data.code,
-          password: parsed.data.password,
-        }),
-      },
-    );
-  } catch {
+  const identified = await identifyUserAtKioskByCode(parsed.data);
+  if (!identified) {
     return { ok: false, error: "invalidCredentials" };
   }
-
-  if (!identifyData?.documentId || !identifyData.role) {
-    return { ok: false, error: "invalidCredentials" };
-  }
-
-  return buildIdentifySuccess(
-    identifyData.documentId,
-    identifyData.role,
-    resolveWelcomeFromStrapi(identifyData.welcome),
+  const role = identified.role as KioskIdentifiedRole;
+  const welcome = resolveWelcomeFromDrizzle(
+    await loadKioskWelcomeProfile(identified.id),
   );
+  return buildIdentifySuccess(identified.id, role, welcome);
 }
 
 export async function identifyKioskUserByTag(
@@ -160,42 +104,15 @@ export async function identifyKioskUserByTag(
     return { ok: false, error: "invalidCredentials" };
   }
 
-  if (isDrizzleBackend()) {
-    const identified = await identifyUserAtKioskByTag(parsed.data.userTag);
-    if (!identified) {
-      return { ok: false, error: "invalidCredentials" };
-    }
-    const role = identified.role as KioskIdentifiedRole;
-    const welcome = resolveWelcomeFromDrizzle(
-      await loadKioskWelcomeProfile(identified.id),
-    );
-    return buildIdentifySuccess(identified.id, role, welcome);
-  }
-
-  let identifyData: KioskIdentifyResponse | undefined;
-  try {
-    identifyData = await strapiFetch<KioskIdentifyResponse>(
-      "/kiosk/tag-identify",
-      {
-        method: "POST",
-        strapiCache: { noStore: true },
-        redirectOnUnauthorized: false,
-        body: JSON.stringify({ userTag: parsed.data.userTag }),
-      },
-    );
-  } catch {
+  const identified = await identifyUserAtKioskByTag(parsed.data.userTag);
+  if (!identified) {
     return { ok: false, error: "invalidCredentials" };
   }
-
-  if (!identifyData?.documentId || !identifyData.role) {
-    return { ok: false, error: "invalidCredentials" };
-  }
-
-  return buildIdentifySuccess(
-    identifyData.documentId,
-    identifyData.role,
-    resolveWelcomeFromStrapi(identifyData.welcome),
+  const role = identified.role as KioskIdentifiedRole;
+  const welcome = resolveWelcomeFromDrizzle(
+    await loadKioskWelcomeProfile(identified.id),
   );
+  return buildIdentifySuccess(identified.id, role, welcome);
 }
 
 export async function fetchKioskDirectoryTeams(): Promise<
@@ -245,13 +162,11 @@ export type KioskFaceIdentifyResult =
 
 function resolveCandidateMedia(
   candidate: KioskFaceIdentifyCandidate,
-  drizzle: boolean,
 ): KioskFaceIdentifyCandidate {
-  const mapUrl = drizzle ? toBrowserMediaUrl : resolveStrapiMediaUrl;
   return {
     ...candidate,
-    avatarUrl: mapUrl(candidate.avatarUrl),
-    facePhotoUrl: mapUrl(candidate.facePhotoUrl),
+    avatarUrl: toBrowserMediaUrl(candidate.avatarUrl),
+    facePhotoUrl: toBrowserMediaUrl(candidate.facePhotoUrl),
   };
 }
 
@@ -271,59 +186,20 @@ export async function identifyKioskUserByFace(
     return { ok: false, error: "invalid" };
   }
 
-  if (isDrizzleBackend()) {
-    const outcome = await identifyColaboratorsByFace(descriptor);
-    if (outcome.status === "match") {
-      return {
-        ok: true,
-        status: "match",
-        match: resolveCandidateMedia(outcome.match, true),
-      };
-    }
-    if (outcome.status === "ambiguous") {
-      return {
-        ok: true,
-        status: "ambiguous",
-        candidates: outcome.candidates.map((row) =>
-          resolveCandidateMedia(row, true),
-        ),
-      };
-    }
-    return { ok: true, status: "none" };
+  const outcome = await identifyColaboratorsByFace(descriptor);
+  if (outcome.status === "match") {
+    return {
+      ok: true,
+      status: "match",
+      match: resolveCandidateMedia(outcome.match),
+    };
   }
-
-  try {
-    const data = await strapiFetch<{
-      status: "match" | "ambiguous" | "none";
-      match?: KioskFaceIdentifyCandidate;
-      candidates?: KioskFaceIdentifyCandidate[];
-    }>("/kiosk/face-identify", {
-      method: "POST",
-      strapiCache: { noStore: true },
-      redirectOnUnauthorized: false,
-      body: JSON.stringify({ descriptor }),
-    });
-
-    if (data.status === "match" && data.match?.documentId) {
-      return {
-        ok: true,
-        status: "match",
-        match: resolveCandidateMedia(data.match, false),
-      };
-    }
-
-    if (data.status === "ambiguous" && Array.isArray(data.candidates)) {
-      return {
-        ok: true,
-        status: "ambiguous",
-        candidates: data.candidates
-          .filter((row) => row.documentId && row.faceVector)
-          .map((row) => resolveCandidateMedia(row, false)),
-      };
-    }
-
-    return { ok: true, status: "none" };
-  } catch {
-    return { ok: false, error: "invalid" };
+  if (outcome.status === "ambiguous") {
+    return {
+      ok: true,
+      status: "ambiguous",
+      candidates: outcome.candidates.map((row) => resolveCandidateMedia(row)),
+    };
   }
+  return { ok: true, status: "none" };
 }

@@ -12,12 +12,8 @@ import {
   canViewUsers,
 } from "@/lib/auth/permissions";
 import { canDeleteUsers, manageableTargetRoles } from "@/lib/business/roles";
-import { isDrizzleBackend } from "@/lib/db/backend";
 import { listUsers as listUsersRepo } from "@/lib/repos/users";
-import type { UserFormInput } from "@/lib/schemas/user";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
-import { toBrowserMediaUrl } from "@/lib/strapi/browser-media-url";
-import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
+import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 
 import {
   createUser,
@@ -28,26 +24,8 @@ import {
   updateUserImage,
 } from "./actions";
 
-interface MediaEntity {
-  url?: string | null;
-}
-
-interface UserEntity {
-  documentId?: string;
-  id: number;
-  name?: string;
-  username: string;
-  email?: string | null;
-  code?: number;
-  roleType?: UserFormInput["roleType"];
-  greetingGender?: "masculine" | "feminine" | null;
-  blocked?: boolean;
-  avatar?: MediaEntity | null;
-  facePhoto?: MediaEntity | null;
-}
-
 async function loadUsers(): Promise<UserRow[]> {
-  if (isDrizzleBackend()) {
+  try {
     const rows = await listUsersRepo();
     return rows.map((user) => ({
       id: user.id,
@@ -62,43 +40,6 @@ async function loadUsers(): Promise<UserRow[]> {
       blocked: user.blocked || !user.active,
       avatarUrl: toBrowserMediaUrl(user.avatarUrl),
       facePhotoUrl: toBrowserMediaUrl(user.facePhotoUrl),
-    }));
-  }
-
-  try {
-    const res = await strapiFetch<UserEntity[]>(
-      "/users",
-      { strapiCache: { tags: [STRAPI_TAGS.users], revalidate: 60 } },
-      {
-        fields: [
-          "documentId",
-          "id",
-          "name",
-          "username",
-          "email",
-          "code",
-          "roleType",
-          "greetingGender",
-          "blocked",
-        ],
-        populate: {
-          avatar: { fields: ["url"] },
-          facePhoto: { fields: ["url"] },
-        },
-      },
-    );
-    return res.map((user) => ({
-      id: user.id,
-      documentId: user.documentId ?? String(user.id),
-      name: user.name ?? user.username,
-      username: user.username,
-      email: user.email ?? null,
-      code: user.code ?? 0,
-      roleType: user.roleType ?? "colaborator",
-      greetingGender: user.greetingGender ?? null,
-      blocked: Boolean(user.blocked),
-      avatarUrl: resolveStrapiMediaUrl(user.avatar?.url ?? null),
-      facePhotoUrl: resolveStrapiMediaUrl(user.facePhoto?.url ?? null),
     }));
   } catch (error) {
     rethrowIfNavigationError(error);

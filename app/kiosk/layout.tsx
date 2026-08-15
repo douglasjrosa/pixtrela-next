@@ -4,8 +4,8 @@ import { COLABORATOR_CONTENT_SURFACE_CLASS } from "@/components/colaborator/cola
 import { ColaboratorSurface } from "@/components/colaborator/colaborator-surface";
 import { KioskLayoutClient } from "@/components/kiosk/kiosk-layout-client";
 import { RouteThemeFrame } from "@/components/themes/route-theme-frame";
-import { loadRouteThemes } from "@/lib/strapi/route-themes";
-import { loadKioskSessionIdleMs } from "@/lib/strapi/kiosk-setting";
+import { loadKioskSessionIdleMs } from "@/lib/kiosk/load-session-idle";
+import { loadRouteThemes } from "@/lib/themes/load-route-themes";
 import { cn } from "@/lib/utils";
 import {
   routeThemeContentFrameClass,

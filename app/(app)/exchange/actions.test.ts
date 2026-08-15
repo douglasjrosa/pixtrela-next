@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const strapiFetch = vi.fn();
-const revalidateStrapiTags = vi.fn();
+const redeemAwardRepo = vi.fn();
+const revalidateTag = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({
@@ -10,49 +10,33 @@ vi.mock("@/auth", () => ({
   })),
 }));
 
-vi.mock("@/lib/strapi", () => ({
-  STRAPI_TAGS: {
-    exchanges: "strapi:exchanges",
-    awards: "strapi:awards",
-  },
-  balanceTag: (userId: string) => `strapi:balances:${userId}`,
-  strapiFetch,
+vi.mock("next/cache", () => ({
+  revalidateTag: (...args: unknown[]) => revalidateTag(...args),
 }));
 
-vi.mock("@/lib/strapi/revalidate", () => ({
-  revalidateStrapiTags,
+vi.mock("@/lib/repos/exchanges", () => ({
+  redeemAward: (...args: unknown[]) => redeemAwardRepo(...args),
 }));
 
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => false,
-}));
-
-describe("exchange/actions", () => {
+describe("exchange/actions drizzle", () => {
   beforeEach(() => {
-    strapiFetch.mockReset();
-    revalidateStrapiTags.mockReset();
     vi.resetModules();
+    redeemAwardRepo.mockReset();
+    revalidateTag.mockReset();
+    redeemAwardRepo.mockResolvedValue({ exchangeId: "ex-1" });
   });
 
-  it("redeemAward POSTs awardId, currency and qty then revalidates tags", async () => {
-    strapiFetch.mockResolvedValue({ data: { documentId: "ex-1" } });
+  it("redeemAward uses drizzle repo and revalidateTag", async () => {
     const { redeemAward } = await import("./actions");
+    await redeemAward("award-1", "currency-star", 2);
 
-    await redeemAward("award-1", "star", 1);
-
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/exchanges",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          data: { awardId: "award-1", currency: "star", qty: 1 },
-        }),
-      }),
-    );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith(
-      "strapi:exchanges",
-      "strapi:awards",
-      "strapi:balances:col-1",
-    );
+    expect(redeemAwardRepo).toHaveBeenCalledWith({
+      userId: "col-1",
+      awardId: "award-1",
+      currencyId: "currency-star",
+      qty: 2,
+    });
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:exchanges", "default");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:balances", "default");
   });
 });

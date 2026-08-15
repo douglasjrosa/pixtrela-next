@@ -12,7 +12,7 @@ interface PageProps {
 export default async function KioskStaffUsersPage({ params }: PageProps) {
   const { userId } = await params;
   const [colaborators, staffUser] = await Promise.all([
-    loadKioskStaffColaborators(userId),
+    loadKioskStaffColaborators(),
     loadKioskStaffUser(userId),
   ]);
 

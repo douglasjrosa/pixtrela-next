@@ -1,6 +1,7 @@
 # Greenfield: Next + Postgres + Drizzle
 
-Strapi (`../strapi`) is **legacy reference only**. New work targets this stack.
+Strapi (`../strapi`) is **legacy reference only**. This app is **Drizzle-only**
+at runtime; use `scripts/etl-from-strapi.ts` only for one-time cutover ETL.
 
 ## Quick start (laptop)
 
@@ -23,14 +24,14 @@ Target topology:
 
 | Role | Runtime | Database |
 |------|---------|----------|
-| Production Next | Vercel | `postgres-prod` on the Strapi VPS |
-| Development Next | Cursor Cloud VM | `postgres-dev` via SSH tunnel `:5433` |
+| Production Next | Vercel | `postgres-prod` on the VPS |
+| Development Next | Cursor Cloud VM | `postgres-dev` on `:5433` (direct, no tunnel) |
 | Browser | Laptop | Cursor port-forward **3000** |
 
 - VPS containers: [`docker-compose.db.yml`](docker-compose.db.yml) + [`env.db.example`](env.db.example)
 - Deploy / firewall / SSL: [`docs/VPS-POSTGRES.md`](docs/VPS-POSTGRES.md)
 - Env tables + daily loop: [`docs/ENV-VERCEL-CURSOR.md`](docs/ENV-VERCEL-CURSOR.md)
-- SSH tunnel helper: [`scripts/dev-db-tunnel.sh`](scripts/dev-db-tunnel.sh)
+- SSH tunnel helper: [`scripts/dev-db-tunnel.sh`](scripts/dev-db-tunnel.sh) (legacy)
 
 ## Scripts
 
@@ -49,9 +50,9 @@ Target topology:
 
 | Var | Meaning |
 |-----|---------|
-| `DATA_BACKEND=drizzle\|strapi` | Persistence/UI backend (default drizzle) |
-| `AUTH_STRAPI_FALLBACK=0` | Disable Strapi JWT preference; Auth.js/Postgres only |
-| `DATABASE_URL` | Postgres connection |
+| `DATABASE_URL` | Postgres connection (required) |
+| `AUTH_SECRET` | Auth.js session signing (required) |
 | `RUN_DB_TESTS=1` | Enable Drizzle integration tests |
+| `STRAPI_DATABASE_URL` | Legacy DB for `npm run db:etl` only |
 
 See also `MIGRATION.md` and `CUTOVER.md`.

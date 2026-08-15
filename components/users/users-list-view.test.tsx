@@ -13,7 +13,7 @@ const users: UserRow[] = [
     username: "maria.1234",
     code: 1234,
     roleType: "colaborator",
-    avatarUrl: "http://127.0.0.1:1337/uploads/maria.jpg",
+    avatarUrl: "/api/media/maria.jpg",
   },
   {
     id: 2,
@@ -65,7 +65,7 @@ describe("UsersListView", () => {
     const avatar = screen.getAllByRole("img", { name: "Maria" })[0]!;
     expect(avatar).toHaveAttribute(
       "src",
-      "/api/strapi-media?path=%2Fuploads%2Fmaria.jpg",
+      "/api/media/maria.jpg",
     );
     expect(avatar.className).toMatch(/rounded-full/);
   });

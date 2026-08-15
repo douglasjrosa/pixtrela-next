@@ -3,9 +3,7 @@
 import { revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
-import {
-  applyAutoStepTaskOrdering,
-} from "@/lib/business/apply-step-task-order";
+import { applyAutoStepTaskOrdering } from "@/lib/business/apply-step-task-order";
 import { isAutoStepTaskOrder } from "@/lib/schemas/step-task-order-by";
 import {
   buildStepIndexUpdates,
@@ -13,7 +11,6 @@ import {
 } from "@/lib/business/step-order";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
-import { isDrizzleBackend } from "@/lib/db/backend";
 import {
   createStep as createStepRepo,
   deleteStep as deleteStepRepo,
@@ -26,12 +23,6 @@ import {
   stepNameFormSchema,
   type StepNameFormInput,
 } from "@/lib/schemas/step";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
-import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
-
-interface StrapiList<T> {
-  data: T[];
-}
 
 async function assertCanManage(): Promise<void> {
   const session = await auth();
@@ -41,44 +32,18 @@ async function assertCanManage(): Promise<void> {
 }
 
 function invalidateSteps(): void {
-  if (isDrizzleBackend()) {
-    revalidateTag("drizzle:steps", "default");
-    revalidateTag("drizzle:tasks", "default");
-    return;
-  }
-  revalidateStrapiTags(STRAPI_TAGS.steps);
+  revalidateTag("drizzle:steps", "default");
+  revalidateTag("drizzle:tasks", "default");
 }
 
 async function fetchStepIndexes(): Promise<number[]> {
-  if (isDrizzleBackend()) {
-    const rows = await listStepsRepo();
-    return rows.map((step) => step.index);
-  }
-  const res = await strapiFetch<StrapiList<{ index: number }>>(
-    "/steps",
-    { strapiCache: { noStore: true } },
-    {
-      fields: ["index"],
-      pagination: { pageSize: 100 },
-    },
-  );
-  return res.data.map((step) => step.index);
+  const rows = await listStepsRepo();
+  return rows.map((step) => step.index);
 }
 
 async function fetchStepIds(): Promise<string[]> {
-  if (isDrizzleBackend()) {
-    const rows = await listStepsRepo();
-    return rows.map((step) => step.id);
-  }
-  const res = await strapiFetch<StrapiList<{ documentId: string }>>(
-    "/steps",
-    { strapiCache: { noStore: true } },
-    {
-      fields: ["documentId"],
-      pagination: { pageSize: 100 },
-    },
-  );
-  return res.data.map((step) => step.documentId);
+  const rows = await listStepsRepo();
+  return rows.map((step) => step.id);
 }
 
 export async function createStep(raw: StepNameFormInput): Promise<void> {
@@ -87,20 +52,10 @@ export async function createStep(raw: StepNameFormInput): Promise<void> {
   const indexes = await fetchStepIndexes();
   const index = getNextStepIndex(indexes.map((value) => ({ index: value })));
 
-  if (isDrizzleBackend()) {
-    const created = await createStepRepo({ name, index, taskOrderBy: orderBy });
-    if (orderBy !== "manual") {
-      await applyAutoStepTaskOrdering({ stepIds: [created.id] });
-    }
-    invalidateSteps();
-    return;
+  const created = await createStepRepo({ name, index, taskOrderBy: orderBy });
+  if (orderBy !== "manual") {
+    await applyAutoStepTaskOrdering({ stepIds: [created.id] });
   }
-
-  await strapiFetch("/steps", {
-    method: "POST",
-    strapiCache: { noStore: true },
-    body: JSON.stringify({ data: { name, index } }),
-  });
   invalidateSteps();
 }
 
@@ -111,25 +66,15 @@ export async function updateStep(
   await assertCanManage();
   const { name, orderBy } = stepNameFormSchema.parse(raw);
 
-  if (isDrizzleBackend()) {
-    const existing = await getStepById(documentId);
-    await updateStepFields(documentId, { name, taskOrderBy: orderBy });
-    if (
-      existing &&
-      existing.taskOrderBy !== orderBy &&
-      isAutoStepTaskOrder(orderBy)
-    ) {
-      await applyAutoStepTaskOrdering({ stepIds: [documentId] });
-    }
-    invalidateSteps();
-    return;
+  const existing = await getStepById(documentId);
+  await updateStepFields(documentId, { name, taskOrderBy: orderBy });
+  if (
+    existing &&
+    existing.taskOrderBy !== orderBy &&
+    isAutoStepTaskOrder(orderBy)
+  ) {
+    await applyAutoStepTaskOrdering({ stepIds: [documentId] });
   }
-
-  await strapiFetch(`/steps/${documentId}`, {
-    method: "PUT",
-    strapiCache: { noStore: true },
-    body: JSON.stringify({ data: { name } }),
-  });
   invalidateSteps();
 }
 
@@ -150,36 +95,14 @@ export async function reorderSteps(
   }
 
   const updates = buildStepIndexUpdates(orderedDocumentIds);
-  if (isDrizzleBackend()) {
-    for (const { documentId, index } of updates) {
-      await updateStepIndex(documentId, index);
-    }
-    invalidateSteps();
-    return;
-  }
-
   for (const { documentId, index } of updates) {
-    await strapiFetch(`/steps/${documentId}`, {
-      method: "PUT",
-      strapiCache: { noStore: true },
-      body: JSON.stringify({ data: { index } }),
-    });
+    await updateStepIndex(documentId, index);
   }
   invalidateSteps();
 }
 
 export async function deleteStep(documentId: string): Promise<void> {
   await assertCanManage();
-
-  if (isDrizzleBackend()) {
-    await deleteStepRepo(documentId);
-    invalidateSteps();
-    return;
-  }
-
-  await strapiFetch(`/steps/${documentId}`, {
-    method: "DELETE",
-    strapiCache: { noStore: true },
-  });
+  await deleteStepRepo(documentId);
   invalidateSteps();
 }

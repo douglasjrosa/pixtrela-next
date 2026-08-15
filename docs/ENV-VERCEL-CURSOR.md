@@ -18,8 +18,6 @@ Templates:
 
 | Variable | Production value |
 |----------|------------------|
-| `DATA_BACKEND` | `drizzle` |
-| `AUTH_STRAPI_FALLBACK` | `0` |
 | `DATABASE_URL` | `postgresql://USER:PASS@VPS_HOST:5432/pixtrela` (+ `sslmode=require` when TLS is on) |
 | `AUTH_SECRET` | Strong secret |
 | `AUTH_URL` | Canonical site URL |
@@ -34,8 +32,6 @@ Push to `master` → Vercel deploys the app. GitHub Action **Deploy prod DB** ru
 Cursor **My Secrets** (All repositories or this repo):
 
 ```env
-DATA_BACKEND=drizzle
-AUTH_STRAPI_FALLBACK=0
 AUTH_SECRET=...
 AUTH_TRUST_HOST=true
 AUTH_URL=http://localhost:3000

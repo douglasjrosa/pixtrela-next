@@ -1,34 +1,27 @@
 /**
- * Live migration tracker: Strapi custom routes / lifecycles → Drizzle.
- * Update Status as each domain clears the gate (no :1337 calls + e2e).
+ * Migration tracker: Strapi → Drizzle (complete).
+ * Runtime Strapi DAL removed; use `scripts/etl-from-strapi.ts` only for one-time cutover ETL.
  */
 
-| Strapi source | Next target | Tests | Status |
-|---------------|-------------|-------|--------|
-| `auth-identify/*` | `lib/repos/kiosk` + login actions | domain + e2e kiosk | done |
-| `kiosk/*` | `lib/repos/kiosk`, `lib/kiosk/*` | dual-path loaders | done |
-| `dashboard/*` | `lib/dashboard/*` Drizzle SQL | monthly ranking dual-path | done |
-| `profile/*` | profile actions + repos/users | dual-path | done |
-| `balances/me/current` | `lib/repos/balances` | integration + private-home | done |
-| `exchange` create | `lib/repos/exchanges.redeemAward` | integration | done |
-| `task` find/findOne | `lib/repos/tasks` + load-task-list | dual-path | done |
-| lifecycle `activity` | `recordActivity` + domain work-currency | domain + integration | done |
-| lifecycle `sub-task` / `task` | createTask template copy | integration | done |
-| awards / steps / settings | repos + settings pages | dual-path | done |
-| teams / templates | repos + app actions | dual-path | done |
-| media upload | `lib/media/*`, `/api/media` | dual-path | done |
-| ETL users | `scripts/etl-from-strapi.ts` | CLI | done |
+| Domain | Next target | Status |
+|--------|-------------|--------|
+| Auth / identify | Auth.js + `lib/repos/users`, `lib/repos/kiosk` | done |
+| Kiosk | `lib/repos/kiosk-subtasks`, `lib/kiosk/*` | done |
+| Dashboard | `lib/dashboard/*` | done |
+| Profile | profile actions + `lib/repos/users` | done |
+| Balances / exchange | `lib/repos/balances`, `lib/repos/exchanges` | done |
+| Tasks / board / sub-tasks | `lib/repos/tasks`, Server Actions | done |
+| Awards / steps / settings | `lib/repos/*`, settings loaders | done |
+| Teams / templates | `lib/repos/teams`, `lib/repos/templates` | done |
+| Sub-task presets | `lib/repos/sub-task-presets` | done |
+| Media | `lib/media/*`, `/api/media`, `/api/media-proxy` | done |
+| ETL | `scripts/etl-from-strapi.ts` | archival CLI |
 
-## Gates
+## Completion gate
 
-A domain is **done** when:
+All domains pass when:
 
 1. Pure rules live in `lib/domain` with Vitest.
-2. Persistence goes through `lib/repos` (transactions where Strapi used lifecycles).
-3. UI/Server Actions do not call `strapiFetch` for that domain.
-4. E2E for the path passes with `DATA_BACKEND=drizzle` and `AUTH_STRAPI_FALLBACK=0`.
-
-## Harness
-
-- `lib/strapi/migration-guard.ts` — `assertStrapiAllowed(domain)` throws when domain is marked migrated and Strapi is disabled.
-- Migrated domains listed in `MIGRATED_DOMAINS`.
+2. Persistence goes through `lib/repos`.
+3. No `strapiFetch` or `lib/strapi/*` imports in application code.
+4. `npm test` and `npm run build` succeed on `dev`.

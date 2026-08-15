@@ -1,32 +1,9 @@
 import { getTranslations } from "next-intl/server";
 
 import { ThemeSettingsManager } from "@/components/settings/theme-settings-manager";
-import { isDrizzleBackend } from "@/lib/db/backend";
+import { ensureRouteThemes } from "@/lib/repos/settings";
+import { loadRouteThemes } from "@/lib/themes/load-route-themes";
 import {
-  ensureRouteThemes,
-  listRouteThemes as listRouteThemesRepo,
-} from "@/lib/repos/settings";
-import { toBrowserMediaUrl } from "@/lib/strapi/browser-media-url";
-import { loadRouteThemes } from "@/lib/strapi/route-themes";
-import {
-  DEFAULT_BACKGROUND_COLOR_OPACITY,
-  DEFAULT_BACKGROUND_MOTION,
-  DEFAULT_BACKGROUND_POSITION,
-  DEFAULT_BACKGROUND_REPEAT,
-  DEFAULT_BACKGROUND_SIZE,
-  DEFAULT_FOREGROUND_COLOR,
-  DEFAULT_PAGE_MARGIN_DESKTOP,
-  DEFAULT_PAGE_MARGIN_MOBILE,
-  DEFAULT_PARALLAX_DIRECTION,
-  DEFAULT_PARALLAX_INTENSITY,
-  DEFAULT_SURFACE_COLOR,
-  DEFAULT_SURFACE_COLOR_OPACITY,
-  isRouteThemeKey,
-  normalizeForegroundColor,
-  normalizeOpacity,
-  normalizeParallaxIntensity,
-  normalizeSurfaceColor,
-  pageMarginFromStoredIndex,
   ROUTE_THEME_KEYS,
   type RouteThemeKey,
   type RouteThemeView,
@@ -38,67 +15,17 @@ import {
 } from "./actions";
 
 async function loadThemes(): Promise<RouteThemeView[]> {
-  if (isDrizzleBackend()) {
-    const t = await getTranslations("settings.themeRoutes");
-    const labels = Object.fromEntries(
-      ROUTE_THEME_KEYS.map((key) => [key, t(key)]),
-    ) as Record<RouteThemeKey, string>;
-    await ensureRouteThemes(labels);
+  const t = await getTranslations("settings.themeRoutes");
+  const labels = Object.fromEntries(
+    ROUTE_THEME_KEYS.map((key) => [key, t(key)]),
+  ) as Record<RouteThemeKey, string>;
+  await ensureRouteThemes(labels);
 
-    const rows = await listRouteThemesRepo();
-    const themes: RouteThemeView[] = [];
-    for (const row of rows) {
-      if (!isRouteThemeKey(row.routeKey)) continue;
-      themes.push({
-        documentId: row.id,
-        routeKey: row.routeKey,
-        label: labels[row.routeKey] ?? row.label,
-        backgroundColor: row.backgroundColor ?? null,
-        backgroundColorOpacity: normalizeOpacity(
-          row.backgroundColorOpacity ?? DEFAULT_BACKGROUND_COLOR_OPACITY,
-        ),
-        backgroundImageUrl: toBrowserMediaUrl(row.backgroundImageUrl),
-        backgroundSize:
-          (row.backgroundSize as RouteThemeView["backgroundSize"]) ||
-          DEFAULT_BACKGROUND_SIZE,
-        backgroundPosition:
-          (row.backgroundPosition as RouteThemeView["backgroundPosition"]) ||
-          DEFAULT_BACKGROUND_POSITION,
-        backgroundRepeat:
-          (row.backgroundRepeat as RouteThemeView["backgroundRepeat"]) ||
-          DEFAULT_BACKGROUND_REPEAT,
-        backgroundMotion:
-          (row.backgroundMotion as RouteThemeView["backgroundMotion"]) ||
-          DEFAULT_BACKGROUND_MOTION,
-        parallaxIntensity: normalizeParallaxIntensity(
-          row.parallaxIntensity ?? DEFAULT_PARALLAX_INTENSITY,
-        ),
-        parallaxDirection:
-          (row.parallaxDirection as RouteThemeView["parallaxDirection"]) ||
-          DEFAULT_PARALLAX_DIRECTION,
-        contentMarginMobile: pageMarginFromStoredIndex(
-          row.contentMarginMobile,
-          DEFAULT_PAGE_MARGIN_MOBILE,
-        ),
-        contentMarginDesktop: pageMarginFromStoredIndex(
-          row.contentMarginDesktop,
-          DEFAULT_PAGE_MARGIN_DESKTOP,
-        ),
-        foregroundColor: normalizeForegroundColor(
-          row.foregroundColor ?? DEFAULT_FOREGROUND_COLOR,
-        ),
-        surfaceColor: normalizeSurfaceColor(
-          row.surfaceColor ?? DEFAULT_SURFACE_COLOR,
-        ),
-        surfaceColorOpacity: normalizeOpacity(
-          row.surfaceColorOpacity ?? DEFAULT_SURFACE_COLOR_OPACITY,
-        ),
-      });
-    }
-    return themes;
-  }
-
-  return loadRouteThemes();
+  const themes = await loadRouteThemes();
+  return themes.map((theme) => ({
+    ...theme,
+    label: labels[theme.routeKey] ?? theme.label,
+  }));
 }
 
 export default async function SettingsThemesPage() {

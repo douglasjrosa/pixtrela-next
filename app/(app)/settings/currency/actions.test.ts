@@ -1,119 +1,125 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const strapiFetch = vi.fn();
-const revalidateStrapiTags = vi.fn();
-const loadCurrencyForSubtasks = vi.fn();
-const strapiUpload = vi.fn();
+const revalidateTag = vi.fn();
+const createCurrencyRepo = vi.fn();
+const getCurrencyForSubtasks = vi.fn();
+const upsertCurrencyForSubtasks = vi.fn();
+const getDb = vi.fn();
+const storeMedia = vi.fn();
 
 vi.mock("@/auth", () => ({
-  auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "jwt" })),
+  auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "" })),
 }));
 
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => false,
+vi.mock("next/cache", () => ({
+  revalidateTag: (...args: unknown[]) => revalidateTag(...args),
 }));
 
-vi.mock("@/lib/strapi", () => ({
-  STRAPI_TAGS: {
-    currencies: "strapi:currencies",
-    currencyForSubtasks: "strapi:currency-for-subtasks",
-  },
-  strapiFetch,
+vi.mock("@/lib/repos/awards", () => ({
+  createCurrency: (...args: unknown[]) => createCurrencyRepo(...args),
+  listCurrencies: vi.fn(),
 }));
 
-vi.mock("@/lib/strapi/revalidate", () => ({
-  revalidateStrapiTags,
+vi.mock("@/lib/repos/settings", () => ({
+  getCurrencyForSubtasks: (...args: unknown[]) => getCurrencyForSubtasks(...args),
+  upsertCurrencyForSubtasks: (...args: unknown[]) =>
+    upsertCurrencyForSubtasks(...args),
 }));
 
-vi.mock("@/lib/strapi/upload", () => ({
-  strapiUpload: (...args: unknown[]) => strapiUpload(...args),
+vi.mock("@/lib/db/client", () => ({
+  getDb: () => getDb(),
 }));
 
-vi.mock("@/lib/strapi/currency-for-subtasks", () => ({
-  CURRENCY_FOR_SUBTASKS_API_PATH: "/currency-for-subtasks",
-  loadCurrencyForSubtasks: (...args: unknown[]) =>
-    loadCurrencyForSubtasks(...args),
-  toCurrencyForSubtasksPayload: (values: { currencyDocumentId: string }) => ({
-    currency: values.currencyDocumentId || null,
-  }),
+vi.mock("@/lib/media/store-media", () => ({
+  storeMedia: (...args: unknown[]) => storeMedia(...args),
 }));
 
-describe("settings/currency/actions", () => {
+describe("settings/currency/actions drizzle CRUD", () => {
+  const where = vi.fn().mockResolvedValue(undefined);
+  const set = vi.fn().mockReturnValue({ where });
+  const update = vi.fn().mockReturnValue({ set });
+  const deleteFn = vi.fn().mockReturnValue({ where });
+
   beforeEach(() => {
-    strapiFetch.mockReset();
-    revalidateStrapiTags.mockReset();
-    loadCurrencyForSubtasks.mockReset();
-    strapiUpload.mockReset();
     vi.resetModules();
+    revalidateTag.mockReset();
+    createCurrencyRepo.mockReset();
+    getCurrencyForSubtasks.mockReset();
+    upsertCurrencyForSubtasks.mockReset();
+    storeMedia.mockReset();
+    getDb.mockReturnValue({ delete: deleteFn, update });
+    deleteFn.mockClear();
+    where.mockClear();
+    set.mockClear();
+    update.mockClear();
   });
 
-  it("createCurrency POSTs currency payload with iconMedia id", async () => {
-    strapiFetch.mockResolvedValue({ data: { documentId: "cur-1" } });
+  it("createCurrency uses repo", async () => {
+    createCurrencyRepo.mockResolvedValue({ id: "cur-1" });
     const { createCurrency } = await import("./actions");
-
     await createCurrency({
-      name: "star",
+      name: "Estrela",
       title: "Estrela",
       pluralTitle: "Estrelas",
-      iconMediaId: 42,
-      currencyPerSecond: 2,
+      currencyPerSecond: 1,
+      iconMediaId: null,
     });
-
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/currencies",
+    expect(createCurrencyRepo).toHaveBeenCalledWith(
       expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          data: {
-            name: "star",
-            title: "Estrela",
-            pluralTitle: "Estrelas",
-            currencyPerSecond: 2,
-            iconMedia: 42,
-          },
-        }),
+        name: "Estrela",
+        currencyPerSecond: 1,
       }),
     );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:currencies");
   });
 
-  it("uploadCurrencyIcon uploads the file and returns media id", async () => {
-    strapiUpload.mockResolvedValue(7);
-    const { uploadCurrencyIcon } = await import("./actions");
+  it("deleteCurrency clears payment setting then deletes", async () => {
+    getCurrencyForSubtasks.mockResolvedValue({ currencyId: "cur-star" });
+    const { deleteCurrency } = await import("./actions");
+    await deleteCurrency("cur-star");
+    expect(upsertCurrencyForSubtasks).toHaveBeenCalledWith(null);
+    expect(deleteFn).toHaveBeenCalled();
+  });
+
+  it("updateCurrency patches row including icon uuid", async () => {
+    const { updateCurrency } = await import("./actions");
+    await updateCurrency("cur-1", {
+      name: "Estrela",
+      title: "Estrela",
+      pluralTitle: "Estrelas",
+      currencyPerSecond: 2,
+      iconMediaId: "00000000-0000-4000-8000-000000000002",
+    });
+    expect(set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Estrela",
+        iconMediaId: "00000000-0000-4000-8000-000000000002",
+        currencyPerSecond: 2,
+      }),
+    );
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:currencies", "default");
+  });
+
+  it("uploadCurrencyIcon stores media and returns id", async () => {
+    storeMedia.mockResolvedValue({
+      storageKey: "k",
+      url: "/media/icon.png",
+      mimeType: "image/png",
+      byteSize: 8,
+    });
+    const returning = vi.fn().mockResolvedValue([{ id: "icon-uuid" }]);
+    const values = vi.fn().mockReturnValue({ returning });
+    const insert = vi.fn().mockReturnValue({ values });
+    getDb.mockReturnValue({ delete: deleteFn, update, insert });
+
     const formData = new FormData();
     formData.append(
       "file",
-      new File(["x"], "star.png", { type: "image/png" }),
+      new File(["x"], "icon.png", { type: "image/png" }),
     );
 
-    await expect(uploadCurrencyIcon(formData)).resolves.toBe(7);
-    expect(strapiUpload).toHaveBeenCalled();
-  });
-
-  it("deleteCurrency clears active currency when needed", async () => {
-    loadCurrencyForSubtasks.mockResolvedValue({
-      currencyDocumentId: "cur-star",
-      currencyName: "star",
-      currencyTitle: "Estrela",
-      currencyPluralTitle: "Estrelas",
-      currencyIconUrl: "https://cdn.example/star.png",
-      currencyPerSecond: 2,
-    });
-    strapiFetch.mockResolvedValue({});
-    const { deleteCurrency } = await import("./actions");
-
-    await deleteCurrency("cur-star");
-
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/currency-for-subtasks",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({ data: { currency: null } }),
-      }),
-    );
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/currencies/cur-star",
-      expect.objectContaining({ method: "DELETE" }),
-    );
+    const { uploadCurrencyIcon } = await import("./actions");
+    const id = await uploadCurrencyIcon(formData);
+    expect(id).toBe("icon-uuid");
+    expect(storeMedia).toHaveBeenCalled();
   });
 });
