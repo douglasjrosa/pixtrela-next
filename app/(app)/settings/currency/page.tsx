@@ -1,4 +1,3 @@
-import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import {
   CurrencyForm,
 } from "@/components/settings/currency-form";
@@ -6,13 +5,9 @@ import {
   CurrencyManager,
   type CurrencyRow,
 } from "@/components/settings/currency-manager";
-import { isDrizzleBackend } from "@/lib/db/backend";
 import { listCurrencies as listCurrenciesRepo } from "@/lib/repos/awards";
-import { getCurrencyForSubtasks } from "@/lib/repos/settings";
-import { loadCurrencyForSubtasks } from "@/lib/strapi/currency-for-subtasks";
-import { toBrowserMediaUrl } from "@/lib/strapi/browser-media-url";
-import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
+import { loadCurrencyForSubtasks } from "@/lib/settings/load-currency-for-subtasks";
+import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 
 import { updateCurrencyForSubtasks } from "../actions";
 import {
@@ -22,75 +17,20 @@ import {
   uploadCurrencyIcon,
 } from "./actions";
 
-interface StrapiList<T> {
-  data: T[];
-}
-
-interface CurrencyEntity {
-  documentId: string;
-  name: string;
-  title?: string | null;
-  pluralTitle?: string | null;
-  currencyPerSecond: number;
-  iconMedia?: { id?: number; url?: string | null } | null;
-}
-
 async function loadCurrencies(): Promise<CurrencyRow[]> {
-  if (isDrizzleBackend()) {
-    const rows = await listCurrenciesRepo();
-    return rows.map((currency) => ({
-      documentId: currency.id,
-      name: currency.name,
-      title: currency.title ?? "",
-      pluralTitle: currency.pluralTitle ?? "",
-      iconMediaId: currency.iconMediaId,
-      iconMediaUrl: toBrowserMediaUrl(currency.iconMediaUrl),
-      currencyPerSecond: Number(currency.currencyPerSecond ?? 0),
-    }));
-  }
-
-  try {
-    const res = await strapiFetch<StrapiList<CurrencyEntity>>(
-      "/currencies",
-      { strapiCache: { tags: [STRAPI_TAGS.currencies], revalidate: 60 } },
-      {
-        fields: [
-          "documentId",
-          "name",
-          "title",
-          "pluralTitle",
-          "currencyPerSecond",
-        ],
-        populate: {
-          iconMedia: {
-            fields: ["id", "url"],
-          },
-        },
-        sort: ["name:asc"],
-        pagination: { pageSize: 100 },
-      },
-    );
-
-    return res.data.map((currency) => ({
-      documentId: currency.documentId,
-      name: currency.name,
-      title: currency.title ?? "",
-      pluralTitle: currency.pluralTitle ?? "",
-      iconMediaId: currency.iconMedia?.id ?? null,
-      iconMediaUrl: resolveStrapiMediaUrl(currency.iconMedia?.url ?? null),
-      currencyPerSecond: Number(currency.currencyPerSecond ?? 0),
-    }));
-  } catch (error) {
-    rethrowIfNavigationError(error);
-    return [];
-  }
+  const rows = await listCurrenciesRepo();
+  return rows.map((currency) => ({
+    documentId: currency.id,
+    name: currency.name,
+    title: currency.title ?? "",
+    pluralTitle: currency.pluralTitle ?? "",
+    iconMediaId: currency.iconMediaId,
+    iconMediaUrl: toBrowserMediaUrl(currency.iconMediaUrl),
+    currencyPerSecond: Number(currency.currencyPerSecond ?? 0),
+  }));
 }
 
 async function loadActiveCurrencyDocumentId(): Promise<string> {
-  if (isDrizzleBackend()) {
-    const setting = await getCurrencyForSubtasks();
-    return setting?.currencyId ?? "";
-  }
   const active = await loadCurrencyForSubtasks();
   return active.currencyDocumentId;
 }

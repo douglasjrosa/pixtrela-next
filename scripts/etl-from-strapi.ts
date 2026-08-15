@@ -146,7 +146,7 @@ async function main(): Promise<void> {
     console.log(`Migrated/upserted users: ${usersMigrated}`);
      
     console.log(
-      "Next: copy strapi/public/uploads → next/storage/uploads, then set AUTH_STRAPI_FALLBACK=0.",
+      "Next: copy strapi/public/uploads → next/storage/uploads. See CUTOVER.md.",
     );
      
     console.log("See CUTOVER.md for remaining domain mappers.");

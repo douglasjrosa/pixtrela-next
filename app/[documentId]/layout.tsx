@@ -7,7 +7,7 @@ import { ColaboratorHeader } from "@/components/colaborator/colaborator-header";
 import { ColaboratorSurface } from "@/components/colaborator/colaborator-surface";
 import { RouteThemeFrame } from "@/components/themes/route-theme-frame";
 import type { Role } from "@/lib/auth/nav";
-import { loadRouteThemes } from "@/lib/strapi/route-themes";
+import { loadRouteThemes } from "@/lib/themes/load-route-themes";
 import { cn } from "@/lib/utils";
 import {
   routeThemeContentFrameClass,

@@ -17,7 +17,7 @@ describe("AwardCard", () => {
     description: "Pacote de arroz",
     cost: 100,
     currency: "star",
-    imageUrl: "/uploads/arroz.png",
+    imageUrl: "/api/media/arroz.png",
   };
 
   it("shows title, cost and image", () => {
@@ -33,7 +33,7 @@ describe("AwardCard", () => {
     expect(screen.getByText("100")).toBeInTheDocument();
     expect(screen.getByRole("img")).toHaveAttribute(
       "src",
-      "/api/strapi-media?path=%2Fuploads%2Farroz.png",
+      "/api/media/arroz.png",
     );
   });
 

@@ -177,7 +177,7 @@ export function resolveSubTaskRemainingSeconds(
 /**
  * Open session starts: latest action per (subTask, colaborator) is "started".
  */
-function resolveOpenActivitySessions(
+export function resolveOpenActivitySessions(
   activities: readonly ActivitySessionRef[],
 ): Map<string, { colaboratorDocumentId: string; startedAt: string }> {
   const sorted = [...activities].sort((left, right) =>

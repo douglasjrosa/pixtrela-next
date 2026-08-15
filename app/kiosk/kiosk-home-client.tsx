@@ -15,7 +15,7 @@ import { FACE_1N_NONE_MESSAGE_MS } from "@/lib/kiosk/face/face-match-constants";
 import { loadFaceModels } from "@/lib/kiosk/face/load-face-models";
 import { buildKioskColaboratorPath } from "@/lib/kiosk/kiosk-link";
 import { isNfcReadSupported, watchNfcSerialNumbers } from "@/lib/kiosk/nfc-read";
-import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
+import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 import { stashWelcomePayload } from "@/lib/welcome/welcome-session";
 
 import {
@@ -167,8 +167,8 @@ export function KioskHomeClient() {
       stashWelcomePayload({
         name: member.name,
         greetingGender: member.greetingGender,
-        avatarUrl: resolveStrapiMediaUrl(member.avatarUrl),
-        facePhotoUrl: resolveStrapiMediaUrl(member.facePhotoUrl),
+        avatarUrl: toBrowserMediaUrl(member.avatarUrl),
+        facePhotoUrl: toBrowserMediaUrl(member.facePhotoUrl),
       });
       router.replace(buildKioskColaboratorPath(member.documentId));
     },

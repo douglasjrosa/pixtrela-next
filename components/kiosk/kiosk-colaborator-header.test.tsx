@@ -9,7 +9,7 @@ describe("KioskColaboratorHeader", () => {
     renderWithIntl(
       <KioskColaboratorHeader
         name="Ana Silva"
-        avatarUrl="/uploads/ana.jpg"
+        avatarUrl="/api/media/ana.jpg"
       />,
     );
 
@@ -19,7 +19,7 @@ describe("KioskColaboratorHeader", () => {
     expect(screen.getByRole("heading", { name: "Ana Silva" })).toBeInTheDocument();
     expect(screen.getByRole("presentation")).toHaveAttribute(
       "src",
-      "/api/strapi-media?path=%2Fuploads%2Fana.jpg",
+      "/api/media/ana.jpg",
     );
   });
 

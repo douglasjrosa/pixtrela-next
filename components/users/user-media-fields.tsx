@@ -8,7 +8,7 @@ import { FaceOvalCapture } from "@/components/kiosk/face-oval-capture";
 import { Button } from "@/components/ui/button";
 import { extractFaceDescriptorFromFile } from "@/lib/kiosk/face/extract-face-descriptor";
 import { compressProfileImage } from "@/lib/media/compress-profile-image";
-import { toBrowserStrapiMediaUrl } from "@/lib/strapi/browser-media-url";
+import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 export type UserImageType = "avatar" | "facePhoto";
@@ -54,7 +54,7 @@ function UserImageField({
 }: ImageFieldProps) {
   const t = useTranslations("users");
   const isAvatar = imageType === "avatar";
-  const resolvedUrl = toBrowserStrapiMediaUrl(imageUrl ?? null);
+  const resolvedUrl = toBrowserMediaUrl(imageUrl ?? null);
 
   return (
     <section className="flex min-w-0 items-center gap-3 rounded-lg border p-3">

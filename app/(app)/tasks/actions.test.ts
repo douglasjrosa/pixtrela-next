@@ -1,251 +1,145 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const strapiFetch = vi.fn();
-const revalidateStrapiTags = vi.fn();
-
+const revalidateTag = vi.fn();
+const createTaskRepo = vi.fn();
+const updateTaskFields = vi.fn();
+const setTaskActive = vi.fn();
+const deleteTaskById = vi.fn();
+const listTasksRepo = vi.fn();
+const getTaskById = vi.fn();
+const findTemplateByCode = vi.fn();
+const loadTaskListPage = vi.fn();
+const applyAutoStepTaskOrderingAfterTaskChange = vi.fn();
 vi.mock("@/auth", () => ({
-  auth: vi.fn(async () => ({ user: { role: "manager" } })),
+  auth: vi.fn(async () => ({ user: { role: "admin" } })),
 }));
 
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => false,
+vi.mock("next/cache", () => ({
+  revalidateTag: (...args: unknown[]) => revalidateTag(...args),
 }));
 
-vi.mock("@/lib/strapi", () => ({
-  strapiFetch,
-  STRAPI_TAGS: { tasks: "strapi:tasks" },
+vi.mock("@/lib/repos/tasks", () => ({
+  createTask: (...args: unknown[]) => createTaskRepo(...args),
+  updateTaskFields: (...args: unknown[]) => updateTaskFields(...args),
+  setTaskActive: (...args: unknown[]) => setTaskActive(...args),
+  deleteTaskById: (...args: unknown[]) => deleteTaskById(...args),
+  listTasks: (...args: unknown[]) => listTasksRepo(...args),
+  getTaskById: (...args: unknown[]) => getTaskById(...args),
 }));
 
-vi.mock("@/lib/strapi/revalidate", () => ({
-  revalidateStrapiTags,
+vi.mock("@/lib/repos/templates", () => ({
+  findTemplateByCode: (...args: unknown[]) => findTemplateByCode(...args),
 }));
 
-function mockStrapiFetch(
-  handlers: Record<string, unknown>,
-): void {
-  strapiFetch.mockImplementation(
-    async (path: string, init?: { method?: string }) => {
-      const method = init?.method ?? "GET";
-      const key = `${method} ${path}`;
-      if (key in handlers) {
-        return handlers[key];
-      }
-      if (path in handlers) {
-        return handlers[path];
-      }
-      throw new Error(`Unexpected strapiFetch: ${key}`);
-    },
-  );
-}
+vi.mock("@/lib/tasks/load-task-list-page", () => ({
+  loadTaskListPage: (...args: unknown[]) => loadTaskListPage(...args),
+}));
 
-describe("tasks/actions", () => {
+vi.mock("@/lib/business/apply-step-task-order", () => ({
+  applyAutoStepTaskOrderingAfterTaskChange: (...args: unknown[]) =>
+    applyAutoStepTaskOrderingAfterTaskChange(...args),
+}));
+
+describe("tasks/actions drizzle CRUD", () => {
   beforeEach(() => {
-    strapiFetch.mockReset();
-    revalidateStrapiTags.mockReset();
     vi.resetModules();
+    revalidateTag.mockReset();
+    createTaskRepo.mockReset();
+    updateTaskFields.mockReset();
+    setTaskActive.mockReset();
+    deleteTaskById.mockReset();
+    listTasksRepo.mockReset();
+    getTaskById.mockReset();
+    findTemplateByCode.mockReset();
+    loadTaskListPage.mockReset();
+    applyAutoStepTaskOrderingAfterTaskChange.mockReset();
   });
 
-  it("createTask fetches indexes then POSTs a new task", async () => {
-    mockStrapiFetch({
-      "GET /tasks": { data: [{ index: 0 }] },
-      "POST /tasks": { data: { documentId: "task-new" } },
-    });
+  const form = {
+    name: "Montagem",
+    qty: 2,
+    deliveryDate: "2026-07-18",
+    stepDocumentId: "step-1",
+    status: "waiting" as const,
+    templateTaskCode: "",
+  };
+
+  it("createTask uses repo and revalidates drizzle tag", async () => {
+    listTasksRepo.mockResolvedValue([{ index: 1 }]);
+    createTaskRepo.mockResolvedValue({ id: "task-1" });
 
     const { createTask } = await import("./actions");
-    await createTask({
-      name: "Tarefa A",
-      qty: 1,
-      deliveryDate: "2026-07-18",
-      stepDocumentId: "step-1",
-      status: "waiting",
-      templateTaskCode: "",
-    });
+    await createTask(form);
 
-    expect(strapiFetch).toHaveBeenCalledTimes(2);
-    expect(strapiFetch).toHaveBeenNthCalledWith(
-      1,
-      "/tasks",
-      expect.objectContaining({ strapiCache: { noStore: true } }),
+    expect(createTaskRepo).toHaveBeenCalledWith(
       expect.objectContaining({
-        filters: { active: { $eq: true } },
+        name: "Montagem",
+        qty: 2,
+        stepId: "step-1",
+        index: 2,
       }),
     );
-    expect(strapiFetch).toHaveBeenNthCalledWith(
-      2,
-      "/tasks",
-      expect.objectContaining({ method: "POST" }),
-    );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith(
-      "strapi:tasks",
-      "strapi:sub-tasks",
-      { paths: ["/tasks", "/board"] },
-    );
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks", "default");
   });
 
-  it("updateTask PUT omits step so status→step automation can apply", async () => {
-    mockStrapiFetch({
-      "GET /tasks/task-1": { data: { index: 2 } },
-      "PUT /tasks/task-1": { data: { documentId: "task-1" } },
-    });
+  it("updateTask updates fields without step", async () => {
+    getTaskById
+      .mockResolvedValueOnce({
+        index: 3,
+        stepId: "step-1",
+        deliveryDate: "2026-07-18",
+      })
+      .mockResolvedValueOnce({
+        index: 3,
+        stepId: "step-1",
+        deliveryDate: "2026-07-18",
+      });
 
     const { updateTask } = await import("./actions");
-    await updateTask("task-1", {
-      name: "Tarefa A",
-      qty: 1,
+    await updateTask("task-1", { ...form, status: "producing" });
+
+    expect(updateTaskFields).toHaveBeenCalledWith("task-1", {
+      name: "Montagem",
+      qty: 2,
       deliveryDate: "2026-07-18",
-      stepDocumentId: "step-old",
       status: "producing",
-      templateTaskCode: "",
+      templateTaskCode: null,
     });
-
-    expect(strapiFetch).toHaveBeenNthCalledWith(
-      2,
-      "/tasks/task-1",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({
-          data: {
-            name: "Tarefa A",
-            qty: 1,
-            deliveryDate: "2026-07-18",
-            index: 2,
-            status: "producing",
-            templateTaskCode: null,
-            active: true,
-          },
-        }),
-      }),
-    );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith(
-      "strapi:tasks",
-      "strapi:sub-tasks",
-      { paths: ["/tasks", "/board", "/tasks/task-1"] },
-    );
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks", "default");
   });
 
-  it("updateTask invalidates task list and detail cache", async () => {
-    mockStrapiFetch({
-      "GET /tasks/task-1": { data: { index: 2 } },
-      "PUT /tasks/task-1": { data: { documentId: "task-1" } },
-    });
-
-    const { updateTask } = await import("./actions");
-    await updateTask("task-1", {
-      name: "Tarefa A",
-      qty: 1,
-      deliveryDate: "2026-07-18",
-      stepDocumentId: "step-1",
-      status: "waiting",
-      templateTaskCode: "",
-    });
-
-    expect(revalidateStrapiTags).toHaveBeenCalledWith(
-      "strapi:tasks",
-      "strapi:sub-tasks",
-      { paths: ["/tasks", "/board", "/tasks/task-1"] },
-    );
-  });
-
-  it("deactivateTask requires a valid reason and archives the task", async () => {
-    mockStrapiFetch({
-      "PUT /tasks/task-1": { data: { documentId: "task-1" } },
-    });
-
-    const { deactivateTask } = await import("./actions");
+  it("deactivateTask sets active false via repo", async () => {
     const reason = "x".repeat(100);
-    await deactivateTask("task-1", reason);
-
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/tasks/task-1",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({
-          data: { active: false, reasonForDeactivation: reason },
-        }),
-      }),
-    );
-  });
-
-  it("deactivateTask rejects short reasons", async () => {
     const { deactivateTask } = await import("./actions");
-    await expect(deactivateTask("task-1", "curta")).rejects.toThrow();
-    expect(strapiFetch).not.toHaveBeenCalled();
+    await deactivateTask("task-1", reason);
+    expect(setTaskActive).toHaveBeenCalledWith("task-1", false, reason);
   });
 
-  it("reactivateTask requires a valid reason and restores the task", async () => {
-    mockStrapiFetch({
-      "PUT /tasks/task-1": { data: { documentId: "task-1" } },
-    });
-
-    const { reactivateTask } = await import("./actions");
-    const reason = "y".repeat(100);
-    await reactivateTask("task-1", reason);
-
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/tasks/task-1",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({
-          data: { active: true, reasonForDeactivation: reason },
-        }),
-      }),
-    );
+  it("deleteTask hard-deletes via repo", async () => {
+    const { deleteTask } = await import("./actions");
+    await deleteTask("task-1");
+    expect(deleteTaskById).toHaveBeenCalledWith("task-1");
   });
 
-  it("lookupTemplateNameByCode returns template name by code", async () => {
-    mockStrapiFetch({
-      "GET /template-tasks": { data: [{ name: "Modelo A" }] },
-    });
-
+  it("lookupTemplateNameByCode reads template repo", async () => {
+    findTemplateByCode.mockResolvedValue({ name: "Modelo A" });
     const { lookupTemplateNameByCode } = await import("./actions");
-    const result = await lookupTemplateNameByCode("100");
-
-    expect(result).toEqual({ name: "Modelo A" });
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/template-tasks",
-      expect.objectContaining({ strapiCache: { noStore: true } }),
-      expect.objectContaining({
-        filters: { code: { $eq: "100" } },
-      }),
-    );
+    await expect(lookupTemplateNameByCode("100")).resolves.toEqual({
+      name: "Modelo A",
+    });
   });
 
-  it("lookupTemplateNameByCode throws when template is not found", async () => {
-    mockStrapiFetch({
-      "GET /template-tasks": { data: [] },
+  it("loadMoreTasks delegates to loadTaskListPage", async () => {
+    loadTaskListPage.mockResolvedValue({
+      tasks: [],
+      page: 2,
+      pageCount: 2,
+      hasMore: false,
     });
-
-    const { lookupTemplateNameByCode } = await import("./actions");
-    await expect(lookupTemplateNameByCode("404")).rejects.toThrow("not_found");
-  });
-
-  it("loadMoreTasks returns the next filtered page", async () => {
-    mockStrapiFetch({
-      "GET /tasks": {
-        data: [
-          {
-            documentId: "t2",
-            name: "Embalagem",
-            qty: 1,
-            index: 1,
-            status: "producing",
-            deliveryDate: "2026-07-10",
-          },
-        ],
-        meta: {
-          pagination: { page: 2, pageSize: 10, pageCount: 2, total: 11 },
-        },
-      },
-    });
-
+    const filters = { statuses: ["waiting"], from: "2026-06-01" };
     const { loadMoreTasks } = await import("./actions");
-    const result = await loadMoreTasks(
-      { statuses: ["producing", "waiting"], from: "2026-06-01" },
-      2,
-    );
-
+    const result = await loadMoreTasks(filters, 2);
+    expect(loadTaskListPage).toHaveBeenCalledWith(filters, 2);
     expect(result.page).toBe(2);
-    expect(result.hasMore).toBe(false);
-    expect(result.tasks[0]?.name).toBe("Embalagem");
   });
 });

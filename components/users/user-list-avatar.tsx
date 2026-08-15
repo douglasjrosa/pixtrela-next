@@ -1,6 +1,6 @@
 import { User } from "lucide-react";
 
-import { toBrowserStrapiMediaUrl } from "@/lib/strapi/browser-media-url";
+import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 
 export interface UserListAvatarProps {
   name: string;
@@ -9,7 +9,7 @@ export interface UserListAvatarProps {
 
 /** Circular avatar thumbnail for users list rows. */
 export function UserListAvatar({ name, avatarUrl }: UserListAvatarProps) {
-  const url = toBrowserStrapiMediaUrl(avatarUrl ?? null);
+  const url = toBrowserMediaUrl(avatarUrl ?? null);
 
   return (
     <span

@@ -13,8 +13,7 @@ sys-rbx-backend when `Bpedido` is set or relevant fields change.
 
 ## Data backend
 
-CRM webhooks write tasks via **Drizzle** (`DATA_BACKEND=drizzle`). No Strapi API
-token is required.
+CRM webhooks write tasks directly to Postgres via Drizzle repos.
 
 ## Webhook endpoint
 

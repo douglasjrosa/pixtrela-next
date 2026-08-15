@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 
 import { auth } from "@/auth";
-import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { BoardLiveProgress } from "@/components/board/board-live-progress";
 import type { KanbanStep, KanbanTask } from "@/components/kanban/types";
 import { APP_BOARD_SHELL_CLASS } from "@/components/layout/app-page-layout";
@@ -11,20 +10,14 @@ import { canMoveBoardTasks } from "@/lib/auth/permissions";
 import { DEFAULT_ASSIGN_WARN_MAX } from "@/lib/business/assign-warn-max";
 import { loadDrizzleBoardData } from "@/lib/board/load-board-data";
 import { loadBoardProgressByTaskId } from "@/lib/board/load-board-progress";
-import {
-  shouldShowKanbanTaskProgress,
-} from "@/lib/business/task-progress";
-import { ACTIVE_TEAM_FILTER } from "@/lib/business/team-active";
-import { isDrizzleBackend } from "@/lib/db/backend";
-import { getCurrencyForSubtasks } from "@/lib/repos/settings";
+import { shouldShowKanbanTaskProgress } from "@/lib/business/task-progress";
 import { listTeamsWithMembers } from "@/lib/repos/teams";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import {
   loadCurrencyForSubtasks,
   toSubtaskPaymentCurrency,
   type SubtaskPaymentCurrency,
-} from "@/lib/strapi/currency-for-subtasks";
-import { loadTaskAutomationSetting } from "@/lib/strapi/task-automation-setting";
+} from "@/lib/settings/load-currency-for-subtasks";
+import { loadTaskAutomationSetting } from "@/lib/settings/load-task-automation";
 
 import {
   applyBoardTaskOrder,
@@ -34,159 +27,22 @@ import {
   updateBoardSubtaskAssignees,
 } from "./actions";
 
-interface StrapiList<T> {
-  data: T[];
-}
-
-interface StepEntity {
-  id: number;
-  name: string;
-}
-
-interface TaskEntity {
-  id: number;
-  documentId: string;
-  name: string;
-  qty: number;
-  status: KanbanTask["status"];
-  index: number;
-  deliveryDate?: string | null;
-  endedAt?: string | null;
-  totalExpectedTime?: number;
-  totalTimeSpent?: number;
-  step?: { id: number } | null;
-}
-
-interface TeamEntity {
-  documentId: string;
-  name: string;
-  colaborators?: { documentId: string; name?: string }[] | null;
-}
-
-const BOARD_REVALIDATE_SEC = 30;
-
-function mapTaskEntity(task: TaskEntity): KanbanTask {
-  return {
-    id: task.id,
-    documentId: task.documentId,
-    name: task.name,
-    qty: task.qty,
-    status: task.status,
-    stepId: task.step?.id ?? null,
-    index: task.index,
-    deliveryDate: task.deliveryDate ?? null,
-    endedAt: task.endedAt ?? null,
-    totalExpectedTime: task.totalExpectedTime ?? 0,
-    totalTimeSpent: task.totalTimeSpent ?? 0,
-  };
-}
-
 async function loadBoard(): Promise<{ steps: KanbanStep[]; tasks: KanbanTask[] }> {
-  if (isDrizzleBackend()) {
-    const { steps, tasks } = await loadDrizzleBoardData();
-    return { steps, tasks };
-  }
-  try {
-    const [stepsRes, tasksRes] = await Promise.all([
-      strapiFetch<StrapiList<StepEntity>>(
-        "/steps",
-        { strapiCache: { tags: [STRAPI_TAGS.steps], revalidate: BOARD_REVALIDATE_SEC } },
-        { fields: ["name"], sort: "index:asc" },
-      ),
-      strapiFetch<StrapiList<TaskEntity>>(
-        "/tasks",
-        { strapiCache: { tags: [STRAPI_TAGS.tasks], revalidate: BOARD_REVALIDATE_SEC } },
-        {
-          fields: [
-            "documentId",
-            "name",
-            "qty",
-            "status",
-            "index",
-            "deliveryDate",
-            "endedAt",
-            "totalExpectedTime",
-            "totalTimeSpent",
-          ],
-          filters: { active: { $eq: true } },
-          populate: { step: { fields: ["id"] } },
-          sort: "index:asc",
-        },
-      ),
-    ]);
-    return {
-      steps: stepsRes.data.map((step) => ({
-        id: step.id,
-        name: step.name,
-        taskOrderBy: "manual" as const,
-      })),
-      tasks: tasksRes.data.map(mapTaskEntity),
-    };
-  } catch (error) {
-    rethrowIfNavigationError(error);
-    return { steps: [], tasks: [] };
-  }
+  return loadDrizzleBoardData();
 }
 
 async function loadTeamsForAssignment(): Promise<TeamAssignmentOption[]> {
-  if (isDrizzleBackend()) {
-    const rows = await listTeamsWithMembers();
-    return rows
-      .filter((team) => team.active)
-      .map((team) => ({
-        documentId: team.id,
-        name: team.name,
-        members: team.colaborators,
-      }));
-  }
-  try {
-    const res = await strapiFetch<StrapiList<TeamEntity>>(
-      "/teams",
-      { strapiCache: { tags: [STRAPI_TAGS.teams], revalidate: 60 } },
-      {
-        fields: ["documentId", "name"],
-        filters: ACTIVE_TEAM_FILTER,
-        populate: { colaborators: { fields: ["documentId", "name"] } },
-        sort: "name:asc",
-      },
-    );
-    return res.data.map((team) => ({
-      documentId: team.documentId,
+  const rows = await listTeamsWithMembers();
+  return rows
+    .filter((team) => team.active)
+    .map((team) => ({
+      documentId: team.id,
       name: team.name,
-      members:
-        team.colaborators?.map((colaborator) => ({
-          documentId: colaborator.documentId,
-          name: colaborator.name ?? "",
-        })) ?? [],
+      members: team.colaborators,
     }));
-  } catch (error) {
-    rethrowIfNavigationError(error);
-    return [];
-  }
 }
 
 async function loadBoardPaymentCurrency(): Promise<SubtaskPaymentCurrency> {
-  if (isDrizzleBackend()) {
-    const row = await getCurrencyForSubtasks();
-    if (!row) {
-      return toSubtaskPaymentCurrency({
-        currencyDocumentId: "",
-        currencyName: "",
-        currencyTitle: "",
-        currencyPluralTitle: "",
-        currencyIconUrl: null,
-        currencyPerSecond: 0,
-      });
-    }
-    return toSubtaskPaymentCurrency({
-      currencyDocumentId: row.currencyId,
-      currencyName: row.currencyName,
-      currencyTitle: row.currencyTitle ?? "",
-      currencyPluralTitle: row.currencyPluralTitle ?? "",
-      currencyIconUrl: null,
-      currencyPerSecond: row.currencyPerSecond,
-    });
-  }
   const setting = await loadCurrencyForSubtasks();
   return toSubtaskPaymentCurrency(setting);
 }

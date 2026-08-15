@@ -1,7 +1,13 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
+
 import { auth } from "@/auth";
 import { getRemainingSubTaskQty } from "@/lib/business/subtask-queue";
+import {
+  startSubTask as startSubTaskRepo,
+  stopSubTask as stopSubTaskRepo,
+} from "@/lib/repos/kiosk-subtasks";
 import { activityFormSchema } from "@/lib/schemas/activity";
 import {
   parseKioskExitInput,
@@ -9,15 +15,12 @@ import {
   type KioskExitInput,
 } from "@/lib/schemas/kiosk-exit";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
-import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
 
 function invalidateActivityData(): void {
-  revalidateStrapiTags(
-    STRAPI_TAGS.activities,
-    STRAPI_TAGS.subTasks,
-    STRAPI_TAGS.balance,
-  );
+  revalidateTag("drizzle:activities", "default");
+  revalidateTag("drizzle:subTasks", "default");
+  revalidateTag("drizzle:balances", "default");
+  revalidateTag("drizzle:tasks", "default");
 }
 
 async function assertKioskSession(): Promise<void> {
@@ -38,11 +41,7 @@ export async function startSubTask(
     action: "started",
   });
 
-  await strapiFetch(
-    `/kiosk/colaborators/${colaboratorId}/sub-tasks/${subTaskDocumentId}/start`,
-    { method: "POST", strapiCache: { noStore: true } },
-  );
-
+  await startSubTaskRepo(colaboratorId, subTaskDocumentId);
   invalidateActivityData();
 }
 
@@ -70,20 +69,11 @@ export async function exitSubTask(
     ...stopPayload,
   });
 
-  const result = await strapiFetch<{
-    ok?: boolean;
-    remainingWorkerNames?: string[];
-  }>(
-    `/kiosk/colaborators/${colaboratorId}/sub-tasks/${subTaskDocumentId}/stop`,
-    {
-      method: "POST",
-      strapiCache: { noStore: true },
-      body: JSON.stringify({ data: stopPayload }),
-    },
+  const result = await stopSubTaskRepo(
+    colaboratorId,
+    subTaskDocumentId,
+    stopPayload,
   );
-
   invalidateActivityData();
-  return {
-    remainingWorkerNames: result?.remainingWorkerNames ?? [],
-  };
+  return { remainingWorkerNames: result.remainingWorkerNames };
 }

@@ -9,7 +9,7 @@ import {
   type PollBoardProgressFn,
 } from "@/hooks/use-board-progress-poll";
 import { useBoardRevisionRefresh } from "@/hooks/use-board-revision-refresh";
-import type { SubtaskPaymentCurrency } from "@/lib/strapi/currency-for-subtasks";
+import type { SubtaskPaymentCurrency } from "@/lib/settings/currency-for-subtasks-types";
 
 /** Data-only keys from the RSC page — must stay JSON-serializable (no render props). */
 export const BOARD_LIVE_PROGRESS_DATA_PROP_KEYS = [

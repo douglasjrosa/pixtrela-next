@@ -1,17 +1,11 @@
 import { and, asc, eq } from "drizzle-orm";
 
 import { balances, currencies, users } from "@/drizzle/schema";
-import { isDrizzleBackend } from "@/lib/db/backend";
 import { getDb } from "@/lib/db/client";
 import { firstDayOfMonth } from "@/lib/domain/balance";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 
 import type { MonthlyRankingData } from "./types";
-
-interface MonthlyRankingResponse {
-  data: MonthlyRankingData | null;
-}
 
 const EMPTY_RANKING: MonthlyRankingData = {
   month: "",
@@ -20,7 +14,6 @@ const EMPTY_RANKING: MonthlyRankingData = {
 
 /**
  * Simple monthly ranking from balances + currencies (all active colaborators).
- * Leader/team scoping from the legacy Strapi dashboard is not applied yet.
  */
 async function loadDrizzleMonthlyRanking(
   now: Date = new Date(),
@@ -90,7 +83,6 @@ async function loadDrizzleMonthlyRanking(
         }));
 
       return {
-        // UI keys only; Strapi used numeric ids — keep a stable ordinal here.
         id: index + 1,
         name: currency.name,
         title: currency.title ?? currency.name,
@@ -102,26 +94,8 @@ async function loadDrizzleMonthlyRanking(
 }
 
 export async function loadMonthlyRanking(): Promise<MonthlyRankingData> {
-  if (isDrizzleBackend()) {
-    try {
-      return await loadDrizzleMonthlyRanking();
-    } catch (error) {
-      rethrowIfNavigationError(error);
-      return EMPTY_RANKING;
-    }
-  }
-
   try {
-    const response = await strapiFetch<MonthlyRankingResponse>(
-      "/dashboard/monthly-ranking",
-      {
-        strapiCache: {
-          tags: [STRAPI_TAGS.dashboardRanking],
-          revalidate: 60,
-        },
-      },
-    );
-    return response.data ?? EMPTY_RANKING;
+    return await loadDrizzleMonthlyRanking();
   } catch (error) {
     rethrowIfNavigationError(error);
     return EMPTY_RANKING;

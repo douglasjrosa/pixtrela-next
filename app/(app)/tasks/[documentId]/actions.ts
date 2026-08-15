@@ -8,11 +8,11 @@ import { getNextSubTaskIndex, buildSubTaskIndexUpdates } from "@/lib/business/su
 import type { Role } from "@/lib/auth/nav";
 import { canManageTasks } from "@/lib/auth/permissions";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
-import { isDrizzleBackend } from "@/lib/db/backend";
 import {
   createSubTaskForTask,
   deleteSubTaskById,
   getSubTaskById,
+  listSubTaskActivitySessions,
   listSubTaskIdsForTask,
   listSubTasksWithRelationsForTask,
   updateSubTaskFields,
@@ -22,53 +22,7 @@ import {
   subTaskFormSchema,
   type SubTaskFormInput,
 } from "@/lib/schemas/sub-task";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
-import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
-import { loadSubTaskSessions } from "@/lib/strapi/subtask-sessions";
 import type { ActivitySession } from "@/lib/business/task-progress";
-
-interface StrapiList<T> {
-  data: T[];
-}
-
-async function assertCanManage(): Promise<void> {
-  const session = await auth();
-  if (!canManageTasks(session?.user?.role as Role | undefined)) {
-    throw new Error("forbidden");
-  }
-}
-
-function toStrapiPayload(
-  input: SubTaskFormInput,
-  taskDocumentId: string,
-  index: number,
-) {
-  return {
-    name: input.name,
-    qty: input.qty,
-    index,
-    expectedTime: input.expectedTime,
-    sharingType: input.sharingType,
-    maxSameTimeWorkers: input.maxSameTimeWorkers,
-    status: input.status,
-    activationStatus: input.activationStatus ?? "locked",
-    reasonForDisabling:
-      input.activationStatus === "disabled"
-        ? input.reasonForDisabling?.trim()
-        : null,
-    dependencies: input.dependencyIds ?? [],
-    task: taskDocumentId,
-    assignedTo: input.assignedToIds ?? [],
-  };
-}
-
-function invalidateSubTasks(): void {
-  if (isDrizzleBackend()) {
-    revalidateTag("drizzle:tasks", "default");
-    return;
-  }
-  revalidateStrapiTags(STRAPI_TAGS.subTasks, STRAPI_TAGS.tasks);
-}
 
 interface SubTaskEntity {
   documentId: string;
@@ -83,6 +37,17 @@ interface SubTaskEntity {
   reasonForDisabling?: string | null;
   dependencies?: unknown;
   assignedTo?: { documentId: string }[] | null;
+}
+
+async function assertCanManage(): Promise<void> {
+  const session = await auth();
+  if (!canManageTasks(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+}
+
+function invalidateSubTasks(): void {
+  revalidateTag("drizzle:tasks", "default");
 }
 
 function mapDrizzleSubTaskToEntity(
@@ -107,64 +72,18 @@ function mapDrizzleSubTaskToEntity(
 async function fetchSubTasksForTask(
   taskDocumentId: string,
 ): Promise<SubTaskEntity[]> {
-  if (isDrizzleBackend()) {
-    const rows = await listSubTasksWithRelationsForTask(taskDocumentId);
-    return rows.map(mapDrizzleSubTaskToEntity);
-  }
-  const res = await strapiFetch<StrapiList<SubTaskEntity>>(
-    "/sub-tasks",
-    { strapiCache: { noStore: true } },
-    {
-      fields: [
-        "documentId",
-        "name",
-        "qty",
-        "index",
-        "expectedTime",
-        "sharingType",
-        "maxSameTimeWorkers",
-        "status",
-        "activationStatus",
-        "reasonForDisabling",
-        "dependencies",
-      ],
-      filters: { task: { documentId: { $eq: taskDocumentId } } },
-      populate: { assignedTo: { fields: ["documentId"] } },
-      sort: "index:asc",
-      pagination: { pageSize: 100 },
-    },
-  );
-  return res.data;
+  const rows = await listSubTasksWithRelationsForTask(taskDocumentId);
+  return rows.map(mapDrizzleSubTaskToEntity);
 }
 
 async function fetchSubTaskIndex(documentId: string): Promise<number> {
-  if (isDrizzleBackend()) {
-    const subtask = await getSubTaskById(documentId);
-    if (!subtask) throw new Error("notFound");
-    return subtask.index;
-  }
-  const res = await strapiFetch<{ data: { index: number } }>(
-    `/sub-tasks/${documentId}`,
-    { strapiCache: { noStore: true } },
-    { fields: ["index"] },
-  );
-  return res.data.index;
+  const subtask = await getSubTaskById(documentId);
+  if (!subtask) throw new Error("notFound");
+  return subtask.index;
 }
 
 async function fetchSubTaskIds(taskDocumentId: string): Promise<string[]> {
-  if (isDrizzleBackend()) {
-    return listSubTaskIdsForTask(taskDocumentId);
-  }
-  const res = await strapiFetch<StrapiList<{ documentId: string }>>(
-    "/sub-tasks",
-    { strapiCache: { noStore: true } },
-    {
-      fields: ["documentId"],
-      filters: { task: { documentId: { $eq: taskDocumentId } } },
-      pagination: { pageSize: 100 },
-    },
-  );
-  return res.data.map((subtask) => subtask.documentId);
+  return listSubTaskIdsForTask(taskDocumentId);
 }
 
 export async function createSubTask(
@@ -184,44 +103,17 @@ export async function createSubTask(
   const indexes = subtasks.map((subtask) => subtask.index);
   const nextIndex = getNextSubTaskIndex(indexes.map((index) => ({ index })));
 
-  if (isDrizzleBackend()) {
-    const created = await createSubTaskForTask(taskDocumentId, data, nextIndex);
-    const insertAt = options?.insertAtIndex;
-    if (insertAt !== undefined) {
-      const orderedDocumentIds = [
-        ...subtasks.slice(0, insertAt).map((subtask) => subtask.documentId),
-        created.id,
-        ...subtasks.slice(insertAt).map((subtask) => subtask.documentId),
-      ];
-      await reorderSubTasks(taskDocumentId, orderedDocumentIds);
-      return;
-    }
-    invalidateSubTasks();
-    return;
-  }
-
-  const created = await strapiFetch<{ data: { documentId: string } }>(
-    "/sub-tasks",
-    {
-      method: "POST",
-      strapiCache: { noStore: true },
-      body: JSON.stringify({
-        data: toStrapiPayload(data, taskDocumentId, nextIndex),
-      }),
-    },
-  );
-
+  const created = await createSubTaskForTask(taskDocumentId, data, nextIndex);
   const insertAt = options?.insertAtIndex;
   if (insertAt !== undefined) {
     const orderedDocumentIds = [
       ...subtasks.slice(0, insertAt).map((subtask) => subtask.documentId),
-      created.data.documentId,
+      created.id,
       ...subtasks.slice(insertAt).map((subtask) => subtask.documentId),
     ];
     await reorderSubTasks(taskDocumentId, orderedDocumentIds);
     return;
   }
-
   invalidateSubTasks();
 }
 
@@ -233,18 +125,7 @@ export async function updateSubTask(
   await assertCanManage();
   const data = subTaskFormSchema.parse(raw);
   const currentIndex = await fetchSubTaskIndex(documentId);
-  if (isDrizzleBackend()) {
-    await updateSubTaskFields(documentId, taskDocumentId, data, currentIndex);
-    invalidateSubTasks();
-    return;
-  }
-  await strapiFetch(`/sub-tasks/${documentId}`, {
-    method: "PUT",
-    strapiCache: { noStore: true },
-    body: JSON.stringify({
-      data: toStrapiPayload(data, taskDocumentId, currentIndex),
-    }),
-  });
+  await updateSubTaskFields(documentId, taskDocumentId, data, currentIndex);
   invalidateSubTasks();
 }
 
@@ -266,35 +147,15 @@ export async function reorderSubTasks(
   }
 
   const updates = buildSubTaskIndexUpdates(orderedDocumentIds);
-  if (isDrizzleBackend()) {
-    for (const { documentId, index } of updates) {
-      await updateSubTaskIndex(documentId, index, taskDocumentId);
-    }
-    invalidateSubTasks();
-    return;
-  }
-
   for (const { documentId, index } of updates) {
-    await strapiFetch(`/sub-tasks/${documentId}`, {
-      method: "PUT",
-      strapiCache: { noStore: true },
-      body: JSON.stringify({ data: { index, task: taskDocumentId } }),
-    });
+    await updateSubTaskIndex(documentId, index, taskDocumentId);
   }
   invalidateSubTasks();
 }
 
 export async function deleteSubTask(documentId: string): Promise<void> {
   await assertCanManage();
-  if (isDrizzleBackend()) {
-    await deleteSubTaskById(documentId);
-    invalidateSubTasks();
-    return;
-  }
-  await strapiFetch(`/sub-tasks/${documentId}`, {
-    method: "DELETE",
-    strapiCache: { noStore: true },
-  });
+  await deleteSubTaskById(documentId);
   invalidateSubTasks();
 }
 
@@ -302,5 +163,5 @@ export async function loadSubTaskSessionsAction(
   subTaskDocumentId: string,
 ): Promise<ActivitySession[]> {
   await assertCanManage();
-  return loadSubTaskSessions(subTaskDocumentId);
+  return listSubTaskActivitySessions(subTaskDocumentId);
 }

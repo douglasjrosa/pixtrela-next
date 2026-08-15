@@ -1,17 +1,10 @@
 import type { KioskStaffColaboratorRow } from "@/components/kiosk/kiosk-staff-users-panel";
-import { isDrizzleBackend } from "@/lib/db/backend";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import {
   findUserFacePhotoUrl,
   listUsersByRole,
 } from "@/lib/repos/users";
-import { toBrowserMediaUrl } from "@/lib/strapi/browser-media-url";
-import { resolveStrapiMediaUrl } from "@/lib/strapi/media-url";
-import { strapiFetch } from "@/lib/strapi";
-
-interface StrapiList<T> {
-  data: T[];
-}
+import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 
 async function loadDrizzleStaffColaborators(): Promise<
   KioskStaffColaboratorRow[]
@@ -32,26 +25,10 @@ async function loadDrizzleStaffColaborators(): Promise<
 }
 
 export async function loadKioskStaffColaborators(
-  staffUserId: string,
+  _staffUserId: string,
 ): Promise<KioskStaffColaboratorRow[]> {
-  if (isDrizzleBackend()) {
-    try {
-      return await loadDrizzleStaffColaborators();
-    } catch (error) {
-      rethrowIfNavigationError(error);
-      return [];
-    }
-  }
-
   try {
-    const res = await strapiFetch<StrapiList<KioskStaffColaboratorRow>>(
-      `/kiosk/staff/users/${staffUserId}/colaborators`,
-      { strapiCache: { noStore: true } },
-    );
-    return res.data.map((colaborator) => ({
-      ...colaborator,
-      facePhotoUrl: resolveStrapiMediaUrl(colaborator.facePhotoUrl ?? null),
-    }));
+    return await loadDrizzleStaffColaborators();
   } catch (error) {
     rethrowIfNavigationError(error);
     return [];

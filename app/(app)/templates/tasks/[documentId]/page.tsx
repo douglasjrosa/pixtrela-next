@@ -8,24 +8,11 @@ import { TemplateEditor } from "@/components/templates/template-editor";
 import { mapTemplateComponentsToRows } from "@/lib/business/template-subtask-map";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTemplates } from "@/lib/auth/permissions";
-import { isDrizzleBackend } from "@/lib/db/backend";
 import {
   findTemplateById,
   listTemplateSubTasks,
 } from "@/lib/repos/templates";
 import type { TemplateSubTaskComponentInput } from "@/lib/schemas/template-task";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
-
-interface StrapiOne<T> {
-  data: T;
-}
-
-interface TemplateEntity {
-  documentId: string;
-  name: string;
-  code: string;
-  subTask?: TemplateSubTaskComponentInput[] | null;
-}
 
 interface PageProps {
   params: Promise<{ documentId: string }>;
@@ -33,8 +20,13 @@ interface PageProps {
 
 async function loadTemplate(
   documentId: string,
-): Promise<TemplateEntity | null> {
-  if (isDrizzleBackend()) {
+): Promise<{
+  documentId: string;
+  name: string;
+  code: string;
+  subTask: TemplateSubTaskComponentInput[] | null;
+} | null> {
+  try {
     const template = await findTemplateById(documentId);
     if (!template || !template.active) return null;
     const subTasks = await listTemplateSubTasks(documentId);
@@ -53,18 +45,6 @@ async function loadTemplate(
           row.dependencyIndexes.length > 0 ? row.dependencyIndexes : null,
       })),
     };
-  }
-
-  try {
-    const res = await strapiFetch<StrapiOne<TemplateEntity>>(
-      `/template-tasks/${documentId}`,
-      { strapiCache: { tags: [STRAPI_TAGS.templateTasks], revalidate: 30 } },
-      {
-        fields: ["documentId", "name", "code"],
-        populate: { subTask: true },
-      },
-    );
-    return res.data;
   } catch (error) {
     rethrowIfNavigationError(error);
     return null;

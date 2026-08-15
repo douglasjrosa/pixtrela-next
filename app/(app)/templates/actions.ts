@@ -7,7 +7,6 @@ import { buildTemplateFromBox } from "@/lib/business/template-from-box";
 import { fetchBoxTemplateData } from "@/lib/legacy/rbx-client";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTemplates } from "@/lib/auth/permissions";
-import { isDrizzleBackend } from "@/lib/db/backend";
 import {
   createTemplateTask as createTemplateTaskRepo,
   deleteTemplateTask as deleteTemplateTaskRepo,
@@ -19,9 +18,6 @@ import {
   type TemplateSubTaskComponentInput,
   type TemplateTaskFormInput,
 } from "@/lib/schemas/template-task";
-import { strapiFetch } from "@/lib/strapi";
-import { LIST_CACHE_CONTRACT } from "@/lib/strapi/list-cache-contract";
-import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
 import {
   loadTemplateListPage,
   type TemplateListPageResult,
@@ -53,32 +49,8 @@ function toRepoSubTasks(subTasks: TemplateSubTaskComponentInput[]) {
   }));
 }
 
-function toStrapiPayload(input: TemplateTaskFormInput) {
-  return {
-    name: input.name,
-    code: input.code,
-    subTask: (input.subTask ?? []).map((row, index) => ({
-      name: row.name,
-      qty: row.qty,
-      sharingType: row.sharingType,
-      maxSameTimeWorkers: row.maxSameTimeWorkers,
-      index,
-      expectedTime: row.expectedTime,
-      dependencies: row.dependencies ?? null,
-    })),
-  };
-}
-
-function invalidateTemplates(templateDocumentId?: string): void {
-  if (isDrizzleBackend()) {
-    revalidateTag("drizzle:templates", "default");
-    return;
-  }
-  const { tags, paths } = LIST_CACHE_CONTRACT.templateTasks;
-  const detailPaths = templateDocumentId
-    ? [`/templates/tasks/${templateDocumentId}`]
-    : [];
-  revalidateStrapiTags(...tags, { paths: [...paths, ...detailPaths] });
+function invalidateTemplates(): void {
+  revalidateTag("drizzle:templates", "default");
 }
 
 export async function loadMoreTemplates(
@@ -98,28 +70,13 @@ export async function createTemplate(
     .pick({ name: true, code: true })
     .parse(raw);
 
-  if (isDrizzleBackend()) {
-    const created = await createTemplateTaskRepo({
-      name: data.name,
-      code: data.code,
-      subTasks: [],
-    });
-    invalidateTemplates();
-    return created.id;
-  }
-
-  const res = await strapiFetch<{ data: { documentId: string } }>(
-    "/template-tasks",
-    {
-      method: "POST",
-      strapiCache: { noStore: true },
-      body: JSON.stringify({
-        data: { ...data, subTask: [] },
-      }),
-    },
-  );
+  const created = await createTemplateTaskRepo({
+    name: data.name,
+    code: data.code,
+    subTasks: [],
+  });
   invalidateTemplates();
-  return res.data.documentId;
+  return created.id;
 }
 
 export async function updateTemplate(
@@ -129,28 +86,15 @@ export async function updateTemplate(
   await assertCanManage();
   const data = templateTaskFormSchema.parse(raw);
 
-  if (isDrizzleBackend()) {
-    await updateTemplateTaskRepo({
-      id: documentId,
-      name: data.name,
-      code: data.code,
-      subTasks: toRepoSubTasks(data.subTask ?? []),
-    });
-    invalidateTemplates(documentId);
-    return;
-  }
-
-  await strapiFetch(`/template-tasks/${documentId}`, {
-    method: "PUT",
-    strapiCache: { noStore: true },
-    body: JSON.stringify({ data: toStrapiPayload(data) }),
+  await updateTemplateTaskRepo({
+    id: documentId,
+    name: data.name,
+    code: data.code,
+    subTasks: toRepoSubTasks(data.subTask ?? []),
   });
-  invalidateTemplates(documentId);
+  invalidateTemplates();
 }
 
-/**
- * Loads a legacy box template and persists it on the given template record.
- */
 export async function loadTemplateFromLegacy(
   documentId: string,
   code: string,
@@ -167,16 +111,6 @@ export async function loadTemplateFromLegacy(
 
 export async function deleteTemplate(documentId: string): Promise<void> {
   await assertCanManage();
-
-  if (isDrizzleBackend()) {
-    await deleteTemplateTaskRepo(documentId);
-    invalidateTemplates(documentId);
-    return;
-  }
-
-  await strapiFetch(`/template-tasks/${documentId}`, {
-    method: "DELETE",
-    strapiCache: { noStore: true },
-  });
-  invalidateTemplates(documentId);
+  await deleteTemplateTaskRepo(documentId);
+  invalidateTemplates();
 }

@@ -21,8 +21,8 @@ describe("UserMediaFields", () => {
     renderWithIntl(
       <UserMediaFields
         userName="Ana"
-        avatarUrl="/uploads/avatar.jpg"
-        facePhotoUrl="/uploads/face.jpg"
+        avatarUrl="/api/media/avatar.jpg"
+        facePhotoUrl="/api/media/face.jpg"
         onUpload={vi.fn()}
       />,
     );

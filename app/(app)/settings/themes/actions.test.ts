@@ -1,82 +1,77 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const auth = vi.fn();
-const strapiFetch = vi.fn();
-const revalidateStrapiTags = vi.fn();
-const strapiUpload = vi.fn();
+const revalidateTag = vi.fn();
+const revalidatePath = vi.fn();
+const updateRouteThemeRepo = vi.fn();
+const storeMedia = vi.fn();
+const getDb = vi.fn();
 
-vi.mock("@/auth", () => ({ auth: () => auth() }));
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => false,
-}));
-vi.mock("@/lib/strapi", () => ({
-  STRAPI_TAGS: { routeThemes: "strapi:route-themes" },
-  strapiFetch: (...args: unknown[]) => strapiFetch(...args),
-}));
-vi.mock("@/lib/strapi/revalidate", () => ({
-  revalidateStrapiTags: (...args: unknown[]) => revalidateStrapiTags(...args),
-}));
-vi.mock("@/lib/strapi/upload", () => ({
-  strapiUpload: (...args: unknown[]) => strapiUpload(...args),
+vi.mock("@/auth", () => ({
+  auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "" })),
 }));
 
-describe("updateRouteTheme", () => {
+vi.mock("next/cache", () => ({
+  revalidateTag: (...args: unknown[]) => revalidateTag(...args),
+  revalidatePath: (...args: unknown[]) => revalidatePath(...args),
+}));
+
+vi.mock("@/lib/repos/settings", () => ({
+  updateRouteTheme: (...args: unknown[]) => updateRouteThemeRepo(...args),
+}));
+
+vi.mock("@/lib/media/store-media", () => ({
+  storeMedia: (...args: unknown[]) => storeMedia(...args),
+}));
+
+vi.mock("@/lib/db/client", () => ({
+  getDb: () => getDb(),
+}));
+
+describe("settings/themes/actions drizzle paths", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    auth.mockResolvedValue({ user: { role: "admin" } });
-    strapiFetch.mockResolvedValue({});
+    vi.resetModules();
+    revalidateTag.mockReset();
+    updateRouteThemeRepo.mockReset();
+    storeMedia.mockReset();
   });
 
-  it("rejects non-admin", async () => {
-    auth.mockResolvedValue({ user: { role: "manager" } });
+  it("updateRouteTheme persists via repo and revalidates", async () => {
     const { updateRouteTheme } = await import("./actions");
-    await expect(
-      updateRouteTheme("doc1", { backgroundColor: "#ffffff" }),
-    ).rejects.toThrow("forbidden");
-  });
-
-  it("saves color overlay image options and clears image", async () => {
-    const { updateRouteTheme } = await import("./actions");
-    await updateRouteTheme("doc1", {
+    await updateRouteTheme("theme-1", {
       backgroundColor: "#112233",
-      backgroundColorOpacity: 0,
       clearBackgroundImage: true,
-      backgroundSize: "contain",
-      backgroundPosition: "top",
-      backgroundRepeat: "repeat-x",
-      backgroundMotion: "parallax",
-      parallaxIntensity: 50,
-      parallaxDirection: "reverse",
-      contentMarginMobile: "sm",
-      contentMarginDesktop: "xl",
-      foregroundColor: "#002555",
-      surfaceColor: "#ffffff",
-      surfaceColorOpacity: 80,
     });
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/route-themes/doc1",
+    expect(updateRouteThemeRepo).toHaveBeenCalledWith(
       expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({
-          data: {
-            backgroundColor: "#112233",
-            backgroundColorOpacity: 0,
-            backgroundSize: "contain",
-            backgroundPosition: "top",
-            backgroundRepeat: "repeat-x",
-            backgroundMotion: "parallax",
-            parallaxIntensity: 50,
-            parallaxDirection: "reverse",
-            contentMarginMobile: "sm",
-            contentMarginDesktop: "xl",
-            foregroundColor: "#002555",
-            surfaceColor: "#ffffff",
-            surfaceColorOpacity: 80,
-            backgroundImage: null,
-          },
-        }),
+        id: "theme-1",
+        backgroundColor: "#112233",
+        clearBackgroundImage: true,
       }),
     );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:route-themes");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:route-themes", "default");
+  });
+
+  it("uploadRouteThemeImage stores media and returns id", async () => {
+    storeMedia.mockResolvedValue({
+      storageKey: "k",
+      url: "/bg.jpg",
+      mimeType: "image/jpeg",
+      byteSize: 12,
+    });
+    const returning = vi.fn().mockResolvedValue([{ id: "bg-media" }]);
+    const values = vi.fn().mockReturnValue({ returning });
+    const insert = vi.fn().mockReturnValue({ values });
+    getDb.mockReturnValue({ insert });
+
+    const formData = new FormData();
+    formData.append(
+      "file",
+      new File(["x"], "bg.jpg", { type: "image/jpeg" }),
+    );
+
+    const { uploadRouteThemeImage } = await import("./actions");
+    const id = await uploadRouteThemeImage(formData);
+    expect(id).toBe("bg-media");
+    expect(storeMedia).toHaveBeenCalled();
   });
 });

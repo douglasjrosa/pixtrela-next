@@ -1,26 +1,10 @@
-import {
-  DEFAULT_KIOSK_SESSION_IDLE_SECONDS,
-  normalizeKioskSessionIdleSeconds,
-} from "@/lib/business/kiosk-session-idle";
 import { KioskSessionIdleForm } from "@/components/settings/kiosk-session-idle-form";
-import { isDrizzleBackend } from "@/lib/db/backend";
-import { getKioskSettings } from "@/lib/repos/settings";
-import { loadKioskSessionIdleSeconds } from "@/lib/strapi/kiosk-setting";
+import { loadKioskSessionIdleSeconds } from "@/lib/kiosk/load-session-idle";
 
 import { updateKioskSessionIdleSeconds } from "../actions";
 
-async function loadIdleSeconds(): Promise<number> {
-  if (isDrizzleBackend()) {
-    const row = await getKioskSettings();
-    return normalizeKioskSessionIdleSeconds(
-      Number(row?.sessionIdleSeconds ?? DEFAULT_KIOSK_SESSION_IDLE_SECONDS),
-    );
-  }
-  return loadKioskSessionIdleSeconds();
-}
-
 export default async function SettingsKioskPage() {
-  const sessionIdleSeconds = await loadIdleSeconds();
+  const sessionIdleSeconds = await loadKioskSessionIdleSeconds();
 
   async function handleSaveKioskSession(values: {
     sessionIdleSeconds: number;

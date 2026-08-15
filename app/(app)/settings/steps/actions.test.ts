@@ -1,150 +1,103 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const strapiFetch = vi.fn();
-const revalidateStrapiTags = vi.fn();
-
+const revalidateTag = vi.fn();
+const createStepRepo = vi.fn();
+const getStepById = vi.fn();
+const updateStepFields = vi.fn();
+const updateStepIndex = vi.fn();
+const deleteStepRepo = vi.fn();
+const listStepsRepo = vi.fn();
+const applyAutoStepTaskOrdering = vi.fn();
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "jwt" })),
 }));
 
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => false,
+vi.mock("next/cache", () => ({
+  revalidateTag: (...args: unknown[]) => revalidateTag(...args),
 }));
 
-vi.mock("@/lib/strapi", () => ({
-  STRAPI_TAGS: {
-    steps: "strapi:steps",
-  },
-  strapiFetch,
+vi.mock("@/lib/business/apply-step-task-order", () => ({
+  applyAutoStepTaskOrdering: (...args: unknown[]) =>
+    applyAutoStepTaskOrdering(...args),
 }));
 
-vi.mock("@/lib/strapi/revalidate", () => ({
-  revalidateStrapiTags,
+vi.mock("@/lib/repos/steps", () => ({
+  createStep: (...args: unknown[]) => createStepRepo(...args),
+  getStepById: (...args: unknown[]) => getStepById(...args),
+  updateStepFields: (...args: unknown[]) => updateStepFields(...args),
+  updateStepIndex: (...args: unknown[]) => updateStepIndex(...args),
+  deleteStep: (...args: unknown[]) => deleteStepRepo(...args),
+  listSteps: (...args: unknown[]) => listStepsRepo(...args),
 }));
 
-function mockStrapiFetch(handlers: Record<string, unknown>): void {
-  strapiFetch.mockImplementation(
-    async (path: string, init?: { method?: string }) => {
-      const method = init?.method ?? "GET";
-      const key = `${method} ${path}`;
-      if (key in handlers) {
-        return handlers[key];
-      }
-      if (path in handlers) {
-        return handlers[path];
-      }
-      throw new Error(`Unexpected strapiFetch: ${key}`);
-    },
-  );
-}
-
-describe("settings/steps/actions", () => {
+describe("settings/steps/actions drizzle CRUD", () => {
   beforeEach(() => {
-    strapiFetch.mockReset();
-    revalidateStrapiTags.mockReset();
     vi.resetModules();
+    revalidateTag.mockReset();
+    createStepRepo.mockReset();
+    getStepById.mockReset();
+    updateStepFields.mockReset();
+    updateStepIndex.mockReset();
+    deleteStepRepo.mockReset();
+    listStepsRepo.mockReset();
+    applyAutoStepTaskOrdering.mockReset();
   });
 
-  it("createStep appends at max index + 1", async () => {
-    mockStrapiFetch({
-      "GET /steps": { data: [{ index: 0 }, { index: 2 }] },
-      "POST /steps": { data: { documentId: "s-new" } },
+  it("createStep uses repo and revalidates drizzle tag", async () => {
+    listStepsRepo.mockResolvedValue([{ id: "s1", name: "A", index: 2 }]);
+    createStepRepo.mockResolvedValue({
+      id: "s2",
+      name: "B",
+      index: 3,
+      taskOrderBy: "manual",
     });
 
     const { createStep } = await import("./actions");
-    await createStep({ name: "Acabamento" });
+    await createStep({ name: "B", orderBy: "manual" });
 
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/steps",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ data: { name: "Acabamento", index: 3 } }),
-      }),
-    );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:steps");
-  });
-
-  it("createStep uses index 0 when no steps exist", async () => {
-    mockStrapiFetch({
-      "GET /steps": { data: [] },
-      "POST /steps": { data: { documentId: "s-new" } },
+    expect(createStepRepo).toHaveBeenCalledWith({
+      name: "B",
+      index: 3,
+      taskOrderBy: "manual",
     });
-
-    const { createStep } = await import("./actions");
-    await createStep({ name: "Fila" });
-
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/steps",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ data: { name: "Fila", index: 0 } }),
-      }),
-    );
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps", "default");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks", "default");
   });
 
-  it("updateStep PUTs name only", async () => {
-    mockStrapiFetch({
-      "PUT /steps/s1": { data: { documentId: "s1" } },
+  it("updateStep updates fields via repo", async () => {
+    getStepById.mockResolvedValue({
+      id: "s1",
+      name: "Old",
+      index: 0,
+      taskOrderBy: "manual",
     });
 
     const { updateStep } = await import("./actions");
-    await updateStep("s1", { name: "Produção" });
+    await updateStep("s1", { name: "Produção", orderBy: "delivery_date_asc" });
 
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/steps/s1",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({ data: { name: "Produção" } }),
-      }),
-    );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:steps");
+    expect(updateStepFields).toHaveBeenCalledWith("s1", {
+      name: "Produção",
+      taskOrderBy: "delivery_date_asc",
+    });
+    expect(applyAutoStepTaskOrdering).toHaveBeenCalledWith({ stepIds: ["s1"] });
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps", "default");
   });
 
-  it("reorderSteps updates sequential indexes for all steps", async () => {
-    mockStrapiFetch({
-      "GET /steps": {
-        data: [{ documentId: "a" }, { documentId: "b" }, { documentId: "c" }],
-      },
-      "PUT /steps/a": { data: { documentId: "a" } },
-      "PUT /steps/b": { data: { documentId: "b" } },
-      "PUT /steps/c": { data: { documentId: "c" } },
-    });
-
+  it("reorderSteps updates indexes via repo", async () => {
+    listStepsRepo.mockResolvedValue([
+      { id: "a", name: "A", index: 0 },
+      { id: "b", name: "B", index: 1 },
+    ]);
     const { reorderSteps } = await import("./actions");
-    await reorderSteps(["c", "a", "b"]);
-
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/steps/c",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({ data: { index: 0 } }),
-      }),
-    );
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/steps/a",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({ data: { index: 1 } }),
-      }),
-    );
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/steps/b",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({ data: { index: 2 } }),
-      }),
-    );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:steps");
+    await reorderSteps(["b", "a"]);
+    expect(updateStepIndex).toHaveBeenCalledWith("b", 0);
+    expect(updateStepIndex).toHaveBeenCalledWith("a", 1);
   });
 
-  it("reorderSteps rejects mismatched id sets", async () => {
-    mockStrapiFetch({
-      "GET /steps": {
-        data: [{ documentId: "a" }, { documentId: "b" }],
-      },
-    });
-
-    const { reorderSteps } = await import("./actions");
-    await expect(reorderSteps(["a", "c"])).rejects.toThrow("invalid_reorder");
+  it("deleteStep calls repo hard delete", async () => {
+    const { deleteStep } = await import("./actions");
+    await deleteStep("s1");
+    expect(deleteStepRepo).toHaveBeenCalledWith("s1");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps", "default");
   });
 });

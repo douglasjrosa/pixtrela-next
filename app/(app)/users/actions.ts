@@ -11,7 +11,6 @@ import {
   canPairUserTag,
 } from "@/lib/auth/permissions";
 import { canDeleteUsers, canManageRole } from "@/lib/business/roles";
-import { isDrizzleBackend } from "@/lib/db/backend";
 import { getDb } from "@/lib/db/client";
 import { normalizeUserTag } from "@/lib/kiosk/user-tag";
 import { storeMedia } from "@/lib/media/store-media";
@@ -27,14 +26,7 @@ import {
   type UserRole,
 } from "@/lib/repos/users";
 import { buildUserFormSchema, type UserFormInput } from "@/lib/schemas/user";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
-import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
-import { strapiUpload } from "@/lib/strapi/upload";
-import {
-  buildCreateUserPayload,
-  buildUpdateUserPayload,
-  deriveUserEmail,
-} from "@/lib/users/create-user-payload";
+import { deriveUserEmail } from "@/lib/users/create-user-payload";
 
 export type UserImageType = "avatar" | "facePhoto";
 export type UserId = number | string;
@@ -78,11 +70,7 @@ async function assertCanManageTargetRole(targetRole: Role): Promise<void> {
 }
 
 function invalidateUsers(): void {
-  if (isDrizzleBackend()) {
-    revalidateTag("drizzle:users", "default");
-    return;
-  }
-  revalidateStrapiTags(STRAPI_TAGS.users);
+  revalidateTag("drizzle:users", "default");
 }
 
 function sanitizePasswordFields(
@@ -114,53 +102,22 @@ export async function createUser(raw: UserFormInput): Promise<void> {
   }).parse(sanitized);
   await assertCanManageTargetRole(data.roleType as Role);
 
-  if (isDrizzleBackend()) {
-    await createUserRepo({
-      username: data.username,
-      password: data.password!,
-      name: data.name,
-      role: data.roleType as UserRole,
-      email: deriveUserEmail(data.username),
-      code: data.code,
-      greetingGender: data.greetingGender ?? "neutral",
-    });
-    invalidateUsers();
-    return;
-  }
-
-  await strapiFetch("/users", {
-    method: "POST",
-    strapiCache: { noStore: true },
-    body: JSON.stringify(buildCreateUserPayload(data)),
+  await createUserRepo({
+    username: data.username,
+    password: data.password!,
+    name: data.name,
+    role: data.roleType as UserRole,
+    email: deriveUserEmail(data.username),
+    code: data.code,
+    greetingGender: data.greetingGender ?? "neutral",
   });
   invalidateUsers();
 }
 
-interface StrapiUserEntity {
-  id: number;
-  roleType?: Role;
-}
-
 async function loadUserRole(userId: UserId): Promise<Role> {
-  if (isDrizzleBackend()) {
-    const user = await findUserById(toUserIdString(userId));
-    if (!user) throw new Error("forbidden");
-    return user.role as Role;
-  }
-
-  const users = await strapiFetch<StrapiUserEntity[]>(
-    "/users",
-    { strapiCache: { noStore: true } },
-    {
-      filters: { id: { $eq: userId } },
-      fields: ["id", "roleType"],
-    },
-  );
-  const user = users[0];
-  if (!user) {
-    throw new Error("forbidden");
-  }
-  return (user.roleType as Role | undefined) ?? "colaborator";
+  const user = await findUserById(toUserIdString(userId));
+  if (!user) throw new Error("forbidden");
+  return user.role as Role;
 }
 
 export async function updateUser(
@@ -179,25 +136,15 @@ export async function updateUser(
     throw new Error("forbidden");
   }
 
-  if (isDrizzleBackend()) {
-    await updateUserAccount({
-      id: toUserIdString(userId),
-      name: data.name,
-      username: data.username,
-      email: data.username ? deriveUserEmail(data.username) : undefined,
-      password: data.password,
-      code: data.code,
-      role: data.roleType as UserRole | undefined,
-      greetingGender: data.greetingGender,
-    });
-    invalidateUsers();
-    return;
-  }
-
-  await strapiFetch(`/users/${userId}`, {
-    method: "PUT",
-    strapiCache: { noStore: true },
-    body: JSON.stringify(buildUpdateUserPayload(data)),
+  await updateUserAccount({
+    id: toUserIdString(userId),
+    name: data.name,
+    username: data.username,
+    email: data.username ? deriveUserEmail(data.username) : undefined,
+    password: data.password,
+    code: data.code,
+    role: data.roleType as UserRole | undefined,
+    greetingGender: data.greetingGender,
   });
   invalidateUsers();
 }
@@ -206,10 +153,6 @@ export type PairUserTagResult =
   | { ok: true; userTag: string }
   | { ok: false; error: "forbidden" | "invalid" | "conflict" };
 
-/**
- * Pairs an NFC key-fob UID (`userTag`) to a user. Rejects if another user
- * already owns the same tag.
- */
 export async function pairUserTag(
   userId: UserId,
   rawTag: string,
@@ -230,46 +173,15 @@ export async function pairUserTag(
     return { ok: false, error: "forbidden" };
   }
 
-  if (isDrizzleBackend()) {
-    const ownerId = await findUserIdByTag(userTag);
-    if (ownerId && ownerId !== toUserIdString(userId)) {
-      return { ok: false, error: "conflict" };
-    }
-    try {
-      await setUserTag(toUserIdString(userId), userTag);
-    } catch {
-      return { ok: false, error: "conflict" };
-    }
-    invalidateUsers();
-    return { ok: true, userTag };
-  }
-
-  const conflicts = await strapiFetch<Array<{ id: number }>>(
-    "/users",
-    { strapiCache: { noStore: true } },
-    {
-      filters: {
-        userTag: { $eq: userTag },
-        id: { $ne: userId },
-      },
-      fields: ["id"],
-      pagination: { pageSize: 1 },
-    },
-  );
-  if (conflicts.length > 0) {
+  const ownerId = await findUserIdByTag(userTag);
+  if (ownerId && ownerId !== toUserIdString(userId)) {
     return { ok: false, error: "conflict" };
   }
-
   try {
-    await strapiFetch(`/users/${userId}`, {
-      method: "PUT",
-      strapiCache: { noStore: true },
-      body: JSON.stringify({ userTag }),
-    });
+    await setUserTag(toUserIdString(userId), userTag);
   } catch {
     return { ok: false, error: "conflict" };
   }
-
   invalidateUsers();
   return { ok: true, userTag };
 }
@@ -281,17 +193,7 @@ export async function deactivateUser(userId: UserId): Promise<void> {
     throw new Error("forbidden");
   }
 
-  if (isDrizzleBackend()) {
-    await deactivateUserRepo(toUserIdString(userId), USER_DEACTIVATION_REASON);
-    invalidateUsers();
-    return;
-  }
-
-  await strapiFetch(`/users/${userId}`, {
-    method: "PUT",
-    strapiCache: { noStore: true },
-    body: JSON.stringify({ blocked: true }),
-  });
+  await deactivateUserRepo(toUserIdString(userId), USER_DEACTIVATION_REASON);
   invalidateUsers();
 }
 
@@ -302,16 +204,7 @@ export async function deleteUser(userId: UserId): Promise<void> {
     throw new Error("forbidden");
   }
 
-  if (isDrizzleBackend()) {
-    await deactivateUserRepo(toUserIdString(userId), USER_DEACTIVATION_REASON);
-    invalidateUsers();
-    return;
-  }
-
-  await strapiFetch(`/users/${userId}`, {
-    method: "DELETE",
-    strapiCache: { noStore: true },
-  });
+  await deactivateUserRepo(toUserIdString(userId), USER_DEACTIVATION_REASON);
   invalidateUsers();
 }
 
@@ -333,63 +226,36 @@ export async function updateUserImage(
     throw new Error("forbidden");
   }
 
-  if (isDrizzleBackend()) {
-    const entry = formData.get("file");
-    if (!(entry instanceof Blob) || entry.size === 0) {
-      throw new Error("invalid");
-    }
-    if (!entry.type.startsWith("image/")) {
-      throw new Error("invalid");
-    }
-    const mimeType = entry.type || "image/jpeg";
-    const buffer = Buffer.from(await entry.arrayBuffer());
-    const extension = mimeType.includes("png") ? "png" : "jpg";
-    const stored = await storeMedia({ bytes: buffer, mimeType, extension });
-    const db = getDb();
-    const [media] = await db
-      .insert(mediaAssets)
-      .values({
-        storageKey: stored.storageKey,
-        url: stored.url,
-        mimeType: stored.mimeType,
-        byteSize: stored.byteSize,
-      })
-      .returning({ id: mediaAssets.id });
-    const userIdStr = toUserIdString(userId);
-    if (imageType === "avatar") {
-      await setUserAvatarMedia(userIdStr, media.id, db);
-    } else {
-      const faceVector = parseFaceVectorFromFormData(formData);
-      if (formData.has("faceVector") && !faceVector) {
-        throw new Error("invalid");
-      }
-      await setUserFacePhotoMedia(userIdStr, media.id, faceVector, db);
-    }
-    invalidateUsers();
-    return;
-  }
-
   const entry = formData.get("file");
-  if (!(entry instanceof File) || entry.size === 0) {
+  if (!(entry instanceof Blob) || entry.size === 0) {
     throw new Error("invalid");
   }
   if (!entry.type.startsWith("image/")) {
     throw new Error("invalid");
   }
-
-  const mediaId = await strapiUpload(entry);
-  const payload: Record<string, unknown> = { [imageType]: mediaId };
-  if (imageType === "facePhoto") {
+  const mimeType = entry.type || "image/jpeg";
+  const buffer = Buffer.from(await entry.arrayBuffer());
+  const extension = mimeType.includes("png") ? "png" : "jpg";
+  const stored = await storeMedia({ bytes: buffer, mimeType, extension });
+  const db = getDb();
+  const [media] = await db
+    .insert(mediaAssets)
+    .values({
+      storageKey: stored.storageKey,
+      url: stored.url,
+      mimeType: stored.mimeType,
+      byteSize: stored.byteSize,
+    })
+    .returning({ id: mediaAssets.id });
+  const userIdStr = toUserIdString(userId);
+  if (imageType === "avatar") {
+    await setUserAvatarMedia(userIdStr, media.id, db);
+  } else {
     const faceVector = parseFaceVectorFromFormData(formData);
     if (formData.has("faceVector") && !faceVector) {
       throw new Error("invalid");
     }
-    payload.faceVector = faceVector;
+    await setUserFacePhotoMedia(userIdStr, media.id, faceVector, db);
   }
-  await strapiFetch(`/users/${userId}`, {
-    method: "PUT",
-    strapiCache: { noStore: true },
-    body: JSON.stringify(payload),
-  });
   invalidateUsers();
 }

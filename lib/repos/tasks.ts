@@ -11,19 +11,21 @@ import {
   users,
 } from "@/drizzle/schema";
 import { toDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
-import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import {
-  calculateDurationSecondsCurrency,
-  calculateQtySessionCurrency,
-  scaleExpectedTimeByTaskQty,
-} from "@/lib/domain/work-currency";
+  listActivitySessions,
+  type ActivitySession,
+} from "@/lib/business/task-progress";
+import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
+import { scaleExpectedTimeByTaskQty } from "@/lib/domain/work-currency";
 import { getDb, type Db } from "@/lib/db/client";
 import type { TasksRevision } from "@/lib/tasks/tasks-revision";
+import { recordActivityViaKiosk } from "@/lib/repos/kiosk-subtasks";
+import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import {
-  creditBalanceIncome,
-  getOrCreateMonthlyBalance,
-} from "@/lib/repos/balances";
-import { currencies, currencyForSubtasks } from "@/drizzle/schema";
+  listActivitySessions,
+  type ActivitySession,
+  type ActivitySessionRef,
+} from "@/lib/business/task-progress";
 
 export type CreateTaskInput = {
   name: string;
@@ -114,6 +116,11 @@ export async function createTask(
           .update(tasks)
           .set({ totalExpectedTime: totalExpected, updatedAt: new Date() })
           .where(eq(tasks.id, task.id));
+
+        await runTaskSubTaskSyncRoutine(
+          task.id,
+          tx as unknown as Db,
+        );
       }
     }
 
@@ -314,6 +321,14 @@ export async function applyTaskIndexUpdates(
         .where(eq(tasks.id, update.id));
     }
   });
+}
+
+export async function assignColaboratorsToSubTask(
+  subTaskId: string,
+  userIds: string[],
+  db: Db = getDb(),
+): Promise<void> {
+  await replaceSubTaskAssignees(subTaskId, userIds, db);
 }
 
 async function replaceSubTaskAssignees(
@@ -550,19 +565,47 @@ export async function listBoardSubtaskRows(taskId: string, db: Db = getDb()) {
   return { rows, assigneeRows, activityRows };
 }
 
-async function resolvePaymentCurrency(db: Db) {
-  const [setting] = await db.select().from(currencyForSubtasks).limit(1);
-  if (!setting) return null;
-  const [currency] = await db
-    .select()
-    .from(currencies)
-    .where(eq(currencies.id, setting.currencyId))
-    .limit(1);
-  return currency ?? null;
+export async function listSubTaskActivitySessions(
+  subTaskId: string,
+  db: Db = getDb(),
+): Promise<ActivitySession[]> {
+  const activityRows = await db
+    .select({
+      action: activities.action,
+      timestamp: activities.timestamp,
+      qty: activities.qty,
+      colaboratorId: activities.colaboratorId,
+      colaboratorName: users.name,
+    })
+    .from(activities)
+    .innerJoin(users, eq(activities.colaboratorId, users.id))
+    .where(
+      and(
+        eq(activities.subTaskId, subTaskId),
+        inArray(activities.action, ["started", "stoped"]),
+      ),
+    )
+    .orderBy(asc(activities.timestamp));
+
+  return listActivitySessions(
+    activityRows.flatMap((row) => {
+      if (!row.timestamp) return [];
+      return [
+        {
+          subTaskDocumentId: subTaskId,
+          colaboratorDocumentId: row.colaboratorId,
+          colaboratorName: row.colaboratorName ?? "",
+          action: row.action,
+          timestamp: row.timestamp.toISOString(),
+          qty: Number(row.qty ?? 0),
+        },
+      ];
+    }),
+  );
 }
 
 /**
- * Records start/stop activity. On stop (duration), credits Stars to monthly balance.
+ * Records start/stop activity via kiosk lifecycle (status, sync, currency).
  */
 export async function recordActivity(
   input: {
@@ -570,122 +613,19 @@ export async function recordActivity(
     colaboratorId: string;
     action: "started" | "stoped";
     qty?: number;
+    completed?: boolean;
     timestamp?: Date;
   },
   db: Db = getDb(),
 ) {
-  const timestamp = input.timestamp ?? new Date();
-
-  return db.transaction(async (tx) => {
-    let currencyAwarded = 0;
-
-    if (input.action === "stoped") {
-      const prior = await tx
-        .select()
-        .from(activities)
-        .where(eq(activities.subTaskId, input.subTaskId))
-        .orderBy(asc(activities.timestamp));
-
-      const lastStart = [...prior]
-        .reverse()
-        .find(
-          (row) =>
-            row.action === "started" &&
-            row.colaboratorId === input.colaboratorId,
-        );
-
-      const durationSeconds = lastStart
-        ? Math.max(
-            0,
-            Math.floor(
-              (timestamp.getTime() - new Date(lastStart.timestamp).getTime()) /
-                1000,
-            ),
-          )
-        : 0;
-
-      const [sub] = await tx
-        .select()
-        .from(subTasks)
-        .where(eq(subTasks.id, input.subTaskId))
-        .limit(1);
-      const [task] = sub
-        ? await tx
-            .select()
-            .from(tasks)
-            .where(eq(tasks.id, sub.taskId))
-            .limit(1)
-        : [null];
-
-      const currency = await resolvePaymentCurrency(tx as unknown as Db);
-      if (currency && sub && task) {
-        if (sub.sharingType === "qty" && (input.qty ?? 0) > 0) {
-          currencyAwarded = calculateQtySessionCurrency(
-            {
-              expectedTime: sub.expectedTime,
-              qty: sub.qty,
-              taskQty: task.qty,
-              sharingType: "qty",
-            },
-            { sessionQty: input.qty ?? 0 },
-            { currencyPerSecond: currency.currencyPerSecond },
-          );
-        } else if (sub.sharingType === "duration" && durationSeconds > 0) {
-          // Incremental credit on stop (full pool redistribution is a follow-up).
-          currencyAwarded = calculateDurationSecondsCurrency({
-            durationSeconds,
-            currencyPerSecond: currency.currencyPerSecond,
-          });
-        }
-
-        if (currencyAwarded > 0) {
-          const balance = await getOrCreateMonthlyBalance(
-            {
-              userId: input.colaboratorId,
-              currencyId: currency.id,
-              now: timestamp,
-            },
-            tx as unknown as Db,
-          );
-          await creditBalanceIncome(
-            { balanceId: balance.id, amount: currencyAwarded },
-            tx as unknown as Db,
-          );
-        }
-      }
-
-      if (sub) {
-        await tx
-          .update(subTasks)
-          .set({
-            timeSpent: sub.timeSpent + durationSeconds,
-            updatedAt: new Date(),
-          })
-          .where(eq(subTasks.id, input.subTaskId));
-        if (task) {
-          await tx
-            .update(tasks)
-            .set({
-              totalTimeSpent: task.totalTimeSpent + durationSeconds,
-              updatedAt: new Date(),
-            })
-            .where(eq(tasks.id, task.id));
-        }
-      }
-    }
-
-    const [created] = await tx
-      .insert(activities)
-      .values({
-        subTaskId: input.subTaskId,
-        colaboratorId: input.colaboratorId,
-        action: input.action,
-        timestamp,
-        qty: input.qty ?? 0,
-        currencyAwarded,
-      })
-      .returning();
-
-    return created;
-  });
+  const result = await recordActivityViaKiosk(input, db);
+  return {
+    id: "",
+    subTaskId: input.subTaskId,
+    colaboratorId: input.colaboratorId,
+    action: input.action,
+    timestamp: input.timestamp ?? new Date(),
+    qty: input.qty ?? 0,
+    currencyAwarded: result.currencyAwarded,
+  };
 }
