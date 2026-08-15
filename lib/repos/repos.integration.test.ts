@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
 
+import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
 import { createAward, createCurrency } from "@/lib/repos/awards";
@@ -9,8 +10,19 @@ import {
 } from "@/lib/repos/balances";
 import { redeemAward } from "@/lib/repos/exchanges";
 import { identifyColaboratorByCode } from "@/lib/repos/kiosk";
+import {
+  listAssignedSubTasks,
+  startSubTask,
+  stopSubTask,
+} from "@/lib/repos/kiosk-subtasks";
 import { createStep, listSteps } from "@/lib/repos/steps";
-import { createTask, listSubTasksForTask, recordActivity } from "@/lib/repos/tasks";
+import {
+  assignColaboratorsToSubTask,
+  createTask,
+  getTaskById,
+  listSubTasksForTask,
+  recordActivity,
+} from "@/lib/repos/tasks";
 import { createTeam } from "@/lib/repos/teams";
 import { createTemplateTask } from "@/lib/repos/templates";
 import { createUser } from "@/lib/repos/users";
@@ -33,116 +45,389 @@ describeWithDb("drizzle repos integration", () => {
     expect(all.some((row) => row.id === step.id)).toBe(true);
   });
 
-  it("redeems award inside exchange window with debit", async () => {
-    const suffix = String(Date.now());
-    const currency = await createCurrency({
-      name: `Estrela-${suffix}`,
-      currencyPerSecond: 1,
-    });
-    const colaborator = await createUser({
-      username: `colab-${suffix}`,
-      password: "Secret123!",
-      name: "Colab",
-      role: "colaborator",
-      code: Number(suffix.slice(-6)),
-    });
-    await createTeam({
-      name: `Team ${suffix}`,
-      memberIds: [colaborator.id],
-      exchangesFirstDay: 1,
-      exchangesLastDay: 31,
-    });
-    const award = await createAward({
-      name: `Award ${suffix}`,
-      prices: [{ currencyId: currency.id, numberOf: 5 }],
-    });
+  it(
+    "redeems award inside exchange window with debit",
+    async () => {
+      const suffix = String(Date.now());
+      const currency = await createCurrency({
+        name: `Estrela-${suffix}`,
+        currencyPerSecond: 1,
+      });
+      const colaborator = await createUser({
+        username: `colab-${suffix}`,
+        password: "Secret123!",
+        name: "Colab",
+        role: "colaborator",
+        code: Number(suffix.slice(-6)),
+      });
+      await createTeam({
+        name: `Team ${suffix}`,
+        memberIds: [colaborator.id],
+        exchangesFirstDay: 1,
+        exchangesLastDay: 31,
+      });
+      const award = await createAward({
+        name: `Award ${suffix}`,
+        prices: [{ currencyId: currency.id, numberOf: 5 }],
+      });
 
-    const balance = await getOrCreateMonthlyBalance({
-      userId: colaborator.id,
-      currencyId: currency.id,
-      now: new Date("2026-08-09T12:00:00Z"),
-    });
-    await creditBalanceIncome({ balanceId: balance.id, amount: 20 });
+      const balance = await getOrCreateMonthlyBalance({
+        userId: colaborator.id,
+        currencyId: currency.id,
+        now: new Date("2026-08-09T12:00:00Z"),
+      });
+      await creditBalanceIncome({ balanceId: balance.id, amount: 20 });
 
-    const result = await redeemAward({
-      userId: colaborator.id,
-      awardId: award.id,
-      currencyId: currency.id,
-      qty: 2,
-      now: new Date("2026-08-09T12:00:00Z"),
-    });
+      const result = await redeemAward({
+        userId: colaborator.id,
+        awardId: award.id,
+        currencyId: currency.id,
+        qty: 2,
+        now: new Date("2026-08-09T12:00:00Z"),
+      });
 
-    expect(result.cost).toBe(10);
-    expect(result.exchangeId).toBeTruthy();
-  });
+      expect(result.cost).toBe(10);
+      expect(result.exchangeId).toBeTruthy();
+    },
+    30_000,
+  );
 
-  it("copies template subtasks and credits stars on stop", async () => {
-    const suffix = String(Date.now());
-    const currency = await createCurrency({
-      name: `Pay-${suffix}`,
-      currencyPerSecond: 1,
-    });
-    const db = getDb();
-    await db.delete(currencyForSubtasks);
-    await db.insert(currencyForSubtasks).values({ currencyId: currency.id });
+  it(
+    "copies template subtasks, unlocks root row, and credits stars on finish",
+    async () => {
+      const suffix = String(Date.now());
+      const currency = await createCurrency({
+        name: `Pay-${suffix}`,
+        currencyPerSecond: 1,
+      });
+      const db = getDb();
+      await db.delete(currencyForSubtasks);
+      await db.insert(currencyForSubtasks).values({ currencyId: currency.id });
 
-    const colaborator = await createUser({
-      username: `worker-${suffix}`,
-      password: "Secret123!",
-      name: "Worker",
-      role: "colaborator",
-      code: Number(suffix.slice(-5)),
-    });
+      const colaborator = await createUser({
+        username: `worker-${suffix}`,
+        password: "Secret123!",
+        name: "Worker",
+        role: "colaborator",
+        code: Number(suffix.slice(-5)),
+      });
 
-    await createTemplateTask({
-      code: `T${suffix.slice(-8)}`,
-      name: "Template",
-      subTasks: [
-        { name: "Cut", expectedTime: 10, index: 0 },
-        { name: "Pack", expectedTime: 5, index: 1, dependencyIndexes: [0] },
-      ],
-    });
+      await createTemplateTask({
+        code: `T${suffix.slice(-8)}`,
+        name: "Template",
+        subTasks: [
+          { name: "Cut", expectedTime: 10, index: 0 },
+          { name: "Pack", expectedTime: 5, index: 1, dependencyIndexes: [0] },
+        ],
+      });
 
-    const step = await createStep({ name: `Queue ${suffix}`, index: 0 });
-    const task = await createTask({
-      name: `Task ${suffix}`,
-      qty: 2,
-      stepId: step.id,
-      templateTaskCode: `T${suffix.slice(-8)}`,
-    });
+      const step = await createStep({ name: `Queue ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `Task ${suffix}`,
+        qty: 2,
+        stepId: step.id,
+        templateTaskCode: `T${suffix.slice(-8)}`,
+      });
 
-    const subs = await listSubTasksForTask(task.id);
-    expect(subs).toHaveLength(2);
-    expect(subs[0]?.expectedTime).toBe(20);
+      const subs = await listSubTasksForTask(task.id);
+      expect(subs).toHaveLength(2);
+      expect(subs[0]?.expectedTime).toBe(20);
+      expect(fromDrizzleActivationStatus(subs[0]?.activationStatus)).toBe(
+        "unlocked",
+      );
+      expect(fromDrizzleActivationStatus(subs[1]?.activationStatus)).toBe(
+        "locked",
+      );
 
-    const startedAt = new Date("2026-08-09T10:00:00Z");
-    const stoppedAt = new Date("2026-08-09T10:00:30Z");
-    await recordActivity({
-      subTaskId: subs[0]!.id,
-      colaboratorId: colaborator.id,
-      action: "started",
-      timestamp: startedAt,
-    });
-    const stop = await recordActivity({
-      subTaskId: subs[0]!.id,
-      colaboratorId: colaborator.id,
-      action: "stoped",
-      timestamp: stoppedAt,
-    });
-    expect(stop.currencyAwarded).toBe(30);
+      await assignColaboratorsToSubTask(subs[0]!.id, [colaborator.id]);
 
-    const identified = await identifyColaboratorByCode({
-      code: colaborator.code,
-      password: "Secret123!",
-    });
-    expect(identified?.id).toBe(colaborator.id);
+      const startedAt = new Date("2026-08-09T10:00:00Z");
+      const stoppedAt = new Date("2026-08-09T10:00:30Z");
+      await recordActivity({
+        subTaskId: subs[0]!.id,
+        colaboratorId: colaborator.id,
+        action: "started",
+        timestamp: startedAt,
+      });
+      const stop = await recordActivity({
+        subTaskId: subs[0]!.id,
+        colaboratorId: colaborator.id,
+        action: "stoped",
+        completed: true,
+        timestamp: stoppedAt,
+      });
+      expect(stop.currencyAwarded).toBe(20);
 
-    // keep currency row for FK sanity
-    const [stillThere] = await db
-      .select()
-      .from(currencies)
-      .where(eq(currencies.id, currency.id))
-      .limit(1);
-    expect(stillThere).toBeTruthy();
-  });
+      const refreshedTask = await getTaskById(task.id);
+      expect(refreshedTask?.status).toBe("paused");
+
+      const identified = await identifyColaboratorByCode({
+        code: colaborator.code,
+        password: "Secret123!",
+      });
+      expect(identified?.id).toBe(colaborator.id);
+
+      const [stillThere] = await db
+        .select()
+        .from(currencies)
+        .where(eq(currencies.id, currency.id))
+        .limit(1);
+      expect(stillThere).toBeTruthy();
+    },
+    30_000,
+  );
+
+  it(
+    "lists kiosk queue for assignees only and unlocks dependent subtask",
+    async () => {
+      const suffix = String(Date.now());
+      const workerA = await createUser({
+        username: `ka-${suffix}`,
+        password: "Secret123!",
+        name: "Worker A",
+        role: "colaborator",
+        code: Number(suffix.slice(-5)),
+      });
+      const workerB = await createUser({
+        username: `kb-${suffix}`,
+        password: "Secret123!",
+        name: "Worker B",
+        role: "colaborator",
+        code: Number(String(Number(suffix.slice(-5)) + 1).slice(-5)),
+      });
+
+      await createTemplateTask({
+        code: `K${suffix.slice(-7)}`,
+        name: "Kiosk template",
+        subTasks: [
+          { name: "First", expectedTime: 10, index: 0 },
+          { name: "Second", expectedTime: 5, index: 1, dependencyIndexes: [0] },
+        ],
+      });
+
+      const step = await createStep({ name: `Kiosk ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `Kiosk task ${suffix}`,
+        qty: 1,
+        stepId: step.id,
+        templateTaskCode: `K${suffix.slice(-7)}`,
+      });
+
+      const subs = await listSubTasksForTask(task.id);
+      const [first, second] = subs;
+      expect(first).toBeTruthy();
+      expect(second).toBeTruthy();
+
+      await assignColaboratorsToSubTask(first!.id, [workerA.id]);
+      await assignColaboratorsToSubTask(second!.id, [workerB.id]);
+
+      expect(await listAssignedSubTasks(workerA.id)).toHaveLength(1);
+      expect(await listAssignedSubTasks(workerB.id)).toHaveLength(1);
+
+      const t0 = new Date("2026-08-10T10:00:00Z");
+      await startSubTask(workerA.id, first!.id, undefined, t0);
+      await stopSubTask(
+        workerA.id,
+        first!.id,
+        { completed: true },
+        undefined,
+        new Date("2026-08-10T10:05:00Z"),
+      );
+
+      const refreshed = await listSubTasksForTask(task.id);
+      const secondRow = refreshed.find((row) => row.id === second!.id);
+      expect(fromDrizzleActivationStatus(secondRow?.activationStatus)).toBe(
+        "unlocked",
+      );
+    },
+    30_000,
+  );
+
+  it(
+    "keeps orphan subtask on kiosk queue after unassign until stop",
+    async () => {
+      const suffix = String(Date.now());
+      const worker = await createUser({
+        username: `orphan-${suffix}`,
+        password: "Secret123!",
+        name: "Orphan Worker",
+        role: "colaborator",
+        code: Number(suffix.slice(-5)),
+      });
+
+      await createTemplateTask({
+        code: `O${suffix.slice(-7)}`,
+        name: "Orphan template",
+        subTasks: [{ name: "Solo", expectedTime: 10, index: 0 }],
+      });
+
+      const step = await createStep({ name: `Orphan ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `Orphan task ${suffix}`,
+        qty: 1,
+        stepId: step.id,
+        templateTaskCode: `O${suffix.slice(-7)}`,
+      });
+
+      const [sub] = await listSubTasksForTask(task.id);
+      expect(sub).toBeTruthy();
+
+      await assignColaboratorsToSubTask(sub!.id, [worker.id]);
+      const t0 = new Date("2026-08-11T10:00:00Z");
+      await startSubTask(worker.id, sub!.id, undefined, t0);
+
+      await assignColaboratorsToSubTask(sub!.id, []);
+
+      const queue = await listAssignedSubTasks(worker.id);
+      expect(queue.some((row) => row.documentId === sub!.id)).toBe(true);
+
+      await stopSubTask(
+        worker.id,
+        sub!.id,
+        { completed: true },
+        undefined,
+        new Date("2026-08-11T10:05:00Z"),
+      );
+
+      const afterStop = await listAssignedSubTasks(worker.id);
+      expect(afterStop.some((row) => row.documentId === sub!.id)).toBe(false);
+    },
+    30_000,
+  );
+
+  it(
+    "keeps duration subtask producing until the last worker stops",
+    async () => {
+      const suffix = String(Date.now());
+      const workerA = await createUser({
+        username: `mwa-${suffix}`,
+        password: "Secret123!",
+        name: "Worker A",
+        role: "colaborator",
+        code: Number(suffix.slice(-5)),
+      });
+      const workerB = await createUser({
+        username: `mwb-${suffix}`,
+        password: "Secret123!",
+        name: "Worker B",
+        role: "colaborator",
+        code: Number(String(Number(suffix.slice(-5)) + 1).slice(-5)),
+      });
+
+      await createTemplateTask({
+        code: `M${suffix.slice(-7)}`,
+        name: "Multi worker",
+        subTasks: [
+          {
+            name: "Pair",
+            expectedTime: 10,
+            index: 0,
+            maxSameTimeWorkers: 2,
+          },
+        ],
+      });
+
+      const step = await createStep({ name: `Multi ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `Multi task ${suffix}`,
+        qty: 1,
+        stepId: step.id,
+        templateTaskCode: `M${suffix.slice(-7)}`,
+      });
+
+      const [sub] = await listSubTasksForTask(task.id);
+      expect(sub).toBeTruthy();
+
+      await assignColaboratorsToSubTask(sub!.id, [workerA.id, workerB.id]);
+
+      const t0 = new Date("2026-08-12T10:00:00Z");
+      await startSubTask(workerA.id, sub!.id, undefined, t0);
+      await startSubTask(workerB.id, sub!.id, undefined, t0);
+
+      const producingTask = await getTaskById(task.id);
+      expect(producingTask?.status).toBe("producing");
+
+      await stopSubTask(
+        workerA.id,
+        sub!.id,
+        { completed: true },
+        undefined,
+        new Date("2026-08-12T10:03:00Z"),
+      );
+
+      const midSubs = await listSubTasksForTask(task.id);
+      expect(midSubs[0]?.status).toBe("producing");
+
+      await stopSubTask(
+        workerB.id,
+        sub!.id,
+        { completed: true },
+        undefined,
+        new Date("2026-08-12T10:06:00Z"),
+      );
+
+      const finishedSubs = await listSubTasksForTask(task.id);
+      expect(finishedSubs[0]?.status).toBe("finished");
+      expect((await getTaskById(task.id))?.status).toBe("finished");
+    },
+    30_000,
+  );
+
+  it(
+    "hides at-capacity subtask from non-active assignees",
+    async () => {
+      const suffix = String(Date.now());
+      const workerA = await createUser({
+        username: `capa-${suffix}`,
+        password: "Secret123!",
+        name: "Cap A",
+        role: "colaborator",
+        code: Number(suffix.slice(-5)),
+      });
+      const workerB = await createUser({
+        username: `capb-${suffix}`,
+        password: "Secret123!",
+        name: "Cap B",
+        role: "colaborator",
+        code: Number(String(Number(suffix.slice(-5)) + 1).slice(-5)),
+      });
+
+      await createTemplateTask({
+        code: `C${suffix.slice(-7)}`,
+        name: "Capacity",
+        subTasks: [
+          {
+            name: "Single slot",
+            expectedTime: 10,
+            index: 0,
+            maxSameTimeWorkers: 1,
+          },
+        ],
+      });
+
+      const step = await createStep({ name: `Cap ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `Cap task ${suffix}`,
+        qty: 1,
+        stepId: step.id,
+        templateTaskCode: `C${suffix.slice(-7)}`,
+      });
+
+      const [sub] = await listSubTasksForTask(task.id);
+      expect(sub).toBeTruthy();
+
+      await assignColaboratorsToSubTask(sub!.id, [workerA.id, workerB.id]);
+
+      await startSubTask(
+        workerA.id,
+        sub!.id,
+        undefined,
+        new Date("2026-08-13T10:00:00Z"),
+      );
+
+      expect(await listAssignedSubTasks(workerA.id)).toHaveLength(1);
+      expect(await listAssignedSubTasks(workerB.id)).toHaveLength(0);
+    },
+    30_000,
+  );
 });
