@@ -1,7 +1,7 @@
 import type { UserFormInput } from "@/lib/schemas/user";
 
 export interface UserRow {
-  /** Strapi numeric id, or Drizzle UUID string when DATA_BACKEND=drizzle. */
+  /** Legacy numeric id or Drizzle UUID string. */
   id: number | string;
   documentId: string;
   name: string;
