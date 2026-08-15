@@ -44,7 +44,7 @@ import {
   resolveLatestSessionFinishedAt,
 } from "@/lib/business/task-progress";
 import { splitDateTimePtBr } from "@/lib/format/datetime";
-import type { SubtaskPaymentCurrency } from "@/lib/strapi/currency-for-subtasks";
+import type { SubtaskPaymentCurrency } from "@/lib/settings/currency-for-subtasks-types";
 import {
   showConfirmToast,
   showHintToast,

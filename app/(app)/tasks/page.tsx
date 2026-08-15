@@ -13,53 +13,25 @@ import {
 } from "@/components/layout/app-page-layout";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTasks } from "@/lib/auth/permissions";
-import { isDrizzleBackend } from "@/lib/db/backend";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { listSteps as listStepsRepo } from "@/lib/repos/steps";
 import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
 import { loadTaskListPage } from "@/lib/tasks/load-task-list-page";
 import {
   parseTaskListSearchParams,
   taskListFilterKey,
 } from "@/lib/tasks/task-list-params";
 
-interface StrapiList<T> {
-  data: T[];
-}
-
-interface StepEntity {
-  documentId: string;
-  name: string;
-}
-
 interface TasksPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 async function loadSteps(): Promise<StepOption[]> {
-  if (isDrizzleBackend()) {
-    const rows = await listStepsRepo();
-    return rows.map((step) => ({
-      documentId: step.id,
-      name: step.name,
-    }));
-  }
-
-  try {
-    const res = await strapiFetch<StrapiList<StepEntity>>(
-      "/steps",
-      { strapiCache: { tags: [STRAPI_TAGS.steps], revalidate: 60 } },
-      { fields: ["documentId", "name"], sort: "index:asc" },
-    );
-    return res.data.map((step) => ({
-      documentId: step.documentId,
-      name: step.name,
-    }));
-  } catch (error) {
-    rethrowIfNavigationError(error);
-    return [];
-  }
+  const rows = await listStepsRepo();
+  return rows.map((step) => ({
+    documentId: step.id,
+    name: step.name,
+  }));
 }
 
 async function TasksListSection({

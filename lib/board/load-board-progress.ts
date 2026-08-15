@@ -15,18 +15,12 @@ import {
   type BoardTaskProgressInput,
   type KanbanProgressStatus,
 } from "@/lib/business/task-progress";
-import { isDrizzleBackend } from "@/lib/db/backend";
 import { getDb } from "@/lib/db/client";
 import {
   activities,
   subTaskAssignees,
   subTasks,
 } from "@/drizzle/schema";
-import { STRAPI_TAGS, strapiFetch, type StrapiCacheOptions } from "@/lib/strapi";
-
-interface StrapiList<T> {
-  data: T[];
-}
 
 interface SubTaskProgressEntity {
   documentId: string;
@@ -61,11 +55,9 @@ export type BoardProgressLoadResult = {
   assignedCountByColaboratorId: Record<string, number>;
 };
 
-const PROGRESS_REVALIDATE_SEC = 15;
 const SUBTASK_PAGE_SIZE = 500;
 const ACTIVITY_PAGE_SIZE = 1000;
 const FINISHED_STATUS = "finished";
-const DISABLED_ACTIVATION = "disabled";
 
 function emptyProgress(): BoardTaskProgressInput {
   return { subTasks: [], openActivityStartedAts: [] };
@@ -104,14 +96,6 @@ function toActivitySessionRefs(activityRows: ActivityProgressEntity[]) {
       },
     ];
   });
-}
-
-function resolveProgressCache(
-  noStore: boolean,
-  tags: string[],
-): StrapiCacheOptions {
-  if (noStore) return { noStore: true };
-  return { tags, revalidate: PROGRESS_REVALIDATE_SEC };
 }
 
 function initContainers(
@@ -216,42 +200,6 @@ function applyOpenActivities(
   }
 }
 
-async function applyFinishedParticipantCountsStrapi(
-  finishedTaskIds: readonly string[],
-  badgesByTaskId: Record<string, BoardCardBadges>,
-  noStore: boolean,
-): Promise<void> {
-  if (finishedTaskIds.length === 0) return;
-
-  const activitiesRes = await strapiFetch<StrapiList<ActivityProgressEntity>>(
-    "/activities",
-    {
-      strapiCache: resolveProgressCache(noStore, [
-        STRAPI_TAGS.activities,
-        STRAPI_TAGS.subTasks,
-        STRAPI_TAGS.tasks,
-      ]),
-    },
-    {
-      fields: ["action"],
-      filters: {
-        subTask: { task: { documentId: { $in: [...finishedTaskIds] } } },
-        action: { $in: ["started", "stoped"] },
-      },
-      populate: {
-        subTask: {
-          fields: ["documentId"],
-          populate: { task: { fields: ["documentId"] } },
-        },
-        colaborator: { fields: ["documentId"] },
-      },
-      pagination: { pageSize: ACTIVITY_PAGE_SIZE },
-    },
-  );
-
-  applyFinishedParticipantCountsFromRows(activitiesRes.data, badgesByTaskId);
-}
-
 function applyFinishedParticipantCountsFromRows(
   activityRows: ActivityProgressEntity[],
   badgesByTaskId: Record<string, BoardCardBadges>,
@@ -274,7 +222,12 @@ function applyFinishedParticipantCountsFromRows(
   }
 }
 
-async function loadDrizzleBoardProgress(
+/**
+ * Loads progress rows for waiting/producing/paused tasks and card badge counts.
+ * Open-session activity polling applies only to producing/paused (live) tasks.
+ * Completed tasks use persisted totals only (no progress rows here).
+ */
+export async function loadBoardProgressByTaskId(
   boardTasks: ReadonlyArray<{ documentId: string; status: KanbanProgressStatus }>,
 ): Promise<BoardProgressLoadResult> {
   const allTaskIds = boardTasks.map((task) => task.documentId);
@@ -406,118 +359,6 @@ async function loadDrizzleBoardProgress(
       badgesByTaskId,
     );
   }
-
-  return { progressByTaskId, badgesByTaskId, assignedCountByColaboratorId };
-}
-
-/**
- * Loads progress rows for waiting/producing/paused tasks and card badge counts.
- * Open-session activity polling applies only to producing/paused (live) tasks.
- * Completed tasks use persisted totals only (no progress rows here).
- */
-export async function loadBoardProgressByTaskId(
-  boardTasks: ReadonlyArray<{ documentId: string; status: KanbanProgressStatus }>,
-  options?: { noStore?: boolean },
-): Promise<BoardProgressLoadResult> {
-  if (isDrizzleBackend()) {
-    return loadDrizzleBoardProgress(boardTasks);
-  }
-
-  const noStore = options?.noStore === true;
-  const allTaskIds = boardTasks.map((task) => task.documentId);
-  const finishedTaskIds = boardTasks
-    .filter((task) => isCompletedTaskStatus(task.status))
-    .map((task) => task.documentId);
-  const progressTaskIds = new Set(
-    boardTasks
-      .filter((task) => shouldShowKanbanTaskProgress(task.status))
-      .map((task) => task.documentId),
-  );
-
-  const { progressByTaskId, badgesByTaskId, assignedCountsByTask } =
-    initContainers(allTaskIds, progressTaskIds);
-
-  if (allTaskIds.length === 0) {
-    return emptyLoadResult();
-  }
-
-  const subTasksRes = await strapiFetch<StrapiList<SubTaskProgressEntity>>(
-    "/sub-tasks",
-    {
-      strapiCache: resolveProgressCache(noStore, [
-        STRAPI_TAGS.subTasks,
-        STRAPI_TAGS.tasks,
-      ]),
-    },
-    {
-      fields: [
-        "documentId",
-        "status",
-        "activationStatus",
-        "expectedTime",
-        "timeSpent",
-      ],
-      filters: {
-        task: { documentId: { $in: allTaskIds } },
-        status: { $ne: FINISHED_STATUS },
-        activationStatus: { $ne: DISABLED_ACTIVATION },
-      },
-      populate: {
-        task: { fields: ["documentId"] },
-        assignedTo: { fields: ["documentId"] },
-      },
-      pagination: { pageSize: SUBTASK_PAGE_SIZE },
-    },
-  );
-
-  const {
-    assignedCountByColaboratorId,
-    producingSubTaskIds,
-    taskIdByProducingSubTask,
-  } = applySubTaskRows(
-    subTasksRes.data,
-    progressByTaskId,
-    badgesByTaskId,
-    assignedCountsByTask,
-  );
-
-  if (producingSubTaskIds.length > 0) {
-    const activitiesRes = await strapiFetch<StrapiList<ActivityProgressEntity>>(
-      "/activities",
-      {
-        strapiCache: resolveProgressCache(noStore, [
-          STRAPI_TAGS.activities,
-          STRAPI_TAGS.subTasks,
-        ]),
-      },
-      {
-        fields: ["action", "timestamp"],
-        filters: {
-          subTask: { documentId: { $in: producingSubTaskIds } },
-          action: { $in: ["started", "stoped"] },
-        },
-        populate: {
-          subTask: { fields: ["documentId"] },
-          colaborator: { fields: ["documentId"] },
-        },
-        sort: "timestamp:asc",
-        pagination: { pageSize: ACTIVITY_PAGE_SIZE },
-      },
-    );
-
-    applyOpenActivities(
-      activitiesRes.data,
-      taskIdByProducingSubTask,
-      progressByTaskId,
-      badgesByTaskId,
-    );
-  }
-
-  await applyFinishedParticipantCountsStrapi(
-    finishedTaskIds,
-    badgesByTaskId,
-    noStore,
-  );
 
   return { progressByTaskId, badgesByTaskId, assignedCountByColaboratorId };
 }

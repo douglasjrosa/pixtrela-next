@@ -1,14 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-const strapiFetch = vi.fn();
+const findUserById = vi.fn();
+const findUserAvatarUrl = vi.fn();
 
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => false,
-}));
-
-vi.mock("@/lib/strapi", () => ({
-  STRAPI_TAGS: { users: "strapi:users" },
-  strapiFetch,
+vi.mock("@/lib/repos/users", () => ({
+  findUserById: (...args: unknown[]) => findUserById(...args),
+  findUserAvatarUrl: (...args: unknown[]) => findUserAvatarUrl(...args),
 }));
 
 vi.mock("@/lib/navigation/rethrow", () => ({
@@ -16,14 +13,15 @@ vi.mock("@/lib/navigation/rethrow", () => ({
 }));
 
 describe("loadKioskColaboratorProfile", () => {
-  it("maps profile avatar url through Strapi media helper", async () => {
-    strapiFetch.mockResolvedValue({
-      data: {
-        documentId: "c1",
-        name: "Ana Silva",
-        avatarUrl: "/uploads/ana.jpg",
-      },
+  it("returns active colaborator profile from drizzle repos", async () => {
+    findUserById.mockResolvedValue({
+      id: "c1",
+      name: "Ana Silva",
+      role: "colaborator",
+      active: true,
+      blocked: false,
     });
+    findUserAvatarUrl.mockResolvedValue("/api/media/avatar.jpg");
 
     const { loadKioskColaboratorProfile } = await import(
       "./load-colaborator-profile"
@@ -31,12 +29,12 @@ describe("loadKioskColaboratorProfile", () => {
     await expect(loadKioskColaboratorProfile("c1")).resolves.toEqual({
       documentId: "c1",
       name: "Ana Silva",
-      avatarUrl: "http://127.0.0.1:1337/uploads/ana.jpg",
+      avatarUrl: "/api/media/avatar.jpg",
     });
   });
 
-  it("returns null when the profile is missing", async () => {
-    strapiFetch.mockResolvedValue({ data: null });
+  it("returns null when the user is missing or inactive", async () => {
+    findUserById.mockResolvedValue(null);
     const { loadKioskColaboratorProfile } = await import(
       "./load-colaborator-profile"
     );
