@@ -14,7 +14,7 @@ import {
   type ActivitySession,
   type SharingType,
 } from "@/lib/business/task-progress";
-import type { SubtaskPaymentCurrency } from "@/lib/strapi/currency-for-subtasks";
+import type { SubtaskPaymentCurrency } from "@/lib/settings/currency-for-subtasks-types";
 
 export interface SubTaskSessionsPanelProps {
   sessions: ActivitySession[];

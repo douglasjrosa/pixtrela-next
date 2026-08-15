@@ -117,7 +117,7 @@ describe("profile actions", () => {
       id: "col-1",
       name: "Ana",
       lastName: "Silva",
-      phone: "(11) 98765-4321",
+      phone: "11987654321",
       email: "ana@example.com",
     });
   });

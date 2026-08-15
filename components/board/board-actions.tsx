@@ -24,7 +24,7 @@ import {
 import { countUnassignedSubTasks } from "@/lib/business/kanban-card-badges";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
-import type { SubtaskPaymentCurrency } from "@/lib/strapi/currency-for-subtasks";
+import type { SubtaskPaymentCurrency } from "@/lib/settings/currency-for-subtasks-types";
 
 const FINISHED_STATUS = "finished";
 

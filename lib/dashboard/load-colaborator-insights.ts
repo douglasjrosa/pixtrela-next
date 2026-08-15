@@ -1,12 +1,6 @@
-import { isDrizzleBackend } from "@/lib/db/backend";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
-import { dashboardColaboratorTag, strapiFetch } from "@/lib/strapi";
 
 import type { ColaboratorInsightsData } from "./types";
-
-interface InsightsResponse {
-  data: ColaboratorInsightsData | null;
-}
 
 const EMPTY_INSIGHTS: ColaboratorInsightsData = {
   colaboratorDocumentId: "",
@@ -17,28 +11,12 @@ const EMPTY_INSIGHTS: ColaboratorInsightsData = {
 
 export async function loadColaboratorInsights(
   documentId: string,
-  month?: string,
+  _month?: string,
 ): Promise<ColaboratorInsightsData> {
   if (!documentId) return EMPTY_INSIGHTS;
 
-  // Full insights charts are not yet ported to Drizzle; keep the page usable.
-  if (isDrizzleBackend()) {
-    return { ...EMPTY_INSIGHTS, colaboratorDocumentId: documentId };
-  }
-
-  const query = month ? `?month=${encodeURIComponent(month)}` : "";
-
   try {
-    const response = await strapiFetch<InsightsResponse>(
-      `/dashboard/colaborator/${documentId}/insights${query}`,
-      {
-        strapiCache: {
-          tags: [dashboardColaboratorTag(documentId)],
-          revalidate: 60,
-        },
-      },
-    );
-    return response.data ?? { ...EMPTY_INSIGHTS, colaboratorDocumentId: documentId };
+    return { ...EMPTY_INSIGHTS, colaboratorDocumentId: documentId };
   } catch (error) {
     rethrowIfNavigationError(error);
     return { ...EMPTY_INSIGHTS, colaboratorDocumentId: documentId };
