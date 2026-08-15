@@ -148,7 +148,7 @@ export async function pollBoardProgress(
   }
 
   const { progressByTaskId, badgesByTaskId, assignedCountByColaboratorId } =
-    await loadBoardProgressByTaskId(tasks, { noStore: true });
+    await loadBoardProgressByTaskId(tasks);
 
   const documentIds = tasks.map((task) => task.documentId);
   const totalsByTaskId: BoardProgressPollSnapshot["totalsByTaskId"] = {};
