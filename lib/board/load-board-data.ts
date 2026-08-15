@@ -1,6 +1,7 @@
 import type { KanbanStep, KanbanTask } from "@/components/kanban/types";
 import {
   buildStepKanbanLookup,
+  mapStepsToKanbanSteps,
   stableKanbanTaskNumericId,
 } from "@/lib/board/kanban-drizzle-ids";
 import { listSteps as listStepsRepo } from "@/lib/repos/steps";
@@ -17,11 +18,7 @@ export async function loadDrizzleBoardData(): Promise<{
   ]);
   const stepLookup = buildStepKanbanLookup(stepRows);
 
-  const steps: KanbanStep[] = stepRows.map((step) => ({
-    id: step.index,
-    name: step.name,
-    taskOrderBy: step.taskOrderBy,
-  }));
+  const steps: KanbanStep[] = mapStepsToKanbanSteps(stepRows);
 
   const tasks: KanbanTask[] = taskRows.map((task) => ({
     id: stableKanbanTaskNumericId(task.id),

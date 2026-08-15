@@ -4,6 +4,7 @@ import type { StepTaskOrderBy } from "@/lib/schemas/step-task-order-by";
 
 export interface KanbanStep {
   id: number;
+  documentId: string;
   name: string;
   taskOrderBy: StepTaskOrderBy;
 }

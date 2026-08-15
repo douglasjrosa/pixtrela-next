@@ -143,7 +143,7 @@ export function KanbanBoard({
 
           return (
             <KanbanColumn
-              key={step.id}
+              key={step.documentId}
               step={step}
               tasks={stepCards}
               onTaskClick={onTaskClick}
