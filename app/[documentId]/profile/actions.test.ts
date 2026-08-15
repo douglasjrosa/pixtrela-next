@@ -1,17 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMock = vi.fn();
-const fetchMock = vi.fn();
-const isDrizzleBackend = vi.fn(() => false);
 const changeUserPassword = vi.fn();
 const updateUserPersonal = vi.fn();
+const storeMedia = vi.fn();
+const setUserAvatarMedia = vi.fn();
+const getDb = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: () => authMock(),
-}));
-
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => isDrizzleBackend(),
 }));
 
 vi.mock("@/lib/repos/users", () => ({
@@ -19,23 +16,29 @@ vi.mock("@/lib/repos/users", () => ({
   updateUserPersonal: (...args: unknown[]) => updateUserPersonal(...args),
   findUserAvatarUrl: vi.fn(),
   findUserById: vi.fn(),
-  setUserAvatarMedia: vi.fn(),
+  setUserAvatarMedia: (...args: unknown[]) => setUserAvatarMedia(...args),
 }));
 
-vi.mock("@/lib/strapi", () => ({
-  strapiFetch: vi.fn(),
+vi.mock("@/lib/media/store-media", () => ({
+  storeMedia: (...args: unknown[]) => storeMedia(...args),
+}));
+
+vi.mock("@/lib/db/client", () => ({
+  getDb: () => getDb(),
 }));
 
 describe("profile actions", () => {
   beforeEach(() => {
     authMock.mockReset();
-    fetchMock.mockReset();
-    vi.stubGlobal("fetch", fetchMock);
+    changeUserPassword.mockReset();
+    updateUserPersonal.mockReset();
+    storeMedia.mockReset();
+    setUserAvatarMedia.mockReset();
+    getDb.mockReset();
   });
 
   it("rejects password change for admin", async () => {
     authMock.mockResolvedValue({
-      jwt: "token",
       user: { id: "admin-1", role: "admin" },
     });
 
@@ -50,14 +53,27 @@ describe("profile actions", () => {
     expect(result).toEqual({ ok: false, error: "forbidden" });
   });
 
-  it("posts avatar for colaborator", async () => {
+  it("stores avatar media for colaborator", async () => {
     authMock.mockResolvedValue({
-      jwt: "token",
       user: { id: "col-1", role: "colaborator" },
     });
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({ avatarUrl: "/uploads/a.jpg" }),
+    storeMedia.mockResolvedValue({
+      storageKey: "avatars/col-1.jpg",
+      url: "https://media.example.test/avatars/col-1.jpg",
+      mimeType: "image/jpeg",
+      byteSize: 12,
+    });
+    getDb.mockReturnValue({
+      insert: () => ({
+        values: () => ({
+          returning: async () => [
+            {
+              id: "media-1",
+              url: "https://media.example.test/avatars/col-1.jpg",
+            },
+          ],
+        }),
+      }),
     });
 
     const { updateOwnAvatar } = await import(
@@ -66,26 +82,19 @@ describe("profile actions", () => {
     const file = new File(["img"], "a.jpg", { type: "image/jpeg" });
     const result = await updateOwnAvatar(file);
     expect(result.ok).toBe(true);
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/api/profile/avatar"),
-      expect.objectContaining({ method: "POST" }),
-    );
+    expect(storeMedia).toHaveBeenCalled();
+    expect(setUserAvatarMedia).toHaveBeenCalledWith("col-1", "media-1");
   });
 
-  it("puts personal data for colaborator", async () => {
+  it("updates personal data for colaborator", async () => {
     authMock.mockResolvedValue({
-      jwt: "token",
       user: { id: "col-1", role: "colaborator" },
     });
-    fetchMock.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        name: "Ana",
-        lastName: "Silva",
-        email: "ana@example.com",
-        phone: "11987654321",
-      }),
+    updateUserPersonal.mockResolvedValue({
+      name: "Ana",
+      lastName: "Silva",
+      email: "ana@example.com",
+      phone: "11987654321",
     });
 
     const { updateOwnPersonal } = await import(
@@ -104,14 +113,16 @@ describe("profile actions", () => {
       email: "ana@example.com",
       phone: "11987654321",
     });
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/api/profile/personal"),
-      expect.objectContaining({ method: "PUT" }),
-    );
+    expect(updateUserPersonal).toHaveBeenCalledWith({
+      id: "col-1",
+      name: "Ana",
+      lastName: "Silva",
+      phone: "(11) 98765-4321",
+      email: "ana@example.com",
+    });
   });
 
   it("changes password via drizzle repo", async () => {
-    isDrizzleBackend.mockReturnValue(true);
     authMock.mockResolvedValue({
       user: { id: "col-1", role: "colaborator" },
     });

@@ -9,10 +9,6 @@ vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "" })),
 }));
 
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => true,
-}));
-
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
 }));
@@ -21,15 +17,6 @@ vi.mock("@/lib/repos/teams", () => ({
   createTeam: (...args: unknown[]) => createTeamRepo(...args),
   updateTeam: (...args: unknown[]) => updateTeamRepo(...args),
   deleteTeam: (...args: unknown[]) => deleteTeamRepo(...args),
-}));
-
-vi.mock("@/lib/strapi", () => ({
-  STRAPI_TAGS: { teams: "strapi:teams" },
-  strapiFetch: vi.fn(),
-}));
-
-vi.mock("@/lib/strapi/revalidate", () => ({
-  revalidateStrapiTags: vi.fn(),
 }));
 
 describe("teams/actions drizzle CRUD", () => {

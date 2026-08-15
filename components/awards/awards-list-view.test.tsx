@@ -14,7 +14,7 @@ const awards: AwardRow[] = [
     documentId: "a1",
     name: "arroz-sku",
     title: "Arroz 5kg",
-    imageUrl: "http://127.0.0.1:1337/uploads/arroz.jpg",
+    imageUrl: "/api/media/arroz.jpg",
     values: [{ numberOf: 2100, currencyDocumentId: "c1" }],
   },
 ];
@@ -35,7 +35,7 @@ describe("AwardsListView", () => {
     const image = screen.getAllByRole("img", { name: "Arroz 5kg" })[0]!;
     expect(image).toHaveAttribute(
       "src",
-      "/api/strapi-media?path=%2Fuploads%2Farroz.jpg",
+      "/api/media/arroz.jpg",
     );
     expect(image.className).toMatch(/rounded-full/);
   });

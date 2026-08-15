@@ -172,9 +172,11 @@ export async function getCurrencyForSubtasks(db: Db = getDb()) {
       currencyPluralTitle: currencies.pluralTitle,
       currencyPerSecond: currencies.currencyPerSecond,
       iconMediaId: currencies.iconMediaId,
+      iconMediaUrl: mediaAssets.url,
     })
     .from(currencyForSubtasks)
     .innerJoin(currencies, eq(currencyForSubtasks.currencyId, currencies.id))
+    .leftJoin(mediaAssets, eq(currencies.iconMediaId, mediaAssets.id))
     .limit(1);
   return row ?? null;
 }

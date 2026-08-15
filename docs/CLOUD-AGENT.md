@@ -13,7 +13,6 @@ migrates **prod** DB.
 Paste (All repositories or this repo):
 
 ```env
-DATA_BACKEND=drizzle
 DATABASE_URL=postgresql://pixtrela:<DEV_PG_PASSWORD>@179.0.179.210:5433/pixtrela_dev
 AUTH_SECRET=<same as Vercel>
 AUTH_URL=http://localhost:3000

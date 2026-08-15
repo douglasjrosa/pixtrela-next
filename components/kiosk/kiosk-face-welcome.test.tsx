@@ -13,7 +13,7 @@ describe("KioskFaceWelcome", () => {
       <KioskFaceWelcome
         name="Ana Silva"
         greetingGender="feminine"
-        avatarUrl="http://127.0.0.1:1337/uploads/a.jpg"
+        avatarUrl="/api/media/a.jpg"
         onDone={onDone}
         durationMs={2000}
       />,
@@ -23,7 +23,7 @@ describe("KioskFaceWelcome", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Ana Silva/i })).toHaveAttribute(
       "src",
-      "/api/strapi-media?path=%2Fuploads%2Fa.jpg",
+      "/api/media/a.jpg",
     );
 
     act(() => {

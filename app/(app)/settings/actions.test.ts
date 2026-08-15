@@ -1,158 +1,65 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const strapiFetch = vi.fn();
-const revalidateStrapiTags = vi.fn();
+const revalidateTag = vi.fn();
+const upsertCurrencyForSubtasks = vi.fn();
+const upsertKioskSettings = vi.fn();
+const upsertTaskAutomationSettings = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "jwt" })),
 }));
 
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => false,
+vi.mock("next/cache", () => ({
+  revalidateTag: (...args: unknown[]) => revalidateTag(...args),
 }));
 
-vi.mock("@/lib/strapi", () => ({
-  STRAPI_TAGS: {
-    currencies: "strapi:currencies",
-    currencyForSubtasks: "strapi:currency-for-subtasks",
-    kioskSetting: "strapi:kiosk-setting",
-    taskAutomationSetting: "strapi:task-automation-setting",
-    tasks: "strapi:tasks",
-  },
-  strapiFetch,
+vi.mock("@/lib/repos/settings", () => ({
+  upsertCurrencyForSubtasks: (...args: unknown[]) =>
+    upsertCurrencyForSubtasks(...args),
+  upsertKioskSettings: (...args: unknown[]) => upsertKioskSettings(...args),
+  upsertTaskAutomationSettings: (...args: unknown[]) =>
+    upsertTaskAutomationSettings(...args),
 }));
 
-vi.mock("@/lib/strapi/revalidate", () => ({
-  revalidateStrapiTags,
-}));
-
-vi.mock("@/lib/strapi/currency-for-subtasks", () => ({
-  CURRENCY_FOR_SUBTASKS_API_PATH: "/currency-for-subtasks",
-  toCurrencyForSubtasksPayload: (values: { currencyDocumentId: string }) => ({
-    currency: values.currencyDocumentId || null,
-  }),
-}));
-
-vi.mock("@/lib/strapi/kiosk-setting", () => ({
-  KIOSK_SETTING_API_PATH: "/kiosk-setting",
-}));
-
-vi.mock("@/lib/strapi/task-automation-setting", () => ({
-  TASK_AUTOMATION_SETTING_API_PATH: "/task-automation-setting",
-  toTaskAutomationSettingPayload: (values: {
-    waitingStepDocumentId: string;
-    producingStepDocumentId: string;
-    pausedStepDocumentId: string;
-    finishedStepDocumentId: string;
-    reviewedStepDocumentId: string;
-    deliveredStepDocumentId: string;
-  }) => ({
-    waitingStep: values.waitingStepDocumentId || null,
-    producingStep: values.producingStepDocumentId || null,
-    pausedStep: values.pausedStepDocumentId || null,
-    finishedStep: values.finishedStepDocumentId || null,
-    reviewedStep: values.reviewedStepDocumentId || null,
-    deliveredStep: values.deliveredStepDocumentId || null,
-  }),
-}));
-
-function mockStrapiFetch(
-  handlers: Record<string, unknown>,
-): void {
-  strapiFetch.mockImplementation(
-    async (path: string, init?: { method?: string }) => {
-      const method = init?.method ?? "GET";
-      const key = `${method} ${path}`;
-      if (key in handlers) {
-        return handlers[key];
-      }
-      if (path in handlers) {
-        return handlers[path];
-      }
-      throw new Error(`Unexpected strapiFetch: ${key}`);
-    },
-  );
-}
-
-describe("settings/actions", () => {
+describe("settings/actions drizzle paths", () => {
   beforeEach(() => {
-    strapiFetch.mockReset();
-    revalidateStrapiTags.mockReset();
     vi.resetModules();
+    revalidateTag.mockReset();
+    upsertCurrencyForSubtasks.mockReset();
+    upsertKioskSettings.mockReset();
+    upsertTaskAutomationSettings.mockReset();
   });
 
-  it("updateKioskSessionIdleSeconds PUTs singular single-type path", async () => {
-    mockStrapiFetch({
-      "PUT /kiosk-setting": { data: { sessionIdleSeconds: 15 } },
-    });
-
-    const { updateKioskSessionIdleSeconds } = await import("./actions");
-    await updateKioskSessionIdleSeconds(15);
-
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/kiosk-setting",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({ data: { sessionIdleSeconds: 15 } }),
-      }),
-    );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:kiosk-setting");
-  });
-
-  it("updateCurrencyForSubtasks PUTs single-type path", async () => {
-    mockStrapiFetch({
-      "PUT /currency-for-subtasks": { data: { documentId: "cfs-1" } },
-    });
-
+  it("updateCurrencyForSubtasks upserts and revalidates", async () => {
     const { updateCurrencyForSubtasks } = await import("./actions");
-    await updateCurrencyForSubtasks({ currencyDocumentId: "cur-star" });
-
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/currency-for-subtasks",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({ data: { currency: "cur-star" } }),
-      }),
-    );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith(
-      "strapi:currency-for-subtasks",
-    );
+    await updateCurrencyForSubtasks({ currencyDocumentId: "cur-1" });
+    expect(upsertCurrencyForSubtasks).toHaveBeenCalledWith("cur-1");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:currency-for-subtasks", "default");
   });
 
-  it("updateTaskAutomationSetting PUTs single-type path", async () => {
-    mockStrapiFetch({
-      "PUT /task-automation-setting": { data: { documentId: "auto-1" } },
-    });
+  it("updateKioskSessionIdleSeconds upserts kiosk settings", async () => {
+    const { updateKioskSessionIdleSeconds } = await import("./actions");
+    await updateKioskSessionIdleSeconds(90);
+    expect(upsertKioskSettings).toHaveBeenCalledWith(90);
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:kiosk-setting", "default");
+  });
 
+  it("updateTaskAutomationSetting upserts and revalidates on drizzle backend", async () => {
     const { updateTaskAutomationSetting } = await import("./actions");
-    await updateTaskAutomationSetting({
-      waitingStepDocumentId: "step-1",
-      producingStepDocumentId: "step-2",
+    const values = {
+      waitingStepDocumentId: "s1",
+      producingStepDocumentId: "",
       pausedStepDocumentId: "",
-      finishedStepDocumentId: "step-4",
-      reviewedStepDocumentId: "step-5",
+      finishedStepDocumentId: "",
+      reviewedStepDocumentId: "",
       deliveredStepDocumentId: "",
-    });
-
-    expect(strapiFetch).toHaveBeenCalledWith(
-      "/task-automation-setting",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({
-          data: {
-            waitingStep: "step-1",
-            producingStep: "step-2",
-            pausedStep: null,
-            finishedStep: "step-4",
-            reviewedStep: "step-5",
-            deliveredStep: null,
-          },
-        }),
-      }),
-    );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith(
-      "strapi:task-automation-setting",
-      "strapi:tasks",
+      assignWarnMax: 4,
+    };
+    await updateTaskAutomationSetting(values);
+    expect(upsertTaskAutomationSettings).toHaveBeenCalledWith(values);
+    expect(revalidateTag).toHaveBeenCalledWith(
+      "drizzle:task-automation-setting",
+      "default",
     );
   });
 });
