@@ -6,7 +6,7 @@
 | Domain | Next target | Status |
 |--------|-------------|--------|
 | Auth / identify | Auth.js + `lib/repos/users`, `lib/repos/kiosk` | done |
-| Kiosk | `lib/repos/kiosk`, `lib/kiosk/*` | done |
+| Kiosk | `lib/repos/kiosk-subtasks`, `lib/kiosk/*` | done |
 | Dashboard | `lib/dashboard/*` | done |
 | Profile | profile actions + `lib/repos/users` | done |
 | Balances / exchange | `lib/repos/balances`, `lib/repos/exchanges` | done |

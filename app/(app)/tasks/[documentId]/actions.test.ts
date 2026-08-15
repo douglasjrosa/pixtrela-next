@@ -25,6 +25,7 @@ vi.mock("@/lib/repos/tasks", () => ({
     listSubTasksWithRelationsForTask(...args),
   listSubTaskIdsForTask: (...args: unknown[]) => listSubTaskIdsForTask(...args),
   getSubTaskById: (...args: unknown[]) => getSubTaskById(...args),
+  listSubTaskActivitySessions: vi.fn(),
 }));
 
 describe("tasks/[documentId]/actions drizzle subtasks", () => {
