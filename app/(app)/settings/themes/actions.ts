@@ -6,7 +6,6 @@ import { auth } from "@/auth";
 import { mediaAssets } from "@/drizzle/schema";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
-import { isDrizzleBackend } from "@/lib/db/backend";
 import { getDb } from "@/lib/db/client";
 import { storeMedia } from "@/lib/media/store-media";
 import { updateRouteTheme as updateRouteThemeRepo } from "@/lib/repos/settings";
@@ -14,9 +13,6 @@ import {
   routeThemeFormSchema,
   type RouteThemeFormInput,
 } from "@/lib/schemas/route-theme";
-import { STRAPI_TAGS, strapiFetch } from "@/lib/strapi";
-import { revalidateStrapiTags } from "@/lib/strapi/revalidate";
-import { strapiUpload } from "@/lib/strapi/upload";
 import {
   DEFAULT_BACKGROUND_COLOR_OPACITY,
   DEFAULT_BACKGROUND_MOTION,
@@ -44,12 +40,8 @@ async function assertCanManage(): Promise<void> {
 }
 
 function invalidateThemes(): void {
-  if (isDrizzleBackend()) {
-    revalidateTag("drizzle:route-themes", "default");
-    revalidatePath("/", "layout");
-    return;
-  }
-  revalidateStrapiTags(STRAPI_TAGS.routeThemes);
+  revalidateTag("drizzle:route-themes", "default");
+  revalidatePath("/", "layout");
 }
 
 function buildRouteThemePayload(data: RouteThemeFormInput) {
@@ -103,28 +95,20 @@ export async function uploadRouteThemeImage(
   }
   const mimeType = entry.type || "image/jpeg";
 
-  if (isDrizzleBackend()) {
-    const buffer = Buffer.from(await entry.arrayBuffer());
-    const extension = mimeType.includes("png") ? "png" : "jpg";
-    const stored = await storeMedia({ bytes: buffer, mimeType, extension });
-    const db = getDb();
-    const [media] = await db
-      .insert(mediaAssets)
-      .values({
-        storageKey: stored.storageKey,
-        url: stored.url,
-        mimeType: stored.mimeType,
-        byteSize: stored.byteSize,
-      })
-      .returning({ id: mediaAssets.id });
-    return media.id;
-  }
-
-  const file =
-    entry instanceof File
-      ? entry
-      : new File([entry], "route-theme.jpg", { type: mimeType });
-  return strapiUpload(file);
+  const buffer = Buffer.from(await entry.arrayBuffer());
+  const extension = mimeType.includes("png") ? "png" : "jpg";
+  const stored = await storeMedia({ bytes: buffer, mimeType, extension });
+  const db = getDb();
+  const [media] = await db
+    .insert(mediaAssets)
+    .values({
+      storageKey: stored.storageKey,
+      url: stored.url,
+      mimeType: stored.mimeType,
+      byteSize: stored.byteSize,
+    })
+    .returning({ id: mediaAssets.id });
+  return media.id;
 }
 
 export async function updateRouteTheme(
@@ -135,36 +119,26 @@ export async function updateRouteTheme(
   const data = routeThemeFormSchema.parse(raw);
   const payload = buildRouteThemePayload(data);
 
-  if (isDrizzleBackend()) {
-    await updateRouteThemeRepo({
-      id: documentId,
-      backgroundColor: payload.backgroundColor as string | null,
-      backgroundColorOpacity: payload.backgroundColorOpacity as number,
-      backgroundSize: payload.backgroundSize as string,
-      backgroundPosition: payload.backgroundPosition as string,
-      backgroundRepeat: payload.backgroundRepeat as string,
-      backgroundMotion: payload.backgroundMotion as string,
-      parallaxIntensity: payload.parallaxIntensity as number,
-      parallaxDirection: payload.parallaxDirection as string,
-      contentMarginMobile: payload.contentMarginMobile as string,
-      contentMarginDesktop: payload.contentMarginDesktop as string,
-      foregroundColor: payload.foregroundColor as string,
-      surfaceColor: payload.surfaceColor as string,
-      surfaceColorOpacity: payload.surfaceColorOpacity as number,
-      clearBackgroundImage: data.clearBackgroundImage,
-      backgroundImageMediaId:
-        typeof data.backgroundImageId === "string"
-          ? data.backgroundImageId
-          : undefined,
-    });
-    invalidateThemes();
-    return;
-  }
-
-  await strapiFetch(`/route-themes/${documentId}`, {
-    method: "PUT",
-    strapiCache: { noStore: true },
-    body: JSON.stringify({ data: payload }),
+  await updateRouteThemeRepo({
+    id: documentId,
+    backgroundColor: payload.backgroundColor as string | null,
+    backgroundColorOpacity: payload.backgroundColorOpacity as number,
+    backgroundSize: payload.backgroundSize as string,
+    backgroundPosition: payload.backgroundPosition as string,
+    backgroundRepeat: payload.backgroundRepeat as string,
+    backgroundMotion: payload.backgroundMotion as string,
+    parallaxIntensity: payload.parallaxIntensity as number,
+    parallaxDirection: payload.parallaxDirection as string,
+    contentMarginMobile: payload.contentMarginMobile as string,
+    contentMarginDesktop: payload.contentMarginDesktop as string,
+    foregroundColor: payload.foregroundColor as string,
+    surfaceColor: payload.surfaceColor as string,
+    surfaceColorOpacity: payload.surfaceColorOpacity as number,
+    clearBackgroundImage: data.clearBackgroundImage,
+    backgroundImageMediaId:
+      typeof data.backgroundImageId === "string"
+        ? data.backgroundImageId
+        : undefined,
   });
   invalidateThemes();
 }

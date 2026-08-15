@@ -4,16 +4,6 @@ const identifyAppUsersByFace = vi.fn();
 const findUserById = vi.fn();
 const findUserAvatarUrl = vi.fn(async () => null);
 const issueLoginTicket = vi.fn(() => "ticket-1");
-const isDrizzleBackend = vi.fn(() => true);
-
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => isDrizzleBackend(),
-}));
-
-vi.mock("@/lib/strapi/migration-guard", () => ({
-  isAuthStrapiFallbackEnabled: () => false,
-}));
-
 vi.mock("@/lib/auth/login-ticket", () => ({
   issueLoginTicket: () => issueLoginTicket(),
 }));
@@ -31,14 +21,9 @@ vi.mock("@/lib/repos/users", () => ({
   findUserAvatarUrl: (...args: unknown[]) => findUserAvatarUrl(...args),
 }));
 
-vi.mock("@/lib/strapi", () => ({
-  strapiFetch: vi.fn(),
-}));
-
 describe("login/actions drizzle face", () => {
   beforeEach(() => {
     vi.resetModules();
-    isDrizzleBackend.mockReturnValue(true);
     identifyAppUsersByFace.mockReset();
     findUserById.mockReset();
   });

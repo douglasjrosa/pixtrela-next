@@ -8,8 +8,6 @@ const getTaskById = vi.fn();
 const applyAutoStepTaskOrderingAfterTaskChange = vi.fn();
 const createSubTask = vi.fn();
 const updateSubTask = vi.fn();
-const isDrizzleBackend = vi.fn(() => true);
-
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({
     user: { id: "mgr-1", role: "manager" },
@@ -19,23 +17,6 @@ vi.mock("@/auth", () => ({
 
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
-}));
-
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => isDrizzleBackend(),
-}));
-
-vi.mock("@/lib/strapi", () => ({
-  strapiFetch: vi.fn(),
-  STRAPI_TAGS: {
-    tasks: "strapi:tasks",
-    steps: "strapi:steps",
-    subTasks: "strapi:sub-tasks",
-  },
-}));
-
-vi.mock("@/lib/strapi/revalidate", () => ({
-  revalidateStrapiTags: vi.fn(),
 }));
 
 vi.mock("@/lib/board/load-board-progress", () => ({
@@ -77,7 +58,6 @@ describe("board/actions drizzle", () => {
     listBoardSubtaskRows.mockReset();
     getTaskById.mockReset();
     applyAutoStepTaskOrderingAfterTaskChange.mockReset();
-    isDrizzleBackend.mockReturnValue(true);
     listStepsRepo.mockResolvedValue([
       { id: "step-uuid", name: "Produção", index: 1, taskOrderBy: "manual" },
     ]);

@@ -1,7 +1,7 @@
 # Agent instructions (Pixtrela Next)
 
 This repo is **pixtrela-next** (`next/` of the monorepo). Stack: Next.js 16 +
-Drizzle + Auth.js + Postgres. Canonical data: `DATA_BACKEND=drizzle`.
+Drizzle + Auth.js + Postgres.
 
 ## Cloud Agent: start here (no SSH tunnel)
 
@@ -11,7 +11,6 @@ Secrets are injected by Cursor (My Secrets). Required:
 |--------|---------|
 | `DATABASE_URL` | **Dev** Postgres on VPS: `postgresql://pixtrela:…@179.0.179.210:5433/pixtrela_dev` |
 | `AUTH_SECRET` | Auth.js |
-| `DATA_BACKEND` | `drizzle` |
 | `MEDIA_DRIVER` / `S3_*` / `MEDIA_PUBLIC_BASE_URL` | Cloudflare R2 |
 
 **Do not** open an SSH tunnel. Connect straight to `179.0.179.210:5433`.

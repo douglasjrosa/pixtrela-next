@@ -9,10 +9,6 @@ vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "" })),
 }));
 
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => true,
-}));
-
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
 }));
@@ -21,14 +17,6 @@ vi.mock("@/lib/repos/templates", () => ({
   createTemplateTask: (...args: unknown[]) => createTemplateTaskRepo(...args),
   updateTemplateTask: (...args: unknown[]) => updateTemplateTaskRepo(...args),
   deleteTemplateTask: (...args: unknown[]) => deleteTemplateTaskRepo(...args),
-}));
-
-vi.mock("@/lib/strapi", () => ({
-  strapiFetch: vi.fn(),
-}));
-
-vi.mock("@/lib/strapi/revalidate", () => ({
-  revalidateStrapiTags: vi.fn(),
 }));
 
 vi.mock("@/lib/legacy/rbx-client", () => ({

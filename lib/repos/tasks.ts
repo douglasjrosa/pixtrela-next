@@ -11,6 +11,10 @@ import {
   users,
 } from "@/drizzle/schema";
 import { toDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
+import {
+  listActivitySessions,
+  type ActivitySession,
+} from "@/lib/business/task-progress";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import {
   calculateDurationSecondsCurrency,
@@ -548,6 +552,45 @@ export async function listBoardSubtaskRows(taskId: string, db: Db = getDb()) {
     .orderBy(asc(activities.timestamp));
 
   return { rows, assigneeRows, activityRows };
+}
+
+export async function listSubTaskActivitySessions(
+  subTaskId: string,
+  db: Db = getDb(),
+): Promise<ActivitySession[]> {
+  const activityRows = await db
+    .select({
+      action: activities.action,
+      timestamp: activities.timestamp,
+      qty: activities.qty,
+      colaboratorId: activities.colaboratorId,
+      colaboratorName: users.name,
+    })
+    .from(activities)
+    .innerJoin(users, eq(activities.colaboratorId, users.id))
+    .where(
+      and(
+        eq(activities.subTaskId, subTaskId),
+        inArray(activities.action, ["started", "stoped"]),
+      ),
+    )
+    .orderBy(asc(activities.timestamp));
+
+  return listActivitySessions(
+    activityRows.flatMap((row) => {
+      if (!row.timestamp) return [];
+      return [
+        {
+          subTaskDocumentId: subTaskId,
+          colaboratorDocumentId: row.colaboratorId,
+          colaboratorName: row.colaboratorName ?? "",
+          action: row.action,
+          timestamp: row.timestamp.toISOString(),
+          qty: Number(row.qty ?? 0),
+        },
+      ];
+    }),
+  );
 }
 
 async function resolvePaymentCurrency(db: Db) {

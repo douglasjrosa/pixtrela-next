@@ -2,14 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const identifyUserAtKioskByCode = vi.fn();
 const loadKioskWelcomeProfile = vi.fn();
-const isDrizzleBackend = vi.fn(() => true);
-
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "kiosk" }, jwt: "jwt" })),
-}));
-
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => isDrizzleBackend(),
 }));
 
 vi.mock("@/lib/repos/kiosk", () => ({
@@ -21,14 +15,9 @@ vi.mock("@/lib/repos/kiosk", () => ({
     loadKioskWelcomeProfile(...args),
 }));
 
-vi.mock("@/lib/strapi", () => ({
-  strapiFetch: vi.fn(),
-}));
-
 describe("kiosk/actions drizzle", () => {
   beforeEach(() => {
     vi.resetModules();
-    isDrizzleBackend.mockReturnValue(true);
     identifyUserAtKioskByCode.mockReset();
     loadKioskWelcomeProfile.mockReset();
   });

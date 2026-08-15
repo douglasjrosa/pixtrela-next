@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { FaceOvalCapture } from "@/components/kiosk/face-oval-capture";
 import { Button } from "@/components/ui/button";
 import { compressProfileImage } from "@/lib/media/compress-profile-image";
-import { toBrowserStrapiMediaUrl } from "@/lib/strapi/browser-media-url";
+import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 export interface ProfileAvatarEditorProps {
@@ -29,7 +29,7 @@ export function ProfileAvatarEditor({
   const [captureOpen, setCaptureOpen] = useState(false);
 
   const resolvedUrl =
-    previewUrl ?? toBrowserStrapiMediaUrl(avatarUrl ?? null) ?? null;
+    previewUrl ?? toBrowserMediaUrl(avatarUrl ?? null) ?? null;
 
   async function uploadFile(file: File): Promise<void> {
     setPending(true);

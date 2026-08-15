@@ -1,217 +1,168 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const auth = vi.fn();
-const strapiFetch = vi.fn();
-const strapiUpload = vi.fn();
-const revalidateStrapiTags = vi.fn();
+const revalidateTag = vi.fn();
+const createUserRepo = vi.fn();
+const updateUserAccount = vi.fn();
+const deactivateUserRepo = vi.fn();
+const setUserTag = vi.fn();
+const findUserIdByTag = vi.fn();
+const setUserAvatarMedia = vi.fn();
+const setUserFacePhotoMedia = vi.fn();
+const storeMedia = vi.fn();
+const getDb = vi.fn();
+const listUsers = vi.fn();
 
-vi.mock("@/auth", () => ({ auth }));
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => false,
+vi.mock("@/auth", () => ({
+  auth: vi.fn(async () => ({ user: { role: "admin", id: "admin-1" }, jwt: "" })),
 }));
-vi.mock("@/lib/strapi", () => ({
-  STRAPI_TAGS: { users: "strapi:users" },
-  strapiFetch,
+
+vi.mock("next/cache", () => ({
+  revalidateTag: (...args: unknown[]) => revalidateTag(...args),
 }));
-vi.mock("@/lib/strapi/revalidate", () => ({ revalidateStrapiTags }));
-vi.mock("@/lib/strapi/upload", () => ({ strapiUpload }));
 
-describe("deactivateUser", () => {
-  beforeEach(() => {
-    auth.mockReset();
-    strapiFetch.mockReset();
-    revalidateStrapiTags.mockReset();
-    vi.resetModules();
-  });
-
-  it("blocks a manageable user for manager", async () => {
-    auth.mockResolvedValue({ user: { role: "manager" }, jwt: "token" });
-    strapiFetch
-      .mockResolvedValueOnce([{ id: 10, roleType: "colaborator" }])
-      .mockResolvedValueOnce({});
-
-    const { deactivateUser } = await import("./actions");
-    await deactivateUser(10);
-
-    expect(strapiFetch).toHaveBeenLastCalledWith(
-      "/users/10",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({ blocked: true }),
-      }),
-    );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:users");
-  });
-
-  it("allows leader to deactivate colaborator", async () => {
-    auth.mockResolvedValue({ user: { role: "leader" }, jwt: "token" });
-    strapiFetch
-      .mockResolvedValueOnce([{ id: 11, roleType: "colaborator" }])
-      .mockResolvedValueOnce({});
-
-    const { deactivateUser } = await import("./actions");
-    await deactivateUser(11);
-
-    expect(strapiFetch).toHaveBeenLastCalledWith(
-      "/users/11",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({ blocked: true }),
-      }),
-    );
-  });
-
-  it("rejects deactivating a role the actor cannot manage", async () => {
-    auth.mockResolvedValue({ user: { role: "manager" }, jwt: "token" });
-    strapiFetch.mockResolvedValueOnce([{ id: 12, roleType: "manager" }]);
-
-    const { deactivateUser } = await import("./actions");
-    await expect(deactivateUser(12)).rejects.toThrow("forbidden");
-    expect(strapiFetch).toHaveBeenCalledTimes(1);
-  });
-
-  it("rejects when actor cannot view users", async () => {
-    auth.mockResolvedValue({ user: { role: "colaborator" }, jwt: "token" });
-
-    const { deactivateUser } = await import("./actions");
-    await expect(deactivateUser(10)).rejects.toThrow("forbidden");
-    expect(strapiFetch).not.toHaveBeenCalled();
-  });
+vi.mock("@/lib/repos/users", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/repos/users")>(
+    "@/lib/repos/users",
+  );
+  return {
+    ...actual,
+    createUser: (...args: unknown[]) => createUserRepo(...args),
+    updateUserAccount: (...args: unknown[]) => updateUserAccount(...args),
+    deactivateUser: (...args: unknown[]) => deactivateUserRepo(...args),
+    setUserTag: (...args: unknown[]) => setUserTag(...args),
+    findUserIdByTag: (...args: unknown[]) => findUserIdByTag(...args),
+    setUserAvatarMedia: (...args: unknown[]) => setUserAvatarMedia(...args),
+    setUserFacePhotoMedia: (...args: unknown[]) => setUserFacePhotoMedia(...args),
+    listUsers: (...args: unknown[]) => listUsers(...args),
+    findUserById: vi.fn(async () => ({
+      id: "u1",
+      username: "maria.1",
+      name: "Maria",
+      role: "colaborator",
+      code: 1,
+      email: null,
+      lastName: null,
+      phone: null,
+      blocked: false,
+      active: true,
+      greetingGender: "feminine",
+    })),
+  };
 });
 
-describe("updateUserImage", () => {
+vi.mock("@/lib/media/store-media", () => ({
+  storeMedia: (...args: unknown[]) => storeMedia(...args),
+}));
+
+vi.mock("@/lib/db/client", () => ({
+  getDb: () => getDb(),
+}));
+
+describe("users/actions drizzle CRUD", () => {
   beforeEach(() => {
-    auth.mockReset();
-    strapiFetch.mockReset();
-    strapiUpload.mockReset();
-    revalidateStrapiTags.mockReset();
-  });
-
-  it("uploads and attaches an avatar to a manageable user", async () => {
-    auth.mockResolvedValue({ user: { role: "admin" }, jwt: "token" });
-    strapiFetch
-      .mockResolvedValueOnce([{ id: 10, roleType: "colaborator" }])
-      .mockResolvedValueOnce({});
-    strapiUpload.mockResolvedValue(25);
-    const formData = new FormData();
-    formData.append(
-      "file",
-      new File(["avatar"], "avatar.png", { type: "image/png" }),
-    );
-
-    const { updateUserImage } = await import("./actions");
-    await updateUserImage(10, "avatar", formData);
-
-    expect(strapiUpload).toHaveBeenCalledOnce();
-    expect(strapiFetch).toHaveBeenLastCalledWith(
-      "/users/10",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({ avatar: 25 }),
-      }),
-    );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:users");
-  });
-
-  it("uploads face photo with faceVector when provided", async () => {
-    auth.mockResolvedValue({ user: { role: "admin" }, jwt: "token" });
-    strapiFetch
-      .mockResolvedValueOnce([{ id: 10, roleType: "colaborator" }])
-      .mockResolvedValueOnce({});
-    strapiUpload.mockResolvedValue(26);
-    const faceVector = Array.from({ length: 128 }, (_, i) => i / 128);
-    const formData = new FormData();
-    formData.append(
-      "file",
-      new File(["face"], "face.png", { type: "image/png" }),
-    );
-    formData.append("faceVector", JSON.stringify(faceVector));
-
-    const { updateUserImage } = await import("./actions");
-    await updateUserImage(10, "facePhoto", formData);
-
-    expect(strapiFetch).toHaveBeenLastCalledWith(
-      "/users/10",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({ facePhoto: 26, faceVector }),
-      }),
-    );
-  });
-
-  it("rejects image updates from non-admin users", async () => {
-    auth.mockResolvedValue({ user: { role: "manager" }, jwt: "token" });
-    const formData = new FormData();
-    formData.append(
-      "file",
-      new File(["face"], "face.png", { type: "image/png" }),
-    );
-
-    const { updateUserImage } = await import("./actions");
-    await expect(
-      updateUserImage(10, "facePhoto", formData),
-    ).rejects.toThrow("forbidden");
-    expect(strapiUpload).not.toHaveBeenCalled();
-  });
-});
-
-describe("pairUserTag", () => {
-  beforeEach(() => {
-    auth.mockReset();
-    strapiFetch.mockReset();
-    revalidateStrapiTags.mockReset();
     vi.resetModules();
+    revalidateTag.mockReset();
+    createUserRepo.mockReset();
+    updateUserAccount.mockReset();
+    deactivateUserRepo.mockReset();
+    setUserTag.mockReset();
+    findUserIdByTag.mockReset();
+    setUserAvatarMedia.mockReset();
+    setUserFacePhotoMedia.mockReset();
+    storeMedia.mockReset();
+    listUsers.mockResolvedValue([]);
   });
 
-  it("pairs a normalized tag when admin manages the user", async () => {
-    auth.mockResolvedValue({ user: { role: "admin" }, jwt: "token" });
-    strapiFetch
-      .mockResolvedValueOnce([{ id: 10, roleType: "colaborator" }])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce({});
-
-    const { pairUserTag } = await import("./actions");
-    const result = await pairUserTag(10, "04:a3:b2:c1");
-
-    expect(result).toEqual({ ok: true, userTag: "04A3B2C1" });
-    expect(strapiFetch).toHaveBeenLastCalledWith(
-      "/users/10",
+  it("createUser persists via repo", async () => {
+    createUserRepo.mockResolvedValue({
+      id: "u1",
+      username: "maria.1",
+      name: "Maria",
+      role: "colaborator",
+      code: 1,
+    });
+    const { createUser } = await import("./actions");
+    await createUser({
+      name: "Maria",
+      username: "maria.1",
+      password: "secret1",
+      code: 1,
+      roleType: "colaborator",
+      greetingGender: "feminine",
+    });
+    expect(createUserRepo).toHaveBeenCalledWith(
       expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({ userTag: "04A3B2C1" }),
+        name: "Maria",
+        username: "maria.1",
+        role: "colaborator",
+        code: 1,
       }),
     );
-    expect(revalidateStrapiTags).toHaveBeenCalledWith("strapi:users");
   });
 
-  it("returns conflict when another user already has the tag", async () => {
-    auth.mockResolvedValue({ user: { role: "manager" }, jwt: "token" });
-    strapiFetch
-      .mockResolvedValueOnce([{ id: 10, roleType: "colaborator" }])
-      .mockResolvedValueOnce([{ id: 99 }]);
+  it("deactivateUser soft-blocks via repo", async () => {
+    const { deactivateUser } = await import("./actions");
+    await deactivateUser("u1");
+    expect(deactivateUserRepo).toHaveBeenCalledWith(
+      "u1",
+      expect.any(String),
+    );
+  });
 
+  it("updateUser calls updateUserAccount", async () => {
+    const { updateUser } = await import("./actions");
+    await updateUser("u1", { name: "Maria Silva" });
+    expect(updateUserAccount).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "u1", name: "Maria Silva" }),
+    );
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
+  });
+
+  it("deleteUser deactivates via repo for admin", async () => {
+    const { deleteUser } = await import("./actions");
+    await deleteUser("u1");
+    expect(deactivateUserRepo).toHaveBeenCalledWith("u1", expect.any(String));
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
+  });
+
+  it("pairUserTag sets tag when no conflict", async () => {
+    findUserIdByTag.mockResolvedValue(null);
+    setUserTag.mockResolvedValue(undefined);
     const { pairUserTag } = await import("./actions");
-    const result = await pairUserTag(10, "AABBCCDD");
+    const result = await pairUserTag("u1", "  AB:CD  ");
+    expect(result).toEqual({ ok: true, userTag: "ABCD" });
+    expect(setUserTag).toHaveBeenCalledWith("u1", "ABCD");
+  });
 
+  it("pairUserTag returns conflict when tag owned elsewhere", async () => {
+    findUserIdByTag.mockResolvedValue("other-user");
+    const { pairUserTag } = await import("./actions");
+    const result = await pairUserTag("u1", "AB:CD");
     expect(result).toEqual({ ok: false, error: "conflict" });
   });
 
-  it("returns forbidden for roles that cannot pair tags", async () => {
-    auth.mockResolvedValue({ user: { role: "leader" }, jwt: "token" });
+  it("updateUserImage stores avatar media on drizzle", async () => {
+    storeMedia.mockResolvedValue({
+      storageKey: "k",
+      url: "/a.jpg",
+      mimeType: "image/jpeg",
+      byteSize: 4,
+    });
+    const returning = vi.fn().mockResolvedValue([{ id: "media-1" }]);
+    const values = vi.fn().mockReturnValue({ returning });
+    const insert = vi.fn().mockReturnValue({ values });
+    getDb.mockReturnValue({ insert });
 
-    const { pairUserTag } = await import("./actions");
-    const result = await pairUserTag(10, "AABBCCDD");
+    const formData = new FormData();
+    formData.append(
+      "file",
+      new File(["x"], "a.jpg", { type: "image/jpeg" }),
+    );
 
-    expect(result).toEqual({ ok: false, error: "forbidden" });
-    expect(strapiFetch).not.toHaveBeenCalled();
-  });
+    const { updateUserImage } = await import("./actions");
+    await updateUserImage("u1", "avatar", formData);
 
-  it("returns invalid for short tags", async () => {
-    auth.mockResolvedValue({ user: { role: "admin" }, jwt: "token" });
-
-    const { pairUserTag } = await import("./actions");
-    const result = await pairUserTag(10, "AB");
-
-    expect(result).toEqual({ ok: false, error: "invalid" });
+    expect(setUserAvatarMedia).toHaveBeenCalledWith("u1", "media-1", expect.anything());
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 });

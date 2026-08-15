@@ -9,7 +9,7 @@ import {
   formatKioskWelcomeMessage,
   type GreetingGender,
 } from "@/lib/business/kiosk-welcome";
-import { toBrowserStrapiMediaUrl } from "@/lib/strapi/browser-media-url";
+import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 import { cn } from "@/lib/utils";
 
 export interface KioskFaceWelcomeProps {
@@ -38,8 +38,8 @@ export function KioskFaceWelcome({
   const t = useTranslations("kiosk");
   const [fadingOut, setFadingOut] = useState(false);
   const imageUrl =
-    toBrowserStrapiMediaUrl(avatarUrl ?? null) ??
-    toBrowserStrapiMediaUrl(facePhotoUrl ?? null);
+    toBrowserMediaUrl(avatarUrl ?? null) ??
+    toBrowserMediaUrl(facePhotoUrl ?? null);
   const message = formatKioskWelcomeMessage(name, greetingGender);
   const safeFadeMs = Math.min(Math.max(fadeMs, 0), durationMs);
   const holdMs = durationMs - safeFadeMs;

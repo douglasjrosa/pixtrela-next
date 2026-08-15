@@ -8,31 +8,12 @@ const deleteSubTaskById = vi.fn();
 const listSubTasksWithRelationsForTask = vi.fn();
 const listSubTaskIdsForTask = vi.fn();
 const getSubTaskById = vi.fn();
-const isDrizzleBackend = vi.fn(() => true);
-
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" } })),
 }));
 
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
-}));
-
-vi.mock("@/lib/db/backend", () => ({
-  isDrizzleBackend: () => isDrizzleBackend(),
-}));
-
-vi.mock("@/lib/strapi", () => ({
-  strapiFetch: vi.fn(),
-  STRAPI_TAGS: { subTasks: "strapi:sub-tasks", tasks: "strapi:tasks" },
-}));
-
-vi.mock("@/lib/strapi/revalidate", () => ({
-  revalidateStrapiTags: vi.fn(),
-}));
-
-vi.mock("@/lib/strapi/subtask-sessions", () => ({
-  loadSubTaskSessions: vi.fn(),
 }));
 
 vi.mock("@/lib/repos/tasks", () => ({
@@ -57,7 +38,6 @@ describe("tasks/[documentId]/actions drizzle subtasks", () => {
     listSubTasksWithRelationsForTask.mockReset();
     listSubTaskIdsForTask.mockReset();
     getSubTaskById.mockReset();
-    isDrizzleBackend.mockReturnValue(true);
   });
 
   const values = {
