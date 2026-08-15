@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "test:changed": "vitest run --changed origin/master",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test tests/e2e/smoke-nav.spec.ts",

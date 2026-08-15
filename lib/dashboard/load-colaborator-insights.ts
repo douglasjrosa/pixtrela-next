@@ -11,7 +11,6 @@ const EMPTY_INSIGHTS: ColaboratorInsightsData = {
 
 export async function loadColaboratorInsights(
   documentId: string,
-  _month?: string,
 ): Promise<ColaboratorInsightsData> {
   if (!documentId) return EMPTY_INSIGHTS;
 

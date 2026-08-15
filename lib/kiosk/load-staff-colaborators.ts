@@ -24,9 +24,9 @@ async function loadDrizzleStaffColaborators(): Promise<
   return rows;
 }
 
-export async function loadKioskStaffColaborators(
-  _staffUserId: string,
-): Promise<KioskStaffColaboratorRow[]> {
+export async function loadKioskStaffColaborators(): Promise<
+  KioskStaffColaboratorRow[]
+> {
   try {
     return await loadDrizzleStaffColaborators();
   } catch (error) {

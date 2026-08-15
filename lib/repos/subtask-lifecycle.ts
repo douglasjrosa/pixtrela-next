@@ -2,7 +2,6 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 
 import {
   activities,
-  subTaskAssignees,
   subTaskDependencies,
   subTasks,
   tasks,

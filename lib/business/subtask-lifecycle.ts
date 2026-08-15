@@ -7,12 +7,10 @@ import {
   shouldKeepCompletedTaskStatus,
 } from "@/lib/business/task-completion";
 import {
-  resolveSubTaskActivationStatusUpdates,
   type SubTaskActivationSyncRow,
 } from "@/lib/business/subtask-activation-sync";
 import { shouldSetTaskStartedAt } from "@/lib/business/task-started-at";
 import {
-  calculateTaskTotalTimeSpent,
   type ActivityTimeRow,
   type SubTaskTimeSpentInput,
 } from "@/lib/business/task-time-spent";

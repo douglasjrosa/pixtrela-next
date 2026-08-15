@@ -21,11 +21,6 @@ import { getDb, type Db } from "@/lib/db/client";
 import type { TasksRevision } from "@/lib/tasks/tasks-revision";
 import { recordActivityViaKiosk } from "@/lib/repos/kiosk-subtasks";
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
-import {
-  listActivitySessions,
-  type ActivitySession,
-  type ActivitySessionRef,
-} from "@/lib/business/task-progress";
 
 export type CreateTaskInput = {
   name: string;
