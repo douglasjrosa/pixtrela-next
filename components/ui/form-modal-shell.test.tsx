@@ -95,6 +95,19 @@ describe("FormModalShell", () => {
     expect(screen.getByRole("presentation").className).toContain(
       FORM_MODAL_OVERLAY_Z_CLASS,
     );
+    expect(screen.getByRole("presentation").className).toContain("pt-[4.5rem]");
+  });
+
+  it("clears the navbar on viewport layout from sm breakpoint", () => {
+    renderWithIntl(
+      <FormModalShell open title="Título" layout="viewport" onClose={vi.fn()}>
+        <p>Conteúdo</p>
+      </FormModalShell>,
+    );
+
+    const overlay = screen.getByRole("presentation");
+    expect(overlay.className).toContain("items-start");
+    expect(overlay.className).toContain("sm:pt-[4.5rem]");
   });
 
   it("closes from X and backdrop when not disabled", async () => {

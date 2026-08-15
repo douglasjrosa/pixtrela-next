@@ -91,9 +91,11 @@ export function FormModalShell({
   return (
     <div
       className={cn(
-        "fixed inset-0 flex items-center justify-center bg-black/50",
+        "fixed inset-0 flex bg-black/50",
         FORM_MODAL_OVERLAY_Z_CLASS,
-        isViewport ? "p-0 sm:p-4" : "p-4 pt-[4.5rem]",
+        isViewport
+          ? "items-start justify-center p-0 sm:px-4 sm:pb-4 sm:pt-[4.5rem]"
+          : "items-center justify-center p-4 pt-[4.5rem]",
       )}
       role="presentation"
       onClick={disabled ? undefined : onClose}
