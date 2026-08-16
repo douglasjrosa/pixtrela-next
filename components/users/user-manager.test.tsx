@@ -506,6 +506,33 @@ describe("UserManager", () => {
     });
   });
 
+  it("allows create without code", async () => {
+    const onCreate = vi.fn().mockResolvedValue(undefined);
+    renderWithIntl(
+      <TestUserManager
+        users={users}
+        onCreate={onCreate}
+        onUpdate={vi.fn()}
+        canDelete={false}
+        manageableRoles={["colaborator"]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Novo usuário" }));
+    fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Ana" } });
+    fireEvent.click(screen.getByRole("button", { name: "Criar" }));
+
+    await waitFor(() => {
+      expect(onCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: null,
+          name: "Ana",
+          username: "ana",
+        }),
+      );
+    });
+  });
+
   it("auto-fills login from name and code on create", () => {
     renderWithIntl(
       <TestUserManager

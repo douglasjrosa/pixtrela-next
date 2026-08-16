@@ -82,7 +82,7 @@ export const users = pgTable("users", {
   name: varchar("name", { length: 128 }).notNull(),
   lastName: varchar("last_name", { length: 128 }),
   phone: varchar("phone", { length: 32 }),
-  code: integer("code").default(0).notNull(),
+  code: integer("code"),
   role: userRoleEnum("role").notNull(),
   blocked: boolean("blocked").default(false).notNull(),
   active: boolean("active").default(true).notNull(),

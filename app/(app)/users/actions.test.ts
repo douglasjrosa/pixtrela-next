@@ -95,6 +95,33 @@ describe("users/actions drizzle CRUD", () => {
     );
   });
 
+  it("createUser persists via repo with null code", async () => {
+    createUserRepo.mockResolvedValue({
+      id: "u2",
+      username: "ana",
+      name: "Ana",
+      role: "colaborator",
+      code: null,
+    });
+    const { createUser } = await import("./actions");
+    await createUser({
+      name: "Ana",
+      username: "ana",
+      password: "secret1",
+      code: null,
+      roleType: "colaborator",
+      greetingGender: "feminine",
+    });
+    expect(createUserRepo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Ana",
+        username: "ana",
+        role: "colaborator",
+        code: null,
+      }),
+    );
+  });
+
   it("createUser persists via repo", async () => {
     createUserRepo.mockResolvedValue({
       id: "u1",

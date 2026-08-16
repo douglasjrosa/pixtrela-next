@@ -19,4 +19,17 @@ describe("isUserCodeAvailable", () => {
   it("returns true for a code not used by any user", () => {
     expect(isUserCodeAvailable(9999, users)).toBe(true);
   });
+
+  it("returns true when code is null or omitted", () => {
+    expect(isUserCodeAvailable(null, users)).toBe(true);
+    expect(isUserCodeAvailable(undefined, users)).toBe(true);
+  });
+
+  it("allows multiple users without a code", () => {
+    const withNullCode = [
+      ...users,
+      { documentId: "u3", code: null },
+    ];
+    expect(isUserCodeAvailable(null, withNullCode)).toBe(true);
+  });
 });

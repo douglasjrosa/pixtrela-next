@@ -46,7 +46,7 @@ function mapUserRow(row: {
   name: string;
   lastName: string | null;
   phone: string | null;
-  code: number;
+  code: number | null;
   role: UserRole;
   blocked: boolean;
   active: boolean;
@@ -69,7 +69,7 @@ export type UserRecord = {
   name: string;
   lastName: string | null;
   phone: string | null;
-  code: number;
+  code: number | null;
   role: UserRole;
   blocked: boolean;
   active: boolean;
@@ -86,7 +86,7 @@ export type CreateUserInput = {
   email?: string | null;
   lastName?: string | null;
   phone?: string | null;
-  code?: number;
+  code?: number | null;
   greetingGender?: GreetingGender;
 };
 
@@ -104,7 +104,7 @@ export type UpdateUserAccountInput = {
   username?: string;
   email?: string | null;
   password?: string;
-  code?: number;
+  code?: number | null;
   role?: UserRole;
   greetingGender?: GreetingGender;
   blocked?: boolean;
@@ -159,7 +159,7 @@ export async function createUser(
       email: input.email ?? null,
       lastName: input.lastName ?? null,
       phone: input.phone ?? null,
-      code: input.code ?? 0,
+      code: input.code ?? null,
       greetingGender: toDbGreetingGender(input.greetingGender ?? "neutral"),
     })
     .returning(USER_COLUMNS);

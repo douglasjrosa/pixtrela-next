@@ -45,7 +45,9 @@ export function UserListRowPresentational({
           <UserListAvatar name={user.name} avatarUrl={user.avatarUrl} />
         </td>
         <td className="py-2">{nameNode}</td>
-        <td className={CENTER_CELL_CLASS}>{user.code}</td>
+        <td className={CENTER_CELL_CLASS}>
+          {user.code ?? "—"}
+        </td>
         <td className={CENTER_CELL_CLASS}>{labels.role}</td>
       </tr>
     );
@@ -62,7 +64,9 @@ export function UserListRowPresentational({
         <UserListAvatar name={user.name} avatarUrl={user.avatarUrl} />
         <div className="min-w-0 flex-1">
           <div className="text-base">{nameNode}</div>
-          <div className="text-muted-foreground text-sm">{user.code}</div>
+          <div className="text-muted-foreground text-sm">
+            {user.code ?? "—"}
+          </div>
           <div className="text-muted-foreground text-sm">{labels.role}</div>
         </div>
       </div>

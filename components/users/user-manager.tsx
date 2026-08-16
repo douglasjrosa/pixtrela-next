@@ -92,7 +92,7 @@ const EMPTY_FORM: UserFormInput = {
   name: "",
   username: "",
   password: "",
-  code: 0,
+  code: null,
   roleType: "colaborator",
   greetingGender: "masculine",
 };
@@ -386,7 +386,13 @@ function UserFormDialog({
             type="number"
             min={0}
             {...register("code", {
-              valueAsNumber: true,
+              setValueAs: (value) => {
+                if (value === "" || value == null) {
+                  return null;
+                }
+                const parsed = Number(value);
+                return Number.isNaN(parsed) ? null : parsed;
+              },
               onBlur: () => {
                 void trigger("code");
               },

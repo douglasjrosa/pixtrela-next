@@ -21,7 +21,7 @@ export interface MonthlyRankingData {
 export interface ColaboratorOption {
   documentId: string;
   name: string;
-  code: number;
+  code: number | null;
 }
 
 export interface DayIncome {

@@ -27,6 +27,8 @@ const optionalPasswordSchema = z
   .optional()
   .refine((value) => !value || value.length >= 6);
 
+const optionalUserCodeSchema = z.number().int().min(0).nullable();
+
 export function buildUserFormSchema(options?: { requirePassword?: boolean }) {
   return z.object({
     name: z.string().min(1),
@@ -34,7 +36,7 @@ export function buildUserFormSchema(options?: { requirePassword?: boolean }) {
     password: options?.requirePassword
       ? z.string().min(6)
       : optionalPasswordSchema,
-    code: z.number().int().min(0),
+    code: optionalUserCodeSchema,
     roleType: z.enum(USER_ROLES),
     greetingGender: z.enum(GREETING_GENDERS).optional().nullable(),
   });
@@ -50,7 +52,10 @@ export function createUserFormSchema(
   options?: { requirePassword?: boolean },
 ) {
   return buildUserFormSchema(options).superRefine((data, ctx) => {
-    if (!isUserCodeAvailable(data.code, existingUsers, excludeDocumentId)) {
+    if (
+      data.code != null &&
+      !isUserCodeAvailable(data.code, existingUsers, excludeDocumentId)
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: USER_CODE_NOT_UNIQUE_KEY,
