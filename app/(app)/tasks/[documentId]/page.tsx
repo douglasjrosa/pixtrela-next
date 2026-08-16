@@ -16,10 +16,12 @@ import {
   canDeleteTasks,
   canManageTasks,
 } from "@/lib/auth/permissions";
+import { countFinishedSubTasksForTask } from "@/lib/business/task-subtask-completion-count";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { listSteps } from "@/lib/repos/steps";
 import {
   getTaskById,
+  listSubTaskCompletionSnapshotsForTasks,
   listSubTasksWithRelationsForTask,
 } from "@/lib/repos/tasks";
 import { listTeamsWithMembers } from "@/lib/repos/teams";
@@ -46,6 +48,9 @@ async function loadTask(taskDocumentId: string): Promise<TaskRow | null> {
       const match = steps.find((row) => row.id === task.stepId);
       if (match) step = { documentId: match.id, name: match.name };
     }
+    const completion = countFinishedSubTasksForTask(
+      await listSubTaskCompletionSnapshotsForTasks([task.id]),
+    );
     return {
       documentId: task.id,
       name: task.name,
@@ -58,6 +63,8 @@ async function loadTask(taskDocumentId: string): Promise<TaskRow | null> {
       templateTaskCode: task.templateTaskCode,
       totalExpectedTime: task.totalExpectedTime,
       totalTimeSpent: task.totalTimeSpent,
+      finishedSubTaskCount: completion.finishedCount,
+      totalSubTaskCount: completion.totalCount,
       step,
     };
   } catch (error) {

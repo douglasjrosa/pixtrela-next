@@ -5,6 +5,13 @@ import {
   taskListFiltersSchema,
   type TaskListFilters,
 } from "@/lib/schemas/task-list-filters";
+import {
+  isDefaultTaskListSort,
+  TASK_LIST_DEFAULT_SORT_COLUMN,
+  TASK_LIST_DEFAULT_SORT_DIRECTION,
+  TASK_LIST_SORT_COLUMNS,
+  TASK_LIST_SORT_DIRECTIONS,
+} from "@/lib/schemas/task-list-sort";
 import { TASK_STATUSES } from "@/lib/schemas/task";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -54,6 +61,20 @@ function parseStatusesCsv(raw: string | undefined): string[] | undefined {
   return values.length > 0 ? values : undefined;
 }
 
+function parseSortColumn(
+  raw: string | undefined,
+): (typeof TASK_LIST_SORT_COLUMNS)[number] | undefined {
+  if (!raw?.trim()) return undefined;
+  return TASK_LIST_SORT_COLUMNS.find((column) => column === raw.trim());
+}
+
+function parseSortDirection(
+  raw: string | undefined,
+): (typeof TASK_LIST_SORT_DIRECTIONS)[number] | undefined {
+  if (!raw?.trim()) return undefined;
+  return TASK_LIST_SORT_DIRECTIONS.find((direction) => direction === raw.trim());
+}
+
 /**
  * Parses URL search params into task list filters.
  * Missing params use defaults (finished off, from = today−30, no to/q).
@@ -66,6 +87,8 @@ export function parseTaskListSearchParams(
   const from = firstParam(params.from)?.trim() || defaultTaskListFrom(now);
   const toRaw = firstParam(params.to)?.trim();
   const qRaw = firstParam(params.q)?.trim();
+  const sortColumn = parseSortColumn(firstParam(params.sort));
+  const sortDirection = parseSortDirection(firstParam(params.dir));
 
   const result = taskListFiltersSchema.safeParse({
     statuses: statuses ?? [...TASK_LIST_DEFAULT_STATUSES],
@@ -75,6 +98,8 @@ export function parseTaskListSearchParams(
       qRaw && qRaw.length >= TASK_LIST_NAME_MIN_CHARS
         ? qRaw
         : undefined,
+    column: sortColumn ?? TASK_LIST_DEFAULT_SORT_COLUMN,
+    direction: sortDirection ?? TASK_LIST_DEFAULT_SORT_DIRECTION,
   });
 
   if (!result.success) {
@@ -115,6 +140,10 @@ export function serializeTaskListSearchParams(
   if (filters.q) {
     params.set("q", filters.q);
   }
+  if (!isDefaultTaskListSort({ column: filters.column, direction: filters.direction })) {
+    params.set("sort", filters.column);
+    params.set("dir", filters.direction);
+  }
   return params;
 }
 
@@ -125,5 +154,7 @@ export function taskListFilterKey(filters: TaskListFilters): string {
     filters.from,
     filters.to ?? "",
     filters.q ?? "",
+    filters.column,
+    filters.direction,
   ].join("|");
 }

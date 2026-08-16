@@ -21,7 +21,14 @@ import {
 } from "@/lib/business/task-list-selection";
 import { useTasksRevisionRefresh } from "@/hooks/use-tasks-revision-refresh";
 import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
-import { taskListFilterKey } from "@/lib/tasks/task-list-params";
+import {
+  nextTaskListSort,
+  type TaskListSortColumn,
+} from "@/lib/schemas/task-list-sort";
+import {
+  serializeTaskListSearchParams,
+  taskListFilterKey,
+} from "@/lib/tasks/task-list-params";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
@@ -134,6 +141,22 @@ export function TasksListWithLoadMore({
     });
   }
 
+  function handleSort(column: TaskListSortColumn): void {
+    const next = nextTaskListSort(
+      { column: filters.column, direction: filters.direction },
+      column,
+    );
+    const params = serializeTaskListSearchParams({
+      ...filters,
+      column: next.column,
+      direction: next.direction,
+    });
+    const query = params.toString();
+    startTransition(() => {
+      router.replace(query ? `/tasks?${query}` : "/tasks");
+    });
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {selectionEnabled ? (
@@ -168,11 +191,13 @@ export function TasksListWithLoadMore({
       <div className="min-h-0 flex-1 overflow-y-auto">
         <TasksListView
           tasks={tasks}
+          sort={{ column: filters.column, direction: filters.direction }}
           selectionEnabled={selectionEnabled}
           selectedIds={selectedIds}
           allSelected={areAllTasksSelected(tasks, selectedIds)}
           onToggleSelectAll={handleToggleSelectAll}
           onToggleSelect={handleToggleSelect}
+          onSort={handleSort}
         />
       </div>
 

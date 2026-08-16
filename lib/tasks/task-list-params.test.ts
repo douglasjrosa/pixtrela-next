@@ -44,6 +44,17 @@ describe("parseTaskListSearchParams", () => {
     expect(filters.from).toBe("2026-01-01");
     expect(filters.to).toBe("2026-12-31");
     expect(filters.q).toBe("mont");
+    expect(filters.column).toBe("deliveryDate");
+    expect(filters.direction).toBe("asc");
+  });
+
+  it("parses sort and direction", () => {
+    const filters = parseTaskListSearchParams(
+      { sort: "name", dir: "desc" },
+      FIXED_NOW,
+    );
+    expect(filters.column).toBe("name");
+    expect(filters.direction).toBe("desc");
   });
 
   it("ignores q shorter than 3 characters", () => {
@@ -76,6 +87,8 @@ describe("serializeTaskListSearchParams", () => {
         from: "2026-01-01",
         to: "2026-12-31",
         q: "mont",
+        column: "name",
+        direction: "desc",
       },
       FIXED_NOW,
     );
@@ -83,6 +96,8 @@ describe("serializeTaskListSearchParams", () => {
     expect(params.get("from")).toBe("2026-01-01");
     expect(params.get("to")).toBe("2026-12-31");
     expect(params.get("q")).toBe("mont");
+    expect(params.get("sort")).toBe("name");
+    expect(params.get("dir")).toBe("desc");
   });
 });
 

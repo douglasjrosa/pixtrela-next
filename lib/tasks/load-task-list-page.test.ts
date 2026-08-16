@@ -44,7 +44,12 @@ describe("loadTaskListPage", () => {
     );
 
     const result = await loadTaskListPage(
-      { statuses: ["waiting"], from: "2026-06-01" },
+      {
+        statuses: ["waiting"],
+        from: "2026-06-01",
+        column: "deliveryDate",
+        direction: "asc",
+      },
       1,
     );
 
@@ -71,7 +76,12 @@ describe("loadTaskListPage", () => {
     );
 
     const result = await loadTaskListPage(
-      { statuses: ["waiting"], from: "2026-06-01" },
+      {
+        statuses: ["waiting"],
+        from: "2026-06-01",
+        column: "deliveryDate",
+        direction: "asc",
+      },
       2,
     );
     expect(result.hasMore).toBe(false);

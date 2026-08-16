@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 
 import type { TaskRow } from "@/components/tasks/types";
 import { groupSubTaskCompletionCountsByTaskId } from "@/lib/business/task-subtask-completion-count";
+import { sortTaskListRows } from "@/lib/business/sort-task-list";
 import { getDb } from "@/lib/db/client";
 import {
   listSubTaskCompletionSnapshotsForTasks,
@@ -39,19 +40,24 @@ export async function loadTaskListPage(
     return true;
   });
 
+  const completionByTaskId = groupSubTaskCompletionCountsByTaskId(
+    await listSubTaskCompletionSnapshotsForTasks(filtered.map((task) => task.id)),
+  );
+  const sorted = sortTaskListRows(
+    filtered,
+    { column: filters.column, direction: filters.direction },
+    completionByTaskId,
+  );
+
   const resolvedPage = Math.max(1, page);
   const pageCount = Math.max(
     1,
-    Math.ceil(filtered.length / TASK_LIST_PAGE_SIZE),
+    Math.ceil(sorted.length / TASK_LIST_PAGE_SIZE),
   );
   const start = (resolvedPage - 1) * TASK_LIST_PAGE_SIZE;
-  const slice = filtered.slice(start, start + TASK_LIST_PAGE_SIZE);
+  const slice = sorted.slice(start, start + TASK_LIST_PAGE_SIZE);
 
   const db = getDb();
-  const taskIds = slice.map((task) => task.id);
-  const completionByTaskId = groupSubTaskCompletionCountsByTaskId(
-    await listSubTaskCompletionSnapshotsForTasks(taskIds),
-  );
   const tasks: TaskRow[] = [];
   for (const task of slice) {
     let step: TaskRow["step"] = null;

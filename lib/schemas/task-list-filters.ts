@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { TASK_STATUSES } from "./task";
+import { taskListSortSchema } from "./task-list-sort";
 
 export const TASK_LIST_PAGE_SIZE = 10;
 export const TASK_LIST_NAME_MIN_CHARS = 3;
@@ -25,6 +26,7 @@ export const taskListFiltersSchema = z
     to: z.string().regex(DATE_ONLY).optional(),
     q: z.string().optional(),
   })
+  .merge(taskListSortSchema)
   .superRefine((data, ctx) => {
     if (data.to && data.from > data.to) {
       ctx.addIssue({
@@ -51,6 +53,8 @@ export const taskListFiltersSchema = z
       from: data.from,
       to: data.to,
       q: trimmed.length >= TASK_LIST_NAME_MIN_CHARS ? trimmed : undefined,
+      column: data.column,
+      direction: data.direction,
     };
   });
 
