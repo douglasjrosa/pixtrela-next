@@ -56,7 +56,9 @@ export function TeamListRowCheckbox({
   if (variant === "table") {
     return (
       <td
-        className={cn("relative z-20 w-10 py-2 text-center align-middle")}
+        className={cn(
+          "relative z-20 w-10 px-2 py-2 text-center align-middle",
+        )}
         data-row-select
         onClick={(event) => {
           event.preventDefault();

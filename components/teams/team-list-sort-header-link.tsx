@@ -33,7 +33,7 @@ export function TeamListSortHeaderLink({
   return (
     <th
       className={cn(
-        "py-2 align-middle",
+        "px-2 py-2 align-middle",
         align === "center" ? "text-center" : "text-left",
         className,
       )}

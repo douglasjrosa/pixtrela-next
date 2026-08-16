@@ -10,7 +10,7 @@ import { useTeamList } from "./team-list-context";
 import { TeamExchangePeriodLabel } from "./team-exchange-period-label";
 import type { TeamRow } from "./types";
 
-const CELL_CLASS = "align-middle py-2";
+const CELL_CLASS = "align-middle px-2 py-2";
 const CENTER_CELL_CLASS = cn(CELL_CLASS, "text-center");
 
 export type TeamListRowLabels = {

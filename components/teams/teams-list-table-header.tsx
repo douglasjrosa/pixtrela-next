@@ -26,7 +26,7 @@ export async function TeamsListTableHeader({
     <thead>
       <tr className="border-b text-left">
         {showCheckboxColumn ? (
-          <th className={cn("w-10 py-2 align-middle", "text-center")}>
+          <th className={cn("w-10 px-2 py-2 align-middle", "text-center")}>
             <TeamListRowCheckbox
               documentId=""
               variant="table-header"
