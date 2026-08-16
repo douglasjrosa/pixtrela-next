@@ -62,6 +62,8 @@ async function loadAwards(): Promise<AwardRow[]> {
         title: award.title,
         description: award.description,
         warnings: award.warnings,
+        active: award.active,
+        stock: award.stock,
         imageId: null,
         imageUrl: award.imageUrl,
         values: prices.map((price) => ({

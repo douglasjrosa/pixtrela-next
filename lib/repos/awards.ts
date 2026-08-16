@@ -10,6 +10,7 @@ export type AwardRecord = {
   description: string | null;
   warnings: string | null;
   active: boolean;
+  stock: number;
   imageUrl: string | null;
 };
 
@@ -18,6 +19,8 @@ export type CreateAwardInput = {
   title?: string | null;
   description?: string | null;
   warnings?: string | null;
+  active?: boolean;
+  stock?: number;
   imageMediaId?: string | null;
   prices?: Array<{ currencyId: string; numberOf: number }>;
 };
@@ -31,6 +34,7 @@ export async function listAwards(db: Db = getDb()): Promise<AwardRecord[]> {
       description: awards.description,
       warnings: awards.warnings,
       active: awards.active,
+      stock: awards.stock,
       imageUrl: mediaAssets.url,
     })
     .from(awards)
@@ -53,6 +57,8 @@ export async function createAward(
       title: input.title ?? null,
       description: input.description ?? null,
       warnings: input.warnings ?? null,
+      active: input.active ?? true,
+      stock: input.stock ?? 0,
       imageMediaId: input.imageMediaId ?? null,
     })
     .returning({
@@ -62,6 +68,7 @@ export async function createAward(
       description: awards.description,
       warnings: awards.warnings,
       active: awards.active,
+      stock: awards.stock,
       imageMediaId: awards.imageMediaId,
     });
 
@@ -92,6 +99,7 @@ export async function createAward(
     description: row.description,
     warnings: row.warnings,
     active: row.active,
+    stock: row.stock,
     imageUrl,
   };
 }

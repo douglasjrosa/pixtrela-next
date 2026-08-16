@@ -479,6 +479,8 @@
     "numberOf": "Quantidade",
     "currency": "Moeda",
     "addValue": "Adicionar valor",
+    "showInStore": "Mostrar na loja",
+    "stock": "Quantidade em estoque",
     "saved": "Prêmio salvo.",
     "deleted": "Prêmio excluído.",
     "deleteTitle": "Excluir prêmio",

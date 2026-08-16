@@ -12,6 +12,8 @@ export interface AwardRow {
   title?: string | null;
   description?: string | null;
   warnings?: string | null;
+  active: boolean;
+  stock: number;
   imageId?: number | string | null;
   imageUrl?: string | null;
   values: AwardFormInput["values"];
