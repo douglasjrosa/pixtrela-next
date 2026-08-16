@@ -17,5 +17,7 @@ export interface TaskRow {
   templateTaskCode?: string | null;
   totalExpectedTime: number;
   totalTimeSpent: number;
+  finishedSubTaskCount: number;
+  totalSubTaskCount: number;
   step?: { documentId: string; name: string } | null;
 }

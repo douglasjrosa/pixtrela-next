@@ -4,6 +4,7 @@ const listTasks = vi.fn();
 
 vi.mock("@/lib/repos/tasks", () => ({
   listTasks: (...args: unknown[]) => listTasks(...args),
+  listSubTaskCompletionSnapshotsForTasks: vi.fn(async () => []),
 }));
 
 vi.mock("@/lib/db/client", () => ({

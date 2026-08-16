@@ -169,6 +169,8 @@
       "dateTo": "Até",
       "statusFilter": "Status",
       "spentOfExpected": "{spent} de {expected}",
+      "finishedSubTasks": "Subtarefas concluídas",
+      "finishedSubTasksValue": "{finished} de {total}",
       "qtyShort": "Qtde.: {qty}",
       "listLoading": "Carregando tarefas..."
     }

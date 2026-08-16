@@ -42,6 +42,8 @@ const initialTasks = [
     active: true,
     totalExpectedTime: 0,
     totalTimeSpent: 0,
+    finishedSubTaskCount: 0,
+    totalSubTaskCount: 0,
     deliveryDate: "2026-07-01",
   },
 ];

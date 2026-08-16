@@ -42,6 +42,10 @@ export function TaskListRow({
     (key, values) => tDuration(key, values),
     (spent, expected) => tManage("spentOfExpected", { spent, expected }),
   );
+  const finishedSubTasks = tManage("finishedSubTasksValue", {
+    finished: task.finishedSubTaskCount,
+    total: task.totalSubTaskCount,
+  });
 
   function handleRowClick(event: MouseEvent): void {
     if (
@@ -104,6 +108,7 @@ export function TaskListRow({
         <td>{task.qty}</td>
         <td>{formatDatePtBr(task.deliveryDate)}</td>
         <td>{spentOfExpected}</td>
+        <td>{finishedSubTasks}</td>
         <td>{tStatus(task.status)}</td>
       </tr>
     );
@@ -136,6 +141,7 @@ export function TaskListRow({
             {tManage("qtyShort", { qty: task.qty })} | {tStatus(task.status)}
           </div>
           <div className="text-muted-foreground text-sm">{spentOfExpected}</div>
+          <div className="text-muted-foreground text-sm">{finishedSubTasks}</div>
           <div className="text-muted-foreground text-sm">
             {formatDatePtBr(task.deliveryDate)}
           </div>

@@ -54,6 +54,7 @@ export function TasksListView({
             <th>{tManage("qty")}</th>
             <th>{tManage("deliveryDate")}</th>
             <th>{tManage("totalTimeSpent")}</th>
+            <th>{tManage("finishedSubTasks")}</th>
             <th>{tManage("status")}</th>
           </tr>
         </thead>

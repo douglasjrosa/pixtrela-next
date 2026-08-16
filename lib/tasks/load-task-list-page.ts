@@ -1,8 +1,12 @@
 import { eq } from "drizzle-orm";
 
 import type { TaskRow } from "@/components/tasks/types";
+import { groupSubTaskCompletionCountsByTaskId } from "@/lib/business/task-subtask-completion-count";
 import { getDb } from "@/lib/db/client";
-import { listTasks } from "@/lib/repos/tasks";
+import {
+  listSubTaskCompletionSnapshotsForTasks,
+  listTasks,
+} from "@/lib/repos/tasks";
 import {
   TASK_LIST_PAGE_SIZE,
   type TaskListFilters,
@@ -44,6 +48,10 @@ export async function loadTaskListPage(
   const slice = filtered.slice(start, start + TASK_LIST_PAGE_SIZE);
 
   const db = getDb();
+  const taskIds = slice.map((task) => task.id);
+  const completionByTaskId = groupSubTaskCompletionCountsByTaskId(
+    await listSubTaskCompletionSnapshotsForTasks(taskIds),
+  );
   const tasks: TaskRow[] = [];
   for (const task of slice) {
     let step: TaskRow["step"] = null;
@@ -57,6 +65,10 @@ export async function loadTaskListPage(
         step = { documentId: stepRow.id, name: stepRow.name };
       }
     }
+    const completion = completionByTaskId.get(task.id) ?? {
+      finishedCount: 0,
+      totalCount: 0,
+    };
     tasks.push({
       documentId: task.id,
       name: task.name,
@@ -69,6 +81,8 @@ export async function loadTaskListPage(
       templateTaskCode: task.templateTaskCode,
       totalExpectedTime: task.totalExpectedTime,
       totalTimeSpent: task.totalTimeSpent,
+      finishedSubTaskCount: completion.finishedCount,
+      totalSubTaskCount: completion.totalCount,
       step,
     });
   }
