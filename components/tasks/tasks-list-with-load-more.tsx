@@ -76,7 +76,6 @@ export function TasksListWithLoadMore({
   const showArchiveAction =
     hasSelection && !allSelectedArchived && canDeactivate;
   const showDeleteAction = hasSelection && allSelectedArchived && canDelete;
-  const showBulkBar = showArchiveAction || showDeleteAction;
 
   function handleLoadMore(): void {
     const nextPage = page + 1;
@@ -137,8 +136,8 @@ export function TasksListWithLoadMore({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {showBulkBar ? (
-        <div className="flex shrink-0 justify-end pb-2">
+      {selectionEnabled ? (
+        <div className="flex h-10 shrink-0 items-center justify-end">
           {showArchiveAction ? (
             <Button
               type="button"
