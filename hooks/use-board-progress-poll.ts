@@ -58,9 +58,10 @@ export function useBoardProgressPoll(
   useEffect(() => {
     let cancelled = false;
     let timerId: number | undefined;
+    let inFlight = false;
 
     async function runPoll(): Promise<void> {
-      if (paused) return;
+      if (paused || inFlight) return;
       if (
         typeof document !== "undefined" &&
         document.visibilityState === "hidden"
@@ -70,6 +71,7 @@ export function useBoardProgressPoll(
       const boardTasks = tasksRef.current;
       if (boardTasks.length === 0) return;
 
+      inFlight = true;
       try {
         const snapshot = await pollRef.current(
           boardTasks.map((task) => ({
@@ -82,6 +84,8 @@ export function useBoardProgressPoll(
         setAssignedCounts(snapshot.assignedCountByColaboratorId);
       } catch {
         // Keep last good snapshot; next interval retries.
+      } finally {
+        inFlight = false;
       }
     }
 

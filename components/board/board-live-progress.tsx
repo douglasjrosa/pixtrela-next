@@ -74,8 +74,8 @@ export function BoardLiveProgress({
   linkSubtask,
   createSubtask,
 }: BoardLiveProgressProps) {
-  useBoardRevisionRefresh();
   const [subtasksModalOpen, setSubtasksModalOpen] = useState(false);
+  useBoardRevisionRefresh(subtasksModalOpen);
 
   const live = useBoardProgressPoll(
     tasks,
