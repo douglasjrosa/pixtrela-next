@@ -3,7 +3,6 @@ import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
-import { TasksListSkeleton } from "@/components/tasks/tasks-list-skeleton";
 import { TasksListMobileList } from "@/components/tasks/tasks-list-mobile-list";
 import { TasksListTableBody } from "@/components/tasks/tasks-list-table-body";
 import { TasksListTableFrame } from "@/components/tasks/tasks-list-table-frame";
@@ -30,7 +29,6 @@ import { loadTaskListPage } from "@/lib/tasks/load-task-list-page";
 import {
   parseTaskListSearchParams,
   parseTaskListSelectMode,
-  taskListFilterKey,
 } from "@/lib/tasks/task-list-params";
 
 interface TasksPageProps {
@@ -122,7 +120,6 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   const params = await searchParams;
   const filters = parseTaskListSearchParams(params);
   const selectMode = parseTaskListSelectMode(params);
-  const filterKey = taskListFilterKey(filters);
   const steps = await loadSteps();
   const canDeactivate = canDeactivateTasks(role);
   const canDelete = canDeleteTasks(role);
@@ -135,14 +132,12 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
         <Suspense fallback={null}>
           <TasksToolbar />
         </Suspense>
-        <Suspense key={filterKey} fallback={<TasksListSkeleton />}>
-          <TasksListSection
-            filters={filters}
-            selectMode={selectMode}
-            canDeactivate={canDeactivate}
-            canDelete={canDelete}
-          />
-        </Suspense>
+        <TasksListSection
+          filters={filters}
+          selectMode={selectMode}
+          canDeactivate={canDeactivate}
+          canDelete={canDelete}
+        />
       </div>
     </section>
   );
