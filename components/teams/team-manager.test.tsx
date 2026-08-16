@@ -138,11 +138,20 @@ describe("TeamManager", () => {
       screen.getByRole("heading", { name: "Editar equipe" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Até")).toBeInTheDocument();
+    expect(screen.getByLabelText("Até")).toHaveValue("");
     expect(
       screen.getByText(
         "Deixe vazio para manter a equipe ativa. Preencha para arquivar.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
+  });
+
+  it("shows untill date as dd/mm/yyyy in edit modal", async () => {
+    const user = userEvent.setup();
+    renderManager();
+
+    await user.click(screen.getAllByRole("button", { name: "Linha B" })[0]!);
+    expect(screen.getByLabelText("Até")).toHaveValue("31/05/2026");
   });
 });

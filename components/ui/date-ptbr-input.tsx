@@ -12,6 +12,7 @@ export interface DatePtBrInputProps {
   id: string;
   value: string;
   disabled?: boolean;
+  allowEmpty?: boolean;
   onChange: (iso: string) => void;
 }
 
@@ -19,6 +20,7 @@ export function DatePtBrInput({
   id,
   value,
   disabled = false,
+  allowEmpty = false,
   onChange,
 }: DatePtBrInputProps) {
   const [text, setText] = useState(formatIsoDateToPtBrInput(value));
@@ -29,6 +31,11 @@ export function DatePtBrInput({
   }
 
   function commit(nextText: string): void {
+    if (allowEmpty && !nextText.trim()) {
+      onChange("");
+      setText("");
+      return;
+    }
     const iso = parsePtBrInputToIsoDate(nextText);
     if (iso) {
       onChange(iso);

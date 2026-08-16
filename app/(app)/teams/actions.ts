@@ -16,6 +16,7 @@ import {
   hardDeleteTeam,
   updateTeam as updateTeamRepo,
 } from "@/lib/repos/teams";
+import { toCalendarDateKey } from "@/lib/business/datetime-timezone";
 import { teamFormSchema, bulkTeamIdsSchema, type TeamFormInput } from "@/lib/schemas/team";
 import { teamListFiltersSchema } from "@/lib/schemas/team-list-filters";
 import {
@@ -51,7 +52,7 @@ export async function loadMoreTeams(
 }
 
 function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toCalendarDateKey(new Date());
 }
 
 export async function createTeam(raw: TeamFormInput): Promise<void> {

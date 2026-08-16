@@ -1,13 +1,14 @@
 "use client";
 
 import { Suspense, useState, useTransition, type ReactNode } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,6 +91,7 @@ function TeamFormDialog({
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<TeamFormInput>({
     resolver: zodResolver(teamFormSchema),
@@ -188,11 +190,18 @@ function TeamFormDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="untill">{tTeams("untill")}</Label>
-              <Input
-                id="untill"
-                type="date"
-                disabled={isPending}
-                {...register("untill")}
+              <Controller
+                name="untill"
+                control={control}
+                render={({ field }) => (
+                  <DatePtBrInput
+                    id="untill"
+                    value={field.value ?? ""}
+                    disabled={isPending}
+                    allowEmpty
+                    onChange={field.onChange}
+                  />
+                )}
               />
               <p className="text-xs text-muted-foreground">
                 {tTeams("untillHint")}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useForm, type Resolver } from "react-hook-form";
+import { Controller, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Archive, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { lookupTemplateNameByCode } from "@/app/(app)/tasks/actions";
 import { Button } from "@/components/ui/button";
 import { DeactivationReasonField } from "@/components/ui/deactivation-reason-field";
+import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
@@ -73,6 +74,7 @@ export function TaskForm({
   const {
     register,
     handleSubmit,
+    control,
     getValues,
     setValue,
     formState: { errors },
@@ -204,7 +206,18 @@ export function TaskForm({
 
       <div className="space-y-2">
         <Label htmlFor="deliveryDate">{tManage("deliveryDate")}</Label>
-        <Input id="deliveryDate" type="date" {...register("deliveryDate")} />
+        <Controller
+          name="deliveryDate"
+          control={control}
+          render={({ field }) => (
+            <DatePtBrInput
+              id="deliveryDate"
+              value={field.value ?? ""}
+              disabled={isPending}
+              onChange={field.onChange}
+            />
+          )}
+        />
         {errors.deliveryDate ? (
           <p className="text-sm text-destructive">
             {errors.deliveryDate.message}

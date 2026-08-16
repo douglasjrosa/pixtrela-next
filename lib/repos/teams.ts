@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 
 import { teamMembers, teams, users } from "@/drizzle/schema";
+import { toCalendarDateKey } from "@/lib/business/datetime-timezone";
 import { getDb, type Db } from "@/lib/db/client";
 import type { TeamListSort } from "@/lib/schemas/team-list-sort";
 
@@ -296,7 +297,11 @@ export async function deleteTeam(
 ): Promise<void> {
   await db
     .update(teams)
-    .set({ active: false, updatedAt: new Date() })
+    .set({
+      active: false,
+      until: toCalendarDateKey(new Date()),
+      updatedAt: new Date(),
+    })
     .where(eq(teams.id, id));
 }
 
