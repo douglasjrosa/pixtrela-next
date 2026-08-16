@@ -508,7 +508,11 @@
     "deleteConfirm": "Excluir permanentemente este prêmio?",
     "searchByName": "Buscar por nome",
     "empty": "Nenhum prêmio encontrado.",
-    "listLoading": "Carregando prêmios..."
+    "listLoading": "Carregando prêmios...",
+    "loadMore": "Carregar mais",
+    "loadingMore": "Carregando...",
+    "error": "Não foi possível concluir a operação.",
+    "noCost": "—"
   },
   "settings": {
     "title": "Configurações",

@@ -1,22 +1,23 @@
+import { getTranslations } from "next-intl/server";
+
 import { auth } from "@/auth";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
+import { AwardsListMobileList } from "@/components/awards/awards-list-mobile-list";
+import { AwardsListTableBody } from "@/components/awards/awards-list-table-body";
+import { AwardsListTableFrame } from "@/components/awards/awards-list-table-frame";
+import { AwardsListTableHeader } from "@/components/awards/awards-list-table-header";
 import {
   AwardManager,
-  type AwardRow,
   type CurrencyOption,
 } from "@/components/awards/award-manager";
 import { APP_LIST_PAGE_SHELL_CLASS } from "@/components/layout/app-page-layout";
+import { ListEmptyMessage } from "@/components/ui/list-empty-message";
 import type { Role } from "@/lib/auth/nav";
 import { canManageAwards, canViewAwards } from "@/lib/auth/permissions";
-import {
-  listAwards as listAwardsRepo,
-  listCurrencies as listCurrenciesRepo,
-} from "@/lib/repos/awards";
-import { eq } from "drizzle-orm";
-
-import { awardPrices, currencies } from "@/drizzle/schema";
-import { getDb } from "@/lib/db/client";
+import { loadAwardListPage } from "@/lib/awards/load-award-list-page";
+import { parseAwardListSearchParams } from "@/lib/awards/award-list-params";
+import { listCurrencies as listCurrenciesRepo } from "@/lib/repos/awards";
 
 import {
   createAward,
@@ -24,6 +25,10 @@ import {
   updateAward,
   uploadAwardImage,
 } from "./actions";
+
+interface AwardsPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
 
 async function loadCurrencies(): Promise<CurrencyOption[]> {
   try {
@@ -39,45 +44,7 @@ async function loadCurrencies(): Promise<CurrencyOption[]> {
   }
 }
 
-async function loadAwards(): Promise<AwardRow[]> {
-  try {
-    const rows = await listAwardsRepo();
-    const db = getDb();
-    const result: AwardRow[] = [];
-    for (const award of rows) {
-      const prices = await db
-        .select({
-          numberOf: awardPrices.numberOf,
-          currencyId: awardPrices.currencyId,
-          currencyName: currencies.name,
-          currencyTitle: currencies.title,
-        })
-        .from(awardPrices)
-        .innerJoin(currencies, eq(awardPrices.currencyId, currencies.id))
-        .where(eq(awardPrices.awardId, award.id));
-
-      result.push({
-        documentId: award.id,
-        name: award.name,
-        title: award.title,
-        description: award.description,
-        warnings: award.warnings,
-        imageId: null,
-        imageUrl: award.imageUrl,
-        values: prices.map((price) => ({
-          numberOf: Math.max(1, Math.floor(price.numberOf)),
-          currencyDocumentId: price.currencyId,
-        })),
-      });
-    }
-    return result;
-  } catch (error) {
-    rethrowIfNavigationError(error);
-    return [];
-  }
-}
-
-export default async function AwardsPage() {
+export default async function AwardsPage({ searchParams }: AwardsPageProps) {
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
 
@@ -85,16 +52,58 @@ export default async function AwardsPage() {
     return <ForbiddenMessage />;
   }
 
+  const params = await searchParams;
+  const filters = parseAwardListSearchParams(params);
+  const tAwards = await getTranslations("awards");
+  const sort = { column: filters.column, direction: filters.direction };
   const canManage = canManageAwards(role);
-  const [awards, currencies] = await Promise.all([
-    loadAwards(),
+
+  const [pageResult, currencies] = await Promise.all([
+    loadAwardListPage(filters, 1).catch((error) => {
+      rethrowIfNavigationError(error);
+      return {
+        awards: [],
+        page: 1,
+        pageCount: 1,
+        hasMore: false,
+      };
+    }),
     loadCurrencies(),
   ]);
+
+  let listContent;
+  if (pageResult.awards.length === 0) {
+    listContent = <ListEmptyMessage>{tAwards("empty")}</ListEmptyMessage>;
+  } else {
+    listContent = (
+      <AwardsListTableFrame
+        filters={filters}
+        currencies={currencies}
+        initialAwards={pageResult.awards}
+        initialPage={pageResult.page}
+        initialHasMore={pageResult.hasMore}
+        tableHeader={
+          <AwardsListTableHeader sort={sort} filters={filters} />
+        }
+        tableBody={
+          <AwardsListTableBody
+            awards={pageResult.awards}
+            currencies={currencies}
+          />
+        }
+        mobileList={
+          <AwardsListMobileList
+            awards={pageResult.awards}
+            currencies={currencies}
+          />
+        }
+      />
+    );
+  }
 
   return (
     <section className={APP_LIST_PAGE_SHELL_CLASS}>
       <AwardManager
-        awards={awards}
         currencies={currencies}
         onCreate={createAward}
         onUpdate={updateAward}
@@ -102,7 +111,9 @@ export default async function AwardsPage() {
         onUploadImage={uploadAwardImage}
         canManage={canManage}
         canDelete={canManage}
-      />
+      >
+        {listContent}
+      </AwardManager>
     </section>
   );
 }

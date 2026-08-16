@@ -6,7 +6,7 @@ import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import { awards, mediaAssets } from "@/drizzle/schema";
 import type { Role } from "@/lib/auth/nav";
-import { canManageAwards } from "@/lib/auth/permissions";
+import { canManageAwards, canViewAwards } from "@/lib/auth/permissions";
 import { getDb } from "@/lib/db/client";
 import { storeMedia } from "@/lib/media/store-media";
 import {
@@ -14,6 +14,18 @@ import {
   replaceAwardPrices,
 } from "@/lib/repos/awards";
 import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
+import { awardListFiltersSchema } from "@/lib/schemas/award-list-filters";
+import {
+  loadAwardListPage,
+  type AwardListPageResult,
+} from "@/lib/awards/load-award-list-page";
+
+async function assertCanView(): Promise<void> {
+  const session = await auth();
+  if (!canViewAwards(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+}
 
 async function assertCanManage(): Promise<void> {
   const session = await auth();
@@ -24,6 +36,15 @@ async function assertCanManage(): Promise<void> {
 
 function invalidateAwards(): void {
   revalidateTag("drizzle:awards", "default");
+}
+
+export async function loadMoreAwards(
+  rawFilters: unknown,
+  page: number,
+): Promise<AwardListPageResult> {
+  await assertCanView();
+  const filters = awardListFiltersSchema.parse(rawFilters);
+  return loadAwardListPage(filters, page);
 }
 
 export async function uploadAwardImage(

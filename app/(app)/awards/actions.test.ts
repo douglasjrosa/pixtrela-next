@@ -19,6 +19,12 @@ vi.mock("@/lib/repos/awards", () => ({
   replaceAwardPrices: (...args: unknown[]) => replaceAwardPrices(...args),
 }));
 
+const loadAwardListPageMock = vi.fn();
+
+vi.mock("@/lib/awards/load-award-list-page", () => ({
+  loadAwardListPage: (...args: unknown[]) => loadAwardListPageMock(...args),
+}));
+
 vi.mock("@/lib/db/client", () => ({
   getDb: () => getDb(),
 }));
@@ -40,8 +46,24 @@ describe("awards/actions drizzle CRUD", () => {
     createAwardRepo.mockReset();
     replaceAwardPrices.mockReset();
     storeMedia.mockReset();
+    loadAwardListPageMock.mockReset();
     getDb.mockReturnValue({ update });
     update.mockClear();
+  });
+
+  it("loadMoreAwards parses filters and loads a page", async () => {
+    loadAwardListPageMock.mockResolvedValueOnce({
+      awards: [],
+      page: 2,
+      pageCount: 2,
+      hasMore: false,
+    });
+    const { loadMoreAwards } = await import("./actions");
+    await loadMoreAwards({ column: "title", direction: "asc" }, 2);
+    expect(loadAwardListPageMock).toHaveBeenCalledWith(
+      { q: undefined, column: "title", direction: "asc" },
+      2,
+    );
   });
 
   it("createAward writes through repo", async () => {

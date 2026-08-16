@@ -17,6 +17,11 @@ export interface AwardRow {
   values: AwardFormInput["values"];
 }
 
+export function awardDisplayTitle(award: AwardRow): string {
+  const title = award.title?.trim();
+  return title || award.name;
+}
+
 export function currencyLabel(currency: CurrencyOption): string {
   return currency.title ?? currency.name;
 }
