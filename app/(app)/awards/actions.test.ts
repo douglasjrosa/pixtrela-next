@@ -102,11 +102,26 @@ describe("awards/actions drizzle CRUD", () => {
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
   });
 
-  it("deleteAward soft-deactivates via repo", async () => {
+  it("deleteAward archives through repo for manager+", async () => {
     const { deleteAward } = await import("./actions");
     await deleteAward("award-1");
     expect(deleteAwardRepo).toHaveBeenCalledWith("award-1");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
+  });
+
+  it("permanentlyDeleteAward hard-deletes archived awards only", async () => {
+    findAwardById.mockResolvedValue({ id: "award-1", active: false });
+    const { permanentlyDeleteAward } = await import("./actions");
+    await permanentlyDeleteAward("award-1");
+    expect(hardDeleteAward).toHaveBeenCalledWith("award-1");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
+  });
+
+  it("permanentlyDeleteAward rejects active awards", async () => {
+    findAwardById.mockResolvedValue({ id: "award-1", active: true });
+    const { permanentlyDeleteAward } = await import("./actions");
+    await expect(permanentlyDeleteAward("award-1")).rejects.toThrow("activeAward");
+    expect(hardDeleteAward).not.toHaveBeenCalled();
   });
 
   it("bulkArchiveAwards archives each selected award", async () => {

@@ -18,16 +18,19 @@ const currencies = [
   { documentId: "c1", name: "star", title: "Estrela" },
 ];
 
-const awards: AwardRow[] = [
-  {
-    documentId: "a1",
-    name: "Arroz",
-    active: true,
-    showInStore: true,
-    stock: 10,
-    values: [{ numberOf: 50, currencyDocumentId: "c1" }],
-  },
-];
+const activeAward: AwardRow = {
+  documentId: "a1",
+  name: "Arroz",
+  active: true,
+  showInStore: true,
+  stock: 10,
+  values: [{ numberOf: 50, currencyDocumentId: "c1" }],
+};
+
+const archivedAward: AwardRow = {
+  ...activeAward,
+  active: false,
+};
 
 const noopUpload = vi.fn().mockResolvedValue(1);
 
@@ -37,15 +40,17 @@ function renderManager(overrides: Partial<Parameters<typeof AwardManager>[0]> = 
       currencies={currencies}
       onCreate={vi.fn()}
       onUpdate={vi.fn()}
-      onDelete={vi.fn()}
+      onArchive={vi.fn()}
+      onHardDelete={vi.fn()}
       onUploadImage={noopUpload}
+      canDeactivate
       canDelete={false}
       {...overrides}
     >
       <table>
         <tbody>
           <AwardListRowPresentational
-            award={awards[0]!}
+            award={activeAward}
             variant="table"
             labels={{
               cost: "50 Estrela",
@@ -76,7 +81,8 @@ describe("AwardManager", () => {
         currencies={currencies}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
-        onDelete={vi.fn()}
+        onArchive={vi.fn()}
+        onHardDelete={vi.fn()}
         onUploadImage={noopUpload}
         canDelete={false}
       >
@@ -93,7 +99,8 @@ describe("AwardManager", () => {
         currencies={currencies}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
-        onDelete={vi.fn()}
+        onArchive={vi.fn()}
+        onHardDelete={vi.fn()}
         onUploadImage={noopUpload}
         canDelete={false}
       >
@@ -123,11 +130,43 @@ describe("AwardManager", () => {
     expect(screen.getByLabelText("Nome")).toHaveValue("Arroz");
   });
 
-  it("shows delete action in edit modal when canDelete is true", () => {
-    renderManager({ canDelete: true });
-    expect(screen.queryByRole("button", { name: "Excluir" })).toBeNull();
+  it("shows archive action for active awards when canDeactivate is true", () => {
+    renderManager({ canDeactivate: true, canDelete: false });
+    fireEvent.click(screen.getAllByRole("button", { name: "Arroz" })[0]!);
+    expect(screen.getByRole("button", { name: "Arquivar" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Excluir" })).not.toBeInTheDocument();
+  });
+
+  it("shows delete action for archived awards when canDelete is true", () => {
+    renderWithIntl(
+      <AwardManager
+        currencies={currencies}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onArchive={vi.fn()}
+        onHardDelete={vi.fn()}
+        onUploadImage={noopUpload}
+        canDeactivate={false}
+        canDelete
+      >
+        <table>
+          <tbody>
+            <AwardListRowPresentational
+              award={archivedAward}
+              variant="table"
+              labels={{
+                cost: "50 Estrela",
+                inactive: "Inativo",
+                selectRow: "Selecionar Arroz",
+              }}
+            />
+          </tbody>
+        </table>
+      </AwardManager>,
+    );
     fireEvent.click(screen.getAllByRole("button", { name: "Arroz" })[0]!);
     expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Arquivar" })).not.toBeInTheDocument();
   });
 
   it("closes modal on cancel", () => {
@@ -146,7 +185,8 @@ describe("AwardManager", () => {
         currencies={currencies}
         onCreate={onCreate}
         onUpdate={vi.fn()}
-        onDelete={vi.fn()}
+        onArchive={vi.fn()}
+        onHardDelete={vi.fn()}
         onUploadImage={noopUpload}
         canDelete={false}
       >

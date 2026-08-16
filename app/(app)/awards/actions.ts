@@ -53,6 +53,13 @@ async function assertCanDeactivate(): Promise<void> {
   }
 }
 
+async function assertCanDelete(): Promise<void> {
+  const session = await auth();
+  if (!canDeleteAwards(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+}
+
 function invalidateAwards(): void {
   revalidateTag("drizzle:awards", "default");
 }
@@ -145,8 +152,17 @@ export async function updateAward(
 }
 
 export async function deleteAward(documentId: string): Promise<void> {
-  await assertCanManage();
+  await assertCanDeactivate();
   await deleteAwardRepo(documentId);
+  invalidateAwards();
+}
+
+export async function permanentlyDeleteAward(documentId: string): Promise<void> {
+  await assertCanDelete();
+  const award = await findAwardById(documentId);
+  if (!award) throw new Error("notFound");
+  if (award.active) throw new Error("activeAward");
+  await hardDeleteAward(documentId);
   invalidateAwards();
 }
 
@@ -165,11 +181,7 @@ export async function bulkArchiveAwards(
 }
 
 export async function bulkDeleteAwards(documentIds: string[]): Promise<void> {
-  await assertCanManage();
-  const session = await auth();
-  if (!canDeleteAwards(session?.user?.role as Role | undefined)) {
-    throw new Error("forbidden");
-  }
+  await assertCanDelete();
   const ids = bulkAwardIdsSchema.parse(documentIds);
 
   for (const documentId of ids) {

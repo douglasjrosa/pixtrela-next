@@ -27,6 +27,7 @@ import { listCurrencies as listCurrenciesRepo } from "@/lib/repos/awards";
 import {
   createAward,
   deleteAward,
+  permanentlyDeleteAward,
   updateAward,
   uploadAwardImage,
 } from "./actions";
@@ -123,10 +124,12 @@ export default async function AwardsPage({ searchParams }: AwardsPageProps) {
         currencies={currencies}
         onCreate={createAward}
         onUpdate={updateAward}
-        onDelete={deleteAward}
+        onArchive={deleteAward}
+        onHardDelete={permanentlyDeleteAward}
         onUploadImage={uploadAwardImage}
         canManage={canManage}
-        canDelete={canManage}
+        canDeactivate={canDeactivate}
+        canDelete={canDelete}
       >
         {listContent}
       </AwardManager>

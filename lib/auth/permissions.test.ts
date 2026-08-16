@@ -10,6 +10,8 @@ import {
   canDeactivateTasks,
   canDeleteTasks,
   canExchange,
+  canDeactivateAwards,
+  canDeleteAwards,
   canManageAwards,
   canViewAwards,
   canManageTasks,
@@ -123,6 +125,21 @@ describe("canViewAwards", () => {
     expect(canViewAwards("admin")).toBe(true);
     expect(canViewAwards("manager")).toBe(true);
     expect(canViewAwards("leader")).toBe(false);
+  });
+});
+
+describe("canDeactivateAwards", () => {
+  it("allows manager and admin", () => {
+    expect(canDeactivateAwards("admin")).toBe(true);
+    expect(canDeactivateAwards("manager")).toBe(true);
+    expect(canDeactivateAwards("leader")).toBe(false);
+  });
+});
+
+describe("canDeleteAwards", () => {
+  it("allows admin only", () => {
+    expect(canDeleteAwards("admin")).toBe(true);
+    expect(canDeleteAwards("manager")).toBe(false);
   });
 });
 

@@ -35,10 +35,12 @@ export interface AwardManagerProps {
   children: ReactNode;
   onCreate: (values: AwardFormInput) => void | Promise<void>;
   onUpdate: (documentId: string, values: AwardFormInput) => void | Promise<void>;
-  onDelete: (documentId: string) => void | Promise<void>;
+  onArchive: (documentId: string) => void | Promise<void>;
+  onHardDelete: (documentId: string) => void | Promise<void>;
   onUploadImage: (formData: FormData) => Promise<number | string>;
   /** When false, catalog is read-only (manager view). */
   canManage?: boolean;
+  canDeactivate?: boolean;
   canDelete: boolean;
 }
 
@@ -79,10 +81,11 @@ interface AwardFormDialogProps {
   editingAward: AwardRow | null;
   currencies: CurrencyOption[];
   isPending: boolean;
-  showDelete: boolean;
+  readOnly: boolean;
+  destructiveAction?: "archive" | "delete";
   onClose: () => void;
   onSubmit: (values: AwardFormInput) => void;
-  onDelete?: () => void;
+  onDestructiveAction?: () => void;
   onUploadImage: (formData: FormData) => Promise<number | string>;
 }
 
@@ -90,15 +93,17 @@ function AwardFormDialog({
   editingAward,
   currencies,
   isPending,
-  showDelete,
+  readOnly,
+  destructiveAction,
   onClose,
   onSubmit,
-  onDelete,
+  onDestructiveAction,
   onUploadImage,
 }: AwardFormDialogProps) {
   const tCommon = useTranslations("common");
   const tAwards = useTranslations("awards");
   const isEditing = editingAward !== null;
+  const formDisabled = isPending || readOnly;
   const formTitleId = "award-form-title";
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     editingAward?.imageUrl ?? null,
@@ -163,25 +168,29 @@ function AwardFormDialog({
       onClose={onClose}
       disabled={isPending}
       footerStart={
-        showDelete && onDelete ? (
+        destructiveAction && onDestructiveAction ? (
           <Button
             type="button"
             variant="destructive"
             disabled={isPending}
-            onClick={onDelete}
+            onClick={onDestructiveAction}
           >
-            {tCommon("delete")}
+            {destructiveAction === "archive"
+              ? tAwards("archive")
+              : tCommon("delete")}
           </Button>
         ) : undefined
       }
       footerEnd={
-        <Button
-          type="submit"
-          form={formId}
-          disabled={isPending || currencies.length === 0}
-        >
-          {tCommon("save")}
-        </Button>
+        readOnly ? undefined : (
+          <Button
+            type="submit"
+            form={formId}
+            disabled={isPending || currencies.length === 0}
+          >
+            {tCommon("save")}
+          </Button>
+        )
       }
     >
       <form
@@ -200,7 +209,7 @@ function AwardFormDialog({
 
         <div className="space-y-2">
           <Label htmlFor="name">{tAwards("name")}</Label>
-          <Input id="name" {...register("name")} />
+          <Input id="name" disabled={formDisabled} {...register("name")} />
           {errors.name ? (
             <p className="text-sm text-destructive">{errors.name.message}</p>
           ) : null}
@@ -208,7 +217,7 @@ function AwardFormDialog({
 
         <div className="space-y-2">
           <Label htmlFor="title">{tAwards("titleField")}</Label>
-          <Input id="title" {...register("title")} />
+          <Input id="title" disabled={formDisabled} {...register("title")} />
         </div>
 
         <div className="space-y-2 sm:col-span-2">
@@ -216,6 +225,7 @@ function AwardFormDialog({
           <textarea
             id="description"
             className={textareaClass}
+            disabled={formDisabled}
             {...register("description")}
           />
         </div>
@@ -225,6 +235,7 @@ function AwardFormDialog({
           <textarea
             id="warnings"
             className={textareaClass}
+            disabled={formDisabled}
             {...register("warnings")}
           />
         </div>
@@ -237,7 +248,7 @@ function AwardFormDialog({
                 id="image"
                 type="file"
                 accept="image/*"
-                disabled={isPending}
+                disabled={formDisabled}
                 onChange={handleImageChange}
               />
               <p className="text-xs text-muted-foreground">
@@ -269,6 +280,7 @@ function AwardFormDialog({
                 type="number"
                 min={1}
                 className="w-28"
+                disabled={formDisabled}
                 aria-label={tAwards("numberOf")}
                 {...register(`values.${index}.numberOf`, { valueAsNumber: true })}
               />
@@ -277,6 +289,7 @@ function AwardFormDialog({
                   "flex h-9 min-w-40 flex-1 rounded-md border border-input " +
                   "bg-transparent px-3 text-sm"
                 }
+                disabled={formDisabled}
                 aria-label={tAwards("currency")}
                 {...register(`values.${index}.currencyDocumentId`)}
               >
@@ -286,7 +299,7 @@ function AwardFormDialog({
                   </option>
                 ))}
               </select>
-              {fields.length > 1 ? (
+              {fields.length > 1 && !readOnly ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -298,19 +311,21 @@ function AwardFormDialog({
               ) : null}
             </div>
           ))}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              append({
-                numberOf: 1,
-                currencyDocumentId: currencies[0]?.documentId ?? "",
-              })
-            }
-          >
-            {tAwards("addValue")}
-          </Button>
+          {!readOnly ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                append({
+                  numberOf: 1,
+                  currencyDocumentId: currencies[0]?.documentId ?? "",
+                })
+              }
+            >
+              {tAwards("addValue")}
+            </Button>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-end gap-6 sm:col-span-2">
@@ -318,7 +333,7 @@ function AwardFormDialog({
             <input
               type="checkbox"
               className={cn("size-4 rounded border accent-primary")}
-              disabled={isPending}
+              disabled={formDisabled}
               {...register("showInStore")}
             />
             {tAwards("showInStore")}
@@ -330,7 +345,7 @@ function AwardFormDialog({
               type="number"
               min={0}
               className="w-32"
-              disabled={isPending}
+              disabled={formDisabled}
               {...register("stock", { valueAsNumber: true })}
             />
             {errors.stock ? (
@@ -348,9 +363,11 @@ export function AwardManager({
   children,
   onCreate,
   onUpdate,
-  onDelete,
+  onArchive,
+  onHardDelete,
   onUploadImage,
   canManage = true,
+  canDeactivate = false,
   canDelete,
 }: AwardManagerProps) {
   const tCommon = useTranslations("common");
@@ -358,31 +375,43 @@ export function AwardManager({
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
   const [editingAward, setEditingAward] = useState<AwardRow | null>(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+
+  const canOpenEdit = canManage || canDeactivate;
+  const destructiveAction = editingAward
+    ? editingAward.active
+      ? canDeactivate
+        ? ("archive" as const)
+        : undefined
+      : canDelete
+        ? ("delete" as const)
+        : undefined
+    : undefined;
 
   function closeForm(): void {
     setFormOpen(false);
     setEditingAward(null);
-    setDeleteOpen(false);
+    setConfirmOpen(false);
   }
 
   function startCreate(): void {
     setEditingAward(null);
     setMessage(null);
-    setDeleteOpen(false);
+    setConfirmOpen(false);
     setFormOpen(true);
   }
 
   function startEdit(award: AwardRow): void {
     setEditingAward(award);
     setMessage(null);
-    setDeleteOpen(false);
+    setConfirmOpen(false);
     setFormOpen(true);
   }
 
   function onSubmit(values: AwardFormInput): void {
+    if (!canManage) return;
     startTransition(async () => {
       if (editingAward) {
         await onUpdate(editingAward.documentId, values);
@@ -395,11 +424,16 @@ export function AwardManager({
     });
   }
 
-  function handleConfirmDelete(): void {
-    if (!editingAward) return;
+  function handleConfirmDestructive(): void {
+    if (!editingAward || !destructiveAction) return;
     startTransition(async () => {
-      await onDelete(editingAward.documentId);
-      setMessage(tAwards("deleted"));
+      if (destructiveAction === "archive") {
+        await onArchive(editingAward.documentId);
+        setMessage(tAwards("archived"));
+      } else {
+        await onHardDelete(editingAward.documentId);
+        setMessage(tAwards("deleted"));
+      }
       closeForm();
       router.refresh();
     });
@@ -408,7 +442,7 @@ export function AwardManager({
   const formDialogKey = editingAward?.documentId ?? "new";
 
   return (
-    <AwardListProvider openEdit={canManage ? startEdit : undefined}>
+    <AwardListProvider openEdit={canOpenEdit ? startEdit : undefined}>
       <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
         <div className="flex shrink-0 items-center justify-between gap-3">
           <h1 className="text-2xl font-bold max-[500px]:text-lg">
@@ -437,22 +471,37 @@ export function AwardManager({
             editingAward={editingAward}
             currencies={currencies}
             isPending={isPending}
-            showDelete={Boolean(canDelete && editingAward)}
+            readOnly={!canManage}
+            destructiveAction={destructiveAction}
             onClose={closeForm}
             onSubmit={onSubmit}
-            onDelete={() => setDeleteOpen(true)}
+            onDestructiveAction={
+              destructiveAction ? () => setConfirmOpen(true) : undefined
+            }
             onUploadImage={onUploadImage}
           />
         ) : null}
 
         <ConfirmDialog
-          open={deleteOpen}
-          title={tAwards("deleteTitle")}
-          description={tAwards("deleteConfirm")}
-          confirmLabel={tCommon("delete")}
+          open={confirmOpen}
+          title={
+            destructiveAction === "archive"
+              ? tAwards("archiveTitle")
+              : tAwards("deleteTitle")
+          }
+          description={
+            destructiveAction === "archive"
+              ? tAwards("archiveConfirm")
+              : tAwards("deleteConfirm")
+          }
+          confirmLabel={
+            destructiveAction === "archive"
+              ? tAwards("archive")
+              : tCommon("delete")
+          }
           disabled={isPending}
-          onConfirm={handleConfirmDelete}
-          onClose={() => setDeleteOpen(false)}
+          onConfirm={handleConfirmDestructive}
+          onClose={() => setConfirmOpen(false)}
         />
 
         {children}
