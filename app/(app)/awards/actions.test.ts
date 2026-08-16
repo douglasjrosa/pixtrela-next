@@ -74,11 +74,15 @@ describe("awards/actions drizzle CRUD", () => {
       description: "",
       warnings: "",
       imageId: null,
+      active: true,
+      stock: 5,
       values: [{ currencyDocumentId: "cur-1", numberOf: 10 }],
     });
     expect(createAwardRepo).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "Arroz",
+        active: true,
+        stock: 5,
         prices: [{ currencyId: "cur-1", numberOf: 10 }],
       }),
     );
@@ -111,6 +115,8 @@ describe("awards/actions drizzle CRUD", () => {
       description: "",
       warnings: "",
       imageId: "00000000-0000-4000-8000-000000000001",
+      active: false,
+      stock: 3,
       values: [{ currencyDocumentId: "cur-1", numberOf: 5 }],
     });
 
@@ -118,6 +124,8 @@ describe("awards/actions drizzle CRUD", () => {
       expect.objectContaining({
         name: "Feijão",
         imageMediaId: "00000000-0000-4000-8000-000000000001",
+        active: false,
+        stock: 3,
       }),
     );
     expect(replaceAwardPrices).toHaveBeenCalledWith(

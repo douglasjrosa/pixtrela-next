@@ -8,6 +8,8 @@ export function mapAwardListItemToRow(item: AwardListItem): AwardRow {
     title: item.title,
     description: item.description,
     warnings: item.warnings,
+    active: item.active,
+    stock: item.stock,
     imageId: item.imageMediaId,
     imageUrl: item.imageUrl,
     values: item.prices.map((price) => ({

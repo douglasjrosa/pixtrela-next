@@ -22,6 +22,8 @@ const awards: AwardRow[] = [
   {
     documentId: "a1",
     name: "Arroz",
+    active: true,
+    stock: 10,
     values: [{ numberOf: 50, currencyDocumentId: "c1" }],
   },
 ];
@@ -102,6 +104,8 @@ describe("AwardManager", () => {
     expect(screen.getByLabelText("Moeda")).toBeInTheDocument();
     expect(screen.getByLabelText("Avisos")).toBeInTheDocument();
     expect(screen.getByLabelText("Imagem")).toBeInTheDocument();
+    expect(screen.getByText("Mostrar na loja")).toBeInTheDocument();
+    expect(screen.getByLabelText("Quantidade em estoque")).toBeInTheDocument();
   });
 
   it("opens edit modal when award name is clicked", () => {
@@ -153,6 +157,8 @@ describe("AwardManager", () => {
       expect(onCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "Feijão",
+          active: true,
+          stock: 0,
           values: [{ numberOf: 1, currencyDocumentId: "c1" }],
         }),
       );

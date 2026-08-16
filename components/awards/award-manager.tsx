@@ -50,6 +50,8 @@ function defaultValues(currencies: CurrencyOption[]): AwardFormInput {
     description: "",
     warnings: "",
     imageId: null,
+    active: true,
+    stock: 0,
     values: [{ numberOf: 1, currencyDocumentId: defaultCurrencyId }],
   };
 }
@@ -64,6 +66,8 @@ function toFormValues(
     description: award.description ?? "",
     warnings: award.warnings ?? "",
     imageId: award.imageId ?? null,
+    active: award.active,
+    stock: award.stock,
     values:
       award.values.length > 0
         ? award.values
@@ -153,6 +157,7 @@ function AwardFormDialog({
   return (
     <FormModalShell
       open
+      size="lgNarrow"
       title={isEditing ? tAwards("editAward") : tAwards("newAward")}
       titleId={formTitleId}
       onClose={onClose}
@@ -226,28 +231,34 @@ function AwardFormDialog({
 
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="image">{tAwards("image")}</Label>
-          <Input
-            id="image"
-            type="file"
-            accept="image/*"
-            disabled={isPending}
-            onChange={handleImageChange}
-          />
-          <p className="text-xs text-muted-foreground">{tAwards("imageHint")}</p>
-          {previewUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- blob preview URL
-            <img
-              src={previewUrl}
-              alt=""
-              role="presentation"
-              className="mt-2 h-24 w-24 rounded-md border object-cover"
-            />
-          ) : null}
-          {imageId ? (
-            <p className="text-xs text-muted-foreground">
-              {tAwards("imageAttached")}
-            </p>
-          ) : null}
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="min-w-0 flex-1 space-y-2">
+              <Input
+                id="image"
+                type="file"
+                accept="image/*"
+                disabled={isPending}
+                onChange={handleImageChange}
+              />
+              <p className="text-xs text-muted-foreground">
+                {tAwards("imageHint")}
+              </p>
+              {imageId ? (
+                <p className="text-xs text-muted-foreground">
+                  {tAwards("imageAttached")}
+                </p>
+              ) : null}
+            </div>
+            {previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- blob preview URL
+              <img
+                src={previewUrl}
+                alt=""
+                role="presentation"
+                className="h-24 w-24 shrink-0 rounded-md border object-cover"
+              />
+            ) : null}
+          </div>
         </div>
 
         <div className="space-y-4 sm:col-span-2">
@@ -300,6 +311,32 @@ function AwardFormDialog({
           >
             {tAwards("addValue")}
           </Button>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-6 sm:col-span-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className={cn("size-4 rounded border accent-primary")}
+              disabled={isPending}
+              {...register("active")}
+            />
+            {tAwards("showInStore")}
+          </label>
+          <div className="space-y-2">
+            <Label htmlFor="stock">{tAwards("stock")}</Label>
+            <Input
+              id="stock"
+              type="number"
+              min={0}
+              className="w-32"
+              disabled={isPending}
+              {...register("stock", { valueAsNumber: true })}
+            />
+            {errors.stock ? (
+              <p className="text-sm text-destructive">{errors.stock.message}</p>
+            ) : null}
+          </div>
         </div>
       </form>
     </FormModalShell>
