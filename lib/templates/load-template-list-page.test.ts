@@ -21,13 +21,14 @@ describe("loadTemplateListPage", () => {
           name: "Montagem",
           code: "100",
           subTaskCount: 2,
+          active: true,
         },
       ],
       total: 12,
     });
 
     const result = await loadTemplateListPage(
-      { q: undefined, column: "name", direction: "asc" },
+      { q: undefined, column: "name", direction: "asc", showArchived: false },
       1,
     );
 
@@ -36,6 +37,7 @@ describe("loadTemplateListPage", () => {
       page: 1,
       pageSize: 10,
       sort: { column: "name", direction: "asc" },
+      showArchived: false,
     });
 
     expect(result.hasMore).toBe(true);
@@ -46,6 +48,7 @@ describe("loadTemplateListPage", () => {
         name: "Montagem",
         code: "100",
         subTaskCount: 2,
+        active: true,
       },
     ]);
   });

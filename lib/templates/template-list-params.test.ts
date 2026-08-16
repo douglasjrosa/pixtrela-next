@@ -11,6 +11,7 @@ describe("parseTemplateListSearchParams", () => {
   it("applies empty defaults when params are empty", () => {
     const filters = parseTemplateListSearchParams({});
     expect(filters.q).toBeUndefined();
+    expect(filters.showArchived).toBe(false);
   });
 
   it("parses q", () => {
@@ -21,6 +22,11 @@ describe("parseTemplateListSearchParams", () => {
   it("ignores q shorter than 3 characters", () => {
     const filters = parseTemplateListSearchParams({ q: "ab" });
     expect(filters.q).toBeUndefined();
+  });
+
+  it("parses archived=1", () => {
+    const filters = parseTemplateListSearchParams({ archived: "1" });
+    expect(filters.showArchived).toBe(true);
   });
 
   it("ignores legacy code query param", () => {
@@ -61,6 +67,14 @@ describe("serializeTemplateListSearchParams", () => {
     expect(params.has("code")).toBe(false);
   });
 
+  it("includes archived when true", () => {
+    const params = serializeTemplateListSearchParams({
+      ...defaultTemplateListFilters(),
+      showArchived: true,
+    });
+    expect(params.get("archived")).toBe("1");
+  });
+
   it("includes sort params when not default", () => {
     const params = serializeTemplateListSearchParams({
       ...defaultTemplateListFilters(),
@@ -79,7 +93,7 @@ describe("templateListFilterKey", () => {
       templateListFilterKey(base),
     );
     expect(
-      templateListFilterKey({ ...base, column: "code", direction: "asc" }),
+      templateListFilterKey({ ...base, showArchived: true }),
     ).not.toBe(templateListFilterKey(base));
   });
 });

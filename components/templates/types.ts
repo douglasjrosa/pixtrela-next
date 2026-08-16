@@ -3,4 +3,5 @@ export interface TemplateListRow {
   name: string;
   code: string;
   subTaskCount: number;
+  active: boolean;
 }

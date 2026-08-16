@@ -1,6 +1,12 @@
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
+import { auth } from "@/auth";
+import type { Role } from "@/lib/auth/nav";
+import {
+  canDeactivateTemplates,
+  canDeleteTemplates,
+} from "@/lib/auth/permissions";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { loadTemplateListPage } from "@/lib/templates/load-template-list-page";
 import { parseTemplateListSearchParams } from "@/lib/templates/template-list-params";
@@ -21,10 +27,16 @@ interface TemplateTasksPageProps {
 export default async function TemplateTasksPage({
   searchParams,
 }: TemplateTasksPageProps) {
+  const session = await auth();
+  const role = session?.user?.role as Role | undefined;
   const params = await searchParams;
   const filters = parseTemplateListSearchParams(params);
   const tTemplates = await getTranslations("templates");
   const sort = { column: filters.column, direction: filters.direction };
+  const canDeactivate = canDeactivateTemplates(role);
+  const canDelete = canDeleteTemplates(role);
+  const bulkEnabled = canDeactivate || canDelete;
+  const showCheckboxColumn = bulkEnabled;
 
   const pageResult = await loadTemplateListPage(filters, 1).catch((error) => {
     rethrowIfNavigationError(error);
@@ -46,14 +58,26 @@ export default async function TemplateTasksPage({
         initialTemplates={pageResult.templates}
         initialPage={pageResult.page}
         initialHasMore={pageResult.hasMore}
+        canDeactivate={canDeactivate}
+        canDelete={canDelete}
         tableHeader={
-          <TemplatesListTableHeader sort={sort} filters={filters} />
+          <TemplatesListTableHeader
+            sort={sort}
+            filters={filters}
+            showCheckboxColumn={showCheckboxColumn}
+          />
         }
         tableBody={
-          <TemplatesListTableBody templates={pageResult.templates} />
+          <TemplatesListTableBody
+            templates={pageResult.templates}
+            showCheckboxColumn={showCheckboxColumn}
+          />
         }
         mobileList={
-          <TemplatesListMobileList templates={pageResult.templates} />
+          <TemplatesListMobileList
+            templates={pageResult.templates}
+            showCheckboxColumn={showCheckboxColumn}
+          />
         }
       />
     );

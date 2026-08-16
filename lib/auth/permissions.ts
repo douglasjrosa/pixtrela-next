@@ -30,6 +30,16 @@ export function canManageTemplates(role: Role | undefined): boolean {
   return isAtLeast(role, "manager");
 }
 
+/** Soft-archive templates: manager and admin. */
+export function canDeactivateTemplates(role: Role | undefined): boolean {
+  return isAtLeast(role, "manager");
+}
+
+/** Hard delete templates: admin only. */
+export function canDeleteTemplates(role: Role | undefined): boolean {
+  return role === "admin";
+}
+
 /** Soft-deactivate (archive) tasks: manager and admin. */
 export function canDeactivateTasks(role: Role | undefined): boolean {
   return isAtLeast(role, "manager");

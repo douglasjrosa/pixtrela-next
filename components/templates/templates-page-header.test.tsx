@@ -31,6 +31,7 @@ const templates = [
     name: "Montagem padrão",
     code: "MNT-01",
     subTaskCount: 1,
+    active: true,
   },
 ];
 
@@ -85,7 +86,11 @@ describe("TemplateListRowPresentational", () => {
             template={templates[0]!}
             variant="table"
             href="/templates/tasks/tpl1"
-            labels={{ subTaskCountShort: "1 subtarefa(s)" }}
+            labels={{
+              subTaskCountShort: "1 subtarefa(s)",
+              inactive: "Inativo",
+              selectRow: "Selecionar Montagem padrão",
+            }}
           />
         </tbody>
       </table>,

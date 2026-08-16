@@ -24,6 +24,7 @@ function mapDrizzleItem(item: TemplateTaskListItem): TemplateListRow {
     name: item.name,
     code: item.code,
     subTaskCount: item.subTaskCount,
+    active: item.active,
   };
 }
 
@@ -39,6 +40,7 @@ const loadTemplateListPageCached = cache(
       page: resolvedPage,
       pageSize: TEMPLATE_LIST_PAGE_SIZE,
       sort: { column: filters.column, direction: filters.direction },
+      showArchived: filters.showArchived,
     });
     const pageCount = Math.max(1, Math.ceil(total / TEMPLATE_LIST_PAGE_SIZE));
     return {

@@ -53,6 +53,7 @@ export function parseTemplateListSearchParams(
   const qRaw = firstParam(params.q)?.trim();
   const sortColumn = parseSortColumn(firstParam(params.sort));
   const sortDirection = parseSortDirection(firstParam(params.dir));
+  const showArchived = firstParam(params.archived) === "1";
 
   const result = templateListFiltersSchema.safeParse({
     q:
@@ -61,6 +62,7 @@ export function parseTemplateListSearchParams(
         : undefined,
     column: sortColumn ?? TEMPLATE_LIST_DEFAULT_SORT_COLUMN,
     direction: sortDirection ?? TEMPLATE_LIST_DEFAULT_SORT_DIRECTION,
+    showArchived,
   });
 
   if (!result.success) {
@@ -79,6 +81,9 @@ export function serializeTemplateListSearchParams(
   if (filters.q) {
     params.set("q", filters.q);
   }
+  if (filters.showArchived) {
+    params.set("archived", "1");
+  }
   if (
     !isDefaultTemplateListSort({
       column: filters.column,
@@ -93,5 +98,10 @@ export function serializeTemplateListSearchParams(
 
 /** Stable key for remount/reset when filters or sort change. */
 export function templateListFilterKey(filters: TemplateListFilters): string {
-  return [filters.q ?? "", filters.column, filters.direction].join("|");
+  return [
+    filters.q ?? "",
+    filters.column,
+    filters.direction,
+    filters.showArchived ? "1" : "0",
+  ].join("|");
 }

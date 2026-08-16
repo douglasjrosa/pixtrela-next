@@ -9,6 +9,7 @@ export const TEMPLATE_LIST_SEARCH_DEBOUNCE_MS = 300;
 export const templateListFiltersSchema = z
   .object({
     q: z.string().optional(),
+    showArchived: z.boolean().default(false),
   })
   .merge(templateListSortSchema)
   .superRefine((data, ctx) => {
@@ -33,6 +34,7 @@ export const templateListFiltersSchema = z
           : undefined,
       column: data.column,
       direction: data.direction,
+      showArchived: data.showArchived,
     };
   });
 

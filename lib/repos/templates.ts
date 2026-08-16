@@ -139,6 +139,7 @@ export async function listTemplateTasks(
     page?: number;
     pageSize?: number;
     sort?: TemplateListSort;
+    showArchived?: boolean;
   } = {},
   db: Db = getDb(),
 ): Promise<{ items: TemplateTaskListItem[]; total: number }> {
@@ -146,16 +147,18 @@ export async function listTemplateTasks(
   const pageSize = Math.max(1, options.pageSize ?? 10);
   const offset = (page - 1) * pageSize;
   const q = options.q?.trim();
-
-  const where = q
-    ? and(
-        eq(templateTasks.active, true),
-        or(
-          ilike(templateTasks.name, `%${q}%`),
-          ilike(templateTasks.code, `%${q}%`),
-        ),
-      )
+  const activeClause = options.showArchived
+    ? undefined
     : eq(templateTasks.active, true);
+
+  const searchClause = q
+    ? or(
+        ilike(templateTasks.name, `%${q}%`),
+        ilike(templateTasks.code, `%${q}%`),
+      )
+    : undefined;
+
+  const where = and(activeClause, searchClause);
 
   const [totalRow] = await db
     .select({ total: count() })
@@ -246,4 +249,11 @@ export async function deleteTemplateTask(
     .update(templateTasks)
     .set({ active: false, updatedAt: new Date() })
     .where(eq(templateTasks.id, id));
+}
+
+export async function hardDeleteTemplateTask(
+  id: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await db.delete(templateTasks).where(eq(templateTasks.id, id));
 }

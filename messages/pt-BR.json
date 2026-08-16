@@ -364,7 +364,17 @@
     "loadingMore": "Carregando...",
     "empty": "Nenhum modelo encontrado.",
     "listLoading": "Carregando modelos...",
-    "subTaskCountShort": "{count} subtarefa(s)"
+    "subTaskCountShort": "{count} subtarefa(s)",
+    "inactive": "Inativo",
+    "showArchived": "Exibir modelos arquivados",
+    "archiveSelected": "Arquivar selecionados",
+    "deleteSelected": "Excluir selecionados",
+    "bulkArchived": "Modelos arquivados.",
+    "bulkDeleted": "Modelos excluídos.",
+    "bulkArchiveTitle": "Arquivar modelos",
+    "bulkArchiveConfirm": "Tem certeza de que deseja arquivar <b>{count}</b> modelos?",
+    "bulkDeleteTitle": "Excluir modelos",
+    "bulkDeleteConfirm": "Excluir permanentemente os modelos selecionados?"
   },
   "subTaskPresets": {
     "title": "Modelos de subtarefa",
