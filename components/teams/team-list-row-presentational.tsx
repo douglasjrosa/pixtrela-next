@@ -1,8 +1,9 @@
 "use client";
 
+import type { KeyboardEvent } from "react";
+
 import { isTeamActive } from "@/lib/business/team-active";
 import { cn } from "@/lib/utils";
-import { useListRowActivateInteraction } from "@/lib/ui/list-row-interaction";
 
 import { useTeamList } from "./team-list-context";
 import type { TeamRow } from "./types";
@@ -31,23 +32,30 @@ export function TeamListRowPresentational({
 }: TeamListRowPresentationalProps) {
   const { openEdit } = useTeamList();
   const active = isTeamActive(team.untill);
-  const { interactive, activate, ...a11yProps } = useListRowActivateInteraction(
-    team.name,
-    () => openEdit(team),
-  );
+  const activate = () => openEdit(team);
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      activate();
+    }
+  };
 
   const rowClassName = cn(
-    "border-b",
-    interactive && "cursor-pointer hover:bg-muted/40",
+    "cursor-pointer border-b hover:bg-muted/40",
     !active && "text-muted-foreground",
   );
+  const rowProps = {
+    onClick: activate,
+    onKeyDown,
+    role: "button" as const,
+    tabIndex: 0,
+    "aria-label": team.name,
+  };
 
   if (variant === "table") {
     return (
-      <tr className={rowClassName} onClick={activate} {...a11yProps}>
-        <td className="py-2">
-          <span>{team.name}</span>
-        </td>
+      <tr className={rowClassName} {...rowProps}>
+        <td className="py-2">{team.name}</td>
         <td className={CENTER_CELL_CLASS}>{labels.since}</td>
         <td className={CENTER_CELL_CLASS}>{labels.untill}</td>
         <td className={CENTER_CELL_CLASS}>{labels.status}</td>
@@ -59,7 +67,7 @@ export function TeamListRowPresentational({
   }
 
   return (
-    <li className={cn("list-none py-3", rowClassName)} onClick={activate} {...a11yProps}>
+    <li className={cn("list-none py-3", rowClassName)} {...rowProps}>
       <div className="text-base font-medium">{team.name}</div>
       <div className="text-muted-foreground text-sm">
         {labels.status} · {labels.leader}

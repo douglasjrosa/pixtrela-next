@@ -1,7 +1,8 @@
 "use client";
 
+import type { KeyboardEvent } from "react";
+
 import { cn } from "@/lib/utils";
-import { useListRowActivateInteraction } from "@/lib/ui/list-row-interaction";
 
 import { UserListAvatar } from "./user-list-avatar";
 import { useUserList } from "./user-list-context";
@@ -26,21 +27,31 @@ export function UserListRowPresentational({
 }: UserListRowPresentationalProps) {
   const { openEdit, canEdit } = useUserList();
   const editable = canEdit(user);
-  const { interactive, activate, ...a11yProps } = useListRowActivateInteraction(
-    user.name,
-    () => openEdit(user),
-    editable,
-  );
+  const activate = () => openEdit(user);
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      activate();
+    }
+  };
+  const rowProps = editable
+    ? {
+        onClick: activate,
+        onKeyDown,
+        role: "button" as const,
+        tabIndex: 0,
+        "aria-label": user.name,
+      }
+    : {};
 
   if (variant === "table") {
     return (
       <tr
         className={cn(
           "border-b",
-          interactive && "cursor-pointer hover:bg-muted/40",
+          editable && "cursor-pointer hover:bg-muted/40",
         )}
-        onClick={activate}
-        {...a11yProps}
+        {...rowProps}
       >
         <td className="w-12 py-2 pr-3">
           <UserListAvatar name={user.name} avatarUrl={user.avatarUrl} />
@@ -58,10 +69,9 @@ export function UserListRowPresentational({
     <li
       className={cn(
         "list-none border-b py-3",
-        interactive && "cursor-pointer hover:bg-muted/40",
+        editable && "cursor-pointer hover:bg-muted/40",
       )}
-      onClick={activate}
-      {...a11yProps}
+      {...rowProps}
     >
       <div className="flex items-center gap-3">
         <UserListAvatar name={user.name} avatarUrl={user.avatarUrl} />

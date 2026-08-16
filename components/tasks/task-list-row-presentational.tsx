@@ -1,14 +1,15 @@
-"use client";
+import Link from "next/link";
 
 import { CardBadge } from "@/components/ui/card";
 import { formatDatePtBr } from "@/lib/format/datetime";
-import { useListRowNavigateInteraction } from "@/lib/ui/list-row-interaction";
 import { cn } from "@/lib/utils";
 
 import { TaskListRowCheckbox } from "./task-list-row-checkbox";
 import type { TaskRow } from "./types";
 
 const CENTER_CELL_CLASS = "text-center";
+const ROW_LINK_CLASS =
+  "text-inherit after:absolute after:inset-0 after:content-['']";
 
 export type TaskListRowLabels = {
   inactive: string;
@@ -43,22 +44,9 @@ export function TaskListRowPresentational({
     </>
   );
 
-  const { interactive, activate, ...a11yProps } = useListRowNavigateInteraction(
-    href,
-    task.name,
-    { ignoreSelectColumn: showCheckboxColumn },
-  );
-
   if (variant === "table") {
     return (
-      <tr
-        className={cn(
-          "border-b",
-          interactive && "cursor-pointer hover:bg-muted/40",
-        )}
-        onClick={activate}
-        {...a11yProps}
-      >
+      <tr className="relative cursor-pointer border-b hover:bg-muted/40">
         {showCheckboxColumn ? (
           <TaskListRowCheckbox
             documentId={task.documentId}
@@ -66,7 +54,11 @@ export function TaskListRowPresentational({
             ariaLabel={labels.selectRow}
           />
         ) : null}
-        <td className="py-2">{nameCell}</td>
+        <td className="py-2">
+          <Link href={href} className={ROW_LINK_CLASS} aria-label={task.name}>
+            {nameCell}
+          </Link>
+        </td>
         <td className={CENTER_CELL_CLASS}>{task.qty}</td>
         <td className={CENTER_CELL_CLASS}>
           {formatDatePtBr(task.deliveryDate)}
@@ -79,14 +71,7 @@ export function TaskListRowPresentational({
   }
 
   return (
-    <li
-      className={cn(
-        "list-none border-b py-3",
-        interactive && "cursor-pointer hover:bg-muted/40",
-      )}
-      onClick={activate}
-      {...a11yProps}
-    >
+    <li className="list-none border-b hover:bg-muted/40">
       <div className="flex items-start gap-3">
         {showCheckboxColumn ? (
           <TaskListRowCheckbox
@@ -95,7 +80,11 @@ export function TaskListRowPresentational({
             ariaLabel={labels.selectRow}
           />
         ) : null}
-        <div className="min-w-0 flex-1">
+        <Link
+          href={href}
+          className="min-w-0 flex-1 cursor-pointer py-3"
+          aria-label={task.name}
+        >
           <div className="text-base font-medium">{nameCell}</div>
           <div className="text-muted-foreground text-sm">
             {labels.qtyShort} | {labels.status}
@@ -109,7 +98,7 @@ export function TaskListRowPresentational({
           <div className="text-muted-foreground text-sm">
             {formatDatePtBr(task.deliveryDate)}
           </div>
-        </div>
+        </Link>
       </div>
     </li>
   );

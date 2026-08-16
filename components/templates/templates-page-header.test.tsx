@@ -94,6 +94,6 @@ describe("TemplateListRowPresentational", () => {
     expect(screen.getAllByText("1").length).toBeGreaterThan(0);
     expect(
       screen.getByRole("link", { name: "Montagem padrão" }),
-    ).toHaveAttribute("data-href", "/templates/tasks/tpl1");
+    ).toHaveAttribute("href", "/templates/tasks/tpl1");
   });
 });

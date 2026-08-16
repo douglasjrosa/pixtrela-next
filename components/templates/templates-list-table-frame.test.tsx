@@ -134,7 +134,7 @@ describe("TemplateListRowPresentational", () => {
     );
 
     expect(screen.getByRole("link", { name: "Primeiro" })).toHaveAttribute(
-      "data-href",
+      "href",
       "/templates/tasks/tpl1",
     );
   });

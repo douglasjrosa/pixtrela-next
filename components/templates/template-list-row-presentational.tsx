@@ -1,11 +1,10 @@
-"use client";
-
-import { useListRowNavigateInteraction } from "@/lib/ui/list-row-interaction";
-import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 import type { TemplateListRow } from "./types";
 
 const CENTER_CELL_CLASS = "text-center";
+const ROW_LINK_CLASS =
+  "text-inherit after:absolute after:inset-0 after:content-['']";
 
 export type TemplateListRowLabels = {
   subTaskCountShort: string;
@@ -24,23 +23,17 @@ export function TemplateListRowPresentational({
   href,
   labels,
 }: TemplateListRowPresentationalProps) {
-  const { interactive, activate, ...a11yProps } = useListRowNavigateInteraction(
-    href,
-    template.name,
-  );
-
   if (variant === "table") {
     return (
-      <tr
-        className={cn(
-          "border-b",
-          interactive && "cursor-pointer hover:bg-muted/40",
-        )}
-        onClick={activate}
-        {...a11yProps}
-      >
+      <tr className="relative cursor-pointer border-b hover:bg-muted/40">
         <td className="py-2">
-          <span>{template.name}</span>
+          <Link
+            href={href}
+            className={ROW_LINK_CLASS}
+            aria-label={template.name}
+          >
+            {template.name}
+          </Link>
         </td>
         <td className={CENTER_CELL_CLASS}>{template.code}</td>
         <td className={CENTER_CELL_CLASS}>{template.subTaskCount}</td>
@@ -49,19 +42,18 @@ export function TemplateListRowPresentational({
   }
 
   return (
-    <li
-      className={cn(
-        "list-none border-b py-3",
-        interactive && "cursor-pointer hover:bg-muted/40",
-      )}
-      onClick={activate}
-      {...a11yProps}
-    >
-      <div className="text-base font-medium">{template.name}</div>
-      <div className="text-muted-foreground text-sm">{template.code}</div>
-      <div className="text-muted-foreground text-sm">
-        {labels.subTaskCountShort}
-      </div>
+    <li className="list-none border-b hover:bg-muted/40">
+      <Link
+        href={href}
+        className="block cursor-pointer py-3"
+        aria-label={template.name}
+      >
+        <div className="text-base font-medium">{template.name}</div>
+        <div className="text-muted-foreground text-sm">{template.code}</div>
+        <div className="text-muted-foreground text-sm">
+          {labels.subTaskCountShort}
+        </div>
+      </Link>
     </li>
   );
 }

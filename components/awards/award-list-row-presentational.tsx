@@ -1,7 +1,8 @@
 "use client";
 
+import type { KeyboardEvent } from "react";
+
 import { cn } from "@/lib/utils";
-import { useListRowActivateInteraction } from "@/lib/ui/list-row-interaction";
 
 import { AwardListImage } from "./award-list-image";
 import { useAwardList } from "./award-list-context";
@@ -26,11 +27,23 @@ export function AwardListRowPresentational({
 }: AwardListRowPresentationalProps) {
   const { openEdit } = useAwardList();
   const displayTitle = awardDisplayTitle(award);
-  const { interactive, activate, ...a11yProps } = useListRowActivateInteraction(
-    displayTitle,
-    () => openEdit?.(award),
-    Boolean(openEdit),
-  );
+  const interactive = Boolean(openEdit);
+  const activate = () => openEdit?.(award);
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      activate();
+    }
+  };
+  const rowProps = interactive
+    ? {
+        onClick: activate,
+        onKeyDown,
+        role: "button" as const,
+        tabIndex: 0,
+        "aria-label": displayTitle,
+      }
+    : {};
 
   if (variant === "table") {
     return (
@@ -39,8 +52,7 @@ export function AwardListRowPresentational({
           "border-b",
           interactive && "cursor-pointer hover:bg-muted/40",
         )}
-        onClick={activate}
-        {...a11yProps}
+        {...rowProps}
       >
         <td className="w-12 py-2 pr-3">
           <AwardListImage label={displayTitle} imageUrl={award.imageUrl} />
@@ -66,8 +78,7 @@ export function AwardListRowPresentational({
         "flex items-center gap-3 border-b py-3",
         interactive && "cursor-pointer hover:bg-muted/40",
       )}
-      onClick={activate}
-      {...a11yProps}
+      {...rowProps}
     >
       <AwardListImage label={displayTitle} imageUrl={award.imageUrl} />
       <div className="min-w-0 flex-1">

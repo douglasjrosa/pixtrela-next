@@ -55,14 +55,28 @@ export function TaskListRowCheckbox({
 
   if (variant === "table") {
     return (
-      <td className={cn("w-10 py-2 text-center")} data-row-select>
+      <td
+        className={cn("relative z-20 w-10 py-2 text-center")}
+        data-row-select
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+      >
         <div className="flex justify-center">{checkbox}</div>
       </td>
     );
   }
 
   return (
-    <div className="w-4 shrink-0 pt-0.5" data-row-select>
+    <div
+      className="relative z-20 w-4 shrink-0 pt-0.5"
+      data-row-select
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+    >
       {checkbox}
     </div>
   );

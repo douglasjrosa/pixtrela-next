@@ -1,7 +1,7 @@
 "use client";
 
-import { useListRowActivateInteraction } from "@/lib/ui/list-row-interaction";
-import { cn } from "@/lib/utils";
+import type { KeyboardEvent } from "react";
+
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 
 import { useSubTaskPresetList } from "./subtask-preset-list-context";
@@ -25,24 +25,25 @@ export function SubtaskPresetListRowPresentational({
   labels,
 }: SubtaskPresetListRowPresentationalProps) {
   const { openEdit } = useSubTaskPresetList();
-  const { interactive, activate, ...a11yProps } = useListRowActivateInteraction(
-    preset.name,
-    () => openEdit(preset),
-  );
+  const activate = () => openEdit(preset);
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      activate();
+    }
+  };
+  const rowProps = {
+    onClick: activate,
+    onKeyDown,
+    role: "button" as const,
+    tabIndex: 0,
+    "aria-label": preset.name,
+  };
 
   if (variant === "table") {
     return (
-      <tr
-        className={cn(
-          "border-b",
-          interactive && "cursor-pointer hover:bg-muted/40",
-        )}
-        onClick={activate}
-        {...a11yProps}
-      >
-        <td className="py-2">
-          <span>{preset.name}</span>
-        </td>
+      <tr className="cursor-pointer border-b hover:bg-muted/40" {...rowProps}>
+        <td className="py-2">{preset.name}</td>
         <td className={CENTER_CELL_CLASS}>{labels.sharingType}</td>
         <td className={CENTER_CELL_CLASS}>{labels.expectedTime}</td>
       </tr>
@@ -51,12 +52,8 @@ export function SubtaskPresetListRowPresentational({
 
   return (
     <li
-      className={cn(
-        "list-none border-b py-3",
-        interactive && "cursor-pointer hover:bg-muted/40",
-      )}
-      onClick={activate}
-      {...a11yProps}
+      className="list-none cursor-pointer border-b py-3 hover:bg-muted/40"
+      {...rowProps}
     >
       <div className="text-base font-medium">{preset.name}</div>
       <div className="text-muted-foreground text-sm">{labels.sharingType}</div>
