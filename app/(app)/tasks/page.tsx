@@ -24,7 +24,6 @@ import {
 } from "@/lib/auth/permissions";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { listSteps as listStepsRepo } from "@/lib/repos/steps";
-import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
 import { loadTaskListPage } from "@/lib/tasks/load-task-list-page";
 import {
   parseTaskListSearchParams,
@@ -43,72 +42,6 @@ async function loadSteps(): Promise<StepOption[]> {
   }));
 }
 
-async function TasksListSection({
-  filters,
-  selectMode,
-  canDeactivate,
-  canDelete,
-}: {
-  filters: TaskListFilters;
-  selectMode: boolean;
-  canDeactivate: boolean;
-  canDelete: boolean;
-}) {
-  const tManage = await getTranslations("tasks.manage");
-  let pageResult: Awaited<ReturnType<typeof loadTaskListPage>> = {
-    tasks: [],
-    page: 1,
-    pageCount: 1,
-    hasMore: false,
-  };
-
-  try {
-    pageResult = await loadTaskListPage(filters, 1);
-  } catch (error) {
-    rethrowIfNavigationError(error);
-  }
-
-  if (pageResult.tasks.length === 0) {
-    return <ListEmptyMessage>{tManage("empty")}</ListEmptyMessage>;
-  }
-
-  const bulkEnabled = canDeactivate || canDelete;
-  const selectionEnabled = selectMode && bulkEnabled;
-  const sort = { column: filters.column, direction: filters.direction };
-
-  return (
-    <TasksListTableFrame
-      filters={filters}
-      initialTasks={pageResult.tasks}
-      initialPage={pageResult.page}
-      initialHasMore={pageResult.hasMore}
-      selectMode={selectMode}
-      canDeactivate={canDeactivate}
-      canDelete={canDelete}
-      tableHeader={
-        <TasksListTableHeader
-          sort={sort}
-          filters={filters}
-          selectionEnabled={selectionEnabled}
-          selectMode={selectMode}
-        />
-      }
-      tableBody={
-        <TasksListTableBody
-          tasks={pageResult.tasks}
-          selectionEnabled={selectionEnabled}
-        />
-      }
-      mobileList={
-        <TasksListMobileList
-          tasks={pageResult.tasks}
-          selectionEnabled={selectionEnabled}
-        />
-      }
-    />
-  );
-}
-
 export default async function TasksPage({ searchParams }: TasksPageProps) {
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
@@ -120,9 +53,63 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   const params = await searchParams;
   const filters = parseTaskListSearchParams(params);
   const selectMode = parseTaskListSelectMode(params);
-  const steps = await loadSteps();
   const canDeactivate = canDeactivateTasks(role);
   const canDelete = canDeleteTasks(role);
+
+  const [steps, tManage, pageResult] = await Promise.all([
+    loadSteps(),
+    getTranslations("tasks.manage"),
+    loadTaskListPage(filters, 1).catch((error) => {
+      rethrowIfNavigationError(error);
+      return {
+        tasks: [],
+        page: 1,
+        pageCount: 1,
+        hasMore: false,
+      };
+    }),
+  ]);
+
+  const bulkEnabled = canDeactivate || canDelete;
+  const selectionEnabled = selectMode && bulkEnabled;
+  const sort = { column: filters.column, direction: filters.direction };
+
+  let listContent;
+  if (pageResult.tasks.length === 0) {
+    listContent = <ListEmptyMessage>{tManage("empty")}</ListEmptyMessage>;
+  } else {
+    listContent = (
+      <TasksListTableFrame
+        filters={filters}
+        initialTasks={pageResult.tasks}
+        initialPage={pageResult.page}
+        initialHasMore={pageResult.hasMore}
+        selectMode={selectMode}
+        canDeactivate={canDeactivate}
+        canDelete={canDelete}
+        tableHeader={
+          <TasksListTableHeader
+            sort={sort}
+            filters={filters}
+            selectionEnabled={selectionEnabled}
+            selectMode={selectMode}
+          />
+        }
+        tableBody={
+          <TasksListTableBody
+            tasks={pageResult.tasks}
+            selectionEnabled={selectionEnabled}
+          />
+        }
+        mobileList={
+          <TasksListMobileList
+            tasks={pageResult.tasks}
+            selectionEnabled={selectionEnabled}
+          />
+        }
+      />
+    );
+  }
 
   return (
     <section className={APP_LIST_PAGE_SHELL_CLASS}>
@@ -132,12 +119,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
         <Suspense fallback={null}>
           <TasksToolbar />
         </Suspense>
-        <TasksListSection
-          filters={filters}
-          selectMode={selectMode}
-          canDeactivate={canDeactivate}
-          canDelete={canDelete}
-        />
+        {listContent}
       </div>
     </section>
   );
