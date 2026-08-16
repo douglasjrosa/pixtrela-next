@@ -27,7 +27,7 @@ vi.mock("@/lib/ui/app-toast", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace, refresh }),
+  useRouter: () => ({ replace, refresh, push: vi.fn() }),
 }));
 
 const filters = {

@@ -2,6 +2,7 @@
 
 import { isTeamActive } from "@/lib/business/team-active";
 import { cn } from "@/lib/utils";
+import { useListRowActivateInteraction } from "@/lib/ui/list-row-interaction";
 
 import { useTeamList } from "./team-list-context";
 import type { TeamRow } from "./types";
@@ -30,26 +31,23 @@ export function TeamListRowPresentational({
 }: TeamListRowPresentationalProps) {
   const { openEdit } = useTeamList();
   const active = isTeamActive(team.untill);
-
-  const nameButton = (
-    <button
-      type="button"
-      className="text-left hover:underline"
-      onClick={() => openEdit(team)}
-    >
-      {team.name}
-    </button>
+  const { interactive, activate, ...a11yProps } = useListRowActivateInteraction(
+    team.name,
+    () => openEdit(team),
   );
 
   const rowClassName = cn(
-    "border-b hover:bg-muted/40",
+    "border-b",
+    interactive && "cursor-pointer hover:bg-muted/40",
     !active && "text-muted-foreground",
   );
 
   if (variant === "table") {
     return (
-      <tr className={rowClassName}>
-        <td className="py-2">{nameButton}</td>
+      <tr className={rowClassName} onClick={activate} {...a11yProps}>
+        <td className="py-2">
+          <span>{team.name}</span>
+        </td>
         <td className={CENTER_CELL_CLASS}>{labels.since}</td>
         <td className={CENTER_CELL_CLASS}>{labels.untill}</td>
         <td className={CENTER_CELL_CLASS}>{labels.status}</td>
@@ -61,8 +59,8 @@ export function TeamListRowPresentational({
   }
 
   return (
-    <li className={cn("list-none py-3", rowClassName)}>
-      <div className="text-base font-medium">{nameButton}</div>
+    <li className={cn("list-none py-3", rowClassName)} onClick={activate} {...a11yProps}>
+      <div className="text-base font-medium">{team.name}</div>
       <div className="text-muted-foreground text-sm">
         {labels.status} · {labels.leader}
       </div>

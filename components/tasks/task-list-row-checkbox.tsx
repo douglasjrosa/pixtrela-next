@@ -55,14 +55,14 @@ export function TaskListRowCheckbox({
 
   if (variant === "table") {
     return (
-      <td className={cn("w-10 py-2 text-center")} data-task-select>
+      <td className={cn("w-10 py-2 text-center")} data-row-select>
         <div className="flex justify-center">{checkbox}</div>
       </td>
     );
   }
 
   return (
-    <div className="w-4 shrink-0 pt-0.5" data-task-select>
+    <div className="w-4 shrink-0 pt-0.5" data-row-select>
       {checkbox}
     </div>
   );

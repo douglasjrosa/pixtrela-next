@@ -1,8 +1,7 @@
 "use client";
 
-import type { KeyboardEvent } from "react";
-
 import { cn } from "@/lib/utils";
+import { useListRowActivateInteraction } from "@/lib/ui/list-row-interaction";
 
 import { UserListAvatar } from "./user-list-avatar";
 import { useUserList } from "./user-list-context";
@@ -20,45 +19,25 @@ export interface UserListRowPresentationalProps {
   labels: UserListRowLabels;
 }
 
-function useEditableRowInteraction(user: UserRow) {
-  const { openEdit, canEdit } = useUserList();
-  const editable = canEdit(user);
-
-  const activate = editable ? () => openEdit(user) : undefined;
-
-  const onKeyDown = editable
-    ? (event: KeyboardEvent<HTMLElement>) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          openEdit(user);
-        }
-      }
-    : undefined;
-
-  return {
-    editable,
-    activate,
-    onKeyDown,
-    tabIndex: editable ? 0 : undefined,
-    role: editable ? ("button" as const) : undefined,
-    "aria-label": editable ? user.name : undefined,
-  };
-}
-
 export function UserListRowPresentational({
   user,
   variant,
   labels,
 }: UserListRowPresentationalProps) {
-  const rowInteraction = useEditableRowInteraction(user);
-  const { editable, activate, ...a11yProps } = rowInteraction;
+  const { openEdit, canEdit } = useUserList();
+  const editable = canEdit(user);
+  const { interactive, activate, ...a11yProps } = useListRowActivateInteraction(
+    user.name,
+    () => openEdit(user),
+    editable,
+  );
 
   if (variant === "table") {
     return (
       <tr
         className={cn(
           "border-b",
-          editable && "cursor-pointer hover:bg-muted/40",
+          interactive && "cursor-pointer hover:bg-muted/40",
         )}
         onClick={activate}
         {...a11yProps}
@@ -79,7 +58,7 @@ export function UserListRowPresentational({
     <li
       className={cn(
         "list-none border-b py-3",
-        editable && "cursor-pointer hover:bg-muted/40",
+        interactive && "cursor-pointer hover:bg-muted/40",
       )}
       onClick={activate}
       {...a11yProps}

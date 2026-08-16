@@ -18,6 +18,10 @@ vi.mock("@/lib/ui/app-toast", () => ({
   showSuccessToast: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+
 const filters = {
   column: "name" as const,
   direction: "asc" as const,
@@ -130,7 +134,7 @@ describe("TemplateListRowPresentational", () => {
     );
 
     expect(screen.getByRole("link", { name: "Primeiro" })).toHaveAttribute(
-      "href",
+      "data-href",
       "/templates/tasks/tpl1",
     );
   });

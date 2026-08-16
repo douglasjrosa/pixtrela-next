@@ -169,8 +169,8 @@ describe("TaskListRowPresentational", () => {
         </tbody>
       </table>,
     );
-    expect(screen.getAllByRole("link", { name: "Montagem" })[0]).toHaveAttribute(
-      "href",
+    expect(screen.getByRole("link", { name: "Montagem" })).toHaveAttribute(
+      "data-href",
       "/tasks/t1",
     );
   });

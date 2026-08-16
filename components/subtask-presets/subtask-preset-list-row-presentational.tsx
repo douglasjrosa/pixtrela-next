@@ -1,5 +1,7 @@
 "use client";
 
+import { useListRowActivateInteraction } from "@/lib/ui/list-row-interaction";
+import { cn } from "@/lib/utils";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 
 import { useSubTaskPresetList } from "./subtask-preset-list-context";
@@ -23,21 +25,24 @@ export function SubtaskPresetListRowPresentational({
   labels,
 }: SubtaskPresetListRowPresentationalProps) {
   const { openEdit } = useSubTaskPresetList();
-
-  const nameButton = (
-    <button
-      type="button"
-      className="text-left hover:underline"
-      onClick={() => openEdit(preset)}
-    >
-      {preset.name}
-    </button>
+  const { interactive, activate, ...a11yProps } = useListRowActivateInteraction(
+    preset.name,
+    () => openEdit(preset),
   );
 
   if (variant === "table") {
     return (
-      <tr className="border-b hover:bg-muted/40">
-        <td className="py-2">{nameButton}</td>
+      <tr
+        className={cn(
+          "border-b",
+          interactive && "cursor-pointer hover:bg-muted/40",
+        )}
+        onClick={activate}
+        {...a11yProps}
+      >
+        <td className="py-2">
+          <span>{preset.name}</span>
+        </td>
         <td className={CENTER_CELL_CLASS}>{labels.sharingType}</td>
         <td className={CENTER_CELL_CLASS}>{labels.expectedTime}</td>
       </tr>
@@ -45,8 +50,15 @@ export function SubtaskPresetListRowPresentational({
   }
 
   return (
-    <li className="list-none border-b py-3 hover:bg-muted/40">
-      <div className="text-base font-medium">{nameButton}</div>
+    <li
+      className={cn(
+        "list-none border-b py-3",
+        interactive && "cursor-pointer hover:bg-muted/40",
+      )}
+      onClick={activate}
+      {...a11yProps}
+    >
+      <div className="text-base font-medium">{preset.name}</div>
       <div className="text-muted-foreground text-sm">{labels.sharingType}</div>
       <div className="text-muted-foreground text-sm">{labels.expectedTime}</div>
     </li>
