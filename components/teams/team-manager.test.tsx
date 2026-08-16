@@ -16,30 +16,29 @@ vi.mock("next/navigation", () => ({
 
 const leaders = [{ documentId: "l1", name: "João" }];
 const colaborators = [{ documentId: "c1", name: "Ana" }];
-const teams: TeamRow[] = [
-  {
-    documentId: "t1",
-    name: "Linha A",
-    exchangesFirstDay: 3,
-    exchangesLastDay: 15,
-    since: "2026-01-10",
-    untill: null,
-    active: true,
-    leader: leaders[0],
-    colaborators,
-  },
-  {
-    documentId: "t2",
-    name: "Linha B",
-    exchangesFirstDay: 3,
-    exchangesLastDay: 15,
-    since: "2025-06-01",
-    untill: "2026-05-31",
-    active: true,
-    leader: leaders[0],
-    colaborators,
-  },
-];
+const activeTeam: TeamRow = {
+  documentId: "t1",
+  name: "Linha A",
+  exchangesFirstDay: 3,
+  exchangesLastDay: 15,
+  since: "2026-01-10",
+  untill: null,
+  active: true,
+  leader: leaders[0],
+  colaborators,
+};
+
+const archivedTeam: TeamRow = {
+  documentId: "t2",
+  name: "Linha B",
+  exchangesFirstDay: 3,
+  exchangesLastDay: 15,
+  since: "2025-06-01",
+  untill: "2026-05-31",
+  active: false,
+  leader: leaders[0],
+  colaborators,
+};
 
 const labelsA = {
   since: "10/01/2026",
@@ -56,24 +55,28 @@ const labelsB = {
   untill: "31/05/2026",
 };
 
-function renderManager() {
+function renderManager(overrides: Partial<Parameters<typeof TeamManager>[0]> = {}) {
   return renderWithIntl(
     <TeamManager
       leaders={leaders}
       colaborators={colaborators}
       onCreate={vi.fn()}
       onUpdate={vi.fn()}
-      onDelete={vi.fn()}
+      onArchive={vi.fn()}
+      onHardDelete={vi.fn()}
+      canDeactivate
+      canDelete={false}
+      {...overrides}
     >
       <table>
         <tbody>
           <TeamListRowPresentational
-            team={teams[0]!}
+            team={activeTeam}
             variant="table"
             labels={labelsA}
           />
           <TeamListRowPresentational
-            team={teams[1]!}
+            team={archivedTeam}
             variant="table"
             labels={labelsB}
           />
@@ -112,7 +115,9 @@ describe("TeamManager", () => {
         colaborators={colaborators}
         onCreate={onCreate}
         onUpdate={vi.fn()}
-        onDelete={vi.fn()}
+        onArchive={vi.fn()}
+        onHardDelete={vi.fn()}
+        canDelete={false}
       >
         {null}
       </TeamManager>,
@@ -139,7 +144,9 @@ describe("TeamManager", () => {
         colaborators={colaborators}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
-        onDelete={vi.fn()}
+        onArchive={vi.fn()}
+        onHardDelete={vi.fn()}
+        canDelete={false}
       >
         {null}
       </TeamManager>,
@@ -154,9 +161,49 @@ describe("TeamManager", () => {
     expect(screen.getByLabelText("Início das trocas")).toHaveValue(3);
     expect(screen.getByLabelText("Fim das trocas")).toHaveValue(15);
     expect(screen.queryByRole("button", { name: "Excluir" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Arquivar" })).toBeNull();
   });
 
-  it("shows since, untill and delete in edit modal", async () => {
+  it("shows archive action for active teams when canDeactivate is true", async () => {
+    const user = userEvent.setup();
+    renderManager({ canDeactivate: true, canDelete: false });
+
+    await user.click(screen.getAllByRole("button", { name: "Linha A" })[0]!);
+    expect(screen.getByRole("button", { name: "Arquivar" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Excluir" })).not.toBeInTheDocument();
+  });
+
+  it("shows delete action for archived teams when canDelete is true", async () => {
+    const user = userEvent.setup();
+    renderWithIntl(
+      <TeamManager
+        leaders={leaders}
+        colaborators={colaborators}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onArchive={vi.fn()}
+        onHardDelete={vi.fn()}
+        canDeactivate={false}
+        canDelete
+      >
+        <table>
+          <tbody>
+            <TeamListRowPresentational
+              team={archivedTeam}
+              variant="table"
+              labels={labelsB}
+            />
+          </tbody>
+        </table>
+      </TeamManager>,
+    );
+
+    await user.click(screen.getAllByRole("button", { name: "Linha B" })[0]!);
+    expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Arquivar" })).not.toBeInTheDocument();
+  });
+
+  it("shows since, untill and archive in edit modal for active team", async () => {
     const user = userEvent.setup();
     renderManager();
 
@@ -171,7 +218,7 @@ describe("TeamManager", () => {
         "Deixe vazio para manter a equipe ativa. Preencha para arquivar.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Arquivar" })).toBeInTheDocument();
   });
 
   it("shows untill date as dd/mm/yyyy in edit modal", async () => {

@@ -23,7 +23,7 @@ import { listUsersByRole } from "@/lib/repos/users";
 import { loadTeamListPage } from "@/lib/teams/load-team-list-page";
 import { parseTeamListSearchParams } from "@/lib/teams/team-list-params";
 
-import { createTeam, deleteTeam, updateTeam } from "./actions";
+import { createTeam, deleteTeam, permanentlyDeleteTeam, updateTeam } from "./actions";
 
 interface TeamsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -120,7 +120,10 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
         colaborators={colaborators}
         onCreate={createTeam}
         onUpdate={updateTeam}
-        onDelete={deleteTeam}
+        onArchive={deleteTeam}
+        onHardDelete={permanentlyDeleteTeam}
+        canDeactivate={canDeactivate}
+        canDelete={canDelete}
       >
         {listContent}
       </TeamManager>

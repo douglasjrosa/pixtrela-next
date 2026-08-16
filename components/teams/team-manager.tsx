@@ -33,7 +33,10 @@ export interface TeamManagerProps {
   children: ReactNode;
   onCreate: (values: TeamFormInput) => void | Promise<void>;
   onUpdate: (documentId: string, values: TeamFormInput) => void | Promise<void>;
-  onDelete: (documentId: string) => void | Promise<void>;
+  onArchive: (documentId: string) => void | Promise<void>;
+  onHardDelete: (documentId: string) => void | Promise<void>;
+  canDeactivate?: boolean;
+  canDelete: boolean;
 }
 
 const EMPTY_FORM: TeamFormInput = {
@@ -67,10 +70,10 @@ interface TeamFormDialogProps {
   leaders: UserOption[];
   colaborators: UserOption[];
   isPending: boolean;
-  showDelete: boolean;
+  destructiveAction?: "archive" | "delete";
   onClose: () => void;
   onSubmit: (values: TeamFormInput) => void;
-  onDelete?: () => void;
+  onDestructiveAction?: () => void;
 }
 
 function TeamFormDialog({
@@ -78,10 +81,10 @@ function TeamFormDialog({
   leaders,
   colaborators,
   isPending,
-  showDelete,
+  destructiveAction,
   onClose,
   onSubmit,
-  onDelete,
+  onDestructiveAction,
 }: TeamFormDialogProps) {
   const tCommon = useTranslations("common");
   const tTeams = useTranslations("teams");
@@ -107,14 +110,16 @@ function TeamFormDialog({
       onClose={onClose}
       disabled={isPending}
       footerStart={
-        showDelete && onDelete ? (
+        destructiveAction && onDestructiveAction ? (
           <Button
             type="button"
             variant="destructive"
             disabled={isPending}
-            onClick={onDelete}
+            onClick={onDestructiveAction}
           >
-            {tCommon("delete")}
+            {destructiveAction === "archive"
+              ? tTeams("archive")
+              : tCommon("delete")}
           </Button>
         ) : undefined
       }
@@ -238,34 +243,47 @@ export function TeamManager({
   children,
   onCreate,
   onUpdate,
-  onDelete,
+  onArchive,
+  onHardDelete,
+  canDeactivate = false,
+  canDelete,
 }: TeamManagerProps) {
   const tCommon = useTranslations("common");
   const tTeams = useTranslations("teams");
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<TeamRow | null>(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+
+  const destructiveAction = editingTeam
+    ? editingTeam.active
+      ? canDeactivate
+        ? ("archive" as const)
+        : undefined
+      : canDelete
+        ? ("delete" as const)
+        : undefined
+    : undefined;
 
   function closeForm(): void {
     setFormOpen(false);
     setEditingTeam(null);
-    setDeleteOpen(false);
+    setConfirmOpen(false);
   }
 
   function startCreate(): void {
     setEditingTeam(null);
     setMessage(null);
-    setDeleteOpen(false);
+    setConfirmOpen(false);
     setFormOpen(true);
   }
 
   function startEdit(team: TeamRow): void {
     setEditingTeam(team);
     setMessage(null);
-    setDeleteOpen(false);
+    setConfirmOpen(false);
     setFormOpen(true);
   }
 
@@ -282,11 +300,16 @@ export function TeamManager({
     });
   }
 
-  function handleConfirmDelete(): void {
-    if (!editingTeam) return;
+  function handleConfirmDestructive(): void {
+    if (!editingTeam || !destructiveAction) return;
     startTransition(async () => {
-      await onDelete(editingTeam.documentId);
-      setMessage(tTeams("deleted"));
+      if (destructiveAction === "archive") {
+        await onArchive(editingTeam.documentId);
+        setMessage(tTeams("archived"));
+      } else {
+        await onHardDelete(editingTeam.documentId);
+        setMessage(tTeams("deleted"));
+      }
       closeForm();
       router.refresh();
     });
@@ -323,21 +346,35 @@ export function TeamManager({
             leaders={leaders}
             colaborators={colaborators}
             isPending={isPending}
-            showDelete={Boolean(editingTeam)}
+            destructiveAction={destructiveAction}
             onClose={closeForm}
             onSubmit={onSubmit}
-            onDelete={() => setDeleteOpen(true)}
+            onDestructiveAction={
+              destructiveAction ? () => setConfirmOpen(true) : undefined
+            }
           />
         ) : null}
 
         <ConfirmDialog
-          open={deleteOpen}
-          title={tTeams("deleteTitle")}
-          description={tTeams("deleteConfirm")}
-          confirmLabel={tCommon("delete")}
+          open={confirmOpen}
+          title={
+            destructiveAction === "archive"
+              ? tTeams("archiveTitle")
+              : tTeams("deleteTitle")
+          }
+          description={
+            destructiveAction === "archive"
+              ? tTeams("archiveConfirm")
+              : tTeams("deleteConfirm")
+          }
+          confirmLabel={
+            destructiveAction === "archive"
+              ? tTeams("archive")
+              : tCommon("delete")
+          }
           disabled={isPending}
-          onConfirm={handleConfirmDelete}
-          onClose={() => setDeleteOpen(false)}
+          onConfirm={handleConfirmDestructive}
+          onClose={() => setConfirmOpen(false)}
         />
 
         {children}

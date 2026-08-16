@@ -38,6 +38,13 @@ async function assertCanDeactivate(): Promise<void> {
   }
 }
 
+async function assertCanDelete(): Promise<void> {
+  const session = await auth();
+  if (!canDeleteTeams(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+}
+
 function invalidateTeams(): void {
   revalidateTag("drizzle:teams", "default");
 }
@@ -88,8 +95,17 @@ export async function updateTeam(
 }
 
 export async function deleteTeam(documentId: string): Promise<void> {
-  await assertCanManage();
+  await assertCanDeactivate();
   await deleteTeamRepo(documentId);
+  invalidateTeams();
+}
+
+export async function permanentlyDeleteTeam(documentId: string): Promise<void> {
+  await assertCanDelete();
+  const team = await findTeamById(documentId);
+  if (!team) throw new Error("notFound");
+  if (team.active) throw new Error("activeTeam");
+  await hardDeleteTeam(documentId);
   invalidateTeams();
 }
 
@@ -106,11 +122,7 @@ export async function bulkArchiveTeams(documentIds: string[]): Promise<void> {
 }
 
 export async function bulkDeleteTeams(documentIds: string[]): Promise<void> {
-  await assertCanManage();
-  const session = await auth();
-  if (!canDeleteTeams(session?.user?.role as Role | undefined)) {
-    throw new Error("forbidden");
-  }
+  await assertCanDelete();
   const ids = bulkTeamIdsSchema.parse(documentIds);
 
   for (const documentId of ids) {

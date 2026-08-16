@@ -96,10 +96,26 @@ describe("teams/actions drizzle CRUD", () => {
     );
   });
 
-  it("deleteTeam soft-deletes via repo", async () => {
+  it("deleteTeam archives via repo for manager+", async () => {
     const { deleteTeam } = await import("./actions");
     await deleteTeam("team-1");
     expect(deleteTeamRepo).toHaveBeenCalledWith("team-1");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:teams", "default");
+  });
+
+  it("permanentlyDeleteTeam hard-deletes archived teams only", async () => {
+    findTeamById.mockResolvedValue({ id: "team-1", active: false });
+    const { permanentlyDeleteTeam } = await import("./actions");
+    await permanentlyDeleteTeam("team-1");
+    expect(hardDeleteTeam).toHaveBeenCalledWith("team-1");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:teams", "default");
+  });
+
+  it("permanentlyDeleteTeam rejects active teams", async () => {
+    findTeamById.mockResolvedValue({ id: "team-1", active: true });
+    const { permanentlyDeleteTeam } = await import("./actions");
+    await expect(permanentlyDeleteTeam("team-1")).rejects.toThrow("activeTeam");
+    expect(hardDeleteTeam).not.toHaveBeenCalled();
   });
 
   it("bulkArchiveTeams archives each selected team", async () => {
