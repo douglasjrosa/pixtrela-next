@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
@@ -304,7 +304,13 @@ describe("BoardActions", () => {
 
   it("persists link-to-previous from the subtasks modal", async () => {
     const user = userEvent.setup();
-    const linkSubtask = vi.fn().mockResolvedValue(undefined);
+    let finishLink = (): void => undefined;
+    const linkSubtask = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishLink = resolve;
+        }),
+    );
     const loadSubtasks = vi.fn().mockResolvedValue([
       boardSubTaskSummaryStub({
         documentId: "st-1",
@@ -331,12 +337,14 @@ describe("BoardActions", () => {
       (toggle) => !toggle.hasAttribute("disabled"),
     );
     expect(enabled).toBeTruthy();
-    await user.click(enabled!);
-    await user.click(enabled!);
-    await vi.waitFor(() => {
-      expect(linkSubtask).toHaveBeenCalledWith("task-10", "st-2", true);
-    });
+    fireEvent.click(enabled!);
+    fireEvent.click(enabled!);
     expect(linkSubtask).toHaveBeenCalledTimes(1);
+    expect(linkSubtask).toHaveBeenCalledWith("task-10", "st-2", true);
+    await act(async () => {
+      finishLink();
+    });
+    expect(enabled).not.toBeDisabled();
     expect(loadSubtasks).toHaveBeenCalledTimes(1);
   });
 
