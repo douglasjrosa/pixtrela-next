@@ -48,6 +48,8 @@ export function defaultTaskListFilters(now: Date = new Date()): TaskListFilters 
   return taskListFiltersSchema.parse({
     statuses: [...TASK_LIST_DEFAULT_STATUSES],
     from: defaultTaskListFrom(now),
+    to: formatDateOnly(now),
+    showArchived: false,
   });
 }
 
@@ -87,17 +89,19 @@ export function parseTaskListSearchParams(
   const from = firstParam(params.from)?.trim() || defaultTaskListFrom(now);
   const toRaw = firstParam(params.to)?.trim();
   const qRaw = firstParam(params.q)?.trim();
+  const showArchived = firstParam(params.archived) === "1";
   const sortColumn = parseSortColumn(firstParam(params.sort));
   const sortDirection = parseSortDirection(firstParam(params.dir));
 
   const result = taskListFiltersSchema.safeParse({
     statuses: statuses ?? [...TASK_LIST_DEFAULT_STATUSES],
     from,
-    to: toRaw || undefined,
+    to: toRaw || formatDateOnly(now),
     q:
       qRaw && qRaw.length >= TASK_LIST_NAME_MIN_CHARS
         ? qRaw
         : undefined,
+    showArchived,
     column: sortColumn ?? TASK_LIST_DEFAULT_SORT_COLUMN,
     direction: sortDirection ?? TASK_LIST_DEFAULT_SORT_DIRECTION,
   });
@@ -134,8 +138,11 @@ export function serializeTaskListSearchParams(
   if (filters.from !== defaults.from) {
     params.set("from", filters.from);
   }
-  if (filters.to) {
+  if (filters.to !== defaults.to) {
     params.set("to", filters.to);
+  }
+  if (filters.showArchived) {
+    params.set("archived", "1");
   }
   if (filters.q) {
     params.set("q", filters.q);
@@ -154,6 +161,7 @@ export function taskListFilterKey(filters: TaskListFilters): string {
     filters.from,
     filters.to ?? "",
     filters.q ?? "",
+    filters.showArchived ? "1" : "0",
     filters.column,
     filters.direction,
   ].join("|");

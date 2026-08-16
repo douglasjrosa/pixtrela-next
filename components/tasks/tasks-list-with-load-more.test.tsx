@@ -30,8 +30,10 @@ vi.mock("next/navigation", () => ({
 const filters = {
   statuses: ["waiting"] as Array<"waiting">,
   from: "2026-06-01",
+  to: "2026-07-15",
   column: "deliveryDate" as const,
   direction: "asc" as const,
+  showArchived: false,
 };
 
 const initialTasks = [

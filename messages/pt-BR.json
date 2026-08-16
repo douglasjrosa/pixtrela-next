@@ -167,6 +167,8 @@
       "empty": "Nenhuma tarefa encontrada.",
       "dateFrom": "De",
       "dateTo": "Até",
+      "showArchivedTasks": "Exibir tarefas arquivadas",
+      "dateRangeTooLong": "O intervalo entre De e Até não pode ser maior que 3 meses.",
       "statusFilter": "Status",
       "spentOfExpected": "{spent} de {expected}",
       "finishedSubTasks": "Subtarefas concluídas",

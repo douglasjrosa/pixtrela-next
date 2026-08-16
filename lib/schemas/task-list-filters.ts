@@ -23,8 +23,9 @@ export const taskListFiltersSchema = z
       .min(1)
       .default([...TASK_LIST_DEFAULT_STATUSES]),
     from: z.string().regex(DATE_ONLY),
-    to: z.string().regex(DATE_ONLY).optional(),
+    to: z.string().regex(DATE_ONLY),
     q: z.string().optional(),
+    showArchived: z.boolean().default(false),
   })
   .merge(taskListSortSchema)
   .superRefine((data, ctx) => {
@@ -55,6 +56,7 @@ export const taskListFiltersSchema = z
       q: trimmed.length >= TASK_LIST_NAME_MIN_CHARS ? trimmed : undefined,
       column: data.column,
       direction: data.direction,
+      showArchived: data.showArchived,
     };
   });
 

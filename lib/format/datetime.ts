@@ -1,6 +1,7 @@
 import { DEFAULT_TIME_ZONE } from "@/lib/business/datetime-timezone";
 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+const PT_BR_INPUT_PATTERN = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 
 const PT_BR_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   day: "2-digit",
@@ -46,6 +47,33 @@ export function formatDatePtBr(value: string | null | undefined): string {
   const date = parseDateValue(trimmed);
   if (!date) return "—";
   return date.toLocaleDateString("pt-BR", PT_BR_DATE_OPTIONS);
+}
+
+/** Formats ISO yyyy-mm-dd for dd/mm/yyyy text inputs. */
+export function formatIsoDateToPtBrInput(iso: string): string {
+  const dateOnly = DATE_ONLY_PATTERN.exec(iso.trim());
+  if (!dateOnly) return "";
+  return formatDateOnlyParts(dateOnly[1], dateOnly[2], dateOnly[3]);
+}
+
+/** Parses dd/mm/yyyy input into ISO yyyy-mm-dd, or null when invalid. */
+export function parsePtBrInputToIsoDate(value: string): string | null {
+  const match = PT_BR_INPUT_PATTERN.exec(value.trim());
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+  const isoMonth = String(month).padStart(2, "0");
+  const isoDay = String(day).padStart(2, "0");
+  return `${year}-${isoMonth}-${isoDay}`;
 }
 
 /** Formats datetimes as dd/mm/yyyy, hh:mm for pt-BR UI. */

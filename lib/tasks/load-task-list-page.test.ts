@@ -47,8 +47,10 @@ describe("loadTaskListPage", () => {
       {
         statuses: ["waiting"],
         from: "2026-06-01",
+        to: "2026-07-15",
         column: "deliveryDate",
         direction: "asc",
+        showArchived: false,
       },
       1,
     );
@@ -79,8 +81,10 @@ describe("loadTaskListPage", () => {
       {
         statuses: ["waiting"],
         from: "2026-06-01",
+        to: "2026-07-15",
         column: "deliveryDate",
         direction: "asc",
+        showArchived: false,
       },
       2,
     );
