@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
+import { buttonVariants } from "@/components/ui/button";
 import type {
   SubTaskRow,
   TeamAssignmentOption,
@@ -25,6 +27,7 @@ import {
   listSubTasksWithRelationsForTask,
 } from "@/lib/repos/tasks";
 import { listTeamsWithMembers } from "@/lib/repos/teams";
+import { cn } from "@/lib/utils";
 
 import {
   createSubTask,
@@ -33,6 +36,18 @@ import {
   reorderSubTasks,
   updateSubTask,
 } from "./actions";
+
+function TasksBackLink({ label }: { label: string }) {
+  return (
+    <Link
+      href="/tasks"
+      className={cn(buttonVariants({ variant: "outline" }), "w-fit")}
+    >
+      <ArrowLeft aria-hidden />
+      {label}
+    </Link>
+  );
+}
 
 interface PageProps {
   params: Promise<{ documentId: string }>;
@@ -150,9 +165,7 @@ export default async function TaskDetailPage({ params }: PageProps) {
   if (!task) {
     return (
       <section className="space-y-4 p-6">
-        <Link href="/tasks" className="text-sm hover:underline">
-          {tCommon("back")}
-        </Link>
+        <TasksBackLink label={tCommon("back")} />
         <p className="text-destructive">{tManage("error")}</p>
       </section>
     );
@@ -186,9 +199,7 @@ export default async function TaskDetailPage({ params }: PageProps) {
 
   return (
     <section className="space-y-8 p-6">
-      <Link href="/tasks" className="text-sm hover:underline">
-        {tCommon("back")}
-      </Link>
+      <TasksBackLink label={tCommon("back")} />
 
       <TaskDetailEditor
         task={task}
