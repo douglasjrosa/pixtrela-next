@@ -1,7 +1,10 @@
 import { test, expect } from "@playwright/test";
 
 import { e2eUsers, loginAs } from "./fixtures/auth";
-import { seedKioskWorkflowFixture } from "./fixtures/kiosk-workflow";
+import {
+  seedKioskChainFixture,
+  seedKioskWorkflowFixture,
+} from "./fixtures/kiosk-workflow";
 
 const isDrizzleE2e =
   (process.env.DATA_BACKEND ?? "drizzle").trim().toLowerCase() !== "strapi";
@@ -93,6 +96,61 @@ test.describe("Kiosk", () => {
     await page.getByRole("button", { name: /Sim, concluí/i }).click();
 
     await expect(page.getByText(fixture.subTaskName)).toBeVisible({
+      timeout: 30_000,
+    });
+  });
+
+  test("kiosk chain group start, stop form, and confirm", async ({ page }) => {
+    test.skip(!isDrizzleE2e, "Drizzle-only kiosk workflow E2E");
+
+    const kioskLogin = process.env.E2E_KIOSK_LOGIN ?? "";
+    const kioskPassword = process.env.E2E_KIOSK_PASSWORD ?? "";
+    test.skip(
+      !kioskLogin || !kioskPassword,
+      "E2E_KIOSK_LOGIN and E2E_KIOSK_PASSWORD required",
+    );
+
+    test.setTimeout(180_000);
+
+    const fixture = await seedKioskChainFixture("chain");
+
+    await loginAs(page, kioskLogin, kioskPassword);
+    await page.goto("/kiosk");
+    await expect(page).toHaveURL(/\/kiosk$/);
+
+    await page.getByRole("button", { name: /código|code/i }).click();
+    await page.getByLabel(/Código/i).fill(String(fixture.colaboratorCode));
+    await page.getByLabel(/Senha/i).fill(fixture.colaboratorPassword);
+    await page.getByRole("button", { name: /entrar|confirmar/i }).click();
+
+    await expect(page).toHaveURL(
+      new RegExp(`/kiosk/${fixture.colaboratorId}`),
+      { timeout: 60_000 },
+    );
+    await expect(page.getByTestId("kiosk-chain-group")).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(page.getByText(fixture.memberNames[0]!)).toBeVisible();
+    await expect(page.getByText(fixture.memberNames[1]!)).toBeVisible();
+    await expect(page.getByText(fixture.memberNames[2]!)).toBeVisible();
+
+    await page.getByRole("button", { name: /^Iniciar$/i }).click();
+    const stop = page.getByRole("button", { name: /^Parar$/i });
+    await expect(stop).toBeVisible({ timeout: 30_000 });
+
+    await stop.click();
+    await expect(page.getByText("A subtarefa foi concluída?")).toHaveCount(3);
+    await expect(stop).toBeDisabled();
+
+    const yesButtons = page.getByRole("button", { name: /Sim, concluí/i });
+    await expect(yesButtons).toHaveCount(3);
+    await yesButtons.nth(0).click();
+    await yesButtons.nth(1).click();
+    await yesButtons.nth(2).click();
+    await expect(stop).toBeEnabled();
+    await stop.click();
+
+    await expect(page.getByText(fixture.memberNames[0]!)).toBeVisible({
       timeout: 30_000,
     });
   });

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 
 const refresh = vi.fn();
 
@@ -18,6 +19,26 @@ const paymentCurrency = {
   currencyPerSecond: 2,
   pluralTitle: "Estrelas",
 };
+
+function renderBoard(overrides: Partial<ComponentProps<typeof BoardActions>> = {}) {
+  return renderWithIntl(
+    <BoardActions
+      steps={steps}
+      tasks={tasks}
+      teams={teams}
+      assignWarnMax={4}
+      assignedCountByColaboratorId={{}}
+      paymentCurrency={paymentCurrency}
+      applyBoardTaskOrder={vi.fn()}
+      loadSubtasks={vi.fn()}
+      reorderSubtasks={vi.fn()}
+      linkSubtask={vi.fn()}
+      updateSubtaskAssignees={vi.fn()}
+      createSubtask={vi.fn()}
+      {...overrides}
+    />,
+  );
+}
 
 const steps = [
   { id: 1, name: "Fila de produção", taskOrderBy: "manual" as const },
@@ -59,21 +80,7 @@ const teams = [
 
 describe("BoardActions", () => {
   it("renders kanban board with steps", () => {
-    renderWithIntl(
-      <BoardActions
-        steps={steps}
-        tasks={tasks}
-        teams={teams}
-        assignWarnMax={4}
-        assignedCountByColaboratorId={{}}
-        paymentCurrency={paymentCurrency}
-        applyBoardTaskOrder={vi.fn()}
-        loadSubtasks={vi.fn()}
-        reorderSubtasks={vi.fn()}
-        updateSubtaskAssignees={vi.fn()}
-        createSubtask={vi.fn()}
-      />,
-    );
+    renderBoard();
     expect(screen.getByRole("region", { name: "Fila de produção" })).toBeInTheDocument();
     expect(screen.getByText("1 - Tarefa A")).toBeInTheDocument();
   });
@@ -89,21 +96,7 @@ describe("BoardActions", () => {
       }),
     ]);
 
-    renderWithIntl(
-      <BoardActions
-        steps={steps}
-        tasks={tasks}
-        teams={teams}
-        assignWarnMax={4}
-        assignedCountByColaboratorId={{}}
-        paymentCurrency={paymentCurrency}
-        applyBoardTaskOrder={vi.fn()}
-        loadSubtasks={loadSubtasks}
-        reorderSubtasks={vi.fn()}
-        updateSubtaskAssignees={vi.fn()}
-        createSubtask={vi.fn()}
-      />,
-    );
+    renderBoard({ loadSubtasks });
 
     await user.click(screen.getByText("1 - Tarefa A"));
 
@@ -149,21 +142,7 @@ describe("BoardActions", () => {
       ]);
     });
 
-    renderWithIntl(
-      <BoardActions
-        steps={steps}
-        tasks={tasks}
-        teams={teams}
-        assignWarnMax={4}
-        assignedCountByColaboratorId={{}}
-        paymentCurrency={paymentCurrency}
-        applyBoardTaskOrder={vi.fn()}
-        loadSubtasks={loadSubtasks}
-        reorderSubtasks={vi.fn()}
-        updateSubtaskAssignees={updateSubtaskAssignees}
-        createSubtask={vi.fn()}
-      />,
-    );
+    renderBoard({ loadSubtasks, updateSubtaskAssignees });
 
     await user.click(screen.getByText("1 - Tarefa A"));
     await user.click(await screen.findByRole("button", { name: /Soldar/ }));
@@ -210,21 +189,7 @@ describe("BoardActions", () => {
       ]);
     const createSubtask = vi.fn().mockResolvedValue(undefined);
 
-    renderWithIntl(
-      <BoardActions
-        steps={steps}
-        tasks={tasks}
-        teams={teams}
-        assignWarnMax={4}
-        assignedCountByColaboratorId={{}}
-        paymentCurrency={paymentCurrency}
-        applyBoardTaskOrder={vi.fn()}
-        loadSubtasks={loadSubtasks}
-        reorderSubtasks={vi.fn()}
-        updateSubtaskAssignees={vi.fn()}
-        createSubtask={createSubtask}
-      />,
-    );
+    renderBoard({ loadSubtasks, createSubtask });
 
     await user.click(screen.getByText("1 - Tarefa A"));
     await user.click(await screen.findByRole("button", { name: "Adicionar subtarefa" }));
@@ -264,21 +229,7 @@ describe("BoardActions", () => {
       }),
     ]);
 
-    renderWithIntl(
-      <BoardActions
-        steps={steps}
-        tasks={tasks}
-        teams={teams}
-        assignWarnMax={4}
-        assignedCountByColaboratorId={{}}
-        paymentCurrency={paymentCurrency}
-        applyBoardTaskOrder={vi.fn()}
-        loadSubtasks={loadSubtasks}
-        reorderSubtasks={vi.fn()}
-        updateSubtaskAssignees={vi.fn()}
-        createSubtask={vi.fn()}
-      />,
-    );
+    renderBoard({ loadSubtasks });
 
     await user.click(screen.getByText("1 - Tarefa A"));
     await user.click(
@@ -312,5 +263,40 @@ describe("BoardActions", () => {
     expect(
       screen.queryByRole("heading", { name: "Nova subtarefa" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("persists link-to-previous from the subtasks modal", async () => {
+    const user = userEvent.setup();
+    const linkSubtask = vi.fn().mockResolvedValue(undefined);
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        index: 1,
+        assignedTo: [],
+      }),
+    ]);
+
+    renderBoard({ loadSubtasks, linkSubtask });
+    await user.click(screen.getByText("1 - Tarefa A"));
+    const toggles = await screen.findAllByRole("switch", {
+      name: "Ligar à anterior",
+    });
+    const enabled = toggles.find(
+      (toggle) => toggle.getAttribute("aria-disabled") !== "true",
+    );
+    expect(enabled).toBeTruthy();
+    await user.click(enabled!);
+    await vi.waitFor(() => {
+      expect(linkSubtask).toHaveBeenCalledWith("task-10", "st-2", true);
+    });
   });
 });

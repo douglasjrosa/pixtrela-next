@@ -13,7 +13,16 @@ import {
   appendSubtaskToTemplateComponents,
   mapDependencyIdsToTemplateIndexes,
 } from "@/lib/business/append-subtask-to-template";
-import { parseSubTaskDependencyIds } from "@/lib/business/subtask-dependencies";
+import {
+  applyHeadAssigneePropagation,
+  assigneesAfterLinkToPrevious,
+  canEditAssignees,
+  findChainContaining,
+  previousChainMember,
+  resolveChains,
+  sortChainSubTasks,
+  type ChainSubTask,
+} from "@/lib/business/subtask-chain";
 import type { Role } from "@/lib/auth/nav";
 import {
   canManageTasks,
@@ -41,6 +50,7 @@ import {
   type KanbanProgressStatus,
 } from "@/lib/business/task-progress";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
+import { parseSubTaskDependencyIds } from "@/lib/business/subtask-dependencies";
 import { listSteps as listStepsRepo } from "@/lib/repos/steps";
 import {
   findTemplateByCode,
@@ -53,6 +63,8 @@ import {
   listBoardSubtaskRows,
   listSubTasksForTask,
   listSubTasksWithRelationsForTask,
+  replaceSubTaskAssignees,
+  updateSubTaskLinkedToPrevious,
   updateTaskBoardFields,
 } from "@/lib/repos/tasks";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
@@ -133,8 +145,11 @@ function mapBoardSubtasksFromDrizzle(
       status: subtask.status,
       sharingType: subtask.sharingType === "qty" ? "qty" : "duration",
       qty: Math.max(1, Math.floor(Number(subtask.qty) || 0) || 1),
+      index: subtask.index ?? 0,
       expectedTime: subtask.expectedTime ?? 0,
       timeSpent: subtask.timeSpent ?? 0,
+      maxSameTimeWorkers: subtask.maxSameTimeWorkers ?? 1,
+      linkedToPrevious: subtask.linkedToPrevious ?? false,
       openActivityStartedAts: listOpenActivityStartedAts(activityRefs),
       producingColaboratorIds: listOpenColaboratorDocumentIds(activityRefs),
       sessions: listActivitySessions(activityRefs),
@@ -348,21 +363,113 @@ export async function reorderBoardSubtasks(
   await reorderSubTasks(taskDocumentId, orderedDocumentIds);
 }
 
+function toChainSubTask(row: {
+  id: string;
+  index: number;
+  status: string;
+  activationStatus?: string | null;
+  linkedToPrevious: boolean;
+  maxSameTimeWorkers: number;
+  assignedToIds: string[];
+  dependencyIds: string[];
+}): ChainSubTask {
+  return {
+    documentId: row.id,
+    index: row.index,
+    status: row.status,
+    activationStatus: fromDrizzleActivationStatus(row.activationStatus),
+    linkedToPrevious: row.linkedToPrevious,
+    maxSameTimeWorkers: row.maxSameTimeWorkers,
+    assignedToIds: row.assignedToIds,
+    dependencyIds: row.dependencyIds,
+  };
+}
+
+export async function updateBoardSubtaskLink(
+  taskDocumentId: string,
+  subtaskDocumentId: string,
+  linkedToPrevious: boolean,
+): Promise<void> {
+  await assertCanManageBoardSubtasks();
+  const siblings = await listSubTasksWithRelationsForTask(taskDocumentId);
+  const ordered = sortChainSubTasks(siblings.map(toChainSubTask));
+  const current = ordered.find((item) => item.documentId === subtaskDocumentId);
+  if (!current) throw new Error("notFound");
+  if (linkedToPrevious && previousChainMember(ordered, subtaskDocumentId) == null) {
+    throw new Error("invalid_link");
+  }
+
+  await updateSubTaskLinkedToPrevious(subtaskDocumentId, linkedToPrevious);
+  if (!linkedToPrevious) return;
+
+  const previous = previousChainMember(ordered, subtaskDocumentId);
+  if (!previous) return;
+  await replaceSubTaskAssignees(
+    subtaskDocumentId,
+    assigneesAfterLinkToPrevious(previous.assignedToIds),
+  );
+}
+
 export async function updateBoardSubtaskAssignees(
   subtaskDocumentId: string,
   taskDocumentId: string,
   assignedToIds: string[],
 ): Promise<void> {
   await assertCanManageBoardSubtasks();
-  const subtask = await fetchSubTaskForUpdate(subtaskDocumentId);
-  if (!subtask) {
-    throw new Error("notFound");
+  const siblings = await listSubTasksWithRelationsForTask(taskDocumentId);
+  const chainItems = siblings.map(toChainSubTask);
+  const chains = resolveChains(chainItems);
+  const chain = findChainContaining(chains, subtaskDocumentId);
+  const current = chainItems.find((item) => item.documentId === subtaskDocumentId);
+  if (!current) throw new Error("notFound");
+
+  if (!chain || chain.memberIds.length <= 1) {
+    const subtask = await fetchSubTaskForUpdate(subtaskDocumentId);
+    if (!subtask) throw new Error("notFound");
+    await updateSubTask(
+      subtaskDocumentId,
+      taskDocumentId,
+      toSubTaskFormInput(subtask, assignedToIds),
+    );
+    return;
   }
-  await updateSubTask(
-    subtaskDocumentId,
-    taskDocumentId,
-    toSubTaskFormInput(subtask, assignedToIds),
+
+  const role = canEditAssignees(
+    current.documentId,
+    current.maxSameTimeWorkers,
+    chain,
   );
+  if (role === "none") throw new Error("forbidden");
+
+  if (role === "helper") {
+    const subtask = await fetchSubTaskForUpdate(subtaskDocumentId);
+    if (!subtask) throw new Error("notFound");
+    await updateSubTask(
+      subtaskDocumentId,
+      taskDocumentId,
+      toSubTaskFormInput(subtask, assignedToIds),
+    );
+    return;
+  }
+
+  const members = chain.memberIds
+    .map((id) => chainItems.find((item) => item.documentId === id))
+    .filter((item): item is ChainSubTask => Boolean(item));
+  const propagated = applyHeadAssigneePropagation(
+    members,
+    chain.headId,
+    current.assignedToIds,
+    assignedToIds,
+  );
+  for (const update of propagated) {
+    const subtask = await fetchSubTaskForUpdate(update.documentId);
+    if (!subtask) continue;
+    await updateSubTask(
+      update.documentId,
+      taskDocumentId,
+      toSubTaskFormInput(subtask, update.assignedToIds),
+    );
+  }
 }
 
 export async function applyBoardTaskOrder(

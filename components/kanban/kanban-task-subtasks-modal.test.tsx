@@ -805,4 +805,63 @@ describe("KanbanTaskSubtasksModal", () => {
       "true",
     );
   });
+
+  it("disables link toggle on the first pending row", () => {
+    const chained = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Pintar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: false,
+      }),
+    ];
+    renderModal({
+      subtasks: chained,
+      onReorder: vi.fn(),
+      onLinkToggle: vi.fn(),
+    });
+    const toggles = screen.getAllByRole("switch", { name: "Ligar à anterior" });
+    expect(toggles).toHaveLength(2);
+    expect(toggles[0]).toHaveAttribute("aria-disabled", "true");
+    expect(toggles[1]).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("blocks independent assignees on chained members with max workers 1", async () => {
+    const user = userEvent.setup();
+    const onAssigneesChange = vi.fn();
+    const chained = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Pintar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: true,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+    ];
+    renderModal({
+      subtasks: chained,
+      onReorder: vi.fn(),
+      onLinkToggle: vi.fn(),
+      onAssigneesChange,
+    });
+
+    await user.click(screen.getByRole("button", { name: /Pintar/ }));
+    expect(screen.getByRole("button", { name: "Atribuir Bob" })).toBeDisabled();
+    expect(onAssigneesChange).not.toHaveBeenCalled();
+  });
 });

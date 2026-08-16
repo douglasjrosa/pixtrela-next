@@ -52,6 +52,7 @@ type BoardLiveProgressProps = BoardLiveProgressDataProps & {
   loadSubtasks: BoardActionsProps["loadSubtasks"];
   reorderSubtasks: BoardActionsProps["reorderSubtasks"];
   updateSubtaskAssignees: BoardActionsProps["updateSubtaskAssignees"];
+  linkSubtask: BoardActionsProps["linkSubtask"];
   createSubtask: BoardActionsProps["createSubtask"];
 };
 
@@ -68,6 +69,7 @@ export function BoardLiveProgress({
   loadSubtasks,
   reorderSubtasks,
   updateSubtaskAssignees,
+  linkSubtask,
   createSubtask,
 }: BoardLiveProgressProps) {
   useBoardRevisionRefresh();
@@ -92,6 +94,7 @@ export function BoardLiveProgress({
           loadSubtasks={loadSubtasks}
           reorderSubtasks={reorderSubtasks}
           updateSubtaskAssignees={updateSubtaskAssignees}
+          linkSubtask={linkSubtask}
           createSubtask={createSubtask}
         />
       </div>

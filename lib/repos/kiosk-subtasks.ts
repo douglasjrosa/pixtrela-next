@@ -5,11 +5,15 @@ import {
   currencies,
   currencyForSubtasks,
   subTaskAssignees,
+  subTaskDependencies,
   subTasks,
   tasks,
   users,
 } from "@/drizzle/schema";
 import { calculateActivityDurationSeconds } from "@/lib/business/activity-duration";
+import type { OpenChainRun } from "@/lib/business/kiosk-queue-units";
+import { resolveChains } from "@/lib/business/subtask-chain";
+import { listSubTasksWithRelationsForTask } from "@/lib/repos/tasks";
 import {
   filterKioskDailyQueue,
   sortKioskDailyQueue,
@@ -57,6 +61,13 @@ import {
   fetchUserNamesByIds,
   runTaskSubTaskSyncRoutine,
 } from "@/lib/repos/subtask-lifecycle";
+import {
+  attachHelperStartToOpenRun,
+  findLatestChainRunIdForSubTask,
+  findOpenChainRunForSubTask,
+  findOpenChainRunId,
+  reallocateChainRunAfterHelperStop,
+} from "@/lib/repos/kiosk-chains";
 
 const PRODUCING_STATUS = "producing";
 const UNLOCKED_ACTIVATION = "unlocked";
@@ -102,6 +113,7 @@ function toSubTaskDbRow(
     timeSpent: number;
     expectedTime: number;
     maxSameTimeWorkers: number;
+    linkedToPrevious?: boolean;
     taskId: string;
     taskName: string;
     taskIndex: number;
@@ -123,6 +135,7 @@ function toSubTaskDbRow(
     taskIndex: row.taskIndex,
     taskQty: row.taskQty,
     maxSameTimeWorkers: row.maxSameTimeWorkers,
+    linkedToPrevious: row.linkedToPrevious === true,
   };
 }
 
@@ -142,6 +155,7 @@ async function fetchAssignedSubTaskRows(
       timeSpent: subTasks.timeSpent,
       expectedTime: subTasks.expectedTime,
       maxSameTimeWorkers: subTasks.maxSameTimeWorkers,
+      linkedToPrevious: subTasks.linkedToPrevious,
       taskId: tasks.id,
       taskName: tasks.name,
       taskIndex: tasks.index,
@@ -203,6 +217,7 @@ async function fetchSubTaskRowsByIds(subTaskIds: string[], db: Db) {
       timeSpent: subTasks.timeSpent,
       expectedTime: subTasks.expectedTime,
       maxSameTimeWorkers: subTasks.maxSameTimeWorkers,
+      linkedToPrevious: subTasks.linkedToPrevious,
       taskId: tasks.id,
       taskName: tasks.name,
       taskIndex: tasks.index,
@@ -296,6 +311,46 @@ async function loadActivityEnrichment(
   };
 }
 
+async function loadAssigneeAndDependencyMaps(
+  subTaskIds: string[],
+  db: Db,
+) {
+  if (subTaskIds.length === 0) {
+    return {
+      assignedToIdsBySubTaskId: new Map<string, string[]>(),
+      dependencyIdsBySubTaskId: new Map<string, string[]>(),
+    };
+  }
+  const assigneeRows = await db
+    .select({
+      subTaskId: subTaskAssignees.subTaskId,
+      userId: subTaskAssignees.userId,
+    })
+    .from(subTaskAssignees)
+    .where(inArray(subTaskAssignees.subTaskId, subTaskIds));
+  const dependencyRows = await db
+    .select({
+      subTaskId: subTaskDependencies.subTaskId,
+      dependsOnSubTaskId: subTaskDependencies.dependsOnSubTaskId,
+    })
+    .from(subTaskDependencies)
+    .where(inArray(subTaskDependencies.subTaskId, subTaskIds));
+
+  const assignedToIdsBySubTaskId = new Map<string, string[]>();
+  for (const row of assigneeRows) {
+    const list = assignedToIdsBySubTaskId.get(row.subTaskId) ?? [];
+    list.push(row.userId);
+    assignedToIdsBySubTaskId.set(row.subTaskId, list);
+  }
+  const dependencyIdsBySubTaskId = new Map<string, string[]>();
+  for (const row of dependencyRows) {
+    const list = dependencyIdsBySubTaskId.get(row.subTaskId) ?? [];
+    list.push(row.dependsOnSubTaskId);
+    dependencyIdsBySubTaskId.set(row.subTaskId, list);
+  }
+  return { assignedToIdsBySubTaskId, dependencyIdsBySubTaskId };
+}
+
 export async function listAssignedSubTasks(
   colaboratorId: string,
   db: Db = getDb(),
@@ -323,6 +378,7 @@ export async function listAssignedSubTasks(
     colaboratorId,
     db,
   );
+  const relationMaps = await loadAssigneeAndDependencyMaps(subTaskIds, db);
 
   const now = new Date();
   const mapped = filterKioskVisibleSubTasks(
@@ -346,7 +402,11 @@ export async function listAssignedSubTasks(
           enrichment.finishedAtBySubTaskId.get(row.id) ?? null,
           activeIds.length,
         );
-        return kioskRow;
+        return {
+          ...kioskRow,
+          assignedToIds: relationMaps.assignedToIdsBySubTaskId.get(row.id) ?? [],
+          dependencyIds: relationMaps.dependencyIdsBySubTaskId.get(row.id) ?? [],
+        };
       })
       .filter((row) => row.documentId.length > 0),
   );
@@ -371,7 +431,90 @@ export async function listAssignedSubTasks(
     taskIndex: row.taskIndex,
     finishedAt: row.finishedAt,
     activeWorkerCount: row.activeWorkerCount,
+    linkedToPrevious: row.linkedToPrevious,
+    maxSameTimeWorkers: row.maxSameTimeWorkers,
+    assignedToIds: row.assignedToIds,
+    dependencyIds: row.dependencyIds,
   }));
+}
+
+export type KioskQueueData = {
+  subTasks: KioskSubTask[];
+  catalog: KioskSubTask[];
+  openRuns: OpenChainRun[];
+};
+
+export async function listKioskQueueData(
+  colaboratorId: string,
+  db: Db = getDb(),
+): Promise<KioskQueueData> {
+  const subTasks = await listAssignedSubTasks(colaboratorId, db);
+  const taskIds = [...new Set(subTasks.map((item) => item.taskDocumentId))];
+  const catalog: KioskSubTask[] = [];
+  for (const taskId of taskIds) {
+    const siblings = await listSubTasksWithRelationsForTask(taskId, db);
+    for (const row of siblings) {
+      const existing = subTasks.find((item) => item.documentId === row.id);
+      if (existing) {
+        catalog.push(existing);
+        continue;
+      }
+      catalog.push({
+        documentId: row.id,
+        name: row.name,
+        index: row.index,
+        status: row.status as KioskSubTask["status"],
+        activationStatus: fromDrizzleActivationStatus(row.activationStatus),
+        qty: row.qty,
+        targetQty: row.qty,
+        completedQty: 0,
+        sharingType: row.sharingType === "qty" ? "qty" : "duration",
+        timeSpent: row.timeSpent,
+        startedAt: null,
+        expectedTime: row.expectedTime,
+        taskDocumentId: row.taskId,
+        taskName: "",
+        taskIndex: 0,
+        finishedAt: null,
+        activeWorkerCount: 0,
+        linkedToPrevious: row.linkedToPrevious,
+        maxSameTimeWorkers: row.maxSameTimeWorkers,
+        assignedToIds: row.assignedToIds,
+        dependencyIds: row.dependencyIds,
+      });
+    }
+  }
+
+  const chains = resolveChains(
+    catalog.map((item) => ({
+      documentId: item.documentId,
+      index: item.index,
+      status: item.status,
+      activationStatus: item.activationStatus,
+      linkedToPrevious: item.linkedToPrevious ?? false,
+      maxSameTimeWorkers: item.maxSameTimeWorkers ?? 1,
+      assignedToIds: item.assignedToIds ?? [],
+      dependencyIds: item.dependencyIds ?? [],
+    })),
+  );
+  const openRuns: OpenChainRun[] = [];
+  for (const chain of chains) {
+    if (chain.memberIds.length <= 1) continue;
+    const open = await findOpenChainRunId({ subTaskIds: chain.memberIds, db });
+    if (!open) continue;
+    openRuns.push({
+      chainHeadId: chain.headId,
+      chainRunId: open.chainRunId,
+      principalId: open.principalId,
+      runStartedAt: open.runStartedAt.toISOString(),
+    });
+  }
+
+  return {
+    subTasks,
+    catalog: catalog.length > 0 ? catalog : subTasks,
+    openRuns,
+  };
 }
 
 async function sumStoppedQty(subTaskId: string, db: Db): Promise<number> {
@@ -431,13 +574,30 @@ export async function startSubTask(
   if (!sub) throw new Error("notFound");
 
   const status = String(sub.status ?? "");
-  if (status !== "waiting" && status !== PRODUCING_STATUS) {
+  if (
+    status !== "waiting" &&
+    status !== PRODUCING_STATUS &&
+    status !== "paused"
+  ) {
     throw new Error("forbidden");
   }
 
   const activation = fromDrizzleActivationStatus(sub.activationStatus);
   if (activation === "disabled") throw new Error("forbidden");
-  if (activation !== UNLOCKED_ACTIVATION && status !== PRODUCING_STATUS) {
+
+  const helperChainRunId = await attachHelperStartToOpenRun(
+    colaboratorId,
+    subTaskId,
+    db,
+  );
+  const helperJoinAllowed =
+    Boolean(helperChainRunId) &&
+    (status === "waiting" || status === "paused");
+  if (
+    activation !== UNLOCKED_ACTIVATION &&
+    status !== PRODUCING_STATUS &&
+    !helperJoinAllowed
+  ) {
     throw new Error("forbidden");
   }
 
@@ -448,6 +608,7 @@ export async function startSubTask(
   }
 
   await db.transaction(async (tx) => {
+    const chainRunId = helperChainRunId;
     await tx.insert(activities).values({
       subTaskId,
       colaboratorId,
@@ -455,6 +616,7 @@ export async function startSubTask(
       timestamp,
       qty: 0,
       currencyAwarded: 0,
+      chainRunId: chainRunId ?? undefined,
     });
 
     await tx
@@ -638,18 +800,37 @@ export async function stopSubTask(
   const remainingActiveIds = activeIdsBefore.filter(
     (id) => id !== colaboratorId,
   );
+  const openRun = await findOpenChainRunForSubTask(subTaskId, db);
+  const helperRunId =
+    openRun?.principalId === colaboratorId
+      ? null
+      : (openRun?.chainRunId ??
+        (await findLatestChainRunIdForSubTask(subTaskId, colaboratorId, db)));
+  const isHelper = Boolean(helperRunId);
+  const helperSafeBase =
+    isHelper && openRun && baseStopResult.subTaskStatus === "finished"
+      ? { ...baseStopResult, subTaskStatus: "waiting" as const }
+      : baseStopResult;
   const stopResult = resolveStopStatusWithPeers(
-    baseStopResult,
+    helperSafeBase,
     remainingActiveIds.length,
   );
 
   let activityId = "";
 
   await db.transaction(async (tx) => {
+    const nextStatus =
+      isHelper &&
+      remainingActiveIds.length === 0 &&
+      stopResult.subTaskStatus !== "finished"
+        ? openRun
+          ? "paused"
+          : stopResult.subTaskStatus
+        : stopResult.subTaskStatus;
     await tx
       .update(subTasks)
       .set({
-        status: stopResult.subTaskStatus,
+        status: nextStatus,
         timeSpent: sub.timeSpent + sessionSeconds,
         updatedAt: timestamp,
       })
@@ -664,6 +845,7 @@ export async function stopSubTask(
         timestamp,
         qty: stopResult.qty,
         currencyAwarded: 0,
+        chainRunId: helperRunId ?? openRun?.chainRunId,
       })
       .returning({ id: activities.id });
 
@@ -671,22 +853,29 @@ export async function stopSubTask(
 
     await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, timestamp);
 
-    await creditStopCurrency(
-      {
-        subTaskId,
-        colaboratorId,
-        activityId,
-        subTaskStatus: stopResult.subTaskStatus,
-        sharingType,
-        expectedTime: sub.expectedTime,
-        subTaskQty: sub.qty,
-        taskQty,
-        sessionQty: stopResult.qty,
-        timestamp,
-      },
-      tx as unknown as Db,
-    );
+    const stampChainRunId = helperRunId ?? undefined;
+    if (!stampChainRunId) {
+      await creditStopCurrency(
+        {
+          subTaskId,
+          colaboratorId,
+          activityId,
+          subTaskStatus: stopResult.subTaskStatus,
+          sharingType,
+          expectedTime: sub.expectedTime,
+          subTaskQty: sub.qty,
+          taskQty,
+          sessionQty: stopResult.qty,
+          timestamp,
+        },
+        tx as unknown as Db,
+      );
+    }
   });
+
+  if (isHelper && helperRunId && !openRun) {
+    await reallocateChainRunAfterHelperStop(helperRunId, timestamp, db);
+  }
 
   void activityId;
 

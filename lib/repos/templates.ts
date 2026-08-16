@@ -18,6 +18,7 @@ export type TemplateSubTaskInput = {
   sharingType?: "qty" | "duration";
   maxSameTimeWorkers?: number;
   dependencyIndexes?: number[];
+  linkedToPrevious?: boolean;
 };
 
 export type TemplateTaskListItem = TemplateTaskRecord & {
@@ -44,6 +45,7 @@ function mapSubTaskValues(
     sharingType: sub.sharingType ?? ("duration" as const),
     maxSameTimeWorkers: sub.maxSameTimeWorkers ?? 1,
     dependencyIndexes: sub.dependencyIndexes ?? [],
+    linkedToPrevious: sub.linkedToPrevious ?? false,
   }));
 }
 

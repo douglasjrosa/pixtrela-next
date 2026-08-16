@@ -300,6 +300,7 @@ export const templateSubTasks = pgTable("template_sub_tasks", {
     .$type<number[]>()
     .default([])
     .notNull(),
+  linkedToPrevious: boolean("linked_to_previous").default(false).notNull(),
 });
 
 export const tasks = pgTable("tasks", {
@@ -343,6 +344,7 @@ export const subTasks = pgTable("sub_tasks", {
     .notNull(),
   expectedTime: integer("expected_time").default(0).notNull(),
   timeSpent: integer("time_spent").default(0).notNull(),
+  linkedToPrevious: boolean("linked_to_previous").default(false).notNull(),
   active: boolean("active").default(true).notNull(),
   reasonForDeactivation: text("reason_for_deactivation"),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -385,6 +387,7 @@ export const activities = pgTable("activities", {
     .notNull(),
   qty: integer("qty").default(0).notNull(),
   currencyAwarded: integer("currency_awarded").default(0).notNull(),
+  chainRunId: uuid("chain_run_id"),
 });
 
 export const balances = pgTable("balances", {

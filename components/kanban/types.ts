@@ -47,8 +47,11 @@ export interface BoardSubTaskSummary {
   sharingType: "qty" | "duration";
   /** Base piece count on the sub-task (before task.qty scaling). */
   qty: number;
+  index: number;
   expectedTime: number;
   timeSpent: number;
+  maxSameTimeWorkers: number;
+  linkedToPrevious: boolean;
   openActivityStartedAts: string[];
   /** Colaborators with an open started activity on this sub-task. */
   producingColaboratorIds: string[];

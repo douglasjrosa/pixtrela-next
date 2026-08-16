@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyOutcome,
+  adjustIncome,
   buildNewMonthlyBalance,
   firstDayOfMonth,
   recomputeBalance,
@@ -39,5 +40,20 @@ describe("balance domain", () => {
         4,
       ).balance,
     ).toBe(6);
+  });
+
+  it("adjusts income by a signed delta without going below zero", () => {
+    expect(
+      adjustIncome(
+        { previousBalance: 10, totalIncome: 20, totalOutcome: 0 },
+        -8,
+      ).totalIncome,
+    ).toBe(12);
+    expect(
+      adjustIncome(
+        { previousBalance: 10, totalIncome: 5, totalOutcome: 0 },
+        -9,
+      ).totalIncome,
+    ).toBe(0);
   });
 });
