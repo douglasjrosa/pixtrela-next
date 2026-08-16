@@ -12,7 +12,11 @@ import {
   APP_LIST_PAGE_STACK_CLASS,
 } from "@/components/layout/app-page-layout";
 import type { Role } from "@/lib/auth/nav";
-import { canManageTasks } from "@/lib/auth/permissions";
+import {
+  canDeactivateTasks,
+  canDeleteTasks,
+  canManageTasks,
+} from "@/lib/auth/permissions";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { listSteps as listStepsRepo } from "@/lib/repos/steps";
 import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
@@ -36,8 +40,12 @@ async function loadSteps(): Promise<StepOption[]> {
 
 async function TasksListSection({
   filters,
+  canDeactivate,
+  canDelete,
 }: {
   filters: TaskListFilters;
+  canDeactivate: boolean;
+  canDelete: boolean;
 }) {
   let initialTasks: Awaited<
     ReturnType<typeof loadTaskListPage>
@@ -60,6 +68,8 @@ async function TasksListSection({
       initialTasks={initialTasks}
       initialHasMore={initialHasMore}
       initialPage={initialPage}
+      canDeactivate={canDeactivate}
+      canDelete={canDelete}
     />
   );
 }
@@ -76,6 +86,8 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   const filters = parseTaskListSearchParams(params);
   const filterKey = taskListFilterKey(filters);
   const steps = await loadSteps();
+  const canDeactivate = canDeactivateTasks(role);
+  const canDelete = canDeleteTasks(role);
 
   return (
     <section className={APP_LIST_PAGE_SHELL_CLASS}>
@@ -85,7 +97,11 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
           <TasksToolbar />
         </Suspense>
         <Suspense key={filterKey} fallback={<TasksListSkeleton />}>
-          <TasksListSection filters={filters} />
+          <TasksListSection
+            filters={filters}
+            canDeactivate={canDeactivate}
+            canDelete={canDelete}
+          />
         </Suspense>
       </div>
     </section>

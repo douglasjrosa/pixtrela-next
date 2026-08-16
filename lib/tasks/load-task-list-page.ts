@@ -26,7 +26,6 @@ export async function loadTaskListPage(
   const rows = await listTasks();
   const q = filters.q?.toLowerCase();
   const filtered = rows.filter((task) => {
-    if (!task.active) return false;
     if (!filters.statuses.includes(task.status)) return false;
     if (task.deliveryDate && task.deliveryDate < filters.from) return false;
     if (filters.to && task.deliveryDate && task.deliveryDate > filters.to) {
@@ -66,6 +65,7 @@ export async function loadTaskListPage(
       index: task.index,
       status: task.status,
       active: task.active,
+      reasonForDeactivation: task.reasonForDeactivation,
       templateTaskCode: task.templateTaskCode,
       totalExpectedTime: task.totalExpectedTime,
       totalTimeSpent: task.totalTimeSpent,

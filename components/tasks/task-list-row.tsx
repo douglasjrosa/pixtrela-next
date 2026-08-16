@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -9,15 +9,27 @@ import { cn } from "@/lib/utils";
 
 import type { TaskRow } from "./types";
 
+const CHECKBOX_CLASS = cn("size-4 rounded border border-input accent-primary");
+
 export interface TaskListRowProps {
   task: TaskRow;
   variant: "table" | "mobile";
+  selectionEnabled?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
-export function TaskListRow({ task, variant }: TaskListRowProps) {
+export function TaskListRow({
+  task,
+  variant,
+  selectionEnabled = false,
+  selected = false,
+  onToggleSelect,
+}: TaskListRowProps) {
   const tManage = useTranslations("tasks.manage");
   const tStatus = useTranslations("tasks.status");
   const tDuration = useTranslations("duration");
+  const tCommon = useTranslations("common");
   const router = useRouter();
 
   function openTask(): void {
@@ -31,17 +43,29 @@ export function TaskListRow({ task, variant }: TaskListRowProps) {
     (spent, expected) => tManage("spentOfExpected", { spent, expected }),
   );
 
+  function handleRowClick(event: MouseEvent): void {
+    if (
+      event.target instanceof Element &&
+      event.target.closest("[data-task-select]")
+    ) {
+      return;
+    }
+    openTask();
+  }
+
+  function handleRowKeyDown(event: KeyboardEvent): void {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openTask();
+    }
+  }
+
   const interaction = {
     tabIndex: 0 as const,
     role: "link" as const,
     "aria-label": task.name,
-    onClick: openTask,
-    onKeyDown: (event: KeyboardEvent) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        openTask();
-      }
-    },
+    onClick: handleRowClick,
+    onKeyDown: handleRowKeyDown,
   };
 
   const nameCell = (
@@ -53,6 +77,19 @@ export function TaskListRow({ task, variant }: TaskListRowProps) {
     </>
   );
 
+  const checkboxCell = selectionEnabled ? (
+    <td className="w-10 py-2" data-task-select>
+      <input
+        type="checkbox"
+        className={CHECKBOX_CLASS}
+        checked={selected}
+        aria-label={tCommon("selectRow", { name: task.name })}
+        onClick={(event) => event.stopPropagation()}
+        onChange={() => onToggleSelect?.()}
+      />
+    </td>
+  ) : null;
+
   if (variant === "table") {
     return (
       <tr
@@ -62,6 +99,7 @@ export function TaskListRow({ task, variant }: TaskListRowProps) {
           "focus-visible:bg-muted/40 focus-visible:outline-none",
         )}
       >
+        {checkboxCell}
         <td className="py-2">{nameCell}</td>
         <td>{task.qty}</td>
         <td>{formatDatePtBr(task.deliveryDate)}</td>
@@ -79,13 +117,29 @@ export function TaskListRow({ task, variant }: TaskListRowProps) {
         "focus-visible:bg-muted/40 focus-visible:outline-none",
       )}
     >
-      <div className="text-base font-medium">{nameCell}</div>
-      <div className="text-muted-foreground text-sm">
-        {tManage("qtyShort", { qty: task.qty })} | {tStatus(task.status)}
-      </div>
-      <div className="text-muted-foreground text-sm">{spentOfExpected}</div>
-      <div className="text-muted-foreground text-sm">
-        {formatDatePtBr(task.deliveryDate)}
+      <div className="flex items-start gap-3">
+        {selectionEnabled ? (
+          <div className="pt-0.5" data-task-select>
+            <input
+              type="checkbox"
+              className={CHECKBOX_CLASS}
+              checked={selected}
+              aria-label={tCommon("selectRow", { name: task.name })}
+              onClick={(event) => event.stopPropagation()}
+              onChange={() => onToggleSelect?.()}
+            />
+          </div>
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="text-base font-medium">{nameCell}</div>
+          <div className="text-muted-foreground text-sm">
+            {tManage("qtyShort", { qty: task.qty })} | {tStatus(task.status)}
+          </div>
+          <div className="text-muted-foreground text-sm">{spentOfExpected}</div>
+          <div className="text-muted-foreground text-sm">
+            {formatDatePtBr(task.deliveryDate)}
+          </div>
+        </div>
       </div>
     </li>
   );

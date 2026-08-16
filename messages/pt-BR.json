@@ -28,7 +28,10 @@
     "ok": "OK",
     "yes": "Sim",
     "no": "Não",
-    "reasonMinLength": "Informe pelo menos 100 caracteres."
+    "reasonMinLength": "Informe pelo menos 100 caracteres.",
+    "reasonMinLength50": "Informe pelo menos 50 caracteres.",
+    "selectAll": "Selecionar todas",
+    "selectRow": "Selecionar {name}"
   },
   "auth": {
     "loginTitle": "Entrar no Pixtrela",
@@ -135,6 +138,14 @@
       "deleteTitle": "Excluir tarefa",
       "reasonForDeactivation": "Motivo da desativação",
       "deleteConfirm": "Excluir permanentemente esta tarefa?",
+      "archive": "Arquivar",
+      "archiveTitle": "Arquivar tarefas",
+      "archiveSelected": "Arquivar selecionadas",
+      "bulkArchived": "Tarefas arquivadas.",
+      "bulkDeleted": "Tarefas excluídas.",
+      "bulkDeleteTitle": "Excluir tarefas",
+      "bulkDeleteConfirm": "Excluir permanentemente as tarefas selecionadas?",
+      "deleteSelected": "Excluir selecionadas",
       "saved": "Tarefa salva com sucesso.",
       "deactivated": "Tarefa desativada.",
       "reactivated": "Tarefa reativada.",

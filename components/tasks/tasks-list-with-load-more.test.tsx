@@ -1,20 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
 
 import { TasksListWithLoadMore } from "./tasks-list-with-load-more";
 
 const loadMoreTasks = vi.fn();
+const bulkDeactivateTasks = vi.fn();
+const bulkDeleteTasks = vi.fn();
 const showErrorToast = vi.fn();
+const showSuccessToast = vi.fn();
 
 vi.mock("@/app/(app)/tasks/actions", () => ({
   loadMoreTasks: (...args: unknown[]) => loadMoreTasks(...args),
+  bulkDeactivateTasks: (...args: unknown[]) => bulkDeactivateTasks(...args),
+  bulkDeleteTasks: (...args: unknown[]) => bulkDeleteTasks(...args),
 }));
 
 vi.mock("@/lib/ui/app-toast", () => ({
   showErrorToast: (...args: unknown[]) => showErrorToast(...args),
-  showSuccessToast: vi.fn(),
+  showSuccessToast: (...args: unknown[]) => showSuccessToast(...args),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -43,7 +49,10 @@ const initialTasks = [
 describe("TasksListWithLoadMore", () => {
   beforeEach(() => {
     loadMoreTasks.mockReset();
+    bulkDeactivateTasks.mockReset();
+    bulkDeleteTasks.mockReset();
     showErrorToast.mockReset();
+    showSuccessToast.mockReset();
   });
 
   it("appends the next page when Carregar mais is clicked", async () => {
@@ -91,5 +100,64 @@ describe("TasksListWithLoadMore", () => {
     expect(
       screen.queryByRole("button", { name: "Carregar mais" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows archive action and submits bulk archive modal", async () => {
+    bulkDeactivateTasks.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <TasksListWithLoadMore
+        filters={filters}
+        initialTasks={initialTasks}
+        initialHasMore={false}
+        initialPage={1}
+        canDeactivate
+      />,
+    );
+
+    await user.click(screen.getAllByRole("checkbox")[1]);
+    await user.click(screen.getByRole("button", { name: "Arquivar selecionadas" }));
+    const reason = "x".repeat(50);
+    await user.type(
+      screen.getByLabelText("Motivo da desativação"),
+      reason,
+    );
+    await user.click(screen.getByRole("button", { name: "Arquivar" }));
+
+    await waitFor(() => {
+      expect(bulkDeactivateTasks).toHaveBeenCalledWith(["t1"], reason);
+    });
+    expect(showSuccessToast).toHaveBeenCalled();
+  });
+
+  it("shows delete action when all selected tasks are archived", async () => {
+    bulkDeleteTasks.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    const archivedTasks = [
+      {
+        ...initialTasks[0],
+        active: false,
+      },
+    ];
+
+    renderWithIntl(
+      <TasksListWithLoadMore
+        filters={filters}
+        initialTasks={archivedTasks}
+        initialHasMore={false}
+        initialPage={1}
+        canDelete
+      />,
+    );
+
+    await user.click(screen.getAllByRole("checkbox")[1]);
+    await user.click(screen.getByRole("button", { name: "Excluir selecionadas" }));
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+    await waitFor(() => {
+      expect(bulkDeleteTasks).toHaveBeenCalledWith(["t1"]);
+    });
+    expect(showSuccessToast).toHaveBeenCalled();
   });
 });
