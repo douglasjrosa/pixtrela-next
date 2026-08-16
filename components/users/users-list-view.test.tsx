@@ -2,8 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 
 import { renderWithIntl } from "@/test/test-utils";
+import { UserListProvider } from "./user-list-context";
+import { UserListRowPresentational } from "./user-list-row-presentational";
 import type { UserRow } from "./types";
-import { UsersListView } from "./users-list-view";
 
 const users: UserRow[] = [
   {
@@ -25,48 +26,52 @@ const users: UserRow[] = [
   },
 ];
 
-describe("UsersListView", () => {
-  it("renders empty state", () => {
-    renderWithIntl(
-      <UsersListView
-        users={[]}
-        manageableRoles={["colaborator"]}
-        onOpen={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("Nenhum usuário encontrado.")).toBeInTheDocument();
-  });
-
-  it("opens editable users via row link", () => {
+describe("UserListRowPresentational", () => {
+  it("opens editable users via name button", () => {
     const onOpen = vi.fn();
     renderWithIntl(
-      <UsersListView
-        users={users}
-        manageableRoles={["colaborator"]}
-        onOpen={onOpen}
-      />,
+      <UserListProvider
+        openEdit={onOpen}
+        canEdit={(user) => user.roleType === "colaborator"}
+      >
+        <table>
+          <tbody>
+            {users.map((user) => (
+              <UserListRowPresentational
+                key={user.documentId}
+                user={user}
+                variant="table"
+                labels={{ role: user.roleType }}
+              />
+            ))}
+          </tbody>
+        </table>
+      </UserListProvider>,
     );
 
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getByRole("button", { name: "Maria" }));
     expect(onOpen).toHaveBeenCalledWith(users[0]);
-    expect(screen.queryByRole("link", { name: "Admin" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Admin" })).toBeNull();
     expect(screen.getAllByText("Admin").length).toBeGreaterThan(0);
   });
 
   it("renders a circular avatar cell before the name column", () => {
     renderWithIntl(
-      <UsersListView
-        users={users}
-        manageableRoles={["colaborator"]}
-        onOpen={vi.fn()}
-      />,
+      <UserListProvider openEdit={vi.fn()} canEdit={() => true}>
+        <table>
+          <tbody>
+            <UserListRowPresentational
+              user={users[0]!}
+              variant="table"
+              labels={{ role: "colaborator" }}
+            />
+          </tbody>
+        </table>
+      </UserListProvider>,
     );
 
     const avatar = screen.getAllByRole("img", { name: "Maria" })[0]!;
-    expect(avatar).toHaveAttribute(
-      "src",
-      "/api/media/maria.jpg",
-    );
+    expect(avatar).toHaveAttribute("src", "/api/media/maria.jpg");
     expect(avatar.className).toMatch(/rounded-full/);
   });
 });

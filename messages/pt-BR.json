@@ -307,6 +307,8 @@
     "searchByName": "Buscar por nome",
     "empty": "Nenhum usuário encontrado.",
     "listLoading": "Carregando usuários...",
+    "loadMore": "Carregar mais",
+    "loadingMore": "Carregando...",
     "previewKioskColaborator": "Visualizar painel do kiosk do colaborador",
     "pairUserTag": "Vincular chaveiro NFC",
     "nfcHoldTagNear": "Aproxime o chaveiro NFC do celular…",
