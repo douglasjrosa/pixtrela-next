@@ -88,15 +88,20 @@ export function applyAssigneeDraftDeltasToCounts(
 export function resolveAssigneeNames(
   teams: TeamAssignmentOption[],
   assignedToIds: string[],
+  knownAssignees: readonly { documentId: string; name: string }[] = [],
 ): BoardSubTaskSummary["assignedTo"] {
-  const membersById = new Map(
-    teams.flatMap((team) =>
-      team.members.map((member) => [member.documentId, member.name] as const),
-    ),
-  );
+  const namesById = new Map<string, string>();
+  for (const assignee of knownAssignees) {
+    if (assignee.name) namesById.set(assignee.documentId, assignee.name);
+  }
+  for (const team of teams) {
+    for (const member of team.members) {
+      namesById.set(member.documentId, member.name);
+    }
+  }
   return assignedToIds.map((documentId) => ({
     documentId,
-    name: membersById.get(documentId) ?? documentId,
+    name: namesById.get(documentId) ?? "",
   }));
 }
 

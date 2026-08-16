@@ -71,7 +71,26 @@ describe("board-assignee-draft", () => {
       ),
     ).toEqual([
       { documentId: "u-1", name: "Ana" },
-      { documentId: "missing", name: "missing" },
+      { documentId: "missing", name: "" },
+    ]);
+  });
+
+  it("keeps known names for assignees who are not on a team", () => {
+    expect(
+      resolveAssigneeNames(
+        [
+          {
+            documentId: "t1",
+            name: "Rosa",
+            members: [{ documentId: "u-cris", name: "Cris" }],
+          },
+        ],
+        ["u-live", "u-cris"],
+        [{ documentId: "u-live", name: "Live Worker" }],
+      ),
+    ).toEqual([
+      { documentId: "u-live", name: "Live Worker" },
+      { documentId: "u-cris", name: "Cris" },
     ]);
   });
 

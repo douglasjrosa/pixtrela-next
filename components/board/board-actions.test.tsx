@@ -332,8 +332,37 @@ describe("BoardActions", () => {
     );
     expect(enabled).toBeTruthy();
     await user.click(enabled!);
+    await user.click(enabled!);
     await vi.waitFor(() => {
       expect(linkSubtask).toHaveBeenCalledWith("task-10", "st-2", true);
     });
+    expect(linkSubtask).toHaveBeenCalledTimes(1);
+    expect(loadSubtasks).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps loaded assignee names that are not on a team", async () => {
+    const user = userEvent.setup();
+    const liveWorkerId = "11111111-1111-1111-1111-111111111111";
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        assignedTo: [{ documentId: liveWorkerId, name: "Live Worker" }],
+      }),
+    ]);
+
+    renderBoard({ loadSubtasks });
+    await user.click(screen.getByText("1 - Tarefa A"));
+    expect(await screen.findByText("Live Worker")).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: /Soldar/ }));
+    await user.click(screen.getByRole("button", { name: "Atribuir Ana" }));
+
+    expect(screen.getByText("Live Worker")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remover Ana" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(liveWorkerId)).not.toBeInTheDocument();
   });
 });

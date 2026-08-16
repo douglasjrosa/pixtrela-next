@@ -55,7 +55,7 @@ export function SubtaskChainLinkControl({
 
   return (
     <div
-      className={cn("absolute left-0 z-10", GAP_MID_OFFSET_CLASS)}
+      className={cn("absolute left-0 z-20", GAP_MID_OFFSET_CLASS)}
       data-testid="subtask-chain-link"
       data-linked={linked ? "true" : "false"}
     >

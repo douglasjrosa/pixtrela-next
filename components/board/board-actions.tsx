@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { KanbanBoard } from "@/components/kanban/kanban-board";
@@ -114,6 +114,8 @@ export function BoardActions({
   const [createOpen, setCreateOpen] = useState(false);
   const [savingCreate, setSavingCreate] = useState(false);
   const [reorderingSubtasks, setReorderingSubtasks] = useState(false);
+  const [linkingSubtasks, setLinkingSubtasks] = useState(false);
+  const linkingSubtasksRef = useRef(false);
 
   const assignedCountsForUi = useMemo(
     () =>
@@ -188,6 +190,8 @@ export function BoardActions({
     setCreateOpen(false);
     setSavingCreate(false);
     setReorderingSubtasks(false);
+    setLinkingSubtasks(false);
+    linkingSubtasksRef.current = false;
   }
 
   function sortSubtasksByDocumentIds(
@@ -227,9 +231,10 @@ export function BoardActions({
     subtaskDocumentId: string,
     linkedToPrevious: boolean,
   ): void {
-    if (!selectedTask) return;
+    if (!selectedTask || linkingSubtasksRef.current) return;
     const taskDocumentId = selectedTask.documentId;
     const before = subtasks;
+    const beforeBaseline = assigneesBaseline;
     const previous = previousChainMember(
       sortChainSubTasks(subtasks),
       subtaskDocumentId,
@@ -237,6 +242,8 @@ export function BoardActions({
     const copiedAssignees = linkedToPrevious && previous
       ? previous.assignedTo
       : null;
+    linkingSubtasksRef.current = true;
+    setLinkingSubtasks(true);
     setSubtasks((current) =>
       current.map((item) => {
         if (item.documentId !== subtaskDocumentId) return item;
@@ -261,11 +268,12 @@ export function BoardActions({
           subtaskDocumentId,
           linkedToPrevious,
         );
-        await refreshSubtasksList(taskDocumentId, {
-          keepDraftAssignees: true,
-        });
       } catch {
         setSubtasks(before);
+        setAssigneesBaseline(beforeBaseline);
+      } finally {
+        linkingSubtasksRef.current = false;
+        setLinkingSubtasks(false);
       }
     })();
   }
@@ -289,6 +297,7 @@ export function BoardActions({
     assignedToIds: string[],
   ): void {
     setSubtasks((current) => {
+      const knownAssignees = current.flatMap((item) => item.assignedTo);
       const chainItems = chainItemsFromBoard(current);
       const chain = findChainContaining(
         resolveChains(chainItems),
@@ -299,7 +308,11 @@ export function BoardActions({
           item.documentId === subtask.documentId
             ? {
                 ...item,
-                assignedTo: resolveAssigneeNames(teams, assignedToIds),
+                assignedTo: resolveAssigneeNames(
+                  teams,
+                  assignedToIds,
+                  knownAssignees,
+                ),
               }
             : item,
         );
@@ -316,7 +329,11 @@ export function BoardActions({
           item.documentId === subtask.documentId
             ? {
                 ...item,
-                assignedTo: resolveAssigneeNames(teams, assignedToIds),
+                assignedTo: resolveAssigneeNames(
+                  teams,
+                  assignedToIds,
+                  knownAssignees,
+                ),
               }
             : item,
         );
@@ -340,7 +357,7 @@ export function BoardActions({
         if (!nextIds) return item;
         return {
           ...item,
-          assignedTo: resolveAssigneeNames(teams, nextIds),
+          assignedTo: resolveAssigneeNames(teams, nextIds, knownAssignees),
         };
       });
     });
@@ -478,7 +495,7 @@ export function BoardActions({
         loading={loadingSubtasks}
         dirty={hasAssigneeDraftChanges(subtasks, assigneesBaseline)}
         saving={savingAssignees}
-        reordering={reorderingSubtasks}
+        reordering={reorderingSubtasks || linkingSubtasks}
         onClose={handleCloseSubtasksModal}
         onAssigneesChange={handleAssigneesChange}
         onSave={handleSaveAssignees}
