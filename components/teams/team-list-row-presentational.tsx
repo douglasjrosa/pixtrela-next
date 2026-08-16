@@ -117,7 +117,7 @@ export function TeamListRowPresentational({
             ariaLabel={labels.selectRow}
           />
         ) : null}
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
           <div className="text-base font-medium">{nameCell}</div>
           <div className="text-muted-foreground text-sm">{labels.leader}</div>
           <div className="text-muted-foreground text-sm">
@@ -131,7 +131,7 @@ export function TeamListRowPresentational({
             />
           </div>
           {(team.colaborators?.length ?? 0) > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-1">{membersCell}</div>
+            <div className="flex flex-wrap gap-1">{membersCell}</div>
           ) : null}
         </div>
       </div>
