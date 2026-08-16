@@ -211,6 +211,25 @@ export const kioskSettings = pgTable("kiosk_settings", {
     .notNull(),
 });
 
+export const entryAccessSettings = pgTable("entry_access_settings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  surface: varchar("surface", { length: 16 }).notNull().unique(),
+  computerUsername: boolean("computer_username").default(true).notNull(),
+  computerCode: boolean("computer_code").default(false).notNull(),
+  computerFace: boolean("computer_face").default(false).notNull(),
+  computerNfc: boolean("computer_nfc").default(false).notNull(),
+  mobileUsername: boolean("mobile_username").default(true).notNull(),
+  mobileCode: boolean("mobile_code").default(false).notNull(),
+  mobileFace: boolean("mobile_face").default(true).notNull(),
+  mobileNfc: boolean("mobile_nfc").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 export const taskAutomationSettings = pgTable("task_automation_settings", {
   id: uuid("id").defaultRandom().primaryKey(),
   enabled: boolean("enabled").default(false).notNull(),

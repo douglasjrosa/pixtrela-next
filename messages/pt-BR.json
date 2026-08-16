@@ -573,6 +573,7 @@
       "currency": "Moedas",
       "automations": "Automações",
       "kiosk": "Totem",
+      "login": "Login",
       "themes": "Temas"
     },
     "themesHelp": "Selecione uma rota para configurar cor, imagem e movimento de fundo.",
@@ -684,10 +685,14 @@
     "assignWarnHeading": "Alerta de atribuição",
     "assignWarnDescription": "No quadro, avisa quando um colaborador tem poucas subtarefas abertas atribuídas a ele.",
     "assignWarnMax": "Avisar com até (subtarefas):",
-    "kioskSession": "Totem",
+    "kioskSession": "Preferências",
     "kioskSessionIdleSeconds": "Tempo de sessão do Totem (segundos):",
     "kioskLiveChainIntervalSeconds":
       "Intervalo máximo para permitir subtarefas simultâneas (s)",
+    "entryAccessHeading": "Formas de acesso",
+    "entryAccessComputer": "No computador",
+    "entryAccessMobile": "No celular",
+    "entryAccessNfc": "Tag NFC",
     "saved": "Configurações salvas.",
     "error": "Não foi possível salvar as configurações."
   },
@@ -699,6 +704,7 @@
     "tagIdentifyFailed": "Não foi possível identificar pelo chaveiro NFC.",
     "homeChooserCamera": "Reconhecimento facial",
     "homeChooserPassword": "Código e senha",
+    "homeChooserUsername": "Login e senha",
     "homeBackToChooser": "Voltar ao início",
     "directoryPickTeam": "Escolha sua equipe",
     "directoryPickMember": "Quem é você?",

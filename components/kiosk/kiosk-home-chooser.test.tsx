@@ -34,4 +34,28 @@ describe("KioskHomeChooser", () => {
       screen.getByText("Ou apenas aproxime sua Tag NFC."),
     ).toBeInTheDocument();
   });
+
+  it("hides disabled access methods", () => {
+    renderWithIntl(
+      <KioskHomeChooser
+        onCamera={vi.fn()}
+        onPassword={vi.fn()}
+        access={{
+          username: false,
+          code: true,
+          face: false,
+          nfc: false,
+        }}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Reconhecimento facial" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Código e senha" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Ou apenas aproxime sua Tag NFC."),
+    ).not.toBeInTheDocument();
+  });
 });

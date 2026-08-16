@@ -22,6 +22,7 @@ describe("KioskSessionIdleForm", () => {
     renderWithIntl(
       <KioskSessionIdleForm sessionIdleSeconds={7} onSave={vi.fn()} />,
     );
+    expect(screen.getByRole("heading", { name: "Preferências" })).toBeInTheDocument();
     expect(screen.getByLabelText("Tempo de sessão do Totem (segundos):")).toHaveValue(
       7,
     );
