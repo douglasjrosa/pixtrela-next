@@ -201,6 +201,7 @@
     "deliveryForecast": "Previsão",
     "completion": "Conclusão",
     "linkToPrevious": "Ligar à anterior",
+    "unlinkFromPrevious": "Desligar da anterior",
     "assigneesFollowHead": "As atribuições desta subtarefa seguem a primeira da cadeia."
   },
   "balance": {

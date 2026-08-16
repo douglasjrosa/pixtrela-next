@@ -806,7 +806,7 @@ describe("KanbanTaskSubtasksModal", () => {
     );
   });
 
-  it("disables link toggle on the first pending row", () => {
+  it("shows a chain link button only between pending rows", () => {
     const chained = [
       boardSubTaskSummaryStub({
         documentId: "st-1",
@@ -827,10 +827,64 @@ describe("KanbanTaskSubtasksModal", () => {
       onReorder: vi.fn(),
       onLinkToggle: vi.fn(),
     });
-    const toggles = screen.getAllByRole("switch", { name: "Ligar à anterior" });
-    expect(toggles).toHaveLength(2);
-    expect(toggles[0]).toHaveAttribute("aria-disabled", "true");
-    expect(toggles[1]).not.toHaveAttribute("aria-disabled");
+    expect(
+      screen.getByRole("button", { name: "Ligar à anterior" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByTestId("subtask-chain-link")).toHaveLength(1);
+  });
+
+  it("shows the unlink label when the row is already chained", () => {
+    const chained = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Pintar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: true,
+      }),
+    ];
+    renderModal({
+      subtasks: chained,
+      onReorder: vi.fn(),
+      onLinkToggle: vi.fn(),
+    });
+    expect(
+      screen.getByRole("button", { name: "Desligar da anterior" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("toggles chain link from the mid-gap button", async () => {
+    const user = userEvent.setup();
+    const onLinkToggle = vi.fn();
+    const chained = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Pintar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: false,
+      }),
+    ];
+    renderModal({
+      subtasks: chained,
+      onReorder: vi.fn(),
+      onLinkToggle,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Ligar à anterior" }));
+    expect(onLinkToggle).toHaveBeenCalledWith("st-2", true);
   });
 
   it("blocks independent assignees on chained members with max workers 1", async () => {

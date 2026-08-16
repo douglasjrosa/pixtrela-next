@@ -324,11 +324,11 @@ describe("BoardActions", () => {
 
     renderBoard({ loadSubtasks, linkSubtask });
     await user.click(screen.getByText("1 - Tarefa A"));
-    const toggles = await screen.findAllByRole("switch", {
+    const toggles = await screen.findAllByRole("button", {
       name: "Ligar à anterior",
     });
     const enabled = toggles.find(
-      (toggle) => toggle.getAttribute("aria-disabled") !== "true",
+      (toggle) => !toggle.hasAttribute("disabled"),
     );
     expect(enabled).toBeTruthy();
     await user.click(enabled!);

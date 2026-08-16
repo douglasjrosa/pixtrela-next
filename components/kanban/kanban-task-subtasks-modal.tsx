@@ -21,6 +21,10 @@ import { GripVertical, User, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { CurrencyMediaIcon } from "@/components/currency/currency-media-icon";
+import {
+  SUBTASK_CHAIN_LIST_GAP_CLASS,
+  SubtaskChainLinkControl,
+} from "@/components/kanban/subtask-chain-link-control";
 import { SubTaskProgressBar } from "@/components/kanban/subtask-progress-bar";
 import { TimeMetrics } from "@/components/kanban/time-metrics";
 import { SubTaskSessionsPanel } from "@/components/subtasks/subtask-sessions-panel";
@@ -28,7 +32,6 @@ import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager
 import { Button } from "@/components/ui/button";
 import { Card, CardBadge, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Switch } from "@/components/ui/switch";
 import {
   FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS,
   FormModalShell,
@@ -291,6 +294,7 @@ interface SortablePendingSubtaskCardProps {
   saving: boolean;
   dragLabel: string;
   linkLabel: string;
+  unlinkLabel: string;
   canLink: boolean;
   onLinkChange?: (linked: boolean) => void;
   statusLabel: string;
@@ -304,6 +308,7 @@ function SortablePendingSubtaskCard({
   saving,
   dragLabel,
   linkLabel,
+  unlinkLabel,
   canLink,
   onLinkChange,
   statusLabel,
@@ -351,49 +356,48 @@ function SortablePendingSubtaskCard({
         >
           <GripVertical className="size-4" aria-hidden />
         </button>
-        {onLinkChange ? (
-          <div className="flex shrink-0 items-center px-1">
-            <Switch
-              size="sm"
-              checked={subtask.linkedToPrevious}
-              disabled={dragDisabled || !canLink}
-              aria-label={linkLabel}
-              onClick={(event) => event.stopPropagation()}
-              onCheckedChange={onLinkChange}
+        <div className="relative min-w-0 flex-1">
+          {onLinkChange && canLink ? (
+            <SubtaskChainLinkControl
+              linked={subtask.linkedToPrevious}
+              disabled={dragDisabled || saving}
+              linkLabel={linkLabel}
+              unlinkLabel={unlinkLabel}
+              onToggle={onLinkChange}
             />
-          </div>
-        ) : null}
-        <button
-          type="button"
-          aria-pressed={highlighted}
-          disabled={saving}
-          className={cn(
-            "relative min-w-0 flex-1 rounded-lg border p-3 text-left transition-colors",
-            highlighted
-              ? "border-primary bg-primary/5"
-              : "bg-background hover:bg-muted/40",
-            saving && "opacity-50",
-          )}
-          onClick={onClick}
-        >
-          <SubTaskUnassignedFloatingBadge
-            assignedCount={subtask.assignedTo.length}
-          />
-          <SubTaskCardHeader
-            name={subtask.name}
-            status={subtask.status}
-            statusLabel={statusLabel}
-            workingCount={subtask.openActivityStartedAts.length}
-            assignedTo={subtask.assignedTo}
-            producingColaboratorIds={subtask.producingColaboratorIds}
-          />
-          <SubTaskProgressBar
-            status={subtask.status}
-            expectedTime={subtask.expectedTime}
-            timeSpent={subtask.timeSpent}
-            openActivityStartedAts={subtask.openActivityStartedAts}
-          />
-        </button>
+          ) : null}
+          <button
+            type="button"
+            aria-pressed={highlighted}
+            disabled={saving}
+            className={cn(
+              "relative w-full rounded-lg border p-3 text-left transition-colors",
+              highlighted
+                ? "border-primary bg-primary/5"
+                : "bg-background hover:bg-muted/40",
+              saving && "opacity-50",
+            )}
+            onClick={onClick}
+          >
+            <SubTaskUnassignedFloatingBadge
+              assignedCount={subtask.assignedTo.length}
+            />
+            <SubTaskCardHeader
+              name={subtask.name}
+              status={subtask.status}
+              statusLabel={statusLabel}
+              workingCount={subtask.openActivityStartedAts.length}
+              assignedTo={subtask.assignedTo}
+              producingColaboratorIds={subtask.producingColaboratorIds}
+            />
+            <SubTaskProgressBar
+              status={subtask.status}
+              expectedTime={subtask.expectedTime}
+              timeSpent={subtask.timeSpent}
+              openActivityStartedAts={subtask.openActivityStartedAts}
+            />
+          </button>
+        </div>
       </div>
     </li>
   );
@@ -1004,7 +1008,14 @@ export function KanbanTaskSubtasksModal({
                     {tKanban("subtasksColumn")}
                   </button>
                 )}
-                <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pt-2 pr-2.5">
+                <ul
+                  className={cn(
+                    "flex min-h-0 flex-1 flex-col overflow-y-auto pt-2 pr-2.5",
+                    onReorder && onLinkToggle
+                      ? SUBTASK_CHAIN_LIST_GAP_CLASS
+                      : "gap-3",
+                  )}
+                >
                   {pending.length === 0 ? (
                     <li className="text-sm text-muted-foreground" role="status">
                       {tKanban("subtasksEmpty")}
@@ -1046,6 +1057,7 @@ export function KanbanTaskSubtasksModal({
                               saving={saving}
                               dragLabel={tSubtasks("dragToReorder")}
                               linkLabel={tKanban("linkToPrevious")}
+                              unlinkLabel={tKanban("unlinkFromPrevious")}
                               canLink={pending[0]?.documentId !== subtask.documentId}
                               onLinkChange={
                                 onLinkToggle
