@@ -21,6 +21,7 @@ import {
 } from "@/lib/schemas/team";
 
 import { TeamListProvider } from "./team-list-context";
+import { TeamColaboratorPicker } from "./team-colaborator-picker";
 import { TeamsToolbar } from "./teams-toolbar";
 import type { TeamRow, UserOption } from "./types";
 
@@ -210,27 +211,21 @@ function TeamFormDialog({
           </>
         ) : null}
 
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="colaboratorDocumentIds">{tTeams("colaborators")}</Label>
-          <select
-            id="colaboratorDocumentIds"
-            multiple
-            disabled={isPending}
-            className={
-              "flex min-h-24 w-full rounded-md border border-input " +
-              "bg-transparent px-3 py-2 text-sm"
-            }
-            {...register("colaboratorDocumentIds")}
-          >
-            {colaborators.map((colaborator) => (
-              <option
-                key={colaborator.documentId}
-                value={colaborator.documentId}
-              >
-                {colaborator.name}
-              </option>
-            ))}
-          </select>
+        <div className="sm:col-span-2">
+          <Controller
+            name="colaboratorDocumentIds"
+            control={control}
+            render={({ field }) => (
+              <TeamColaboratorPicker
+                id="colaboratorDocumentIds"
+                label={tTeams("colaborators")}
+                colaborators={colaborators}
+                value={field.value ?? []}
+                disabled={isPending}
+                onChange={field.onChange}
+              />
+            )}
+          />
         </div>
       </form>
     </FormModalShell>

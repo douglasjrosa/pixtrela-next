@@ -102,6 +102,36 @@ describe("TeamManager", () => {
     expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
   });
 
+  it("opens create modal with collaborator badge picker", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn().mockResolvedValue(undefined);
+
+    renderWithIntl(
+      <TeamManager
+        leaders={leaders}
+        colaborators={colaborators}
+        onCreate={onCreate}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+      >
+        {null}
+      </TeamManager>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Nova equipe" }));
+    expect(screen.getByLabelText("Colaboradores")).toBeInTheDocument();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Nome"), "Equipe Teste");
+    await user.click(screen.getByRole("button", { name: "Incluir Ana" }));
+    await user.click(screen.getByRole("button", { name: "Criar" }));
+
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        colaboratorDocumentIds: ["c1"],
+      }),
+    );
+  });
+
   it("opens create modal with default exchange days", () => {
     renderWithIntl(
       <TeamManager
