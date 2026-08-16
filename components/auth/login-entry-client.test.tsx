@@ -61,7 +61,10 @@ describe("LoginEntryClient", () => {
       screen.getByRole("button", { name: "Código e senha" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Entrar com usuário e senha" }),
+      screen.getByRole("button", { name: "Login e senha" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Ou apenas aproxime sua Tag NFC."),
     ).toBeInTheDocument();
   });
 
@@ -69,7 +72,7 @@ describe("LoginEntryClient", () => {
     const user = userEvent.setup();
     renderWithIntl(<LoginEntryClient />);
     await user.click(
-      screen.getByRole("button", { name: "Entrar com usuário e senha" }),
+      screen.getByRole("button", { name: "Login e senha" }),
     );
     await waitFor(() => {
       expect(screen.getByLabelText("Login")).toBeInTheDocument();

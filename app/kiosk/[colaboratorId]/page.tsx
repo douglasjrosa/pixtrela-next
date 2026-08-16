@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { KioskContentSurface } from "@/components/kiosk/kiosk-content-surface";
 import type { Role } from "@/lib/auth/nav";
 import { loadKioskLiveChainIntervalSeconds } from "@/lib/kiosk/load-session-idle";
 import { loadKioskQueueForColaborator } from "@/lib/kiosk/load-assigned-subtasks";
@@ -22,15 +23,17 @@ export default async function KioskColaboratorPage({ params }: PageProps) {
   ]);
 
   return (
-    <KioskPanelClient
-      colaboratorId={colaboratorId}
-      colaboratorName={profile?.name ?? ""}
-      avatarUrl={profile?.avatarUrl ?? null}
-      subTasks={queue.subTasks}
-      catalog={queue.catalog}
-      openRuns={queue.openRuns}
-      maxSimultaneousSubtaskIntervalSeconds={liveChainIntervalSeconds}
-      readOnly={readOnly}
-    />
+    <KioskContentSurface>
+      <KioskPanelClient
+        colaboratorId={colaboratorId}
+        colaboratorName={profile?.name ?? ""}
+        avatarUrl={profile?.avatarUrl ?? null}
+        subTasks={queue.subTasks}
+        catalog={queue.catalog}
+        openRuns={queue.openRuns}
+        maxSimultaneousSubtaskIntervalSeconds={liveChainIntervalSeconds}
+        readOnly={readOnly}
+      />
+    </KioskContentSurface>
   );
 }
