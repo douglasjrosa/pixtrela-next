@@ -481,6 +481,8 @@
     "exchangesFirstDay": "Início das trocas",
     "exchangesLastDay": "Fim das trocas",
     "exchangePeriod": "Período de trocas",
+    "exchangePeriodHeaderLine1": "Período",
+    "exchangePeriodHeaderLine2": "de trocas",
     "exchangePeriodFrom": "Do dia",
     "exchangePeriodTo": "ao dia",
     "members": "Membros",

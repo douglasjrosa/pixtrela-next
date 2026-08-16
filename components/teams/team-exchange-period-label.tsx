@@ -21,13 +21,19 @@ export function TeamExchangePeriodLabel({
   const last = formatExchangeDay(lastDay);
 
   return (
-    <span>
-      <span className="text-muted-foreground">
-        {tTeams("exchangePeriodFrom")}{" "}
+    <span className="inline-block leading-tight">
+      <span className="block">
+        <span className="text-muted-foreground">
+          {tTeams("exchangePeriodFrom")}{" "}
+        </span>
+        <span className="font-semibold text-foreground">{first}</span>
       </span>
-      <span className="font-semibold text-foreground">{first}</span>
-      <span className="text-muted-foreground"> {tTeams("exchangePeriodTo")} </span>
-      <span className="font-semibold text-foreground">{last}</span>
+      <span className="block">
+        <span className="text-muted-foreground">
+          {tTeams("exchangePeriodTo")}{" "}
+        </span>
+        <span className="font-semibold text-foreground">{last}</span>
+      </span>
     </span>
   );
 }
