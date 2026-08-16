@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState, useTransition, type ReactNode } from "react";
+import { Plus } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -324,8 +325,13 @@ export function TeamManager({
           <h1 className="text-2xl font-bold max-[500px]:text-lg">
             {tTeams("title")}
           </h1>
-          <Button type="button" variant="outline" onClick={startCreate}>
-            {tTeams("newTeam")}
+          <Button
+            type="button"
+            size="icon-lg"
+            aria-label={tTeams("newTeam")}
+            onClick={startCreate}
+          >
+            <Plus aria-hidden />
           </Button>
         </div>
 
