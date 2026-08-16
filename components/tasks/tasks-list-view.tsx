@@ -49,50 +49,58 @@ export function TasksListView({
         <thead>
           <tr className="border-b text-left">
             {selectionEnabled ? (
-              <th className="w-10 py-2">
-                <input
-                  type="checkbox"
-                  className={CHECKBOX_CLASS}
-                  checked={allSelected}
-                  aria-label={tCommon("selectAll")}
-                  onChange={() => onToggleSelectAll?.()}
-                />
+              <th className={cn("w-10 py-2", "text-center")}>
+                <div className="flex justify-center">
+                  <input
+                    type="checkbox"
+                    className={CHECKBOX_CLASS}
+                    checked={allSelected}
+                    aria-label={tCommon("selectAll")}
+                    onChange={() => onToggleSelectAll?.()}
+                  />
+                </div>
               </th>
             ) : null}
             <TaskListSortHeader
               column="name"
               label={tManage("name")}
               sort={sort}
+              align="left"
               onSort={(column) => onSort?.(column)}
             />
             <TaskListSortHeader
               column="qty"
               label={tManage("qty")}
               sort={sort}
+              align="center"
               onSort={(column) => onSort?.(column)}
             />
             <TaskListSortHeader
               column="deliveryDate"
               label={tManage("deliveryDate")}
               sort={sort}
+              align="center"
               onSort={(column) => onSort?.(column)}
             />
             <TaskListSortHeader
               column="totalTimeSpent"
               label={tManage("totalTimeSpent")}
               sort={sort}
+              align="center"
               onSort={(column) => onSort?.(column)}
             />
             <TaskListSortHeader
               column="finishedSubTasks"
               label={tManage("finishedSubTasks")}
               sort={sort}
+              align="center"
               onSort={(column) => onSort?.(column)}
             />
             <TaskListSortHeader
               column="status"
               label={tManage("status")}
               sort={sort}
+              align="center"
               onSort={(column) => onSort?.(column)}
             />
           </tr>

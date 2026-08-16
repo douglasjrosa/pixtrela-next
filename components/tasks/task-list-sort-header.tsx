@@ -12,6 +12,7 @@ export interface TaskListSortHeaderProps {
   column: TaskListSortColumn;
   label: string;
   sort: TaskListSort;
+  align?: "left" | "center";
   className?: string;
   onSort: (column: TaskListSortColumn) => void;
 }
@@ -20,6 +21,7 @@ export function TaskListSortHeader({
   column,
   label,
   sort,
+  align = "left",
   className,
   onSort,
 }: TaskListSortHeaderProps) {
@@ -27,13 +29,20 @@ export function TaskListSortHeader({
   const direction = active ? sort.direction : undefined;
 
   return (
-    <th className={cn("py-2", className)}>
+    <th
+      className={cn(
+        "py-2",
+        align === "center" ? "text-center" : "text-left",
+        className,
+      )}
+    >
       <button
         type="button"
         className={cn(
-          "inline-flex items-center gap-1 rounded-sm text-left font-medium",
-          "hover:text-foreground focus-visible:outline-none focus-visible:ring-2",
-          "focus-visible:ring-ring",
+          "inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium",
+          "transition-colors hover:bg-muted focus-visible:outline-none",
+          "focus-visible:ring-2 focus-visible:ring-ring",
+          align === "center" && "justify-center",
           active ? "text-foreground" : "text-muted-foreground",
         )}
         aria-sort={

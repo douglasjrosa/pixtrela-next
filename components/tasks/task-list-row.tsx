@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import type { TaskRow } from "./types";
 
 const CHECKBOX_CLASS = cn("size-4 rounded border border-input accent-primary");
+const CENTER_CELL_CLASS = "text-center";
 
 export interface TaskListRowProps {
   task: TaskRow;
@@ -82,7 +83,7 @@ export function TaskListRow({
   );
 
   const checkboxCell = selectionEnabled ? (
-    <td className="w-10 py-2" data-task-select>
+    <td className={cn("w-10 py-2", CENTER_CELL_CLASS)} data-task-select>
       <input
         type="checkbox"
         className={CHECKBOX_CLASS}
@@ -105,11 +106,13 @@ export function TaskListRow({
       >
         {checkboxCell}
         <td className="py-2">{nameCell}</td>
-        <td>{task.qty}</td>
-        <td>{formatDatePtBr(task.deliveryDate)}</td>
-        <td>{spentOfExpected}</td>
-        <td>{finishedSubTasks}</td>
-        <td>{tStatus(task.status)}</td>
+        <td className={CENTER_CELL_CLASS}>{task.qty}</td>
+        <td className={CENTER_CELL_CLASS}>
+          {formatDatePtBr(task.deliveryDate)}
+        </td>
+        <td className={CENTER_CELL_CLASS}>{spentOfExpected}</td>
+        <td className={CENTER_CELL_CLASS}>{finishedSubTasks}</td>
+        <td className={CENTER_CELL_CLASS}>{tStatus(task.status)}</td>
       </tr>
     );
   }
