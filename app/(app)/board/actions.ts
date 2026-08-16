@@ -296,6 +296,7 @@ async function fetchTemplateByCode(code: string): Promise<{
       sharingType: row.sharingType,
       maxSameTimeWorkers: row.maxSameTimeWorkers,
       dependencyIndexes: row.dependencyIndexes ?? [],
+      linkedToPrevious: row.linkedToPrevious,
     })),
   };
 }
@@ -350,6 +351,7 @@ async function appendBoardSubtaskToTaskTemplate(
       sharingType: row.sharingType,
       maxSameTimeWorkers: row.maxSameTimeWorkers,
       dependencyIndexes: dependencyIndexesFrom(row.dependencies),
+      linkedToPrevious: row.linkedToPrevious ?? false,
     })),
   });
   revalidateTag("drizzle:templates", "default");
