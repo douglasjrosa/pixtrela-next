@@ -39,10 +39,10 @@ export function TaskListSortHeader({
       <button
         type="button"
         className={cn(
-          "inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium",
+          "flex w-full items-center gap-1 rounded-md px-2 py-1 font-medium",
           "transition-colors hover:bg-muted focus-visible:outline-none",
           "focus-visible:ring-2 focus-visible:ring-ring",
-          align === "center" && "justify-center",
+          align === "center" ? "justify-center" : "justify-start",
           active ? "text-foreground" : "text-muted-foreground",
         )}
         aria-sort={
