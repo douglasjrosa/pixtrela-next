@@ -3,6 +3,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
+import { FORM_MODAL_DIALOG_OVERLAY_Z_CLASS } from "./form-modal-shell";
 import { ConfirmDialog } from "./confirm-dialog";
 
 describe("ConfirmDialog", () => {
@@ -37,6 +38,9 @@ describe("ConfirmDialog", () => {
     );
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("presentation").className).toContain(
+      FORM_MODAL_DIALOG_OVERLAY_Z_CLASS,
+    );
     expect(
       screen.getByText("Excluir permanentemente esta tarefa?"),
     ).toBeInTheDocument();

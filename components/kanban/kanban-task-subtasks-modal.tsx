@@ -1217,6 +1217,7 @@ export function KanbanTaskSubtasksModal({
         title={tKanban("infoTitle")}
         onClose={() => setInfoSubtask(null)}
         size="lg"
+        layer="nested"
       >
         {infoSubtask ? (
           <div className="space-y-4">

@@ -3,6 +3,7 @@ import { cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
+import { FORM_MODAL_OVERLAY_Z_CLASS } from "@/components/ui/form-modal-shell";
 
 import { SubTaskFormModal } from "./subtask-form-modal";
 
@@ -120,5 +121,17 @@ describe("SubTaskFormModal", () => {
     expect(
       within(dialog).getByText("1 - Beccaro - Misturadeira 25kg"),
     ).toBeInTheDocument();
+  });
+
+  it("stacks above page chrome such as the task save FAB", () => {
+    renderWithIntl(
+      <SubTaskFormModal open title="Nova subtarefa" onClose={vi.fn()}>
+        <p>Form body</p>
+      </SubTaskFormModal>,
+    );
+
+    expect(
+      screen.getByTestId("subtask-form-modal-backdrop").className,
+    ).toContain(FORM_MODAL_OVERLAY_Z_CLASS);
   });
 });

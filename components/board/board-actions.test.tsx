@@ -12,6 +12,10 @@ vi.mock("next/navigation", () => ({
 import { renderWithIntl } from "@/test/test-utils";
 import { boardSubTaskSummaryStub } from "@/lib/business/board-subtask-summary";
 import { resolveKanbanDragEnd, toKanbanTaskId } from "@/lib/business/kanban-task-order";
+import {
+  FORM_MODAL_NESTED_OVERLAY_Z_CLASS,
+  FORM_MODAL_OVERLAY_Z_CLASS,
+} from "@/components/ui/form-modal-shell";
 import { BoardActions } from "./board-actions";
 
 const paymentCurrency = {
@@ -216,6 +220,39 @@ describe("BoardActions", () => {
       screen.getByRole("heading", { name: "Subtarefas" }),
     ).toBeInTheDocument();
     expect(await screen.findByText("Cortar")).toBeInTheDocument();
+  });
+
+  it("stacks the create overlay above the subtasks modal", async () => {
+    const user = userEvent.setup();
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        assignedTo: [],
+      }),
+    ]);
+
+    renderBoard({ loadSubtasks });
+
+    await user.click(screen.getByText("1 - Tarefa A"));
+    await user.click(
+      await screen.findByRole("button", { name: "Adicionar subtarefa" }),
+    );
+
+    const createDialog = screen
+      .getByRole("heading", { name: "Nova subtarefa" })
+      .closest('[role="dialog"]');
+    const subtasksDialog = screen
+      .getByRole("heading", { name: "Subtarefas" })
+      .closest('[role="dialog"]');
+
+    expect(createDialog?.parentElement?.className).toContain(
+      FORM_MODAL_NESTED_OVERLAY_Z_CLASS,
+    );
+    expect(subtasksDialog?.parentElement?.className).toContain(
+      FORM_MODAL_OVERLAY_Z_CLASS,
+    );
   });
 
   it("resets create modal when subtasks modal is closed", async () => {

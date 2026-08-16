@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
+import { FORM_MODAL_NESTED_OVERLAY_Z_CLASS } from "@/components/ui/form-modal-shell";
 
 vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
   searchSubTaskPresets: vi.fn(async () => []),
@@ -38,6 +39,9 @@ describe("KanbanSubtaskCreateModal", () => {
     );
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("presentation").className).toContain(
+      FORM_MODAL_NESTED_OVERLAY_Z_CLASS,
+    );
     expect(screen.getByRole("heading", { name: "Nova subtarefa" })).toBeInTheDocument();
     expect(screen.getByText("Tarefa A")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Fechar" })).toBeInTheDocument();
