@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 import { TeamListRowCheckbox } from "./team-list-row-checkbox";
 import { useTeamList } from "./team-list-context";
+import { TeamExchangePeriodLabel } from "./team-exchange-period-label";
 import type { TeamRow } from "./types";
 
 const CELL_CLASS = "align-middle py-2";
@@ -15,7 +16,6 @@ const CENTER_CELL_CLASS = cn(CELL_CLASS, "text-center");
 export type TeamListRowLabels = {
   since: string;
   untill: string;
-  exchangePeriod: string;
   leader: string;
   inactive: string;
   selectRow: string;
@@ -90,7 +90,12 @@ export function TeamListRowPresentational({
         {showUntillColumn ? (
           <td className={CENTER_CELL_CLASS}>{labels.untill}</td>
         ) : null}
-        <td className={CENTER_CELL_CLASS}>{labels.exchangePeriod}</td>
+        <td className={CENTER_CELL_CLASS}>
+          <TeamExchangePeriodLabel
+            firstDay={team.exchangesFirstDay}
+            lastDay={team.exchangesLastDay}
+          />
+        </td>
         <td className={CENTER_CELL_CLASS}>{labels.leader}</td>
         <td className={CENTER_CELL_CLASS}>{membersCell}</td>
       </tr>
@@ -114,8 +119,11 @@ export function TeamListRowPresentational({
             {labels.since}
             {showUntillColumn && team.untill ? ` → ${labels.untill}` : ""}
           </div>
-          <div className="text-muted-foreground text-sm">
-            {labels.exchangePeriod}
+          <div className="text-sm">
+            <TeamExchangePeriodLabel
+              firstDay={team.exchangesFirstDay}
+              lastDay={team.exchangesLastDay}
+            />
           </div>
           {(team.colaborators?.length ?? 0) > 0 ? (
             <div className="mt-2 flex flex-wrap gap-1">{membersCell}</div>

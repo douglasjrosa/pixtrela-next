@@ -43,7 +43,6 @@ const archivedTeam: TeamRow = {
 const labelsA = {
   since: "10/01/2026",
   untill: "",
-  exchangePeriod: "Do dia 3 ao dia 15",
   leader: "João",
   inactive: "Inativa",
   selectRow: "Selecionar Linha A",
@@ -95,7 +94,8 @@ describe("TeamManager", () => {
     renderManager();
     expect(screen.getAllByText("Linha A").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Linha B").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Do dia 3 ao dia 15").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("03").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("15").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Ana").length).toBeGreaterThan(0);
   });
 

@@ -26,10 +26,6 @@ export async function TeamListRowView({
   const labels: TeamListRowLabels = {
     since: formatDatePtBr(team.since),
     untill: formatDatePtBr(team.untill),
-    exchangePeriod: tTeams("exchangePeriodRange", {
-      firstDay: team.exchangesFirstDay,
-      lastDay: team.exchangesLastDay,
-    }),
     leader: team.leader?.name ?? tTeams("noLeader"),
     inactive: tTeams("inactive"),
     selectRow: tCommon("selectRow", { name: team.name }),
