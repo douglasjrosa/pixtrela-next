@@ -10,7 +10,7 @@ import {
   sql,
 } from "drizzle-orm";
 
-import { awardPrices, awards, currencies, mediaAssets } from "@/drizzle/schema";
+import { awardPrices, awards, currencies, exchanges, mediaAssets } from "@/drizzle/schema";
 import { getDb, type Db } from "@/lib/db/client";
 import type { AwardListSort } from "@/lib/schemas/award-list-sort";
 
@@ -347,5 +347,8 @@ export async function hardDeleteAward(
   id: string,
   db: Db = getDb(),
 ): Promise<void> {
-  await db.delete(awards).where(eq(awards.id, id));
+  await db.transaction(async (tx) => {
+    await tx.delete(exchanges).where(eq(exchanges.awardId, id));
+    await tx.delete(awards).where(eq(awards.id, id));
+  });
 }

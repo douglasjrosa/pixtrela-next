@@ -3,7 +3,7 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
-import { createAward, createCurrency } from "@/lib/repos/awards";
+import { createAward, createCurrency, deleteAward, findAwardById, hardDeleteAward } from "@/lib/repos/awards";
 import {
   creditBalanceIncome,
   getOrCreateMonthlyBalance,
@@ -93,6 +93,55 @@ describeWithDb("drizzle repos integration", () => {
 
       expect(result.cost).toBe(10);
       expect(result.exchangeId).toBeTruthy();
+    },
+    45_000,
+  );
+
+  it(
+    "hard-deletes archived award after removing exchange rows",
+    async () => {
+      const suffix = String(Date.now());
+      const currency = await createCurrency({
+        name: `DelAward-${suffix}`,
+        currencyPerSecond: 1,
+      });
+      const colaborator = await createUser({
+        username: `del-colab-${suffix}`,
+        password: "Secret123!",
+        name: "Del Colab",
+        role: "colaborator",
+        code: Number(String(suffix).slice(-6)),
+      });
+      await createTeam({
+        name: `Del Team ${suffix}`,
+        memberIds: [colaborator.id],
+        exchangesFirstDay: 1,
+        exchangesLastDay: 31,
+      });
+      const award = await createAward({
+        name: `Del Award ${suffix}`,
+        prices: [{ currencyId: currency.id, numberOf: 1 }],
+      });
+
+      const balance = await getOrCreateMonthlyBalance({
+        userId: colaborator.id,
+        currencyId: currency.id,
+        now: new Date("2026-08-09T12:00:00Z"),
+      });
+      await creditBalanceIncome({ balanceId: balance.id, amount: 20 });
+
+      await redeemAward({
+        userId: colaborator.id,
+        awardId: award.id,
+        currencyId: currency.id,
+        qty: 1,
+        now: new Date("2026-08-09T12:00:00Z"),
+      });
+
+      await deleteAward(award.id);
+      await hardDeleteAward(award.id);
+
+      expect(await findAwardById(award.id)).toBeNull();
     },
     45_000,
   );
