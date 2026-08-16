@@ -21,6 +21,13 @@ vi.mock("@/lib/repos/settings", () => ({
     upsertTaskAutomationSettings(...args),
 }));
 
+const upsertEntryAccessSettings = vi.fn();
+
+vi.mock("@/lib/repos/entry-access", () => ({
+  upsertEntryAccessSettings: (...args: unknown[]) =>
+    upsertEntryAccessSettings(...args),
+}));
+
 describe("settings/actions drizzle paths", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -28,6 +35,7 @@ describe("settings/actions drizzle paths", () => {
     upsertCurrencyForSubtasks.mockReset();
     upsertKioskSettings.mockReset();
     upsertTaskAutomationSettings.mockReset();
+    upsertEntryAccessSettings.mockReset();
   });
 
   it("updateCurrencyForSubtasks upserts and revalidates", async () => {
@@ -67,5 +75,32 @@ describe("settings/actions drizzle paths", () => {
       "drizzle:task-automation-setting",
       "default",
     );
+  });
+
+  it("updateEntryAccessSettings upserts login and kiosk access", async () => {
+    const { updateEntryAccessSettings } = await import("./actions");
+    await updateEntryAccessSettings({
+      surface: "kiosk",
+      computer: {
+        username: true,
+        code: false,
+        face: false,
+        nfc: false,
+      },
+      mobile: {
+        username: false,
+        code: true,
+        face: true,
+        nfc: false,
+      },
+    });
+    expect(upsertEntryAccessSettings).toHaveBeenCalledWith(
+      "kiosk",
+      expect.objectContaining({
+        computer: expect.objectContaining({ username: true }),
+        mobile: expect.objectContaining({ code: true, face: true }),
+      }),
+    );
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:entry-access", "default");
   });
 });

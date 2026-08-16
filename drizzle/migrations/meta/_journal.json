@@ -64,6 +64,13 @@
       "when": 1787100000000,
       "tag": "0008_kiosk_live_chain_interval",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787150000000,
+      "tag": "0009_entry_access_settings",
+      "breakpoints": true
     }
   ]
 }

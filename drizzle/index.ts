@@ -8,6 +8,7 @@ export {
   awardPrices,
   routeThemes,
   kioskSettings,
+  entryAccessSettings,
   taskAutomationSettings,
   subTaskPresets,
   teams,

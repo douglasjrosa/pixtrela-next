@@ -5,12 +5,14 @@ import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
+import { upsertEntryAccessSettings } from "@/lib/repos/entry-access";
 import {
   upsertCurrencyForSubtasks,
   upsertKioskSettings,
   upsertTaskAutomationSettings,
 } from "@/lib/repos/settings";
 import type { CurrencyForSubtasksInput } from "@/lib/schemas/currency-for-subtasks";
+import { entryAccessSettingsSchema } from "@/lib/schemas/entry-access";
 import type { TaskAutomationFormInput } from "@/lib/schemas/task-automation";
 
 async function assertCanManage(): Promise<void> {
@@ -43,4 +45,16 @@ export async function updateTaskAutomationSetting(
   await assertCanManage();
   await upsertTaskAutomationSettings(values);
   revalidateTag("drizzle:task-automation-setting", "default");
+}
+
+export async function updateEntryAccessSettings(
+  raw: unknown,
+): Promise<void> {
+  await assertCanManage();
+  const data = entryAccessSettingsSchema.parse(raw);
+  await upsertEntryAccessSettings(data.surface, {
+    computer: data.computer,
+    mobile: data.mobile,
+  });
+  revalidateTag("drizzle:entry-access", "default");
 }
