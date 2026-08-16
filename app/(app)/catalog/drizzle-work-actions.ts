@@ -2,9 +2,9 @@
 
 import { revalidateTag } from "next/cache";
 
-import {
-  getOrCreateMonthlyBalance,
-} from "@/lib/repos/balances";
+import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
+import { getOrCreateMonthlyBalance } from "@/lib/repos/balances";
+import { findCurrencyById } from "@/lib/repos/awards";
 import { redeemAward } from "@/lib/repos/exchanges";
 import {
   identifyColaboratorByCode,
@@ -54,7 +54,12 @@ export async function getMyBalanceAction(input: {
   userId: string;
   currencyId: string;
 }) {
-  return getOrCreateMonthlyBalance(input);
+  const currency = await findCurrencyById(input.currencyId);
+  if (!currency) throw new Error("currencyNotFound");
+  return getOrCreateMonthlyBalance({
+    userId: input.userId,
+    currencyPluralTitle: resolveCurrencyPluralTitle(currency),
+  });
 }
 
 export async function redeemAwardAction(input: {

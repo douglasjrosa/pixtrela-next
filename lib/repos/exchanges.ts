@@ -3,10 +3,15 @@ import { desc, eq } from "drizzle-orm";
 import {
   awardPrices,
   awards,
+  currencies,
   exchanges,
   teams,
   teamMembers,
 } from "@/drizzle/schema";
+import {
+  resolveAwardHistoryTitle,
+  resolveCurrencyPluralTitle,
+} from "@/lib/domain/currency-display";
 import {
   canAfford,
   exchangeCost,
@@ -81,11 +86,27 @@ export async function redeemAward(
 
   return db.transaction(async (tx) => {
     const [award] = await tx
-      .select({ id: awards.id, active: awards.active })
+      .select({
+        id: awards.id,
+        active: awards.active,
+        name: awards.name,
+        title: awards.title,
+      })
       .from(awards)
       .where(eq(awards.id, input.awardId))
       .limit(1);
     if (!award?.active) throw new Error("awardUnavailable");
+
+    const [currency] = await tx
+      .select({
+        name: currencies.name,
+        title: currencies.title,
+        pluralTitle: currencies.pluralTitle,
+      })
+      .from(currencies)
+      .where(eq(currencies.id, input.currencyId))
+      .limit(1);
+    if (!currency) throw new Error("currencyNotFound");
 
     const window = await findTeamWindowForUser(
       input.userId,
@@ -99,10 +120,11 @@ export async function redeemAward(
     const cost = exchangeCost(prices, input.currencyId, qty);
     if (cost <= 0) throw new Error("invalidExchangeCost");
 
+    const currencyPluralTitle = resolveCurrencyPluralTitle(currency);
     const balance = await getOrCreateMonthlyBalance(
       {
         userId: input.userId,
-        currencyId: input.currencyId,
+        currencyPluralTitle,
         now,
       },
       tx as unknown as Db,
@@ -121,8 +143,8 @@ export async function redeemAward(
       .insert(exchanges)
       .values({
         userId: input.userId,
-        awardId: input.awardId,
-        currencyId: input.currencyId,
+        awardTitle: resolveAwardHistoryTitle(award),
+        currencyPluralTitle,
         qty,
         numberOf: cost,
         timestamp: now,
@@ -143,11 +165,9 @@ export async function listRecentExchangesForUser(
       id: exchanges.id,
       timestamp: exchanges.timestamp,
       qty: exchanges.qty,
-      awardName: awards.name,
-      awardTitle: awards.title,
+      awardTitle: exchanges.awardTitle,
     })
     .from(exchanges)
-    .innerJoin(awards, eq(exchanges.awardId, awards.id))
     .where(eq(exchanges.userId, userId))
     .orderBy(desc(exchanges.timestamp))
     .limit(limit);
@@ -156,6 +176,6 @@ export async function listRecentExchangesForUser(
     id: row.id,
     timestamp: row.timestamp,
     qty: row.qty,
-    awardTitle: row.awardTitle ?? row.awardName,
+    awardTitle: row.awardTitle,
   }));
 }

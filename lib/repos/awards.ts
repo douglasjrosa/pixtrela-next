@@ -10,7 +10,7 @@ import {
   sql,
 } from "drizzle-orm";
 
-import { awardPrices, awards, currencies, exchanges, mediaAssets } from "@/drizzle/schema";
+import { awardPrices, awards, currencies, mediaAssets } from "@/drizzle/schema";
 import { getDb, type Db } from "@/lib/db/client";
 import type { AwardListSort } from "@/lib/schemas/award-list-sort";
 
@@ -274,6 +274,28 @@ export async function listCurrencies(db: Db = getDb()) {
     .orderBy(currencies.name);
 }
 
+export async function findCurrencyById(
+  id: string,
+  db: Db = getDb(),
+): Promise<{
+  id: string;
+  name: string;
+  title: string | null;
+  pluralTitle: string | null;
+} | null> {
+  const [row] = await db
+    .select({
+      id: currencies.id,
+      name: currencies.name,
+      title: currencies.title,
+      pluralTitle: currencies.pluralTitle,
+    })
+    .from(currencies)
+    .where(eq(currencies.id, id))
+    .limit(1);
+  return row ?? null;
+}
+
 export async function createCurrency(
   input: {
     name: string;
@@ -347,8 +369,5 @@ export async function hardDeleteAward(
   id: string,
   db: Db = getDb(),
 ): Promise<void> {
-  await db.transaction(async (tx) => {
-    await tx.delete(exchanges).where(eq(exchanges.awardId, id));
-    await tx.delete(awards).where(eq(awards.id, id));
-  });
+  await db.delete(awards).where(eq(awards.id, id));
 }

@@ -26,6 +26,7 @@ import { hasOpenStartedSessionFromActions } from "@/lib/business/subtask-active-
 import { resolveSubTaskTargetQty } from "@/lib/domain/work-currency";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { getDb, type Db } from "@/lib/db/client";
+import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
 import {
   adjustBalanceIncome,
   getOrCreateMonthlyBalance,
@@ -429,7 +430,11 @@ async function applyCreditDeltas(
   for (const row of deltas) {
     if (row.delta === 0) continue;
     const balance = await getOrCreateMonthlyBalance(
-      { userId: row.colaboratorId, currencyId: currency.id, now: timestamp },
+      {
+        userId: row.colaboratorId,
+        currencyPluralTitle: resolveCurrencyPluralTitle(currency),
+        now: timestamp,
+      },
       db,
     );
     await adjustBalanceIncome({ balanceId: balance.id, delta: row.delta }, db);

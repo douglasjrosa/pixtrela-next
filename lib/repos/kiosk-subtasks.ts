@@ -53,6 +53,7 @@ import {
 import { listTimeSpentByColaborator } from "@/lib/business/task-time-spent";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { getDb, type Db } from "@/lib/db/client";
+import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
 import {
   creditBalanceIncome,
   getOrCreateMonthlyBalance,
@@ -707,7 +708,7 @@ async function creditStopCurrency(
       const balance = await getOrCreateMonthlyBalance(
         {
           userId: credit.colaboratorId,
-          currencyId: currency.id,
+          currencyPluralTitle: resolveCurrencyPluralTitle(currency),
           now: input.timestamp,
         },
         db,

@@ -396,9 +396,7 @@ export const balances = pgTable("balances", {
   userId: uuid("user_id")
     .references(() => users.id)
     .notNull(),
-  currencyId: uuid("currency_id")
-    .references(() => currencies.id)
-    .notNull(),
+  currencyPluralTitle: text("currency_plural_title").notNull(),
   date: date("date").notNull(),
   previousBalance: doublePrecision("previous_balance").default(0).notNull(),
   totalIncome: doublePrecision("total_income").default(0).notNull(),
@@ -417,12 +415,8 @@ export const exchanges = pgTable("exchanges", {
   userId: uuid("user_id")
     .references(() => users.id)
     .notNull(),
-  awardId: uuid("award_id")
-    .references(() => awards.id)
-    .notNull(),
-  currencyId: uuid("currency_id")
-    .references(() => currencies.id)
-    .notNull(),
+  awardTitle: text("award_title").notNull(),
+  currencyPluralTitle: text("currency_plural_title").notNull(),
   qty: integer("qty").default(1).notNull(),
   numberOf: doublePrecision("number_of").notNull(),
   timestamp: timestamp("timestamp", { withTimezone: true })

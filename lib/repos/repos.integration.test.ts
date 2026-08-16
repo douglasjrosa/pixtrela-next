@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
 
-import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
+import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
 import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
 import { createAward, createCurrency, deleteAward, findAwardById, hardDeleteAward } from "@/lib/repos/awards";
@@ -31,7 +31,7 @@ import {
 import { createTeam } from "@/lib/repos/teams";
 import { createTemplateTask } from "@/lib/repos/templates";
 import { createUser } from "@/lib/repos/users";
-import { activities, currencies, currencyForSubtasks } from "@/drizzle/schema";
+import { activities, currencies, currencyForSubtasks, exchanges } from "@/drizzle/schema";
 import { asc, eq } from "drizzle-orm";
 
 describeWithDb("drizzle repos integration", () => {
@@ -78,7 +78,7 @@ describeWithDb("drizzle repos integration", () => {
 
       const balance = await getOrCreateMonthlyBalance({
         userId: colaborator.id,
-        currencyId: currency.id,
+        currencyPluralTitle: resolveCurrencyPluralTitle(currency),
         now: new Date("2026-08-09T12:00:00Z"),
       });
       await creditBalanceIncome({ balanceId: balance.id, amount: 20 });
@@ -98,7 +98,7 @@ describeWithDb("drizzle repos integration", () => {
   );
 
   it(
-    "hard-deletes archived award after removing exchange rows",
+    "hard-deletes archived award while preserving exchange history labels",
     async () => {
       const suffix = String(Date.now());
       const currency = await createCurrency({
@@ -125,7 +125,7 @@ describeWithDb("drizzle repos integration", () => {
 
       const balance = await getOrCreateMonthlyBalance({
         userId: colaborator.id,
-        currencyId: currency.id,
+        currencyPluralTitle: resolveCurrencyPluralTitle(currency),
         now: new Date("2026-08-09T12:00:00Z"),
       });
       await creditBalanceIncome({ balanceId: balance.id, amount: 20 });
@@ -138,10 +138,29 @@ describeWithDb("drizzle repos integration", () => {
         now: new Date("2026-08-09T12:00:00Z"),
       });
 
+      const [exchangeBeforeDelete] = await getDb()
+        .select({
+          awardTitle: exchanges.awardTitle,
+          currencyPluralTitle: exchanges.currencyPluralTitle,
+        })
+        .from(exchanges)
+        .where(eq(exchanges.userId, colaborator.id))
+        .limit(1);
+
       await deleteAward(award.id);
       await hardDeleteAward(award.id);
 
       expect(await findAwardById(award.id)).toBeNull();
+      const [exchangeAfterDelete] = await getDb()
+        .select({
+          awardTitle: exchanges.awardTitle,
+          currencyPluralTitle: exchanges.currencyPluralTitle,
+        })
+        .from(exchanges)
+        .where(eq(exchanges.userId, colaborator.id))
+        .limit(1);
+      expect(exchangeAfterDelete).toEqual(exchangeBeforeDelete);
+      expect(exchangeAfterDelete?.awardTitle).toBe(`Del Award ${suffix}`);
     },
     45_000,
   );
