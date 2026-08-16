@@ -6,7 +6,6 @@ import type { TeamListFilters } from "@/lib/schemas/team-list-filters";
 
 import { TeamListRowCheckbox } from "./team-list-row-checkbox";
 import { TeamListSortHeaderLink } from "./team-list-sort-header-link";
-import { EXCHANGE_PERIOD_COLUMN_WIDTH_CLASS } from "./team-exchange-period-column";
 
 export interface TeamsListTableHeaderProps {
   sort: TeamListSort;
@@ -70,7 +69,7 @@ export async function TeamsListTableHeader({
           sort={sort}
           filters={filters}
           align="center"
-          className={EXCHANGE_PERIOD_COLUMN_WIDTH_CLASS}
+          className="w-30"
           linkClassName="flex-col gap-0 leading-tight"
         />
         <TeamListSortHeaderLink

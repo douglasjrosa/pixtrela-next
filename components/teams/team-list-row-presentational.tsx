@@ -8,15 +8,11 @@ import { cn } from "@/lib/utils";
 import { TeamListRowCheckbox } from "./team-list-row-checkbox";
 import { useTeamList } from "./team-list-context";
 import { TeamExchangePeriodLabel } from "./team-exchange-period-label";
-import { EXCHANGE_PERIOD_COLUMN_WIDTH_CLASS } from "./team-exchange-period-column";
 import type { TeamRow } from "./types";
 
 const CELL_CLASS = "align-middle px-2 py-2";
 const CENTER_CELL_CLASS = cn(CELL_CLASS, "text-center");
-const EXCHANGE_PERIOD_CELL_CLASS = cn(
-  CENTER_CELL_CLASS,
-  EXCHANGE_PERIOD_COLUMN_WIDTH_CLASS,
-);
+const EXCHANGE_PERIOD_CELL_CLASS = cn(CENTER_CELL_CLASS, "w-30");
 
 export type TeamListRowLabels = {
   since: string;

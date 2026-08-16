@@ -1,1 +1,0 @@
-export const EXCHANGE_PERIOD_COLUMN_WIDTH_CLASS = "w-22";
