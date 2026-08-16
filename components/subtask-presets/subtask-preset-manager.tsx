@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -13,14 +13,15 @@ import {
 import { SubTaskPresetFormModal } from "@/components/subtask-presets/subtask-preset-form-modal";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Duration } from "@/components/ui/duration";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { SubTaskPresetFormInput } from "@/lib/schemas/sub-task-preset";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
+import { SubTaskPresetListProvider } from "./subtask-preset-list-context";
+
 export interface SubTaskPresetManagerProps {
-  presets: SubTaskPreset[];
+  children: ReactNode;
 }
 
 const EMPTY_FORM: SubTaskPresetFormInput = {
@@ -35,11 +36,9 @@ type ModalState =
   | { mode: "create" }
   | { mode: "edit"; preset: SubTaskPreset };
 
-export function SubTaskPresetManager({ presets }: SubTaskPresetManagerProps) {
+export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
   const tCommon = useTranslations("common");
   const tPresets = useTranslations("subTaskPresets");
-  const tSubtasks = useTranslations("subtasks");
-  const tSharing = useTranslations("subtasks.sharingType");
   const router = useRouter();
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -100,76 +99,47 @@ export function SubTaskPresetManager({ presets }: SubTaskPresetManagerProps) {
       : EMPTY_FORM;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
-      <div className="flex shrink-0 items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold max-[500px]:text-base">
-          {tPresets("title")}
-        </h2>
-        <Button
-          type="button"
-          size="icon"
-          aria-label={tPresets("new")}
-          onClick={() => setModal({ mode: "create" })}
-        >
-          <Plus aria-hidden />
-        </Button>
-      </div>
-
-      {presets.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{tPresets("empty")}</p>
-      ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="py-2">{tSubtasks("name")}</th>
-                <th>{tSubtasks("sharingTypeLabel")}</th>
-                <th>{tSubtasks("expectedTime")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {presets.map((preset) => (
-                <tr key={preset.documentId} className="border-b">
-                  <td className="py-2">
-                    <button
-                      type="button"
-                      className="text-left hover:underline"
-                      onClick={() => setModal({ mode: "edit", preset })}
-                    >
-                      {preset.name}
-                    </button>
-                  </td>
-                  <td>{tSharing(preset.sharingType)}</td>
-                  <td>
-                    <Duration seconds={preset.expectedTime} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <SubTaskPresetListProvider
+      openEdit={(preset) => setModal({ mode: "edit", preset })}
+    >
+      <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
+        <div className="flex shrink-0 items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold max-[500px]:text-base">
+            {tPresets("title")}
+          </h2>
+          <Button
+            type="button"
+            size="icon"
+            aria-label={tPresets("new")}
+            onClick={() => setModal({ mode: "create" })}
+          >
+            <Plus aria-hidden />
+          </Button>
         </div>
-      )}
 
-      <SubTaskPresetFormModal
-        open={modal.mode !== "closed"}
-        title={modal.mode === "edit" ? tCommon("edit") : tPresets("new")}
-        formId={formId}
-        defaultValues={defaultValues}
-        saving={isPending}
-        showDelete={modal.mode === "edit"}
-        onClose={closeModal}
-        onSave={handleSave}
-        onDelete={() => setDeleteOpen(true)}
-      />
+        {children}
 
-      <ConfirmDialog
-        open={deleteOpen}
-        title={tPresets("deleteTitle")}
-        description={tPresets("deleteConfirm")}
-        disabled={isPending}
-        onClose={() => setDeleteOpen(false)}
-        onConfirm={handleConfirmDelete}
-      />
-    </div>
+        <SubTaskPresetFormModal
+          open={modal.mode !== "closed"}
+          title={modal.mode === "edit" ? tCommon("edit") : tPresets("new")}
+          formId={formId}
+          defaultValues={defaultValues}
+          saving={isPending}
+          showDelete={modal.mode === "edit"}
+          onClose={closeModal}
+          onSave={handleSave}
+          onDelete={() => setDeleteOpen(true)}
+        />
+
+        <ConfirmDialog
+          open={deleteOpen}
+          title={tPresets("deleteTitle")}
+          description={tPresets("deleteConfirm")}
+          disabled={isPending}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={handleConfirmDelete}
+        />
+      </div>
+    </SubTaskPresetListProvider>
   );
 }

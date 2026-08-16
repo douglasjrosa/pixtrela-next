@@ -3,6 +3,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
+import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 
 const createSubTaskPreset = vi.fn();
 const updateSubTaskPreset = vi.fn();
@@ -16,7 +17,7 @@ vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh }),
+  useRouter: () => ({ refresh, replace: vi.fn() }),
 }));
 
 vi.mock("@/lib/ui/app-toast", () => ({
@@ -24,32 +25,51 @@ vi.mock("@/lib/ui/app-toast", () => ({
   showErrorToast: vi.fn(),
 }));
 
+import { SubtaskPresetListRowPresentational } from "./subtask-preset-list-row-presentational";
 import { SubTaskPresetManager } from "./subtask-preset-manager";
 
-const presets = [
+const presets: SubTaskPreset[] = [
   {
     documentId: "p1",
     name: "Corte",
-    sharingType: "qty" as const,
+    sharingType: "qty",
     maxSameTimeWorkers: 2,
     expectedTime: 120,
   },
 ];
 
+function renderManagerWithRow() {
+  return renderWithIntl(
+    <SubTaskPresetManager>
+      <table>
+        <tbody>
+          <SubtaskPresetListRowPresentational
+            preset={presets[0]!}
+            variant="table"
+            labels={{ sharingType: "Por quantidade", expectedTime: "2min" }}
+          />
+        </tbody>
+      </table>
+    </SubTaskPresetManager>,
+  );
+}
+
 describe("SubTaskPresetManager", () => {
   it("renders presets and opens create modal from plus button", async () => {
     const user = userEvent.setup();
-    renderWithIntl(<SubTaskPresetManager presets={presets} />);
+    renderManagerWithRow();
 
     expect(screen.getByText("Corte")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Novo modelo" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Novo modelo" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Novo modelo" }),
+    ).toBeInTheDocument();
   });
 
   it("opens edit modal when clicking a row name", async () => {
     const user = userEvent.setup();
-    renderWithIntl(<SubTaskPresetManager presets={presets} />);
+    renderManagerWithRow();
 
     await user.click(screen.getByRole("button", { name: "Corte" }));
     expect(screen.getByRole("heading", { name: "Editar" })).toBeInTheDocument();
@@ -61,7 +81,7 @@ describe("SubTaskPresetManager", () => {
   it("saves edits through updateSubTaskPreset", async () => {
     const user = userEvent.setup();
     updateSubTaskPreset.mockResolvedValue(undefined);
-    renderWithIntl(<SubTaskPresetManager presets={presets} />);
+    renderManagerWithRow();
 
     await user.click(screen.getByRole("button", { name: "Corte" }));
     await user.clear(screen.getByLabelText("Nome"));

@@ -20,6 +20,11 @@ import {
   subTaskPresetFormSchema,
   type SubTaskPresetFormInput,
 } from "@/lib/schemas/sub-task-preset";
+import { subtaskPresetListFiltersSchema } from "@/lib/schemas/subtask-preset-list-filters";
+import {
+  loadSubtaskPresetListPage,
+  type SubtaskPresetListPageResult,
+} from "@/lib/subtask-presets/load-subtask-preset-list-page";
 
 async function assertCanSearchPresets(): Promise<void> {
   const session = await auth();
@@ -55,6 +60,15 @@ export async function searchSubTaskPresets(
 export async function listSubTaskPresets(): Promise<SubTaskPreset[]> {
   await assertCanManagePresets();
   return listSubTaskPresetsRepo();
+}
+
+export async function loadMoreSubTaskPresets(
+  rawFilters: unknown,
+  page: number,
+): Promise<SubtaskPresetListPageResult> {
+  await assertCanManagePresets();
+  const filters = subtaskPresetListFiltersSchema.parse(rawFilters);
+  return loadSubtaskPresetListPage(filters, page);
 }
 
 export async function createSubTaskPreset(

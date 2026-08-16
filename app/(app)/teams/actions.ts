@@ -11,6 +11,11 @@ import {
   updateTeam as updateTeamRepo,
 } from "@/lib/repos/teams";
 import { teamFormSchema, type TeamFormInput } from "@/lib/schemas/team";
+import { teamListFiltersSchema } from "@/lib/schemas/team-list-filters";
+import {
+  loadTeamListPage,
+  type TeamListPageResult,
+} from "@/lib/teams/load-team-list-page";
 
 async function assertCanManage(): Promise<void> {
   const session = await auth();
@@ -21,6 +26,15 @@ async function assertCanManage(): Promise<void> {
 
 function invalidateTeams(): void {
   revalidateTag("drizzle:teams", "default");
+}
+
+export async function loadMoreTeams(
+  rawFilters: unknown,
+  page: number,
+): Promise<TeamListPageResult> {
+  await assertCanManage();
+  const filters = teamListFiltersSchema.parse(rawFilters);
+  return loadTeamListPage(filters, page);
 }
 
 function todayIsoDate(): string {

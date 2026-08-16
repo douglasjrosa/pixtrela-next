@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Suspense, useState, useTransition, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -19,16 +19,16 @@ import {
   type TeamFormInput,
 } from "@/lib/schemas/team";
 
-import { TeamsListView } from "./teams-list-view";
+import { TeamListProvider } from "./team-list-context";
 import { TeamsToolbar } from "./teams-toolbar";
 import type { TeamRow, UserOption } from "./types";
 
 export type { TeamRow, UserOption } from "./types";
 
 export interface TeamManagerProps {
-  teams: TeamRow[];
   leaders: UserOption[];
   colaborators: UserOption[];
+  children: ReactNode;
   onCreate: (values: TeamFormInput) => void | Promise<void>;
   onUpdate: (documentId: string, values: TeamFormInput) => void | Promise<void>;
   onDelete: (documentId: string) => void | Promise<void>;
@@ -229,9 +229,9 @@ function TeamFormDialog({
 }
 
 export function TeamManager({
-  teams,
   leaders,
   colaborators,
+  children,
   onCreate,
   onUpdate,
   onDelete,
@@ -240,30 +240,26 @@ export function TeamManager({
   const tTeams = useTranslations("teams");
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [nameQuery, setNameQuery] = useState("");
+  const [editingTeam, setEditingTeam] = useState<TeamRow | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
 
-  const editingTeam =
-    teams.find((team) => team.documentId === editingId) ?? null;
-
   function closeForm(): void {
     setFormOpen(false);
-    setEditingId(null);
+    setEditingTeam(null);
     setDeleteOpen(false);
   }
 
   function startCreate(): void {
-    setEditingId(null);
+    setEditingTeam(null);
     setMessage(null);
     setDeleteOpen(false);
     setFormOpen(true);
   }
 
   function startEdit(team: TeamRow): void {
-    setEditingId(team.documentId);
+    setEditingTeam(team);
     setMessage(null);
     setDeleteOpen(false);
     setFormOpen(true);
@@ -271,8 +267,8 @@ export function TeamManager({
 
   function onSubmit(values: TeamFormInput): void {
     startTransition(async () => {
-      if (editingId) {
-        await onUpdate(editingId, values);
+      if (editingTeam) {
+        await onUpdate(editingTeam.documentId, values);
       } else {
         await onCreate(values);
       }
@@ -283,68 +279,65 @@ export function TeamManager({
   }
 
   function handleConfirmDelete(): void {
-    if (!editingId) return;
+    if (!editingTeam) return;
     startTransition(async () => {
-      await onDelete(editingId);
+      await onDelete(editingTeam.documentId);
       setMessage(tTeams("deleted"));
       closeForm();
       router.refresh();
     });
   }
 
-  const formDialogKey = editingId ?? "new";
-  const query = nameQuery.trim().toLowerCase();
-  const visibleTeams =
-    query.length === 0
-      ? teams
-      : teams.filter((team) => team.name.toLowerCase().includes(query));
+  const formDialogKey = editingTeam?.documentId ?? "new";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
-      <div className="flex shrink-0 items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold max-[500px]:text-lg">{tTeams("title")}</h1>
-        <Button type="button" variant="outline" onClick={startCreate}>
-          {tTeams("newTeam")}
-        </Button>
-      </div>
-
-      <TeamsToolbar value={nameQuery} onChange={setNameQuery} />
-
-      {message ? (
-        <p role="status" className="shrink-0 text-sm text-muted-foreground">
-          {message}
-        </p>
-      ) : null}
-
-      {formOpen ? (
-        <TeamFormDialog
-          key={formDialogKey}
-          editingTeam={editingTeam}
-          leaders={leaders}
-          colaborators={colaborators}
-          isPending={isPending}
-          showDelete={Boolean(editingTeam)}
-          onClose={closeForm}
-          onSubmit={onSubmit}
-          onDelete={() => setDeleteOpen(true)}
-        />
-      ) : null}
-
-      <ConfirmDialog
-        open={deleteOpen}
-        title={tTeams("deleteTitle")}
-        description={tTeams("deleteConfirm")}
-        confirmLabel={tCommon("delete")}
-        disabled={isPending}
-        onConfirm={handleConfirmDelete}
-        onClose={() => setDeleteOpen(false)}
-      />
-
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <TeamsListView teams={visibleTeams} onOpen={startEdit} />
+    <TeamListProvider openEdit={startEdit}>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
+        <div className="flex shrink-0 items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold max-[500px]:text-lg">
+            {tTeams("title")}
+          </h1>
+          <Button type="button" variant="outline" onClick={startCreate}>
+            {tTeams("newTeam")}
+          </Button>
         </div>
+
+        <Suspense fallback={null}>
+          <TeamsToolbar />
+        </Suspense>
+
+        {message ? (
+          <p role="status" className="shrink-0 text-sm text-muted-foreground">
+            {message}
+          </p>
+        ) : null}
+
+        {formOpen ? (
+          <TeamFormDialog
+            key={formDialogKey}
+            editingTeam={editingTeam}
+            leaders={leaders}
+            colaborators={colaborators}
+            isPending={isPending}
+            showDelete={Boolean(editingTeam)}
+            onClose={closeForm}
+            onSubmit={onSubmit}
+            onDelete={() => setDeleteOpen(true)}
+          />
+        ) : null}
+
+        <ConfirmDialog
+          open={deleteOpen}
+          title={tTeams("deleteTitle")}
+          description={tTeams("deleteConfirm")}
+          confirmLabel={tCommon("delete")}
+          disabled={isPending}
+          onConfirm={handleConfirmDelete}
+          onClose={() => setDeleteOpen(false)}
+        />
+
+        {children}
       </div>
-    </div>
+    </TeamListProvider>
   );
 }

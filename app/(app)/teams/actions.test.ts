@@ -19,6 +19,12 @@ vi.mock("@/lib/repos/teams", () => ({
   deleteTeam: (...args: unknown[]) => deleteTeamRepo(...args),
 }));
 
+const loadTeamListPageMock = vi.fn();
+
+vi.mock("@/lib/teams/load-team-list-page", () => ({
+  loadTeamListPage: (...args: unknown[]) => loadTeamListPageMock(...args),
+}));
+
 describe("teams/actions drizzle CRUD", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -26,6 +32,7 @@ describe("teams/actions drizzle CRUD", () => {
     createTeamRepo.mockReset();
     updateTeamRepo.mockReset();
     deleteTeamRepo.mockReset();
+    loadTeamListPageMock.mockReset();
   });
 
   const form = {
@@ -36,6 +43,21 @@ describe("teams/actions drizzle CRUD", () => {
     colaboratorDocumentIds: ["c1"],
     untill: "",
   };
+
+  it("loadMoreTeams parses filters and loads a page", async () => {
+    loadTeamListPageMock.mockResolvedValueOnce({
+      teams: [],
+      page: 2,
+      pageCount: 2,
+      hasMore: false,
+    });
+    const { loadMoreTeams } = await import("./actions");
+    await loadMoreTeams({ column: "name", direction: "asc" }, 2);
+    expect(loadTeamListPageMock).toHaveBeenCalledWith(
+      { q: undefined, column: "name", direction: "asc" },
+      2,
+    );
+  });
 
   it("createTeam persists via repo", async () => {
     const { createTeam } = await import("./actions");

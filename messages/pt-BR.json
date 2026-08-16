@@ -372,7 +372,9 @@
     "deleted": "Modelo excluído.",
     "error": "Não foi possível concluir a operação.",
     "deleteTitle": "Excluir modelo",
-    "deleteConfirm": "Excluir permanentemente este modelo de subtarefa?"
+    "deleteConfirm": "Excluir permanentemente este modelo de subtarefa?",
+    "loadMore": "Carregar mais",
+    "loadingMore": "Carregando..."
   },
   "steps": {
     "title": "Etapas de produção",
@@ -476,7 +478,11 @@
     "deleteConfirm": "Excluir permanentemente esta equipe?",
     "searchByName": "Buscar por nome",
     "empty": "Nenhuma equipe encontrada.",
-    "listLoading": "Carregando equipes..."
+    "listLoading": "Carregando equipes...",
+    "loadMore": "Carregar mais",
+    "loadingMore": "Carregando...",
+    "error": "Não foi possível concluir a operação.",
+    "noLeader": "—"
   },
   "awards": {
     "title": "Prêmios",

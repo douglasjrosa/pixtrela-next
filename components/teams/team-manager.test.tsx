@@ -3,17 +3,20 @@ import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
+import { TeamListRowPresentational } from "./team-list-row-presentational";
 import { TeamManager } from "./team-manager";
+import type { TeamRow } from "./types";
 
 const refresh = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh }),
+  useRouter: () => ({ refresh, replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 const leaders = [{ documentId: "l1", name: "João" }];
 const colaborators = [{ documentId: "c1", name: "Ana" }];
-const teams = [
+const teams: TeamRow[] = [
   {
     documentId: "t1",
     name: "Linha A",
@@ -36,22 +39,56 @@ const teams = [
   },
 ];
 
+const labelsA = {
+  since: "10/01/2026",
+  untill: "",
+  status: "Ativa",
+  leader: "João",
+  exchangesFirstDay: "Início das trocas",
+  exchangesLastDay: "Fim das trocas",
+};
+
+const labelsB = {
+  ...labelsA,
+  since: "01/06/2025",
+  untill: "31/05/2026",
+  status: "Inativa",
+};
+
+function renderManager() {
+  return renderWithIntl(
+    <TeamManager
+      leaders={leaders}
+      colaborators={colaborators}
+      onCreate={vi.fn()}
+      onUpdate={vi.fn()}
+      onDelete={vi.fn()}
+    >
+      <table>
+        <tbody>
+          <TeamListRowPresentational
+            team={teams[0]!}
+            variant="table"
+            labels={labelsA}
+          />
+          <TeamListRowPresentational
+            team={teams[1]!}
+            variant="table"
+            labels={labelsB}
+          />
+        </tbody>
+      </table>
+    </TeamManager>,
+  );
+}
+
 describe("TeamManager", () => {
   beforeEach(() => {
     refresh.mockReset();
   });
 
   it("renders team list with lifecycle and status columns", () => {
-    renderWithIntl(
-      <TeamManager
-        teams={teams}
-        leaders={leaders}
-        colaborators={colaborators}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    );
+    renderManager();
     expect(screen.getAllByText("Linha A").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Linha B").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Ativa").length).toBeGreaterThan(0);
@@ -59,16 +96,7 @@ describe("TeamManager", () => {
   });
 
   it("hides team form by default", () => {
-    renderWithIntl(
-      <TeamManager
-        teams={teams}
-        leaders={leaders}
-        colaborators={colaborators}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    );
+    renderManager();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
   });
@@ -76,13 +104,14 @@ describe("TeamManager", () => {
   it("opens create modal with default exchange days", () => {
     renderWithIntl(
       <TeamManager
-        teams={[]}
         leaders={leaders}
         colaborators={colaborators}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onDelete={vi.fn()}
-      />,
+      >
+        {null}
+      </TeamManager>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Nova equipe" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -98,18 +127,9 @@ describe("TeamManager", () => {
 
   it("shows since, untill and delete in edit modal", async () => {
     const user = userEvent.setup();
-    renderWithIntl(
-      <TeamManager
-        teams={teams}
-        leaders={leaders}
-        colaborators={colaborators}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    );
+    renderManager();
 
-    await user.click(screen.getAllByRole("link", { name: "Linha A" })[0]!);
+    await user.click(screen.getAllByRole("button", { name: "Linha A" })[0]!);
     expect(
       screen.getByRole("heading", { name: "Editar equipe" }),
     ).toBeInTheDocument();
