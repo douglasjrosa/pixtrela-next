@@ -12,10 +12,16 @@ import type { TeamRow } from "./types";
 export interface TeamListRowProps {
   team: TeamRow;
   variant: "table" | "mobile";
+  showCheckboxColumn?: boolean;
 }
 
-export async function TeamListRowView({ team, variant }: TeamListRowProps) {
+export async function TeamListRowView({
+  team,
+  variant,
+  showCheckboxColumn = false,
+}: TeamListRowProps) {
   const tTeams = await getTranslations("teams");
+  const tCommon = await getTranslations("common");
   const active = isTeamActive(team.untill);
   const labels: TeamListRowLabels = {
     since: formatDatePtBr(team.since),
@@ -24,9 +30,16 @@ export async function TeamListRowView({ team, variant }: TeamListRowProps) {
     leader: team.leader?.name ?? tTeams("noLeader"),
     exchangesFirstDay: tTeams("exchangesFirstDay"),
     exchangesLastDay: tTeams("exchangesLastDay"),
+    inactive: tTeams("inactive"),
+    selectRow: tCommon("selectRow", { name: team.name }),
   };
 
   return (
-    <TeamListRowPresentational team={team} variant={variant} labels={labels} />
+    <TeamListRowPresentational
+      team={team}
+      variant={variant}
+      labels={labels}
+      showCheckboxColumn={showCheckboxColumn}
+    />
   );
 }

@@ -9,6 +9,7 @@ export const TEAM_LIST_SEARCH_DEBOUNCE_MS = 300;
 export const teamListFiltersSchema = z
   .object({
     q: z.string().optional(),
+    showArchived: z.boolean().default(false),
   })
   .merge(teamListSortSchema)
   .superRefine((data, ctx) => {
@@ -31,6 +32,7 @@ export const teamListFiltersSchema = z
         trimmedQ.length >= TEAM_LIST_SEARCH_MIN_CHARS ? trimmedQ : undefined,
       column: data.column,
       direction: data.direction,
+      showArchived: data.showArchived,
     };
   });
 

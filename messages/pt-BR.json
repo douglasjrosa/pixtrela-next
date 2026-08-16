@@ -494,7 +494,16 @@
     "loadMore": "Carregar mais",
     "loadingMore": "Carregando...",
     "error": "Não foi possível concluir a operação.",
-    "noLeader": "—"
+    "noLeader": "—",
+    "showArchived": "Exibir equipes arquivadas",
+    "archiveSelected": "Arquivar selecionadas",
+    "deleteSelected": "Excluir selecionadas",
+    "bulkArchived": "Equipes arquivadas.",
+    "bulkDeleted": "Equipes excluídas.",
+    "bulkArchiveTitle": "Arquivar equipes",
+    "bulkArchiveConfirm": "Tem certeza de que deseja arquivar <b>{count}</b> equipes?",
+    "bulkDeleteTitle": "Excluir equipes",
+    "bulkDeleteConfirm": "Excluir permanentemente as equipes selecionadas?"
   },
   "awards": {
     "title": "Prêmios",

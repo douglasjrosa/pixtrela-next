@@ -3,9 +3,13 @@ import type { TeamRow } from "./types";
 
 export interface TeamsListMobileListProps {
   teams: TeamRow[];
+  showCheckboxColumn?: boolean;
 }
 
-export async function TeamsListMobileList({ teams }: TeamsListMobileListProps) {
+export async function TeamsListMobileList({
+  teams,
+  showCheckboxColumn = false,
+}: TeamsListMobileListProps) {
   return (
     <ul className="md:hidden">
       {teams.map((team) => (
@@ -13,6 +17,7 @@ export async function TeamsListMobileList({ teams }: TeamsListMobileListProps) {
           key={team.documentId}
           team={team}
           variant="mobile"
+          showCheckboxColumn={showCheckboxColumn}
         />
       ))}
     </ul>

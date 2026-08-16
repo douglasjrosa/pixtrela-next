@@ -9,6 +9,7 @@ export function mapTeamWithMembersToRow(team: TeamWithMembers): TeamRow {
     exchangesLastDay: team.exchangesLastDay,
     since: team.since,
     untill: team.until,
+    active: team.active,
     leader: team.leader,
     colaborators: team.colaborators,
   };

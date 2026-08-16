@@ -24,6 +24,7 @@ const teams: TeamRow[] = [
     exchangesLastDay: 15,
     since: "2026-01-10",
     untill: null,
+    active: true,
     leader: leaders[0],
     colaborators,
   },
@@ -34,6 +35,7 @@ const teams: TeamRow[] = [
     exchangesLastDay: 15,
     since: "2025-06-01",
     untill: "2026-05-31",
+    active: true,
     leader: leaders[0],
     colaborators,
   },
@@ -46,6 +48,8 @@ const labelsA = {
   leader: "João",
   exchangesFirstDay: "Início das trocas",
   exchangesLastDay: "Fim das trocas",
+  inactive: "Inativa",
+  selectRow: "Selecionar Linha A",
 };
 
 const labelsB = {

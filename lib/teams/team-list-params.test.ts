@@ -13,6 +13,7 @@ describe("parseTeamListSearchParams", () => {
     expect(filters.q).toBeUndefined();
     expect(filters.column).toBe("name");
     expect(filters.direction).toBe("asc");
+    expect(filters.showArchived).toBe(false);
   });
 
   it("parses q from a single character", () => {
@@ -27,6 +28,11 @@ describe("parseTeamListSearchParams", () => {
     });
     expect(filters.column).toBe("leader");
     expect(filters.direction).toBe("desc");
+  });
+
+  it("parses showArchived from archived=1", () => {
+    const filters = parseTeamListSearchParams({ archived: "1" });
+    expect(filters.showArchived).toBe(true);
   });
 });
 
@@ -53,6 +59,14 @@ describe("serializeTeamListSearchParams", () => {
     expect(params.get("sort")).toBe("status");
     expect(params.get("dir")).toBe("desc");
   });
+
+  it("includes archived when showArchived is true", () => {
+    const params = serializeTeamListSearchParams({
+      ...defaultTeamListFilters(),
+      showArchived: true,
+    });
+    expect(params.get("archived")).toBe("1");
+  });
 });
 
 describe("teamListFilterKey", () => {
@@ -63,6 +77,9 @@ describe("teamListFilterKey", () => {
     );
     expect(
       teamListFilterKey({ ...base, column: "leader", direction: "asc" }),
+    ).not.toBe(teamListFilterKey(base));
+    expect(
+      teamListFilterKey({ ...base, showArchived: true }),
     ).not.toBe(teamListFilterKey(base));
   });
 });

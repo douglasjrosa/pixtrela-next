@@ -4,6 +4,8 @@ const revalidateTag = vi.fn();
 const createTeamRepo = vi.fn();
 const updateTeamRepo = vi.fn();
 const deleteTeamRepo = vi.fn();
+const findTeamById = vi.fn();
+const hardDeleteTeam = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "" })),
@@ -17,6 +19,8 @@ vi.mock("@/lib/repos/teams", () => ({
   createTeam: (...args: unknown[]) => createTeamRepo(...args),
   updateTeam: (...args: unknown[]) => updateTeamRepo(...args),
   deleteTeam: (...args: unknown[]) => deleteTeamRepo(...args),
+  findTeamById: (...args: unknown[]) => findTeamById(...args),
+  hardDeleteTeam: (...args: unknown[]) => hardDeleteTeam(...args),
 }));
 
 const loadTeamListPageMock = vi.fn();
@@ -32,6 +36,8 @@ describe("teams/actions drizzle CRUD", () => {
     createTeamRepo.mockReset();
     updateTeamRepo.mockReset();
     deleteTeamRepo.mockReset();
+    findTeamById.mockReset();
+    hardDeleteTeam.mockReset();
     loadTeamListPageMock.mockReset();
   });
 
@@ -52,9 +58,9 @@ describe("teams/actions drizzle CRUD", () => {
       hasMore: false,
     });
     const { loadMoreTeams } = await import("./actions");
-    await loadMoreTeams({ column: "name", direction: "asc" }, 2);
+    await loadMoreTeams({ column: "name", direction: "asc", showArchived: false }, 2);
     expect(loadTeamListPageMock).toHaveBeenCalledWith(
-      { q: undefined, column: "name", direction: "asc" },
+      { q: undefined, column: "name", direction: "asc", showArchived: false },
       2,
     );
   });
@@ -86,5 +92,30 @@ describe("teams/actions drizzle CRUD", () => {
     const { deleteTeam } = await import("./actions");
     await deleteTeam("team-1");
     expect(deleteTeamRepo).toHaveBeenCalledWith("team-1");
+  });
+
+  it("bulkArchiveTeams archives each selected team", async () => {
+    findTeamById.mockResolvedValue({ id: "team-1", active: true });
+    const { bulkArchiveTeams } = await import("./actions");
+    await bulkArchiveTeams(["team-1", "team-2"]);
+    expect(deleteTeamRepo).toHaveBeenCalledTimes(2);
+    expect(deleteTeamRepo).toHaveBeenCalledWith("team-1");
+    expect(deleteTeamRepo).toHaveBeenCalledWith("team-2");
+  });
+
+  it("bulkDeleteTeams hard-deletes archived teams only", async () => {
+    findTeamById.mockResolvedValue({ id: "team-1", active: false });
+    const { bulkDeleteTeams } = await import("./actions");
+    await bulkDeleteTeams(["team-1", "team-2"]);
+    expect(hardDeleteTeam).toHaveBeenCalledTimes(2);
+    expect(hardDeleteTeam).toHaveBeenCalledWith("team-1");
+    expect(hardDeleteTeam).toHaveBeenCalledWith("team-2");
+  });
+
+  it("bulkDeleteTeams rejects active teams", async () => {
+    findTeamById.mockResolvedValue({ id: "team-1", active: true });
+    const { bulkDeleteTeams } = await import("./actions");
+    await expect(bulkDeleteTeams(["team-1"])).rejects.toThrow("activeTeam");
+    expect(hardDeleteTeam).not.toHaveBeenCalled();
   });
 });

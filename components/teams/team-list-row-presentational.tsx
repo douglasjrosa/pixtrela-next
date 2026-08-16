@@ -2,9 +2,11 @@
 
 import type { KeyboardEvent } from "react";
 
+import { CardBadge } from "@/components/ui/card";
 import { isTeamActive } from "@/lib/business/team-active";
 import { cn } from "@/lib/utils";
 
+import { TeamListRowCheckbox } from "./team-list-row-checkbox";
 import { useTeamList } from "./team-list-context";
 import type { TeamRow } from "./types";
 
@@ -17,21 +19,27 @@ export type TeamListRowLabels = {
   leader: string;
   exchangesFirstDay: string;
   exchangesLastDay: string;
+  inactive: string;
+  selectRow: string;
 };
 
 export interface TeamListRowPresentationalProps {
   team: TeamRow;
   variant: "table" | "mobile";
   labels: TeamListRowLabels;
+  showCheckboxColumn?: boolean;
 }
 
 export function TeamListRowPresentational({
   team,
   variant,
   labels,
+  showCheckboxColumn = false,
 }: TeamListRowPresentationalProps) {
   const { openEdit } = useTeamList();
-  const active = isTeamActive(team.untill);
+  const dateInactive = !isTeamActive(team.untill);
+  const archived = !team.active;
+  const muted = dateInactive || archived;
   const activate = () => openEdit(team);
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -40,9 +48,18 @@ export function TeamListRowPresentational({
     }
   };
 
+  const nameCell = (
+    <>
+      {team.name}
+      {archived ? (
+        <CardBadge className="ml-2">{labels.inactive}</CardBadge>
+      ) : null}
+    </>
+  );
+
   const rowClassName = cn(
     "cursor-pointer border-b hover:bg-muted/40",
-    !active && "text-muted-foreground",
+    muted && "text-muted-foreground",
   );
   const rowProps = {
     onClick: activate,
@@ -55,7 +72,14 @@ export function TeamListRowPresentational({
   if (variant === "table") {
     return (
       <tr className={rowClassName} {...rowProps}>
-        <td className="py-2">{team.name}</td>
+        {showCheckboxColumn ? (
+          <TeamListRowCheckbox
+            documentId={team.documentId}
+            variant="table"
+            ariaLabel={labels.selectRow}
+          />
+        ) : null}
+        <td className="py-2">{nameCell}</td>
         <td className={CENTER_CELL_CLASS}>{labels.since}</td>
         <td className={CENTER_CELL_CLASS}>{labels.untill}</td>
         <td className={CENTER_CELL_CLASS}>{labels.status}</td>
@@ -68,17 +92,28 @@ export function TeamListRowPresentational({
 
   return (
     <li className={cn("list-none py-3", rowClassName)} {...rowProps}>
-      <div className="text-base font-medium">{team.name}</div>
-      <div className="text-muted-foreground text-sm">
-        {labels.status} · {labels.leader}
-      </div>
-      <div className="text-muted-foreground text-sm">
-        {labels.since}
-        {team.untill ? ` → ${labels.untill}` : ""}
-      </div>
-      <div className="text-muted-foreground text-sm">
-        {labels.exchangesFirstDay}: {team.exchangesFirstDay} ·{" "}
-        {labels.exchangesLastDay}: {team.exchangesLastDay}
+      <div className="flex items-start gap-3">
+        {showCheckboxColumn ? (
+          <TeamListRowCheckbox
+            documentId={team.documentId}
+            variant="mobile"
+            ariaLabel={labels.selectRow}
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="text-base font-medium">{nameCell}</div>
+          <div className="text-muted-foreground text-sm">
+            {labels.status} · {labels.leader}
+          </div>
+          <div className="text-muted-foreground text-sm">
+            {labels.since}
+            {team.untill ? ` → ${labels.untill}` : ""}
+          </div>
+          <div className="text-muted-foreground text-sm">
+            {labels.exchangesFirstDay}: {team.exchangesFirstDay} ·{" "}
+            {labels.exchangesLastDay}: {team.exchangesLastDay}
+          </div>
+        </div>
       </div>
     </li>
   );

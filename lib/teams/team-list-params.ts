@@ -53,12 +53,14 @@ export function parseTeamListSearchParams(
   const qRaw = firstParam(params.q)?.trim();
   const sortColumn = parseSortColumn(firstParam(params.sort));
   const sortDirection = parseSortDirection(firstParam(params.dir));
+  const showArchived = firstParam(params.archived) === "1";
 
   const result = teamListFiltersSchema.safeParse({
     q:
       qRaw && qRaw.length >= TEAM_LIST_SEARCH_MIN_CHARS ? qRaw : undefined,
     column: sortColumn ?? TEAM_LIST_DEFAULT_SORT_COLUMN,
     direction: sortDirection ?? TEAM_LIST_DEFAULT_SORT_DIRECTION,
+    showArchived,
   });
 
   if (!result.success) {
@@ -86,10 +88,18 @@ export function serializeTeamListSearchParams(
     params.set("sort", filters.column);
     params.set("dir", filters.direction);
   }
+  if (filters.showArchived) {
+    params.set("archived", "1");
+  }
   return params;
 }
 
 /** Stable key for remount/reset when filters or sort change. */
 export function teamListFilterKey(filters: TeamListFilters): string {
-  return [filters.q ?? "", filters.column, filters.direction].join("|");
+  return [
+    filters.q ?? "",
+    filters.column,
+    filters.direction,
+    filters.showArchived ? "1" : "0",
+  ].join("|");
 }

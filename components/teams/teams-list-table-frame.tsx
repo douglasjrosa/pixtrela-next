@@ -1,18 +1,33 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { Archive, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { loadMoreTeams } from "@/app/(app)/teams/actions";
+import {
+  bulkArchiveTeams,
+  bulkDeleteTeams,
+  loadMoreTeams,
+} from "@/app/(app)/teams/actions";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { isTeamActive } from "@/lib/business/team-active";
+import {
+  areAllSelectedTeamsArchived,
+  areAllTeamsSelected,
+  selectedTeamsFromList,
+  toggleIdInSet,
+  toggleSelectAllTeams,
+} from "@/lib/business/team-list-selection";
 import { formatDatePtBr } from "@/lib/format/datetime";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { TeamListFilters } from "@/lib/schemas/team-list-filters";
 import { teamListFilterKey } from "@/lib/teams/team-list-params";
-import { showErrorToast } from "@/lib/ui/app-toast";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 import { TeamListRowPresentational } from "./team-list-row-presentational";
+import { TeamListSelectionProvider } from "./team-list-selection-context";
 import type { TeamRow } from "./types";
 
 export interface TeamsListTableFrameProps {
@@ -20,6 +35,8 @@ export interface TeamsListTableFrameProps {
   initialTeams: TeamRow[];
   initialPage: number;
   initialHasMore: boolean;
+  canDeactivate?: boolean;
+  canDelete?: boolean;
   tableHeader: ReactNode;
   tableBody: ReactNode;
   mobileList: ReactNode;
@@ -30,15 +47,25 @@ export function TeamsListTableFrame({
   initialTeams,
   initialPage,
   initialHasMore,
+  canDeactivate = false,
+  canDelete = false,
   tableHeader,
   tableBody,
   mobileList,
 }: TeamsListTableFrameProps) {
   const tTeams = useTranslations("teams");
+  const tCommon = useTranslations("common");
+  const router = useRouter();
   const filterKey = teamListFilterKey(filters);
+  const bulkEnabled = canDeactivate || canDelete;
+  const showCheckboxColumn = bulkEnabled;
+
   const [extraTeams, setExtraTeams] = useState<TeamRow[]>([]);
   const [page, setPage] = useState(initialPage);
   const [hasMore, setHasMore] = useState(initialHasMore);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const listResetKey = [
     filterKey,
@@ -52,7 +79,16 @@ export function TeamsListTableFrame({
     setExtraTeams([]);
     setPage(initialPage);
     setHasMore(initialHasMore);
+    setSelectedIds([]);
   }
+
+  const teams = [...initialTeams, ...extraTeams];
+  const selectedTeams = selectedTeamsFromList(teams, selectedIds);
+  const hasSelection = selectedTeams.length > 0;
+  const allSelectedArchived = areAllSelectedTeamsArchived(selectedTeams);
+  const showArchiveAction =
+    hasSelection && !allSelectedArchived && canDeactivate;
+  const showDeleteAction = hasSelection && allSelectedArchived && canDelete;
 
   function labelsFor(team: TeamRow) {
     const active = isTeamActive(team.untill);
@@ -63,6 +99,8 @@ export function TeamsListTableFrame({
       leader: team.leader?.name ?? tTeams("noLeader"),
       exchangesFirstDay: tTeams("exchangesFirstDay"),
       exchangesLastDay: tTeams("exchangesLastDay"),
+      inactive: tTeams("inactive"),
+      selectRow: tCommon("selectRow", { name: team.name }),
     };
   }
 
@@ -81,54 +119,163 @@ export function TeamsListTableFrame({
     });
   }
 
+  function handleToggleSelect(documentId: string): void {
+    setSelectedIds((current) => toggleIdInSet(current, documentId));
+  }
+
+  function handleToggleSelectAll(): void {
+    setSelectedIds((current) => toggleSelectAllTeams(teams, current));
+  }
+
+  function clearSelection(): void {
+    setSelectedIds([]);
+  }
+
+  function handleArchiveConfirm(): void {
+    startTransition(async () => {
+      try {
+        await bulkArchiveTeams(selectedIds);
+        showSuccessToast(tTeams("bulkArchived"));
+        setArchiveOpen(false);
+        clearSelection();
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tTeams("error"));
+      }
+    });
+  }
+
+  function handleDeleteConfirm(): void {
+    startTransition(async () => {
+      try {
+        await bulkDeleteTeams(selectedIds);
+        showSuccessToast(tTeams("bulkDeleted"));
+        setDeleteOpen(false);
+        clearSelection();
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tTeams("error"));
+      }
+    });
+  }
+
+  const selectionValue = bulkEnabled
+    ? {
+        selectedIds,
+        allSelected: areAllTeamsSelected(teams, selectedIds),
+        onToggleSelect: handleToggleSelect,
+        onToggleSelectAll: handleToggleSelectAll,
+      }
+    : null;
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <table className="hidden w-full text-sm md:table">
-          {tableHeader}
-          {tableBody}
+    <TeamListSelectionProvider value={selectionValue}>
+      <div className="flex min-h-0 flex-1 flex-col">
+        {bulkEnabled ? (
+          <div className="flex h-10 shrink-0 items-center justify-end gap-2">
+            {showArchiveAction ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                aria-label={tTeams("archiveSelected")}
+                disabled={isPending}
+                onClick={() => setArchiveOpen(true)}
+              >
+                <Archive aria-hidden />
+              </Button>
+            ) : null}
+            {showDeleteAction ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                aria-label={tTeams("deleteSelected")}
+                disabled={isPending}
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 aria-hidden />
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <table className="hidden w-full text-sm md:table">
+            {tableHeader}
+            {tableBody}
+            {extraTeams.length > 0 ? (
+              <tbody>
+                {extraTeams.map((team) => (
+                  <TeamListRowPresentational
+                    key={team.documentId}
+                    team={team}
+                    variant="table"
+                    labels={labelsFor(team)}
+                    showCheckboxColumn={showCheckboxColumn}
+                  />
+                ))}
+              </tbody>
+            ) : null}
+          </table>
+
+          {mobileList}
+
           {extraTeams.length > 0 ? (
-            <tbody>
+            <ul className="md:hidden">
               {extraTeams.map((team) => (
                 <TeamListRowPresentational
                   key={team.documentId}
                   team={team}
-                  variant="table"
+                  variant="mobile"
                   labels={labelsFor(team)}
+                  showCheckboxColumn={showCheckboxColumn}
                 />
               ))}
-            </tbody>
+            </ul>
           ) : null}
-        </table>
-
-        {mobileList}
-
-        {extraTeams.length > 0 ? (
-          <ul className="md:hidden">
-            {extraTeams.map((team) => (
-              <TeamListRowPresentational
-                key={team.documentId}
-                team={team}
-                variant="mobile"
-                labels={labelsFor(team)}
-              />
-            ))}
-          </ul>
-        ) : null}
-      </div>
-
-      {hasMore ? (
-        <div className="flex shrink-0 justify-center pt-3">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isPending}
-            onClick={handleLoadMore}
-          >
-            {isPending ? tTeams("loadingMore") : tTeams("loadMore")}
-          </Button>
         </div>
-      ) : null}
-    </div>
+
+        {hasMore ? (
+          <div className="flex shrink-0 justify-center pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending}
+              onClick={handleLoadMore}
+            >
+              {isPending ? tTeams("loadingMore") : tTeams("loadMore")}
+            </Button>
+          </div>
+        ) : null}
+
+        <ConfirmDialog
+          open={archiveOpen}
+          title={tTeams("bulkArchiveTitle")}
+          description={tTeams.rich("bulkArchiveConfirm", {
+            count: selectedTeams.length,
+            b: (chunks) => <b>{chunks}</b>,
+          })}
+          confirmLabel={tCommon("yes")}
+          cancelLabel={tCommon("cancel")}
+          confirmVariant="default"
+          disabled={isPending}
+          onConfirm={handleArchiveConfirm}
+          onClose={() => setArchiveOpen(false)}
+        />
+
+        <ConfirmDialog
+          open={deleteOpen}
+          title={tTeams("bulkDeleteTitle")}
+          description={tTeams("bulkDeleteConfirm")}
+          confirmLabel={tCommon("delete")}
+          disabled={isPending}
+          onConfirm={handleDeleteConfirm}
+          onClose={() => setDeleteOpen(false)}
+        />
+      </div>
+    </TeamListSelectionProvider>
   );
 }

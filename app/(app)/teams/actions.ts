@@ -4,13 +4,19 @@ import { revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
-import { canManageTeams } from "@/lib/auth/permissions";
+import {
+  canDeactivateTeams,
+  canDeleteTeams,
+  canManageTeams,
+} from "@/lib/auth/permissions";
 import {
   createTeam as createTeamRepo,
   deleteTeam as deleteTeamRepo,
+  findTeamById,
+  hardDeleteTeam,
   updateTeam as updateTeamRepo,
 } from "@/lib/repos/teams";
-import { teamFormSchema, type TeamFormInput } from "@/lib/schemas/team";
+import { teamFormSchema, bulkTeamIdsSchema, type TeamFormInput } from "@/lib/schemas/team";
 import { teamListFiltersSchema } from "@/lib/schemas/team-list-filters";
 import {
   loadTeamListPage,
@@ -20,6 +26,13 @@ import {
 async function assertCanManage(): Promise<void> {
   const session = await auth();
   if (!canManageTeams(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+}
+
+async function assertCanDeactivate(): Promise<void> {
+  const session = await auth();
+  if (!canDeactivateTeams(session?.user?.role as Role | undefined)) {
     throw new Error("forbidden");
   }
 }
@@ -76,5 +89,34 @@ export async function updateTeam(
 export async function deleteTeam(documentId: string): Promise<void> {
   await assertCanManage();
   await deleteTeamRepo(documentId);
+  invalidateTeams();
+}
+
+export async function bulkArchiveTeams(documentIds: string[]): Promise<void> {
+  await assertCanDeactivate();
+  const ids = bulkTeamIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const team = await findTeamById(documentId);
+    if (!team) throw new Error("notFound");
+    await deleteTeamRepo(documentId);
+  }
+  invalidateTeams();
+}
+
+export async function bulkDeleteTeams(documentIds: string[]): Promise<void> {
+  await assertCanManage();
+  const session = await auth();
+  if (!canDeleteTeams(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+  const ids = bulkTeamIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const team = await findTeamById(documentId);
+    if (!team) throw new Error("notFound");
+    if (team.active) throw new Error("activeTeam");
+    await hardDeleteTeam(documentId);
+  }
   invalidateTeams();
 }

@@ -55,6 +55,16 @@ export function canManageTeams(role: Role | undefined): boolean {
   return role === "admin" || role === "manager";
 }
 
+/** Soft-archive teams: manager and admin. */
+export function canDeactivateTeams(role: Role | undefined): boolean {
+  return canManageTeams(role);
+}
+
+/** Hard delete teams: admin only. */
+export function canDeleteTeams(role: Role | undefined): boolean {
+  return role === "admin";
+}
+
 /** Award CRUD: admin only. */
 export function canManageAwards(role: Role | undefined): boolean {
   return role === "admin";

@@ -14,7 +14,11 @@ import {
 } from "@/components/teams/team-manager";
 import { ListEmptyMessage } from "@/components/ui/list-empty-message";
 import type { Role } from "@/lib/auth/nav";
-import { canManageTeams } from "@/lib/auth/permissions";
+import {
+  canDeactivateTeams,
+  canDeleteTeams,
+  canManageTeams,
+} from "@/lib/auth/permissions";
 import { listUsersByRole } from "@/lib/repos/users";
 import { loadTeamListPage } from "@/lib/teams/load-team-list-page";
 import { parseTeamListSearchParams } from "@/lib/teams/team-list-params";
@@ -53,6 +57,10 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
   const filters = parseTeamListSearchParams(params);
   const tTeams = await getTranslations("teams");
   const sort = { column: filters.column, direction: filters.direction };
+  const canDeactivate = canDeactivateTeams(role);
+  const canDelete = canDeleteTeams(role);
+  const bulkEnabled = canDeactivate || canDelete;
+  const showCheckboxColumn = bulkEnabled;
 
   const [pageResult, leaders, colaborators] = await Promise.all([
     loadTeamListPage(filters, 1).catch((error) => {
@@ -78,11 +86,27 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
         initialTeams={pageResult.teams}
         initialPage={pageResult.page}
         initialHasMore={pageResult.hasMore}
+        canDeactivate={canDeactivate}
+        canDelete={canDelete}
         tableHeader={
-          <TeamsListTableHeader sort={sort} filters={filters} />
+          <TeamsListTableHeader
+            sort={sort}
+            filters={filters}
+            showCheckboxColumn={showCheckboxColumn}
+          />
         }
-        tableBody={<TeamsListTableBody teams={pageResult.teams} />}
-        mobileList={<TeamsListMobileList teams={pageResult.teams} />}
+        tableBody={
+          <TeamsListTableBody
+            teams={pageResult.teams}
+            showCheckboxColumn={showCheckboxColumn}
+          />
+        }
+        mobileList={
+          <TeamsListMobileList
+            teams={pageResult.teams}
+            showCheckboxColumn={showCheckboxColumn}
+          />
+        }
       />
     );
   }

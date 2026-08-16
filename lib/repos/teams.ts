@@ -175,6 +175,7 @@ export async function listTeamsPage(
     page?: number;
     pageSize?: number;
     sort?: TeamListSort;
+    showArchived?: boolean;
   } = {},
   db: Db = getDb(),
 ): Promise<{ items: TeamWithMembers[]; total: number }> {
@@ -184,9 +185,13 @@ export async function listTeamsPage(
   const q = options.q?.trim();
   const sort = options.sort ?? { column: "name", direction: "asc" };
 
-  const where = q
-    ? and(eq(teams.active, true), ilike(teams.name, `%${q}%`))
+  const activeClause = options.showArchived
+    ? undefined
     : eq(teams.active, true);
+
+  const searchClause = q ? ilike(teams.name, `%${q}%`) : undefined;
+
+  const where = and(activeClause, searchClause);
 
   const [totalRow] = await db
     .select({ total: count() })
@@ -293,6 +298,25 @@ export async function deleteTeam(
     .update(teams)
     .set({ active: false, updatedAt: new Date() })
     .where(eq(teams.id, id));
+}
+
+export async function findTeamById(
+  id: string,
+  db: Db = getDb(),
+): Promise<TeamRecord | null> {
+  const [row] = await db
+    .select(TEAM_COLUMNS)
+    .from(teams)
+    .where(eq(teams.id, id))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function hardDeleteTeam(
+  id: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await db.delete(teams).where(eq(teams.id, id));
 }
 
 export async function findActiveTeamWindowForUser(

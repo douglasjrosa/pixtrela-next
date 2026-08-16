@@ -33,7 +33,7 @@ describe("loadTeamListPage", () => {
     });
 
     const result = await loadTeamListPage(
-      { q: undefined, column: "name", direction: "asc" },
+      { q: undefined, column: "name", direction: "asc", showArchived: false },
       1,
     );
 
@@ -42,6 +42,7 @@ describe("loadTeamListPage", () => {
       page: 1,
       pageSize: 10,
       sort: { column: "name", direction: "asc" },
+      showArchived: false,
     });
     expect(result.hasMore).toBe(true);
     expect(result.pageCount).toBe(2);
@@ -53,6 +54,7 @@ describe("loadTeamListPage", () => {
         exchangesLastDay: 15,
         since: "2026-01-10",
         untill: null,
+        active: true,
         leader: { documentId: "l1", name: "João" },
         colaborators: [],
       },
