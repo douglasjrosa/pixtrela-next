@@ -202,7 +202,7 @@ export function TasksListWithLoadMore({
       </div>
 
       {hasMore ? (
-        <div className="shrink-0 pt-3">
+        <div className="flex shrink-0 justify-center pt-3">
           <Button
             type="button"
             variant="outline"
