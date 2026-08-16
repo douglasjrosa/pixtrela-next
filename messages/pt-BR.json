@@ -535,7 +535,17 @@
     "loadMore": "Carregar mais",
     "loadingMore": "Carregando...",
     "error": "Não foi possível concluir a operação.",
-    "noCost": "—"
+    "noCost": "—",
+    "inactive": "Inativo",
+    "showArchived": "Exibir prêmios arquivados",
+    "archiveSelected": "Arquivar selecionados",
+    "deleteSelected": "Excluir selecionados",
+    "bulkArchived": "Prêmios arquivados.",
+    "bulkDeleted": "Prêmios excluídos.",
+    "bulkArchiveTitle": "Arquivar prêmios",
+    "bulkArchiveConfirm": "Tem certeza de que deseja arquivar <b>{count}</b> prêmios?",
+    "bulkDeleteTitle": "Excluir prêmios",
+    "bulkDeleteConfirm": "Excluir permanentemente os prêmios selecionados?"
   },
   "settings": {
     "title": "Configurações",

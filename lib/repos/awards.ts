@@ -1,4 +1,5 @@
 import {
+  and,
   asc,
   count,
   desc,
@@ -115,6 +116,7 @@ export async function listAwardsPage(
     page?: number;
     pageSize?: number;
     sort?: AwardListSort;
+    showArchived?: boolean;
   } = {},
   db: Db = getDb(),
 ): Promise<{ items: AwardListItem[]; total: number }> {
@@ -124,12 +126,18 @@ export async function listAwardsPage(
   const q = options.q?.trim();
   const sort = options.sort ?? { column: "title", direction: "asc" };
 
-  const where = q
+  const activeClause = options.showArchived
+    ? undefined
+    : eq(awards.active, true);
+
+  const searchClause = q
     ? or(
         ilike(awards.name, `%${q}%`),
         ilike(awards.title, `%${q}%`),
       )
     : undefined;
+
+  const where = and(activeClause, searchClause);
 
   const [totalRow] = await db
     .select({ total: count() })
@@ -304,4 +312,40 @@ export async function replaceAwardPrices(
       numberOf: price.numberOf,
     })),
   );
+}
+
+export async function findAwardById(
+  id: string,
+  db: Db = getDb(),
+): Promise<AwardRecord | null> {
+  const [row] = await db
+    .select({
+      id: awards.id,
+      name: awards.name,
+      title: awards.title,
+      description: awards.description,
+      warnings: awards.warnings,
+      active: awards.active,
+      stock: awards.stock,
+      imageUrl: mediaAssets.url,
+    })
+    .from(awards)
+    .leftJoin(mediaAssets, eq(awards.imageMediaId, mediaAssets.id))
+    .where(eq(awards.id, id))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function deleteAward(id: string, db: Db = getDb()): Promise<void> {
+  await db
+    .update(awards)
+    .set({ active: false, updatedAt: new Date() })
+    .where(eq(awards.id, id));
+}
+
+export async function hardDeleteAward(
+  id: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await db.delete(awards).where(eq(awards.id, id));
 }

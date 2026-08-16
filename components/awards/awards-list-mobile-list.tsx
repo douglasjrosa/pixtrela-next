@@ -4,11 +4,13 @@ import type { AwardRow, CurrencyOption } from "./types";
 export interface AwardsListMobileListProps {
   awards: AwardRow[];
   currencies: CurrencyOption[];
+  showCheckboxColumn?: boolean;
 }
 
 export async function AwardsListMobileList({
   awards,
   currencies,
+  showCheckboxColumn = false,
 }: AwardsListMobileListProps) {
   return (
     <ul className="md:hidden">
@@ -18,6 +20,7 @@ export async function AwardsListMobileList({
           award={award}
           currencies={currencies}
           variant="mobile"
+          showCheckboxColumn={showCheckboxColumn}
         />
       ))}
     </ul>

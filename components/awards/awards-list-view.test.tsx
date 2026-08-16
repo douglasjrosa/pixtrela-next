@@ -27,7 +27,11 @@ describe("AwardListRowPresentational", () => {
             <AwardListRowPresentational
               award={awards[0]!}
               variant="table"
-              labels={{ cost: "2100 Estrelas" }}
+              labels={{
+                cost: "2100 Estrelas",
+                inactive: "Inativo",
+                selectRow: "Selecionar Arroz 5kg",
+              }}
             />
           </tbody>
         </table>
@@ -49,7 +53,11 @@ describe("AwardListRowPresentational", () => {
             <AwardListRowPresentational
               award={awards[0]!}
               variant="table"
-              labels={{ cost: "2100 Estrelas" }}
+              labels={{
+                cost: "2100 Estrelas",
+                inactive: "Inativo",
+                selectRow: "Selecionar Arroz 5kg",
+              }}
             />
           </tbody>
         </table>

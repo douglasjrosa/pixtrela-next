@@ -46,7 +46,11 @@ function renderManager(overrides: Partial<Parameters<typeof AwardManager>[0]> = 
           <AwardListRowPresentational
             award={awards[0]!}
             variant="table"
-            labels={{ cost: "50 Estrela" }}
+            labels={{
+              cost: "50 Estrela",
+              inactive: "Inativo",
+              selectRow: "Selecionar Arroz",
+            }}
           />
         </tbody>
       </table>

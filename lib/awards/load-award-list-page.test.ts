@@ -33,7 +33,7 @@ describe("loadAwardListPage", () => {
     });
 
     const result = await loadAwardListPage(
-      { q: undefined, column: "title", direction: "asc" },
+      { q: undefined, column: "title", direction: "asc", showArchived: false },
       1,
     );
 
@@ -42,6 +42,7 @@ describe("loadAwardListPage", () => {
       page: 1,
       pageSize: 10,
       sort: { column: "title", direction: "asc" },
+      showArchived: false,
     });
     expect(result.hasMore).toBe(true);
     expect(result.pageCount).toBe(2);

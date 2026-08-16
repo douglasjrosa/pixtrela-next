@@ -70,6 +70,16 @@ export function canManageAwards(role: Role | undefined): boolean {
   return role === "admin";
 }
 
+/** Soft-archive awards: admin only. */
+export function canDeactivateAwards(role: Role | undefined): boolean {
+  return canManageAwards(role);
+}
+
+/** Hard delete awards: admin only. */
+export function canDeleteAwards(role: Role | undefined): boolean {
+  return canManageAwards(role);
+}
+
 /** View awards catalog: manager and above (CRUD still admin-only). */
 export function canViewAwards(role: Role | undefined): boolean {
   return isAtLeast(role, "manager");

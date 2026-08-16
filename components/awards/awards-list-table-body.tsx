@@ -4,11 +4,13 @@ import type { AwardRow, CurrencyOption } from "./types";
 export interface AwardsListTableBodyProps {
   awards: AwardRow[];
   currencies: CurrencyOption[];
+  showCheckboxColumn?: boolean;
 }
 
 export async function AwardsListTableBody({
   awards,
   currencies,
+  showCheckboxColumn = false,
 }: AwardsListTableBodyProps) {
   return (
     <tbody>
@@ -18,6 +20,7 @@ export async function AwardsListTableBody({
           award={award}
           currencies={currencies}
           variant="table"
+          showCheckboxColumn={showCheckboxColumn}
         />
       ))}
     </tbody>

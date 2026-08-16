@@ -28,6 +28,7 @@ const loadAwardListPageCached = cache(
       page: resolvedPage,
       pageSize: AWARD_LIST_PAGE_SIZE,
       sort: { column: filters.column, direction: filters.direction },
+      showArchived: filters.showArchived,
     });
     const pageCount = Math.max(1, Math.ceil(total / AWARD_LIST_PAGE_SIZE));
     return {

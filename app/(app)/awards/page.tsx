@@ -14,7 +14,12 @@ import {
 import { APP_LIST_PAGE_SHELL_CLASS } from "@/components/layout/app-page-layout";
 import { ListEmptyMessage } from "@/components/ui/list-empty-message";
 import type { Role } from "@/lib/auth/nav";
-import { canManageAwards, canViewAwards } from "@/lib/auth/permissions";
+import {
+  canDeactivateAwards,
+  canDeleteAwards,
+  canManageAwards,
+  canViewAwards,
+} from "@/lib/auth/permissions";
 import { loadAwardListPage } from "@/lib/awards/load-award-list-page";
 import { parseAwardListSearchParams } from "@/lib/awards/award-list-params";
 import { listCurrencies as listCurrenciesRepo } from "@/lib/repos/awards";
@@ -57,6 +62,9 @@ export default async function AwardsPage({ searchParams }: AwardsPageProps) {
   const tAwards = await getTranslations("awards");
   const sort = { column: filters.column, direction: filters.direction };
   const canManage = canManageAwards(role);
+  const canDeactivate = canDeactivateAwards(role);
+  const canDelete = canDeleteAwards(role);
+  const showCheckboxColumn = canDeactivate || canDelete;
 
   const [pageResult, currencies] = await Promise.all([
     loadAwardListPage(filters, 1).catch((error) => {
@@ -82,19 +90,27 @@ export default async function AwardsPage({ searchParams }: AwardsPageProps) {
         initialAwards={pageResult.awards}
         initialPage={pageResult.page}
         initialHasMore={pageResult.hasMore}
+        canDeactivate={canDeactivate}
+        canDelete={canDelete}
         tableHeader={
-          <AwardsListTableHeader sort={sort} filters={filters} />
+          <AwardsListTableHeader
+            sort={sort}
+            filters={filters}
+            showCheckboxColumn={showCheckboxColumn}
+          />
         }
         tableBody={
           <AwardsListTableBody
             awards={pageResult.awards}
             currencies={currencies}
+            showCheckboxColumn={showCheckboxColumn}
           />
         }
         mobileList={
           <AwardsListMobileList
             awards={pageResult.awards}
             currencies={currencies}
+            showCheckboxColumn={showCheckboxColumn}
           />
         }
       />

@@ -6,14 +6,26 @@ import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import { awards, mediaAssets } from "@/drizzle/schema";
 import type { Role } from "@/lib/auth/nav";
-import { canManageAwards, canViewAwards } from "@/lib/auth/permissions";
+import {
+  canDeactivateAwards,
+  canDeleteAwards,
+  canManageAwards,
+  canViewAwards,
+} from "@/lib/auth/permissions";
 import { getDb } from "@/lib/db/client";
 import { storeMedia } from "@/lib/media/store-media";
 import {
   createAward as createAwardRepo,
+  deleteAward as deleteAwardRepo,
+  findAwardById,
+  hardDeleteAward,
   replaceAwardPrices,
 } from "@/lib/repos/awards";
-import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
+import {
+  awardFormSchema,
+  bulkAwardIdsSchema,
+  type AwardFormInput,
+} from "@/lib/schemas/award";
 import { awardListFiltersSchema } from "@/lib/schemas/award-list-filters";
 import {
   loadAwardListPage,
@@ -30,6 +42,13 @@ async function assertCanView(): Promise<void> {
 async function assertCanManage(): Promise<void> {
   const session = await auth();
   if (!canManageAwards(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+}
+
+async function assertCanDeactivate(): Promise<void> {
+  const session = await auth();
+  if (!canDeactivateAwards(session?.user?.role as Role | undefined)) {
     throw new Error("forbidden");
   }
 }
@@ -126,10 +145,37 @@ export async function updateAward(
 
 export async function deleteAward(documentId: string): Promise<void> {
   await assertCanManage();
-  const db = getDb();
-  await db
-    .update(awards)
-    .set({ active: false, updatedAt: new Date() })
-    .where(eq(awards.id, documentId));
+  await deleteAwardRepo(documentId);
+  invalidateAwards();
+}
+
+export async function bulkArchiveAwards(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanDeactivate();
+  const ids = bulkAwardIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const award = await findAwardById(documentId);
+    if (!award) throw new Error("notFound");
+    await deleteAwardRepo(documentId);
+  }
+  invalidateAwards();
+}
+
+export async function bulkDeleteAwards(documentIds: string[]): Promise<void> {
+  await assertCanManage();
+  const session = await auth();
+  if (!canDeleteAwards(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+  const ids = bulkAwardIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const award = await findAwardById(documentId);
+    if (!award) throw new Error("notFound");
+    if (award.active) throw new Error("activeAward");
+    await hardDeleteAward(documentId);
+  }
   invalidateAwards();
 }
