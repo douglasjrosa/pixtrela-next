@@ -174,12 +174,35 @@ describe("board/actions drizzle", () => {
         dependencyIds: [],
       },
     ]);
+    listBoardSubtaskRows.mockResolvedValue({
+      rows: [
+        {
+          id: "st-2",
+          name: "Cortar",
+          status: "waiting",
+          sharingType: "duration",
+          qty: 1,
+          expectedTime: 0,
+          timeSpent: 0,
+          linkedToPrevious: true,
+        },
+      ],
+      assigneeRows: [
+        { subTaskId: "st-2", userId: "u-head", name: "Head" },
+      ],
+      activityRows: [],
+    });
 
     const { updateBoardSubtaskLink } = await import("./actions");
-    await updateBoardSubtaskLink("task-1", "st-2", true);
+    const result = await updateBoardSubtaskLink("task-1", "st-2", true);
 
     expect(updateSubTaskLinkedToPrevious).toHaveBeenCalledWith("st-2", true);
     expect(replaceSubTaskAssignees).toHaveBeenCalledWith("st-2", ["u-head"]);
+    expect(result).toEqual({
+      documentId: "st-2",
+      linkedToPrevious: true,
+      assignedTo: [{ documentId: "u-head", name: "Head" }],
+    });
   });
 
   it("updateBoardSubtaskLink unlinks without clearing assignees", async () => {
@@ -205,6 +228,24 @@ describe("board/actions drizzle", () => {
         dependencyIds: [],
       },
     ]);
+    listBoardSubtaskRows.mockResolvedValue({
+      rows: [
+        {
+          id: "st-2",
+          name: "Cortar",
+          status: "waiting",
+          sharingType: "duration",
+          qty: 1,
+          expectedTime: 0,
+          timeSpent: 0,
+          linkedToPrevious: false,
+        },
+      ],
+      assigneeRows: [
+        { subTaskId: "st-2", userId: "u-head", name: "Head" },
+      ],
+      activityRows: [],
+    });
 
     const { updateBoardSubtaskLink } = await import("./actions");
     await updateBoardSubtaskLink("task-1", "st-2", false);

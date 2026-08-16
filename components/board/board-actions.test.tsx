@@ -307,8 +307,17 @@ describe("BoardActions", () => {
     let finishLink = (): void => undefined;
     const linkSubtask = vi.fn(
       () =>
-        new Promise<void>((resolve) => {
-          finishLink = resolve;
+        new Promise<{
+          documentId: string;
+          linkedToPrevious: boolean;
+          assignedTo: { documentId: string; name: string }[];
+        }>((resolve) => {
+          finishLink = () =>
+            resolve({
+              documentId: "st-2",
+              linkedToPrevious: true,
+              assignedTo: [{ documentId: "u-1", name: "Ana" }],
+            });
         }),
     );
     const loadSubtasks = vi.fn().mockResolvedValue([
@@ -344,8 +353,70 @@ describe("BoardActions", () => {
     await act(async () => {
       finishLink();
     });
-    expect(enabled).not.toBeDisabled();
     expect(loadSubtasks).toHaveBeenCalledTimes(1);
+  });
+
+  it("flushes the last desired link after an in-flight toggle", async () => {
+    const user = userEvent.setup();
+    const finishQueue: Array<() => void> = [];
+    const linkSubtask = vi.fn(
+      (
+        _taskId: string,
+        _subtaskId: string,
+        linkedToPrevious: boolean,
+      ) =>
+        new Promise<{
+          documentId: string;
+          linkedToPrevious: boolean;
+          assignedTo: { documentId: string; name: string }[];
+        }>((resolve) => {
+          finishQueue.push(() =>
+            resolve({
+              documentId: "st-2",
+              linkedToPrevious,
+              assignedTo: [{ documentId: "u-1", name: "Ana" }],
+            }),
+          );
+        }),
+    );
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        index: 1,
+        assignedTo: [],
+      }),
+    ]);
+
+    renderBoard({ loadSubtasks, linkSubtask });
+    await user.click(screen.getByText("1 - Tarefa A"));
+    const linkButton = await screen.findByRole("button", {
+      name: "Ligar à anterior",
+    });
+    fireEvent.click(linkButton);
+    await vi.waitFor(() => {
+      expect(linkSubtask).toHaveBeenCalledTimes(1);
+    });
+    const unlinkButton = await screen.findByRole("button", {
+      name: "Desligar da anterior",
+    });
+    fireEvent.click(unlinkButton);
+    expect(linkSubtask).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finishQueue[0]?.();
+    });
+    await vi.waitFor(() => {
+      expect(linkSubtask).toHaveBeenCalledTimes(2);
+    });
+    expect(linkSubtask).toHaveBeenLastCalledWith("task-10", "st-2", false);
   });
 
   it("keeps loaded assignee names that are not on a team", async () => {
@@ -360,7 +431,10 @@ describe("BoardActions", () => {
       }),
     ]);
 
-    renderBoard({ loadSubtasks });
+    renderBoard({
+      loadSubtasks,
+      assigneePeople: [{ documentId: liveWorkerId, name: "Live Worker" }],
+    });
     await user.click(screen.getByText("1 - Tarefa A"));
     expect(await screen.findByText("Live Worker")).toBeInTheDocument();
 

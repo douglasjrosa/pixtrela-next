@@ -6,14 +6,13 @@ import { Link2, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** List gap that leaves room for the mid-gap chain button and line stubs. */
-export const SUBTASK_CHAIN_LIST_GAP_CLASS = "gap-12";
+/** Tight list gap — the link row owns the space between cards. */
+export const SUBTASK_CHAIN_LIST_GAP_CLASS = "gap-1";
 
-/** Half of `gap-12` — anchor sits in the middle of the gap above this card. */
-const GAP_MID_OFFSET_CLASS = "-top-6";
+/** Matches the drag-handle column so the control lines up with the card. */
+export const SUBTASK_CHAIN_GRIP_SPACER_CLASS = "w-6";
 
-/** Line stub from each card edge to the button (half of `gap-12`). */
-const LINE_STUB_HEIGHT_CLASS = "h-6";
+const LINK_ROW_HEIGHT_CLASS = "h-11";
 
 export interface SubtaskChainLinkControlProps {
   linked: boolean;
@@ -21,17 +20,6 @@ export interface SubtaskChainLinkControlProps {
   linkLabel: string;
   unlinkLabel: string;
   onToggle: (linked: boolean) => void;
-}
-
-function chainLineClass(linked: boolean, side: "above" | "below"): string {
-  return cn(
-    "pointer-events-none absolute left-0 -translate-x-1/2",
-    LINE_STUB_HEIGHT_CLASS,
-    side === "above" ? "bottom-full" : "top-full",
-    linked
-      ? "w-px bg-primary"
-      : "w-0 border-l border-dashed border-muted-foreground/50",
-  );
 }
 
 export function SubtaskChainLinkControl({
@@ -55,26 +43,27 @@ export function SubtaskChainLinkControl({
 
   return (
     <div
-      className={cn("absolute left-0 z-20", GAP_MID_OFFSET_CLASS)}
+      className={cn(
+        "relative flex w-full items-center justify-start",
+        LINK_ROW_HEIGHT_CLASS,
+      )}
       data-testid="subtask-chain-link"
       data-linked={linked ? "true" : "false"}
     >
       <span
-        className={chainLineClass(linked, "above")}
+        className={cn(
+          "pointer-events-none absolute inset-y-0 left-4 w-px",
+          linked ? "bg-primary" : "border-l border-dashed border-muted-foreground/50",
+        )}
         aria-hidden
-        data-slot="chain-line-above"
-      />
-      <span
-        className={chainLineClass(linked, "below")}
-        aria-hidden
-        data-slot="chain-line-below"
+        data-slot="chain-line"
       />
       <Button
         type="button"
         size="icon-sm"
         variant="outline"
         className={cn(
-          "absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full",
+          "relative ml-0.5 rounded-full",
           linked ? "border-primary text-primary" : "text-muted-foreground",
         )}
         aria-pressed={linked}

@@ -25,8 +25,7 @@ describe("SubtaskChainLinkControl", () => {
       "data-linked",
       "false",
     );
-    expect(document.querySelector('[data-slot="chain-line-above"]')).toBeTruthy();
-    expect(document.querySelector('[data-slot="chain-line-below"]')).toBeTruthy();
+    expect(document.querySelector('[data-slot="chain-line"]')).toBeTruthy();
   });
 
   it("renders a closed-link button when linked", () => {

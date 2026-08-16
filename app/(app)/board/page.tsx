@@ -12,6 +12,7 @@ import { loadDrizzleBoardData } from "@/lib/board/load-board-data";
 import { loadBoardProgressByTaskId } from "@/lib/board/load-board-progress";
 import { shouldShowKanbanTaskProgress } from "@/lib/business/task-progress";
 import { listTeamsWithMembers } from "@/lib/repos/teams";
+import { listUserAssigneeNames } from "@/lib/repos/users";
 import {
   loadCurrencyForSubtasks,
   toSubtaskPaymentCurrency,
@@ -104,6 +105,7 @@ function BoardCanvas({
   assignWarnMax,
   assignedCountByColaboratorId,
   paymentCurrency,
+  assigneePeople,
 }: {
   steps: KanbanStep[];
   tasks: KanbanTask[];
@@ -112,6 +114,7 @@ function BoardCanvas({
   assignWarnMax: number;
   assignedCountByColaboratorId: Record<string, number>;
   paymentCurrency: SubtaskPaymentCurrency;
+  assigneePeople: { documentId: string; name: string }[];
 }) {
   return (
     <BoardLiveProgress
@@ -122,6 +125,7 @@ function BoardCanvas({
       assignWarnMax={assignWarnMax}
       assignedCountByColaboratorId={assignedCountByColaboratorId}
       paymentCurrency={paymentCurrency}
+      assigneePeople={assigneePeople}
       pollBoardProgress={pollBoardProgress}
       applyBoardTaskOrder={applyBoardTaskOrder}
       loadSubtasks={loadBoardSubtasks}
@@ -140,6 +144,7 @@ async function BoardWithProgress({
   interactive,
   assignWarnMax,
   paymentCurrency,
+  assigneePeople,
 }: {
   steps: KanbanStep[];
   tasks: KanbanTask[];
@@ -147,6 +152,7 @@ async function BoardWithProgress({
   interactive: boolean;
   assignWarnMax: number;
   paymentCurrency: SubtaskPaymentCurrency;
+  assigneePeople: { documentId: string; name: string }[];
 }) {
   const loaded = await withProgressLoaded(tasks);
   return (
@@ -158,6 +164,7 @@ async function BoardWithProgress({
       assignWarnMax={assignWarnMax}
       assignedCountByColaboratorId={loaded.assignedCountByColaboratorId}
       paymentCurrency={paymentCurrency}
+      assigneePeople={assigneePeople}
     />
   );
 }
@@ -166,12 +173,13 @@ export default async function BoardPage() {
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
   const interactive = canMoveBoardTasks(role);
-  const [{ steps, tasks }, teams, automation, paymentCurrency] =
+  const [{ steps, tasks }, teams, automation, paymentCurrency, assigneePeople] =
     await Promise.all([
       loadBoard(),
       interactive ? loadTeamsForAssignment() : Promise.resolve([]),
       loadTaskAutomationSetting(),
       loadBoardPaymentCurrency(),
+      interactive ? listUserAssigneeNames() : Promise.resolve([]),
     ]);
   const assignWarnMax = automation.assignWarnMax ?? DEFAULT_ASSIGN_WARN_MAX;
 
@@ -187,6 +195,7 @@ export default async function BoardPage() {
             assignWarnMax={assignWarnMax}
             assignedCountByColaboratorId={{}}
             paymentCurrency={paymentCurrency}
+            assigneePeople={assigneePeople}
           />
         }
       >
@@ -197,6 +206,7 @@ export default async function BoardPage() {
           interactive={interactive}
           assignWarnMax={assignWarnMax}
           paymentCurrency={paymentCurrency}
+          assigneePeople={assigneePeople}
         />
       </Suspense>
     </div>

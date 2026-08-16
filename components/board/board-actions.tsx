@@ -18,10 +18,17 @@ import {
   buildAssigneesSnapshot,
   collectDirtyAssigneeUpdates,
   hasAssigneeDraftChanges,
+  ingestAssigneeDirectory,
+  ingestSubtasksIntoAssigneeDirectory,
+  ingestTeamsIntoAssigneeDirectory,
   mergeAssigneesBaseline,
+  mergeAssigneesByIds,
   mergeLoadedSubtasksWithDraft,
-  resolveAssigneeNames,
 } from "@/lib/business/board-assignee-draft";
+import {
+  shouldFlushBoardLink,
+  type BoardSubtaskLinkResult,
+} from "@/lib/business/board-link-queue";
 import {
   applyHeadAssigneePropagation,
   canEditAssignees,
@@ -77,7 +84,8 @@ export interface BoardActionsProps {
     taskDocumentId: string,
     subtaskDocumentId: string,
     linkedToPrevious: boolean,
-  ) => Promise<void>;
+  ) => Promise<BoardSubtaskLinkResult>;
+  assigneePeople?: { documentId: string; name: string }[];
   onSubtasksModalOpenChange?: (open: boolean) => void;
 }
 
@@ -94,6 +102,7 @@ export function BoardActions({
   createSubtask,
   reorderSubtasks,
   linkSubtask,
+  assigneePeople = [],
   onSubtasksModalOpenChange,
 }: BoardActionsProps) {
   const router = useRouter();
@@ -114,8 +123,14 @@ export function BoardActions({
   const [createOpen, setCreateOpen] = useState(false);
   const [savingCreate, setSavingCreate] = useState(false);
   const [reorderingSubtasks, setReorderingSubtasks] = useState(false);
-  const [linkingSubtasks, setLinkingSubtasks] = useState(false);
-  const linkingSubtasksRef = useRef(false);
+  const nameDirectoryRef = useRef(new Map<string, string>());
+  const desiredLinkRef = useRef(new Map<string, boolean>());
+  const inFlightLinkRef = useRef(new Set<string>());
+  const ackedLinkRef = useRef(new Map<string, boolean>());
+  const selectedTaskRef = useRef(selectedTask);
+  const subtasksRef = useRef(subtasks);
+  selectedTaskRef.current = selectedTask;
+  subtasksRef.current = subtasks;
 
   const assignedCountsForUi = useMemo(
     () =>
@@ -156,7 +171,23 @@ export function BoardActions({
     });
   }
 
+  function rememberAssigneeNames(
+    people: readonly { documentId: string; name?: string | null }[] = [],
+  ): void {
+    ingestTeamsIntoAssigneeDirectory(nameDirectoryRef.current, teams);
+    ingestAssigneeDirectory(nameDirectoryRef.current, assigneePeople);
+    ingestAssigneeDirectory(nameDirectoryRef.current, people);
+  }
+
   function applyLoadedSubtasks(loaded: BoardSubTaskSummary[]): void {
+    ingestSubtasksIntoAssigneeDirectory(nameDirectoryRef.current, loaded);
+    rememberAssigneeNames();
+    ackedLinkRef.current.clear();
+    desiredLinkRef.current.clear();
+    inFlightLinkRef.current.clear();
+    for (const item of loaded) {
+      ackedLinkRef.current.set(item.documentId, item.linkedToPrevious);
+    }
     setSubtasks(loaded);
     setAssigneesBaseline(buildAssigneesSnapshot(loaded));
   }
@@ -190,8 +221,9 @@ export function BoardActions({
     setCreateOpen(false);
     setSavingCreate(false);
     setReorderingSubtasks(false);
-    setLinkingSubtasks(false);
-    linkingSubtasksRef.current = false;
+    desiredLinkRef.current.clear();
+    inFlightLinkRef.current.clear();
+    ackedLinkRef.current.clear();
   }
 
   function sortSubtasksByDocumentIds(
@@ -227,23 +259,17 @@ export function BoardActions({
     })();
   }
 
-  function handleLinkToggle(
+  function applyOptimisticLink(
     subtaskDocumentId: string,
     linkedToPrevious: boolean,
   ): void {
-    if (!selectedTask || linkingSubtasksRef.current) return;
-    const taskDocumentId = selectedTask.documentId;
-    const before = subtasks;
-    const beforeBaseline = assigneesBaseline;
     const previous = previousChainMember(
-      sortChainSubTasks(subtasks),
+      sortChainSubTasks(subtasksRef.current),
       subtaskDocumentId,
     );
-    const copiedAssignees = linkedToPrevious && previous
-      ? previous.assignedTo
-      : null;
-    linkingSubtasksRef.current = true;
-    setLinkingSubtasks(true);
+    const copiedAssignees =
+      linkedToPrevious && previous ? previous.assignedTo : null;
+    rememberAssigneeNames(copiedAssignees ?? []);
     setSubtasks((current) =>
       current.map((item) => {
         if (item.documentId !== subtaskDocumentId) return item;
@@ -253,29 +279,90 @@ export function BoardActions({
         return { ...item, linkedToPrevious };
       }),
     );
-    if (copiedAssignees) {
-      setAssigneesBaseline((current) => ({
-        ...current,
-        [subtaskDocumentId]: assigneeIdsKey(
-          copiedAssignees.map((assignee) => assignee.documentId),
-        ),
-      }));
+    if (!copiedAssignees) return;
+    setAssigneesBaseline((current) => ({
+      ...current,
+      [subtaskDocumentId]: assigneeIdsKey(
+        copiedAssignees.map((assignee) => assignee.documentId),
+      ),
+    }));
+  }
+
+  async function flushBoardLink(subtaskDocumentId: string): Promise<void> {
+    const taskDocumentId = selectedTaskRef.current?.documentId;
+    if (!taskDocumentId) return;
+    const desired = desiredLinkRef.current.get(subtaskDocumentId);
+    if (
+      !shouldFlushBoardLink(
+        desired,
+        inFlightLinkRef.current.has(subtaskDocumentId),
+        ackedLinkRef.current.get(subtaskDocumentId),
+      ) ||
+      desired === undefined
+    ) {
+      return;
     }
-    void (async () => {
-      try {
-        await linkSubtask(
-          taskDocumentId,
-          subtaskDocumentId,
-          linkedToPrevious,
+
+    inFlightLinkRef.current.add(subtaskDocumentId);
+    try {
+      const result = await linkSubtask(
+        taskDocumentId,
+        subtaskDocumentId,
+        desired,
+      );
+      rememberAssigneeNames(result.assignedTo);
+      ackedLinkRef.current.set(subtaskDocumentId, result.linkedToPrevious);
+      const stillWanted = desiredLinkRef.current.get(subtaskDocumentId);
+      if (stillWanted === undefined || stillWanted === result.linkedToPrevious) {
+        desiredLinkRef.current.delete(subtaskDocumentId);
+        setSubtasks((current) =>
+          current.map((item) => {
+            if (item.documentId !== result.documentId) return item;
+            return {
+              ...item,
+              linkedToPrevious: result.linkedToPrevious,
+              assignedTo: mergeAssigneesByIds(
+                item.assignedTo,
+                result.assignedTo.map((row) => row.documentId),
+                nameDirectoryRef.current,
+              ),
+            };
+          }),
         );
-      } catch {
-        setSubtasks(before);
-        setAssigneesBaseline(beforeBaseline);
-      } finally {
-        linkingSubtasksRef.current = false;
-        setLinkingSubtasks(false);
       }
-    })();
+    } catch {
+      desiredLinkRef.current.delete(subtaskDocumentId);
+      const acked = ackedLinkRef.current.get(subtaskDocumentId) ?? false;
+      setSubtasks((current) =>
+        current.map((item) =>
+          item.documentId === subtaskDocumentId
+            ? { ...item, linkedToPrevious: acked }
+            : item,
+        ),
+      );
+    } finally {
+      inFlightLinkRef.current.delete(subtaskDocumentId);
+    }
+
+    if (
+      shouldFlushBoardLink(
+        desiredLinkRef.current.get(subtaskDocumentId),
+        inFlightLinkRef.current.has(subtaskDocumentId),
+        ackedLinkRef.current.get(subtaskDocumentId),
+      )
+    ) {
+      await flushBoardLink(subtaskDocumentId);
+    }
+  }
+
+  function handleLinkToggle(
+    subtaskDocumentId: string,
+    linkedToPrevious: boolean,
+  ): void {
+    if (!selectedTaskRef.current) return;
+    desiredLinkRef.current.set(subtaskDocumentId, linkedToPrevious);
+    applyOptimisticLink(subtaskDocumentId, linkedToPrevious);
+    void flushBoardLink(subtaskDocumentId);
   }
 
   async function refreshSubtasksList(
@@ -283,6 +370,7 @@ export function BoardActions({
     options?: { keepDraftAssignees?: boolean },
   ): Promise<void> {
     const loaded = await loadSubtasks(taskDocumentId);
+    ingestSubtasksIntoAssigneeDirectory(nameDirectoryRef.current, loaded);
     if (!options?.keepDraftAssignees) {
       applyLoadedSubtasks(loaded);
       return;
@@ -296,8 +384,11 @@ export function BoardActions({
     subtask: BoardSubTaskSummary,
     assignedToIds: string[],
   ): void {
+    rememberAssigneeNames(
+      subtasksRef.current.flatMap((item) => item.assignedTo),
+    );
     setSubtasks((current) => {
-      const knownAssignees = current.flatMap((item) => item.assignedTo);
+      const directory = nameDirectoryRef.current;
       const chainItems = chainItemsFromBoard(current);
       const chain = findChainContaining(
         resolveChains(chainItems),
@@ -308,10 +399,10 @@ export function BoardActions({
           item.documentId === subtask.documentId
             ? {
                 ...item,
-                assignedTo: resolveAssigneeNames(
-                  teams,
+                assignedTo: mergeAssigneesByIds(
+                  item.assignedTo,
                   assignedToIds,
-                  knownAssignees,
+                  directory,
                 ),
               }
             : item,
@@ -329,10 +420,10 @@ export function BoardActions({
           item.documentId === subtask.documentId
             ? {
                 ...item,
-                assignedTo: resolveAssigneeNames(
-                  teams,
+                assignedTo: mergeAssigneesByIds(
+                  item.assignedTo,
                   assignedToIds,
-                  knownAssignees,
+                  directory,
                 ),
               }
             : item,
@@ -357,7 +448,7 @@ export function BoardActions({
         if (!nextIds) return item;
         return {
           ...item,
-          assignedTo: resolveAssigneeNames(teams, nextIds, knownAssignees),
+          assignedTo: mergeAssigneesByIds(item.assignedTo, nextIds, directory),
         };
       });
     });
@@ -495,7 +586,7 @@ export function BoardActions({
         loading={loadingSubtasks}
         dirty={hasAssigneeDraftChanges(subtasks, assigneesBaseline)}
         saving={savingAssignees}
-        reordering={reorderingSubtasks || linkingSubtasks}
+        reordering={reorderingSubtasks}
         onClose={handleCloseSubtasksModal}
         onAssigneesChange={handleAssigneesChange}
         onSave={handleSaveAssignees}

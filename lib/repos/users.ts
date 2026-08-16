@@ -267,6 +267,19 @@ export async function listUsersByRole(
   return rows.map(mapUserRow);
 }
 
+export async function listUserAssigneeNames(
+  db: Db = getDb(),
+): Promise<{ documentId: string; name: string }[]> {
+  const rows = await db
+    .select({ documentId: users.id, name: users.name })
+    .from(users)
+    .orderBy(asc(users.name));
+  return rows.map((row) => ({
+    documentId: row.documentId,
+    name: row.name,
+  }));
+}
+
 export async function updateUserPersonal(
   input: UpdateUserPersonalInput,
   db: Db = getDb(),

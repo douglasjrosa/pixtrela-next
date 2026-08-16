@@ -859,7 +859,7 @@ describe("KanbanTaskSubtasksModal", () => {
     ).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("toggles chain link from the mid-gap button", async () => {
+  it("toggles chain link from the row between cards", async () => {
     const user = userEvent.setup();
     const onLinkToggle = vi.fn();
     const chained = [

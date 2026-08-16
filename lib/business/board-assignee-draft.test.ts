@@ -8,7 +8,10 @@ import {
   buildAssigneesSnapshot,
   collectDirtyAssigneeUpdates,
   hasAssigneeDraftChanges,
+  ingestAssigneeDirectory,
+  ingestSubtasksIntoAssigneeDirectory,
   mergeAssigneesBaseline,
+  mergeAssigneesByIds,
   mergeLoadedSubtasksWithDraft,
   resolveAssigneeNames,
 } from "./board-assignee-draft";
@@ -73,6 +76,56 @@ describe("board-assignee-draft", () => {
       { documentId: "u-1", name: "Ana" },
       { documentId: "missing", name: "" },
     ]);
+  });
+
+  it("keeps existing assignee objects and fills names from the directory", () => {
+    const directory = new Map<string, string>([
+      ["u-live", "Live Worker"],
+      ["u-1", "Ana"],
+    ]);
+    expect(
+      mergeAssigneesByIds(
+        [{ documentId: "u-live", name: "Live Worker" }],
+        ["u-live", "u-1"],
+        directory,
+      ),
+    ).toEqual([
+      { documentId: "u-live", name: "Live Worker" },
+      { documentId: "u-1", name: "Ana" },
+    ]);
+  });
+
+  it("does not overwrite a name already in the directory", () => {
+    const directory = new Map<string, string>();
+    ingestAssigneeDirectory(directory, [
+      { documentId: "u-live", name: "Live Worker" },
+    ]);
+    ingestAssigneeDirectory(directory, [
+      { documentId: "u-live", name: "Other" },
+    ]);
+    expect(directory.get("u-live")).toBe("Live Worker");
+  });
+
+  it("ingests session colaborator names from loaded subtasks", () => {
+    const directory = new Map<string, string>();
+    ingestSubtasksIntoAssigneeDirectory(directory, [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        sessions: [
+          {
+            colaboratorDocumentId: "u-kiosk",
+            colaboratorName: "Kiosk One",
+            startedAt: "2026-08-16T10:00:00.000Z",
+            finishedAt: "2026-08-16T10:01:00.000Z",
+            durationSec: 60,
+            qty: 1,
+          },
+        ],
+      }),
+    ]);
+    expect(directory.get("u-kiosk")).toBe("Kiosk One");
   });
 
   it("keeps known names for assignees who are not on a team", () => {

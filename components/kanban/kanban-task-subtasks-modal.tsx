@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -22,6 +22,7 @@ import { useTranslations } from "next-intl";
 
 import { CurrencyMediaIcon } from "@/components/currency/currency-media-icon";
 import {
+  SUBTASK_CHAIN_GRIP_SPACER_CLASS,
   SUBTASK_CHAIN_LIST_GAP_CLASS,
   SubtaskChainLinkControl,
 } from "@/components/kanban/subtask-chain-link-control";
@@ -293,10 +294,6 @@ interface SortablePendingSubtaskCardProps {
   dragDisabled: boolean;
   saving: boolean;
   dragLabel: string;
-  linkLabel: string;
-  unlinkLabel: string;
-  canLink: boolean;
-  onLinkChange?: (linked: boolean) => void;
   statusLabel: string;
   onClick: () => void;
 }
@@ -307,10 +304,6 @@ function SortablePendingSubtaskCard({
   dragDisabled,
   saving,
   dragLabel,
-  linkLabel,
-  unlinkLabel,
-  canLink,
-  onLinkChange,
   statusLabel,
   onClick,
 }: SortablePendingSubtaskCardProps) {
@@ -357,15 +350,6 @@ function SortablePendingSubtaskCard({
           <GripVertical className="size-4" aria-hidden />
         </button>
         <div className="relative min-w-0 flex-1">
-          {onLinkChange && canLink ? (
-            <SubtaskChainLinkControl
-              linked={subtask.linkedToPrevious}
-              disabled={dragDisabled || saving}
-              linkLabel={linkLabel}
-              unlinkLabel={unlinkLabel}
-              onToggle={onLinkChange}
-            />
-          ) : null}
           <button
             type="button"
             aria-pressed={highlighted}
@@ -1045,34 +1029,50 @@ export function KanbanTaskSubtasksModal({
                         items={pendingSubtaskIds}
                         strategy={verticalListSortingStrategy}
                       >
-                        {pending.map((subtask) => {
+                        {pending.map((subtask, index) => {
                           const highlighted =
                             isPendingSubtaskHighlighted(subtask);
+                          const showLink =
+                            Boolean(onLinkToggle) && index > 0;
                           return (
-                            <SortablePendingSubtaskCard
-                              key={subtask.documentId}
-                              subtask={subtask}
-                              highlighted={highlighted}
-                              dragDisabled={dragDisabled}
-                              saving={saving}
-                              dragLabel={tSubtasks("dragToReorder")}
-                              linkLabel={tKanban("linkToPrevious")}
-                              unlinkLabel={tKanban("unlinkFromPrevious")}
-                              canLink={pending[0]?.documentId !== subtask.documentId}
-                              onLinkChange={
-                                onLinkToggle
-                                  ? (linked) =>
-                                      void onLinkToggle(
+                            <Fragment key={subtask.documentId}>
+                              {showLink ? (
+                                <li className="flex items-center gap-1">
+                                  <span
+                                    className={cn(
+                                      "shrink-0",
+                                      SUBTASK_CHAIN_GRIP_SPACER_CLASS,
+                                    )}
+                                    aria-hidden
+                                  />
+                                  <SubtaskChainLinkControl
+                                    linked={subtask.linkedToPrevious}
+                                    disabled={saving}
+                                    linkLabel={tKanban("linkToPrevious")}
+                                    unlinkLabel={tKanban(
+                                      "unlinkFromPrevious",
+                                    )}
+                                    onToggle={(linked) =>
+                                      onLinkToggle?.(
                                         subtask.documentId,
                                         linked,
                                       )
-                                  : undefined
-                              }
-                              statusLabel={tStatus(subtask.status)}
-                              onClick={() =>
-                                handlePendingSubtaskClick(subtask)
-                              }
-                            />
+                                    }
+                                  />
+                                </li>
+                              ) : null}
+                              <SortablePendingSubtaskCard
+                                subtask={subtask}
+                                highlighted={highlighted}
+                                dragDisabled={dragDisabled}
+                                saving={saving}
+                                dragLabel={tSubtasks("dragToReorder")}
+                                statusLabel={tStatus(subtask.status)}
+                                onClick={() =>
+                                  handlePendingSubtaskClick(subtask)
+                                }
+                              />
+                            </Fragment>
                           );
                         })}
                       </SortableContext>

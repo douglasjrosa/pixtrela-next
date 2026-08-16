@@ -38,6 +38,7 @@ import {
   applyAutoStepTaskOrderingAfterTaskChange,
 } from "@/lib/business/apply-step-task-order";
 import { loadBoardProgressByTaskId } from "@/lib/board/load-board-progress";
+import type { BoardSubtaskLinkResult } from "@/lib/business/board-link-queue";
 import {
   resolveDrizzleTaskIdByKanbanNumericId,
 } from "@/lib/board/load-board-data";
@@ -391,7 +392,7 @@ export async function updateBoardSubtaskLink(
   taskDocumentId: string,
   subtaskDocumentId: string,
   linkedToPrevious: boolean,
-): Promise<void> {
+): Promise<BoardSubtaskLinkResult> {
   await assertCanManageBoardSubtasks();
   const siblings = await listSubTasksWithRelationsForTask(taskDocumentId);
   const ordered = sortChainSubTasks(siblings.map(toChainSubTask));
@@ -402,14 +403,26 @@ export async function updateBoardSubtaskLink(
   }
 
   await updateSubTaskLinkedToPrevious(subtaskDocumentId, linkedToPrevious);
-  if (!linkedToPrevious) return;
+  if (linkedToPrevious) {
+    const previous = previousChainMember(ordered, subtaskDocumentId);
+    if (previous) {
+      await replaceSubTaskAssignees(
+        subtaskDocumentId,
+        assigneesAfterLinkToPrevious(previous.assignedToIds),
+      );
+    }
+  }
 
-  const previous = previousChainMember(ordered, subtaskDocumentId);
-  if (!previous) return;
-  await replaceSubTaskAssignees(
-    subtaskDocumentId,
-    assigneesAfterLinkToPrevious(previous.assignedToIds),
+  const mapped = mapBoardSubtasksFromDrizzle(
+    await listBoardSubtaskRows(taskDocumentId),
   );
+  const updated = mapped.find((item) => item.documentId === subtaskDocumentId);
+  if (!updated) throw new Error("notFound");
+  return {
+    documentId: updated.documentId,
+    linkedToPrevious: updated.linkedToPrevious,
+    assignedTo: updated.assignedTo,
+  };
 }
 
 export async function updateBoardSubtaskAssignees(
