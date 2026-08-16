@@ -11,13 +11,13 @@ import type { TaskRow } from "./types";
 export interface TaskListRowProps {
   task: TaskRow;
   variant: "table" | "mobile";
-  selectionEnabled?: boolean;
+  showCheckboxColumn?: boolean;
 }
 
 export async function TaskListRow({
   task,
   variant,
-  selectionEnabled = false,
+  showCheckboxColumn = false,
 }: TaskListRowProps) {
   const tManage = await getTranslations("tasks.manage");
   const tStatus = await getTranslations("tasks.status");
@@ -47,7 +47,7 @@ export async function TaskListRow({
       variant={variant}
       href={`/tasks/${task.documentId}`}
       labels={labels}
-      selectionEnabled={selectionEnabled}
+      showCheckboxColumn={showCheckboxColumn}
     />
   );
 }

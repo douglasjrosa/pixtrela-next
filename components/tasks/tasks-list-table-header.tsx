@@ -10,15 +10,13 @@ import { TaskListSortHeaderLink } from "./task-list-sort-header-link";
 export interface TasksListTableHeaderProps {
   sort: TaskListSort;
   filters: TaskListFilters;
-  selectionEnabled?: boolean;
-  selectMode?: boolean;
+  showCheckboxColumn?: boolean;
 }
 
 export async function TasksListTableHeader({
   sort,
   filters,
-  selectionEnabled = false,
-  selectMode = false,
+  showCheckboxColumn = false,
 }: TasksListTableHeaderProps) {
   const tManage = await getTranslations("tasks.manage");
   const tCommon = await getTranslations("common");
@@ -26,16 +24,14 @@ export async function TasksListTableHeader({
   return (
     <thead>
       <tr className="border-b text-left">
-        {selectionEnabled ? (
+        {showCheckboxColumn ? (
           <th className={cn("w-10 py-2", "text-center")}>
-            <div className="flex justify-center">
-              <TaskListRowCheckbox
-                documentId=""
-                variant="table"
-                selectAll
-                ariaLabel={tCommon("selectAll")}
-              />
-            </div>
+            <TaskListRowCheckbox
+              documentId=""
+              variant="table-header"
+              selectAll
+              ariaLabel={tCommon("selectAll")}
+            />
           </th>
         ) : null}
         <TaskListSortHeaderLink
@@ -43,7 +39,6 @@ export async function TasksListTableHeader({
           label={tManage("name")}
           sort={sort}
           filters={filters}
-          selectMode={selectMode}
           align="left"
         />
         <TaskListSortHeaderLink
@@ -51,7 +46,6 @@ export async function TasksListTableHeader({
           label={tManage("qty")}
           sort={sort}
           filters={filters}
-          selectMode={selectMode}
           align="center"
         />
         <TaskListSortHeaderLink
@@ -59,7 +53,6 @@ export async function TasksListTableHeader({
           label={tManage("deliveryDate")}
           sort={sort}
           filters={filters}
-          selectMode={selectMode}
           align="center"
         />
         <TaskListSortHeaderLink
@@ -67,7 +60,6 @@ export async function TasksListTableHeader({
           label={tManage("totalTimeSpent")}
           sort={sort}
           filters={filters}
-          selectMode={selectMode}
           align="center"
         />
         <TaskListSortHeaderLink
@@ -75,7 +67,6 @@ export async function TasksListTableHeader({
           label={tManage("finishedSubTasks")}
           sort={sort}
           filters={filters}
-          selectMode={selectMode}
           align="center"
         />
         <TaskListSortHeaderLink
@@ -83,7 +74,6 @@ export async function TasksListTableHeader({
           label={tManage("status")}
           sort={sort}
           filters={filters}
-          selectMode={selectMode}
           align="center"
         />
       </tr>

@@ -23,7 +23,7 @@ export interface TaskListRowPresentationalProps {
   variant: "table" | "mobile";
   href: string;
   labels: TaskListRowLabels;
-  selectionEnabled?: boolean;
+  showCheckboxColumn?: boolean;
 }
 
 export function TaskListRowPresentational({
@@ -31,7 +31,7 @@ export function TaskListRowPresentational({
   variant,
   href,
   labels,
-  selectionEnabled = false,
+  showCheckboxColumn = false,
 }: TaskListRowPresentationalProps) {
   const nameCell = (
     <>
@@ -45,7 +45,7 @@ export function TaskListRowPresentational({
   if (variant === "table") {
     return (
       <tr className="border-b hover:bg-muted/40">
-        {selectionEnabled ? (
+        {showCheckboxColumn ? (
           <TaskListRowCheckbox
             documentId={task.documentId}
             variant="table"
@@ -77,7 +77,7 @@ export function TaskListRowPresentational({
   return (
     <li className="list-none border-b py-3 hover:bg-muted/40">
       <div className="relative flex items-start gap-3">
-        {selectionEnabled ? (
+        {showCheckboxColumn ? (
           <TaskListRowCheckbox
             documentId={task.documentId}
             variant="mobile"

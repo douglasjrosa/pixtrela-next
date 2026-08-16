@@ -22,7 +22,6 @@ import {
 import { formatSpentOfExpected } from "@/lib/format/spent-of-expected";
 import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
 import { taskListFilterKey } from "@/lib/tasks/task-list-params";
-import { buildTaskListHref } from "@/lib/tasks/task-list-sort-url";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
@@ -39,7 +38,6 @@ export interface TasksListTableFrameProps {
   initialTasks: TaskRow[];
   initialPage: number;
   initialHasMore: boolean;
-  selectMode: boolean;
   canDeactivate?: boolean;
   canDelete?: boolean;
   tableHeader: ReactNode;
@@ -77,7 +75,6 @@ export function TasksListTableFrame({
   initialTasks,
   initialPage,
   initialHasMore,
-  selectMode,
   canDeactivate = false,
   canDelete = false,
   tableHeader,
@@ -91,7 +88,7 @@ export function TasksListTableFrame({
   const router = useRouter();
   const filterKey = taskListFilterKey(filters);
   const bulkEnabled = canDeactivate || canDelete;
-  const selectionEnabled = selectMode && bulkEnabled;
+  const showCheckboxColumn = bulkEnabled;
 
   const [extraTasks, setExtraTasks] = useState<TaskRow[]>([]);
   const [page, setPage] = useState(initialPage);
@@ -146,17 +143,6 @@ export function TasksListTableFrame({
     setSelectedIds([]);
   }
 
-  function navigateSelectMode(nextSelectMode: boolean): void {
-    startTransition(() => {
-      router.replace(
-        buildTaskListHref(filters, { selectMode: nextSelectMode }),
-      );
-    });
-    if (!nextSelectMode) {
-      clearSelection();
-    }
-  }
-
   function handleArchiveConfirm(reasonForDeactivation: string): void {
     startTransition(async () => {
       try {
@@ -187,7 +173,7 @@ export function TasksListTableFrame({
     });
   }
 
-  const selectionValue = selectionEnabled
+  const selectionValue = bulkEnabled
     ? {
         selectedIds,
         allSelected: areAllTasksSelected(tasks, selectedIds),
@@ -200,30 +186,8 @@ export function TasksListTableFrame({
     <TaskListSelectionProvider value={selectionValue}>
       <div className="flex min-h-0 flex-1 flex-col">
         {bulkEnabled ? (
-          <div className="flex h-10 shrink-0 items-center justify-between gap-2">
-            {selectMode ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={isPending}
-                onClick={() => navigateSelectMode(false)}
-              >
-                {tManage("cancelSelection")}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={isPending}
-                onClick={() => navigateSelectMode(true)}
-              >
-                {tManage("selectTasks")}
-              </Button>
-            )}
-            <div className="flex items-center gap-2">
-              {showArchiveAction ? (
+          <div className="flex h-10 shrink-0 items-center justify-end gap-2">
+            {showArchiveAction ? (
                 <Button
                   type="button"
                   size="icon"
@@ -235,7 +199,7 @@ export function TasksListTableFrame({
                   <Archive aria-hidden />
                 </Button>
               ) : null}
-              {showDeleteAction ? (
+            {showDeleteAction ? (
                 <Button
                   type="button"
                   size="icon"
@@ -247,7 +211,6 @@ export function TasksListTableFrame({
                   <Trash2 aria-hidden />
                 </Button>
               ) : null}
-            </div>
           </div>
         ) : null}
 
@@ -270,7 +233,7 @@ export function TasksListTableFrame({
                       tDuration,
                       tCommon,
                     )}
-                    selectionEnabled={selectionEnabled}
+                    showCheckboxColumn={showCheckboxColumn}
                   />
                 ))}
               </tbody>
@@ -294,7 +257,7 @@ export function TasksListTableFrame({
                     tDuration,
                     tCommon,
                   )}
-                  selectionEnabled={selectionEnabled}
+                  showCheckboxColumn={showCheckboxColumn}
                 />
               ))}
             </ul>

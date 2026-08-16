@@ -3,12 +3,12 @@ import type { TaskRow } from "./types";
 
 export interface TasksListMobileListProps {
   tasks: TaskRow[];
-  selectionEnabled?: boolean;
+  showCheckboxColumn?: boolean;
 }
 
 export async function TasksListMobileList({
   tasks,
-  selectionEnabled = false,
+  showCheckboxColumn = false,
 }: TasksListMobileListProps) {
   return (
     <ul className="md:hidden">
@@ -17,7 +17,7 @@ export async function TasksListMobileList({
           key={task.documentId}
           task={task}
           variant="mobile"
-          selectionEnabled={selectionEnabled}
+          showCheckboxColumn={showCheckboxColumn}
         />
       ))}
     </ul>

@@ -72,7 +72,7 @@ function selectableBody(task = initialTasks[0]) {
         variant="table"
         href={`/tasks/${task.documentId}`}
         labels={rowLabels}
-        selectionEnabled
+        showCheckboxColumn
       />
     </tbody>
   );
@@ -117,7 +117,6 @@ describe("TasksListTableFrame", () => {
         initialTasks={initialTasks}
         initialHasMore
         initialPage={1}
-        selectMode={false}
         tableHeader={<thead><tr><th>Nome</th></tr></thead>}
         tableBody={selectableBody()}
         mobileList={
@@ -143,7 +142,7 @@ describe("TasksListTableFrame", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("enters select mode and submits bulk archive", async () => {
+  it("submits bulk archive when a row is selected", async () => {
     bulkDeactivateTasks.mockResolvedValue(undefined);
     const user = userEvent.setup();
 
@@ -153,7 +152,6 @@ describe("TasksListTableFrame", () => {
         initialTasks={initialTasks}
         initialHasMore={false}
         initialPage={1}
-        selectMode
         canDeactivate
         tableHeader={<thead><tr><th>Nome</th></tr></thead>}
         tableBody={selectableBody()}
@@ -192,7 +190,6 @@ describe("TasksListTableFrame", () => {
         initialTasks={archivedTasks}
         initialHasMore={false}
         initialPage={1}
-        selectMode
         canDelete
         tableHeader={<thead><tr><th>Nome</th></tr></thead>}
         tableBody={selectableBody(archivedTasks[0]!)}
@@ -208,28 +205,5 @@ describe("TasksListTableFrame", () => {
       expect(bulkDeleteTasks).toHaveBeenCalledWith(["t1"]);
     });
     expect(showSuccessToast).toHaveBeenCalled();
-  });
-
-  it("activates select mode via Selecionar button", async () => {
-    const user = userEvent.setup();
-
-    renderWithIntl(
-      <TasksListTableFrame
-        filters={filters}
-        initialTasks={initialTasks}
-        initialHasMore={false}
-        initialPage={1}
-        selectMode={false}
-        canDeactivate
-        tableHeader={null}
-        tableBody={null}
-        mobileList={null}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Selecionar" }));
-    expect(replace).toHaveBeenCalledWith(
-      "/tasks?status=waiting&from=2026-06-01&to=2026-07-15&select=1",
-    );
   });
 });

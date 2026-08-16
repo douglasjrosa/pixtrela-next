@@ -13,8 +13,7 @@ export interface TasksListViewProps {
   tasks: TaskRow[];
   sort: TaskListSort;
   filters: TaskListFilters;
-  selectionEnabled?: boolean;
-  selectMode?: boolean;
+  showCheckboxColumn?: boolean;
 }
 
 /** Server list sections for composition inside TasksListTableFrame. */
@@ -22,8 +21,7 @@ export async function TasksListView({
   tasks,
   sort,
   filters,
-  selectionEnabled = false,
-  selectMode = false,
+  showCheckboxColumn = false,
 }: TasksListViewProps) {
   const tManage = await getTranslations("tasks.manage");
 
@@ -36,16 +34,15 @@ export async function TasksListView({
       <TasksListTableHeader
         sort={sort}
         filters={filters}
-        selectionEnabled={selectionEnabled}
-        selectMode={selectMode}
+        showCheckboxColumn={showCheckboxColumn}
       />
       <TasksListTableBody
         tasks={tasks}
-        selectionEnabled={selectionEnabled}
+        showCheckboxColumn={showCheckboxColumn}
       />
       <TasksListMobileList
         tasks={tasks}
-        selectionEnabled={selectionEnabled}
+        showCheckboxColumn={showCheckboxColumn}
       />
     </>
   );

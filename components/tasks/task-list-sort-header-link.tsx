@@ -15,7 +15,6 @@ export interface TaskListSortHeaderLinkProps {
   sort: TaskListSort;
   filters: TaskListFilters;
   align?: "left" | "center";
-  selectMode?: boolean;
   className?: string;
 }
 
@@ -25,12 +24,11 @@ export function TaskListSortHeaderLink({
   sort,
   filters,
   align = "left",
-  selectMode = false,
   className,
 }: TaskListSortHeaderLinkProps) {
   const active = sort.column === column;
   const direction = active ? sort.direction : undefined;
-  const href = buildTaskListSortHref(filters, column, { selectMode });
+  const href = buildTaskListSortHref(filters, column);
 
   return (
     <th

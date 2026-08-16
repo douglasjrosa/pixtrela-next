@@ -27,7 +27,6 @@ import { listSteps as listStepsRepo } from "@/lib/repos/steps";
 import { loadTaskListPage } from "@/lib/tasks/load-task-list-page";
 import {
   parseTaskListSearchParams,
-  parseTaskListSelectMode,
 } from "@/lib/tasks/task-list-params";
 
 interface TasksPageProps {
@@ -52,7 +51,6 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
   const params = await searchParams;
   const filters = parseTaskListSearchParams(params);
-  const selectMode = parseTaskListSelectMode(params);
   const canDeactivate = canDeactivateTasks(role);
   const canDelete = canDeleteTasks(role);
 
@@ -71,7 +69,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   ]);
 
   const bulkEnabled = canDeactivate || canDelete;
-  const selectionEnabled = selectMode && bulkEnabled;
+  const showCheckboxColumn = bulkEnabled;
   const sort = { column: filters.column, direction: filters.direction };
 
   let listContent;
@@ -84,27 +82,25 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
         initialTasks={pageResult.tasks}
         initialPage={pageResult.page}
         initialHasMore={pageResult.hasMore}
-        selectMode={selectMode}
         canDeactivate={canDeactivate}
         canDelete={canDelete}
         tableHeader={
           <TasksListTableHeader
             sort={sort}
             filters={filters}
-            selectionEnabled={selectionEnabled}
-            selectMode={selectMode}
+            showCheckboxColumn={showCheckboxColumn}
           />
         }
         tableBody={
           <TasksListTableBody
             tasks={pageResult.tasks}
-            selectionEnabled={selectionEnabled}
+            showCheckboxColumn={showCheckboxColumn}
           />
         }
         mobileList={
           <TasksListMobileList
             tasks={pageResult.tasks}
-            selectionEnabled={selectionEnabled}
+            showCheckboxColumn={showCheckboxColumn}
           />
         }
       />

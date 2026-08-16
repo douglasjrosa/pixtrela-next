@@ -8,7 +8,7 @@ const CHECKBOX_CLASS = cn("size-4 rounded border border-input accent-primary");
 
 export interface TaskListRowCheckboxProps {
   documentId: string;
-  variant: "table" | "mobile";
+  variant: "table" | "table-header" | "mobile";
   selectAll?: boolean;
   ariaLabel: string;
 }
@@ -20,52 +20,50 @@ export function TaskListRowCheckbox({
   ariaLabel,
 }: TaskListRowCheckboxProps) {
   const ctx = useTaskListSelection();
-  if (!ctx) return null;
 
-  const {
-    allSelected,
-    selectedIds,
-    onToggleSelect,
-    onToggleSelectAll,
-  } = ctx;
-
-  const checked = selectAll
-    ? allSelected
-    : selectedIds.includes(documentId);
+  const checked = ctx
+    ? selectAll
+      ? ctx.allSelected
+      : ctx.selectedIds.includes(documentId)
+    : false;
 
   function handleChange(): void {
+    if (!ctx) return;
     if (selectAll) {
-      onToggleSelectAll();
+      ctx.onToggleSelectAll();
       return;
     }
-    onToggleSelect(documentId);
+    ctx.onToggleSelect(documentId);
+  }
+
+  const checkbox = ctx ? (
+    <input
+      type="checkbox"
+      className={CHECKBOX_CLASS}
+      checked={checked}
+      aria-label={ariaLabel}
+      onClick={(event) => event.stopPropagation()}
+      onChange={handleChange}
+    />
+  ) : (
+    <span className={CHECKBOX_CLASS} aria-hidden />
+  );
+
+  if (variant === "table-header") {
+    return <div className="flex justify-center">{checkbox}</div>;
   }
 
   if (variant === "table") {
     return (
-      <td className={cn("relative z-[1] w-10 py-2 text-center")} data-task-select>
-        <input
-          type="checkbox"
-          className={CHECKBOX_CLASS}
-          checked={checked}
-          aria-label={ariaLabel}
-          onClick={(event) => event.stopPropagation()}
-          onChange={handleChange}
-        />
+      <td className={cn("w-10 py-2 text-center")} data-task-select>
+        <div className="flex justify-center">{checkbox}</div>
       </td>
     );
   }
 
   return (
-    <div className="relative z-[1] pt-0.5" data-task-select>
-      <input
-        type="checkbox"
-        className={CHECKBOX_CLASS}
-        checked={checked}
-        aria-label={ariaLabel}
-        onClick={(event) => event.stopPropagation()}
-        onChange={handleChange}
-      />
+    <div className="w-4 shrink-0 pt-0.5" data-task-select>
+      {checkbox}
     </div>
   );
 }

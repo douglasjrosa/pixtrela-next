@@ -3,12 +3,12 @@ import type { TaskRow } from "./types";
 
 export interface TasksListTableBodyProps {
   tasks: TaskRow[];
-  selectionEnabled?: boolean;
+  showCheckboxColumn?: boolean;
 }
 
 export async function TasksListTableBody({
   tasks,
-  selectionEnabled = false,
+  showCheckboxColumn = false,
 }: TasksListTableBodyProps) {
   return (
     <tbody>
@@ -17,7 +17,7 @@ export async function TasksListTableBody({
           key={task.documentId}
           task={task}
           variant="table"
-          selectionEnabled={selectionEnabled}
+          showCheckboxColumn={showCheckboxColumn}
         />
       ))}
     </tbody>
