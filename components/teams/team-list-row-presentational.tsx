@@ -12,6 +12,7 @@ import type { TeamRow } from "./types";
 
 const CELL_CLASS = "align-middle px-2 py-2";
 const CENTER_CELL_CLASS = cn(CELL_CLASS, "text-center");
+const EXCHANGE_PERIOD_CELL_CLASS = cn(CENTER_CELL_CLASS, "min-w-44");
 
 export type TeamListRowLabels = {
   since: string;
@@ -90,7 +91,7 @@ export function TeamListRowPresentational({
         {showUntillColumn ? (
           <td className={CENTER_CELL_CLASS}>{labels.untill}</td>
         ) : null}
-        <td className={CENTER_CELL_CLASS}>
+        <td className={EXCHANGE_PERIOD_CELL_CLASS}>
           <TeamExchangePeriodLabel
             firstDay={team.exchangesFirstDay}
             lastDay={team.exchangesLastDay}

@@ -64,6 +64,7 @@ export async function TeamsListTableHeader({
           sort={sort}
           filters={filters}
           align="center"
+          className="min-w-44"
         />
         <TeamListSortHeaderLink
           column="leader"
