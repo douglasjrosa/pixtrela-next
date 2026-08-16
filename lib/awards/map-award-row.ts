@@ -9,6 +9,7 @@ export function mapAwardListItemToRow(item: AwardListItem): AwardRow {
     description: item.description,
     warnings: item.warnings,
     active: item.active,
+    showInStore: item.showInStore,
     stock: item.stock,
     imageId: item.imageMediaId,
     imageUrl: item.imageUrl,

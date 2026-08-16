@@ -21,6 +21,7 @@ export type AwardRecord = {
   description: string | null;
   warnings: string | null;
   active: boolean;
+  showInStore: boolean;
   stock: number;
   imageUrl: string | null;
 };
@@ -31,6 +32,7 @@ export type CreateAwardInput = {
   description?: string | null;
   warnings?: string | null;
   active?: boolean;
+  showInStore?: boolean;
   stock?: number;
   imageMediaId?: string | null;
   prices?: Array<{ currencyId: string; numberOf: number }>;
@@ -45,6 +47,7 @@ export async function listAwards(db: Db = getDb()): Promise<AwardRecord[]> {
       description: awards.description,
       warnings: awards.warnings,
       active: awards.active,
+      showInStore: awards.showInStore,
       stock: awards.stock,
       imageUrl: mediaAssets.url,
     })
@@ -152,6 +155,7 @@ export async function listAwardsPage(
       description: awards.description,
       warnings: awards.warnings,
       active: awards.active,
+      showInStore: awards.showInStore,
       stock: awards.stock,
       imageMediaId: awards.imageMediaId,
       imageUrl: mediaAssets.url,
@@ -167,6 +171,7 @@ export async function listAwardsPage(
       awards.description,
       awards.warnings,
       awards.active,
+      awards.showInStore,
       awards.stock,
       awards.imageMediaId,
       mediaAssets.url,
@@ -188,6 +193,7 @@ export async function listAwardsPage(
       description: row.description,
       warnings: row.warnings,
       active: row.active,
+      showInStore: row.showInStore,
       stock: row.stock,
       imageMediaId: row.imageMediaId,
       imageUrl: row.imageUrl,
@@ -212,6 +218,7 @@ export async function createAward(
       description: input.description ?? null,
       warnings: input.warnings ?? null,
       active: input.active ?? true,
+      showInStore: input.showInStore ?? true,
       stock: input.stock ?? 0,
       imageMediaId: input.imageMediaId ?? null,
     })
@@ -222,6 +229,7 @@ export async function createAward(
       description: awards.description,
       warnings: awards.warnings,
       active: awards.active,
+      showInStore: awards.showInStore,
       stock: awards.stock,
       imageMediaId: awards.imageMediaId,
     });
@@ -253,6 +261,7 @@ export async function createAward(
     description: row.description,
     warnings: row.warnings,
     active: row.active,
+    showInStore: row.showInStore,
     stock: row.stock,
     imageUrl,
   };
@@ -348,6 +357,7 @@ export async function findAwardById(
       description: awards.description,
       warnings: awards.warnings,
       active: awards.active,
+      showInStore: awards.showInStore,
       stock: awards.stock,
       imageUrl: mediaAssets.url,
     })

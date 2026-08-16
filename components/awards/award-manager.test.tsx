@@ -23,6 +23,7 @@ const awards: AwardRow[] = [
     documentId: "a1",
     name: "Arroz",
     active: true,
+    showInStore: true,
     stock: 10,
     values: [{ numberOf: 50, currencyDocumentId: "c1" }],
   },
@@ -161,7 +162,7 @@ describe("AwardManager", () => {
       expect(onCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "Feijão",
-          active: true,
+          showInStore: true,
           stock: 0,
           values: [{ numberOf: 1, currencyDocumentId: "c1" }],
         }),

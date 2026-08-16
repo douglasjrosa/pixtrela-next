@@ -7,7 +7,7 @@ describe("awardFormSchema", () => {
     expect(
       awardFormSchema.parse({
         name: "Arroz",
-        active: true,
+        showInStore: true,
         stock: 0,
         values: [{ numberOf: 50, currencyDocumentId: "c1" }],
       }),
@@ -20,7 +20,7 @@ describe("awardFormSchema", () => {
         name: "Feijão",
         warnings: "Validade limitada.",
         imageId: 3,
-        active: false,
+        showInStore: false,
         stock: 12,
         values: [{ numberOf: 30, currencyDocumentId: "c1" }],
       }),
@@ -32,7 +32,7 @@ describe("awardFormSchema", () => {
       awardFormSchema.parse({
         name: "Açúcar",
         imageId: "550e8400-e29b-41d4-a716-446655440000",
-        active: true,
+        showInStore: true,
         stock: 0,
         values: [{ numberOf: 10, currencyDocumentId: "c1" }],
       }).imageId,

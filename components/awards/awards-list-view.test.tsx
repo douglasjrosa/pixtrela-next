@@ -12,6 +12,7 @@ const awards: AwardRow[] = [
     name: "arroz-sku",
     title: "Arroz 5kg",
     active: true,
+    showInStore: true,
     stock: 0,
     imageUrl: "/api/media/arroz.jpg",
     values: [{ numberOf: 2100, currencyDocumentId: "c1" }],

@@ -148,6 +148,7 @@ export const awards = pgTable("awards", {
   warnings: text("warnings"),
   imageMediaId: uuid("image_media_id").references(() => mediaAssets.id),
   active: boolean("active").default(true).notNull(),
+  showInStore: boolean("show_in_store").default(true).notNull(),
   stock: integer("stock").default(0).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

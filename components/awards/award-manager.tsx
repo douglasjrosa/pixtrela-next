@@ -50,7 +50,7 @@ function defaultValues(currencies: CurrencyOption[]): AwardFormInput {
     description: "",
     warnings: "",
     imageId: null,
-    active: true,
+    showInStore: true,
     stock: 0,
     values: [{ numberOf: 1, currencyDocumentId: defaultCurrencyId }],
   };
@@ -66,7 +66,7 @@ function toFormValues(
     description: award.description ?? "",
     warnings: award.warnings ?? "",
     imageId: award.imageId ?? null,
-    active: award.active,
+    showInStore: award.showInStore,
     stock: award.stock,
     values:
       award.values.length > 0
@@ -319,7 +319,7 @@ function AwardFormDialog({
               type="checkbox"
               className={cn("size-4 rounded border accent-primary")}
               disabled={isPending}
-              {...register("active")}
+              {...register("showInStore")}
             />
             {tAwards("showInStore")}
           </label>

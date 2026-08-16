@@ -89,13 +89,14 @@ export async function redeemAward(
       .select({
         id: awards.id,
         active: awards.active,
+        showInStore: awards.showInStore,
         name: awards.name,
         title: awards.title,
       })
       .from(awards)
       .where(eq(awards.id, input.awardId))
       .limit(1);
-    if (!award?.active) throw new Error("awardUnavailable");
+    if (!award?.active || !award.showInStore) throw new Error("awardUnavailable");
 
     const [currency] = await tx
       .select({

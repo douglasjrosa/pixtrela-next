@@ -101,7 +101,8 @@ export async function createAward(raw: AwardFormInput): Promise<void> {
     warnings: data.warnings || null,
     imageMediaId:
       typeof data.imageId === "string" ? data.imageId : null,
-    active: data.active,
+    active: true,
+    showInStore: data.showInStore,
     stock: data.stock,
     prices: data.values.map((entry) => ({
       currencyId: entry.currencyDocumentId,
@@ -127,7 +128,7 @@ export async function updateAward(
       warnings: data.warnings || null,
       imageMediaId:
         typeof data.imageId === "string" ? data.imageId : undefined,
-      active: data.active,
+      showInStore: data.showInStore,
       stock: data.stock,
       updatedAt: new Date(),
     })

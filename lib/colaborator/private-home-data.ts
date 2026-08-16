@@ -80,7 +80,7 @@ export async function loadColaboratorPrivateHome(
     const awards: AwardView[] = [];
 
     for (const award of awardRows) {
-      if (!award.active) continue;
+      if (!award.active || !award.showInStore) continue;
       const prices = await db
         .select({
           numberOf: awardPrices.numberOf,

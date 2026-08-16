@@ -14,7 +14,7 @@ export const awardFormSchema = z.object({
     .union([z.number().int().positive(), z.string().uuid()])
     .nullable()
     .optional(),
-  active: z.boolean(),
+  showInStore: z.boolean(),
   stock: z.number().int().min(0),
   values: z.array(awardValueSchema).min(1),
 });

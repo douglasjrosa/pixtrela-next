@@ -13,6 +13,7 @@ export interface AwardRow {
   description?: string | null;
   warnings?: string | null;
   active: boolean;
+  showInStore: boolean;
   stock: number;
   imageId?: number | string | null;
   imageUrl?: string | null;
