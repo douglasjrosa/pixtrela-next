@@ -4,10 +4,9 @@ export const TEAM_LIST_SORT_COLUMNS = [
   "name",
   "since",
   "untill",
-  "status",
-  "exchangesFirstDay",
-  "exchangesLastDay",
+  "exchangePeriod",
   "leader",
+  "members",
 ] as const;
 
 export const TEAM_LIST_SORT_DIRECTIONS = ["asc", "desc"] as const;

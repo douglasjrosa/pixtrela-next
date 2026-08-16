@@ -143,8 +143,8 @@ export async function listTeamsWithMembers(
   });
 }
 
-const TEAM_STATUS_RANK = sql<number>`
-  case when ${teams.until} is null then 0 else 1 end
+const TEAM_MEMBER_COUNT = sql<number>`
+  (select count(*)::int from ${teamMembers} where ${teamMembers.teamId} = ${teams.id})
 `;
 
 function teamListOrderBy(sort: TeamListSort) {
@@ -155,17 +155,19 @@ function teamListOrderBy(sort: TeamListSort) {
   if (sort.column === "untill") {
     return [dir(teams.until), asc(teams.name), asc(teams.id)];
   }
-  if (sort.column === "status") {
-    return [dir(TEAM_STATUS_RANK), asc(teams.name), asc(teams.id)];
-  }
-  if (sort.column === "exchangesFirstDay") {
-    return [dir(teams.exchangesFirstDay), asc(teams.name), asc(teams.id)];
-  }
-  if (sort.column === "exchangesLastDay") {
-    return [dir(teams.exchangesLastDay), asc(teams.name), asc(teams.id)];
+  if (sort.column === "exchangePeriod") {
+    return [
+      dir(teams.exchangesFirstDay),
+      dir(teams.exchangesLastDay),
+      asc(teams.name),
+      asc(teams.id),
+    ];
   }
   if (sort.column === "leader") {
     return [dir(users.name), asc(teams.name), asc(teams.id)];
+  }
+  if (sort.column === "members") {
+    return [dir(TEAM_MEMBER_COUNT), asc(teams.name), asc(teams.id)];
   }
   return [dir(teams.name), asc(teams.id)];
 }
@@ -279,6 +281,7 @@ export async function updateTeam(
       exchangesFirstDay: input.exchangesFirstDay,
       exchangesLastDay: input.exchangesLastDay,
       until: input.until ?? null,
+      active: input.until ? false : true,
       updatedAt: new Date(),
     })
     .where(eq(teams.id, input.id))

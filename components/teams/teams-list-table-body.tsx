@@ -4,11 +4,13 @@ import type { TeamRow } from "./types";
 export interface TeamsListTableBodyProps {
   teams: TeamRow[];
   showCheckboxColumn?: boolean;
+  showUntillColumn?: boolean;
 }
 
 export async function TeamsListTableBody({
   teams,
   showCheckboxColumn = false,
+  showUntillColumn = false,
 }: TeamsListTableBodyProps) {
   return (
     <tbody>
@@ -18,6 +20,7 @@ export async function TeamsListTableBody({
           team={team}
           variant="table"
           showCheckboxColumn={showCheckboxColumn}
+          showUntillColumn={showUntillColumn}
         />
       ))}
     </tbody>

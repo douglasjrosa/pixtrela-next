@@ -88,6 +88,14 @@ describe("teams/actions drizzle CRUD", () => {
     );
   });
 
+  it("updateTeam passes until date to repo", async () => {
+    const { updateTeam } = await import("./actions");
+    await updateTeam("team-1", { ...form, untill: "2026-08-16" });
+    expect(updateTeamRepo).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "team-1", until: "2026-08-16" }),
+    );
+  });
+
   it("deleteTeam soft-deletes via repo", async () => {
     const { deleteTeam } = await import("./actions");
     await deleteTeam("team-1");

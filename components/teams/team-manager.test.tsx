@@ -44,10 +44,8 @@ const teams: TeamRow[] = [
 const labelsA = {
   since: "10/01/2026",
   untill: "",
-  status: "Ativa",
+  exchangePeriod: "Do dia 3 ao dia 15",
   leader: "João",
-  exchangesFirstDay: "Início das trocas",
-  exchangesLastDay: "Fim das trocas",
   inactive: "Inativa",
   selectRow: "Selecionar Linha A",
 };
@@ -56,7 +54,6 @@ const labelsB = {
   ...labelsA,
   since: "01/06/2025",
   untill: "31/05/2026",
-  status: "Inativa",
 };
 
 function renderManager() {
@@ -91,12 +88,12 @@ describe("TeamManager", () => {
     refresh.mockReset();
   });
 
-  it("renders team list with lifecycle and status columns", () => {
+  it("renders team list with exchange period and member data", () => {
     renderManager();
     expect(screen.getAllByText("Linha A").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Linha B").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Ativa").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Inativa").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Do dia 3 ao dia 15").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Ana").length).toBeGreaterThan(0);
   });
 
   it("hides team form by default", () => {

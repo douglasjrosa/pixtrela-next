@@ -53,10 +53,10 @@ describe("serializeTeamListSearchParams", () => {
   it("includes sort params when not default", () => {
     const params = serializeTeamListSearchParams({
       ...defaultTeamListFilters(),
-      column: "status",
+      column: "exchangePeriod",
       direction: "desc",
     });
-    expect(params.get("sort")).toBe("status");
+    expect(params.get("sort")).toBe("exchangePeriod");
     expect(params.get("dir")).toBe("desc");
   });
 

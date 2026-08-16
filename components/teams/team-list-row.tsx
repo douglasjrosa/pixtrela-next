@@ -1,6 +1,5 @@
 import { getTranslations } from "next-intl/server";
 
-import { isTeamActive } from "@/lib/business/team-active";
 import { formatDatePtBr } from "@/lib/format/datetime";
 
 import {
@@ -13,23 +12,25 @@ export interface TeamListRowProps {
   team: TeamRow;
   variant: "table" | "mobile";
   showCheckboxColumn?: boolean;
+  showUntillColumn?: boolean;
 }
 
 export async function TeamListRowView({
   team,
   variant,
   showCheckboxColumn = false,
+  showUntillColumn = false,
 }: TeamListRowProps) {
   const tTeams = await getTranslations("teams");
   const tCommon = await getTranslations("common");
-  const active = isTeamActive(team.untill);
   const labels: TeamListRowLabels = {
     since: formatDatePtBr(team.since),
     untill: formatDatePtBr(team.untill),
-    status: active ? tTeams("active") : tTeams("inactive"),
+    exchangePeriod: tTeams("exchangePeriodRange", {
+      firstDay: team.exchangesFirstDay,
+      lastDay: team.exchangesLastDay,
+    }),
     leader: team.leader?.name ?? tTeams("noLeader"),
-    exchangesFirstDay: tTeams("exchangesFirstDay"),
-    exchangesLastDay: tTeams("exchangesLastDay"),
     inactive: tTeams("inactive"),
     selectRow: tCommon("selectRow", { name: team.name }),
   };
@@ -40,6 +41,7 @@ export async function TeamListRowView({
       variant={variant}
       labels={labels}
       showCheckboxColumn={showCheckboxColumn}
+      showUntillColumn={showUntillColumn}
     />
   );
 }

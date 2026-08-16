@@ -6,19 +6,19 @@ import { buildTeamListHref, buildTeamListSortHref } from "./team-list-sort-url";
 describe("buildTeamListSortHref", () => {
   it("adds sort params when switching away from default name asc", () => {
     const filters = defaultTeamListFilters();
-    expect(buildTeamListSortHref(filters, "status")).toBe(
-      "/teams?sort=status&dir=asc",
+    expect(buildTeamListSortHref(filters, "exchangePeriod")).toBe(
+      "/teams?sort=exchangePeriod&dir=asc",
     );
   });
 
   it("toggles direction on the active column", () => {
     const filters = {
       ...defaultTeamListFilters(),
-      column: "status" as const,
+      column: "exchangePeriod" as const,
       direction: "asc" as const,
     };
-    expect(buildTeamListSortHref(filters, "status")).toBe(
-      "/teams?sort=status&dir=desc",
+    expect(buildTeamListSortHref(filters, "exchangePeriod")).toBe(
+      "/teams?sort=exchangePeriod&dir=desc",
     );
   });
 

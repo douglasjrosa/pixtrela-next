@@ -54,10 +54,8 @@ const initialTeams: TeamRow[] = [
 const rowLabels = {
   since: "10/01/2026",
   untill: "",
-  status: "Ativa",
+  exchangePeriod: "Do dia 3 ao dia 15",
   leader: "João",
-  exchangesFirstDay: "Início das trocas",
-  exchangesLastDay: "Fim das trocas",
   inactive: "Inativa",
   selectRow: "Selecionar Primeiro",
 };

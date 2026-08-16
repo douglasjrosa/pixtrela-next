@@ -99,12 +99,14 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
           <TeamsListTableBody
             teams={pageResult.teams}
             showCheckboxColumn={showCheckboxColumn}
+            showUntillColumn={filters.showArchived}
           />
         }
         mobileList={
           <TeamsListMobileList
             teams={pageResult.teams}
             showCheckboxColumn={showCheckboxColumn}
+            showUntillColumn={filters.showArchived}
           />
         }
       />

@@ -20,12 +20,13 @@ export async function TeamsListTableHeader({
 }: TeamsListTableHeaderProps) {
   const tTeams = await getTranslations("teams");
   const tCommon = await getTranslations("common");
+  const showUntillColumn = filters.showArchived;
 
   return (
     <thead>
       <tr className="border-b text-left">
         {showCheckboxColumn ? (
-          <th className={cn("w-10 py-2", "text-center")}>
+          <th className={cn("w-10 py-2 align-middle", "text-center")}>
             <TeamListRowCheckbox
               documentId=""
               variant="table-header"
@@ -48,30 +49,18 @@ export async function TeamsListTableHeader({
           filters={filters}
           align="center"
         />
+        {showUntillColumn ? (
+          <TeamListSortHeaderLink
+            column="untill"
+            label={tTeams("untill")}
+            sort={sort}
+            filters={filters}
+            align="center"
+          />
+        ) : null}
         <TeamListSortHeaderLink
-          column="untill"
-          label={tTeams("untill")}
-          sort={sort}
-          filters={filters}
-          align="center"
-        />
-        <TeamListSortHeaderLink
-          column="status"
-          label={tTeams("status")}
-          sort={sort}
-          filters={filters}
-          align="center"
-        />
-        <TeamListSortHeaderLink
-          column="exchangesFirstDay"
-          label={tTeams("exchangesFirstDay")}
-          sort={sort}
-          filters={filters}
-          align="center"
-        />
-        <TeamListSortHeaderLink
-          column="exchangesLastDay"
-          label={tTeams("exchangesLastDay")}
+          column="exchangePeriod"
+          label={tTeams("exchangePeriod")}
           sort={sort}
           filters={filters}
           align="center"
@@ -79,6 +68,13 @@ export async function TeamsListTableHeader({
         <TeamListSortHeaderLink
           column="leader"
           label={tTeams("leader")}
+          sort={sort}
+          filters={filters}
+          align="center"
+        />
+        <TeamListSortHeaderLink
+          column="members"
+          label={tTeams("members")}
           sort={sort}
           filters={filters}
           align="center"

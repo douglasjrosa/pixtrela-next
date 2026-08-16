@@ -12,7 +12,6 @@ import {
 } from "@/app/(app)/teams/actions";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { isTeamActive } from "@/lib/business/team-active";
 import {
   areAllSelectedTeamsArchived,
   areAllTeamsSelected,
@@ -90,15 +89,17 @@ export function TeamsListTableFrame({
     hasSelection && !allSelectedArchived && canDeactivate;
   const showDeleteAction = hasSelection && allSelectedArchived && canDelete;
 
+  const showUntillColumn = filters.showArchived;
+
   function labelsFor(team: TeamRow) {
-    const active = isTeamActive(team.untill);
     return {
       since: formatDatePtBr(team.since),
       untill: formatDatePtBr(team.untill),
-      status: active ? tTeams("active") : tTeams("inactive"),
+      exchangePeriod: tTeams("exchangePeriodRange", {
+        firstDay: team.exchangesFirstDay,
+        lastDay: team.exchangesLastDay,
+      }),
       leader: team.leader?.name ?? tTeams("noLeader"),
-      exchangesFirstDay: tTeams("exchangesFirstDay"),
-      exchangesLastDay: tTeams("exchangesLastDay"),
       inactive: tTeams("inactive"),
       selectRow: tCommon("selectRow", { name: team.name }),
     };
@@ -215,6 +216,7 @@ export function TeamsListTableFrame({
                     variant="table"
                     labels={labelsFor(team)}
                     showCheckboxColumn={showCheckboxColumn}
+                    showUntillColumn={showUntillColumn}
                   />
                 ))}
               </tbody>
@@ -232,6 +234,7 @@ export function TeamsListTableFrame({
                   variant="mobile"
                   labels={labelsFor(team)}
                   showCheckboxColumn={showCheckboxColumn}
+                  showUntillColumn={showUntillColumn}
                 />
               ))}
             </ul>

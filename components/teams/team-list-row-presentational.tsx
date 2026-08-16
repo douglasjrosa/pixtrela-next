@@ -3,22 +3,20 @@
 import type { KeyboardEvent } from "react";
 
 import { CardBadge } from "@/components/ui/card";
-import { isTeamActive } from "@/lib/business/team-active";
 import { cn } from "@/lib/utils";
 
 import { TeamListRowCheckbox } from "./team-list-row-checkbox";
 import { useTeamList } from "./team-list-context";
 import type { TeamRow } from "./types";
 
-const CENTER_CELL_CLASS = "text-center";
+const CELL_CLASS = "align-middle py-2";
+const CENTER_CELL_CLASS = cn(CELL_CLASS, "text-center");
 
 export type TeamListRowLabels = {
   since: string;
   untill: string;
-  status: string;
+  exchangePeriod: string;
   leader: string;
-  exchangesFirstDay: string;
-  exchangesLastDay: string;
   inactive: string;
   selectRow: string;
 };
@@ -28,6 +26,7 @@ export interface TeamListRowPresentationalProps {
   variant: "table" | "mobile";
   labels: TeamListRowLabels;
   showCheckboxColumn?: boolean;
+  showUntillColumn?: boolean;
 }
 
 export function TeamListRowPresentational({
@@ -35,11 +34,10 @@ export function TeamListRowPresentational({
   variant,
   labels,
   showCheckboxColumn = false,
+  showUntillColumn = false,
 }: TeamListRowPresentationalProps) {
   const { openEdit } = useTeamList();
-  const dateInactive = !isTeamActive(team.untill);
   const archived = !team.active;
-  const muted = dateInactive || archived;
   const activate = () => openEdit(team);
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -57,9 +55,17 @@ export function TeamListRowPresentational({
     </>
   );
 
+  const membersCell = (
+    <div className="flex flex-wrap items-center justify-center gap-1">
+      {(team.colaborators ?? []).map((colaborator) => (
+        <CardBadge key={colaborator.documentId}>{colaborator.name}</CardBadge>
+      ))}
+    </div>
+  );
+
   const rowClassName = cn(
     "cursor-pointer border-b hover:bg-muted/40",
-    muted && "text-muted-foreground",
+    archived && "text-muted-foreground",
   );
   const rowProps = {
     onClick: activate,
@@ -79,13 +85,14 @@ export function TeamListRowPresentational({
             ariaLabel={labels.selectRow}
           />
         ) : null}
-        <td className="py-2">{nameCell}</td>
+        <td className={CELL_CLASS}>{nameCell}</td>
         <td className={CENTER_CELL_CLASS}>{labels.since}</td>
-        <td className={CENTER_CELL_CLASS}>{labels.untill}</td>
-        <td className={CENTER_CELL_CLASS}>{labels.status}</td>
-        <td className={CENTER_CELL_CLASS}>{team.exchangesFirstDay}</td>
-        <td className={CENTER_CELL_CLASS}>{team.exchangesLastDay}</td>
+        {showUntillColumn ? (
+          <td className={CENTER_CELL_CLASS}>{labels.untill}</td>
+        ) : null}
+        <td className={CENTER_CELL_CLASS}>{labels.exchangePeriod}</td>
         <td className={CENTER_CELL_CLASS}>{labels.leader}</td>
+        <td className={CENTER_CELL_CLASS}>{membersCell}</td>
       </tr>
     );
   }
@@ -102,17 +109,17 @@ export function TeamListRowPresentational({
         ) : null}
         <div className="min-w-0 flex-1">
           <div className="text-base font-medium">{nameCell}</div>
-          <div className="text-muted-foreground text-sm">
-            {labels.status} · {labels.leader}
-          </div>
+          <div className="text-muted-foreground text-sm">{labels.leader}</div>
           <div className="text-muted-foreground text-sm">
             {labels.since}
-            {team.untill ? ` → ${labels.untill}` : ""}
+            {showUntillColumn && team.untill ? ` → ${labels.untill}` : ""}
           </div>
           <div className="text-muted-foreground text-sm">
-            {labels.exchangesFirstDay}: {team.exchangesFirstDay} ·{" "}
-            {labels.exchangesLastDay}: {team.exchangesLastDay}
+            {labels.exchangePeriod}
           </div>
+          {(team.colaborators?.length ?? 0) > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-1">{membersCell}</div>
+          ) : null}
         </div>
       </div>
     </li>
