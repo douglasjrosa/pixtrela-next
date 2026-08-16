@@ -5,6 +5,7 @@ import { DndContext } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 import { toKanbanTaskId } from "@/lib/business/kanban-task-order";
+import { splitDateTimePtBr } from "@/lib/format/datetime";
 import { renderWithIntl } from "@/test/test-utils";
 import { KanbanCard } from "./kanban-card";
 
@@ -49,20 +50,7 @@ describe("KanbanCard", () => {
 
   it("shows qty-prefixed title, delivery and completion badges when finished", () => {
     const endedAt = "2026-07-17T18:45:00.000Z";
-    const endedParts = (() => {
-      const date = new Date(endedAt);
-      return {
-        date: date.toLocaleDateString("pt-BR", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        }),
-        time: date.toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-    })();
+    const endedParts = splitDateTimePtBr(endedAt);
 
     renderWithIntl(
       <DndContext>

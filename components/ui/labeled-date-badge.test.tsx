@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
 
 import { renderWithIntl } from "@/test/test-utils";
+import { splitDateTimePtBr } from "@/lib/format/datetime";
 import {
   LabeledDateBadge,
   labeledDateBadgeToneClassName,
@@ -38,20 +39,7 @@ describe("LabeledDateBadge", () => {
     );
 
     expect(screen.getByText("Conclusão")).toBeInTheDocument();
-    const { date, time } = (() => {
-      const date = new Date("2026-07-17T15:30:00.000Z");
-      return {
-        date: date.toLocaleDateString("pt-BR", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        }),
-        time: date.toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-    })();
+    const { date, time } = splitDateTimePtBr("2026-07-17T15:30:00.000Z");
     expect(screen.getByText(date)).toBeInTheDocument();
     expect(screen.getByText(time)).toBeInTheDocument();
     expect(screen.getByText("Conclusão").parentElement?.className).toContain(

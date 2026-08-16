@@ -39,7 +39,6 @@ import { currencies, currencyForSubtasks } from "@/drizzle/schema";
 
 const PRODUCING_STATUS = "producing";
 const WAITING_STATUS = "waiting";
-const PAUSED_STATUS = "paused";
 const FINISHED_STATUS = "finished";
 
 export type ChainStopMemberAnswer = ChainStopAnswer;
