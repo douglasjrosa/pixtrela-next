@@ -129,7 +129,10 @@ export interface KanbanTaskSubtasksModalProps {
     assignedToIds: string[],
   ) => void;
   onSave: () => void;
-  onReorder?: (orderedDocumentIds: string[]) => void | Promise<void>;
+  onReorder?: (
+    orderedDocumentIds: string[],
+    movedDocumentId: string,
+  ) => void | Promise<void>;
   onLinkToggle?: (
     subtaskDocumentId: string,
     linkedToPrevious: boolean,
@@ -492,7 +495,10 @@ export function KanbanTaskSubtasksModal({
         event.over?.id,
       );
       if (!next) return;
-      void onReorder(subtaskDocumentIdsInOrder(next));
+      void onReorder(
+        subtaskDocumentIdsInOrder(next),
+        String(event.active.id),
+      );
     },
     [onReorder, subtasks],
   );

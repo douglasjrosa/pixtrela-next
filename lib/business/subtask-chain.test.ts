@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applyChainLinkToggle,
   applyHeadAssigneePropagation,
   assigneesAfterLinkToPrevious,
   canEditAssignees,
   chainHasExternalDependencyBlock,
   findChainContaining,
+  reconcileChainReorder,
   remainingExecutableMembers,
   resolveChains,
+  type ChainAssigneeState,
   type ChainSubTask,
 } from "./subtask-chain";
 
@@ -118,7 +121,7 @@ describe("assignees", () => {
     expect(canEditAssignees("c", 1, chain)).toBe("none");
   });
 
-  it("propagates head assignees and keeps extras on max>1 members", () => {
+  it("propagates head assignees and discards extras on every member", () => {
     const result = applyHeadAssigneePropagation(
       [
         { documentId: "a", assignedToIds: ["u1"], maxSameTimeWorkers: 1 },
@@ -130,13 +133,285 @@ describe("assignees", () => {
         { documentId: "c", assignedToIds: ["u1"], maxSameTimeWorkers: 1 },
       ],
       "a",
-      ["u1"],
       ["u2"],
     );
     expect(result).toEqual([
       { documentId: "a", assignedToIds: ["u2"] },
-      { documentId: "b", assignedToIds: ["u2", "helper"] },
+      { documentId: "b", assignedToIds: ["u2"] },
       { documentId: "c", assignedToIds: ["u2"] },
+    ]);
+  });
+});
+
+function state(
+  partial: Pick<ChainAssigneeState, "documentId"> &
+    Partial<ChainAssigneeState>,
+): ChainAssigneeState {
+  return {
+    linkedToPrevious: false,
+    maxSameTimeWorkers: 1,
+    assignedToIds: [],
+    ...partial,
+  };
+}
+
+function idsOf(items: readonly ChainAssigneeState[]): string[] {
+  return items.map((item) => item.documentId);
+}
+
+function byId(
+  items: readonly ChainAssigneeState[],
+  documentId: string,
+): ChainAssigneeState {
+  return items.find((item) => item.documentId === documentId)!;
+}
+
+function asChainItems(items: readonly ChainAssigneeState[]): ChainSubTask[] {
+  return items.map((row, index) => ({
+    documentId: row.documentId,
+    index,
+    status: "waiting",
+    linkedToPrevious: row.linkedToPrevious,
+    maxSameTimeWorkers: row.maxSameTimeWorkers,
+    assignedToIds: row.assignedToIds,
+    dependencyIds: [],
+  }));
+}
+
+describe("chain board rules", () => {
+  it("1. linking inherits head assignees and discards later members", () => {
+    const next = applyChainLinkToggle(
+      [
+        state({ documentId: "a", assignedToIds: ["head"] }),
+        state({ documentId: "b", assignedToIds: ["old-b"] }),
+        state({
+          documentId: "c",
+          linkedToPrevious: true,
+          assignedToIds: ["old-c"],
+        }),
+      ],
+      "b",
+      true,
+    );
+    expect(byId(next, "a").assignedToIds).toEqual(["head"]);
+    expect(byId(next, "b")).toMatchObject({
+      linkedToPrevious: true,
+      assignedToIds: ["head"],
+    });
+    expect(byId(next, "c")).toMatchObject({
+      linkedToPrevious: true,
+      assignedToIds: ["head"],
+    });
+  });
+
+  it("2. head assignee changes propagate to every chain member", () => {
+    const members = [
+      { documentId: "a", assignedToIds: ["u1"], maxSameTimeWorkers: 1 },
+      { documentId: "b", assignedToIds: ["u1"], maxSameTimeWorkers: 1 },
+      { documentId: "c", assignedToIds: ["u1"], maxSameTimeWorkers: 1 },
+    ];
+    expect(applyHeadAssigneePropagation(members, "a", ["u2"])).toEqual([
+      { documentId: "a", assignedToIds: ["u2"] },
+      { documentId: "b", assignedToIds: ["u2"] },
+      { documentId: "c", assignedToIds: ["u2"] },
+    ]);
+  });
+
+  it("3. max_same_time_workers=1 members only accept assignees from the head", () => {
+    const chain = { headId: "a", memberIds: ["a", "b"] };
+    expect(canEditAssignees("b", 1, chain)).toBe("none");
+    expect(canEditAssignees("a", 1, chain)).toBe("head");
+  });
+
+  it("4. max>1 extras stay local until a later head change replaces them", () => {
+    const chain = { headId: "a", memberIds: ["a", "b", "c"] };
+    expect(canEditAssignees("b", 2, chain)).toBe("helper");
+    const afterHelper = [
+      state({ documentId: "a", assignedToIds: ["head"] }),
+      state({
+        documentId: "b",
+        linkedToPrevious: true,
+        maxSameTimeWorkers: 2,
+        assignedToIds: ["head", "extra"],
+      }),
+      state({
+        documentId: "c",
+        linkedToPrevious: true,
+        assignedToIds: ["head"],
+      }),
+    ];
+    expect(byId(afterHelper, "a").assignedToIds).toEqual(["head"]);
+    expect(byId(afterHelper, "c").assignedToIds).toEqual(["head"]);
+    expect(
+      applyHeadAssigneePropagation(
+        afterHelper.map((item) => ({
+          documentId: item.documentId,
+          assignedToIds: item.assignedToIds,
+          maxSameTimeWorkers: item.maxSameTimeWorkers,
+        })),
+        "a",
+        ["next"],
+      ),
+    ).toEqual([
+      { documentId: "a", assignedToIds: ["next"] },
+      { documentId: "b", assignedToIds: ["next"] },
+      { documentId: "c", assignedToIds: ["next"] },
+    ]);
+  });
+
+  it("5. unlinking keeps assignees and makes the row the next group head", () => {
+    const next = applyChainLinkToggle(
+      [
+        state({ documentId: "a", assignedToIds: ["head"] }),
+        state({
+          documentId: "b",
+          linkedToPrevious: true,
+          assignedToIds: ["head"],
+        }),
+        state({
+          documentId: "c",
+          linkedToPrevious: true,
+          assignedToIds: ["head"],
+        }),
+      ],
+      "b",
+      false,
+    );
+    expect(byId(next, "b")).toMatchObject({
+      linkedToPrevious: false,
+      assignedToIds: ["head"],
+    });
+    expect(byId(next, "c")).toMatchObject({
+      linkedToPrevious: true,
+      assignedToIds: ["head"],
+    });
+    const chains = resolveChains(asChainItems(next));
+    expect(chains).toEqual([
+      { headId: "a", memberIds: ["a"] },
+      { headId: "b", memberIds: ["b", "c"] },
+    ]);
+  });
+
+  it("6. moving the head down makes the next row the new head", () => {
+    const next = reconcileChainReorder(
+      [
+        state({ documentId: "a", assignedToIds: ["head"] }),
+        state({
+          documentId: "b",
+          linkedToPrevious: true,
+          assignedToIds: ["head"],
+        }),
+        state({
+          documentId: "c",
+          linkedToPrevious: true,
+          assignedToIds: ["head"],
+        }),
+      ],
+      ["b", "a", "c"],
+      "a",
+    );
+    expect(idsOf(next)).toEqual(["b", "a", "c"]);
+    expect(byId(next, "b").linkedToPrevious).toBe(false);
+    expect(byId(next, "a").linkedToPrevious).toBe(true);
+    expect(byId(next, "c").linkedToPrevious).toBe(true);
+    expect(resolveChains(asChainItems(next))).toEqual([
+      { headId: "b", memberIds: ["b", "a", "c"] },
+    ]);
+  });
+
+  it("7. moving a member out of the group unlinks it and keeps assignees", () => {
+    const next = reconcileChainReorder(
+      [
+        state({ documentId: "a", assignedToIds: ["head"] }),
+        state({
+          documentId: "b",
+          linkedToPrevious: true,
+          assignedToIds: ["head", "extra"],
+          maxSameTimeWorkers: 2,
+        }),
+        state({
+          documentId: "c",
+          linkedToPrevious: true,
+          assignedToIds: ["head"],
+        }),
+        state({ documentId: "d", assignedToIds: ["solo"] }),
+      ],
+      ["a", "c", "d", "b"],
+      "b",
+    );
+    expect(byId(next, "b")).toMatchObject({
+      linkedToPrevious: false,
+      assignedToIds: ["head", "extra"],
+    });
+    expect(byId(next, "c").linkedToPrevious).toBe(true);
+    expect(
+      resolveChains(asChainItems(next)).map((chain) => chain.memberIds),
+    ).toEqual([["a", "c"], ["d"], ["b"]]);
+  });
+
+  it("8. moving a row into a group inherits head assignees and discards its own", () => {
+    const next = reconcileChainReorder(
+      [
+        state({ documentId: "a", assignedToIds: ["head"] }),
+        state({
+          documentId: "b",
+          linkedToPrevious: true,
+          assignedToIds: ["head"],
+        }),
+        state({
+          documentId: "c",
+          maxSameTimeWorkers: 2,
+          assignedToIds: ["keep-me"],
+        }),
+      ],
+      ["a", "c", "b"],
+      "c",
+    );
+    expect(byId(next, "c")).toMatchObject({
+      linkedToPrevious: true,
+      assignedToIds: ["head"],
+    });
+    expect(resolveChains(asChainItems(next))).toEqual([
+      { headId: "a", memberIds: ["a", "c", "b"] },
+    ]);
+  });
+
+  it("9. moving a max>1 member keeps its extras until the head changes", () => {
+    const extras = ["head", "extra"];
+    const before = [
+      state({ documentId: "a", assignedToIds: ["head"] }),
+      state({
+        documentId: "b",
+        linkedToPrevious: true,
+        maxSameTimeWorkers: 2,
+        assignedToIds: extras,
+      }),
+      state({
+        documentId: "c",
+        linkedToPrevious: true,
+        assignedToIds: ["head"],
+      }),
+    ];
+    const movedDown = reconcileChainReorder(before, ["a", "c", "b"], "b");
+    expect(byId(movedDown, "b").assignedToIds).toEqual(extras);
+    const movedInside = reconcileChainReorder(before, ["a", "b", "c"], "b");
+    expect(byId(movedInside, "b").assignedToIds).toEqual(extras);
+    expect(
+      applyHeadAssigneePropagation(
+        [
+          { documentId: "a", assignedToIds: ["head"], maxSameTimeWorkers: 1 },
+          {
+            documentId: "b",
+            assignedToIds: extras,
+            maxSameTimeWorkers: 2,
+          },
+        ],
+        "a",
+        ["next"],
+      ),
+    ).toEqual([
+      { documentId: "a", assignedToIds: ["next"] },
+      { documentId: "b", assignedToIds: ["next"] },
     ]);
   });
 });

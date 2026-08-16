@@ -14,13 +14,15 @@ import {
   mapDependencyIdsToTemplateIndexes,
 } from "@/lib/business/append-subtask-to-template";
 import {
+  applyChainLinkToggle,
   applyHeadAssigneePropagation,
-  assigneesAfterLinkToPrevious,
   canEditAssignees,
   findChainContaining,
   previousChainMember,
+  reconcileChainReorder,
   resolveChains,
   sortChainSubTasks,
+  type ChainAssigneeState,
   type ChainSubTask,
 } from "@/lib/business/subtask-chain";
 import type { Role } from "@/lib/auth/nav";
@@ -70,6 +72,8 @@ import {
 } from "@/lib/repos/tasks";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import type { TemplateSubTaskComponentInput } from "@/lib/schemas/template-task";
+
+const FINISHED_STATUS = "finished";
 
 interface SubTaskEntity {
   documentId: string;
@@ -358,11 +362,52 @@ async function appendBoardSubtaskToTaskTemplate(
   revalidateTag("drizzle:templates", "default");
 }
 
+function toAssigneeState(row: ChainSubTask): ChainAssigneeState {
+  return {
+    documentId: row.documentId,
+    linkedToPrevious: row.linkedToPrevious,
+    maxSameTimeWorkers: row.maxSameTimeWorkers,
+    assignedToIds: row.assignedToIds,
+  };
+}
+
+function assigneeIdsEqual(left: readonly string[], right: readonly string[]): boolean {
+  if (left.length !== right.length) return false;
+  const rightSet = new Set(right);
+  return left.every((id) => rightSet.has(id));
+}
+
+async function persistChainAssigneeStates(
+  before: readonly ChainAssigneeState[],
+  after: readonly ChainAssigneeState[],
+): Promise<void> {
+  const beforeById = new Map(before.map((row) => [row.documentId, row]));
+  for (const row of after) {
+    const previous = beforeById.get(row.documentId);
+    if (!previous) continue;
+    if (previous.linkedToPrevious !== row.linkedToPrevious) {
+      await updateSubTaskLinkedToPrevious(row.documentId, row.linkedToPrevious);
+    }
+    if (!assigneeIdsEqual(previous.assignedToIds, row.assignedToIds)) {
+      await replaceSubTaskAssignees(row.documentId, row.assignedToIds);
+    }
+  }
+}
+
 export async function reorderBoardSubtasks(
   taskDocumentId: string,
   orderedDocumentIds: string[],
+  movedDocumentId: string,
 ): Promise<void> {
   await assertCanManageBoardSubtasks();
+  const siblings = await listSubTasksWithRelationsForTask(taskDocumentId);
+  const ordered = sortChainSubTasks(siblings.map(toChainSubTask));
+  const pending = ordered.filter((row) => row.status !== FINISHED_STATUS);
+  const pendingIds = new Set(pending.map((row) => row.documentId));
+  const before = pending.map(toAssigneeState);
+  const pendingOrder = orderedDocumentIds.filter((id) => pendingIds.has(id));
+  const after = reconcileChainReorder(before, pendingOrder, movedDocumentId);
+  await persistChainAssigneeStates(before, after);
   await reorderSubTasks(taskDocumentId, orderedDocumentIds);
 }
 
@@ -395,23 +440,21 @@ export async function updateBoardSubtaskLink(
 ): Promise<BoardSubtaskLinkResult> {
   await assertCanManageBoardSubtasks();
   const siblings = await listSubTasksWithRelationsForTask(taskDocumentId);
-  const ordered = sortChainSubTasks(siblings.map(toChainSubTask));
-  const current = ordered.find((item) => item.documentId === subtaskDocumentId);
+  const pending = sortChainSubTasks(siblings.map(toChainSubTask)).filter(
+    (row) => row.status !== FINISHED_STATUS,
+  );
+  const current = pending.find((item) => item.documentId === subtaskDocumentId);
   if (!current) throw new Error("notFound");
-  if (linkedToPrevious && previousChainMember(ordered, subtaskDocumentId) == null) {
+  if (
+    linkedToPrevious &&
+    previousChainMember(pending, subtaskDocumentId) == null
+  ) {
     throw new Error("invalid_link");
   }
 
-  await updateSubTaskLinkedToPrevious(subtaskDocumentId, linkedToPrevious);
-  if (linkedToPrevious) {
-    const previous = previousChainMember(ordered, subtaskDocumentId);
-    if (previous) {
-      await replaceSubTaskAssignees(
-        subtaskDocumentId,
-        assigneesAfterLinkToPrevious(previous.assignedToIds),
-      );
-    }
-  }
+  const before = pending.map(toAssigneeState);
+  const after = applyChainLinkToggle(before, subtaskDocumentId, linkedToPrevious);
+  await persistChainAssigneeStates(before, after);
 
   const mapped = mapBoardSubtasksFromDrizzle(
     await listBoardSubtaskRows(taskDocumentId),
@@ -473,7 +516,6 @@ export async function updateBoardSubtaskAssignees(
   const propagated = applyHeadAssigneePropagation(
     members,
     chain.headId,
-    current.assignedToIds,
     assignedToIds,
   );
   for (const update of propagated) {

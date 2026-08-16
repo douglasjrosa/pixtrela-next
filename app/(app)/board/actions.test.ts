@@ -309,7 +309,7 @@ describe("board/actions drizzle", () => {
       "st-2",
       "task-1",
       expect.objectContaining({
-        assignedToIds: ["u-head", "u-new", "u-helper"],
+        assignedToIds: ["u-head", "u-new"],
       }),
     );
   });

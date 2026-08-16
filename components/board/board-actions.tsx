@@ -30,13 +30,14 @@ import {
   type BoardSubtaskLinkResult,
 } from "@/lib/business/board-link-queue";
 import {
+  applyChainLinkToggle,
   applyHeadAssigneePropagation,
   canEditAssignees,
+  chainAssigneeStateFromBoard,
   chainItemsFromBoard,
   findChainContaining,
-  previousChainMember,
+  reconcileChainReorder,
   resolveChains,
-  sortChainSubTasks,
 } from "@/lib/business/subtask-chain";
 import { countUnassignedSubTasks } from "@/lib/business/kanban-card-badges";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
@@ -79,6 +80,7 @@ export interface BoardActionsProps {
   reorderSubtasks: (
     taskDocumentId: string,
     orderedDocumentIds: string[],
+    movedDocumentId: string,
   ) => Promise<void>;
   linkSubtask: (
     taskDocumentId: string,
@@ -240,17 +242,62 @@ export function BoardActions({
     );
   }
 
-  function handleReorderSubtasks(orderedDocumentIds: string[]): void {
+  function applyChainStatesToSubtasks(
+    items: BoardSubTaskSummary[],
+    states: ReturnType<typeof chainAssigneeStateFromBoard>,
+  ): BoardSubTaskSummary[] {
+    const byId = new Map(states.map((state) => [state.documentId, state]));
+    rememberAssigneeNames(items.flatMap((item) => item.assignedTo));
+    const next = items.map((item) => {
+      const state = byId.get(item.documentId);
+      if (!state) return item;
+      return {
+        ...item,
+        linkedToPrevious: state.linkedToPrevious,
+        assignedTo: mergeAssigneesByIds(
+          item.assignedTo,
+          state.assignedToIds,
+          nameDirectoryRef.current,
+        ),
+      };
+    });
+    return sortSubtasksByDocumentIds(
+      next,
+      states.map((state) => state.documentId),
+    );
+  }
+
+  function handleReorderSubtasks(
+    orderedDocumentIds: string[],
+    movedDocumentId: string,
+  ): void {
     if (!selectedTask) return;
 
     const taskDocumentId = selectedTask.documentId;
     const before = subtasks;
-    setSubtasks(sortSubtasksByDocumentIds(subtasks, orderedDocumentIds));
+    const pending = subtasks.filter((item) => item.status !== FINISHED_STATUS);
+    const pendingIds = new Set(pending.map((item) => item.documentId));
+    const pendingOrder = orderedDocumentIds.filter((id) => pendingIds.has(id));
+    const reconciled = reconcileChainReorder(
+      chainAssigneeStateFromBoard(pending),
+      pendingOrder,
+      movedDocumentId,
+    );
+    setSubtasks(
+      sortSubtasksByDocumentIds(
+        applyChainStatesToSubtasks(subtasks, reconciled),
+        orderedDocumentIds,
+      ),
+    );
     setReorderingSubtasks(true);
 
     void (async () => {
       try {
-        await reorderSubtasks(taskDocumentId, orderedDocumentIds);
+        await reorderSubtasks(
+          taskDocumentId,
+          orderedDocumentIds,
+          movedDocumentId,
+        );
       } catch {
         setSubtasks(before);
       } finally {
@@ -263,29 +310,32 @@ export function BoardActions({
     subtaskDocumentId: string,
     linkedToPrevious: boolean,
   ): void {
-    const previous = previousChainMember(
-      sortChainSubTasks(subtasksRef.current),
+    const current = subtasksRef.current;
+    const nextStates = applyChainLinkToggle(
+      chainAssigneeStateFromBoard(current),
       subtaskDocumentId,
+      linkedToPrevious,
     );
-    const copiedAssignees =
-      linkedToPrevious && previous ? previous.assignedTo : null;
-    rememberAssigneeNames(copiedAssignees ?? []);
-    setSubtasks((current) =>
-      current.map((item) => {
-        if (item.documentId !== subtaskDocumentId) return item;
-        if (copiedAssignees) {
-          return { ...item, linkedToPrevious, assignedTo: copiedAssignees };
+    const next = applyChainStatesToSubtasks(current, nextStates);
+    rememberAssigneeNames(next.flatMap((item) => item.assignedTo));
+    setSubtasks(next);
+    setAssigneesBaseline((baseline) => {
+      const updated = { ...baseline };
+      for (const item of next) {
+        const before = current.find((row) => row.documentId === item.documentId);
+        if (!before) continue;
+        const beforeKey = assigneeIdsKey(
+          before.assignedTo.map((assignee) => assignee.documentId),
+        );
+        const afterKey = assigneeIdsKey(
+          item.assignedTo.map((assignee) => assignee.documentId),
+        );
+        if (beforeKey !== afterKey) {
+          updated[item.documentId] = afterKey;
         }
-        return { ...item, linkedToPrevious };
-      }),
-    );
-    if (!copiedAssignees) return;
-    setAssigneesBaseline((current) => ({
-      ...current,
-      [subtaskDocumentId]: assigneeIdsKey(
-        copiedAssignees.map((assignee) => assignee.documentId),
-      ),
-    }));
+      }
+      return updated;
+    });
   }
 
   async function flushBoardLink(subtaskDocumentId: string): Promise<void> {
@@ -433,11 +483,9 @@ export function BoardActions({
       const members = chain.memberIds
         .map((id) => chainItems.find((item) => item.documentId === id))
         .filter((item): item is NonNullable<typeof item> => Boolean(item));
-      const head = members.find((item) => item.documentId === chain.headId);
       const propagated = applyHeadAssigneePropagation(
         members,
         chain.headId,
-        head?.assignedToIds ?? [],
         assignedToIds,
       );
       const nextById = new Map(

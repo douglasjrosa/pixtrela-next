@@ -144,31 +144,178 @@ export type AssigneeMember = {
 };
 
 /**
- * Head set replaces every member. Extra helpers already on max>1 rows
- * (not in the previous head set) are kept.
+ * Head set replaces every member, including extras on max>1 rows.
  */
 export function applyHeadAssigneePropagation(
   members: readonly AssigneeMember[],
-  headId: string,
-  previousHeadIds: readonly string[],
+  _headId: string,
   nextHeadIds: readonly string[],
 ): Array<{ documentId: string; assignedToIds: string[] }> {
-  const previousHead = new Set(previousHeadIds);
   const nextHead = uniqueIds(nextHeadIds);
+  return members.map((member) => ({
+    documentId: member.documentId,
+    assignedToIds: nextHead,
+  }));
+}
 
-  return members.map((member) => {
-    if (member.documentId === headId) {
-      return { documentId: member.documentId, assignedToIds: nextHead };
+export type ChainAssigneeState = {
+  documentId: string;
+  linkedToPrevious: boolean;
+  maxSameTimeWorkers: number;
+  assignedToIds: string[];
+};
+
+function cloneChainAssigneeState(
+  items: readonly ChainAssigneeState[],
+): ChainAssigneeState[] {
+  return items.map((item) => ({
+    ...item,
+    assignedToIds: [...item.assignedToIds],
+  }));
+}
+
+function chainItemsFromAssigneeState(
+  items: readonly ChainAssigneeState[],
+): ChainSubTask[] {
+  return items.map((item, index) => ({
+    documentId: item.documentId,
+    index,
+    status: "waiting",
+    linkedToPrevious: item.linkedToPrevious,
+    maxSameTimeWorkers: item.maxSameTimeWorkers,
+    assignedToIds: item.assignedToIds,
+    dependencyIds: [],
+  }));
+}
+
+function inheritHeadAssignees(
+  items: ChainAssigneeState[],
+  chain: SubTaskChain,
+): void {
+  const head = items.find((item) => item.documentId === chain.headId);
+  if (!head) return;
+  const headIds = uniqueIds(head.assignedToIds);
+  for (const memberId of chain.memberIds) {
+    if (memberId === chain.headId) continue;
+    const member = items.find((item) => item.documentId === memberId);
+    if (member) member.assignedToIds = [...headIds];
+  }
+}
+
+/**
+ * Link copies the resulting head's assignees onto this row and every later
+ * member. Unlink only clears the flag; assignees stay.
+ */
+export function applyChainLinkToggle(
+  ordered: readonly ChainAssigneeState[],
+  documentId: string,
+  linkedToPrevious: boolean,
+): ChainAssigneeState[] {
+  const next = cloneChainAssigneeState(ordered);
+  const current = next.find((item) => item.documentId === documentId);
+  if (!current) return next;
+  if (linkedToPrevious && previousChainMember(next, documentId) == null) {
+    return next;
+  }
+
+  current.linkedToPrevious = linkedToPrevious;
+  if (!linkedToPrevious) return next;
+
+  const chain = findChainContaining(
+    resolveChains(chainItemsFromAssigneeState(next)),
+    documentId,
+  );
+  if (!chain || !isMultiMemberChain(chain)) return next;
+  inheritHeadAssignees(next, chain);
+  return next;
+}
+
+function setGroupLinks(
+  items: ChainAssigneeState[],
+  memberIds: readonly string[],
+  headId: string,
+): void {
+  const members = new Set(memberIds);
+  for (const item of items) {
+    if (!members.has(item.documentId)) continue;
+    item.linkedToPrevious = item.documentId !== headId;
+  }
+}
+
+/**
+ * Recomputes links after a single-row drag. Assignees stay unless a row
+ * joins a group, in which case it inherits the head set.
+ */
+export function reconcileChainReorder(
+  ordered: readonly ChainAssigneeState[],
+  newOrderIds: readonly string[],
+  movedId: string,
+): ChainAssigneeState[] {
+  const byId = new Map(
+    cloneChainAssigneeState(ordered).map((item) => [item.documentId, item]),
+  );
+  const next = newOrderIds
+    .map((id) => byId.get(id))
+    .filter((item): item is ChainAssigneeState => Boolean(item));
+  if (next.length === 0) return [];
+
+  const oldChains = resolveChains(chainItemsFromAssigneeState(ordered));
+  const movedChain = findChainContaining(oldChains, movedId);
+  const movedPos = next.findIndex((item) => item.documentId === movedId);
+
+  if (movedChain && isMultiMemberChain(movedChain)) {
+    const remainingIds = movedChain.memberIds.filter((id) => id !== movedId);
+    const remainingPos = remainingIds
+      .map((id) => next.findIndex((item) => item.documentId === id))
+      .filter((index) => index >= 0)
+      .sort((left, right) => left - right);
+    const firstRem = remainingPos[0];
+    const lastRem = remainingPos[remainingPos.length - 1];
+    const inside =
+      remainingPos.length > 0 &&
+      movedPos > firstRem! &&
+      movedPos < lastRem!;
+    const newHeadId =
+      movedChain.headId === movedId
+        ? remainingIds[0] ?? movedId
+        : movedChain.headId;
+    const members = inside ? [...remainingIds, movedId] : remainingIds;
+    if (members.length > 0) {
+      setGroupLinks(next, members, newHeadId);
     }
-    if (member.maxSameTimeWorkers > 1) {
-      const extras = member.assignedToIds.filter((id) => !previousHead.has(id));
-      return {
-        documentId: member.documentId,
-        assignedToIds: uniqueIds([...nextHead, ...extras]),
-      };
+    if (!inside) {
+      const moved = next[movedPos];
+      if (moved) moved.linkedToPrevious = false;
     }
-    return { documentId: member.documentId, assignedToIds: nextHead };
-  });
+  }
+
+  for (const chain of oldChains) {
+    if (!isMultiMemberChain(chain)) continue;
+    if (chain.memberIds.includes(movedId)) continue;
+    const memberPos = chain.memberIds
+      .map((id) => next.findIndex((item) => item.documentId === id))
+      .filter((index) => index >= 0)
+      .sort((left, right) => left - right);
+    const first = memberPos[0];
+    const last = memberPos[memberPos.length - 1];
+    if (
+      first === undefined ||
+      last === undefined ||
+      movedPos <= first ||
+      movedPos >= last
+    ) {
+      continue;
+    }
+    const head = next.find((item) => item.documentId === chain.headId);
+    const moved = next[movedPos];
+    if (head && moved) {
+      moved.assignedToIds = uniqueIds(head.assignedToIds);
+    }
+    setGroupLinks(next, [...chain.memberIds, movedId], chain.headId);
+  }
+
+  if (next[0]) next[0].linkedToPrevious = false;
+  return next;
 }
 
 export function previousChainMember<T extends { documentId: string }>(
@@ -208,4 +355,15 @@ export function chainItemsFromBoard(
   items: readonly BoardChainSource[],
 ): ChainSubTask[] {
   return items.map((item, index) => toChainSubTaskFromBoard(item, index));
+}
+
+export function chainAssigneeStateFromBoard(
+  items: readonly BoardChainSource[],
+): ChainAssigneeState[] {
+  return items.map((item) => ({
+    documentId: item.documentId,
+    linkedToPrevious: item.linkedToPrevious,
+    maxSameTimeWorkers: item.maxSameTimeWorkers,
+    assignedToIds: item.assignedTo.map((assignee) => assignee.documentId),
+  }));
 }
