@@ -4,6 +4,7 @@ import {
   defaultTaskListFilters,
   defaultTaskListFrom,
   parseTaskListSearchParams,
+  parseTaskListSelectMode,
   serializeTaskListSearchParams,
   taskListFilterKey,
 } from "./task-list-params";
@@ -63,6 +64,11 @@ describe("parseTaskListSearchParams", () => {
     expect(filters.showArchived).toBe(true);
   });
 
+  it("parses select mode", () => {
+    expect(parseTaskListSelectMode({ select: "1" })).toBe(true);
+    expect(parseTaskListSelectMode({})).toBe(false);
+  });
+
   it("ignores q shorter than 3 characters", () => {
     const filters = parseTaskListSearchParams({ q: "ab" }, FIXED_NOW);
     expect(filters.q).toBeUndefined();
@@ -84,6 +90,15 @@ describe("serializeTaskListSearchParams", () => {
       FIXED_NOW,
     );
     expect(params.toString()).toBe("");
+  });
+
+  it("includes select=1 when selectMode option is true", () => {
+    const params = serializeTaskListSearchParams(
+      defaultTaskListFilters(FIXED_NOW),
+      FIXED_NOW,
+      { selectMode: true },
+    );
+    expect(params.get("select")).toBe("1");
   });
 
   it("includes only changed and optional filters", () => {

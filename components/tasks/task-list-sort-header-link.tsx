@@ -1,5 +1,4 @@
-"use client";
-
+import Link from "next/link";
 import { ArrowDown, ArrowUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -7,26 +6,31 @@ import type {
   TaskListSort,
   TaskListSortColumn,
 } from "@/lib/schemas/task-list-sort";
+import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
+import { buildTaskListSortHref } from "@/lib/tasks/task-list-sort-url";
 
-export interface TaskListSortHeaderProps {
+export interface TaskListSortHeaderLinkProps {
   column: TaskListSortColumn;
   label: string;
   sort: TaskListSort;
+  filters: TaskListFilters;
   align?: "left" | "center";
+  selectMode?: boolean;
   className?: string;
-  onSort: (column: TaskListSortColumn) => void;
 }
 
-export function TaskListSortHeader({
+export function TaskListSortHeaderLink({
   column,
   label,
   sort,
+  filters,
   align = "left",
+  selectMode = false,
   className,
-  onSort,
-}: TaskListSortHeaderProps) {
+}: TaskListSortHeaderLinkProps) {
   const active = sort.column === column;
   const direction = active ? sort.direction : undefined;
+  const href = buildTaskListSortHref(filters, column, { selectMode });
 
   return (
     <th
@@ -36,8 +40,9 @@ export function TaskListSortHeader({
         className,
       )}
     >
-      <button
-        type="button"
+      <Link
+        href={href}
+        scroll={false}
         className={cn(
           "flex w-full items-center gap-1 rounded-md px-2 py-1 font-medium",
           "transition-colors hover:bg-muted focus-visible:outline-none",
@@ -48,7 +53,6 @@ export function TaskListSortHeader({
         aria-sort={
           active ? (direction === "asc" ? "ascending" : "descending") : "none"
         }
-        onClick={() => onSort(column)}
       >
         <span>{label}</span>
         {active ? (
@@ -58,7 +62,7 @@ export function TaskListSortHeader({
             <ArrowDown className="size-3.5 shrink-0" aria-hidden />
           )
         ) : null}
-      </button>
+      </Link>
     </th>
   );
 }

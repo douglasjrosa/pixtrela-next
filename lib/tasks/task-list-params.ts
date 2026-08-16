@@ -112,6 +112,30 @@ export function parseTaskListSearchParams(
   return result.data;
 }
 
+/** Whether bulk-selection mode is active (`select=1`). */
+export function parseTaskListSelectMode(params: SearchParamsRecord): boolean {
+  return firstParam(params.select) === "1";
+}
+
+/** True when filters match the default list configuration (excluding sort). */
+export function isDefaultTaskListFilters(
+  filters: TaskListFilters,
+  now: Date = new Date(),
+): boolean {
+  const defaults = defaultTaskListFilters(now);
+  return (
+    sameStatuses(filters.statuses, defaults.statuses) &&
+    filters.from === defaults.from &&
+    filters.to === defaults.to &&
+    !filters.showArchived &&
+    !filters.q &&
+    isDefaultTaskListSort({
+      column: filters.column,
+      direction: filters.direction,
+    })
+  );
+}
+
 function sameStatuses(
   a: TaskListFilters["statuses"],
   b: readonly string[],
@@ -128,6 +152,7 @@ function sameStatuses(
 export function serializeTaskListSearchParams(
   filters: TaskListFilters,
   now: Date = new Date(),
+  options: { selectMode?: boolean } = {},
 ): URLSearchParams {
   const params = new URLSearchParams();
   const defaults = defaultTaskListFilters(now);
@@ -150,6 +175,9 @@ export function serializeTaskListSearchParams(
   if (!isDefaultTaskListSort({ column: filters.column, direction: filters.direction })) {
     params.set("sort", filters.column);
     params.set("dir", filters.direction);
+  }
+  if (options.selectMode) {
+    params.set("select", "1");
   }
   return params;
 }

@@ -4,13 +4,16 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
 
-import { TasksListWithLoadMore } from "./tasks-list-with-load-more";
+import { TaskListRowPresentational } from "./task-list-row-presentational";
+import { TasksListTableFrame } from "./tasks-list-table-frame";
 
 const loadMoreTasks = vi.fn();
 const bulkDeactivateTasks = vi.fn();
 const bulkDeleteTasks = vi.fn();
 const showErrorToast = vi.fn();
 const showSuccessToast = vi.fn();
+const replace = vi.fn();
+const refresh = vi.fn();
 
 vi.mock("@/app/(app)/tasks/actions", () => ({
   loadMoreTasks: (...args: unknown[]) => loadMoreTasks(...args),
@@ -24,7 +27,7 @@ vi.mock("@/lib/ui/app-toast", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ replace, refresh }),
 }));
 
 const filters = {
@@ -52,13 +55,38 @@ const initialTasks = [
   },
 ];
 
-describe("TasksListWithLoadMore", () => {
+const rowLabels = {
+  inactive: "Inativa",
+  status: "Aguardando",
+  spentOfExpected: "0min de 0min",
+  finishedSubTasks: "0 de 0",
+  qtyShort: "Qtde.: 1",
+  selectRow: "Selecionar Primeira",
+};
+
+function selectableBody(task = initialTasks[0]) {
+  return (
+    <tbody>
+      <TaskListRowPresentational
+        task={task}
+        variant="table"
+        href={`/tasks/${task.documentId}`}
+        labels={rowLabels}
+        selectionEnabled
+      />
+    </tbody>
+  );
+}
+
+describe("TasksListTableFrame", () => {
   beforeEach(() => {
     loadMoreTasks.mockReset();
     bulkDeactivateTasks.mockReset();
     bulkDeleteTasks.mockReset();
     showErrorToast.mockReset();
     showSuccessToast.mockReset();
+    replace.mockReset();
+    refresh.mockReset();
   });
 
   it("appends the next page when Carregar mais is clicked", async () => {
@@ -84,17 +112,22 @@ describe("TasksListWithLoadMore", () => {
     });
 
     renderWithIntl(
-      <TasksListWithLoadMore
+      <TasksListTableFrame
         filters={filters}
         initialTasks={initialTasks}
         initialHasMore
         initialPage={1}
+        selectMode={false}
+        tableHeader={<thead><tr><th>Nome</th></tr></thead>}
+        tableBody={selectableBody()}
+        mobileList={
+          <ul>
+            <li>Primeira</li>
+          </ul>
+        }
       />,
     );
 
-    expect(screen.getAllByRole("link", { name: "Primeira" }).length).toBeGreaterThan(
-      0,
-    );
     fireEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
 
     await waitFor(() => {
@@ -110,21 +143,25 @@ describe("TasksListWithLoadMore", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows archive action and submits bulk archive modal", async () => {
+  it("enters select mode and submits bulk archive", async () => {
     bulkDeactivateTasks.mockResolvedValue(undefined);
     const user = userEvent.setup();
 
     renderWithIntl(
-      <TasksListWithLoadMore
+      <TasksListTableFrame
         filters={filters}
         initialTasks={initialTasks}
         initialHasMore={false}
         initialPage={1}
+        selectMode
         canDeactivate
+        tableHeader={<thead><tr><th>Nome</th></tr></thead>}
+        tableBody={selectableBody()}
+        mobileList={null}
       />,
     );
 
-    await user.click(screen.getAllByRole("checkbox")[1]);
+    await user.click(screen.getAllByRole("checkbox")[0]);
     await user.click(screen.getByRole("button", { name: "Arquivar selecionadas" }));
     const reason = "x".repeat(50);
     await user.type(
@@ -150,16 +187,20 @@ describe("TasksListWithLoadMore", () => {
     ];
 
     renderWithIntl(
-      <TasksListWithLoadMore
+      <TasksListTableFrame
         filters={filters}
         initialTasks={archivedTasks}
         initialHasMore={false}
         initialPage={1}
+        selectMode
         canDelete
+        tableHeader={<thead><tr><th>Nome</th></tr></thead>}
+        tableBody={selectableBody(archivedTasks[0]!)}
+        mobileList={null}
       />,
     );
 
-    await user.click(screen.getAllByRole("checkbox")[1]);
+    await user.click(screen.getAllByRole("checkbox")[0]);
     await user.click(screen.getByRole("button", { name: "Excluir selecionadas" }));
     await user.click(screen.getByRole("button", { name: "Excluir" }));
 
@@ -167,5 +208,28 @@ describe("TasksListWithLoadMore", () => {
       expect(bulkDeleteTasks).toHaveBeenCalledWith(["t1"]);
     });
     expect(showSuccessToast).toHaveBeenCalled();
+  });
+
+  it("activates select mode via Selecionar button", async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <TasksListTableFrame
+        filters={filters}
+        initialTasks={initialTasks}
+        initialHasMore={false}
+        initialPage={1}
+        selectMode={false}
+        canDeactivate
+        tableHeader={null}
+        tableBody={null}
+        mobileList={null}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Selecionar" }));
+    expect(replace).toHaveBeenCalledWith(
+      "/tasks?status=waiting&from=2026-06-01&to=2026-07-15&select=1",
+    );
   });
 });

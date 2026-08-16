@@ -1,43 +1,31 @@
-"use client";
-
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 import { ListEmptyMessage } from "@/components/ui/list-empty-message";
-import { cn } from "@/lib/utils";
-import type {
-  TaskListSort,
-  TaskListSortColumn,
-} from "@/lib/schemas/task-list-sort";
+import type { TaskListSort } from "@/lib/schemas/task-list-sort";
+import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
 
+import { TasksListMobileList } from "./tasks-list-mobile-list";
+import { TasksListTableBody } from "./tasks-list-table-body";
+import { TasksListTableHeader } from "./tasks-list-table-header";
 import type { TaskRow } from "./types";
-import { TaskListRow } from "./task-list-row";
-import { TaskListSortHeader } from "./task-list-sort-header";
 
 export interface TasksListViewProps {
   tasks: TaskRow[];
   sort: TaskListSort;
+  filters: TaskListFilters;
   selectionEnabled?: boolean;
-  selectedIds?: string[];
-  allSelected?: boolean;
-  onToggleSelectAll?: () => void;
-  onToggleSelect?: (documentId: string) => void;
-  onSort?: (column: TaskListSortColumn) => void;
+  selectMode?: boolean;
 }
 
-const CHECKBOX_CLASS = cn("size-4 rounded border border-input accent-primary");
-
-export function TasksListView({
+/** Server list sections for composition inside TasksListTableFrame. */
+export async function TasksListView({
   tasks,
   sort,
+  filters,
   selectionEnabled = false,
-  selectedIds = [],
-  allSelected = false,
-  onToggleSelectAll,
-  onToggleSelect,
-  onSort,
+  selectMode = false,
 }: TasksListViewProps) {
-  const tManage = useTranslations("tasks.manage");
-  const tCommon = useTranslations("common");
+  const tManage = await getTranslations("tasks.manage");
 
   if (tasks.length === 0) {
     return <ListEmptyMessage>{tManage("empty")}</ListEmptyMessage>;
@@ -45,92 +33,20 @@ export function TasksListView({
 
   return (
     <>
-      <table className="hidden w-full text-sm md:table">
-        <thead>
-          <tr className="border-b text-left">
-            {selectionEnabled ? (
-              <th className={cn("w-10 py-2", "text-center")}>
-                <div className="flex justify-center">
-                  <input
-                    type="checkbox"
-                    className={CHECKBOX_CLASS}
-                    checked={allSelected}
-                    aria-label={tCommon("selectAll")}
-                    onChange={() => onToggleSelectAll?.()}
-                  />
-                </div>
-              </th>
-            ) : null}
-            <TaskListSortHeader
-              column="name"
-              label={tManage("name")}
-              sort={sort}
-              align="left"
-              onSort={(column) => onSort?.(column)}
-            />
-            <TaskListSortHeader
-              column="qty"
-              label={tManage("qty")}
-              sort={sort}
-              align="center"
-              onSort={(column) => onSort?.(column)}
-            />
-            <TaskListSortHeader
-              column="deliveryDate"
-              label={tManage("deliveryDate")}
-              sort={sort}
-              align="center"
-              onSort={(column) => onSort?.(column)}
-            />
-            <TaskListSortHeader
-              column="totalTimeSpent"
-              label={tManage("totalTimeSpent")}
-              sort={sort}
-              align="center"
-              onSort={(column) => onSort?.(column)}
-            />
-            <TaskListSortHeader
-              column="finishedSubTasks"
-              label={tManage("finishedSubTasks")}
-              sort={sort}
-              align="center"
-              onSort={(column) => onSort?.(column)}
-            />
-            <TaskListSortHeader
-              column="status"
-              label={tManage("status")}
-              sort={sort}
-              align="center"
-              onSort={(column) => onSort?.(column)}
-            />
-          </tr>
-        </thead>
-        <tbody>
-          {tasks.map((task) => (
-            <TaskListRow
-              key={task.documentId}
-              task={task}
-              variant="table"
-              selectionEnabled={selectionEnabled}
-              selected={selectedIds.includes(task.documentId)}
-              onToggleSelect={() => onToggleSelect?.(task.documentId)}
-            />
-          ))}
-        </tbody>
-      </table>
-
-      <ul className="md:hidden">
-        {tasks.map((task) => (
-          <TaskListRow
-            key={task.documentId}
-            task={task}
-            variant="mobile"
-            selectionEnabled={selectionEnabled}
-            selected={selectedIds.includes(task.documentId)}
-            onToggleSelect={() => onToggleSelect?.(task.documentId)}
-          />
-        ))}
-      </ul>
+      <TasksListTableHeader
+        sort={sort}
+        filters={filters}
+        selectionEnabled={selectionEnabled}
+        selectMode={selectMode}
+      />
+      <TasksListTableBody
+        tasks={tasks}
+        selectionEnabled={selectionEnabled}
+      />
+      <TasksListMobileList
+        tasks={tasks}
+        selectionEnabled={selectionEnabled}
+      />
     </>
   );
 }

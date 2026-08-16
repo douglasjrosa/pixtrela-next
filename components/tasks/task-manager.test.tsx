@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
 import { TasksPageHeader } from "./tasks-page-header";
-import { TasksListView } from "./tasks-list-view";
+import { TaskListRowPresentational } from "./task-list-row-presentational";
 
 const createTask = vi.fn();
 const showSuccessToast = vi.fn();
@@ -37,10 +37,21 @@ const tasks = [
     active: true,
     totalExpectedTime: 4860,
     totalTimeSpent: 1920,
+    finishedSubTaskCount: 0,
+    totalSubTaskCount: 0,
     deliveryDate: "2026-06-12",
     step: { documentId: "s1", name: "Fila" },
   },
 ];
+
+const rowLabels = {
+  inactive: "Inativa",
+  status: "Aguardando",
+  spentOfExpected: "32min de 1h 21min",
+  finishedSubTasks: "0 de 0",
+  qtyShort: "Qtde.: 2",
+  selectRow: "Selecionar Montagem",
+};
 
 describe("TasksPageHeader", () => {
   beforeEach(() => {
@@ -123,13 +134,20 @@ describe("TasksPageHeader", () => {
   });
 });
 
-describe("TasksListView", () => {
-  beforeEach(() => {
-    push.mockReset();
-  });
-
-  it("renders task list without action column", () => {
-    renderWithIntl(<TasksListView tasks={tasks} />);
+describe("TaskListRowPresentational", () => {
+  it("renders task list row link without action buttons", () => {
+    renderWithIntl(
+      <table>
+        <tbody>
+          <TaskListRowPresentational
+            task={tasks[0]!}
+            variant="table"
+            href="/tasks/t1"
+            labels={rowLabels}
+          />
+        </tbody>
+      </table>,
+    );
     expect(screen.getAllByRole("link", { name: "Montagem" }).length).toBeGreaterThan(
       0,
     );
@@ -138,14 +156,38 @@ describe("TasksListView", () => {
     expect(screen.getAllByText("12/06/2026").length).toBeGreaterThan(0);
   });
 
-  it("navigates to task detail when a row is activated", () => {
-    renderWithIntl(<TasksListView tasks={tasks} />);
-    fireEvent.click(screen.getAllByRole("link", { name: "Montagem" })[0]!);
-    expect(push).toHaveBeenCalledWith("/tasks/t1");
+  it("links rows to task detail", () => {
+    renderWithIntl(
+      <table>
+        <tbody>
+          <TaskListRowPresentational
+            task={tasks[0]!}
+            variant="table"
+            href="/tasks/t1"
+            labels={rowLabels}
+          />
+        </tbody>
+      </table>,
+    );
+    expect(screen.getAllByRole("link", { name: "Montagem" })[0]).toHaveAttribute(
+      "href",
+      "/tasks/t1",
+    );
   });
 
   it("shows spent of expected duration", () => {
-    renderWithIntl(<TasksListView tasks={tasks} />);
+    renderWithIntl(
+      <table>
+        <tbody>
+          <TaskListRowPresentational
+            task={tasks[0]!}
+            variant="table"
+            href="/tasks/t1"
+            labels={rowLabels}
+          />
+        </tbody>
+      </table>,
+    );
     expect(screen.getAllByText("32min de 1h 21min").length).toBeGreaterThan(0);
   });
 });

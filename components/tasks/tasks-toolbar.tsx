@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -7,8 +8,13 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { parseTaskListSearchParams } from "@/lib/tasks/task-list-params";
 
-import { TasksFilterModal } from "./tasks-filter-modal";
 import { TasksNameSearch } from "./tasks-name-search";
+
+const TasksFilterModal = dynamic(
+  () =>
+    import("./tasks-filter-modal").then((module) => module.TasksFilterModal),
+  { ssr: false },
+);
 
 export function TasksToolbar() {
   const tManage = useTranslations("tasks.manage");
@@ -31,11 +37,13 @@ export function TasksToolbar() {
         </Button>
         <TasksNameSearch />
       </div>
-      <TasksFilterModal
-        open={filtersOpen}
-        initialFilters={filters}
-        onClose={() => setFiltersOpen(false)}
-      />
+      {filtersOpen ? (
+        <TasksFilterModal
+          open={filtersOpen}
+          initialFilters={filters}
+          onClose={() => setFiltersOpen(false)}
+        />
+      ) : null}
     </>
   );
 }
