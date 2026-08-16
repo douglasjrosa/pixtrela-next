@@ -17,6 +17,7 @@ import {
   applyChainLinkToggle,
   applyHeadAssigneePropagation,
   canEditAssignees,
+  constrainHelperAssignees,
   findChainContaining,
   previousChainMember,
   reconcileChainReorder,
@@ -500,12 +501,17 @@ export async function updateBoardSubtaskAssignees(
   if (role === "none") throw new Error("forbidden");
 
   if (role === "helper") {
+    const head = chainItems.find((item) => item.documentId === chain.headId);
+    const nextIds = constrainHelperAssignees(
+      head?.assignedToIds ?? [],
+      assignedToIds,
+    );
     const subtask = await fetchSubTaskForUpdate(subtaskDocumentId);
     if (!subtask) throw new Error("notFound");
     await updateSubTask(
       subtaskDocumentId,
       taskDocumentId,
-      toSubTaskFormInput(subtask, assignedToIds),
+      toSubTaskFormInput(subtask, nextIds),
     );
     return;
   }

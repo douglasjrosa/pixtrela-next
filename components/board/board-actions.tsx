@@ -35,9 +35,11 @@ import {
   canEditAssignees,
   chainAssigneeStateFromBoard,
   chainItemsFromBoard,
+  constrainHelperAssignees,
   findChainContaining,
   reconcileChainReorder,
   resolveChains,
+  sortChainSubTasks,
 } from "@/lib/business/subtask-chain";
 import { countUnassignedSubTasks } from "@/lib/business/kanban-card-badges";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
@@ -248,7 +250,7 @@ export function BoardActions({
   ): BoardSubTaskSummary[] {
     const byId = new Map(states.map((state) => [state.documentId, state]));
     rememberAssigneeNames(items.flatMap((item) => item.assignedTo));
-    const next = items.map((item) => {
+    return items.map((item) => {
       const state = byId.get(item.documentId);
       if (!state) return item;
       return {
@@ -261,10 +263,6 @@ export function BoardActions({
         ),
       };
     });
-    return sortSubtasksByDocumentIds(
-      next,
-      states.map((state) => state.documentId),
-    );
   }
 
   function handleReorderSubtasks(
@@ -311,8 +309,11 @@ export function BoardActions({
     linkedToPrevious: boolean,
   ): void {
     const current = subtasksRef.current;
+    const pending = sortChainSubTasks(
+      current.filter((item) => item.status !== FINISHED_STATUS),
+    );
     const nextStates = applyChainLinkToggle(
-      chainAssigneeStateFromBoard(current),
+      chainAssigneeStateFromBoard(pending),
       subtaskDocumentId,
       linkedToPrevious,
     );
@@ -366,18 +367,11 @@ export function BoardActions({
       if (stillWanted === undefined || stillWanted === result.linkedToPrevious) {
         desiredLinkRef.current.delete(subtaskDocumentId);
         setSubtasks((current) =>
-          current.map((item) => {
-            if (item.documentId !== result.documentId) return item;
-            return {
-              ...item,
-              linkedToPrevious: result.linkedToPrevious,
-              assignedTo: mergeAssigneesByIds(
-                item.assignedTo,
-                result.assignedTo.map((row) => row.documentId),
-                nameDirectoryRef.current,
-              ),
-            };
-          }),
+          current.map((item) =>
+            item.documentId === result.documentId
+              ? { ...item, linkedToPrevious: result.linkedToPrevious }
+              : item,
+          ),
         );
       }
     } catch {
@@ -466,13 +460,18 @@ export function BoardActions({
       );
       if (role === "none") return current;
       if (role === "helper") {
+        const head = current.find((item) => item.documentId === chain.headId);
+        const nextIds = constrainHelperAssignees(
+          head?.assignedTo.map((assignee) => assignee.documentId) ?? [],
+          assignedToIds,
+        );
         return current.map((item) =>
           item.documentId === subtask.documentId
             ? {
                 ...item,
                 assignedTo: mergeAssigneesByIds(
                   item.assignedTo,
-                  assignedToIds,
+                  nextIds,
                   directory,
                 ),
               }

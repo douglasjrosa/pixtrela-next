@@ -130,6 +130,20 @@ export function uniqueIds(ids: readonly string[]): string[] {
   return [...new Set(ids)];
 }
 
+/**
+ * Helpers may add or drop extras, but every head assignee must remain.
+ */
+export function constrainHelperAssignees(
+  headAssignedToIds: readonly string[],
+  nextAssignedToIds: readonly string[],
+): string[] {
+  const headIds = uniqueIds(headAssignedToIds);
+  const extras = uniqueIds(nextAssignedToIds).filter(
+    (id) => !headIds.includes(id),
+  );
+  return uniqueIds([...headIds, ...extras]);
+}
+
 /** Linking copies the previous row's assignees and discards the current set. */
 export function assigneesAfterLinkToPrevious(
   previousAssignedToIds: readonly string[],

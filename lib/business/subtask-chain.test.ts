@@ -5,6 +5,7 @@ import {
   applyHeadAssigneePropagation,
   assigneesAfterLinkToPrevious,
   canEditAssignees,
+  constrainHelperAssignees,
   chainHasExternalDependencyBlock,
   findChainContaining,
   reconcileChainReorder,
@@ -221,6 +222,24 @@ describe("chain board rules", () => {
     const chain = { headId: "a", memberIds: ["a", "b"] };
     expect(canEditAssignees("b", 1, chain)).toBe("none");
     expect(canEditAssignees("a", 1, chain)).toBe("head");
+  });
+
+  it("keeps head assignees on a helper and allows extras to change", () => {
+    expect(constrainHelperAssignees(["head"], ["extra"])).toEqual([
+      "head",
+      "extra",
+    ]);
+    expect(constrainHelperAssignees(["head"], [])).toEqual(["head"]);
+    expect(constrainHelperAssignees(["head"], ["head", "extra"])).toEqual([
+      "head",
+      "extra",
+    ]);
+    expect(constrainHelperAssignees(["head", "h2"], ["h2", "extra"])).toEqual([
+      "head",
+      "h2",
+      "extra",
+    ]);
+    expect(constrainHelperAssignees(["head"], ["head"])).toEqual(["head"]);
   });
 
   it("4. max>1 extras stay local until a later head change replaces them", () => {
