@@ -19,13 +19,14 @@ export type BoardProgressPollState = {
 
 /**
  * Polls live board progress without refreshing the rest of the page cache.
- * Pauses while the document is hidden.
+ * Pauses while the document is hidden, and when `paused` is true (subtask modal).
  * Polls all board tasks so assignment counts stay board-wide.
  */
 export function useBoardProgressPoll(
   tasks: KanbanTask[],
   assignedCountByColaboratorId: Record<string, number>,
   pollBoardProgress: PollBoardProgressFn,
+  paused = false,
 ): BoardProgressPollState {
   const [polledTasks, setPolledTasks] = useState(tasks);
   const [assignedCounts, setAssignedCounts] = useState(
@@ -59,6 +60,7 @@ export function useBoardProgressPoll(
     let timerId: number | undefined;
 
     async function runPoll(): Promise<void> {
+      if (paused) return;
       if (
         typeof document !== "undefined" &&
         document.visibilityState === "hidden"
@@ -95,8 +97,10 @@ export function useBoardProgressPoll(
       }
     }
 
-    void runPoll();
-    schedule();
+    if (!paused) {
+      void runPoll();
+      schedule();
+    }
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
@@ -104,7 +108,7 @@ export function useBoardProgressPoll(
       if (timerId !== undefined) window.clearInterval(timerId);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, []);
+  }, [paused]);
 
   return {
     tasks: polledTasks,

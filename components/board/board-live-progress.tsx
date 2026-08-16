@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { BoardActions, type BoardActionsProps } from "@/components/board/board-actions";
 import { KanbanBoard } from "@/components/kanban/kanban-board";
 import type { KanbanStep, KanbanTask } from "@/components/kanban/types";
@@ -73,11 +75,13 @@ export function BoardLiveProgress({
   createSubtask,
 }: BoardLiveProgressProps) {
   useBoardRevisionRefresh();
+  const [subtasksModalOpen, setSubtasksModalOpen] = useState(false);
 
   const live = useBoardProgressPoll(
     tasks,
     assignedCountByColaboratorId,
     pollBoardProgress,
+    subtasksModalOpen,
   );
 
   if (interactive) {
@@ -96,6 +100,7 @@ export function BoardLiveProgress({
           updateSubtaskAssignees={updateSubtaskAssignees}
           linkSubtask={linkSubtask}
           createSubtask={createSubtask}
+          onSubtasksModalOpenChange={setSubtasksModalOpen}
         />
       </div>
     );

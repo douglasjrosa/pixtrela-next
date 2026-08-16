@@ -29,6 +29,7 @@ import {
   findChainContaining,
   previousChainMember,
   resolveChains,
+  sortChainSubTasks,
 } from "@/lib/business/subtask-chain";
 import { countUnassignedSubTasks } from "@/lib/business/kanban-card-badges";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
@@ -77,6 +78,7 @@ export interface BoardActionsProps {
     subtaskDocumentId: string,
     linkedToPrevious: boolean,
   ) => Promise<void>;
+  onSubtasksModalOpenChange?: (open: boolean) => void;
 }
 
 export function BoardActions({
@@ -92,6 +94,7 @@ export function BoardActions({
   createSubtask,
   reorderSubtasks,
   linkSubtask,
+  onSubtasksModalOpenChange,
 }: BoardActionsProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -157,6 +160,7 @@ export function BoardActions({
   }
 
   function handleTaskClick(task: KanbanTask): void {
+    onSubtasksModalOpenChange?.(true);
     setSelectedTask(task);
     setSavingAssignees(false);
     setLoadingSubtasks(true);
@@ -175,6 +179,7 @@ export function BoardActions({
   }
 
   function handleCloseSubtasksModal(): void {
+    onSubtasksModalOpenChange?.(false);
     setSelectedTask(null);
     setSubtasks([]);
     setAssigneesBaseline({});
@@ -225,7 +230,10 @@ export function BoardActions({
     if (!selectedTask) return;
     const taskDocumentId = selectedTask.documentId;
     const before = subtasks;
-    const previous = previousChainMember(subtasks, subtaskDocumentId);
+    const previous = previousChainMember(
+      sortChainSubTasks(subtasks),
+      subtaskDocumentId,
+    );
     const copiedAssignees = linkedToPrevious && previous
       ? previous.assignedTo
       : null;
