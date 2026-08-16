@@ -1,7 +1,8 @@
-import { and, asc, count, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 
 import { templateSubTasks, templateTasks } from "@/drizzle/schema";
 import { getDb, type Db } from "@/lib/db/client";
+import type { TemplateListSort } from "@/lib/schemas/template-list-sort";
 
 export type TemplateTaskRecord = {
   id: string;
@@ -109,8 +110,36 @@ export async function listTemplateSubTasks(
     .orderBy(asc(templateSubTasks.index));
 }
 
+const SUB_TASK_COUNT_EXPR = sql<number>`
+  coalesce(count(${templateSubTasks.id}), 0)
+`;
+
+function templateListOrderBy(sort: TemplateListSort) {
+  const dir = sort.direction === "desc" ? desc : asc;
+  if (sort.column === "code") {
+    return [
+      dir(templateTasks.code),
+      asc(templateTasks.name),
+      asc(templateTasks.id),
+    ];
+  }
+  if (sort.column === "subTaskCount") {
+    return [
+      dir(SUB_TASK_COUNT_EXPR),
+      asc(templateTasks.name),
+      asc(templateTasks.id),
+    ];
+  }
+  return [dir(templateTasks.name), asc(templateTasks.id)];
+}
+
 export async function listTemplateTasks(
-  options: { q?: string; page?: number; pageSize?: number } = {},
+  options: {
+    q?: string;
+    page?: number;
+    pageSize?: number;
+    sort?: TemplateListSort;
+  } = {},
   db: Db = getDb(),
 ): Promise<{ items: TemplateTaskListItem[]; total: number }> {
   const page = Math.max(1, options.page ?? 1);
@@ -139,7 +168,7 @@ export async function listTemplateTasks(
       code: templateTasks.code,
       name: templateTasks.name,
       active: templateTasks.active,
-      subTaskCount: sql<number>`coalesce(count(${templateSubTasks.id}), 0)`,
+      subTaskCount: SUB_TASK_COUNT_EXPR,
     })
     .from(templateTasks)
     .leftJoin(
@@ -153,7 +182,11 @@ export async function listTemplateTasks(
       templateTasks.name,
       templateTasks.active,
     )
-    .orderBy(asc(templateTasks.name))
+    .orderBy(
+      ...templateListOrderBy(
+        options.sort ?? { column: "name", direction: "asc" },
+      ),
+    )
     .limit(pageSize)
     .offset(offset);
 

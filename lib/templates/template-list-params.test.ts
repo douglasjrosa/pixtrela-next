@@ -27,6 +27,21 @@ describe("parseTemplateListSearchParams", () => {
     const filters = parseTemplateListSearchParams({ code: "100" });
     expect(filters.q).toBeUndefined();
   });
+
+  it("applies default sort when params are empty", () => {
+    const filters = parseTemplateListSearchParams({});
+    expect(filters.column).toBe("name");
+    expect(filters.direction).toBe("asc");
+  });
+
+  it("parses sort and direction", () => {
+    const filters = parseTemplateListSearchParams({
+      sort: "code",
+      dir: "desc",
+    });
+    expect(filters.column).toBe("code");
+    expect(filters.direction).toBe("desc");
+  });
 });
 
 describe("serializeTemplateListSearchParams", () => {
@@ -38,15 +53,33 @@ describe("serializeTemplateListSearchParams", () => {
   });
 
   it("includes q when set", () => {
-    const params = serializeTemplateListSearchParams({ q: "mont" });
+    const params = serializeTemplateListSearchParams({
+      ...defaultTemplateListFilters(),
+      q: "mont",
+    });
     expect(params.get("q")).toBe("mont");
     expect(params.has("code")).toBe(false);
+  });
+
+  it("includes sort params when not default", () => {
+    const params = serializeTemplateListSearchParams({
+      ...defaultTemplateListFilters(),
+      column: "subTaskCount",
+      direction: "desc",
+    });
+    expect(params.get("sort")).toBe("subTaskCount");
+    expect(params.get("dir")).toBe("desc");
   });
 });
 
 describe("templateListFilterKey", () => {
-  it("uses q only", () => {
-    expect(templateListFilterKey({ q: "a" })).toBe("a");
-    expect(templateListFilterKey({})).toBe("");
+  it("changes when q or sort changes", () => {
+    const base = defaultTemplateListFilters();
+    expect(templateListFilterKey({ ...base, q: "a" })).not.toBe(
+      templateListFilterKey(base),
+    );
+    expect(
+      templateListFilterKey({ ...base, column: "code", direction: "asc" }),
+    ).not.toBe(templateListFilterKey(base));
   });
 });

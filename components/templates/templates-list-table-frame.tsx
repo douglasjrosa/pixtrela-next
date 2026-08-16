@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 import { loadMoreTemplates } from "@/app/(app)/templates/actions";
@@ -10,30 +10,40 @@ import { templateListFilterKey } from "@/lib/templates/template-list-params";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast } from "@/lib/ui/app-toast";
 
+import { TemplateListRowPresentational } from "./template-list-row-presentational";
 import type { TemplateListRow } from "./types";
-import { TemplatesListView } from "./templates-list-view";
 
-export interface TemplatesListWithLoadMoreProps {
+export interface TemplatesListTableFrameProps {
   filters: TemplateListFilters;
   initialTemplates: TemplateListRow[];
-  initialHasMore: boolean;
   initialPage: number;
+  initialHasMore: boolean;
+  tableHeader: ReactNode;
+  tableBody: ReactNode;
+  mobileList: ReactNode;
 }
 
-export function TemplatesListWithLoadMore({
+export function TemplatesListTableFrame({
   filters,
   initialTemplates,
-  initialHasMore,
   initialPage,
-}: TemplatesListWithLoadMoreProps) {
+  initialHasMore,
+  tableHeader,
+  tableBody,
+  mobileList,
+}: TemplatesListTableFrameProps) {
   const tTemplates = useTranslations("templates");
   const filterKey = templateListFilterKey(filters);
   const [extraTemplates, setExtraTemplates] = useState<TemplateListRow[]>([]);
   const [page, setPage] = useState(initialPage);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [isPending, startTransition] = useTransition();
-  const listResetKey =
-    `${filterKey}:${initialPage}:${initialHasMore}:${initialTemplates}`;
+  const listResetKey = [
+    filterKey,
+    String(initialPage),
+    String(initialHasMore),
+    initialTemplates.map((row) => row.documentId).join(","),
+  ].join(":");
   const [prevListResetKey, setPrevListResetKey] = useState(listResetKey);
   if (listResetKey !== prevListResetKey) {
     setPrevListResetKey(listResetKey);
@@ -41,8 +51,6 @@ export function TemplatesListWithLoadMore({
     setPage(initialPage);
     setHasMore(initialHasMore);
   }
-
-  const templates = [...initialTemplates, ...extraTemplates];
 
   function handleLoadMore(): void {
     const nextPage = page + 1;
@@ -62,10 +70,51 @@ export function TemplatesListWithLoadMore({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <TemplatesListView templates={templates} />
+        <table className="hidden w-full text-sm md:table">
+          {tableHeader}
+          {tableBody}
+          {extraTemplates.length > 0 ? (
+            <tbody>
+              {extraTemplates.map((template) => (
+                <TemplateListRowPresentational
+                  key={template.documentId}
+                  template={template}
+                  variant="table"
+                  href={`/templates/tasks/${template.documentId}`}
+                  labels={{
+                    subTaskCountShort: tTemplates("subTaskCountShort", {
+                      count: template.subTaskCount,
+                    }),
+                  }}
+                />
+              ))}
+            </tbody>
+          ) : null}
+        </table>
+
+        {mobileList}
+
+        {extraTemplates.length > 0 ? (
+          <ul className="md:hidden">
+            {extraTemplates.map((template) => (
+              <TemplateListRowPresentational
+                key={template.documentId}
+                template={template}
+                variant="mobile"
+                href={`/templates/tasks/${template.documentId}`}
+                labels={{
+                  subTaskCountShort: tTemplates("subTaskCountShort", {
+                    count: template.subTaskCount,
+                  }),
+                }}
+              />
+            ))}
+          </ul>
+        ) : null}
       </div>
+
       {hasMore ? (
-        <div className="shrink-0 pt-3">
+        <div className="flex shrink-0 justify-center pt-3">
           <Button
             type="button"
             variant="outline"

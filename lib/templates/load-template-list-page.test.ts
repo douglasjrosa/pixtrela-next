@@ -26,7 +26,17 @@ describe("loadTemplateListPage", () => {
       total: 12,
     });
 
-    const result = await loadTemplateListPage({}, 1);
+    const result = await loadTemplateListPage(
+      { q: undefined, column: "name", direction: "asc" },
+      1,
+    );
+
+    expect(listTemplateTasks).toHaveBeenCalledWith({
+      q: undefined,
+      page: 1,
+      pageSize: 10,
+      sort: { column: "name", direction: "asc" },
+    });
 
     expect(result.hasMore).toBe(true);
     expect(result.pageCount).toBe(2);
