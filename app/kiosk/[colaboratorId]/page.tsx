@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
+import { loadKioskLiveChainIntervalSeconds } from "@/lib/kiosk/load-session-idle";
 import { loadKioskQueueForColaborator } from "@/lib/kiosk/load-assigned-subtasks";
 import { loadKioskColaboratorProfile } from "@/lib/kiosk/load-colaborator-profile";
 
@@ -14,9 +15,10 @@ export default async function KioskColaboratorPage({ params }: PageProps) {
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
   const readOnly = role === "admin";
-  const [queue, profile] = await Promise.all([
+  const [queue, profile, liveChainIntervalSeconds] = await Promise.all([
     loadKioskQueueForColaborator(colaboratorId),
     loadKioskColaboratorProfile(colaboratorId),
+    loadKioskLiveChainIntervalSeconds(),
   ]);
 
   return (
@@ -27,6 +29,7 @@ export default async function KioskColaboratorPage({ params }: PageProps) {
       subTasks={queue.subTasks}
       catalog={queue.catalog}
       openRuns={queue.openRuns}
+      maxSimultaneousSubtaskIntervalSeconds={liveChainIntervalSeconds}
       readOnly={readOnly}
     />
   );

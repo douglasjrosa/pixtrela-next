@@ -201,6 +201,11 @@ export const routeThemes = pgTable("route_themes", {
 export const kioskSettings = pgTable("kiosk_settings", {
   id: uuid("id").defaultRandom().primaryKey(),
   sessionIdleSeconds: integer("session_idle_seconds").default(120).notNull(),
+  maxSimultaneousSubtaskIntervalSeconds: integer(
+    "max_simultaneous_subtask_interval_seconds",
+  )
+    .default(300)
+    .notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

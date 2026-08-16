@@ -11,17 +11,21 @@ import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 import {
+  DEFAULT_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS,
   kioskSessionIdleSchema,
   type KioskSessionIdleInput,
 } from "@/lib/schemas/kiosk-setting";
 
 export interface KioskSessionIdleFormProps {
   sessionIdleSeconds: number;
+  maxSimultaneousSubtaskIntervalSeconds?: number;
   onSave: (values: KioskSessionIdleInput) => void | Promise<void>;
 }
 
 export function KioskSessionIdleForm({
   sessionIdleSeconds,
+  maxSimultaneousSubtaskIntervalSeconds =
+    DEFAULT_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS,
   onSave,
 }: KioskSessionIdleFormProps) {
   const tCommon = useTranslations("common");
@@ -34,7 +38,10 @@ export function KioskSessionIdleForm({
     formState: { errors },
   } = useForm<KioskSessionIdleInput>({
     resolver: zodResolver(kioskSessionIdleSchema),
-    defaultValues: { sessionIdleSeconds },
+    defaultValues: {
+      sessionIdleSeconds,
+      maxSimultaneousSubtaskIntervalSeconds,
+    },
   });
 
   function onSubmit(values: KioskSessionIdleInput): void {
@@ -71,6 +78,27 @@ export function KioskSessionIdleForm({
         {errors.sessionIdleSeconds ? (
           <p className="text-sm text-destructive">
             {errors.sessionIdleSeconds.message}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="maxSimultaneousSubtaskIntervalSeconds">
+          {tSettings("kioskLiveChainIntervalSeconds")}
+        </Label>
+        <Input
+          id="maxSimultaneousSubtaskIntervalSeconds"
+          type="number"
+          min={0}
+          max={86400}
+          step={1}
+          {...register("maxSimultaneousSubtaskIntervalSeconds", {
+            valueAsNumber: true,
+          })}
+        />
+        {errors.maxSimultaneousSubtaskIntervalSeconds ? (
+          <p className="text-sm text-destructive">
+            {errors.maxSimultaneousSubtaskIntervalSeconds.message}
           </p>
         ) : null}
       </div>

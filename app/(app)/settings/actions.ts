@@ -28,11 +28,12 @@ export async function updateCurrencyForSubtasks(
   revalidateTag("drizzle:currency-for-subtasks", "default");
 }
 
-export async function updateKioskSessionIdleSeconds(
-  sessionIdleSeconds: number,
-): Promise<void> {
+export async function updateKioskSessionIdleSeconds(values: {
+  sessionIdleSeconds: number;
+  maxSimultaneousSubtaskIntervalSeconds: number;
+}): Promise<void> {
   await assertCanManage();
-  await upsertKioskSettings(sessionIdleSeconds);
+  await upsertKioskSettings(values);
   revalidateTag("drizzle:kiosk-setting", "default");
 }
 

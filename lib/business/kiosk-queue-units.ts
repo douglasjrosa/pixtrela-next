@@ -9,8 +9,13 @@ import {
   type ChainSubTask,
   type SubTaskChain,
 } from "@/lib/business/subtask-chain";
-import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import { isSubTaskAtWorkerCapacity } from "@/lib/business/subtask-active-workers";
+import { nextJoinableSubTask } from "@/lib/business/kiosk-live-chain";
+import {
+  canStartSubTask,
+  hasActiveSubTask,
+  type KioskSubTask,
+} from "@/lib/business/subtask-queue";
 
 export type KioskChainMeta = ChainSubTask;
 
@@ -30,12 +35,14 @@ export type KioskGroupUnit = {
   principalActive: boolean;
   chainRunId: string | null;
   runStartedAt: string | null;
+  showStart: boolean;
 };
 
 export type KioskIsolatedUnit = {
   type: "isolated";
   subTask: KioskSubTask;
   helperMode: boolean;
+  showStart: boolean;
 };
 
 export type KioskQueueUnit = KioskGroupUnit | KioskIsolatedUnit;
@@ -85,6 +92,7 @@ export function buildKioskQueueUnits(input: {
   subTasks: readonly KioskSubTask[];
   allTaskSubTasks?: readonly KioskSubTask[];
   openRuns?: readonly OpenChainRun[];
+  maxSimultaneousSubtaskIntervalSeconds?: number;
 }): KioskQueueUnit[] {
   const catalog = input.allTaskSubTasks ?? input.subTasks;
   const chains = resolveChains(catalog.map(toChainItem));
@@ -105,7 +113,12 @@ export function buildKioskQueueUnits(input: {
     const chain = findChainContaining(chains, subTask.documentId);
     if (!chain || !isMultiMemberChain(chain)) {
       consumed.add(subTask.documentId);
-      units.push({ type: "isolated", subTask, helperMode: false });
+      units.push({
+        type: "isolated",
+        subTask,
+        helperMode: false,
+        showStart: false,
+      });
       continue;
     }
 
@@ -125,7 +138,12 @@ export function buildKioskQueueUnits(input: {
     if (remainingSubTasks.length === 0) {
       consumed.add(subTask.documentId);
       if (isFinishedChainMember(toChainItem(subTask))) {
-        units.push({ type: "isolated", subTask, helperMode: false });
+        units.push({
+          type: "isolated",
+          subTask,
+          helperMode: false,
+          showStart: false,
+        });
       }
       continue;
     }
@@ -146,7 +164,12 @@ export function buildKioskQueueUnits(input: {
       const hasSpare = maxWorkers > 1 && !atCapacity;
       consumed.add(subTask.documentId);
       if (hasSpare) {
-        units.push({ type: "isolated", subTask, helperMode: true });
+        units.push({
+          type: "isolated",
+          subTask,
+          helperMode: true,
+          showStart: false,
+        });
       }
       continue;
     }
@@ -175,10 +198,62 @@ export function buildKioskQueueUnits(input: {
       runStartedAt: viewerIsPrincipal
         ? (openRun?.runStartedAt ?? null)
         : null,
+      showStart: false,
     });
   }
 
-  return units;
+  return applyStartVisibility(units, input);
+}
+
+function applyStartVisibility(
+  units: KioskQueueUnit[],
+  input: {
+    viewerId: string;
+    subTasks: readonly KioskSubTask[];
+    allTaskSubTasks?: readonly KioskSubTask[];
+    maxSimultaneousSubtaskIntervalSeconds?: number;
+  },
+): KioskQueueUnit[] {
+  const hasActive = hasActiveSubTask(input.subTasks);
+  const joinable = nextJoinableSubTask({
+    viewerId: input.viewerId,
+    subTasks: input.subTasks,
+    catalog: input.allTaskSubTasks ?? input.subTasks,
+    maxIntervalSeconds: input.maxSimultaneousSubtaskIntervalSeconds ?? 0,
+  });
+  const joinableId = joinable?.documentId ?? null;
+  const queue = [...input.subTasks];
+  let idleStartGranted = false;
+
+  return units.map((unit) => {
+    if (unit.type === "group") {
+      const showStart =
+        !hasActive &&
+        !unit.locked &&
+        !unit.principalActive &&
+        !idleStartGranted;
+      if (showStart) idleStartGranted = true;
+      return { ...unit, showStart };
+    }
+
+    if (unit.helperMode) {
+      return {
+        ...unit,
+        showStart: canStartSubTask(queue, unit.subTask.documentId),
+      };
+    }
+
+    if (joinableId && unit.subTask.documentId === joinableId) {
+      return { ...unit, showStart: true };
+    }
+
+    const idleStart =
+      !hasActive &&
+      !idleStartGranted &&
+      canStartSubTask(queue, unit.subTask.documentId);
+    if (idleStart) idleStartGranted = true;
+    return { ...unit, showStart: idleStart };
+  });
 }
 
 export function splitQueueUnitsBySection(units: readonly KioskQueueUnit[]): {

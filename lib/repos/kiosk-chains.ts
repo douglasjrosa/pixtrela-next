@@ -22,6 +22,13 @@ import {
   resolveChains,
   type ChainSubTask,
 } from "@/lib/business/subtask-chain";
+import {
+  nextJoinableSibling,
+  normalizeKioskLiveChainIntervalSeconds,
+  type LiveChainMember,
+} from "@/lib/business/kiosk-live-chain";
+import { getKioskSettings } from "@/lib/repos/settings";
+import { DEFAULT_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS } from "@/lib/schemas/kiosk-setting";
 import { hasOpenStartedSessionFromActions } from "@/lib/business/subtask-active-workers";
 import { resolveSubTaskTargetQty } from "@/lib/domain/work-currency";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
@@ -33,6 +40,7 @@ import {
 } from "@/lib/repos/balances";
 import {
   listSubTasksWithRelationsForTask,
+  updateSubTaskLinkedToPrevious,
   type SubTaskWithAssignees,
 } from "@/lib/repos/tasks";
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
@@ -832,4 +840,144 @@ export async function findOpenChainRunForSubTask(
     subTaskIds: siblings.map((row) => row.id),
     db,
   });
+}
+
+function toLiveChainMember(
+  row: SubTaskWithAssignees,
+  taskId: string,
+): LiveChainMember {
+  return {
+    documentId: row.id,
+    index: row.index,
+    taskDocumentId: taskId,
+    expectedTime: row.expectedTime,
+    status: row.status,
+    activationStatus: fromDrizzleActivationStatus(row.activationStatus),
+  };
+}
+
+async function findOpenStartedRowsForColaborator(
+  colaboratorId: string,
+  db: Db,
+): Promise<
+  Array<{
+    id: string;
+    subTaskId: string;
+    chainRunId: string | null;
+  }>
+> {
+  const rows = await db
+    .select({
+      id: activities.id,
+      subTaskId: activities.subTaskId,
+      action: activities.action,
+      timestamp: activities.timestamp,
+      chainRunId: activities.chainRunId,
+    })
+    .from(activities)
+    .where(
+      and(
+        eq(activities.colaboratorId, colaboratorId),
+        inArray(activities.action, ["started", "stoped"]),
+      ),
+    )
+    .orderBy(asc(activities.timestamp));
+
+  const bySubTask = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const list = bySubTask.get(row.subTaskId) ?? [];
+    list.push(row);
+    bySubTask.set(row.subTaskId, list);
+  }
+
+  const open: Array<{
+    id: string;
+    subTaskId: string;
+    chainRunId: string | null;
+  }> = [];
+  for (const [subTaskId, list] of bySubTask) {
+    const actions = list.map((row) => row.action);
+    if (!hasOpenStartedSessionFromActions(actions)) continue;
+    const lastStarted = [...list]
+      .reverse()
+      .find((row) => row.action === "started");
+    if (!lastStarted) continue;
+    open.push({
+      id: lastStarted.id,
+      subTaskId,
+      chainRunId: lastStarted.chainRunId,
+    });
+  }
+  return open;
+}
+
+export async function joinLiveChain(
+  colaboratorId: string,
+  subTaskId: string,
+  db: Db = getDb(),
+): Promise<{ chainRunId: string }> {
+  const [candidate] = await db
+    .select()
+    .from(subTasks)
+    .where(eq(subTasks.id, subTaskId))
+    .limit(1);
+  if (!candidate) throw new Error("notFound");
+
+  const settings = await getKioskSettings(db);
+  const maxIntervalSeconds = normalizeKioskLiveChainIntervalSeconds(
+    Number(
+      settings?.maxSimultaneousSubtaskIntervalSeconds ??
+        DEFAULT_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS,
+    ),
+  );
+
+  const openRows = await findOpenStartedRowsForColaborator(colaboratorId, db);
+  const siblings = await listSubTasksWithRelationsForTask(candidate.taskId, db);
+  const siblingIds = new Set(siblings.map((row) => row.id));
+  const openOnTask = openRows.filter((row) => siblingIds.has(row.subTaskId));
+  if (openOnTask.length === 0) throw new Error("forbidden");
+
+  const items = siblings.map(toChainItem);
+  const chains = resolveChains(items);
+  const byId = new Map(items.map((item) => [item.documentId, item]));
+  const liveIds = new Set<string>();
+  for (const open of openOnTask) {
+    const chain = findChainContaining(chains, open.subTaskId);
+    if (chain && chain.memberIds.length > 1) {
+      for (const member of remainingExecutableMembers(chain, byId)) {
+        liveIds.add(member.documentId);
+      }
+    } else {
+      liveIds.add(open.subTaskId);
+    }
+  }
+
+  const liveMembers = siblings
+    .filter((row) => liveIds.has(row.id))
+    .map((row) => toLiveChainMember(row, candidate.taskId));
+  const assignedIds = new Set(
+    siblings
+      .filter((row) => row.assignedToIds.includes(colaboratorId))
+      .map((row) => row.id),
+  );
+  const next = nextJoinableSibling({
+    liveMembers,
+    siblings: siblings.map((row) => toLiveChainMember(row, candidate.taskId)),
+    viewerAssignedIds: assignedIds,
+    maxIntervalSeconds,
+  });
+  if (!next || next.documentId !== subTaskId) throw new Error("forbidden");
+
+  const chainRunId = openOnTask[0]?.chainRunId ?? randomUUID();
+  await db.transaction(async (tx) => {
+    if (!openOnTask[0]?.chainRunId) {
+      await tx
+        .update(activities)
+        .set({ chainRunId })
+        .where(eq(activities.id, openOnTask[0]!.id));
+    }
+    await updateSubTaskLinkedToPrevious(subTaskId, true, tx as unknown as Db);
+  });
+
+  return { chainRunId };
 }

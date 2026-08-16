@@ -55,6 +55,7 @@ function groupUnit(partial: Partial<KioskGroupUnit> = {}): KioskGroupUnit {
     principalActive: false,
     chainRunId: null,
     runStartedAt: null,
+    showStart: true,
     ...partial,
   };
 }
@@ -132,6 +133,7 @@ describe("KioskSubtaskPanel helper isolated card", () => {
           {
             type: "isolated",
             helperMode: true,
+            showStart: false,
             subTask: kioskSubTask({
               documentId: "b",
               name: "Embalar",

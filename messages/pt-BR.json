@@ -684,6 +684,8 @@
     "assignWarnMax": "Avisar com até (subtarefas):",
     "kioskSession": "Totem",
     "kioskSessionIdleSeconds": "Tempo de sessão do Totem (segundos):",
+    "kioskLiveChainIntervalSeconds":
+      "Intervalo máximo para permitir subtarefas simultâneas (s)",
     "saved": "Configurações salvas.",
     "error": "Não foi possível salvar as configurações."
   },

@@ -39,8 +39,14 @@ describe("settings/actions drizzle paths", () => {
 
   it("updateKioskSessionIdleSeconds upserts kiosk settings", async () => {
     const { updateKioskSessionIdleSeconds } = await import("./actions");
-    await updateKioskSessionIdleSeconds(90);
-    expect(upsertKioskSettings).toHaveBeenCalledWith(90);
+    await updateKioskSessionIdleSeconds({
+      sessionIdleSeconds: 90,
+      maxSimultaneousSubtaskIntervalSeconds: 300,
+    });
+    expect(upsertKioskSettings).toHaveBeenCalledWith({
+      sessionIdleSeconds: 90,
+      maxSimultaneousSubtaskIntervalSeconds: 300,
+    });
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:kiosk-setting", "default");
   });
 

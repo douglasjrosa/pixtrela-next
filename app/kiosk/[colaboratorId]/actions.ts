@@ -8,6 +8,7 @@ import {
   startChain as startChainRepo,
   advanceChainRun as advanceChainRunRepo,
   confirmChainStop as confirmChainStopRepo,
+  joinLiveChain as joinLiveChainRepo,
 } from "@/lib/repos/kiosk-chains";
 import {
   startSubTask as startSubTaskRepo,
@@ -90,6 +91,15 @@ export async function startChain(
 ): Promise<void> {
   await assertKioskSession();
   await startChainRepo(colaboratorId, headId);
+  invalidateActivityData();
+}
+
+export async function joinLiveChain(
+  colaboratorId: string,
+  subTaskDocumentId: string,
+): Promise<void> {
+  await assertKioskSession();
+  await joinLiveChainRepo(colaboratorId, subTaskDocumentId);
   invalidateActivityData();
 }
 
