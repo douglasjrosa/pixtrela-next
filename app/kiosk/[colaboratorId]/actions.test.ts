@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const revalidateTag = vi.fn();
 const startSubTaskRepo = vi.fn();
 const stopSubTaskRepo = vi.fn();
+const startChainRepo = vi.fn();
+const advanceChainRunRepo = vi.fn();
+const confirmChainStopRepo = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "kiosk" }, jwt: "jwt" })),
@@ -18,12 +21,21 @@ vi.mock("@/lib/repos/kiosk-subtasks", () => ({
   stopSubTask: (...args: unknown[]) => stopSubTaskRepo(...args),
 }));
 
+vi.mock("@/lib/repos/kiosk-chains", () => ({
+  startChain: (...args: unknown[]) => startChainRepo(...args),
+  advanceChainRun: (...args: unknown[]) => advanceChainRunRepo(...args),
+  confirmChainStop: (...args: unknown[]) => confirmChainStopRepo(...args),
+}));
+
 describe("kiosk/[colaboratorId]/actions drizzle", () => {
   beforeEach(() => {
     vi.resetModules();
     revalidateTag.mockReset();
     startSubTaskRepo.mockReset();
     stopSubTaskRepo.mockReset();
+    startChainRepo.mockReset();
+    advanceChainRunRepo.mockReset();
+    confirmChainStopRepo.mockReset();
   });
 
   it("startSubTask delegates to repo and revalidates drizzle tags", async () => {
@@ -73,5 +85,26 @@ describe("kiosk/[colaboratorId]/actions drizzle", () => {
     );
 
     expect(stopSubTaskRepo).toHaveBeenCalledWith("col-1", "sub-1", { qty: 3 });
+  });
+
+  it("startChain delegates to repo and revalidates", async () => {
+    startChainRepo.mockResolvedValue({ chainRunId: "run-1" });
+    const { startChain } = await import("./actions");
+    await startChain("col-1", "head-1");
+    expect(startChainRepo).toHaveBeenCalledWith("col-1", "head-1");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:activities", "default");
+  });
+
+  it("confirmChainStop parses answers and delegates to repo", async () => {
+    confirmChainStopRepo.mockResolvedValue(undefined);
+    const { confirmChainStop } = await import("./actions");
+    await confirmChainStop("col-1", "run-1", [
+      { documentId: "a", completed: true },
+      { documentId: "b", completed: false },
+    ]);
+    expect(confirmChainStopRepo).toHaveBeenCalledWith("col-1", "run-1", [
+      { documentId: "a", completed: true },
+      { documentId: "b", completed: false },
+    ]);
   });
 });

@@ -5,10 +5,16 @@ import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import { getRemainingSubTaskQty } from "@/lib/business/subtask-queue";
 import {
+  startChain as startChainRepo,
+  advanceChainRun as advanceChainRunRepo,
+  confirmChainStop as confirmChainStopRepo,
+} from "@/lib/repos/kiosk-chains";
+import {
   startSubTask as startSubTaskRepo,
   stopSubTask as stopSubTaskRepo,
 } from "@/lib/repos/kiosk-subtasks";
 import { activityFormSchema } from "@/lib/schemas/activity";
+import { parseChainStopAnswers } from "@/lib/schemas/kiosk-chain-stop";
 import {
   parseKioskExitInput,
   toActivityStopPayload,
@@ -76,4 +82,30 @@ export async function exitSubTask(
   );
   invalidateActivityData();
   return { remainingWorkerNames: result.remainingWorkerNames };
+}
+
+export async function startChain(
+  colaboratorId: string,
+  headId: string,
+): Promise<void> {
+  await assertKioskSession();
+  await startChainRepo(colaboratorId, headId);
+  invalidateActivityData();
+}
+
+export async function advanceChainRun(chainRunId: string): Promise<void> {
+  await assertKioskSession();
+  await advanceChainRunRepo(chainRunId);
+  invalidateActivityData();
+}
+
+export async function confirmChainStop(
+  colaboratorId: string,
+  chainRunId: string,
+  rawAnswers: unknown,
+): Promise<void> {
+  await assertKioskSession();
+  const answers = parseChainStopAnswers(rawAnswers);
+  await confirmChainStopRepo(colaboratorId, chainRunId, answers);
+  invalidateActivityData();
 }

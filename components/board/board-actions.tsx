@@ -14,6 +14,7 @@ import type {
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import {
   applyAssigneeDraftDeltasToCounts,
+  assigneeIdsKey,
   buildAssigneesSnapshot,
   collectDirtyAssigneeUpdates,
   hasAssigneeDraftChanges,
@@ -21,6 +22,15 @@ import {
   mergeLoadedSubtasksWithDraft,
   resolveAssigneeNames,
 } from "@/lib/business/board-assignee-draft";
+import {
+  applyHeadAssigneePropagation,
+  canEditAssignees,
+  chainItemsFromBoard,
+  findChainContaining,
+  previousChainMember,
+  resolveChains,
+  sortChainSubTasks,
+} from "@/lib/business/subtask-chain";
 import { countUnassignedSubTasks } from "@/lib/business/kanban-card-badges";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
@@ -59,6 +69,16 @@ export interface BoardActionsProps {
     values: SubTaskFormInput,
     options?: { addToTemplate?: boolean },
   ) => Promise<void>;
+  reorderSubtasks: (
+    taskDocumentId: string,
+    orderedDocumentIds: string[],
+  ) => Promise<void>;
+  linkSubtask: (
+    taskDocumentId: string,
+    subtaskDocumentId: string,
+    linkedToPrevious: boolean,
+  ) => Promise<void>;
+  onSubtasksModalOpenChange?: (open: boolean) => void;
 }
 
 export function BoardActions({
@@ -72,6 +92,9 @@ export function BoardActions({
   loadSubtasks,
   updateSubtaskAssignees,
   createSubtask,
+  reorderSubtasks,
+  linkSubtask,
+  onSubtasksModalOpenChange,
 }: BoardActionsProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -90,6 +113,7 @@ export function BoardActions({
   const [savingAssignees, setSavingAssignees] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [savingCreate, setSavingCreate] = useState(false);
+  const [reorderingSubtasks, setReorderingSubtasks] = useState(false);
 
   const assignedCountsForUi = useMemo(
     () =>
@@ -136,6 +160,7 @@ export function BoardActions({
   }
 
   function handleTaskClick(task: KanbanTask): void {
+    onSubtasksModalOpenChange?.(true);
     setSelectedTask(task);
     setSavingAssignees(false);
     setLoadingSubtasks(true);
@@ -154,6 +179,7 @@ export function BoardActions({
   }
 
   function handleCloseSubtasksModal(): void {
+    onSubtasksModalOpenChange?.(false);
     setSelectedTask(null);
     setSubtasks([]);
     setAssigneesBaseline({});
@@ -161,6 +187,87 @@ export function BoardActions({
     setSavingAssignees(false);
     setCreateOpen(false);
     setSavingCreate(false);
+    setReorderingSubtasks(false);
+  }
+
+  function sortSubtasksByDocumentIds(
+    items: BoardSubTaskSummary[],
+    orderedDocumentIds: string[],
+  ): BoardSubTaskSummary[] {
+    const orderMap = new Map(
+      orderedDocumentIds.map((documentId, index) => [documentId, index]),
+    );
+    return [...items].sort(
+      (left, right) =>
+        (orderMap.get(left.documentId) ?? 0) -
+        (orderMap.get(right.documentId) ?? 0),
+    );
+  }
+
+  function handleReorderSubtasks(orderedDocumentIds: string[]): void {
+    if (!selectedTask) return;
+
+    const taskDocumentId = selectedTask.documentId;
+    const before = subtasks;
+    setSubtasks(sortSubtasksByDocumentIds(subtasks, orderedDocumentIds));
+    setReorderingSubtasks(true);
+
+    void (async () => {
+      try {
+        await reorderSubtasks(taskDocumentId, orderedDocumentIds);
+      } catch {
+        setSubtasks(before);
+      } finally {
+        setReorderingSubtasks(false);
+      }
+    })();
+  }
+
+  function handleLinkToggle(
+    subtaskDocumentId: string,
+    linkedToPrevious: boolean,
+  ): void {
+    if (!selectedTask) return;
+    const taskDocumentId = selectedTask.documentId;
+    const before = subtasks;
+    const previous = previousChainMember(
+      sortChainSubTasks(subtasks),
+      subtaskDocumentId,
+    );
+    const copiedAssignees = linkedToPrevious && previous
+      ? previous.assignedTo
+      : null;
+    setSubtasks((current) =>
+      current.map((item) => {
+        if (item.documentId !== subtaskDocumentId) return item;
+        if (copiedAssignees) {
+          return { ...item, linkedToPrevious, assignedTo: copiedAssignees };
+        }
+        return { ...item, linkedToPrevious };
+      }),
+    );
+    if (copiedAssignees) {
+      setAssigneesBaseline((current) => ({
+        ...current,
+        [subtaskDocumentId]: assigneeIdsKey(
+          copiedAssignees.map((assignee) => assignee.documentId),
+        ),
+      }));
+    }
+    void (async () => {
+      try {
+        await linkSubtask(
+          taskDocumentId,
+          subtaskDocumentId,
+          linkedToPrevious,
+        );
+        await refreshSubtasksList(taskDocumentId, {
+          keepDraftAssignees: true,
+        });
+      } catch {
+        setSubtasks(before);
+      }
+    })();
   }
 
   async function refreshSubtasksList(
@@ -181,16 +288,62 @@ export function BoardActions({
     subtask: BoardSubTaskSummary,
     assignedToIds: string[],
   ): void {
-    setSubtasks((current) =>
-      current.map((item) =>
-        item.documentId === subtask.documentId
-          ? {
-              ...item,
-              assignedTo: resolveAssigneeNames(teams, assignedToIds),
-            }
-          : item,
-      ),
-    );
+    setSubtasks((current) => {
+      const chainItems = chainItemsFromBoard(current);
+      const chain = findChainContaining(
+        resolveChains(chainItems),
+        subtask.documentId,
+      );
+      if (!chain || chain.memberIds.length <= 1) {
+        return current.map((item) =>
+          item.documentId === subtask.documentId
+            ? {
+                ...item,
+                assignedTo: resolveAssigneeNames(teams, assignedToIds),
+              }
+            : item,
+        );
+      }
+
+      const role = canEditAssignees(
+        subtask.documentId,
+        subtask.maxSameTimeWorkers,
+        chain,
+      );
+      if (role === "none") return current;
+      if (role === "helper") {
+        return current.map((item) =>
+          item.documentId === subtask.documentId
+            ? {
+                ...item,
+                assignedTo: resolveAssigneeNames(teams, assignedToIds),
+              }
+            : item,
+        );
+      }
+
+      const members = chain.memberIds
+        .map((id) => chainItems.find((item) => item.documentId === id))
+        .filter((item): item is NonNullable<typeof item> => Boolean(item));
+      const head = members.find((item) => item.documentId === chain.headId);
+      const propagated = applyHeadAssigneePropagation(
+        members,
+        chain.headId,
+        head?.assignedToIds ?? [],
+        assignedToIds,
+      );
+      const nextById = new Map(
+        propagated.map((item) => [item.documentId, item.assignedToIds]),
+      );
+      return current.map((item) => {
+        const nextIds = nextById.get(item.documentId);
+        if (!nextIds) return item;
+        return {
+          ...item,
+          assignedTo: resolveAssigneeNames(teams, nextIds),
+        };
+      });
+    });
   }
 
   function handleSaveAssignees(): void {
@@ -207,9 +360,31 @@ export function BoardActions({
     const previousBaseline = assigneesBaseline;
     setSavingAssignees(true);
 
+    const chainItems = chainItemsFromBoard(subtasks);
+    const chains = resolveChains(chainItems);
+    const ranked = [...dirtyUpdates].sort((left, right) => {
+      const leftChain = findChainContaining(chains, left.documentId);
+      const rightChain = findChainContaining(chains, right.documentId);
+      const leftHead = leftChain?.headId === left.documentId ? 0 : 1;
+      const rightHead = rightChain?.headId === right.documentId ? 0 : 1;
+      return leftHead - rightHead;
+    });
+
     void (async () => {
       try {
-        for (const update of dirtyUpdates) {
+        for (const update of ranked) {
+          const chain = findChainContaining(chains, update.documentId);
+          const current = chainItems.find(
+            (item) => item.documentId === update.documentId,
+          );
+          if (chain && chain.memberIds.length > 1 && current) {
+            const role = canEditAssignees(
+              current.documentId,
+              current.maxSameTimeWorkers,
+              chain,
+            );
+            if (role === "none") continue;
+          }
           await updateSubtaskAssignees(
             update.documentId,
             taskDocumentId,
@@ -303,9 +478,12 @@ export function BoardActions({
         loading={loadingSubtasks}
         dirty={hasAssigneeDraftChanges(subtasks, assigneesBaseline)}
         saving={savingAssignees}
+        reordering={reorderingSubtasks}
         onClose={handleCloseSubtasksModal}
         onAssigneesChange={handleAssigneesChange}
         onSave={handleSaveAssignees}
+        onReorder={handleReorderSubtasks}
+        onLinkToggle={handleLinkToggle}
         onAddSubtask={() => setCreateOpen(true)}
       />
 

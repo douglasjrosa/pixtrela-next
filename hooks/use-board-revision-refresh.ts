@@ -13,9 +13,9 @@ const BOARD_REVISION_POLL_MS = 10_000;
 
 /**
  * Polls board-wide revision and refreshes /board when tasks, sub-tasks,
- * activities, assignees, or steps change.
+ * activities, assignees, or steps change. Skips while `paused` is true.
  */
-export function useBoardRevisionRefresh(): void {
+export function useBoardRevisionRefresh(paused = false): void {
   const router = useRouter();
   const revisionRef = useRef<BoardRevision | null>(null);
 
@@ -24,6 +24,7 @@ export function useBoardRevisionRefresh(): void {
     let timerId: number | undefined;
 
     async function checkRevision(): Promise<void> {
+      if (paused) return;
       if (
         typeof document !== "undefined" &&
         document.visibilityState === "hidden"
@@ -57,8 +58,10 @@ export function useBoardRevisionRefresh(): void {
       }
     }
 
-    void checkRevision();
-    schedule();
+    if (!paused) {
+      void checkRevision();
+      schedule();
+    }
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
@@ -66,5 +69,5 @@ export function useBoardRevisionRefresh(): void {
       if (timerId !== undefined) window.clearInterval(timerId);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [router]);
+  }, [paused, router]);
 }

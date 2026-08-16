@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 
 const refresh = vi.fn();
 
@@ -11,6 +12,10 @@ vi.mock("next/navigation", () => ({
 import { renderWithIntl } from "@/test/test-utils";
 import { boardSubTaskSummaryStub } from "@/lib/business/board-subtask-summary";
 import { resolveKanbanDragEnd, toKanbanTaskId } from "@/lib/business/kanban-task-order";
+import {
+  FORM_MODAL_NESTED_OVERLAY_Z_CLASS,
+  FORM_MODAL_OVERLAY_Z_CLASS,
+} from "@/components/ui/form-modal-shell";
 import { BoardActions } from "./board-actions";
 
 const paymentCurrency = {
@@ -18,6 +23,26 @@ const paymentCurrency = {
   currencyPerSecond: 2,
   pluralTitle: "Estrelas",
 };
+
+function renderBoard(overrides: Partial<ComponentProps<typeof BoardActions>> = {}) {
+  return renderWithIntl(
+    <BoardActions
+      steps={steps}
+      tasks={tasks}
+      teams={teams}
+      assignWarnMax={4}
+      assignedCountByColaboratorId={{}}
+      paymentCurrency={paymentCurrency}
+      applyBoardTaskOrder={vi.fn()}
+      loadSubtasks={vi.fn()}
+      reorderSubtasks={vi.fn()}
+      linkSubtask={vi.fn()}
+      updateSubtaskAssignees={vi.fn()}
+      createSubtask={vi.fn()}
+      {...overrides}
+    />,
+  );
+}
 
 const steps = [
   { id: 1, name: "Fila de produção", taskOrderBy: "manual" as const },
@@ -59,20 +84,7 @@ const teams = [
 
 describe("BoardActions", () => {
   it("renders kanban board with steps", () => {
-    renderWithIntl(
-      <BoardActions
-        steps={steps}
-        tasks={tasks}
-        teams={teams}
-        assignWarnMax={4}
-        assignedCountByColaboratorId={{}}
-        paymentCurrency={paymentCurrency}
-        applyBoardTaskOrder={vi.fn()}
-        loadSubtasks={vi.fn()}
-        updateSubtaskAssignees={vi.fn()}
-        createSubtask={vi.fn()}
-      />,
-    );
+    renderBoard();
     expect(screen.getByRole("region", { name: "Fila de produção" })).toBeInTheDocument();
     expect(screen.getByText("1 - Tarefa A")).toBeInTheDocument();
   });
@@ -88,20 +100,7 @@ describe("BoardActions", () => {
       }),
     ]);
 
-    renderWithIntl(
-      <BoardActions
-        steps={steps}
-        tasks={tasks}
-        teams={teams}
-        assignWarnMax={4}
-        assignedCountByColaboratorId={{}}
-        paymentCurrency={paymentCurrency}
-        applyBoardTaskOrder={vi.fn()}
-        loadSubtasks={loadSubtasks}
-        updateSubtaskAssignees={vi.fn()}
-        createSubtask={vi.fn()}
-      />,
-    );
+    renderBoard({ loadSubtasks });
 
     await user.click(screen.getByText("1 - Tarefa A"));
 
@@ -147,20 +146,7 @@ describe("BoardActions", () => {
       ]);
     });
 
-    renderWithIntl(
-      <BoardActions
-        steps={steps}
-        tasks={tasks}
-        teams={teams}
-        assignWarnMax={4}
-        assignedCountByColaboratorId={{}}
-        paymentCurrency={paymentCurrency}
-        applyBoardTaskOrder={vi.fn()}
-        loadSubtasks={loadSubtasks}
-        updateSubtaskAssignees={updateSubtaskAssignees}
-        createSubtask={vi.fn()}
-      />,
-    );
+    renderBoard({ loadSubtasks, updateSubtaskAssignees });
 
     await user.click(screen.getByText("1 - Tarefa A"));
     await user.click(await screen.findByRole("button", { name: /Soldar/ }));
@@ -207,20 +193,7 @@ describe("BoardActions", () => {
       ]);
     const createSubtask = vi.fn().mockResolvedValue(undefined);
 
-    renderWithIntl(
-      <BoardActions
-        steps={steps}
-        tasks={tasks}
-        teams={teams}
-        assignWarnMax={4}
-        assignedCountByColaboratorId={{}}
-        paymentCurrency={paymentCurrency}
-        applyBoardTaskOrder={vi.fn()}
-        loadSubtasks={loadSubtasks}
-        updateSubtaskAssignees={vi.fn()}
-        createSubtask={createSubtask}
-      />,
-    );
+    renderBoard({ loadSubtasks, createSubtask });
 
     await user.click(screen.getByText("1 - Tarefa A"));
     await user.click(await screen.findByRole("button", { name: "Adicionar subtarefa" }));
@@ -249,6 +222,39 @@ describe("BoardActions", () => {
     expect(await screen.findByText("Cortar")).toBeInTheDocument();
   });
 
+  it("stacks the create overlay above the subtasks modal", async () => {
+    const user = userEvent.setup();
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        assignedTo: [],
+      }),
+    ]);
+
+    renderBoard({ loadSubtasks });
+
+    await user.click(screen.getByText("1 - Tarefa A"));
+    await user.click(
+      await screen.findByRole("button", { name: "Adicionar subtarefa" }),
+    );
+
+    const createDialog = screen
+      .getByRole("heading", { name: "Nova subtarefa" })
+      .closest('[role="dialog"]');
+    const subtasksDialog = screen
+      .getByRole("heading", { name: "Subtarefas" })
+      .closest('[role="dialog"]');
+
+    expect(createDialog?.parentElement?.className).toContain(
+      FORM_MODAL_NESTED_OVERLAY_Z_CLASS,
+    );
+    expect(subtasksDialog?.parentElement?.className).toContain(
+      FORM_MODAL_OVERLAY_Z_CLASS,
+    );
+  });
+
   it("resets create modal when subtasks modal is closed", async () => {
     const user = userEvent.setup();
     const loadSubtasks = vi.fn().mockResolvedValue([
@@ -260,20 +266,7 @@ describe("BoardActions", () => {
       }),
     ]);
 
-    renderWithIntl(
-      <BoardActions
-        steps={steps}
-        tasks={tasks}
-        teams={teams}
-        assignWarnMax={4}
-        assignedCountByColaboratorId={{}}
-        paymentCurrency={paymentCurrency}
-        applyBoardTaskOrder={vi.fn()}
-        loadSubtasks={loadSubtasks}
-        updateSubtaskAssignees={vi.fn()}
-        createSubtask={vi.fn()}
-      />,
-    );
+    renderBoard({ loadSubtasks });
 
     await user.click(screen.getByText("1 - Tarefa A"));
     await user.click(
@@ -307,5 +300,40 @@ describe("BoardActions", () => {
     expect(
       screen.queryByRole("heading", { name: "Nova subtarefa" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("persists link-to-previous from the subtasks modal", async () => {
+    const user = userEvent.setup();
+    const linkSubtask = vi.fn().mockResolvedValue(undefined);
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        index: 1,
+        assignedTo: [],
+      }),
+    ]);
+
+    renderBoard({ loadSubtasks, linkSubtask });
+    await user.click(screen.getByText("1 - Tarefa A"));
+    const toggles = await screen.findAllByRole("button", {
+      name: "Ligar à anterior",
+    });
+    const enabled = toggles.find(
+      (toggle) => !toggle.hasAttribute("disabled"),
+    );
+    expect(enabled).toBeTruthy();
+    await user.click(enabled!);
+    await vi.waitFor(() => {
+      expect(linkSubtask).toHaveBeenCalledWith("task-10", "st-2", true);
+    });
   });
 });

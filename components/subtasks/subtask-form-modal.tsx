@@ -5,6 +5,8 @@ import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { FORM_MODAL_OVERLAY_Z_CLASS } from "@/components/ui/form-modal-shell";
+import { cn } from "@/lib/utils";
 
 import { SubTaskCloneButton } from "./subtask-clone-button";
 import { SubTaskRemoveButton } from "./subtask-remove-button";
@@ -39,7 +41,10 @@ export function SubTaskFormModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className={cn(
+        "fixed inset-0 flex items-center justify-center bg-black/50 p-4",
+        FORM_MODAL_OVERLAY_Z_CLASS,
+      )}
       role="presentation"
       data-testid="subtask-form-modal-backdrop"
       onClick={disabled ? undefined : onClose}

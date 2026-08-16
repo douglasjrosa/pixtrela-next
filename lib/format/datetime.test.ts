@@ -20,26 +20,23 @@ describe("formatDatePtBr", () => {
 });
 
 describe("formatDateTimePtBr", () => {
-  it("formats iso datetimes with date and time", () => {
-    const formatted = formatDateTimePtBr("2026-06-05T10:00:00.000Z");
-    expect(formatted).toMatch(/05\/06\/2026/);
+  it("formats iso datetimes in America/Sao_Paulo", () => {
+    expect(formatDateTimePtBr("2026-06-05T10:00:00.000Z")).toBe(
+      "05/06/2026, 07:00",
+    );
   });
 });
 
 describe("formatTimePtBr", () => {
-  it("formats iso datetimes as hh:mm", () => {
-    const formatted = formatTimePtBr("2026-06-05T10:00:00.000Z");
-    expect(formatted).toMatch(/\d{2}:\d{2}/);
+  it("formats iso datetimes as hh:mm in America/Sao_Paulo", () => {
+    expect(formatTimePtBr("2026-06-05T10:00:00.000Z")).toBe("07:00");
   });
 });
 
 describe("splitDateTimePtBr", () => {
-  it("returns date and time as separate labels", () => {
-    const parts = splitDateTimePtBr("2026-07-15T22:28:00.000Z");
-    expect(parts.date).toMatch(/\d{2}\/\d{2}\/2026/);
-    expect(parts.time).toMatch(/\d{2}:\d{2}/);
-    expect(parts.date).not.toContain(",");
-    expect(parts.time).not.toContain(",");
+  it("returns date and time as separate labels in America/Sao_Paulo", () => {
+    const parts = splitDateTimePtBr("2026-08-11T10:05:00.000Z");
+    expect(parts).toEqual({ date: "11/08/2026", time: "07:05" });
   });
 
   it("returns em dash date for empty values", () => {

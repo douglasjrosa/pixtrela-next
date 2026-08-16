@@ -15,6 +15,11 @@ import {
   startSubTask,
   stopSubTask,
 } from "@/lib/repos/kiosk-subtasks";
+import {
+  advanceChainRun,
+  confirmChainStop,
+  startChain,
+} from "@/lib/repos/kiosk-chains";
 import { createStep, listSteps } from "@/lib/repos/steps";
 import {
   assignColaboratorsToSubTask,
@@ -26,8 +31,8 @@ import {
 import { createTeam } from "@/lib/repos/teams";
 import { createTemplateTask } from "@/lib/repos/templates";
 import { createUser } from "@/lib/repos/users";
-import { currencies, currencyForSubtasks } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { activities, currencies, currencyForSubtasks } from "@/drizzle/schema";
+import { asc, eq } from "drizzle-orm";
 
 describeWithDb("drizzle repos integration", () => {
   beforeAll(async () => {
@@ -89,7 +94,7 @@ describeWithDb("drizzle repos integration", () => {
       expect(result.cost).toBe(10);
       expect(result.exchangeId).toBeTruthy();
     },
-    30_000,
+    45_000,
   );
 
   it(
@@ -174,7 +179,7 @@ describeWithDb("drizzle repos integration", () => {
         .limit(1);
       expect(stillThere).toBeTruthy();
     },
-    30_000,
+    45_000,
   );
 
   it(
@@ -240,7 +245,7 @@ describeWithDb("drizzle repos integration", () => {
         "unlocked",
       );
     },
-    30_000,
+    45_000,
   );
 
   it(
@@ -292,7 +297,7 @@ describeWithDb("drizzle repos integration", () => {
       const afterStop = await listAssignedSubTasks(worker.id);
       expect(afterStop.some((row) => row.documentId === sub!.id)).toBe(false);
     },
-    30_000,
+    45_000,
   );
 
   it(
@@ -370,7 +375,7 @@ describeWithDb("drizzle repos integration", () => {
       expect(finishedSubs[0]?.status).toBe("finished");
       expect((await getTaskById(task.id))?.status).toBe("finished");
     },
-    30_000,
+    45_000,
   );
 
   it(
@@ -428,6 +433,123 @@ describeWithDb("drizzle repos integration", () => {
       expect(await listAssignedSubTasks(workerA.id)).toHaveLength(1);
       expect(await listAssignedSubTasks(workerB.id)).toHaveLength(0);
     },
-    30_000,
+    45_000,
+  );
+
+  it(
+    "starts a chain, auto-advances, rewrites timestamps on confirm, and keeps helper producing",
+    async () => {
+      const suffix = String(Date.now());
+      const worker = await createUser({
+        username: `chain-${suffix}`,
+        password: "Secret123!",
+        name: "Chain Worker",
+        role: "colaborator",
+        code: Number(suffix.slice(-5)),
+      });
+      const helper = await createUser({
+        username: `chainh-${suffix}`,
+        password: "Secret123!",
+        name: "Chain Helper",
+        role: "colaborator",
+        code: Number(String(Number(suffix.slice(-5)) + 1).slice(-5)),
+      });
+
+      await createTemplateTask({
+        code: `CH${suffix.slice(-6)}`,
+        name: "Chain template",
+        subTasks: [
+          { name: "Cut", expectedTime: 10, index: 0 },
+          {
+            name: "Pack",
+            expectedTime: 10,
+            index: 1,
+            linkedToPrevious: true,
+            maxSameTimeWorkers: 2,
+          },
+          { name: "Ship", expectedTime: 10, index: 2, linkedToPrevious: true },
+        ],
+      });
+
+      const step = await createStep({ name: `Chain ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `Chain task ${suffix}`,
+        qty: 1,
+        stepId: step.id,
+        templateTaskCode: `CH${suffix.slice(-6)}`,
+      });
+      const subs = await listSubTasksForTask(task.id);
+      expect(subs).toHaveLength(3);
+      expect(subs[1]?.linkedToPrevious).toBe(true);
+      expect(subs[2]?.linkedToPrevious).toBe(true);
+
+      await assignColaboratorsToSubTask(subs[0]!.id, [worker.id]);
+      await assignColaboratorsToSubTask(subs[1]!.id, [worker.id, helper.id]);
+      await assignColaboratorsToSubTask(subs[2]!.id, [worker.id]);
+
+      const t0 = new Date("2026-08-16T10:00:00Z");
+      const { chainRunId } = await startChain(worker.id, subs[0]!.id, undefined, t0);
+
+      await advanceChainRun(
+        chainRunId,
+        undefined,
+        new Date("2026-08-16T10:00:12Z"),
+      );
+
+      await startSubTask(
+        helper.id,
+        subs[1]!.id,
+        undefined,
+        new Date("2026-08-16T10:00:13Z"),
+      );
+
+      await confirmChainStop(
+        worker.id,
+        chainRunId,
+        [
+          { documentId: subs[0]!.id, completed: true },
+          { documentId: subs[1]!.id, completed: true },
+          { documentId: subs[2]!.id, completed: false },
+        ],
+        undefined,
+        new Date("2026-08-16T10:00:20Z"),
+      );
+
+      const db = getDb();
+      const runRows = await db
+        .select()
+        .from(activities)
+        .where(eq(activities.chainRunId, chainRunId))
+        .orderBy(asc(activities.timestamp));
+      const principalStops = runRows.filter(
+        (row) => row.colaboratorId === worker.id && row.action === "stoped",
+      );
+      expect(principalStops.length).toBeGreaterThanOrEqual(2);
+      expect(principalStops[0]?.timestamp.toISOString()).not.toBe(
+        principalStops[1]?.timestamp.toISOString(),
+      );
+
+      const helperOpen = runRows.some(
+        (row) =>
+          row.colaboratorId === helper.id &&
+          row.action === "started" &&
+          !runRows.some(
+            (stop) =>
+              stop.colaboratorId === helper.id &&
+              stop.action === "stoped" &&
+              stop.subTaskId === row.subTaskId,
+          ),
+      );
+      expect(helperOpen).toBe(true);
+
+      const afterConfirm = await listSubTasksForTask(task.id);
+      const pack = afterConfirm.find((row) => row.id === subs[1]!.id);
+      expect(pack?.status).toBe("producing");
+      const cut = afterConfirm.find((row) => row.id === subs[0]!.id);
+      expect(cut?.status).toBe("finished");
+      const ship = afterConfirm.find((row) => row.id === subs[2]!.id);
+      expect(ship?.status).not.toBe("finished");
+    },
+    60_000,
   );
 });

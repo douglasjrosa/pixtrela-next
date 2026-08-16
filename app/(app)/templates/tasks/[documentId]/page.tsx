@@ -43,6 +43,7 @@ async function loadTemplate(
         expectedTime: row.expectedTime,
         dependencies:
           row.dependencyIndexes.length > 0 ? row.dependencyIndexes : null,
+        linkedToPrevious: row.linkedToPrevious,
       })),
     };
   } catch (error) {

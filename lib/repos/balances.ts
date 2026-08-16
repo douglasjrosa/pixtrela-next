@@ -3,6 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { balances } from "@/drizzle/schema";
 import {
   applyOutcome,
+  adjustIncome,
   buildNewMonthlyBalance,
   firstDayOfMonth,
   recomputeBalance,
@@ -111,6 +112,49 @@ export async function creditBalanceIncome(
   const [updated] = await db
     .update(balances)
     .set({ totalIncome, balance, updatedAt: new Date() })
+    .where(eq(balances.id, input.balanceId))
+    .returning();
+
+  return {
+    id: updated.id,
+    userId: updated.userId,
+    currencyId: updated.currencyId,
+    date: updated.date,
+    previousBalance: updated.previousBalance,
+    totalIncome: updated.totalIncome,
+    totalOutcome: updated.totalOutcome,
+    balance: updated.balance,
+  };
+}
+
+export async function adjustBalanceIncome(
+  input: { balanceId: string; delta: number },
+  db: Db = getDb(),
+): Promise<BalanceRecord> {
+  const [current] = await db
+    .select()
+    .from(balances)
+    .where(eq(balances.id, input.balanceId))
+    .limit(1);
+  if (!current) throw new Error("balanceNotFound");
+
+  const adjusted = adjustIncome(
+    {
+      previousBalance: current.previousBalance,
+      totalIncome: current.totalIncome,
+      totalOutcome: current.totalOutcome,
+    },
+    input.delta,
+  );
+  const balance = recomputeBalance(adjusted);
+
+  const [updated] = await db
+    .update(balances)
+    .set({
+      totalIncome: adjusted.totalIncome,
+      balance,
+      updatedAt: new Date(),
+    })
     .where(eq(balances.id, input.balanceId))
     .returning();
 

@@ -2,31 +2,57 @@
 
 import { useTranslations } from "next-intl";
 
+import {
+  buildKioskQueueUnits,
+  splitQueueUnitsBySection,
+  type OpenChainRun,
+} from "@/lib/business/kiosk-queue-units";
+import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
 import type { KioskSubTask } from "@/lib/business/subtask-queue";
-import { splitKioskQueueSections } from "@/lib/business/subtask-queue";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 
 import { KioskSubtaskPanel } from "./kiosk-subtask-panel";
 
 export interface KioskDailyQueueProps {
+  colaboratorId: string;
   subTasks: KioskSubTask[];
+  catalog?: KioskSubTask[];
+  openRuns?: readonly OpenChainRun[];
   readOnly?: boolean;
   pending?: boolean;
   flashDocumentId?: string | null;
   onStart?: (documentId: string) => void | Promise<void>;
   onExit?: (documentId: string, input: KioskExitInput) => void | Promise<void>;
+  onStartChain?: (headId: string) => void | Promise<void>;
+  onConfirmChainStop?: (
+    chainRunId: string,
+    answers: ChainStopAnswer[],
+  ) => void | Promise<void>;
+  onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
 }
 
 export function KioskDailyQueue({
+  colaboratorId,
   subTasks,
+  catalog,
+  openRuns,
   readOnly = false,
   pending,
   flashDocumentId,
   onStart,
   onExit,
+  onStartChain,
+  onConfirmChainStop,
+  onAdvanceChain,
 }: KioskDailyQueueProps) {
   const t = useTranslations("kiosk");
-  const sections = splitKioskQueueSections(subTasks);
+  const units = buildKioskQueueUnits({
+    viewerId: colaboratorId,
+    subTasks,
+    allTaskSubTasks: catalog,
+    openRuns,
+  });
+  const sections = splitQueueUnitsBySection(units);
 
   if (subTasks.length === 0) {
     return (
@@ -47,13 +73,16 @@ export function KioskDailyQueue({
             {t("sectionProducing")}
           </h2>
           <KioskSubtaskPanel
-            subTasks={sections.producing}
+            units={sections.producing}
             allSubTasks={subTasks}
             readOnly={readOnly}
             pending={pending}
             flashDocumentId={flashDocumentId}
             onStart={onStart}
             onExit={onExit}
+            onStartChain={onStartChain}
+            onConfirmChainStop={onConfirmChainStop}
+            onAdvanceChain={onAdvanceChain}
             highlightProducing
           />
         </section>
@@ -65,13 +94,16 @@ export function KioskDailyQueue({
             {t("sectionPending")}
           </h2>
           <KioskSubtaskPanel
-            subTasks={sections.pending}
+            units={sections.pending}
             allSubTasks={subTasks}
             readOnly={readOnly}
             pending={pending}
             flashDocumentId={flashDocumentId}
             onStart={onStart}
             onExit={onExit}
+            onStartChain={onStartChain}
+            onConfirmChainStop={onConfirmChainStop}
+            onAdvanceChain={onAdvanceChain}
           />
         </section>
       ) : null}
@@ -85,13 +117,16 @@ export function KioskDailyQueue({
             {t("sectionFinishedToday")}
           </h2>
           <KioskSubtaskPanel
-            subTasks={sections.finishedToday}
+            units={sections.finishedToday}
             allSubTasks={subTasks}
             readOnly={readOnly}
             pending={pending}
             flashDocumentId={flashDocumentId}
             onStart={onStart}
             onExit={onExit}
+            onStartChain={onStartChain}
+            onConfirmChainStop={onConfirmChainStop}
+            onAdvanceChain={onAdvanceChain}
           />
         </section>
       ) : null}

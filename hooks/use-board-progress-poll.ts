@@ -19,13 +19,14 @@ export type BoardProgressPollState = {
 
 /**
  * Polls live board progress without refreshing the rest of the page cache.
- * Pauses while the document is hidden.
+ * Pauses while the document is hidden, and when `paused` is true (subtask modal).
  * Polls all board tasks so assignment counts stay board-wide.
  */
 export function useBoardProgressPoll(
   tasks: KanbanTask[],
   assignedCountByColaboratorId: Record<string, number>,
   pollBoardProgress: PollBoardProgressFn,
+  paused = false,
 ): BoardProgressPollState {
   const [polledTasks, setPolledTasks] = useState(tasks);
   const [assignedCounts, setAssignedCounts] = useState(
@@ -57,8 +58,10 @@ export function useBoardProgressPoll(
   useEffect(() => {
     let cancelled = false;
     let timerId: number | undefined;
+    let inFlight = false;
 
     async function runPoll(): Promise<void> {
+      if (paused || inFlight) return;
       if (
         typeof document !== "undefined" &&
         document.visibilityState === "hidden"
@@ -68,6 +71,7 @@ export function useBoardProgressPoll(
       const boardTasks = tasksRef.current;
       if (boardTasks.length === 0) return;
 
+      inFlight = true;
       try {
         const snapshot = await pollRef.current(
           boardTasks.map((task) => ({
@@ -80,6 +84,8 @@ export function useBoardProgressPoll(
         setAssignedCounts(snapshot.assignedCountByColaboratorId);
       } catch {
         // Keep last good snapshot; next interval retries.
+      } finally {
+        inFlight = false;
       }
     }
 
@@ -95,8 +101,10 @@ export function useBoardProgressPoll(
       }
     }
 
-    void runPoll();
-    schedule();
+    if (!paused) {
+      void runPoll();
+      schedule();
+    }
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
@@ -104,7 +112,7 @@ export function useBoardProgressPoll(
       if (timerId !== undefined) window.clearInterval(timerId);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, []);
+  }, [paused]);
 
   return {
     tasks: polledTasks,

@@ -24,7 +24,9 @@ import {
   createBoardSubtask,
   loadBoardSubtasks,
   pollBoardProgress,
+  reorderBoardSubtasks,
   updateBoardSubtaskAssignees,
+  updateBoardSubtaskLink,
 } from "./actions";
 
 async function loadBoard(): Promise<{ steps: KanbanStep[]; tasks: KanbanTask[] }> {
@@ -123,7 +125,9 @@ function BoardCanvas({
       pollBoardProgress={pollBoardProgress}
       applyBoardTaskOrder={applyBoardTaskOrder}
       loadSubtasks={loadBoardSubtasks}
+      reorderSubtasks={reorderBoardSubtasks}
       updateSubtaskAssignees={updateBoardSubtaskAssignees}
+      linkSubtask={updateBoardSubtaskLink}
       createSubtask={createBoardSubtask}
     />
   );

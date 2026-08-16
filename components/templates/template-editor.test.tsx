@@ -104,6 +104,7 @@ describe("TemplateEditor", () => {
           index: 0,
           expectedTime: 60,
           dependencies: null,
+          linkedToPrevious: false,
         },
       ],
     });

@@ -1,10 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { User, Users } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  type DragEndEvent,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, User, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { CurrencyMediaIcon } from "@/components/currency/currency-media-icon";
+import {
+  SUBTASK_CHAIN_LIST_GAP_CLASS,
+  SubtaskChainLinkControl,
+} from "@/components/kanban/subtask-chain-link-control";
 import { SubTaskProgressBar } from "@/components/kanban/subtask-progress-bar";
 import { TimeMetrics } from "@/components/kanban/time-metrics";
 import { SubTaskSessionsPanel } from "@/components/subtasks/subtask-sessions-panel";
@@ -18,12 +38,22 @@ import {
 } from "@/components/ui/form-modal-shell";
 import { StackedDateTime } from "@/components/ui/stacked-date-time";
 import {
+  reorderPendingSubtasksInPlace,
+  subtaskDocumentIdsInOrder,
+} from "@/lib/business/board-pending-subtask-order";
+import {
   isSubtaskAssignedTo,
   splitSubtasksByFinished,
   toggleCollaboratorOnSubtask,
   toggleTeamOnSubtask,
 } from "@/lib/business/board-assign-focus";
 import { getSubtaskAssigneeIds } from "@/lib/business/board-assignee-draft";
+import {
+  canEditAssignees,
+  chainItemsFromBoard,
+  findChainContaining,
+  resolveChains,
+} from "@/lib/business/subtask-chain";
 import {
   buildMultiAssignUpdates,
   buildMultiRemoveUpdates,
@@ -60,6 +90,18 @@ type MainTab = "pending" | "finished";
 type FocusMode = "subtasks" | "teams";
 type PendingExitAction = "disable-multi" | "go-finished";
 
+const KANBAN_SUBTASK_DND_CONTEXT_ID = "kanban-subtasks-modal-dnd";
+
+/** Pure drag-end resolver for tests and KanbanTaskSubtasksModal. */
+export function resolveKanbanPendingSubtaskReorder(
+  subtasks: readonly BoardSubTaskSummary[],
+  activeId: unknown,
+  overId: unknown,
+): BoardSubTaskSummary[] | null {
+  if (typeof activeId !== "string" || typeof overId !== "string") return null;
+  return reorderPendingSubtasksInPlace(subtasks, activeId, overId);
+}
+
 const EMPTY_PAYMENT_CURRENCY: SubtaskPaymentCurrency = {
   iconUrl: null,
   currencyPerSecond: 0,
@@ -79,12 +121,18 @@ export interface KanbanTaskSubtasksModalProps {
   loading: boolean;
   dirty: boolean;
   saving: boolean;
+  reordering?: boolean;
   onClose: () => void;
   onAssigneesChange: (
     subtask: BoardSubTaskSummary,
     assignedToIds: string[],
   ) => void;
   onSave: () => void;
+  onReorder?: (orderedDocumentIds: string[]) => void | Promise<void>;
+  onLinkToggle?: (
+    subtaskDocumentId: string,
+    linkedToPrevious: boolean,
+  ) => void | Promise<void>;
   onAddSubtask?: () => void;
 }
 
@@ -191,6 +239,170 @@ function SubTaskUnassignedFloatingBadge({
   );
 }
 
+function PendingSubtaskCard({
+  subtask,
+  highlighted,
+  saving,
+  statusLabel,
+  onClick,
+}: {
+  subtask: BoardSubTaskSummary;
+  highlighted: boolean;
+  saving: boolean;
+  statusLabel: string;
+  onClick: () => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        aria-pressed={highlighted}
+        disabled={saving}
+        className={cn(
+          "relative w-full rounded-lg border p-3 text-left transition-colors",
+          highlighted
+            ? "border-primary bg-primary/5"
+            : "bg-background hover:bg-muted/40",
+          saving && "opacity-50",
+        )}
+        onClick={onClick}
+      >
+        <SubTaskUnassignedFloatingBadge assignedCount={subtask.assignedTo.length} />
+        <SubTaskCardHeader
+          name={subtask.name}
+          status={subtask.status}
+          statusLabel={statusLabel}
+          workingCount={subtask.openActivityStartedAts.length}
+          assignedTo={subtask.assignedTo}
+          producingColaboratorIds={subtask.producingColaboratorIds}
+        />
+        <SubTaskProgressBar
+          status={subtask.status}
+          expectedTime={subtask.expectedTime}
+          timeSpent={subtask.timeSpent}
+          openActivityStartedAts={subtask.openActivityStartedAts}
+        />
+      </button>
+    </li>
+  );
+}
+
+interface SortablePendingSubtaskCardProps {
+  subtask: BoardSubTaskSummary;
+  highlighted: boolean;
+  dragDisabled: boolean;
+  saving: boolean;
+  dragLabel: string;
+  linkLabel: string;
+  unlinkLabel: string;
+  canLink: boolean;
+  onLinkChange?: (linked: boolean) => void;
+  statusLabel: string;
+  onClick: () => void;
+}
+
+function SortablePendingSubtaskCard({
+  subtask,
+  highlighted,
+  dragDisabled,
+  saving,
+  dragLabel,
+  linkLabel,
+  unlinkLabel,
+  canLink,
+  onLinkChange,
+  statusLabel,
+  onClick,
+}: SortablePendingSubtaskCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: subtask.documentId,
+    disabled: dragDisabled,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={isDragging ? "opacity-80" : undefined}
+    >
+      <div className="flex items-stretch gap-1">
+        <button
+          type="button"
+          className={cn(
+            "flex shrink-0 items-center rounded-lg border border-transparent px-1",
+            "text-muted-foreground hover:text-foreground",
+            dragDisabled
+              ? "cursor-not-allowed opacity-40"
+              : "cursor-grab active:cursor-grabbing",
+          )}
+          aria-label={dragLabel}
+          disabled={dragDisabled}
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-4" aria-hidden />
+        </button>
+        <div className="relative min-w-0 flex-1">
+          {onLinkChange && canLink ? (
+            <SubtaskChainLinkControl
+              linked={subtask.linkedToPrevious}
+              disabled={dragDisabled || saving}
+              linkLabel={linkLabel}
+              unlinkLabel={unlinkLabel}
+              onToggle={onLinkChange}
+            />
+          ) : null}
+          <button
+            type="button"
+            aria-pressed={highlighted}
+            disabled={saving}
+            className={cn(
+              "relative w-full rounded-lg border p-3 text-left transition-colors",
+              highlighted
+                ? "border-primary bg-primary/5"
+                : "bg-background hover:bg-muted/40",
+              saving && "opacity-50",
+            )}
+            onClick={onClick}
+          >
+            <SubTaskUnassignedFloatingBadge
+              assignedCount={subtask.assignedTo.length}
+            />
+            <SubTaskCardHeader
+              name={subtask.name}
+              status={subtask.status}
+              statusLabel={statusLabel}
+              workingCount={subtask.openActivityStartedAts.length}
+              assignedTo={subtask.assignedTo}
+              producingColaboratorIds={subtask.producingColaboratorIds}
+            />
+            <SubTaskProgressBar
+              status={subtask.status}
+              expectedTime={subtask.expectedTime}
+              timeSpent={subtask.timeSpent}
+              openActivityStartedAts={subtask.openActivityStartedAts}
+            />
+          </button>
+        </div>
+      </div>
+    </li>
+  );
+}
+
 export function KanbanTaskSubtasksModal({
   open,
   taskName,
@@ -203,9 +415,12 @@ export function KanbanTaskSubtasksModal({
   loading,
   dirty,
   saving,
+  reordering = false,
   onClose,
   onAssigneesChange,
   onSave,
+  onReorder,
+  onLinkToggle,
   onAddSubtask,
 }: KanbanTaskSubtasksModalProps) {
   const tCommon = useTranslations("common");
@@ -252,9 +467,54 @@ export function KanbanTaskSubtasksModal({
     }
   }
 
+  const { pending, finished } = splitSubtasksByFinished(subtasks);
+  const pendingSubtaskIds = useMemo(
+    () => pending.map((item) => item.documentId),
+    [pending],
+  );
+  const chainItems = useMemo(
+    () => chainItemsFromBoard(subtasks),
+    [subtasks],
+  );
+  const chains = useMemo(() => resolveChains(chainItems), [chainItems]);
+
+  function assigneeRoleFor(documentId: string): "head" | "helper" | "none" | "solo" {
+    const chain = findChainContaining(chains, documentId);
+    const current = chainItems.find((item) => item.documentId === documentId);
+    if (!chain || chain.memberIds.length <= 1 || !current) return "solo";
+    return canEditAssignees(
+      current.documentId,
+      current.maxSameTimeWorkers,
+      chain,
+    );
+  }
+
+  const dragDisabled =
+    !onReorder || multiEnabled || saving || loading || reordering;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      if (!onReorder) return;
+      const next = resolveKanbanPendingSubtaskReorder(
+        subtasks,
+        event.active.id,
+        event.over?.id,
+      );
+      if (!next) return;
+      void onReorder(subtaskDocumentIdsInOrder(next));
+    },
+    [onReorder, subtasks],
+  );
+
   if (!open) return null;
 
-  const { pending, finished } = splitSubtasksByFinished(subtasks);
   const hasPendingSubtasks = pending.length > 0;
   const hasFinishedSubtasks = finished.length > 0;
   if (!hasFinishedSubtasks && preferFinishedTab) {
@@ -269,6 +529,9 @@ export function KanbanTaskSubtasksModal({
         : mainTab;
   const selectedSubtask =
     pending.find((item) => item.documentId === selectedSubtaskId) ?? null;
+  const selectedAssigneeLocked =
+    selectedSubtask != null &&
+    assigneeRoleFor(selectedSubtask.documentId) === "none";
   const selectedAssigneeIds = selectedSubtask
     ? getSubtaskAssigneeIds(selectedSubtask)
     : [];
@@ -407,6 +670,10 @@ export function KanbanTaskSubtasksModal({
       showHintToast(tKanban("chooseCollaboratorFirst"));
       return;
     }
+    if (assigneeRoleFor(subtask.documentId) === "none") {
+      showHintToast(tKanban("assigneesFollowHead"));
+      return;
+    }
     const nextIds = toggleCollaboratorOnSubtask(
       getSubtaskAssigneeIds(subtask),
       selectedCollaboratorId,
@@ -433,6 +700,10 @@ export function KanbanTaskSubtasksModal({
       showHintToast(tKanban("chooseSubtaskFirst"));
       return;
     }
+    if (assigneeRoleFor(selectedSubtask.documentId) === "none") {
+      showHintToast(tKanban("assigneesFollowHead"));
+      return;
+    }
     const nextIds = toggleCollaboratorOnSubtask(
       getSubtaskAssigneeIds(selectedSubtask),
       collaboratorId,
@@ -452,6 +723,10 @@ export function KanbanTaskSubtasksModal({
     if (focusMode === "teams") return;
     if (!selectedSubtask) {
       showHintToast(tKanban("chooseSubtaskFirst"));
+      return;
+    }
+    if (assigneeRoleFor(selectedSubtask.documentId) === "none") {
+      showHintToast(tKanban("assigneesFollowHead"));
       return;
     }
     const nextIds = toggleTeamOnSubtask(
@@ -733,56 +1008,75 @@ export function KanbanTaskSubtasksModal({
                     {tKanban("subtasksColumn")}
                   </button>
                 )}
-                <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pt-2 pr-2.5">
+                <ul
+                  className={cn(
+                    "flex min-h-0 flex-1 flex-col overflow-y-auto pt-2 pr-2.5",
+                    onReorder && onLinkToggle
+                      ? SUBTASK_CHAIN_LIST_GAP_CLASS
+                      : "gap-3",
+                  )}
+                >
                   {pending.length === 0 ? (
                     <li className="text-sm text-muted-foreground" role="status">
                       {tKanban("subtasksEmpty")}
                     </li>
-                  ) : (
+                  ) : !onReorder ? (
                     pending.map((subtask) => {
                       const highlighted = isPendingSubtaskHighlighted(subtask);
                       return (
-                        <li key={subtask.documentId}>
-                          <button
-                            type="button"
-                            aria-pressed={highlighted}
-                            disabled={saving}
-                            className={cn(
-                              "relative w-full rounded-lg border p-3 text-left transition-colors",
-                              highlighted
-                                ? "border-primary bg-primary/5"
-                                : "bg-background hover:bg-muted/40",
-                              saving && "opacity-50",
-                            )}
-                            onClick={() => handlePendingSubtaskClick(subtask)}
-                          >
-                            <SubTaskUnassignedFloatingBadge
-                              assignedCount={subtask.assignedTo.length}
-                            />
-                            <SubTaskCardHeader
-                              name={subtask.name}
-                              status={subtask.status}
-                              statusLabel={tStatus(subtask.status)}
-                              workingCount={
-                                subtask.openActivityStartedAts.length
-                              }
-                              assignedTo={subtask.assignedTo}
-                              producingColaboratorIds={
-                                subtask.producingColaboratorIds
-                              }
-                            />
-                            <SubTaskProgressBar
-                              status={subtask.status}
-                              expectedTime={subtask.expectedTime}
-                              timeSpent={subtask.timeSpent}
-                              openActivityStartedAts={
-                                subtask.openActivityStartedAts
-                              }
-                            />
-                          </button>
-                        </li>
+                        <PendingSubtaskCard
+                          key={subtask.documentId}
+                          subtask={subtask}
+                          highlighted={highlighted}
+                          saving={saving}
+                          statusLabel={tStatus(subtask.status)}
+                          onClick={() => handlePendingSubtaskClick(subtask)}
+                        />
                       );
                     })
+                  ) : (
+                    <DndContext
+                      id={KANBAN_SUBTASK_DND_CONTEXT_ID}
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={pendingSubtaskIds}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {pending.map((subtask) => {
+                          const highlighted =
+                            isPendingSubtaskHighlighted(subtask);
+                          return (
+                            <SortablePendingSubtaskCard
+                              key={subtask.documentId}
+                              subtask={subtask}
+                              highlighted={highlighted}
+                              dragDisabled={dragDisabled}
+                              saving={saving}
+                              dragLabel={tSubtasks("dragToReorder")}
+                              linkLabel={tKanban("linkToPrevious")}
+                              unlinkLabel={tKanban("unlinkFromPrevious")}
+                              canLink={pending[0]?.documentId !== subtask.documentId}
+                              onLinkChange={
+                                onLinkToggle
+                                  ? (linked) =>
+                                      void onLinkToggle(
+                                        subtask.documentId,
+                                        linked,
+                                      )
+                                  : undefined
+                              }
+                              statusLabel={tStatus(subtask.status)}
+                              onClick={() =>
+                                handlePendingSubtaskClick(subtask)
+                              }
+                            />
+                          );
+                        })}
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </ul>
               </section>
@@ -863,7 +1157,11 @@ export function KanbanTaskSubtasksModal({
                                 assignedCount,
                                 assignWarnMax,
                               );
-                              const memberDisabled = saving;
+                              const memberDisabled =
+                                saving ||
+                                (!multiEnabled &&
+                                  focusMode === "subtasks" &&
+                                  selectedAssigneeLocked);
                               return (
                                 <button
                                   key={member.documentId}
@@ -931,6 +1229,7 @@ export function KanbanTaskSubtasksModal({
         title={tKanban("infoTitle")}
         onClose={() => setInfoSubtask(null)}
         size="lg"
+        layer="nested"
       >
         {infoSubtask ? (
           <div className="space-y-4">

@@ -46,6 +46,7 @@ function toRepoSubTasks(subTasks: TemplateSubTaskComponentInput[]) {
     index,
     expectedTime: row.expectedTime,
     dependencyIndexes: dependencyIndexesFrom(row.dependencies),
+    linkedToPrevious: row.linkedToPrevious ?? false,
   }));
 }
 

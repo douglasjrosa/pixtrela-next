@@ -8,12 +8,14 @@ import { SubTaskInlineForm } from "@/components/subtasks/subtask-inline-form";
 import type { SubTaskDependencyOption } from "@/components/subtasks/subtask-dependencies-modal";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import { Button } from "@/components/ui/button";
+import { FORM_MODAL_NESTED_OVERLAY_Z_CLASS } from "@/components/ui/form-modal-shell";
 import { Label } from "@/components/ui/label";
 import { normalizeSubTaskCreateValues } from "@/lib/business/subtask-create-fields";
 import {
   subTaskFormSchema,
   type SubTaskFormInput,
 } from "@/lib/schemas/sub-task";
+import { cn } from "@/lib/utils";
 
 const EMPTY_FORM: SubTaskFormInput = {
   name: "",
@@ -90,7 +92,10 @@ export function KanbanSubtaskCreateModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+      className={cn(
+        "fixed inset-0 flex items-center justify-center bg-black/50 p-4",
+        FORM_MODAL_NESTED_OVERLAY_Z_CLASS,
+      )}
       role="presentation"
       onClick={onClose}
     >
