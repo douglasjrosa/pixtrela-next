@@ -74,6 +74,7 @@ describe("templates/actions drizzle CRUD", () => {
             name: "Corte",
             index: 0,
             expectedTime: 60,
+            linkedToPrevious: false,
           }),
         ],
       }),

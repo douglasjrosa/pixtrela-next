@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { BoardActions, type BoardActionsProps } from "@/components/board/board-actions";
 import { KanbanBoard } from "@/components/kanban/kanban-board";
 import type { KanbanStep, KanbanTask } from "@/components/kanban/types";
@@ -50,7 +52,9 @@ type BoardLiveProgressProps = BoardLiveProgressDataProps & {
   pollBoardProgress: PollBoardProgressFn;
   applyBoardTaskOrder: BoardActionsProps["applyBoardTaskOrder"];
   loadSubtasks: BoardActionsProps["loadSubtasks"];
+  reorderSubtasks: BoardActionsProps["reorderSubtasks"];
   updateSubtaskAssignees: BoardActionsProps["updateSubtaskAssignees"];
+  linkSubtask: BoardActionsProps["linkSubtask"];
   createSubtask: BoardActionsProps["createSubtask"];
 };
 
@@ -65,15 +69,19 @@ export function BoardLiveProgress({
   pollBoardProgress,
   applyBoardTaskOrder,
   loadSubtasks,
+  reorderSubtasks,
   updateSubtaskAssignees,
+  linkSubtask,
   createSubtask,
 }: BoardLiveProgressProps) {
-  useBoardRevisionRefresh();
+  const [subtasksModalOpen, setSubtasksModalOpen] = useState(false);
+  useBoardRevisionRefresh(subtasksModalOpen);
 
   const live = useBoardProgressPoll(
     tasks,
     assignedCountByColaboratorId,
     pollBoardProgress,
+    subtasksModalOpen,
   );
 
   if (interactive) {
@@ -88,8 +96,11 @@ export function BoardLiveProgress({
           paymentCurrency={paymentCurrency}
           applyBoardTaskOrder={applyBoardTaskOrder}
           loadSubtasks={loadSubtasks}
+          reorderSubtasks={reorderSubtasks}
           updateSubtaskAssignees={updateSubtaskAssignees}
+          linkSubtask={linkSubtask}
           createSubtask={createSubtask}
+          onSubtasksModalOpenChange={setSubtasksModalOpen}
         />
       </div>
     );

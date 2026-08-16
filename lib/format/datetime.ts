@@ -1,15 +1,23 @@
+import { DEFAULT_TIME_ZONE } from "@/lib/business/datetime-timezone";
+
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 const PT_BR_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   day: "2-digit",
   month: "2-digit",
   year: "numeric",
+  timeZone: DEFAULT_TIME_ZONE,
 };
 
 const PT_BR_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: DEFAULT_TIME_ZONE,
 };
+
+function formatDateOnlyParts(year: string, month: string, day: string): string {
+  return `${day}/${month}/${year}`;
+}
 
 function parseDateValue(value: string): Date | null {
   const dateOnly = DATE_ONLY_PATTERN.exec(value.trim());
@@ -17,7 +25,7 @@ function parseDateValue(value: string): Date | null {
     const year = Number(dateOnly[1]);
     const month = Number(dateOnly[2]);
     const day = Number(dateOnly[3]);
-    const date = new Date(year, month - 1, day);
+    const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
     if (Number.isNaN(date.getTime())) return null;
     return date;
   }
@@ -30,7 +38,12 @@ function parseDateValue(value: string): Date | null {
 /** Formats dates as dd/mm/yyyy for pt-BR UI. */
 export function formatDatePtBr(value: string | null | undefined): string {
   if (!value) return "—";
-  const date = parseDateValue(value);
+  const trimmed = value.trim();
+  const dateOnly = DATE_ONLY_PATTERN.exec(trimmed);
+  if (dateOnly) {
+    return formatDateOnlyParts(dateOnly[1], dateOnly[2], dateOnly[3]);
+  }
+  const date = parseDateValue(trimmed);
   if (!date) return "—";
   return date.toLocaleDateString("pt-BR", PT_BR_DATE_OPTIONS);
 }

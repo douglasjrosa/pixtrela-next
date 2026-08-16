@@ -23,6 +23,15 @@ export function recomputeBalance(amounts: BalanceAmounts): number {
   return amounts.previousBalance + amounts.totalIncome - amounts.totalOutcome;
 }
 
+/** Adjusts income by a signed delta without going below zero. */
+export function adjustIncome(
+  amounts: BalanceAmounts,
+  delta: number,
+): BalanceAmounts {
+  const totalIncome = Math.max(0, amounts.totalIncome + delta);
+  return { ...amounts, totalIncome };
+}
+
 export function buildNewMonthlyBalance(
   date: Date,
   previousBalance: number,

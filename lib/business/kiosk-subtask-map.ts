@@ -20,6 +20,10 @@ export type KioskSubTaskRow = {
   taskIndex: number;
   finishedAt: string | null;
   activeWorkerCount: number;
+  linkedToPrevious?: boolean;
+  maxSameTimeWorkers?: number;
+  assignedToIds?: string[];
+  dependencyIds?: string[];
 };
 
 export type SubTaskDbRow = {
@@ -37,6 +41,7 @@ export type SubTaskDbRow = {
   taskIndex: number;
   taskQty: number;
   maxSameTimeWorkers: number;
+  linkedToPrevious: boolean;
 };
 
 export type SessionActivityRef = {
@@ -85,6 +90,10 @@ export function mapSubTaskDbRow(
     taskIndex: Number(row.taskIndex ?? 0),
     finishedAt,
     activeWorkerCount: Math.max(0, activeWorkerCount),
+    linkedToPrevious: row.linkedToPrevious === true,
+    maxSameTimeWorkers: Number(row.maxSameTimeWorkers ?? 1),
+    assignedToIds: [],
+    dependencyIds: [],
   };
 }
 

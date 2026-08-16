@@ -3,6 +3,8 @@
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { FORM_MODAL_DIALOG_OVERLAY_Z_CLASS } from "@/components/ui/form-modal-shell";
+import { cn } from "@/lib/utils";
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -35,7 +37,10 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className={cn(
+        "fixed inset-0 flex items-center justify-center bg-black/50 p-4",
+        FORM_MODAL_DIALOG_OVERLAY_Z_CLASS,
+      )}
       role="presentation"
       onClick={disabled ? undefined : onClose}
     >

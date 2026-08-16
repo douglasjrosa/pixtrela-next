@@ -1,14 +1,16 @@
-import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
-import { listAssignedSubTasks } from "@/lib/repos/kiosk-subtasks";
+import {
+  listKioskQueueData,
+  type KioskQueueData,
+} from "@/lib/repos/kiosk-subtasks";
 
-export async function loadAssignedSubTasksForColaborator(
+export async function loadKioskQueueForColaborator(
   colaboratorId: string,
-): Promise<KioskSubTask[]> {
+): Promise<KioskQueueData> {
   try {
-    return await listAssignedSubTasks(colaboratorId);
+    return await listKioskQueueData(colaboratorId);
   } catch (error) {
     rethrowIfNavigationError(error);
-    return [];
+    return { subTasks: [], catalog: [], openRuns: [] };
   }
 }

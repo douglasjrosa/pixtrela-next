@@ -27,6 +27,12 @@ export const FORM_MODAL_BODY_MIN_HEIGHT_CLASS = "min-h-[calc(90dvh-3.5rem)]";
 /** Above AppNav (z-50) and mobile menu (z-[60]). */
 export const FORM_MODAL_OVERLAY_Z_CLASS = "z-[70]";
 
+/** Above a base form modal (create/edit stacked on another form). */
+export const FORM_MODAL_NESTED_OVERLAY_Z_CLASS = "z-[80]";
+
+/** Confirm and picker dialogs above any form overlay. */
+export const FORM_MODAL_DIALOG_OVERLAY_Z_CLASS = "z-[90]";
+
 export interface FormModalShellProps {
   open: boolean;
   title: ReactNode;
@@ -36,6 +42,8 @@ export interface FormModalShellProps {
   size?: keyof typeof SIZE_CLASS;
   /** Full-viewport on small screens; constrained dialog from `sm` up. */
   layout?: "default" | "viewport";
+  /** Use `nested` when this shell opens on top of another form modal. */
+  layer?: "base" | "nested";
   /**
    * When false, body grows with content instead of forcing near-viewport min-height.
    * Prefer for short forms (e.g. theme settings).
@@ -55,6 +63,7 @@ export function FormModalShell({
   disabled = false,
   size = "lg",
   layout = "default",
+  layer = "base",
   fillBody = true,
   headerActions,
   footerStart,
@@ -67,6 +76,10 @@ export function FormModalShell({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const showFooter = footerStart != null || footerEnd != null;
   const isViewport = layout === "viewport";
+  const overlayZ =
+    layer === "nested"
+      ? FORM_MODAL_NESTED_OVERLAY_Z_CLASS
+      : FORM_MODAL_OVERLAY_Z_CLASS;
 
   useEffect(() => {
     if (!open) return;
@@ -91,9 +104,11 @@ export function FormModalShell({
   return (
     <div
       className={cn(
-        "fixed inset-0 flex items-center justify-center bg-black/50",
-        FORM_MODAL_OVERLAY_Z_CLASS,
-        isViewport ? "p-0 sm:p-4" : "p-4 pt-[4.5rem]",
+        "fixed inset-0 flex bg-black/50",
+        overlayZ,
+        isViewport
+          ? "items-start justify-center p-0 sm:px-4 sm:pb-4 sm:pt-[4.5rem]"
+          : "items-center justify-center p-4 pt-[4.5rem]",
       )}
       role="presentation"
       onClick={disabled ? undefined : onClose}

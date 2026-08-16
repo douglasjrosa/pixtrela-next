@@ -89,6 +89,7 @@ export async function createTask(
               expectedTime,
               sharingType: row.sharingType,
               maxSameTimeWorkers: row.maxSameTimeWorkers,
+              linkedToPrevious: row.linkedToPrevious,
             })
             .returning({ id: subTasks.id, index: subTasks.index });
           createdByIndex.set(created.index, created.id);
@@ -326,16 +327,27 @@ export async function assignColaboratorsToSubTask(
   await replaceSubTaskAssignees(subTaskId, userIds, db);
 }
 
-async function replaceSubTaskAssignees(
+export async function replaceSubTaskAssignees(
   subTaskId: string,
   userIds: string[],
-  db: Db,
+  db: Db = getDb(),
 ): Promise<void> {
   await db.delete(subTaskAssignees).where(eq(subTaskAssignees.subTaskId, subTaskId));
   if (userIds.length === 0) return;
   await db.insert(subTaskAssignees).values(
     userIds.map((userId) => ({ subTaskId, userId })),
   );
+}
+
+export async function updateSubTaskLinkedToPrevious(
+  id: string,
+  linkedToPrevious: boolean,
+  db: Db = getDb(),
+): Promise<void> {
+  await db
+    .update(subTasks)
+    .set({ linkedToPrevious, updatedAt: new Date() })
+    .where(eq(subTasks.id, id));
 }
 
 async function replaceSubTaskDependencies(

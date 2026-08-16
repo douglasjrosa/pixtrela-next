@@ -3,6 +3,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
+import { FORM_MODAL_DIALOG_OVERLAY_Z_CLASS } from "@/components/ui/form-modal-shell";
 import { SubTaskDependenciesModal } from "./subtask-dependencies-modal";
 
 const options = [
@@ -28,6 +29,9 @@ describe("SubTaskDependenciesModal", () => {
 
     expect(screen.getByText("Soldar")).toBeInTheDocument();
     expect(screen.getByText("Pintar")).toBeInTheDocument();
+    expect(screen.getByRole("presentation").className).toContain(
+      FORM_MODAL_DIALOG_OVERLAY_Z_CLASS,
+    );
 
     await user.click(screen.getByLabelText("Pintar"));
     await user.click(screen.getByRole("button", { name: "Salvar" }));

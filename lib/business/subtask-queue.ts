@@ -29,6 +29,10 @@ export interface KioskSubTask extends QueuedSubTask {
   taskIndex: number;
   finishedAt: string | null;
   activeWorkerCount: number;
+  linkedToPrevious?: boolean;
+  maxSameTimeWorkers?: number;
+  assignedToIds?: string[];
+  dependencyIds?: string[];
 }
 
 export interface KioskQueueSections {

@@ -57,6 +57,16 @@ Slash command: `.cursor/commands/optimize.md`. Merge conflicts during that
 cycle: skill `.cursor/skills/optimize-merge/SKILL.md`. Both travel with the
 repo (any machine that clones `pixtrela-next`).
 
+### UI testing (`computerUse`)
+
+- **Default (all agent tasks):** **Vitest is enough.** Do not run browser
+  automation (`computerUse`), `RecordScreen`, or manual GUI walkthroughs.
+- **`/optimize` only:** When the user explicitly invokes **`/optimize`**, you
+  may use `computerUse` and screen recording for UI validation as part of that
+  release cycle.
+- **`/optimize-min` and every other circumstance:** Vitest only — no
+  `computerUse`, no `RecordScreen`, no manual browser tests.
+
 ## Docs
 
 - `docs/ENV-VERCEL-CURSOR.md` — env matrix
@@ -79,3 +89,5 @@ a missing package, run `npm install` instead.
   file is required. Tests (`npm test`) hit the dev DB and take ~3 min.
 - `npm run lint` currently reports pre-existing errors/warnings unrelated to setup; it is
   not a clean gate.
+- See **UI testing (`computerUse`)** under `/optimize` — Vitest only unless the user
+  ran `/optimize`.

@@ -55,3 +55,74 @@ export async function seedKioskWorkflowFixture(
     subTaskName: subTask.name,
   };
 }
+
+export type KioskChainFixture = KioskWorkflowFixture & {
+  memberNames: string[];
+};
+
+/** Seeds a 3-member duration chain assigned to one colaborator. */
+export async function seedKioskChainFixture(
+  label: string,
+): Promise<KioskChainFixture> {
+  const suffix = `${label}-${Date.now()}`;
+  const colaboratorCode = Number(String(Date.now()).slice(-5));
+  const colaboratorPassword = "Secret123!";
+
+  const colaborator = await createUser({
+    username: `kiosk-chain-${suffix}`,
+    password: colaboratorPassword,
+    name: `Kiosk Chain ${label}`,
+    role: "colaborator",
+    code: colaboratorCode,
+  });
+
+  const templateCode = `KC${String(Date.now()).slice(-7)}`;
+  const memberNames = [
+    `Chain A ${label}`,
+    `Chain B ${label}`,
+    `Chain C ${label}`,
+  ];
+  await createTemplateTask({
+    code: templateCode,
+    name: `Kiosk Chain ${label}`,
+    subTasks: [
+      { name: memberNames[0], expectedTime: 3600, index: 0 },
+      {
+        name: memberNames[1],
+        expectedTime: 3600,
+        index: 1,
+        linkedToPrevious: true,
+      },
+      {
+        name: memberNames[2],
+        expectedTime: 3600,
+        index: 2,
+        linkedToPrevious: true,
+      },
+    ],
+  });
+
+  const step = await createStep({ name: `Kiosk Chain ${label}`, index: 0 });
+  const task = await createTask({
+    name: `Kiosk Chain task ${label}`,
+    qty: 1,
+    stepId: step.id,
+    templateTaskCode: templateCode,
+  });
+
+  const subs = await listSubTasksForTask(task.id);
+  if (subs.length < 3) {
+    throw new Error("kiosk E2E chain fixture: missing sub-tasks");
+  }
+  for (const sub of subs) {
+    await assignColaboratorsToSubTask(sub.id, [colaborator.id]);
+  }
+
+  return {
+    colaboratorId: colaborator.id,
+    colaboratorCode,
+    colaboratorPassword,
+    subTaskName: memberNames[0]!,
+    memberNames,
+  };
+}

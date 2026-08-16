@@ -8,8 +8,11 @@ export function boardSubTaskSummaryStub(
   return {
     sharingType: "duration",
     qty: 1,
+    index: 0,
     expectedTime: 0,
     timeSpent: 0,
+    maxSameTimeWorkers: 1,
+    linkedToPrevious: false,
     openActivityStartedAts: [],
     producingColaboratorIds: [],
     sessions: [],

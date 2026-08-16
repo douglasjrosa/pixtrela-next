@@ -8,7 +8,7 @@ import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager
 import { boardSubTaskSummaryStub } from "@/lib/business/board-subtask-summary";
 import messages from "@/messages/pt-BR.json";
 import { renderWithIntl } from "@/test/test-utils";
-import { KanbanTaskSubtasksModal } from "./kanban-task-subtasks-modal";
+import { KanbanTaskSubtasksModal, resolveKanbanPendingSubtaskReorder } from "./kanban-task-subtasks-modal";
 
 const showSuccessToast = vi.fn();
 const showHintToast = vi.fn();
@@ -743,6 +743,40 @@ describe("KanbanTaskSubtasksModal", () => {
     ).toBeEnabled();
   });
 
+  it("shows drag handles when reorder is enabled", () => {
+    renderModal({ onReorder: vi.fn() });
+
+    expect(screen.getAllByLabelText("Arrastar para reordenar")).toHaveLength(2);
+  });
+
+  it("hides drag handles when reorder is not provided", () => {
+    renderModal();
+
+    expect(
+      screen.queryByLabelText("Arrastar para reordenar"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disables drag handles in multi-select mode", async () => {
+    const user = userEvent.setup();
+    renderModal({ onReorder: vi.fn() });
+
+    await user.click(screen.getByRole("switch", { name: "Multi-seleção" }));
+
+    for (const handle of screen.getAllByLabelText("Arrastar para reordenar")) {
+      expect(handle).toBeDisabled();
+    }
+  });
+
+  it("resolveKanbanPendingSubtaskReorder keeps finished rows in place", () => {
+    const reordered = resolveKanbanPendingSubtaskReorder(subtasks, "st-2", "st-1");
+    expect(reordered?.map((item) => item.documentId)).toEqual([
+      "st-2",
+      "st-1",
+      "st-3",
+    ]);
+  });
+
   it("asks before leaving multi with a selection", async () => {
     const user = userEvent.setup();
     renderModal();
@@ -770,5 +804,118 @@ describe("KanbanTaskSubtasksModal", () => {
       "aria-selected",
       "true",
     );
+  });
+
+  it("shows a chain link button only between pending rows", () => {
+    const chained = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Pintar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: false,
+      }),
+    ];
+    renderModal({
+      subtasks: chained,
+      onReorder: vi.fn(),
+      onLinkToggle: vi.fn(),
+    });
+    expect(
+      screen.getByRole("button", { name: "Ligar à anterior" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByTestId("subtask-chain-link")).toHaveLength(1);
+  });
+
+  it("shows the unlink label when the row is already chained", () => {
+    const chained = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Pintar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: true,
+      }),
+    ];
+    renderModal({
+      subtasks: chained,
+      onReorder: vi.fn(),
+      onLinkToggle: vi.fn(),
+    });
+    expect(
+      screen.getByRole("button", { name: "Desligar da anterior" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("toggles chain link from the mid-gap button", async () => {
+    const user = userEvent.setup();
+    const onLinkToggle = vi.fn();
+    const chained = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Pintar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: false,
+      }),
+    ];
+    renderModal({
+      subtasks: chained,
+      onReorder: vi.fn(),
+      onLinkToggle,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Ligar à anterior" }));
+    expect(onLinkToggle).toHaveBeenCalledWith("st-2", true);
+  });
+
+  it("blocks independent assignees on chained members with max workers 1", async () => {
+    const user = userEvent.setup();
+    const onAssigneesChange = vi.fn();
+    const chained = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Pintar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: true,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+    ];
+    renderModal({
+      subtasks: chained,
+      onReorder: vi.fn(),
+      onLinkToggle: vi.fn(),
+      onAssigneesChange,
+    });
+
+    await user.click(screen.getByRole("button", { name: /Pintar/ }));
+    expect(screen.getByRole("button", { name: "Atribuir Bob" })).toBeDisabled();
+    expect(onAssigneesChange).not.toHaveBeenCalled();
   });
 });

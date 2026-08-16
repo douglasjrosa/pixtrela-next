@@ -16,6 +16,7 @@ export interface TemplateSubTaskRow {
   sharingType: TemplateSubTaskComponentInput["sharingType"];
   maxSameTimeWorkers: number;
   dependencyIndexes: number[];
+  linkedToPrevious?: boolean;
   isDraft?: boolean;
 }
 
@@ -44,6 +45,7 @@ export function mapTemplateComponentsToRows(
     sharingType: component.sharingType,
     maxSameTimeWorkers: component.maxSameTimeWorkers,
     dependencyIndexes: parseTemplateDependencyIndexes(component.dependencies),
+    linkedToPrevious: component.linkedToPrevious ?? false,
   }));
 }
 
@@ -58,6 +60,7 @@ export function mapTemplateRowsToComponents(
     index,
     expectedTime: row.expectedTime,
     dependencies: row.dependencyIndexes.length > 0 ? row.dependencyIndexes : null,
+    linkedToPrevious: row.linkedToPrevious ?? false,
   }));
 }
 

@@ -199,7 +199,10 @@
     "finishedParticipants": "{count} colaborador(es)",
     "finishedAt": "Finalizada em {date} às {time}",
     "deliveryForecast": "Previsão",
-    "completion": "Conclusão"
+    "completion": "Conclusão",
+    "linkToPrevious": "Ligar à anterior",
+    "unlinkFromPrevious": "Desligar da anterior",
+    "assigneesFollowHead": "As atribuições desta subtarefa seguem a primeira da cadeia."
   },
   "balance": {
     "title": "Meu saldo",
@@ -660,6 +663,7 @@
     "invalidCredentials": "Código ou senha inválidos.",
     "forbidden": "Não foi possível identificar o colaborador.",
     "start": "Iniciar",
+    "stop": "Parar",
     "exitSubtask": "Sair da subtarefa",
     "exitConfirmDuration": "A subtarefa foi concluída?",
     "exitCompletedYes": "Sim, concluí",

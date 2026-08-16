@@ -4,6 +4,8 @@ import { Lock } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 
+import type { KioskQueueUnit } from "@/lib/business/kiosk-queue-units";
+import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
 import {
   canCompleteSubTaskOnExit,
   getRemainingSubTaskQty,
@@ -19,38 +21,76 @@ import { formatDateTimePtBr } from "@/lib/format/datetime";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 
 import { KioskActionButton } from "./kiosk-action-button";
+import { KioskChainGroupCard } from "./kiosk-chain-group-card";
 import { KioskExitSubtaskForm } from "./kiosk-exit-subtask-form";
 import { SubtaskElapsedTimer } from "./subtask-elapsed-timer";
 
 export interface KioskSubtaskPanelProps {
-  subTasks: KioskSubTask[];
+  subTasks?: KioskSubTask[];
+  units?: KioskQueueUnit[];
   allSubTasks?: KioskSubTask[];
   readOnly?: boolean;
   highlightProducing?: boolean;
   flashDocumentId?: string | null;
   onStart?: (documentId: string) => void | Promise<void>;
   onExit?: (documentId: string, input: KioskExitInput) => void | Promise<void>;
+  onStartChain?: (headId: string) => void | Promise<void>;
+  onConfirmChainStop?: (
+    chainRunId: string,
+    answers: ChainStopAnswer[],
+  ) => void | Promise<void>;
+  onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
   pending?: boolean;
 }
 
+function unitsFromSubTasks(subTasks: KioskSubTask[]): KioskQueueUnit[] {
+  return subTasks.map((subTask) => ({
+    type: "isolated" as const,
+    subTask,
+    helperMode: false,
+  }));
+}
+
 export function KioskSubtaskPanel({
-  subTasks,
+  subTasks = [],
+  units,
   allSubTasks,
   readOnly = false,
   highlightProducing = false,
   flashDocumentId,
   onStart,
   onExit,
+  onStartChain,
+  onConfirmChainStop,
+  onAdvanceChain,
   pending,
 }: KioskSubtaskPanelProps) {
   const t = useTranslations("kiosk");
   const tStatus = useTranslations("tasks.status");
   const [exitingId, setExitingId] = useState<string | null>(null);
   const queueContext = allSubTasks ?? subTasks;
+  const resolvedUnits = units ?? unitsFromSubTasks(subTasks);
 
   return (
     <ul className="space-y-3">
-      {subTasks.map((subTask) => {
+      {resolvedUnits.map((unit) => {
+        if (unit.type === "group") {
+          return (
+            <KioskChainGroupCard
+              key={`group-${unit.headId}`}
+              unit={unit}
+              readOnly={readOnly}
+              pending={pending}
+              flash={unit.memberIds.includes(flashDocumentId ?? "")}
+              onStartChain={onStartChain}
+              onConfirmChainStop={onConfirmChainStop}
+              onAdvanceChain={onAdvanceChain}
+            />
+          );
+        }
+
+        const subTask = unit.subTask;
+        const helperMode = unit.helperMode;
         const finished = isFinishedSubTask(subTask);
         const locked = isLockedSubTask(subTask);
         const showStart =
@@ -60,6 +100,9 @@ export function KioskSubtaskPanel({
         const isProducing = subTask.status === "producing";
         const isExiting = exitingId === subTask.documentId;
         const isFlashing = flashDocumentId === subTask.documentId;
+        const allowComplete = helperMode
+          ? false
+          : canCompleteSubTaskOnExit(subTask);
 
         return (
           <li
@@ -147,7 +190,7 @@ export function KioskSubtaskPanel({
               <div className="mt-4">
                 <KioskExitSubtaskForm
                   sharingType={subTask.sharingType}
-                  allowComplete={canCompleteSubTaskOnExit(subTask)}
+                  allowComplete={allowComplete}
                   maxQty={
                     subTask.sharingType === "qty"
                       ? getRemainingSubTaskQty(
