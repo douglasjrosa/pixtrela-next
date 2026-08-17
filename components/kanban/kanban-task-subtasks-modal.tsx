@@ -187,7 +187,7 @@ function SubTaskCardHeader({
           className="flex flex-wrap items-center gap-1"
           aria-label={tSubtasks("assignedTo")}
         >
-          <li className="min-w-0">
+          <li className="me-2 flex min-w-0 items-center">
             <span
               className="inline-flex max-w-full flex-col items-center text-xs"
               aria-label={tSubtasks("maxSameTimeWorkersBadge", {
@@ -208,7 +208,7 @@ function SubTaskCardHeader({
               assignee.documentId,
             );
             return (
-              <li key={assignee.documentId} className="min-w-0">
+              <li key={assignee.documentId} className="flex min-w-0 items-center">
                 <CardBadge
                   title={assignee.name}
                   className={cn(
