@@ -10,6 +10,7 @@ describe("KioskBlockingOverlay", () => {
     renderWithIntl(<KioskBlockingOverlay />);
 
     expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("status").className).toContain("fixed");
     expect(screen.getByText("Processando...")).toBeInTheDocument();
     expect(document.querySelector(".kiosk-blocking-spinner")).not.toBeNull();
   });

@@ -192,8 +192,8 @@ export function KioskPanelClient({
             onAdvanceChain={readOnly ? undefined : handleAdvanceChain}
           />
         </div>
-        {blockingUi ? <KioskBlockingOverlay /> : null}
       </div>
+      {blockingUi ? <KioskBlockingOverlay /> : null}
     </div>
   );
 }

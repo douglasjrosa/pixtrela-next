@@ -7,7 +7,7 @@ export function KioskBlockingOverlay() {
 
   return (
     <div
-      className="absolute inset-0 z-40 flex items-center justify-center bg-background/70"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/70"
       role="status"
       aria-live="polite"
       aria-busy="true"
