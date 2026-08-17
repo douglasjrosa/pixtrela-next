@@ -155,7 +155,7 @@ describe("KanbanTaskSubtasksModal", () => {
     const pintarCard = screen.getByRole("button", { name: /Pintar/ });
     expect(
       within(pintarCard).getByLabelText("Atribuído a"),
-    ).toBeInTheDocument();
+    ).toHaveClass("items-center");
     expect(within(pintarCard).getByText("Ana")).toHaveClass("bg-success");
 
     const soldarCard = screen.getByRole("button", { name: /Soldar/ });

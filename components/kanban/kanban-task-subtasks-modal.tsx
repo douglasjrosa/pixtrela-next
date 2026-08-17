@@ -184,7 +184,7 @@ function SubTaskCardHeader({
       <div className="flex w-full min-w-0 flex-col gap-1.5 md:flex-1">
         <span className="font-medium">{name}</span>
         <ul
-          className="flex flex-wrap gap-1"
+          className="flex flex-wrap items-center gap-1"
           aria-label={tSubtasks("assignedTo")}
         >
           <li className="min-w-0">
