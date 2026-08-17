@@ -1,3 +1,5 @@
+import nodemailer from "nodemailer";
+
 export type SendMailInput = {
   to: string;
   subject: string;
@@ -5,37 +7,77 @@ export type SendMailInput = {
   html?: string;
 };
 
-export async function sendMail(input: SendMailInput): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from =
-    process.env.MAIL_FROM?.trim() ?? "noreply@example.com"; // pragma: allowlist secret
+type SmtpConfig = {
+  host: string;
+  port: number;
+  secure: boolean;
+  user?: string;
+  pass?: string;
+  from: string;
+};
 
-  if (!apiKey) {
+function parseSmtpSecure(value: string | undefined): boolean {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === "true" || normalized === "1" || normalized === "yes";
+}
+
+function readSmtpConfig(): SmtpConfig | null {
+  const host = process.env.SMTP_HOST?.trim();
+  const portRaw = process.env.SMTP_PORT?.trim();
+  const from = process.env.FROM_EMAIL?.trim();
+
+  if (!host || !portRaw || !from) {
+    return null;
+  }
+
+  const port = Number(portRaw);
+  if (!Number.isInteger(port) || port <= 0) {
+    return null;
+  }
+
+  const user = process.env.SMTP_USER?.trim();
+  const pass = process.env.SMTP_PASS?.trim();
+
+  return {
+    host,
+    port,
+    secure: parseSmtpSecure(process.env.SMTP_SECURE),
+    from,
+    user: user || undefined,
+    pass: pass || undefined,
+  };
+}
+
+export async function sendMail(input: SendMailInput): Promise<void> {
+  const smtp = readSmtpConfig();
+
+  if (!smtp) {
     console.info(
-      "[mail] RESEND_API_KEY is not set; email was not sent.",
+      "[mail] SMTP is not configured; email was not sent.",
       JSON.stringify({ to: input.to, subject: input.subject }),
     );
     console.info("[mail] body:", input.text);
     return;
   }
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [input.to],
-      subject: input.subject,
-      text: input.text,
-      html: input.html,
-    }),
+  const transporter = nodemailer.createTransport({
+    host: smtp.host,
+    port: smtp.port,
+    secure: smtp.secure,
+    auth:
+      smtp.user && smtp.pass
+        ? {
+            user: smtp.user,
+            pass: smtp.pass,
+          }
+        : undefined,
   });
 
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(`sendMail failed (${response.status}): ${detail}`);
-  }
+  await transporter.sendMail({
+    from: smtp.from,
+    to: input.to,
+    subject: input.subject,
+    text: input.text,
+    html: input.html,
+  });
 }
