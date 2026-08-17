@@ -777,6 +777,7 @@
     "elapsed": "Tempo decorrido",
     "timeSpent": "Tempo gasto",
     "actionLoading": "Processando...",
+    "remainingQty": "{count} pçs. restantes",
     "sectionProducing": "Em execução",
     "sectionPending": "A fazer",
     "sectionFinishedToday": "Concluídas hoje",

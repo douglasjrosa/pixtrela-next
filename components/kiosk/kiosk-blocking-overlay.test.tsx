@@ -11,5 +11,6 @@ describe("KioskBlockingOverlay", () => {
 
     expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Processando...")).toBeInTheDocument();
+    expect(document.querySelector(".kiosk-blocking-spinner")).not.toBeNull();
   });
 });

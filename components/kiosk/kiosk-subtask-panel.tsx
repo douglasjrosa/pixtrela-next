@@ -1,7 +1,7 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { KioskQueueUnit } from "@/lib/business/kiosk-queue-units";
@@ -22,6 +22,7 @@ import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainGroupCard } from "./kiosk-chain-group-card";
 import { KioskExitSubtaskForm } from "./kiosk-exit-subtask-form";
+import { KioskSubtaskRemainingQtyBadge } from "./kiosk-subtask-remaining-qty-badge";
 import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
 import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
 
@@ -39,8 +40,8 @@ export interface KioskSubtaskPanelProps {
     answers: ChainStopAnswer[],
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
-  pending?: boolean;
   blockingUi?: boolean;
+  compactFinishedCards?: boolean;
 }
 
 function unitsFromSubTasks(subTasks: KioskSubTask[]): KioskQueueUnit[] {
@@ -63,8 +64,8 @@ export function KioskSubtaskPanel({
   onStartChain,
   onConfirmChainStop,
   onAdvanceChain,
-  pending,
   blockingUi = false,
+  compactFinishedCards = false,
 }: KioskSubtaskPanelProps) {
   const t = useTranslations("kiosk");
   const [exitingId, setExitingId] = useState<string | null>(null);
@@ -80,8 +81,8 @@ export function KioskSubtaskPanel({
               key={`group-${unit.headId}`}
               unit={unit}
               readOnly={readOnly}
-              pending={pending}
               blockingUi={blockingUi}
+              compactFinishedCards={compactFinishedCards}
               flash={unit.memberIds.includes(flashDocumentId ?? "")}
               onStartChain={onStartChain}
               onConfirmChainStop={onConfirmChainStop}
@@ -99,11 +100,21 @@ export function KioskSubtaskPanel({
         const showExit =
           !readOnly && shouldShowExitButton(queueContext, subTask);
         const isProducing = subTask.status === "producing";
-        const isExiting = exitingId === subTask.documentId;
+        const isExiting =
+          exitingId === subTask.documentId && isProducing && onExit;
         const isFlashing = flashDocumentId === subTask.documentId;
         const allowComplete = helperMode
           ? false
           : canCompleteSubTaskOnExit(subTask);
+        const remainingQty = getRemainingSubTaskQty(
+          subTask.targetQty,
+          subTask.completedQty,
+        );
+        const showRemainingQtyBadge =
+          !compactFinishedCards &&
+          !finished &&
+          !isProducing &&
+          subTask.sharingType === "qty";
 
         return (
           <li
@@ -125,7 +136,12 @@ export function KioskSubtaskPanel({
                   </p>
                 ) : null}
                 <p className="text-lg font-bold leading-snug">{subTask.name}</p>
-                <KioskSubtaskStatusBadge status={subTask.status} />
+                {!compactFinishedCards ? (
+                  <KioskSubtaskStatusBadge status={subTask.status} />
+                ) : null}
+                {showRemainingQtyBadge ? (
+                  <KioskSubtaskRemainingQtyBadge remainingQty={remainingQty} />
+                ) : null}
                 {isProducing && subTask.startedAt ? (
                   <KioskSubtaskProducingMetrics
                     startedAt={subTask.startedAt}
@@ -134,7 +150,7 @@ export function KioskSubtaskPanel({
                     timerPaused={blockingUi}
                   />
                 ) : null}
-                {finished ? (
+                {finished && !compactFinishedCards ? (
                   <p className="text-base text-muted-foreground">
                     {t("timeSpent")}:{" "}
                     <span className="tabular-nums">
@@ -148,7 +164,7 @@ export function KioskSubtaskPanel({
                   {showStart ? (
                     <KioskActionButton
                       actionVariant="produce"
-                      disabled={pending}
+                      disabled={blockingUi}
                       onClick={() => onStart?.(subTask.documentId)}
                     >
                       {t("start")}
@@ -194,7 +210,6 @@ export function KioskSubtaskPanel({
                   onCancel={() => setExitingId(null)}
                   onConfirm={(input) => {
                     onExit(subTask.documentId, input);
-                    setExitingId(null);
                   }}
                 />
               </div>

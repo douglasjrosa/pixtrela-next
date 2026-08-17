@@ -30,7 +30,7 @@ export function KioskChainMemberFields({
   onChange,
 }: KioskChainMemberFieldsProps) {
   const t = useTranslations("kiosk");
-  const safeMaxQty = Math.max(1, maxQty);
+  const safeMaxQty = Math.max(0, maxQty);
 
   return (
     <div className="space-y-2 rounded-2xl border bg-muted p-3">
@@ -67,9 +67,9 @@ export function KioskChainMemberFields({
             id={`kiosk-chain-qty-${documentId}`}
             type="number"
             inputMode="numeric"
-            min={1}
+            min={0}
             max={safeMaxQty}
-            value={value?.qty ?? ""}
+            value={value?.qty !== undefined ? String(value.qty) : ""}
             disabled={disabled}
             className={cn("h-14 rounded-2xl text-lg")}
             onChange={(event) => {

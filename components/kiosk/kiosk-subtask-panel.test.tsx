@@ -41,7 +41,7 @@ const subTasks = [
 ];
 
 describe("KioskSubtaskPanel", () => {
-  it("keeps exit enabled while an unrelated action is pending", () => {
+  it("keeps exit enabled before blocking begins", () => {
     const producing = [
       kioskSubTask({
         documentId: "a",
@@ -56,7 +56,6 @@ describe("KioskSubtaskPanel", () => {
       <KioskSubtaskPanel
         subTasks={producing}
         allSubTasks={producing}
-        pending
         onStart={vi.fn()}
         onExit={vi.fn()}
       />,
@@ -65,6 +64,48 @@ describe("KioskSubtaskPanel", () => {
     expect(
       screen.getByRole("button", { name: "Sair da subtarefa" }),
     ).toBeEnabled();
+  });
+
+  it("shows remaining qty badge on pending qty cards", () => {
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={[
+          kioskSubTask({
+            documentId: "a",
+            name: "Montar",
+            status: "waiting",
+            sharingType: "qty",
+            targetQty: 10,
+            completedQty: 2,
+          }),
+        ]}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("8 pçs. restantes")).toBeInTheDocument();
+  });
+
+  it("hides status badge and time spent on compact finished cards", () => {
+    renderWithIntl(
+      <KioskSubtaskPanel
+        compactFinishedCards
+        subTasks={[
+          kioskSubTask({
+            documentId: "a",
+            name: "Montar",
+            status: "finished",
+            timeSpent: 120,
+          }),
+        ]}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Finalizada")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Tempo gasto:/)).not.toBeInTheDocument();
   });
 
   it("shows lock overlay and muted background for locked queued subtasks", () => {

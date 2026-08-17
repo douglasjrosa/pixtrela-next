@@ -22,6 +22,16 @@ describe("parseKioskExitInput", () => {
     ).toEqual({ sharingType: "qty", qtyCompleted: 3 });
   });
 
+  it("accepts zero completed pieces", () => {
+    expect(
+      parseKioskExitInput(
+        "qty",
+        { sharingType: "qty", qtyCompleted: 0 },
+        { maxQty: 5 },
+      ),
+    ).toEqual({ sharingType: "qty", qtyCompleted: 0 });
+  });
+
   it("rejects qty above remaining pieces", () => {
     expect(() =>
       parseKioskExitInput(

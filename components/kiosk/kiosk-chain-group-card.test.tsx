@@ -83,7 +83,7 @@ describe("KioskChainGroupCard", () => {
     expect(onStartChain).toHaveBeenCalledWith("a");
   });
 
-  it("keeps stop enabled while start refresh is pending", () => {
+  it("keeps stop enabled while the card is active", () => {
     const members = [
       kioskSubTask({
         documentId: "a",
@@ -102,7 +102,6 @@ describe("KioskChainGroupCard", () => {
     renderWithIntl(
       <KioskChainGroupCard
         unit={activeGroupProps(members)}
-        pending
         onConfirmChainStop={vi.fn()}
         onAdvanceChain={vi.fn()}
       />,
@@ -131,7 +130,6 @@ describe("KioskChainGroupCard", () => {
     renderWithIntl(
       <KioskChainGroupCard
         unit={activeGroupProps(members)}
-        pending
         onConfirmChainStop={vi.fn()}
         onAdvanceChain={vi.fn()}
       />,

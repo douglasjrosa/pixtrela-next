@@ -1,7 +1,7 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { KioskGroupUnit } from "@/lib/business/kiosk-queue-units";
@@ -20,7 +20,8 @@ import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
 export interface KioskChainGroupCardProps {
   unit: KioskGroupUnit;
   readOnly?: boolean;
-  pending?: boolean;
+  blockingUi?: boolean;
+  compactFinishedCards?: boolean;
   flash?: boolean;
   onStartChain?: (headId: string) => void | Promise<void>;
   onConfirmChainStop?: (
@@ -28,18 +29,17 @@ export interface KioskChainGroupCardProps {
     answers: ChainStopAnswer[],
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
-  blockingUi?: boolean;
 }
 
 export function KioskChainGroupCard({
   unit,
   readOnly = false,
-  pending,
+  blockingUi = false,
+  compactFinishedCards = false,
   flash,
   onStartChain,
   onConfirmChainStop,
   onAdvanceChain,
-  blockingUi = false,
 }: KioskChainGroupCardProps) {
   const t = useTranslations("kiosk");
   const [collecting, setCollecting] = useState(false);
@@ -65,6 +65,14 @@ export function KioskChainGroupCard({
     setConfirmingStop(false);
     setAnswers({});
   }
+
+  useEffect(() => {
+    if (!blockingUi) {
+      setCollecting(false);
+      setConfirmingStop(false);
+      setAnswers({});
+    }
+  }, [blockingUi]);
 
   function handleStopClick(): void {
     setCollecting(true);
@@ -106,7 +114,9 @@ export function KioskChainGroupCard({
                 className="min-w-0 space-y-3 rounded-xl border bg-background p-3"
               >
                 <p className="text-lg font-bold leading-snug">{member.name}</p>
-                <KioskSubtaskStatusBadge status={member.status} />
+                {!compactFinishedCards ? (
+                  <KioskSubtaskStatusBadge status={member.status} />
+                ) : null}
                 {isProducing && member.startedAt ? (
                   <KioskSubtaskProducingMetrics
                     startedAt={member.startedAt}
@@ -115,7 +125,7 @@ export function KioskChainGroupCard({
                     timerPaused={blockingUi}
                   />
                 ) : null}
-                {member.status === "finished" ? (
+                {member.status === "finished" && !compactFinishedCards ? (
                   <p className="text-base text-muted-foreground">
                     {t("timeSpent")}:{" "}
                     <span className="tabular-nums">
@@ -152,7 +162,7 @@ export function KioskChainGroupCard({
             {showStart ? (
               <KioskActionButton
                 actionVariant="produce"
-                disabled={pending}
+                disabled={blockingUi}
                 onClick={() => onStartChain?.(unit.headId)}
               >
                 {t("start")}

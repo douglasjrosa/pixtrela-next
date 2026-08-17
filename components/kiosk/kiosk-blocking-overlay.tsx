@@ -1,6 +1,5 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export function KioskBlockingOverlay() {
@@ -14,8 +13,8 @@ export function KioskBlockingOverlay() {
       aria-busy="true"
     >
       <div className="flex flex-col items-center gap-3 rounded-2xl border bg-card px-6 py-5 shadow-lg">
-        <Loader2
-          className="size-10 animate-spin text-primary"
+        <span
+          className="kiosk-blocking-spinner size-10 rounded-full border-4 border-primary/20 border-t-primary"
           aria-hidden
         />
         <p className="text-base font-medium">{t("actionLoading")}</p>

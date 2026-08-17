@@ -93,7 +93,7 @@ export function KioskExitSubtaskForm({
     );
   }
 
-  const safeMaxQty = Math.max(1, maxQty);
+  const safeMaxQty = Math.max(0, maxQty);
 
   return (
     <div className="space-y-3 rounded-2xl border bg-muted p-3">
@@ -110,7 +110,7 @@ export function KioskExitSubtaskForm({
           id="kiosk-exit-qty"
           type="number"
           inputMode="numeric"
-          min={1}
+          min={0}
           max={safeMaxQty}
           value={qtyCompleted}
           disabled={disabled}
@@ -135,7 +135,7 @@ export function KioskExitSubtaskForm({
           disabled={disabled}
           onClick={() => {
             const parsed = Number.parseInt(qtyCompleted, 10);
-            if (!Number.isInteger(parsed) || parsed < 1) {
+            if (!Number.isInteger(parsed) || parsed < 0) {
               setQtyError(t("exitQtyInvalid"));
               return;
             }
