@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithIntl } from "@/test/test-utils";
 
 import { TemplatesPageHeader } from "./templates-page-header";
-import { TemplatesListView } from "./templates-list-view";
+import { TemplateListRowPresentational } from "./template-list-row-presentational";
 
 const createTemplate = vi.fn();
 const showSuccessToast = vi.fn();
@@ -31,6 +31,7 @@ const templates = [
     name: "Montagem padrão",
     code: "MNT-01",
     subTaskCount: 1,
+    active: true,
   },
 ];
 
@@ -76,15 +77,28 @@ describe("TemplatesPageHeader", () => {
   });
 });
 
-describe("TemplatesListView", () => {
+describe("TemplateListRowPresentational", () => {
   it("renders template list with subtask count", () => {
-    renderWithIntl(<TemplatesListView templates={templates} />);
+    renderWithIntl(
+      <table>
+        <tbody>
+          <TemplateListRowPresentational
+            template={templates[0]!}
+            variant="table"
+            href="/templates/tasks/tpl1"
+            labels={{
+              subTaskCountShort: "1 subtarefa(s)",
+              inactive: "Inativo",
+              selectRow: "Selecionar Montagem padrão",
+            }}
+          />
+        </tbody>
+      </table>,
+    );
     expect(screen.getAllByText("Montagem padrão").length).toBeGreaterThan(0);
     expect(screen.getAllByText("1").length).toBeGreaterThan(0);
-  });
-
-  it("shows empty state when there are no templates", () => {
-    renderWithIntl(<TemplatesListView templates={[]} />);
-    expect(screen.getByText("Nenhum modelo encontrado.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Montagem padrão" }),
+    ).toHaveAttribute("href", "/templates/tasks/tpl1");
   });
 });

@@ -21,6 +21,22 @@ vi.mock("@/lib/ui/app-toast", () => ({
   showConfirmToast: (...args: unknown[]) => showConfirmToast(...args),
 }));
 
+const sortableDrag = vi.hoisted(() => ({ id: null as string | null }));
+
+vi.mock("@dnd-kit/sortable", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@dnd-kit/sortable")>();
+  return {
+    ...actual,
+    useSortable: (options: { id: string; disabled?: boolean }) => {
+      const result = actual.useSortable(options);
+      return {
+        ...result,
+        isDragging: sortableDrag.id === options.id,
+      };
+    },
+  };
+});
+
 const teams: TeamAssignmentOption[] = [
   {
     documentId: "team-1",
@@ -98,6 +114,7 @@ function renderModal(
 
 describe("KanbanTaskSubtasksModal", () => {
   beforeEach(() => {
+    sortableDrag.id = null;
     showSuccessToast.mockReset();
     showHintToast.mockReset();
     showConfirmToast.mockReset();
@@ -132,19 +149,94 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(screen.queryByText("Histórico")).not.toBeInTheDocument();
   });
 
+  it("keeps modal chrome and skeletons while subtasks load", () => {
+    renderModal({
+      loading: true,
+      subtasks: [],
+      onAddSubtask: vi.fn(),
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "Subtarefas" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1 - Tarefa A")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Pendentes" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      screen.queryByRole("tab", { name: "Finalizadas" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Multi-seleção" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(screen.getByTestId("kanban-subtasks-loading")).toBeInTheDocument();
+    expect(screen.queryByTestId("subtask-chain-link")).not.toBeInTheDocument();
+    expect(screen.getByText("Equipe A")).toBeInTheDocument();
+    expect(screen.getByText("Ana")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Adicionar subtarefa" }),
+    ).toBeDisabled();
+    expect(screen.queryByText("Soldar")).not.toBeInTheDocument();
+  });
+
   it("shows assignee name badges under pending subtask titles", () => {
     renderModal();
 
     const pintarCard = screen.getByRole("button", { name: /Pintar/ });
     expect(
       within(pintarCard).getByLabelText("Atribuído a"),
-    ).toBeInTheDocument();
+    ).toHaveClass("items-center");
     expect(within(pintarCard).getByText("Ana")).toHaveClass("bg-success");
 
     const soldarCard = screen.getByRole("button", { name: /Soldar/ });
+    expect(within(soldarCard).getByLabelText("Atribuído a")).toBeInTheDocument();
+    expect(within(soldarCard).queryByText("Ana")).not.toBeInTheDocument();
+  });
+
+  it("shows permanent max-workers text before assignee names", () => {
+    renderModal({
+      subtasks: [
+        boardSubTaskSummaryStub({
+          documentId: "st-1",
+          name: "Soldar",
+          status: "waiting",
+          maxSameTimeWorkers: 1,
+          assignedTo: [],
+        }),
+        boardSubTaskSummaryStub({
+          documentId: "st-2",
+          name: "Pintar",
+          status: "waiting",
+          maxSameTimeWorkers: 2,
+          assignedTo: [{ documentId: "u-1", name: "Ana" }],
+        }),
+      ],
+    });
+
+    const soldarCard = screen.getByRole("button", { name: /Soldar/ });
+    const soldarMax = within(soldarCard).getByLabelText(
+      "Máx. colaboradores simultâneos: 1",
+    );
+    expect(soldarMax).toHaveTextContent("Max");
+    expect(soldarMax).toHaveTextContent("x 1");
+    expect(soldarMax).toHaveClass("text-xs");
+    expect(soldarMax).toHaveClass("flex-col");
+    expect(soldarMax).toHaveClass("items-center");
+    expect(soldarMax).not.toHaveClass("bg-muted");
+    expect(soldarMax.closest("li")).toHaveClass("me-2");
+
+    const pintarCard = screen.getByRole("button", { name: /Pintar/ });
+    const pintarMax = within(pintarCard).getByLabelText(
+      "Máx. colaboradores simultâneos: 2",
+    );
+    const anaBadge = within(pintarCard).getByText("Ana");
+    expect(pintarMax).toHaveTextContent("x 2");
     expect(
-      within(soldarCard).queryByLabelText("Atribuído a"),
-    ).not.toBeInTheDocument();
+      pintarMax.compareDocumentPosition(anaBadge) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("keeps non-producing assignee badges muted", () => {
@@ -806,7 +898,7 @@ describe("KanbanTaskSubtasksModal", () => {
     );
   });
 
-  it("shows a chain link button only between pending rows", () => {
+  it("shows a chain link button on later pending rows", () => {
     const chained = [
       boardSubTaskSummaryStub({
         documentId: "st-1",
@@ -827,8 +919,16 @@ describe("KanbanTaskSubtasksModal", () => {
       onReorder: vi.fn(),
       onLinkToggle: vi.fn(),
     });
+    const pintarCard = screen.getByRole("button", { name: /Pintar/ });
+    const pintarRow = pintarCard.closest("li");
+    expect(pintarRow).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Ligar à anterior" }),
+      within(pintarRow as HTMLElement).getByRole("button", {
+        name: "Ligar à anterior",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(pintarRow as HTMLElement).getByLabelText("Arrastar para reordenar"),
     ).toBeInTheDocument();
     expect(screen.getAllByTestId("subtask-chain-link")).toHaveLength(1);
   });
@@ -857,9 +957,74 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(
       screen.getByRole("button", { name: "Desligar da anterior" }),
     ).toHaveAttribute("aria-pressed", "true");
+    const pintarCard = screen.getByRole("button", { name: /Pintar/ });
+    expect(pintarCard.parentElement).toHaveClass("relative");
+    expect(pintarCard.parentElement).toHaveClass("z-10");
+    expect(screen.getByTestId("subtask-chain-link")).toHaveClass("z-0");
+    expect(pintarCard.closest("ul")).toHaveClass("isolate");
   });
 
-  it("toggles chain link from the mid-gap button", async () => {
+  it("hides chain visuals only on the row being dragged", () => {
+    sortableDrag.id = "st-2";
+    const chained = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        linkedToPrevious: false,
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Pintar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: true,
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-3",
+        name: "Embalar",
+        status: "waiting",
+        index: 2,
+        linkedToPrevious: true,
+      }),
+    ];
+    renderModal({
+      subtasks: chained,
+      onReorder: vi.fn(),
+      onLinkToggle: vi.fn(),
+    });
+
+    const pintarRow = screen.getByRole("button", { name: /Pintar/ }).closest("li");
+    const embalarRow = screen.getByRole("button", { name: /Embalar/ }).closest("li");
+    expect(pintarRow).toBeTruthy();
+    expect(embalarRow).toBeTruthy();
+
+    expect(
+      within(pintarRow as HTMLElement).getByTestId("subtask-chain-link"),
+    ).toHaveAttribute("data-hidden", "true");
+    expect(
+      within(pintarRow as HTMLElement).queryByRole("button", {
+        name: "Desligar da anterior",
+      }),
+    ).not.toBeInTheDocument();
+
+    expect(
+      within(embalarRow as HTMLElement).getByTestId("subtask-chain-link"),
+    ).toHaveAttribute("data-hidden", "false");
+    expect(
+      within(embalarRow as HTMLElement).getByRole("button", {
+        name: "Desligar da anterior",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(embalarRow as HTMLElement)
+        .getByTestId("subtask-chain-link")
+        .querySelector('[data-slot="chain-line"]'),
+    ).not.toBeNull();
+  });
+
+  it("toggles chain link from the subtask row", async () => {
     const user = userEvent.setup();
     const onLinkToggle = vi.fn();
     const chained = [
@@ -887,7 +1052,7 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(onLinkToggle).toHaveBeenCalledWith("st-2", true);
   });
 
-  it("blocks independent assignees on chained members with max workers 1", async () => {
+  it("highlights the whole chain when a max=1 member is clicked", async () => {
     const user = userEvent.setup();
     const onAssigneesChange = vi.fn();
     const chained = [
@@ -915,7 +1080,73 @@ describe("KanbanTaskSubtasksModal", () => {
     });
 
     await user.click(screen.getByRole("button", { name: /Pintar/ }));
-    expect(screen.getByRole("button", { name: "Atribuir Bob" })).toBeDisabled();
-    expect(onAssigneesChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /Pintar/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /Soldar/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(screen.getByRole("button", { name: "Atribuir Bob" }));
+    expect(onAssigneesChange).toHaveBeenCalledWith(
+      chained[0],
+      ["u-1", "u-2"],
+      "group",
+    );
+  });
+
+  it("dims head assignees on a helper until the row toggles to the group", async () => {
+    const user = userEvent.setup();
+    const onAssigneesChange = vi.fn();
+    const chained = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Pintar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: true,
+        maxSameTimeWorkers: 2,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+    ];
+    renderModal({
+      subtasks: chained,
+      onReorder: vi.fn(),
+      onLinkToggle: vi.fn(),
+      onAssigneesChange,
+    });
+
+    await user.click(screen.getByRole("button", { name: /Pintar/ }));
+    expect(screen.getByRole("button", { name: /Pintar/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /Soldar/ })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: "Remover Ana" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Atribuir Bob" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: /Pintar/ }));
+    expect(screen.getByRole("button", { name: /Soldar/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Remover Ana" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Atribuir Bob" }));
+    expect(onAssigneesChange).toHaveBeenCalledWith(
+      chained[0],
+      ["u-1", "u-2"],
+      "group",
+    );
   });
 });

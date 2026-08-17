@@ -49,7 +49,7 @@ async function loadDrizzleMonthlyRanking(
   const balanceRows = await db
     .select({
       userId: balances.userId,
-      currencyId: balances.currencyId,
+      currencyPluralTitle: balances.currencyPluralTitle,
       totalIncome: balances.totalIncome,
     })
     .from(balances)
@@ -58,7 +58,7 @@ async function loadDrizzleMonthlyRanking(
   const incomeByCurrencyUser = new Map<string, number>();
   for (const row of balanceRows) {
     incomeByCurrencyUser.set(
-      `${row.currencyId}:${row.userId}`,
+      `${row.currencyPluralTitle}:${row.userId}`,
       Number(row.totalIncome),
     );
   }
@@ -66,12 +66,14 @@ async function loadDrizzleMonthlyRanking(
   return {
     month: monthDate,
     currencies: currencyRows.map((currency, index) => {
+      const pluralTitle =
+        currency.pluralTitle ?? currency.title ?? currency.name;
       const rows = colaborators
         .map((colaborator) => ({
           userDocumentId: colaborator.id,
           name: colaborator.name,
           totalIncome:
-            incomeByCurrencyUser.get(`${currency.id}:${colaborator.id}`) ?? 0,
+            incomeByCurrencyUser.get(`${pluralTitle}:${colaborator.id}`) ?? 0,
         }))
         .filter((row) => row.totalIncome > 0)
         .sort((a, b) => b.totalIncome - a.totalIncome)

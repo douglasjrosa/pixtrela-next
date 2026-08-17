@@ -7,7 +7,7 @@ export interface UserRow {
   name: string;
   username: string;
   email?: string | null;
-  code: number;
+  code: number | null;
   roleType: UserFormInput["roleType"];
   greetingGender?: "masculine" | "feminine" | null;
   /** Soft-deactivated via users-permissions `blocked`. */

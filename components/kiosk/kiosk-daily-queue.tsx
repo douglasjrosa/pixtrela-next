@@ -18,6 +18,7 @@ export interface KioskDailyQueueProps {
   subTasks: KioskSubTask[];
   catalog?: KioskSubTask[];
   openRuns?: readonly OpenChainRun[];
+  maxSimultaneousSubtaskIntervalSeconds?: number;
   readOnly?: boolean;
   pending?: boolean;
   flashDocumentId?: string | null;
@@ -36,6 +37,7 @@ export function KioskDailyQueue({
   subTasks,
   catalog,
   openRuns,
+  maxSimultaneousSubtaskIntervalSeconds = 0,
   readOnly = false,
   pending,
   flashDocumentId,
@@ -51,6 +53,7 @@ export function KioskDailyQueue({
     subTasks,
     allTaskSubTasks: catalog,
     openRuns,
+    maxSimultaneousSubtaskIntervalSeconds,
   });
   const sections = splitQueueUnitsBySection(units);
 

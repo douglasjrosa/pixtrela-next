@@ -22,9 +22,15 @@ describe("KioskSessionIdleForm", () => {
     renderWithIntl(
       <KioskSessionIdleForm sessionIdleSeconds={7} onSave={vi.fn()} />,
     );
+    expect(screen.getByRole("heading", { name: "Preferências" })).toBeInTheDocument();
     expect(screen.getByLabelText("Tempo de sessão do Totem (segundos):")).toHaveValue(
       7,
     );
+    expect(
+      screen.getByLabelText(
+        "Intervalo máximo para permitir subtarefas simultâneas (s)",
+      ),
+    ).toHaveValue(300);
   });
 
   it("calls onSave with updated value and shows success toast", async () => {
@@ -40,7 +46,10 @@ describe("KioskSessionIdleForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith({ sessionIdleSeconds: 15 });
+      expect(onSave).toHaveBeenCalledWith({
+        sessionIdleSeconds: 15,
+        maxSimultaneousSubtaskIntervalSeconds: 300,
+      });
     });
     expect(showSuccessToast).toHaveBeenCalledWith("Configurações salvas.");
     expect(showErrorToast).not.toHaveBeenCalled();

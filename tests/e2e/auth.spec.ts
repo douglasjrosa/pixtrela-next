@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test.describe("authentication", () => {
   test("login page is accessible", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.getByText("Entrar no Pixtrela")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 
   test("protected route redirects to login", async ({ page }) => {

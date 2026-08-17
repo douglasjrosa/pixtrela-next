@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { refineDeactivationReason } from "./deactivation-reason";
+import {
+  BULK_DEACTIVATION_REASON_MIN_LENGTH,
+  BULK_DEACTIVATION_REASON_MIN_LENGTH_KEY,
+  refineDeactivationReason,
+} from "./deactivation-reason";
 
 export const TASK_STATUSES = [
   "waiting",
@@ -33,3 +37,21 @@ export const taskDeactivationSchema = z
   });
 
 export type TaskDeactivationInput = z.infer<typeof taskDeactivationSchema>;
+
+export const bulkTaskDeactivationSchema = z
+  .object({
+    reasonForDeactivation: z.string(),
+  })
+  .superRefine((data, ctx) => {
+    refineDeactivationReason(
+      data.reasonForDeactivation,
+      ctx,
+      ["reasonForDeactivation"],
+      BULK_DEACTIVATION_REASON_MIN_LENGTH,
+      BULK_DEACTIVATION_REASON_MIN_LENGTH_KEY,
+    );
+  });
+
+export const bulkTaskIdsSchema = z
+  .array(z.string().trim().min(1))
+  .min(1, "emptySelection");

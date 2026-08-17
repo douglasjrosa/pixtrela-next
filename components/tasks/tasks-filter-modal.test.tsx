@@ -8,9 +8,15 @@ import { defaultTaskListFilters } from "@/lib/tasks/task-list-params";
 import { TasksFilterModal } from "./tasks-filter-modal";
 
 const replace = vi.fn();
+const showErrorToast = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace }),
+}));
+
+vi.mock("@/lib/ui/app-toast", () => ({
+  showErrorToast: (...args: unknown[]) => showErrorToast(...args),
+  showSuccessToast: vi.fn(),
 }));
 
 const FIXED_NOW = new Date(2026, 6, 15);
@@ -18,6 +24,7 @@ const FIXED_NOW = new Date(2026, 6, 15);
 describe("TasksFilterModal", () => {
   beforeEach(() => {
     replace.mockReset();
+    showErrorToast.mockReset();
   });
 
   it("keeps finished unchecked by default and applies filters to URL", async () => {
@@ -73,6 +80,9 @@ describe("TasksFilterModal", () => {
           from: "2026-01-01",
           to: "2026-02-01",
           q: "abc",
+          column: "deliveryDate",
+          direction: "asc",
+          showArchived: true,
         }}
         onClose={onClose}
       />,
@@ -83,5 +93,56 @@ describe("TasksFilterModal", () => {
     await waitFor(() => {
       expect(replace).toHaveBeenCalledWith("/tasks");
     });
+  });
+
+  it("shows archived checkbox unchecked by default", () => {
+    renderWithIntl(
+      <TasksFilterModal
+        open
+        initialFilters={defaultTaskListFilters(FIXED_NOW)}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("checkbox", { name: "Exibir tarefas arquivadas" }),
+    ).not.toBeChecked();
+  });
+
+  it("defaults the to date to today in pt-BR format", () => {
+    renderWithIntl(
+      <TasksFilterModal
+        open
+        initialFilters={defaultTaskListFilters(FIXED_NOW)}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Até")).toHaveValue("15/07/2026");
+  });
+
+  it("blocks apply when the date range exceeds three months", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+
+    renderWithIntl(
+      <TasksFilterModal
+        open
+        initialFilters={{
+          ...defaultTaskListFilters(FIXED_NOW),
+          from: "2026-01-01",
+          to: "2026-07-15",
+        }}
+        onClose={onClose}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Aplicar" }));
+
+    expect(showErrorToast).toHaveBeenCalledWith(
+      "O intervalo entre De e Até não pode ser maior que 3 meses.",
+    );
+    expect(replace).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

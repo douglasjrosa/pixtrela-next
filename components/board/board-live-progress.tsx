@@ -22,6 +22,7 @@ export const BOARD_LIVE_PROGRESS_DATA_PROP_KEYS = [
   "assignWarnMax",
   "assignedCountByColaboratorId",
   "paymentCurrency",
+  "assigneePeople",
 ] as const;
 
 export type BoardLiveProgressDataProps = {
@@ -32,6 +33,7 @@ export type BoardLiveProgressDataProps = {
   assignWarnMax: number;
   assignedCountByColaboratorId: Record<string, number>;
   paymentCurrency: SubtaskPaymentCurrency;
+  assigneePeople: { documentId: string; name: string }[];
 };
 
 export function pickBoardLiveProgressDataProps(
@@ -45,6 +47,7 @@ export function pickBoardLiveProgressDataProps(
     assignWarnMax: props.assignWarnMax,
     assignedCountByColaboratorId: props.assignedCountByColaboratorId,
     paymentCurrency: props.paymentCurrency,
+    assigneePeople: props.assigneePeople,
   };
 }
 
@@ -66,6 +69,7 @@ export function BoardLiveProgress({
   assignWarnMax,
   assignedCountByColaboratorId,
   paymentCurrency,
+  assigneePeople,
   pollBoardProgress,
   applyBoardTaskOrder,
   loadSubtasks,
@@ -100,6 +104,7 @@ export function BoardLiveProgress({
           updateSubtaskAssignees={updateSubtaskAssignees}
           linkSubtask={linkSubtask}
           createSubtask={createSubtask}
+          assigneePeople={assigneePeople}
           onSubtasksModalOpenChange={setSubtasksModalOpen}
         />
       </div>

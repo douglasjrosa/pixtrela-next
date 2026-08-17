@@ -141,6 +141,101 @@ describe("buildKioskQueueUnits", () => {
     });
     expect(units[0]?.type).toBe("isolated");
   });
+
+  it("shows start only on the first idle isolated card", () => {
+    const units = buildKioskQueueUnits({
+      viewerId: "u1",
+      subTasks: [
+        subTask({ documentId: "a", name: "A", index: 0 }),
+        subTask({ documentId: "b", name: "B", index: 1 }),
+      ],
+    });
+    expect(units.map((unit) => unit.type === "isolated" && unit.showStart)).toEqual(
+      [true, false],
+    );
+  });
+
+  it("shows join start on the next same-task sibling within the interval", () => {
+    const units = buildKioskQueueUnits({
+      viewerId: "u1",
+      maxSimultaneousSubtaskIntervalSeconds: 300,
+      subTasks: [
+        subTask({
+          documentId: "a",
+          name: "A",
+          index: 0,
+          status: "producing",
+          startedAt: "2026-08-16T12:00:00.000Z",
+          expectedTime: 100,
+        }),
+        subTask({
+          documentId: "b",
+          name: "B",
+          index: 1,
+          expectedTime: 100,
+          activationStatus: "locked",
+        }),
+        subTask({
+          documentId: "c",
+          name: "C",
+          index: 2,
+          expectedTime: 100,
+          activationStatus: "locked",
+        }),
+      ],
+    });
+    const isolated = units.filter((unit) => unit.type === "isolated");
+    expect(
+      isolated.map((unit) =>
+        unit.type === "isolated"
+          ? { id: unit.subTask.documentId, showStart: unit.showStart }
+          : null,
+      ),
+    ).toEqual([
+      { id: "a", showStart: false },
+      { id: "b", showStart: true },
+      { id: "c", showStart: false },
+    ]);
+  });
+
+  it("renders a live-joined pair as one producing group", () => {
+    const units = buildKioskQueueUnits({
+      viewerId: "u1",
+      maxSimultaneousSubtaskIntervalSeconds: 300,
+      subTasks: [
+        subTask({
+          documentId: "a",
+          name: "A",
+          index: 0,
+          status: "producing",
+          startedAt: "2026-08-16T12:00:00.000Z",
+          expectedTime: 100,
+        }),
+        subTask({
+          documentId: "b",
+          name: "B",
+          index: 1,
+          expectedTime: 100,
+          linkedToPrevious: true,
+        }),
+      ],
+      openRuns: [
+        {
+          chainHeadId: "a",
+          chainRunId: "run-1",
+          principalId: "u1",
+          runStartedAt: "2026-08-16T12:00:00.000Z",
+        },
+      ],
+    });
+    expect(units).toHaveLength(1);
+    expect(units[0]).toMatchObject({
+      type: "group",
+      memberIds: ["a", "b"],
+      principalActive: true,
+      showStart: false,
+    });
+  });
 });
 
 describe("splitQueueUnitsBySection", () => {

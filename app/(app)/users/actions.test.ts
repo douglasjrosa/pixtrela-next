@@ -54,6 +54,12 @@ vi.mock("@/lib/media/store-media", () => ({
   storeMedia: (...args: unknown[]) => storeMedia(...args),
 }));
 
+const loadUserListPageMock = vi.fn();
+
+vi.mock("@/lib/users/load-user-list-page", () => ({
+  loadUserListPage: (...args: unknown[]) => loadUserListPageMock(...args),
+}));
+
 vi.mock("@/lib/db/client", () => ({
   getDb: () => getDb(),
 }));
@@ -70,7 +76,50 @@ describe("users/actions drizzle CRUD", () => {
     setUserAvatarMedia.mockReset();
     setUserFacePhotoMedia.mockReset();
     storeMedia.mockReset();
+    loadUserListPageMock.mockReset();
     listUsers.mockResolvedValue([]);
+  });
+
+  it("loadMoreUsers parses filters and loads a page", async () => {
+    loadUserListPageMock.mockResolvedValueOnce({
+      users: [],
+      page: 2,
+      pageCount: 2,
+      hasMore: false,
+    });
+    const { loadMoreUsers } = await import("./actions");
+    await loadMoreUsers({ column: "name", direction: "asc" }, 2);
+    expect(loadUserListPageMock).toHaveBeenCalledWith(
+      { q: undefined, column: "name", direction: "asc" },
+      2,
+    );
+  });
+
+  it("createUser persists via repo with null code", async () => {
+    createUserRepo.mockResolvedValue({
+      id: "u2",
+      username: "ana",
+      name: "Ana",
+      role: "colaborator",
+      code: null,
+    });
+    const { createUser } = await import("./actions");
+    await createUser({
+      name: "Ana",
+      username: "ana",
+      password: "secret1",
+      code: null,
+      roleType: "colaborator",
+      greetingGender: "feminine",
+    });
+    expect(createUserRepo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Ana",
+        username: "ana",
+        role: "colaborator",
+        code: null,
+      }),
+    );
   });
 
   it("createUser persists via repo", async () => {

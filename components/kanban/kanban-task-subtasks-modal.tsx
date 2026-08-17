@@ -21,6 +21,7 @@ import { GripVertical, User, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { CurrencyMediaIcon } from "@/components/currency/currency-media-icon";
+import { KanbanTaskSubtasksLoadingBody } from "@/components/kanban/kanban-task-subtasks-loading";
 import {
   SUBTASK_CHAIN_LIST_GAP_CLASS,
   SubtaskChainLinkControl,
@@ -50,9 +51,14 @@ import {
 import { getSubtaskAssigneeIds } from "@/lib/business/board-assignee-draft";
 import {
   canEditAssignees,
+  chainIdsForClickSelection,
   chainItemsFromBoard,
   findChainContaining,
+  isMultiMemberChain,
+  nextChainSubtaskClick,
   resolveChains,
+  type AssigneeApplyScope,
+  type ChainClickSelection,
 } from "@/lib/business/subtask-chain";
 import {
   buildMultiAssignUpdates,
@@ -126,9 +132,13 @@ export interface KanbanTaskSubtasksModalProps {
   onAssigneesChange: (
     subtask: BoardSubTaskSummary,
     assignedToIds: string[],
+    applyScope?: AssigneeApplyScope,
   ) => void;
   onSave: () => void;
-  onReorder?: (orderedDocumentIds: string[]) => void | Promise<void>;
+  onReorder?: (
+    orderedDocumentIds: string[],
+    movedDocumentId: string,
+  ) => void | Promise<void>;
   onLinkToggle?: (
     subtaskDocumentId: string,
     linkedToPrevious: boolean,
@@ -144,6 +154,8 @@ function areAllSelected(ids: string[], value: string[]): boolean {
   return ids.length > 0 && ids.every((id) => value.includes(id));
 }
 
+const MIN_SAME_TIME_WORKERS = 1;
+
 function SubTaskCardHeader({
   name,
   status,
@@ -151,6 +163,7 @@ function SubTaskCardHeader({
   workingCount,
   assignedTo,
   producingColaboratorIds,
+  maxSameTimeWorkers,
 }: {
   name: string;
   status: BoardSubTaskSummary["status"];
@@ -158,44 +171,60 @@ function SubTaskCardHeader({
   workingCount: number;
   assignedTo: BoardSubTaskSummary["assignedTo"];
   producingColaboratorIds: readonly string[];
+  maxSameTimeWorkers: number;
 }) {
   const tKanban = useTranslations("kanban");
   const tSubtasks = useTranslations("subtasks");
   const isProducing = status === PRODUCING_STATUS;
   const showActive = isProducing && workingCount > 0;
   const producingIdSet = new Set(producingColaboratorIds);
+  const maxWorkers = Math.max(MIN_SAME_TIME_WORKERS, maxSameTimeWorkers);
 
   return (
     <div className="mb-3 flex flex-col gap-1 md:flex-row md:items-start md:justify-between md:gap-2">
       <div className="flex w-full min-w-0 flex-col gap-1.5 md:flex-1">
         <span className="font-medium">{name}</span>
-        {assignedTo.length > 0 ? (
-          <ul
-            className="flex flex-wrap gap-1"
-            aria-label={tSubtasks("assignedTo")}
-          >
-            {assignedTo.map((assignee) => {
-              const isAssigneeProducing = producingIdSet.has(
-                assignee.documentId,
-              );
-              return (
-                <li key={assignee.documentId} className="min-w-0">
-                  <CardBadge
-                    title={assignee.name}
-                    className={cn(
-                      "max-w-full truncate px-1.5 py-0 text-xs font-medium",
-                      isAssigneeProducing
-                        ? "border-transparent bg-success text-success-foreground"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {assignee.name}
-                  </CardBadge>
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
+        <ul
+          className="flex flex-wrap items-center gap-1"
+          aria-label={tSubtasks("assignedTo")}
+        >
+          <li className="me-2 flex min-w-0 items-center">
+            <span
+              className="inline-flex max-w-full flex-col items-center text-xs"
+              aria-label={tSubtasks("maxSameTimeWorkersBadge", {
+                count: maxWorkers,
+              })}
+            >
+              <span>{tSubtasks("maxSameTimeWorkersShort")}</span>
+              <span className="inline-flex items-center gap-0.5">
+                <User aria-hidden className="size-3 shrink-0" />
+                <span className="tabular-nums">
+                  {tSubtasks("maxSameTimeWorkersTimes", { count: maxWorkers })}
+                </span>
+              </span>
+            </span>
+          </li>
+          {assignedTo.map((assignee) => {
+            const isAssigneeProducing = producingIdSet.has(
+              assignee.documentId,
+            );
+            return (
+              <li key={assignee.documentId} className="flex min-w-0 items-center">
+                <CardBadge
+                  title={assignee.name}
+                  className={cn(
+                    "max-w-full truncate px-1.5 py-0 text-xs font-medium",
+                    isAssigneeProducing
+                      ? "border-transparent bg-success text-success-foreground"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {assignee.name}
+                </CardBadge>
+              </li>
+            );
+          })}
+        </ul>
       </div>
       <CardBadge
         className={cn(
@@ -275,6 +304,7 @@ function PendingSubtaskCard({
           workingCount={subtask.openActivityStartedAts.length}
           assignedTo={subtask.assignedTo}
           producingColaboratorIds={subtask.producingColaboratorIds}
+          maxSameTimeWorkers={subtask.maxSameTimeWorkers}
         />
         <SubTaskProgressBar
           status={subtask.status}
@@ -293,11 +323,12 @@ interface SortablePendingSubtaskCardProps {
   dragDisabled: boolean;
   saving: boolean;
   dragLabel: string;
-  linkLabel: string;
-  unlinkLabel: string;
-  canLink: boolean;
-  onLinkChange?: (linked: boolean) => void;
   statusLabel: string;
+  showLinkColumn?: boolean;
+  showLinkButton?: boolean;
+  onLinkToggle?: (linked: boolean) => void;
+  linkLabel?: string;
+  unlinkLabel?: string;
   onClick: () => void;
 }
 
@@ -307,11 +338,12 @@ function SortablePendingSubtaskCard({
   dragDisabled,
   saving,
   dragLabel,
-  linkLabel,
-  unlinkLabel,
-  canLink,
-  onLinkChange,
   statusLabel,
+  showLinkColumn = false,
+  showLinkButton = false,
+  onLinkToggle,
+  linkLabel = "",
+  unlinkLabel = "",
   onClick,
 }: SortablePendingSubtaskCardProps) {
   const {
@@ -327,7 +359,9 @@ function SortablePendingSubtaskCard({
   });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    ...(transform
+      ? { transform: CSS.Transform.toString(transform) }
+      : {}),
     transition,
   };
 
@@ -335,7 +369,7 @@ function SortablePendingSubtaskCard({
     <li
       ref={setNodeRef}
       style={style}
-      className={isDragging ? "opacity-80" : undefined}
+      className={cn("overflow-visible", isDragging && "opacity-80")}
     >
       <div className="flex items-stretch gap-1">
         <button
@@ -356,16 +390,18 @@ function SortablePendingSubtaskCard({
         >
           <GripVertical className="size-4" aria-hidden />
         </button>
-        <div className="relative min-w-0 flex-1">
-          {onLinkChange && canLink ? (
-            <SubtaskChainLinkControl
-              linked={subtask.linkedToPrevious}
-              disabled={dragDisabled || saving}
-              linkLabel={linkLabel}
-              unlinkLabel={unlinkLabel}
-              onToggle={onLinkChange}
-            />
-          ) : null}
+        {showLinkColumn ? (
+          <SubtaskChainLinkControl
+            linked={subtask.linkedToPrevious}
+            showButton={showLinkButton}
+            hidden={isDragging}
+            disabled={saving}
+            linkLabel={linkLabel}
+            unlinkLabel={unlinkLabel}
+            onToggle={(linked) => onLinkToggle?.(linked)}
+          />
+        ) : null}
+        <div className="relative z-10 min-w-0 flex-1">
           <button
             type="button"
             aria-pressed={highlighted}
@@ -389,6 +425,7 @@ function SortablePendingSubtaskCard({
               workingCount={subtask.openActivityStartedAts.length}
               assignedTo={subtask.assignedTo}
               producingColaboratorIds={subtask.producingColaboratorIds}
+              maxSameTimeWorkers={subtask.maxSameTimeWorkers}
             />
             <SubTaskProgressBar
               status={subtask.status}
@@ -435,6 +472,8 @@ export function KanbanTaskSubtasksModal({
   const [selectedSubtaskId, setSelectedSubtaskId] = useState<string | null>(
     null,
   );
+  const [chainClickSelection, setChainClickSelection] =
+    useState<ChainClickSelection | null>(null);
   const [selectedCollaboratorId, setSelectedCollaboratorId] = useState<
     string | null
   >(null);
@@ -455,6 +494,7 @@ export function KanbanTaskSubtasksModal({
     if (open) {
       setFocusMode("subtasks");
       setSelectedSubtaskId(null);
+      setChainClickSelection(null);
       setSelectedCollaboratorId(null);
       setMultiEnabled(false);
       setSelectedSubtaskIds([]);
@@ -508,7 +548,10 @@ export function KanbanTaskSubtasksModal({
         event.over?.id,
       );
       if (!next) return;
-      void onReorder(subtaskDocumentIdsInOrder(next));
+      void onReorder(
+        subtaskDocumentIdsInOrder(next),
+        String(event.active.id),
+      );
     },
     [onReorder, subtasks],
   );
@@ -529,9 +572,35 @@ export function KanbanTaskSubtasksModal({
         : mainTab;
   const selectedSubtask =
     pending.find((item) => item.documentId === selectedSubtaskId) ?? null;
+  const selectedAssigneeRole = selectedSubtask
+    ? assigneeRoleFor(selectedSubtask.documentId)
+    : "solo";
+  const selectedApplyScope: AssigneeApplyScope | undefined =
+    chainClickSelection?.scope ??
+    (selectedAssigneeRole === "head"
+      ? "group"
+      : selectedAssigneeRole === "helper"
+        ? "self"
+        : undefined);
   const selectedAssigneeLocked =
     selectedSubtask != null &&
-    assigneeRoleFor(selectedSubtask.documentId) === "none";
+    selectedAssigneeRole === "none" &&
+    selectedApplyScope !== "group";
+  const selectedHelperSelfLocked =
+    selectedSubtask != null &&
+    selectedAssigneeRole === "helper" &&
+    selectedApplyScope === "self";
+  const selectedChain = selectedSubtask
+    ? findChainContaining(chains, selectedSubtask.documentId)
+    : null;
+  const selectedHeadAssignees = (() => {
+    if (!selectedHelperSelfLocked || !selectedChain) return [];
+    const head = pending.find(
+      (item) => item.documentId === selectedChain.headId,
+    );
+    return head ? getSubtaskAssigneeIds(head) : [];
+  })();
+  const selectedHeadAssigneeIdSet = new Set(selectedHeadAssignees);
   const selectedAssigneeIds = selectedSubtask
     ? getSubtaskAssigneeIds(selectedSubtask)
     : [];
@@ -550,6 +619,7 @@ export function KanbanTaskSubtasksModal({
     setSelectedSubtaskIds([]);
     setSelectedCollaboratorIds([]);
     setSelectedSubtaskId(null);
+    setChainClickSelection(null);
     setSelectedCollaboratorId(null);
   }
 
@@ -607,6 +677,7 @@ export function KanbanTaskSubtasksModal({
     setSelectedSubtaskIds([]);
     setSelectedCollaboratorIds([]);
     setSelectedSubtaskId(null);
+    setChainClickSelection(null);
     setSelectedCollaboratorId(null);
   }
 
@@ -644,11 +715,29 @@ export function KanbanTaskSubtasksModal({
     if (multiEnabled) return;
     setFocusMode(next);
     setSelectedSubtaskId(null);
+    setChainClickSelection(null);
     setSelectedCollaboratorId(null);
   }
 
   function requestClose(): void {
     confirmIfDirty(onClose);
+  }
+
+  function emitAssigneesChange(
+    source: BoardSubTaskSummary,
+    assignedToIds: string[],
+  ): void {
+    const chain = findChainContaining(chains, source.documentId);
+    if (!chain || !isMultiMemberChain(chain)) {
+      onAssigneesChange(source, assignedToIds);
+      return;
+    }
+    const applyScope = selectedApplyScope ?? "self";
+    const target =
+      applyScope === "group"
+        ? (pending.find((item) => item.documentId === chain.headId) ?? source)
+        : source;
+    onAssigneesChange(target, assignedToIds, applyScope);
   }
 
   function handlePendingSubtaskClick(subtask: BoardSubTaskSummary): void {
@@ -660,6 +749,18 @@ export function KanbanTaskSubtasksModal({
     }
 
     if (focusMode === "subtasks") {
+      const chain = findChainContaining(chains, subtask.documentId);
+      if (chain && isMultiMemberChain(chain)) {
+        const next = nextChainSubtaskClick({
+          clickedId: subtask.documentId,
+          clickedMaxWorkers: subtask.maxSameTimeWorkers,
+          current: chainClickSelection,
+        });
+        setChainClickSelection(next);
+        setSelectedSubtaskId(next?.selectedId ?? null);
+        return;
+      }
+      setChainClickSelection(null);
       setSelectedSubtaskId((current) =>
         current === subtask.documentId ? null : subtask.documentId,
       );
@@ -700,7 +801,7 @@ export function KanbanTaskSubtasksModal({
       showHintToast(tKanban("chooseSubtaskFirst"));
       return;
     }
-    if (assigneeRoleFor(selectedSubtask.documentId) === "none") {
+    if (selectedAssigneeLocked) {
       showHintToast(tKanban("assigneesFollowHead"));
       return;
     }
@@ -708,7 +809,7 @@ export function KanbanTaskSubtasksModal({
       getSubtaskAssigneeIds(selectedSubtask),
       collaboratorId,
     );
-    onAssigneesChange(selectedSubtask, nextIds);
+    emitAssigneesChange(selectedSubtask, nextIds);
   }
 
   function handleTeamClick(team: TeamAssignmentOption): void {
@@ -725,7 +826,7 @@ export function KanbanTaskSubtasksModal({
       showHintToast(tKanban("chooseSubtaskFirst"));
       return;
     }
-    if (assigneeRoleFor(selectedSubtask.documentId) === "none") {
+    if (selectedAssigneeLocked) {
       showHintToast(tKanban("assigneesFollowHead"));
       return;
     }
@@ -733,7 +834,7 @@ export function KanbanTaskSubtasksModal({
       getSubtaskAssigneeIds(selectedSubtask),
       teamIds,
     );
-    onAssigneesChange(selectedSubtask, nextIds);
+    emitAssigneesChange(selectedSubtask, nextIds);
   }
 
   function applyUpdates(
@@ -795,6 +896,11 @@ export function KanbanTaskSubtasksModal({
       return selectedSubtaskIds.includes(subtask.documentId);
     }
     if (focusMode === "subtasks") {
+      if (chainClickSelection) {
+        return chainIdsForClickSelection(chains, chainClickSelection).includes(
+          subtask.documentId,
+        );
+      }
       return subtask.documentId === selectedSubtaskId;
     }
     if (!selectedCollaboratorId) return false;
@@ -837,7 +943,7 @@ export function KanbanTaskSubtasksModal({
               <Button
                 type="button"
                 variant="outline"
-                disabled={saving}
+                disabled={saving || loading}
                 onClick={handleAddSubtask}
               >
                 {tKanban("addSubtask")}
@@ -851,13 +957,13 @@ export function KanbanTaskSubtasksModal({
       >
         <p className="text-sm text-muted-foreground">{taskName}</p>
 
-        {hasPendingSubtasks || hasFinishedSubtasks ? (
+        {hasPendingSubtasks || hasFinishedSubtasks || loading ? (
           <div
             role="tablist"
             aria-label={tKanban("subtasksTitle")}
             className="flex gap-4 border-b"
           >
-            {hasPendingSubtasks ? (
+            {hasPendingSubtasks || loading ? (
               <button
                 type="button"
                 role="tab"
@@ -893,9 +999,11 @@ export function KanbanTaskSubtasksModal({
         ) : null}
 
         {loading ? (
-          <p className="text-sm text-muted-foreground" role="status">
-            {tKanban("loading")}
-          </p>
+          <KanbanTaskSubtasksLoadingBody
+            teams={teams}
+            assignWarnMax={assignWarnMax}
+            assignedCountByColaboratorId={assignedCountByColaboratorId}
+          />
         ) : subtasks.length === 0 ? (
           <p className="text-sm text-muted-foreground" role="status">
             {tKanban("subtasksEmpty")}
@@ -1045,7 +1153,7 @@ export function KanbanTaskSubtasksModal({
                         items={pendingSubtaskIds}
                         strategy={verticalListSortingStrategy}
                       >
-                        {pending.map((subtask) => {
+                        {pending.map((subtask, index) => {
                           const highlighted =
                             isPendingSubtaskHighlighted(subtask);
                           return (
@@ -1056,19 +1164,14 @@ export function KanbanTaskSubtasksModal({
                               dragDisabled={dragDisabled}
                               saving={saving}
                               dragLabel={tSubtasks("dragToReorder")}
+                              statusLabel={tStatus(subtask.status)}
+                              showLinkColumn={Boolean(onLinkToggle)}
+                              showLinkButton={Boolean(onLinkToggle) && index > 0}
                               linkLabel={tKanban("linkToPrevious")}
                               unlinkLabel={tKanban("unlinkFromPrevious")}
-                              canLink={pending[0]?.documentId !== subtask.documentId}
-                              onLinkChange={
-                                onLinkToggle
-                                  ? (linked) =>
-                                      void onLinkToggle(
-                                        subtask.documentId,
-                                        linked,
-                                      )
-                                  : undefined
+                              onLinkToggle={(linked) =>
+                                onLinkToggle?.(subtask.documentId, linked)
                               }
-                              statusLabel={tStatus(subtask.status)}
                               onClick={() =>
                                 handlePendingSubtaskClick(subtask)
                               }
@@ -1157,11 +1260,17 @@ export function KanbanTaskSubtasksModal({
                                 assignedCount,
                                 assignWarnMax,
                               );
+                              const locksHeadAssignee =
+                                selectedHelperSelfLocked &&
+                                selectedHeadAssigneeIdSet.has(
+                                  member.documentId,
+                                );
                               const memberDisabled =
                                 saving ||
                                 (!multiEnabled &&
                                   focusMode === "subtasks" &&
-                                  selectedAssigneeLocked);
+                                  (selectedAssigneeLocked ||
+                                    locksHeadAssignee));
                               return (
                                 <button
                                   key={member.documentId}

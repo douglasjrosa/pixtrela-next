@@ -1,10 +1,12 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import bcrypt from "bcryptjs";
 
 import { mediaAssets, users } from "@/drizzle/schema";
 import { canEstablishAppSession } from "@/lib/domain/auth-session";
 import { getDb, type Db } from "@/lib/db/client";
+import type { UserFormOwner } from "@/lib/schemas/user";
+import type { UserListSort } from "@/lib/schemas/user-list-sort";
 
 const BCRYPT_ROUNDS = 10;
 
@@ -44,7 +46,7 @@ function mapUserRow(row: {
   name: string;
   lastName: string | null;
   phone: string | null;
-  code: number;
+  code: number | null;
   role: UserRole;
   blocked: boolean;
   active: boolean;
@@ -67,7 +69,7 @@ export type UserRecord = {
   name: string;
   lastName: string | null;
   phone: string | null;
-  code: number;
+  code: number | null;
   role: UserRole;
   blocked: boolean;
   active: boolean;
@@ -84,7 +86,7 @@ export type CreateUserInput = {
   email?: string | null;
   lastName?: string | null;
   phone?: string | null;
-  code?: number;
+  code?: number | null;
   greetingGender?: GreetingGender;
 };
 
@@ -102,7 +104,7 @@ export type UpdateUserAccountInput = {
   username?: string;
   email?: string | null;
   password?: string;
-  code?: number;
+  code?: number | null;
   role?: UserRole;
   greetingGender?: GreetingGender;
   blocked?: boolean;
@@ -157,7 +159,7 @@ export async function createUser(
       email: input.email ?? null,
       lastName: input.lastName ?? null,
       phone: input.phone ?? null,
-      code: input.code ?? 0,
+      code: input.code ?? null,
       greetingGender: toDbGreetingGender(input.greetingGender ?? "neutral"),
     })
     .returning(USER_COLUMNS);
@@ -180,6 +182,79 @@ export async function listUsers(db: Db = getDb()): Promise<UserRecord[]> {
   );
 }
 
+export async function listUserUniquenessOwners(
+  db: Db = getDb(),
+): Promise<UserFormOwner[]> {
+  const rows = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      email: users.email,
+      code: users.code,
+    })
+    .from(users);
+  return rows.map((row) => ({
+    documentId: row.id,
+    username: row.username,
+    email: row.email,
+    code: row.code,
+  }));
+}
+
+function userListOrderBy(sort: UserListSort) {
+  const dir = sort.direction === "desc" ? desc : asc;
+  if (sort.column === "code") {
+    return [dir(users.code), asc(users.name), asc(users.id)];
+  }
+  if (sort.column === "role") {
+    return [dir(users.role), asc(users.name), asc(users.id)];
+  }
+  return [dir(users.name), asc(users.id)];
+}
+
+export async function listUsersPage(
+  options: {
+    q?: string;
+    page?: number;
+    pageSize?: number;
+    sort?: UserListSort;
+  } = {},
+  db: Db = getDb(),
+): Promise<{ items: UserRecord[]; total: number }> {
+  const page = Math.max(1, options.page ?? 1);
+  const pageSize = Math.max(1, options.pageSize ?? 10);
+  const offset = (page - 1) * pageSize;
+  const q = options.q?.trim();
+  const sort = options.sort ?? { column: "name", direction: "asc" };
+  const where = q ? ilike(users.name, `%${q}%`) : undefined;
+
+  const [totalRow] = await db
+    .select({ total: count() })
+    .from(users)
+    .where(where);
+
+  const rows = await db
+    .select(USER_LIST_COLUMNS)
+    .from(users)
+    .leftJoin(avatarMedia, eq(users.avatarMediaId, avatarMedia.id))
+    .leftJoin(facePhotoMedia, eq(users.facePhotoMediaId, facePhotoMedia.id))
+    .where(where)
+    .orderBy(...userListOrderBy(sort))
+    .limit(pageSize)
+    .offset(offset);
+
+  return {
+    items: rows.map((row) =>
+      mapUserRow({
+        ...row,
+        avatarUrl: row.avatarUrl ?? null,
+        facePhotoUrl: row.facePhotoUrl ?? null,
+      }),
+    ),
+    total: totalRow?.total ?? 0,
+  };
+}
+
 export async function listUsersByRole(
   role: UserRole,
   db: Db = getDb(),
@@ -190,6 +265,19 @@ export async function listUsersByRole(
     .where(eq(users.role, role))
     .orderBy(asc(users.name));
   return rows.map(mapUserRow);
+}
+
+export async function listUserAssigneeNames(
+  db: Db = getDb(),
+): Promise<{ documentId: string; name: string }[]> {
+  const rows = await db
+    .select({ documentId: users.id, name: users.name })
+    .from(users)
+    .orderBy(asc(users.name));
+  return rows.map((row) => ({
+    documentId: row.documentId,
+    name: row.name,
+  }));
 }
 
 export async function updateUserPersonal(

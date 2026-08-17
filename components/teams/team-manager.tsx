@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { Suspense, useState, useTransition, type ReactNode } from "react";
+import { Plus } from "lucide-react";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,19 +21,23 @@ import {
   type TeamFormInput,
 } from "@/lib/schemas/team";
 
-import { TeamsListView } from "./teams-list-view";
+import { TeamListProvider } from "./team-list-context";
+import { TeamColaboratorPicker } from "./team-colaborator-picker";
 import { TeamsToolbar } from "./teams-toolbar";
 import type { TeamRow, UserOption } from "./types";
 
 export type { TeamRow, UserOption } from "./types";
 
 export interface TeamManagerProps {
-  teams: TeamRow[];
   leaders: UserOption[];
   colaborators: UserOption[];
+  children: ReactNode;
   onCreate: (values: TeamFormInput) => void | Promise<void>;
   onUpdate: (documentId: string, values: TeamFormInput) => void | Promise<void>;
-  onDelete: (documentId: string) => void | Promise<void>;
+  onArchive: (documentId: string) => void | Promise<void>;
+  onHardDelete: (documentId: string) => void | Promise<void>;
+  canDeactivate?: boolean;
+  canDelete: boolean;
 }
 
 const EMPTY_FORM: TeamFormInput = {
@@ -65,10 +71,10 @@ interface TeamFormDialogProps {
   leaders: UserOption[];
   colaborators: UserOption[];
   isPending: boolean;
-  showDelete: boolean;
+  destructiveAction?: "archive" | "delete";
   onClose: () => void;
   onSubmit: (values: TeamFormInput) => void;
-  onDelete?: () => void;
+  onDestructiveAction?: () => void;
 }
 
 function TeamFormDialog({
@@ -76,10 +82,10 @@ function TeamFormDialog({
   leaders,
   colaborators,
   isPending,
-  showDelete,
+  destructiveAction,
   onClose,
   onSubmit,
-  onDelete,
+  onDestructiveAction,
 }: TeamFormDialogProps) {
   const tCommon = useTranslations("common");
   const tTeams = useTranslations("teams");
@@ -90,6 +96,7 @@ function TeamFormDialog({
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<TeamFormInput>({
     resolver: zodResolver(teamFormSchema),
@@ -104,14 +111,16 @@ function TeamFormDialog({
       onClose={onClose}
       disabled={isPending}
       footerStart={
-        showDelete && onDelete ? (
+        destructiveAction && onDestructiveAction ? (
           <Button
             type="button"
             variant="destructive"
             disabled={isPending}
-            onClick={onDelete}
+            onClick={onDestructiveAction}
           >
-            {tCommon("delete")}
+            {destructiveAction === "archive"
+              ? tTeams("archive")
+              : tCommon("delete")}
           </Button>
         ) : undefined
       }
@@ -188,11 +197,18 @@ function TeamFormDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="untill">{tTeams("untill")}</Label>
-              <Input
-                id="untill"
-                type="date"
-                disabled={isPending}
-                {...register("untill")}
+              <Controller
+                name="untill"
+                control={control}
+                render={({ field }) => (
+                  <DatePtBrInput
+                    id="untill"
+                    value={field.value ?? ""}
+                    disabled={isPending}
+                    allowEmpty
+                    onChange={field.onChange}
+                  />
+                )}
               />
               <p className="text-xs text-muted-foreground">
                 {tTeams("untillHint")}
@@ -201,27 +217,21 @@ function TeamFormDialog({
           </>
         ) : null}
 
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="colaboratorDocumentIds">{tTeams("colaborators")}</Label>
-          <select
-            id="colaboratorDocumentIds"
-            multiple
-            disabled={isPending}
-            className={
-              "flex min-h-24 w-full rounded-md border border-input " +
-              "bg-transparent px-3 py-2 text-sm"
-            }
-            {...register("colaboratorDocumentIds")}
-          >
-            {colaborators.map((colaborator) => (
-              <option
-                key={colaborator.documentId}
-                value={colaborator.documentId}
-              >
-                {colaborator.name}
-              </option>
-            ))}
-          </select>
+        <div className="sm:col-span-2">
+          <Controller
+            name="colaboratorDocumentIds"
+            control={control}
+            render={({ field }) => (
+              <TeamColaboratorPicker
+                id="colaboratorDocumentIds"
+                label={tTeams("colaborators")}
+                colaborators={colaborators}
+                value={field.value ?? []}
+                disabled={isPending}
+                onChange={field.onChange}
+              />
+            )}
+          />
         </div>
       </form>
     </FormModalShell>
@@ -229,50 +239,59 @@ function TeamFormDialog({
 }
 
 export function TeamManager({
-  teams,
   leaders,
   colaborators,
+  children,
   onCreate,
   onUpdate,
-  onDelete,
+  onArchive,
+  onHardDelete,
+  canDeactivate = false,
+  canDelete,
 }: TeamManagerProps) {
   const tCommon = useTranslations("common");
   const tTeams = useTranslations("teams");
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [nameQuery, setNameQuery] = useState("");
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<TeamRow | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
 
-  const editingTeam =
-    teams.find((team) => team.documentId === editingId) ?? null;
+  const destructiveAction = editingTeam
+    ? editingTeam.active
+      ? canDeactivate
+        ? ("archive" as const)
+        : undefined
+      : canDelete
+        ? ("delete" as const)
+        : undefined
+    : undefined;
 
   function closeForm(): void {
     setFormOpen(false);
-    setEditingId(null);
-    setDeleteOpen(false);
+    setEditingTeam(null);
+    setConfirmOpen(false);
   }
 
   function startCreate(): void {
-    setEditingId(null);
+    setEditingTeam(null);
     setMessage(null);
-    setDeleteOpen(false);
+    setConfirmOpen(false);
     setFormOpen(true);
   }
 
   function startEdit(team: TeamRow): void {
-    setEditingId(team.documentId);
+    setEditingTeam(team);
     setMessage(null);
-    setDeleteOpen(false);
+    setConfirmOpen(false);
     setFormOpen(true);
   }
 
   function onSubmit(values: TeamFormInput): void {
     startTransition(async () => {
-      if (editingId) {
-        await onUpdate(editingId, values);
+      if (editingTeam) {
+        await onUpdate(editingTeam.documentId, values);
       } else {
         await onCreate(values);
       }
@@ -282,69 +301,90 @@ export function TeamManager({
     });
   }
 
-  function handleConfirmDelete(): void {
-    if (!editingId) return;
+  function handleConfirmDestructive(): void {
+    if (!editingTeam || !destructiveAction) return;
     startTransition(async () => {
-      await onDelete(editingId);
-      setMessage(tTeams("deleted"));
+      if (destructiveAction === "archive") {
+        await onArchive(editingTeam.documentId);
+        setMessage(tTeams("archived"));
+      } else {
+        await onHardDelete(editingTeam.documentId);
+        setMessage(tTeams("deleted"));
+      }
       closeForm();
       router.refresh();
     });
   }
 
-  const formDialogKey = editingId ?? "new";
-  const query = nameQuery.trim().toLowerCase();
-  const visibleTeams =
-    query.length === 0
-      ? teams
-      : teams.filter((team) => team.name.toLowerCase().includes(query));
+  const formDialogKey = editingTeam?.documentId ?? "new";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
-      <div className="flex shrink-0 items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold max-[500px]:text-lg">{tTeams("title")}</h1>
-        <Button type="button" variant="outline" onClick={startCreate}>
-          {tTeams("newTeam")}
-        </Button>
-      </div>
-
-      <TeamsToolbar value={nameQuery} onChange={setNameQuery} />
-
-      {message ? (
-        <p role="status" className="shrink-0 text-sm text-muted-foreground">
-          {message}
-        </p>
-      ) : null}
-
-      {formOpen ? (
-        <TeamFormDialog
-          key={formDialogKey}
-          editingTeam={editingTeam}
-          leaders={leaders}
-          colaborators={colaborators}
-          isPending={isPending}
-          showDelete={Boolean(editingTeam)}
-          onClose={closeForm}
-          onSubmit={onSubmit}
-          onDelete={() => setDeleteOpen(true)}
-        />
-      ) : null}
-
-      <ConfirmDialog
-        open={deleteOpen}
-        title={tTeams("deleteTitle")}
-        description={tTeams("deleteConfirm")}
-        confirmLabel={tCommon("delete")}
-        disabled={isPending}
-        onConfirm={handleConfirmDelete}
-        onClose={() => setDeleteOpen(false)}
-      />
-
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <TeamsListView teams={visibleTeams} onOpen={startEdit} />
+    <TeamListProvider openEdit={startEdit}>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
+        <div className="flex shrink-0 items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold max-[500px]:text-lg">
+            {tTeams("title")}
+          </h1>
+          <Button
+            type="button"
+            size="icon-lg"
+            aria-label={tTeams("newTeam")}
+            onClick={startCreate}
+          >
+            <Plus aria-hidden />
+          </Button>
         </div>
+
+        <Suspense fallback={null}>
+          <TeamsToolbar />
+        </Suspense>
+
+        {message ? (
+          <p role="status" className="shrink-0 text-sm text-muted-foreground">
+            {message}
+          </p>
+        ) : null}
+
+        {formOpen ? (
+          <TeamFormDialog
+            key={formDialogKey}
+            editingTeam={editingTeam}
+            leaders={leaders}
+            colaborators={colaborators}
+            isPending={isPending}
+            destructiveAction={destructiveAction}
+            onClose={closeForm}
+            onSubmit={onSubmit}
+            onDestructiveAction={
+              destructiveAction ? () => setConfirmOpen(true) : undefined
+            }
+          />
+        ) : null}
+
+        <ConfirmDialog
+          open={confirmOpen}
+          title={
+            destructiveAction === "archive"
+              ? tTeams("archiveTitle")
+              : tTeams("deleteTitle")
+          }
+          description={
+            destructiveAction === "archive"
+              ? tTeams("archiveConfirm")
+              : tTeams("deleteConfirm")
+          }
+          confirmLabel={
+            destructiveAction === "archive"
+              ? tTeams("archive")
+              : tCommon("delete")
+          }
+          disabled={isPending}
+          onConfirm={handleConfirmDestructive}
+          onClose={() => setConfirmOpen(false)}
+        />
+
+        {children}
       </div>
-    </div>
+    </TeamListProvider>
   );
 }

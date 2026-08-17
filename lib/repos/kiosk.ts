@@ -26,7 +26,7 @@ import {
 export type KioskIdentifyResult = {
   id: string;
   name: string;
-  code: number;
+  code: number | null;
   role: string;
 };
 
@@ -113,7 +113,7 @@ export async function identifyUserAtKioskByCode(
     return {
       id: user.id,
       name: user.name,
-      code: user.code,
+      code: user.code ?? input.code,
       role: user.role,
     };
   }
@@ -186,7 +186,7 @@ export async function identifyColaboratorByFace(
   return {
     id: outcome.match.documentId,
     name: outcome.match.name,
-    code: 0,
+    code: null,
     role: "colaborator",
   };
 }

@@ -36,7 +36,7 @@ function passwordErrorMessage(
 export interface KioskStaffColaboratorRow {
   documentId: string;
   name: string;
-  code: number;
+  code: number | null;
   facePhotoUrl?: string | null;
 }
 
@@ -196,7 +196,7 @@ export function KioskStaffUsersPanel({
                     >
                       <span>{colaborator.name}</span>
                       <span className="tabular-nums text-muted-foreground">
-                        {colaborator.code}
+                        {colaborator.code ?? "—"}
                       </span>
                     </button>
                   </td>

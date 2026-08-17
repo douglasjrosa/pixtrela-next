@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTag = vi.fn();
+const revalidatePath = vi.fn();
 const createStepRepo = vi.fn();
 const getStepById = vi.fn();
 const updateStepFields = vi.fn();
@@ -14,6 +15,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
+  revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
 vi.mock("@/lib/business/apply-step-task-order", () => ({
@@ -34,6 +36,7 @@ describe("settings/steps/actions drizzle CRUD", () => {
   beforeEach(() => {
     vi.resetModules();
     revalidateTag.mockReset();
+    revalidatePath.mockReset();
     createStepRepo.mockReset();
     getStepById.mockReset();
     updateStepFields.mockReset();
@@ -53,15 +56,22 @@ describe("settings/steps/actions drizzle CRUD", () => {
     });
 
     const { createStep } = await import("./actions");
-    await createStep({ name: "B", orderBy: "manual" });
+    const created = await createStep({ name: "B", orderBy: "manual" });
 
     expect(createStepRepo).toHaveBeenCalledWith({
       name: "B",
       index: 3,
       taskOrderBy: "manual",
     });
+    expect(created).toEqual({
+      documentId: "s2",
+      name: "B",
+      index: 3,
+      orderBy: "manual",
+    });
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps", "default");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks", "default");
+    expect(revalidatePath).toHaveBeenCalledWith("/settings/steps");
   });
 
   it("updateStep updates fields via repo", async () => {

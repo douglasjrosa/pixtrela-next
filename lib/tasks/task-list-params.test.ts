@@ -4,6 +4,7 @@ import {
   defaultTaskListFilters,
   defaultTaskListFrom,
   parseTaskListSearchParams,
+  parseTaskListSelectMode,
   serializeTaskListSearchParams,
   taskListFilterKey,
 } from "./task-list-params";
@@ -21,7 +22,8 @@ describe("parseTaskListSearchParams", () => {
     const filters = parseTaskListSearchParams({}, FIXED_NOW);
     expect(filters.statuses).toEqual(["paused", "producing", "waiting"]);
     expect(filters.from).toBe("2026-06-15");
-    expect(filters.to).toBeUndefined();
+    expect(filters.to).toBe("2026-07-15");
+    expect(filters.showArchived).toBe(false);
     expect(filters.q).toBeUndefined();
   });
 
@@ -44,6 +46,27 @@ describe("parseTaskListSearchParams", () => {
     expect(filters.from).toBe("2026-01-01");
     expect(filters.to).toBe("2026-12-31");
     expect(filters.q).toBe("mont");
+    expect(filters.column).toBe("deliveryDate");
+    expect(filters.direction).toBe("asc");
+  });
+
+  it("parses sort and direction", () => {
+    const filters = parseTaskListSearchParams(
+      { sort: "name", dir: "desc" },
+      FIXED_NOW,
+    );
+    expect(filters.column).toBe("name");
+    expect(filters.direction).toBe("desc");
+  });
+
+  it("parses archived flag", () => {
+    const filters = parseTaskListSearchParams({ archived: "1" }, FIXED_NOW);
+    expect(filters.showArchived).toBe(true);
+  });
+
+  it("parses select mode", () => {
+    expect(parseTaskListSelectMode({ select: "1" })).toBe(true);
+    expect(parseTaskListSelectMode({})).toBe(false);
   });
 
   it("ignores q shorter than 3 characters", () => {
@@ -69,6 +92,15 @@ describe("serializeTaskListSearchParams", () => {
     expect(params.toString()).toBe("");
   });
 
+  it("includes select=1 when selectMode option is true", () => {
+    const params = serializeTaskListSearchParams(
+      defaultTaskListFilters(FIXED_NOW),
+      FIXED_NOW,
+      { selectMode: true },
+    );
+    expect(params.get("select")).toBe("1");
+  });
+
   it("includes only changed and optional filters", () => {
     const params = serializeTaskListSearchParams(
       {
@@ -76,6 +108,9 @@ describe("serializeTaskListSearchParams", () => {
         from: "2026-01-01",
         to: "2026-12-31",
         q: "mont",
+        column: "name",
+        direction: "desc",
+        showArchived: true,
       },
       FIXED_NOW,
     );
@@ -83,6 +118,9 @@ describe("serializeTaskListSearchParams", () => {
     expect(params.get("from")).toBe("2026-01-01");
     expect(params.get("to")).toBe("2026-12-31");
     expect(params.get("q")).toBe("mont");
+    expect(params.get("sort")).toBe("name");
+    expect(params.get("dir")).toBe("desc");
+    expect(params.get("archived")).toBe("1");
   });
 });
 

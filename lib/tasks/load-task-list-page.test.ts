@@ -4,6 +4,7 @@ const listTasks = vi.fn();
 
 vi.mock("@/lib/repos/tasks", () => ({
   listTasks: (...args: unknown[]) => listTasks(...args),
+  listSubTaskCompletionSnapshotsForTasks: vi.fn(async () => []),
 }));
 
 vi.mock("@/lib/db/client", () => ({
@@ -43,7 +44,14 @@ describe("loadTaskListPage", () => {
     );
 
     const result = await loadTaskListPage(
-      { statuses: ["waiting"], from: "2026-06-01" },
+      {
+        statuses: ["waiting"],
+        from: "2026-06-01",
+        to: "2026-07-15",
+        column: "deliveryDate",
+        direction: "asc",
+        showArchived: false,
+      },
       1,
     );
 
@@ -70,7 +78,14 @@ describe("loadTaskListPage", () => {
     );
 
     const result = await loadTaskListPage(
-      { statuses: ["waiting"], from: "2026-06-01" },
+      {
+        statuses: ["waiting"],
+        from: "2026-06-01",
+        to: "2026-07-15",
+        column: "deliveryDate",
+        direction: "asc",
+        showArchived: false,
+      },
       2,
     );
     expect(result.hasMore).toBe(false);

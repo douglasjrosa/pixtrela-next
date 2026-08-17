@@ -48,6 +48,7 @@ function unitsFromSubTasks(subTasks: KioskSubTask[]): KioskQueueUnit[] {
     type: "isolated" as const,
     subTask,
     helperMode: false,
+    showStart: shouldShowStartButton(subTasks, subTask),
   }));
 }
 
@@ -93,8 +94,7 @@ export function KioskSubtaskPanel({
         const helperMode = unit.helperMode;
         const finished = isFinishedSubTask(subTask);
         const locked = isLockedSubTask(subTask);
-        const showStart =
-          !readOnly && shouldShowStartButton(queueContext, subTask);
+        const showStart = !readOnly && unit.showStart;
         const showExit =
           !readOnly && shouldShowExitButton(queueContext, subTask);
         const isProducing = subTask.status === "producing";

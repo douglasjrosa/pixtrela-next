@@ -174,12 +174,35 @@ describe("board/actions drizzle", () => {
         dependencyIds: [],
       },
     ]);
+    listBoardSubtaskRows.mockResolvedValue({
+      rows: [
+        {
+          id: "st-2",
+          name: "Cortar",
+          status: "waiting",
+          sharingType: "duration",
+          qty: 1,
+          expectedTime: 0,
+          timeSpent: 0,
+          linkedToPrevious: true,
+        },
+      ],
+      assigneeRows: [
+        { subTaskId: "st-2", userId: "u-head", name: "Head" },
+      ],
+      activityRows: [],
+    });
 
     const { updateBoardSubtaskLink } = await import("./actions");
-    await updateBoardSubtaskLink("task-1", "st-2", true);
+    const result = await updateBoardSubtaskLink("task-1", "st-2", true);
 
     expect(updateSubTaskLinkedToPrevious).toHaveBeenCalledWith("st-2", true);
     expect(replaceSubTaskAssignees).toHaveBeenCalledWith("st-2", ["u-head"]);
+    expect(result).toEqual({
+      documentId: "st-2",
+      linkedToPrevious: true,
+      assignedTo: [{ documentId: "u-head", name: "Head" }],
+    });
   });
 
   it("updateBoardSubtaskLink unlinks without clearing assignees", async () => {
@@ -205,6 +228,24 @@ describe("board/actions drizzle", () => {
         dependencyIds: [],
       },
     ]);
+    listBoardSubtaskRows.mockResolvedValue({
+      rows: [
+        {
+          id: "st-2",
+          name: "Cortar",
+          status: "waiting",
+          sharingType: "duration",
+          qty: 1,
+          expectedTime: 0,
+          timeSpent: 0,
+          linkedToPrevious: false,
+        },
+      ],
+      assigneeRows: [
+        { subTaskId: "st-2", userId: "u-head", name: "Head" },
+      ],
+      activityRows: [],
+    });
 
     const { updateBoardSubtaskLink } = await import("./actions");
     await updateBoardSubtaskLink("task-1", "st-2", false);
@@ -268,8 +309,64 @@ describe("board/actions drizzle", () => {
       "st-2",
       "task-1",
       expect.objectContaining({
-        assignedToIds: ["u-head", "u-new", "u-helper"],
+        assignedToIds: ["u-head", "u-new"],
       }),
+    );
+  });
+
+  it("updateBoardSubtaskAssignees can update only the head", async () => {
+    const siblings = [
+      {
+        id: "st-1",
+        taskId: "task-1",
+        name: "Cut",
+        qty: 1,
+        expectedTime: 10,
+        sharingType: "duration",
+        index: 0,
+        status: "waiting",
+        activationStatus: "unlocked",
+        reasonForDeactivation: null,
+        linkedToPrevious: false,
+        maxSameTimeWorkers: 2,
+        assignedToIds: ["u-head"],
+        dependencyIds: [],
+      },
+      {
+        id: "st-2",
+        taskId: "task-1",
+        name: "Pack",
+        qty: 1,
+        expectedTime: 10,
+        sharingType: "duration",
+        index: 1,
+        status: "waiting",
+        activationStatus: "unlocked",
+        reasonForDeactivation: null,
+        linkedToPrevious: true,
+        maxSameTimeWorkers: 1,
+        assignedToIds: ["u-head"],
+        dependencyIds: [],
+      },
+    ];
+    listSubTasksWithRelationsForTask.mockResolvedValue(siblings);
+    getSubTaskById.mockImplementation(async (id: string) =>
+      siblings.find((row) => row.id === id) ?? null,
+    );
+
+    const { updateBoardSubtaskAssignees } = await import("./actions");
+    await updateBoardSubtaskAssignees(
+      "st-1",
+      "task-1",
+      ["u-head", "u-new"],
+      false,
+    );
+
+    expect(updateSubTask).toHaveBeenCalledTimes(1);
+    expect(updateSubTask).toHaveBeenCalledWith(
+      "st-1",
+      "task-1",
+      expect.objectContaining({ assignedToIds: ["u-head", "u-new"] }),
     );
   });
 
@@ -302,5 +399,112 @@ describe("board/actions drizzle", () => {
       updateBoardSubtaskAssignees("st-2", "task-1", ["u-other"]),
     ).rejects.toThrow("forbidden");
     expect(updateSubTask).not.toHaveBeenCalled();
+  });
+
+  it("updateBoardSubtaskAssignees strips shared removals from the group", async () => {
+    const siblings = [
+      {
+        id: "st-1",
+        taskId: "task-1",
+        name: "Cut",
+        qty: 1,
+        expectedTime: 10,
+        sharingType: "duration",
+        index: 0,
+        status: "waiting",
+        activationStatus: "unlocked",
+        reasonForDeactivation: null,
+        linkedToPrevious: false,
+        maxSameTimeWorkers: 2,
+        assignedToIds: ["u-head", "u-extra"],
+        dependencyIds: [],
+      },
+      {
+        id: "st-2",
+        taskId: "task-1",
+        name: "Pack",
+        qty: 1,
+        expectedTime: 10,
+        sharingType: "duration",
+        index: 1,
+        status: "waiting",
+        activationStatus: "unlocked",
+        reasonForDeactivation: null,
+        linkedToPrevious: true,
+        maxSameTimeWorkers: 1,
+        assignedToIds: ["u-head"],
+        dependencyIds: [],
+      },
+    ];
+    listSubTasksWithRelationsForTask.mockResolvedValue(siblings);
+    getSubTaskById.mockImplementation(async (id: string) =>
+      siblings.find((row) => row.id === id) ?? null,
+    );
+
+    const { updateBoardSubtaskAssignees } = await import("./actions");
+    await updateBoardSubtaskAssignees("st-1", "task-1", ["u-extra"], false);
+
+    expect(updateSubTask).toHaveBeenCalledTimes(2);
+    expect(updateSubTask).toHaveBeenCalledWith(
+      "st-1",
+      "task-1",
+      expect.objectContaining({ assignedToIds: ["u-extra"] }),
+    );
+    expect(updateSubTask).toHaveBeenCalledWith(
+      "st-2",
+      "task-1",
+      expect.objectContaining({ assignedToIds: [] }),
+    );
+  });
+
+  it("updateBoardSubtaskAssignees keeps extras local on a helper patch", async () => {
+    const siblings = [
+      {
+        id: "st-1",
+        taskId: "task-1",
+        name: "Cut",
+        qty: 1,
+        expectedTime: 10,
+        sharingType: "duration",
+        index: 0,
+        status: "waiting",
+        activationStatus: "unlocked",
+        reasonForDeactivation: null,
+        linkedToPrevious: false,
+        maxSameTimeWorkers: 1,
+        assignedToIds: ["u-head"],
+        dependencyIds: [],
+      },
+      {
+        id: "st-2",
+        taskId: "task-1",
+        name: "Pack",
+        qty: 1,
+        expectedTime: 10,
+        sharingType: "duration",
+        index: 1,
+        status: "waiting",
+        activationStatus: "unlocked",
+        reasonForDeactivation: null,
+        linkedToPrevious: true,
+        maxSameTimeWorkers: 2,
+        assignedToIds: ["u-head"],
+        dependencyIds: [],
+      },
+    ];
+    listSubTasksWithRelationsForTask.mockResolvedValue(siblings);
+    getSubTaskById.mockImplementation(async (id: string) =>
+      siblings.find((row) => row.id === id) ?? null,
+    );
+
+    const { updateBoardSubtaskAssignees } = await import("./actions");
+    await updateBoardSubtaskAssignees("st-2", "task-1", ["u-head", "u-extra"]);
+
+    expect(updateSubTask).toHaveBeenCalledTimes(1);
+    expect(updateSubTask).toHaveBeenCalledWith(
+      "st-2",
+      "task-1",
+      expect.objectContaining({ assignedToIds: ["u-head", "u-extra"] }),
+    );
   });
 });

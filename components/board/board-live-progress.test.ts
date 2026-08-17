@@ -37,6 +37,7 @@ describe("BoardLiveProgress RSC data props", () => {
         currencyPerSecond: 2,
         pluralTitle: "Estrelas",
       },
+      assigneePeople: [{ documentId: "u-live", name: "Live Worker" }],
     });
 
     expect(hasNoFunctionValues(props)).toBe(true);

@@ -1,14 +1,11 @@
 import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 
+import { AuthEntryTitle } from "@/components/auth/auth-entry-title";
 import { LoginEntryClient } from "@/components/auth/login-entry-client";
 import { SessionExpiredNotice } from "@/components/auth/session-expired-notice";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { loadEntryAccessSettings } from "@/lib/entry-access/load-entry-access";
 
 interface LoginPageProps {
   searchParams: Promise<{ reason?: string }>;
@@ -16,21 +13,23 @@ interface LoginPageProps {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const t = await getTranslations("auth");
+  const tApp = await getTranslations("app");
   const { reason } = await searchParams;
+  const accessSettings = await loadEntryAccessSettings("login");
 
   return (
-    <main className="w-full max-w-lg">
+    <div className="flex w-full max-w-lg flex-col gap-6">
+      <AuthEntryTitle>
+        {t("entryTitlePrefix")} {tApp("name")}
+      </AuthEntryTitle>
       <Card className="w-full">
-        <CardHeader>
-          <CardTitle>{t("loginTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <SessionExpiredNotice reason={reason} />
           <Suspense fallback={null}>
-            <LoginEntryClient />
+            <LoginEntryClient accessSettings={accessSettings} />
           </Suspense>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

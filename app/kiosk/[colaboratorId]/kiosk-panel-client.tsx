@@ -9,6 +9,7 @@ import { KioskDailyQueue } from "@/components/kiosk/kiosk-daily-queue";
 import type { OpenChainRun } from "@/lib/business/kiosk-queue-units";
 import {
   formatRemainingWorkerNames,
+  hasActiveSubTask,
   type KioskSubTask,
 } from "@/lib/business/subtask-queue";
 import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
@@ -20,6 +21,7 @@ import {
   advanceChainRun,
   confirmChainStop,
   exitSubTask,
+  joinLiveChain,
   startChain,
   startSubTask,
 } from "./actions";
@@ -33,6 +35,7 @@ export interface KioskPanelClientProps {
   subTasks: KioskSubTask[];
   catalog?: KioskSubTask[];
   openRuns?: OpenChainRun[];
+  maxSimultaneousSubtaskIntervalSeconds?: number;
   readOnly?: boolean;
 }
 
@@ -43,6 +46,7 @@ export function KioskPanelClient({
   subTasks,
   catalog,
   openRuns,
+  maxSimultaneousSubtaskIntervalSeconds = 0,
   readOnly = false,
 }: KioskPanelClientProps) {
   const t = useTranslations("kiosk");
@@ -55,7 +59,11 @@ export function KioskPanelClient({
     window.setTimeout(() => setFlashDocumentId(null), START_FLASH_MS);
 
     startTransition(async () => {
-      await startSubTask(colaboratorId, documentId);
+      if (hasActiveSubTask(subTasks)) {
+        await joinLiveChain(colaboratorId, documentId);
+      } else {
+        await startSubTask(colaboratorId, documentId);
+      }
       router.refresh();
     });
   }
@@ -131,6 +139,9 @@ export function KioskPanelClient({
         subTasks={subTasks}
         catalog={catalog}
         openRuns={openRuns}
+        maxSimultaneousSubtaskIntervalSeconds={
+          maxSimultaneousSubtaskIntervalSeconds
+        }
         readOnly={readOnly}
         pending={pending}
         flashDocumentId={flashDocumentId}

@@ -29,20 +29,32 @@ export async function getKioskSettings(db: Db = getDb()) {
 }
 
 export async function upsertKioskSettings(
-  sessionIdleSeconds: number,
+  input: {
+    sessionIdleSeconds: number;
+    maxSimultaneousSubtaskIntervalSeconds: number;
+  },
   db: Db = getDb(),
 ) {
   const existing = await getKioskSettings(db);
   if (!existing) {
     const [created] = await db
       .insert(kioskSettings)
-      .values({ sessionIdleSeconds })
+      .values({
+        sessionIdleSeconds: input.sessionIdleSeconds,
+        maxSimultaneousSubtaskIntervalSeconds:
+          input.maxSimultaneousSubtaskIntervalSeconds,
+      })
       .returning();
     return created;
   }
   const [updated] = await db
     .update(kioskSettings)
-    .set({ sessionIdleSeconds, updatedAt: new Date() })
+    .set({
+      sessionIdleSeconds: input.sessionIdleSeconds,
+      maxSimultaneousSubtaskIntervalSeconds:
+        input.maxSimultaneousSubtaskIntervalSeconds,
+      updatedAt: new Date(),
+    })
     .where(eq(kioskSettings.id, existing.id))
     .returning();
   return updated;

@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  Suspense,
+  type ReactNode,
+} from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Nfc, Eye } from "lucide-react";
@@ -30,6 +38,7 @@ import {
   USER_ROLES,
   createUserFormSchema,
   type UserFormInput,
+  type UserFormOwner,
 } from "@/lib/schemas/user";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
@@ -39,13 +48,14 @@ import {
   UserMediaFields,
   type UserImageType,
 } from "./user-media-fields";
-import { UsersListView } from "./users-list-view";
+import { UserListProvider } from "./user-list-context";
 import { UsersToolbar } from "./users-toolbar";
 
 export type { UserRow } from "./types";
 
 export interface UserManagerProps {
-  users: UserRow[];
+  existingUsers: UserFormOwner[];
+  children: ReactNode;
   onCreate: (values: UserFormInput) => void | Promise<void>;
   onUpdate: (
     userId: UserRow["id"],
@@ -82,7 +92,7 @@ const EMPTY_FORM: UserFormInput = {
   name: "",
   username: "",
   password: "",
-  code: 0,
+  code: null,
   roleType: "colaborator",
   greetingGender: "masculine",
 };
@@ -135,7 +145,7 @@ function isLoginConflictError(error: unknown): boolean {
 }
 
 interface UserFormDialogProps {
-  users: UserRow[];
+  existingUsers: UserFormOwner[];
   editingUser: UserRow | null;
   roleOptions: UserFormInput["roleType"][];
   isPending: boolean;
@@ -162,7 +172,7 @@ interface UserFormDialogProps {
 }
 
 function UserFormDialog({
-  users,
+  existingUsers,
   editingUser,
   roleOptions,
   isPending,
@@ -190,10 +200,10 @@ function UserFormDialog({
 
   const formSchema = useMemo(
     () =>
-      createUserFormSchema(users, editingUser?.documentId, {
+      createUserFormSchema(existingUsers, editingUser?.documentId, {
         requirePassword: canSetPassword && !isEditing,
       }),
-    [users, editingUser?.documentId, canSetPassword, isEditing],
+    [existingUsers, editingUser?.documentId, canSetPassword, isEditing],
   );
 
   const defaultValues = editingUser
@@ -376,7 +386,13 @@ function UserFormDialog({
             type="number"
             min={0}
             {...register("code", {
-              valueAsNumber: true,
+              setValueAs: (value) => {
+                if (value === "" || value == null) {
+                  return null;
+                }
+                const parsed = Number(value);
+                return Number.isNaN(parsed) ? null : parsed;
+              },
               onBlur: () => {
                 void trigger("code");
               },
@@ -434,7 +450,8 @@ function UserFormDialog({
 }
 
 export function UserManager({
-  users,
+  existingUsers,
+  children,
   onCreate,
   onUpdate,
   onUpdateImage,
@@ -454,10 +471,7 @@ export function UserManager({
   const tUsers = useTranslations("users");
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
-  const [editingUserId, setEditingUserId] = useState<UserRow["id"] | null>(
-    null,
-  );
-  const [nameQuery, setNameQuery] = useState("");
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -480,18 +494,17 @@ export function UserManager({
     return () => window.clearInterval(intervalId);
   }, [nfcPairing, nfcCooldownTick]);
 
-  const editingUser =
-    users.find((user) => user.id === editingUserId) ?? null;
+  const editingUserId = editingUser?.id ?? null;
 
   function closeForm(): void {
     setFormOpen(false);
-    setEditingUserId(null);
+    setEditingUser(null);
     setDeleteOpen(false);
     setDeactivateOpen(false);
   }
 
   function startCreate(): void {
-    setEditingUserId(null);
+    setEditingUser(null);
     setMessage(null);
     setDeleteOpen(false);
     setDeactivateOpen(false);
@@ -499,7 +512,7 @@ export function UserManager({
   }
 
   function startEdit(user: UserRow): void {
-    setEditingUserId(user.id);
+    setEditingUser(user);
     setMessage(null);
     setDeleteOpen(false);
     setDeactivateOpen(false);
@@ -638,83 +651,79 @@ export function UserManager({
       !editingUser.blocked &&
       manageableRoles.includes(editingUser.roleType),
   );
-  const query = nameQuery.trim().toLowerCase();
-  const visibleUsers =
-    query.length === 0
-      ? users
-      : users.filter((user) => user.name.toLowerCase().includes(query));
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
-      <div className="flex shrink-0 items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold max-[500px]:text-lg">{tUsers("title")}</h1>
-        <Button type="button" variant="outline" onClick={startCreate}>
-          {tUsers("newUser")}
-        </Button>
-      </div>
-
-      <UsersToolbar value={nameQuery} onChange={setNameQuery} />
-
-      {message ? (
-        <p role="status" className="shrink-0 text-sm text-muted-foreground">
-          {message}
-        </p>
-      ) : null}
-
-      {formOpen ? (
-        <UserFormDialog
-          key={formDialogKey}
-          users={users}
-          editingUser={editingUser}
-          roleOptions={roleOptions}
-          isPending={isPending}
-          canPairUserTag={canPairUserTag}
-          canPreviewKioskColaborator={canPreviewKioskColaborator}
-          canSetPassword={canSetPassword}
-          canEditUserLogin={canEditUserLogin}
-          showDelete={Boolean(canDelete && onDelete && editingUser)}
-          showDeactivate={canDeactivateEditingUser}
-          onClose={closeForm}
-          onSubmit={onSubmit}
-          onDelete={() => setDeleteOpen(true)}
-          onDeactivate={() => setDeactivateOpen(true)}
-          onPreviewKioskColaborator={handlePreviewKioskColaborator}
-          onPairUserTag={handlePairUserTag}
-          onUpdateImage={onUpdateImage ? handleUpdateImage : undefined}
-          nfcPairDisabled={nfcPairDisabled}
-          canManageImages={canManageImages}
-        />
-      ) : null}
-
-      <ConfirmDialog
-        open={deleteOpen}
-        title={tUsers("deleteTitle")}
-        description={tUsers("deleteConfirm")}
-        confirmLabel={tCommon("delete")}
-        disabled={isPending}
-        onConfirm={handleConfirmDelete}
-        onClose={() => setDeleteOpen(false)}
-      />
-
-      <ConfirmDialog
-        open={deactivateOpen}
-        title={tUsers("deactivateTitle")}
-        description={tUsers("deactivateConfirm")}
-        confirmLabel={tUsers("deactivate")}
-        disabled={isPending}
-        onConfirm={handleConfirmDeactivate}
-        onClose={() => setDeactivateOpen(false)}
-      />
-
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <UsersListView
-            users={visibleUsers}
-            manageableRoles={manageableRoles}
-            onOpen={startEdit}
-          />
+    <UserListProvider
+      openEdit={startEdit}
+      canEdit={(user) => manageableRoles.includes(user.roleType)}
+    >
+      <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
+        <div className="flex shrink-0 items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold max-[500px]:text-lg">
+            {tUsers("title")}
+          </h1>
+          <Button type="button" variant="outline" onClick={startCreate}>
+            {tUsers("newUser")}
+          </Button>
         </div>
+
+        <Suspense fallback={null}>
+          <UsersToolbar />
+        </Suspense>
+
+        {message ? (
+          <p role="status" className="shrink-0 text-sm text-muted-foreground">
+            {message}
+          </p>
+        ) : null}
+
+        {formOpen ? (
+          <UserFormDialog
+            key={formDialogKey}
+            existingUsers={existingUsers}
+            editingUser={editingUser}
+            roleOptions={roleOptions}
+            isPending={isPending}
+            canPairUserTag={canPairUserTag}
+            canPreviewKioskColaborator={canPreviewKioskColaborator}
+            canSetPassword={canSetPassword}
+            canEditUserLogin={canEditUserLogin}
+            showDelete={Boolean(canDelete && onDelete && editingUser)}
+            showDeactivate={canDeactivateEditingUser}
+            onClose={closeForm}
+            onSubmit={onSubmit}
+            onDelete={() => setDeleteOpen(true)}
+            onDeactivate={() => setDeactivateOpen(true)}
+            onPreviewKioskColaborator={handlePreviewKioskColaborator}
+            onPairUserTag={handlePairUserTag}
+            onUpdateImage={onUpdateImage ? handleUpdateImage : undefined}
+            nfcPairDisabled={nfcPairDisabled}
+            canManageImages={canManageImages}
+          />
+        ) : null}
+
+        <ConfirmDialog
+          open={deleteOpen}
+          title={tUsers("deleteTitle")}
+          description={tUsers("deleteConfirm")}
+          confirmLabel={tCommon("delete")}
+          disabled={isPending}
+          onConfirm={handleConfirmDelete}
+          onClose={() => setDeleteOpen(false)}
+        />
+
+        <ConfirmDialog
+          open={deactivateOpen}
+          title={tUsers("deactivateTitle")}
+          description={tUsers("deactivateConfirm")}
+          confirmLabel={tUsers("deactivate")}
+          disabled={isPending}
+          onConfirm={handleConfirmDeactivate}
+          onClose={() => setDeactivateOpen(false)}
+        />
+
+        {children}
       </div>
-    </div>
+    </UserListProvider>
   );
 }

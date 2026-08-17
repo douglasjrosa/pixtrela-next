@@ -27,18 +27,19 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { reorderStepsByDrag } from "@/lib/business/step-order";
 import type { StepNameFormInput } from "@/lib/schemas/step";
+import type { SettingsStepRow } from "@/lib/steps/map-settings-step";
 
-export interface StepRow {
-  documentId: string;
-  name: string;
-  index: number;
-  orderBy: StepNameFormInput["orderBy"];
-}
+export type StepRow = SettingsStepRow;
 
 export interface StepManagerProps {
   steps: StepRow[];
-  onCreate: (values: StepNameFormInput) => void | Promise<void>;
-  onUpdate: (documentId: string, values: StepNameFormInput) => void | Promise<void>;
+  onCreate: (
+    values: StepNameFormInput,
+  ) => void | Promise<StepRow | void>;
+  onUpdate: (
+    documentId: string,
+    values: StepNameFormInput,
+  ) => void | Promise<void>;
   onReorder: (orderedDocumentIds: string[]) => void | Promise<void>;
   onDelete: (documentId: string) => void | Promise<void>;
 }
@@ -178,9 +179,20 @@ export function StepManager({
   function handleSave(values: StepNameFormInput): void {
     startTransition(async () => {
       if (modal.mode === "edit") {
-        await onUpdate(modal.step.documentId, values);
+        const documentId = modal.step.documentId;
+        await onUpdate(documentId, values);
+        setOrderedSteps((current) =>
+          current.map((step) =>
+            step.documentId === documentId
+              ? { ...step, name: values.name, orderBy: values.orderBy }
+              : step,
+          ),
+        );
       } else if (modal.mode === "create") {
-        await onCreate(values);
+        const created = await onCreate(values);
+        if (created) {
+          setOrderedSteps((current) => [...current, created]);
+        }
       }
       setMessage(tSteps("saved"));
       closeModal();
@@ -193,6 +205,9 @@ export function StepManager({
     const documentId = modal.step.documentId;
     startTransition(async () => {
       await onDelete(documentId);
+      setOrderedSteps((current) =>
+        current.filter((step) => step.documentId !== documentId),
+      );
       setMessage(tSteps("deleted"));
       closeModal();
       refreshSteps();

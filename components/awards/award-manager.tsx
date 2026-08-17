@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  Suspense,
   useState,
   useTransition,
   type ChangeEvent,
+  type ReactNode,
 } from "react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
 
-import { AwardsListView } from "./awards-list-view";
+import { AwardListProvider } from "./award-list-context";
 import { AwardsToolbar } from "./awards-toolbar";
 import {
   currencyLabel,
@@ -29,14 +31,16 @@ import {
 export type { AwardRow, CurrencyOption } from "./types";
 
 export interface AwardManagerProps {
-  awards: AwardRow[];
   currencies: CurrencyOption[];
+  children: ReactNode;
   onCreate: (values: AwardFormInput) => void | Promise<void>;
   onUpdate: (documentId: string, values: AwardFormInput) => void | Promise<void>;
-  onDelete: (documentId: string) => void | Promise<void>;
+  onArchive: (documentId: string) => void | Promise<void>;
+  onHardDelete: (documentId: string) => void | Promise<void>;
   onUploadImage: (formData: FormData) => Promise<number | string>;
   /** When false, catalog is read-only (manager view). */
   canManage?: boolean;
+  canDeactivate?: boolean;
   canDelete: boolean;
 }
 
@@ -48,6 +52,8 @@ function defaultValues(currencies: CurrencyOption[]): AwardFormInput {
     description: "",
     warnings: "",
     imageId: null,
+    showInStore: true,
+    stock: 0,
     values: [{ numberOf: 1, currencyDocumentId: defaultCurrencyId }],
   };
 }
@@ -62,6 +68,8 @@ function toFormValues(
     description: award.description ?? "",
     warnings: award.warnings ?? "",
     imageId: award.imageId ?? null,
+    showInStore: award.showInStore,
+    stock: award.stock,
     values:
       award.values.length > 0
         ? award.values
@@ -73,10 +81,11 @@ interface AwardFormDialogProps {
   editingAward: AwardRow | null;
   currencies: CurrencyOption[];
   isPending: boolean;
-  showDelete: boolean;
+  readOnly: boolean;
+  destructiveAction?: "archive" | "delete";
   onClose: () => void;
   onSubmit: (values: AwardFormInput) => void;
-  onDelete?: () => void;
+  onDestructiveAction?: () => void;
   onUploadImage: (formData: FormData) => Promise<number | string>;
 }
 
@@ -84,15 +93,17 @@ function AwardFormDialog({
   editingAward,
   currencies,
   isPending,
-  showDelete,
+  readOnly,
+  destructiveAction,
   onClose,
   onSubmit,
-  onDelete,
+  onDestructiveAction,
   onUploadImage,
 }: AwardFormDialogProps) {
   const tCommon = useTranslations("common");
   const tAwards = useTranslations("awards");
   const isEditing = editingAward !== null;
+  const formDisabled = isPending || readOnly;
   const formTitleId = "award-form-title";
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     editingAward?.imageUrl ?? null,
@@ -151,30 +162,35 @@ function AwardFormDialog({
   return (
     <FormModalShell
       open
+      size="lgNarrow"
       title={isEditing ? tAwards("editAward") : tAwards("newAward")}
       titleId={formTitleId}
       onClose={onClose}
       disabled={isPending}
       footerStart={
-        showDelete && onDelete ? (
+        destructiveAction && onDestructiveAction ? (
           <Button
             type="button"
             variant="destructive"
             disabled={isPending}
-            onClick={onDelete}
+            onClick={onDestructiveAction}
           >
-            {tCommon("delete")}
+            {destructiveAction === "archive"
+              ? tAwards("archive")
+              : tCommon("delete")}
           </Button>
         ) : undefined
       }
       footerEnd={
-        <Button
-          type="submit"
-          form={formId}
-          disabled={isPending || currencies.length === 0}
-        >
-          {tCommon("save")}
-        </Button>
+        readOnly ? undefined : (
+          <Button
+            type="submit"
+            form={formId}
+            disabled={isPending || currencies.length === 0}
+          >
+            {tCommon("save")}
+          </Button>
+        )
       }
     >
       <form
@@ -193,7 +209,7 @@ function AwardFormDialog({
 
         <div className="space-y-2">
           <Label htmlFor="name">{tAwards("name")}</Label>
-          <Input id="name" {...register("name")} />
+          <Input id="name" disabled={formDisabled} {...register("name")} />
           {errors.name ? (
             <p className="text-sm text-destructive">{errors.name.message}</p>
           ) : null}
@@ -201,7 +217,7 @@ function AwardFormDialog({
 
         <div className="space-y-2">
           <Label htmlFor="title">{tAwards("titleField")}</Label>
-          <Input id="title" {...register("title")} />
+          <Input id="title" disabled={formDisabled} {...register("title")} />
         </div>
 
         <div className="space-y-2 sm:col-span-2">
@@ -209,6 +225,7 @@ function AwardFormDialog({
           <textarea
             id="description"
             className={textareaClass}
+            disabled={formDisabled}
             {...register("description")}
           />
         </div>
@@ -218,34 +235,41 @@ function AwardFormDialog({
           <textarea
             id="warnings"
             className={textareaClass}
+            disabled={formDisabled}
             {...register("warnings")}
           />
         </div>
 
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="image">{tAwards("image")}</Label>
-          <Input
-            id="image"
-            type="file"
-            accept="image/*"
-            disabled={isPending}
-            onChange={handleImageChange}
-          />
-          <p className="text-xs text-muted-foreground">{tAwards("imageHint")}</p>
-          {previewUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- blob preview URL
-            <img
-              src={previewUrl}
-              alt=""
-              role="presentation"
-              className="mt-2 h-24 w-24 rounded-md border object-cover"
-            />
-          ) : null}
-          {imageId ? (
-            <p className="text-xs text-muted-foreground">
-              {tAwards("imageAttached")}
-            </p>
-          ) : null}
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="min-w-0 flex-1 space-y-2">
+              <Input
+                id="image"
+                type="file"
+                accept="image/*"
+                disabled={formDisabled}
+                onChange={handleImageChange}
+              />
+              <p className="text-xs text-muted-foreground">
+                {tAwards("imageHint")}
+              </p>
+              {imageId ? (
+                <p className="text-xs text-muted-foreground">
+                  {tAwards("imageAttached")}
+                </p>
+              ) : null}
+            </div>
+            {previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- blob preview URL
+              <img
+                src={previewUrl}
+                alt=""
+                role="presentation"
+                className="h-24 w-24 shrink-0 rounded-md border object-cover"
+              />
+            ) : null}
+          </div>
         </div>
 
         <div className="space-y-4 sm:col-span-2">
@@ -256,6 +280,7 @@ function AwardFormDialog({
                 type="number"
                 min={1}
                 className="w-28"
+                disabled={formDisabled}
                 aria-label={tAwards("numberOf")}
                 {...register(`values.${index}.numberOf`, { valueAsNumber: true })}
               />
@@ -264,6 +289,7 @@ function AwardFormDialog({
                   "flex h-9 min-w-40 flex-1 rounded-md border border-input " +
                   "bg-transparent px-3 text-sm"
                 }
+                disabled={formDisabled}
                 aria-label={tAwards("currency")}
                 {...register(`values.${index}.currencyDocumentId`)}
               >
@@ -273,7 +299,7 @@ function AwardFormDialog({
                   </option>
                 ))}
               </select>
-              {fields.length > 1 ? (
+              {fields.length > 1 && !readOnly ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -285,19 +311,47 @@ function AwardFormDialog({
               ) : null}
             </div>
           ))}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              append({
-                numberOf: 1,
-                currencyDocumentId: currencies[0]?.documentId ?? "",
-              })
-            }
-          >
-            {tAwards("addValue")}
-          </Button>
+          {!readOnly ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                append({
+                  numberOf: 1,
+                  currencyDocumentId: currencies[0]?.documentId ?? "",
+                })
+              }
+            >
+              {tAwards("addValue")}
+            </Button>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap items-end gap-6 sm:col-span-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className={cn("size-4 rounded border accent-primary")}
+              disabled={formDisabled}
+              {...register("showInStore")}
+            />
+            {tAwards("showInStore")}
+          </label>
+          <div className="space-y-2">
+            <Label htmlFor="stock">{tAwards("stock")}</Label>
+            <Input
+              id="stock"
+              type="number"
+              min={0}
+              className="w-32"
+              disabled={formDisabled}
+              {...register("stock", { valueAsNumber: true })}
+            />
+            {errors.stock ? (
+              <p className="text-sm text-destructive">{errors.stock.message}</p>
+            ) : null}
+          </div>
         </div>
       </form>
     </FormModalShell>
@@ -305,52 +359,62 @@ function AwardFormDialog({
 }
 
 export function AwardManager({
-  awards,
   currencies,
+  children,
   onCreate,
   onUpdate,
-  onDelete,
+  onArchive,
+  onHardDelete,
   onUploadImage,
   canManage = true,
+  canDeactivate = false,
   canDelete,
 }: AwardManagerProps) {
   const tCommon = useTranslations("common");
   const tAwards = useTranslations("awards");
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [nameQuery, setNameQuery] = useState("");
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editingAward, setEditingAward] = useState<AwardRow | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
 
-  const editingAward =
-    awards.find((award) => award.documentId === editingId) ?? null;
+  const canOpenEdit = canManage || canDeactivate;
+  const destructiveAction = editingAward
+    ? editingAward.active
+      ? canDeactivate
+        ? ("archive" as const)
+        : undefined
+      : canDelete
+        ? ("delete" as const)
+        : undefined
+    : undefined;
 
   function closeForm(): void {
     setFormOpen(false);
-    setEditingId(null);
-    setDeleteOpen(false);
+    setEditingAward(null);
+    setConfirmOpen(false);
   }
 
   function startCreate(): void {
-    setEditingId(null);
+    setEditingAward(null);
     setMessage(null);
-    setDeleteOpen(false);
+    setConfirmOpen(false);
     setFormOpen(true);
   }
 
   function startEdit(award: AwardRow): void {
-    setEditingId(award.documentId);
+    setEditingAward(award);
     setMessage(null);
-    setDeleteOpen(false);
+    setConfirmOpen(false);
     setFormOpen(true);
   }
 
   function onSubmit(values: AwardFormInput): void {
+    if (!canManage) return;
     startTransition(async () => {
-      if (editingId) {
-        await onUpdate(editingId, values);
+      if (editingAward) {
+        await onUpdate(editingAward.documentId, values);
       } else {
         await onCreate(values);
       }
@@ -360,75 +424,88 @@ export function AwardManager({
     });
   }
 
-  function handleConfirmDelete(): void {
-    if (!editingId) return;
+  function handleConfirmDestructive(): void {
+    if (!editingAward || !destructiveAction) return;
     startTransition(async () => {
-      await onDelete(editingId);
-      setMessage(tAwards("deleted"));
+      if (destructiveAction === "archive") {
+        await onArchive(editingAward.documentId);
+        setMessage(tAwards("archived"));
+      } else {
+        await onHardDelete(editingAward.documentId);
+        setMessage(tAwards("deleted"));
+      }
       closeForm();
       router.refresh();
     });
   }
 
-  const formDialogKey = editingId ?? "new";
-  const query = nameQuery.trim().toLowerCase();
-  const visibleAwards =
-    query.length === 0
-      ? awards
-      : awards.filter((award) => award.name.toLowerCase().includes(query));
+  const formDialogKey = editingAward?.documentId ?? "new";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
-      <div className="flex shrink-0 items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold max-[500px]:text-lg">{tAwards("title")}</h1>
-        {canManage ? (
-          <Button type="button" variant="outline" onClick={startCreate}>
-            {tAwards("newAward")}
-          </Button>
-        ) : null}
-      </div>
-
-      <AwardsToolbar value={nameQuery} onChange={setNameQuery} />
-
-      {message ? (
-        <p role="status" className="shrink-0 text-sm text-muted-foreground">
-          {message}
-        </p>
-      ) : null}
-
-      {formOpen ? (
-        <AwardFormDialog
-          key={formDialogKey}
-          editingAward={editingAward}
-          currencies={currencies}
-          isPending={isPending}
-          showDelete={Boolean(canDelete && editingAward)}
-          onClose={closeForm}
-          onSubmit={onSubmit}
-          onDelete={() => setDeleteOpen(true)}
-          onUploadImage={onUploadImage}
-        />
-      ) : null}
-
-      <ConfirmDialog
-        open={deleteOpen}
-        title={tAwards("deleteTitle")}
-        description={tAwards("deleteConfirm")}
-        confirmLabel={tCommon("delete")}
-        disabled={isPending}
-        onConfirm={handleConfirmDelete}
-        onClose={() => setDeleteOpen(false)}
-      />
-
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <AwardsListView
-            awards={visibleAwards}
-            currencies={currencies}
-            onOpen={canManage ? startEdit : undefined}
-          />
+    <AwardListProvider openEdit={canOpenEdit ? startEdit : undefined}>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
+        <div className="flex shrink-0 items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold max-[500px]:text-lg">
+            {tAwards("title")}
+          </h1>
+          {canManage ? (
+            <Button type="button" variant="outline" onClick={startCreate}>
+              {tAwards("newAward")}
+            </Button>
+          ) : null}
         </div>
+
+        <Suspense fallback={null}>
+          <AwardsToolbar />
+        </Suspense>
+
+        {message ? (
+          <p role="status" className="shrink-0 text-sm text-muted-foreground">
+            {message}
+          </p>
+        ) : null}
+
+        {formOpen ? (
+          <AwardFormDialog
+            key={formDialogKey}
+            editingAward={editingAward}
+            currencies={currencies}
+            isPending={isPending}
+            readOnly={!canManage}
+            destructiveAction={destructiveAction}
+            onClose={closeForm}
+            onSubmit={onSubmit}
+            onDestructiveAction={
+              destructiveAction ? () => setConfirmOpen(true) : undefined
+            }
+            onUploadImage={onUploadImage}
+          />
+        ) : null}
+
+        <ConfirmDialog
+          open={confirmOpen}
+          title={
+            destructiveAction === "archive"
+              ? tAwards("archiveTitle")
+              : tAwards("deleteTitle")
+          }
+          description={
+            destructiveAction === "archive"
+              ? tAwards("archiveConfirm")
+              : tAwards("deleteConfirm")
+          }
+          confirmLabel={
+            destructiveAction === "archive"
+              ? tAwards("archive")
+              : tCommon("delete")
+          }
+          disabled={isPending}
+          onConfirm={handleConfirmDestructive}
+          onClose={() => setConfirmOpen(false)}
+        />
+
+        {children}
       </div>
-    </div>
+    </AwardListProvider>
   );
 }

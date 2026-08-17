@@ -3,86 +3,153 @@ import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
+import { TeamListRowPresentational } from "./team-list-row-presentational";
 import { TeamManager } from "./team-manager";
+import type { TeamRow } from "./types";
 
 const refresh = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh }),
+  useRouter: () => ({ refresh, replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 const leaders = [{ documentId: "l1", name: "João" }];
 const colaborators = [{ documentId: "c1", name: "Ana" }];
-const teams = [
-  {
-    documentId: "t1",
-    name: "Linha A",
-    exchangesFirstDay: 3,
-    exchangesLastDay: 15,
-    since: "2026-01-10",
-    untill: null,
-    leader: leaders[0],
-    colaborators,
-  },
-  {
-    documentId: "t2",
-    name: "Linha B",
-    exchangesFirstDay: 3,
-    exchangesLastDay: 15,
-    since: "2025-06-01",
-    untill: "2026-05-31",
-    leader: leaders[0],
-    colaborators,
-  },
-];
+const activeTeam: TeamRow = {
+  documentId: "t1",
+  name: "Linha A",
+  exchangesFirstDay: 3,
+  exchangesLastDay: 15,
+  since: "2026-01-10",
+  untill: null,
+  active: true,
+  leader: leaders[0],
+  colaborators,
+};
+
+const archivedTeam: TeamRow = {
+  documentId: "t2",
+  name: "Linha B",
+  exchangesFirstDay: 3,
+  exchangesLastDay: 15,
+  since: "2025-06-01",
+  untill: "2026-05-31",
+  active: false,
+  leader: leaders[0],
+  colaborators,
+};
+
+const labelsA = {
+  since: "10/01/2026",
+  untill: "",
+  leader: "João",
+  inactive: "Inativa",
+  selectRow: "Selecionar Linha A",
+};
+
+const labelsB = {
+  ...labelsA,
+  since: "01/06/2025",
+  untill: "31/05/2026",
+};
+
+function renderManager(overrides: Partial<Parameters<typeof TeamManager>[0]> = {}) {
+  return renderWithIntl(
+    <TeamManager
+      leaders={leaders}
+      colaborators={colaborators}
+      onCreate={vi.fn()}
+      onUpdate={vi.fn()}
+      onArchive={vi.fn()}
+      onHardDelete={vi.fn()}
+      canDeactivate
+      canDelete={false}
+      {...overrides}
+    >
+      <table>
+        <tbody>
+          <TeamListRowPresentational
+            team={activeTeam}
+            variant="table"
+            labels={labelsA}
+          />
+          <TeamListRowPresentational
+            team={archivedTeam}
+            variant="table"
+            labels={labelsB}
+          />
+        </tbody>
+      </table>
+    </TeamManager>,
+  );
+}
 
 describe("TeamManager", () => {
   beforeEach(() => {
     refresh.mockReset();
   });
 
-  it("renders team list with lifecycle and status columns", () => {
-    renderWithIntl(
-      <TeamManager
-        teams={teams}
-        leaders={leaders}
-        colaborators={colaborators}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    );
+  it("renders team list with exchange period and member data", () => {
+    renderManager();
     expect(screen.getAllByText("Linha A").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Linha B").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Ativa").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Inativa").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("03").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("15").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Ana").length).toBeGreaterThan(0);
   });
 
   it("hides team form by default", () => {
-    renderWithIntl(
-      <TeamManager
-        teams={teams}
-        leaders={leaders}
-        colaborators={colaborators}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    );
+    renderManager();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
+  });
+
+  it("opens create modal with collaborator badge picker", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn().mockResolvedValue(undefined);
+
+    renderWithIntl(
+      <TeamManager
+        leaders={leaders}
+        colaborators={colaborators}
+        onCreate={onCreate}
+        onUpdate={vi.fn()}
+        onArchive={vi.fn()}
+        onHardDelete={vi.fn()}
+        canDelete={false}
+      >
+        {null}
+      </TeamManager>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Nova equipe" }));
+    expect(screen.getByLabelText("Colaboradores")).toBeInTheDocument();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Nome"), "Equipe Teste");
+    await user.click(screen.getByRole("button", { name: "Incluir Ana" }));
+    await user.click(screen.getByRole("button", { name: "Criar" }));
+
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        colaboratorDocumentIds: ["c1"],
+      }),
+    );
   });
 
   it("opens create modal with default exchange days", () => {
     renderWithIntl(
       <TeamManager
-        teams={[]}
         leaders={leaders}
         colaborators={colaborators}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-      />,
+        onArchive={vi.fn()}
+        onHardDelete={vi.fn()}
+        canDelete={false}
+      >
+        {null}
+      </TeamManager>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Nova equipe" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -94,31 +161,71 @@ describe("TeamManager", () => {
     expect(screen.getByLabelText("Início das trocas")).toHaveValue(3);
     expect(screen.getByLabelText("Fim das trocas")).toHaveValue(15);
     expect(screen.queryByRole("button", { name: "Excluir" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Arquivar" })).toBeNull();
   });
 
-  it("shows since, untill and delete in edit modal", async () => {
+  it("shows archive action for active teams when canDeactivate is true", async () => {
+    const user = userEvent.setup();
+    renderManager({ canDeactivate: true, canDelete: false });
+
+    await user.click(screen.getAllByRole("button", { name: "Linha A" })[0]!);
+    expect(screen.getByRole("button", { name: "Arquivar" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Excluir" })).not.toBeInTheDocument();
+  });
+
+  it("shows delete action for archived teams when canDelete is true", async () => {
     const user = userEvent.setup();
     renderWithIntl(
       <TeamManager
-        teams={teams}
         leaders={leaders}
         colaborators={colaborators}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-      />,
+        onArchive={vi.fn()}
+        onHardDelete={vi.fn()}
+        canDeactivate={false}
+        canDelete
+      >
+        <table>
+          <tbody>
+            <TeamListRowPresentational
+              team={archivedTeam}
+              variant="table"
+              labels={labelsB}
+            />
+          </tbody>
+        </table>
+      </TeamManager>,
     );
 
-    await user.click(screen.getAllByRole("link", { name: "Linha A" })[0]!);
+    await user.click(screen.getAllByRole("button", { name: "Linha B" })[0]!);
+    expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Arquivar" })).not.toBeInTheDocument();
+  });
+
+  it("shows since, untill and archive in edit modal for active team", async () => {
+    const user = userEvent.setup();
+    renderManager();
+
+    await user.click(screen.getAllByRole("button", { name: "Linha A" })[0]!);
     expect(
       screen.getByRole("heading", { name: "Editar equipe" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Até")).toBeInTheDocument();
+    expect(screen.getByLabelText("Até")).toHaveValue("");
     expect(
       screen.getByText(
         "Deixe vazio para manter a equipe ativa. Preencha para arquivar.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Arquivar" })).toBeInTheDocument();
+  });
+
+  it("shows untill date as dd/mm/yyyy in edit modal", async () => {
+    const user = userEvent.setup();
+    renderManager();
+
+    await user.click(screen.getAllByRole("button", { name: "Linha B" })[0]!);
+    expect(screen.getByLabelText("Até")).toHaveValue("31/05/2026");
   });
 });

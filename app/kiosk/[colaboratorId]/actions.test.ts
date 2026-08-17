@@ -6,6 +6,7 @@ const stopSubTaskRepo = vi.fn();
 const startChainRepo = vi.fn();
 const advanceChainRunRepo = vi.fn();
 const confirmChainStopRepo = vi.fn();
+const joinLiveChainRepo = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "kiosk" }, jwt: "jwt" })),
@@ -25,6 +26,7 @@ vi.mock("@/lib/repos/kiosk-chains", () => ({
   startChain: (...args: unknown[]) => startChainRepo(...args),
   advanceChainRun: (...args: unknown[]) => advanceChainRunRepo(...args),
   confirmChainStop: (...args: unknown[]) => confirmChainStopRepo(...args),
+  joinLiveChain: (...args: unknown[]) => joinLiveChainRepo(...args),
 }));
 
 describe("kiosk/[colaboratorId]/actions drizzle", () => {
@@ -36,6 +38,7 @@ describe("kiosk/[colaboratorId]/actions drizzle", () => {
     startChainRepo.mockReset();
     advanceChainRunRepo.mockReset();
     confirmChainStopRepo.mockReset();
+    joinLiveChainRepo.mockReset();
   });
 
   it("startSubTask delegates to repo and revalidates drizzle tags", async () => {
@@ -92,6 +95,14 @@ describe("kiosk/[colaboratorId]/actions drizzle", () => {
     const { startChain } = await import("./actions");
     await startChain("col-1", "head-1");
     expect(startChainRepo).toHaveBeenCalledWith("col-1", "head-1");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:activities", "default");
+  });
+
+  it("joinLiveChain delegates to repo and revalidates", async () => {
+    joinLiveChainRepo.mockResolvedValue({ chainRunId: "run-1" });
+    const { joinLiveChain } = await import("./actions");
+    await joinLiveChain("col-1", "sub-2");
+    expect(joinLiveChainRepo).toHaveBeenCalledWith("col-1", "sub-2");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:activities", "default");
   });
 

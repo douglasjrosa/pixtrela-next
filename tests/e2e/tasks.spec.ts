@@ -41,7 +41,7 @@ test.describe("Tasks module", () => {
     await expect(async () => {
       await nameInput.fill(createTaskE2ePayload.name);
       await qtyInput.fill(createTaskE2ePayload.qty);
-      await dateInput.fill(createTaskE2ePayload.deliveryDate);
+      await dateInput.fill(createTaskE2ePayload.deliveryDatePtBr);
       await codeInput.fill(createTaskE2ePayload.templateTaskCode);
 
       await expect(nameInput).toHaveValue(createTaskE2ePayload.name, {

@@ -17,13 +17,11 @@ import {
 const comfortaa = Comfortaa({
   variable: "--font-comfortaa",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
 });
 
 const merriweatherSans = Merriweather_Sans({
   variable: "--font-merriweather-sans",
   subsets: ["latin"],
-  weight: ["700"],
 });
 
 export async function generateMetadata(): Promise<Metadata> {

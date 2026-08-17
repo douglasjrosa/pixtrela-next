@@ -10,6 +10,7 @@ export interface TeamRow {
   exchangesLastDay: number;
   since: string | null;
   untill: string | null;
+  active: boolean;
   leader?: UserOption | null;
   colaborators?: UserOption[];
 }

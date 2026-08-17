@@ -91,6 +91,29 @@ describe("userFormSchema", () => {
     });
   });
 
+  it("allows null code on create", () => {
+    expect(
+      createUserFormSchema(existingUsers).parse({
+        ...validUser,
+        code: null,
+      }),
+    ).toMatchObject({ code: null });
+  });
+
+  it("allows multiple users without a code", () => {
+    const withNullCode = [
+      ...existingUsers,
+      { documentId: "u3", code: null, username: "ana.1" },
+    ];
+    expect(
+      createUserFormSchema(withNullCode).parse({
+        ...validUser,
+        code: null,
+        username: "pedro.1",
+      }),
+    ).toMatchObject({ code: null });
+  });
+
   it("rejects duplicate login on create", () => {
     const result = createUserFormSchema(existingUsers).safeParse({
       ...validUser,

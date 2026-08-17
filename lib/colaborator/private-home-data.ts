@@ -9,6 +9,7 @@ import {
 import type { CurrencyBalanceProps } from "@/lib/colaborator/balance-view";
 import type { AwardView } from "@/components/exchange/award-card";
 import { getDb } from "@/lib/db/client";
+import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
 import { getOrCreateMonthlyBalance } from "@/lib/repos/balances";
 import { listAwards } from "@/lib/repos/awards";
 import { listRecentExchangesForUser } from "@/lib/repos/exchanges";
@@ -56,17 +57,21 @@ export async function loadColaboratorPrivateHome(
 
     let balance: CurrencyBalanceProps = { ...EMPTY_BALANCE };
     if (payment) {
+      const currencyLabel = resolveCurrencyPluralTitle({
+        pluralTitle: payment.currencyPluralTitle,
+        title: payment.currencyTitle,
+        name: payment.currencyName,
+      });
       const monthly = await getOrCreateMonthlyBalance({
         userId,
-        currencyId: payment.currencyId,
+        currencyPluralTitle: currencyLabel,
       });
       balance = {
         balance: monthly.balance,
         previousBalance: monthly.previousBalance,
         totalIncome: monthly.totalIncome,
         totalOutcome: monthly.totalOutcome,
-        currencyLabel:
-          payment.currencyPluralTitle || payment.currencyTitle || undefined,
+        currencyLabel,
       };
     }
 
@@ -76,7 +81,7 @@ export async function loadColaboratorPrivateHome(
     const awards: AwardView[] = [];
 
     for (const award of awardRows) {
-      if (!award.active) continue;
+      if (!award.active || !award.showInStore) continue;
       const prices = await db
         .select({
           numberOf: awardPrices.numberOf,

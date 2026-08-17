@@ -28,10 +28,18 @@ vi.mock("@/lib/repos/sub-task-presets", () => ({
     deleteSubTaskPresetById(...args),
 }));
 
+const loadSubtaskPresetListPageMock = vi.fn();
+
+vi.mock("@/lib/subtask-presets/load-subtask-preset-list-page", () => ({
+  loadSubtaskPresetListPage: (...args: unknown[]) =>
+    loadSubtaskPresetListPageMock(...args),
+}));
+
 describe("sub-task-presets actions", () => {
   beforeEach(() => {
     searchSubTaskPresetsByName.mockReset();
     listSubTaskPresetsRepo.mockReset();
+    loadSubtaskPresetListPageMock.mockReset();
     createSubTaskPresetRepo.mockReset();
     updateSubTaskPresetRepo.mockReset();
     deleteSubTaskPresetById.mockReset();
@@ -78,6 +86,21 @@ describe("sub-task-presets actions", () => {
 
     const { listSubTaskPresets } = await import("./actions");
     await expect(listSubTaskPresets()).resolves.toHaveLength(1);
+  });
+
+  it("loadMoreSubTaskPresets parses filters and loads a page", async () => {
+    loadSubtaskPresetListPageMock.mockResolvedValueOnce({
+      presets: [],
+      page: 2,
+      pageCount: 2,
+      hasMore: false,
+    });
+    const { loadMoreSubTaskPresets } = await import("./actions");
+    await loadMoreSubTaskPresets({ column: "name", direction: "asc" }, 2);
+    expect(loadSubtaskPresetListPageMock).toHaveBeenCalledWith(
+      { column: "name", direction: "asc" },
+      2,
+    );
   });
 
   it("createSubTaskPreset persists and returns documentId", async () => {

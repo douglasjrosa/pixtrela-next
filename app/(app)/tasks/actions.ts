@@ -21,6 +21,8 @@ import {
   updateTaskFields,
 } from "@/lib/repos/tasks";
 import {
+  bulkTaskDeactivationSchema,
+  bulkTaskIdsSchema,
   taskDeactivationSchema,
   taskFormSchema,
   type TaskFormInput,
@@ -173,5 +175,39 @@ export async function deleteTask(documentId: string): Promise<void> {
     throw new Error("forbidden");
   }
   await deleteTaskById(documentId);
+  invalidateTasks();
+}
+
+export async function bulkDeactivateTasks(
+  documentIds: string[],
+  reasonForDeactivation: string,
+): Promise<void> {
+  await assertCanDeactivate();
+  const ids = bulkTaskIdsSchema.parse(documentIds);
+  const parsed = bulkTaskDeactivationSchema.parse({ reasonForDeactivation });
+  const reason = parsed.reasonForDeactivation.trim();
+
+  for (const documentId of ids) {
+    const task = await getTaskById(documentId);
+    if (!task) throw new Error("notFound");
+    await setTaskActive(documentId, false, reason);
+  }
+  invalidateTasks();
+}
+
+export async function bulkDeleteTasks(documentIds: string[]): Promise<void> {
+  await assertCanManage();
+  const session = await auth();
+  if (!canDeleteTasks(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+  const ids = bulkTaskIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const task = await getTaskById(documentId);
+    if (!task) throw new Error("notFound");
+    if (task.active) throw new Error("activeTask");
+    await deleteTaskById(documentId);
+  }
   invalidateTasks();
 }

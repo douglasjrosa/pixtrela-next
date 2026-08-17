@@ -13,7 +13,7 @@ import { getDb, type Db } from "@/lib/db/client";
 export type BalanceRecord = {
   id: string;
   userId: string;
-  currencyId: string;
+  currencyPluralTitle: string;
   date: string;
   previousBalance: number;
   totalIncome: number;
@@ -22,11 +22,13 @@ export type BalanceRecord = {
 };
 
 export async function getOrCreateMonthlyBalance(
-  input: { userId: string; currencyId: string; now?: Date },
+  input: { userId: string; currencyPluralTitle: string; now?: Date },
   db: Db = getDb(),
 ): Promise<BalanceRecord> {
   const now = input.now ?? new Date();
   const monthDate = firstDayOfMonth(now);
+  const currencyPluralTitle = input.currencyPluralTitle.trim();
+  if (!currencyPluralTitle) throw new Error("currencyPluralTitleRequired");
 
   const [existing] = await db
     .select()
@@ -34,7 +36,7 @@ export async function getOrCreateMonthlyBalance(
     .where(
       and(
         eq(balances.userId, input.userId),
-        eq(balances.currencyId, input.currencyId),
+        eq(balances.currencyPluralTitle, currencyPluralTitle),
         eq(balances.date, monthDate),
       ),
     )
@@ -44,7 +46,7 @@ export async function getOrCreateMonthlyBalance(
     return {
       id: existing.id,
       userId: existing.userId,
-      currencyId: existing.currencyId,
+      currencyPluralTitle: existing.currencyPluralTitle,
       date: existing.date,
       previousBalance: existing.previousBalance,
       totalIncome: existing.totalIncome,
@@ -59,7 +61,7 @@ export async function getOrCreateMonthlyBalance(
     .where(
       and(
         eq(balances.userId, input.userId),
-        eq(balances.currencyId, input.currencyId),
+        eq(balances.currencyPluralTitle, currencyPluralTitle),
       ),
     )
     .orderBy(desc(balances.date))
@@ -70,7 +72,7 @@ export async function getOrCreateMonthlyBalance(
     .insert(balances)
     .values({
       userId: input.userId,
-      currencyId: input.currencyId,
+      currencyPluralTitle,
       date: payload.date,
       previousBalance: payload.previousBalance,
       totalIncome: payload.totalIncome,
@@ -82,7 +84,7 @@ export async function getOrCreateMonthlyBalance(
   return {
     id: created.id,
     userId: created.userId,
-    currencyId: created.currencyId,
+    currencyPluralTitle: created.currencyPluralTitle,
     date: created.date,
     previousBalance: created.previousBalance,
     totalIncome: created.totalIncome,
@@ -118,7 +120,7 @@ export async function creditBalanceIncome(
   return {
     id: updated.id,
     userId: updated.userId,
-    currencyId: updated.currencyId,
+    currencyPluralTitle: updated.currencyPluralTitle,
     date: updated.date,
     previousBalance: updated.previousBalance,
     totalIncome: updated.totalIncome,
@@ -161,7 +163,7 @@ export async function adjustBalanceIncome(
   return {
     id: updated.id,
     userId: updated.userId,
-    currencyId: updated.currencyId,
+    currencyPluralTitle: updated.currencyPluralTitle,
     date: updated.date,
     previousBalance: updated.previousBalance,
     totalIncome: updated.totalIncome,
@@ -205,7 +207,7 @@ export async function debitBalanceOutcome(
   return {
     id: updated.id,
     userId: updated.userId,
-    currencyId: updated.currencyId,
+    currencyPluralTitle: updated.currencyPluralTitle,
     date: updated.date,
     previousBalance: updated.previousBalance,
     totalIncome: updated.totalIncome,

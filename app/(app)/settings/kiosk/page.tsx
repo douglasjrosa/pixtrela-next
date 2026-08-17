@@ -1,22 +1,49 @@
+import { EntryAccessForm } from "@/components/settings/entry-access-form";
 import { KioskSessionIdleForm } from "@/components/settings/kiosk-session-idle-form";
-import { loadKioskSessionIdleSeconds } from "@/lib/kiosk/load-session-idle";
+import { loadEntryAccessSettings } from "@/lib/entry-access/load-entry-access";
+import { loadKioskSettings } from "@/lib/kiosk/load-session-idle";
+import type { EntryAccessByDevice } from "@/lib/business/entry-access";
+import type { KioskSessionIdleInput } from "@/lib/schemas/kiosk-setting";
 
-import { updateKioskSessionIdleSeconds } from "../actions";
+import {
+  updateEntryAccessSettings,
+  updateKioskSessionIdleSeconds,
+} from "../actions";
 
 export default async function SettingsKioskPage() {
-  const sessionIdleSeconds = await loadKioskSessionIdleSeconds();
+  const [settings, access] = await Promise.all([
+    loadKioskSettings(),
+    loadEntryAccessSettings("kiosk"),
+  ]);
 
-  async function handleSaveKioskSession(values: {
-    sessionIdleSeconds: number;
-  }): Promise<void> {
+  async function handleSaveKioskSession(
+    values: KioskSessionIdleInput,
+  ): Promise<void> {
     "use server";
-    await updateKioskSessionIdleSeconds(values.sessionIdleSeconds);
+    await updateKioskSessionIdleSeconds(values);
+  }
+
+  async function handleSaveAccess(
+    value: EntryAccessByDevice,
+  ): Promise<void> {
+    "use server";
+    await updateEntryAccessSettings({
+      surface: "kiosk",
+      computer: value.computer,
+      mobile: value.mobile,
+    });
   }
 
   return (
-    <KioskSessionIdleForm
-      sessionIdleSeconds={sessionIdleSeconds}
-      onSave={handleSaveKioskSession}
-    />
+    <div className="space-y-10">
+      <KioskSessionIdleForm
+        sessionIdleSeconds={settings.sessionIdleSeconds}
+        maxSimultaneousSubtaskIntervalSeconds={
+          settings.maxSimultaneousSubtaskIntervalSeconds
+        }
+        onSave={handleSaveKioskSession}
+      />
+      <EntryAccessForm value={access} onSave={handleSaveAccess} />
+    </div>
   );
 }

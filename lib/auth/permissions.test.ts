@@ -10,9 +10,13 @@ import {
   canDeactivateTasks,
   canDeleteTasks,
   canExchange,
+  canDeactivateAwards,
+  canDeleteAwards,
   canManageAwards,
   canViewAwards,
   canManageTasks,
+  canDeactivateTemplates,
+  canDeleteTemplates,
   canManageTemplates,
   canManageTeams,
   canViewBalance,
@@ -66,6 +70,27 @@ describe("canManageTemplates", () => {
   });
 });
 
+describe("canDeactivateTemplates", () => {
+  it("allows admin and manager", () => {
+    expect(canDeactivateTemplates("admin")).toBe(true);
+    expect(canDeactivateTemplates("manager")).toBe(true);
+  });
+
+  it("denies leader and below", () => {
+    expect(canDeactivateTemplates("leader")).toBe(false);
+    expect(canDeactivateTemplates("colaborator")).toBe(false);
+    expect(canDeactivateTemplates("kiosk")).toBe(false);
+  });
+});
+
+describe("canDeleteTemplates", () => {
+  it("allows admin only", () => {
+    expect(canDeleteTemplates("admin")).toBe(true);
+    expect(canDeleteTemplates("manager")).toBe(false);
+    expect(canDeleteTemplates("leader")).toBe(false);
+  });
+});
+
 describe("canExchange", () => {
   it("allows colaborator only", () => {
     expect(canExchange("colaborator")).toBe(true);
@@ -100,6 +125,21 @@ describe("canViewAwards", () => {
     expect(canViewAwards("admin")).toBe(true);
     expect(canViewAwards("manager")).toBe(true);
     expect(canViewAwards("leader")).toBe(false);
+  });
+});
+
+describe("canDeactivateAwards", () => {
+  it("allows manager and admin", () => {
+    expect(canDeactivateAwards("admin")).toBe(true);
+    expect(canDeactivateAwards("manager")).toBe(true);
+    expect(canDeactivateAwards("leader")).toBe(false);
+  });
+});
+
+describe("canDeleteAwards", () => {
+  it("allows admin only", () => {
+    expect(canDeleteAwards("admin")).toBe(true);
+    expect(canDeleteAwards("manager")).toBe(false);
   });
 });
 
