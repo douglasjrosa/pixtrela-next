@@ -10,7 +10,7 @@ export const kioskExitDurationSchema = z.object({
 export function createKioskExitQtySchema(maxQty: number) {
   return z.object({
     sharingType: z.literal("qty"),
-    qtyCompleted: z.number().int().min(1).max(maxQty),
+    qtyCompleted: z.number().int().min(0).max(maxQty),
   });
 }
 
@@ -26,7 +26,7 @@ export function parseKioskExitInput(
   if (sharingType === "duration") {
     return kioskExitDurationSchema.parse(values);
   }
-  const maxQty = Math.max(1, options?.maxQty ?? 1);
+  const maxQty = Math.max(0, options?.maxQty ?? 1);
   return createKioskExitQtySchema(maxQty).parse(values);
 }
 

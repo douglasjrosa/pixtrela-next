@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, max } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, max, type InferSelectModel } from "drizzle-orm";
 
 import {
   activities,
@@ -175,9 +175,10 @@ const BOARD_SUBTASK_COLUMNS = {
   linkedToPrevious: subTasks.linkedToPrevious,
 } as const;
 
-export type BoardSubtaskRow = Awaited<
-  ReturnType<typeof listBoardSubTasksForTask>
->[number];
+export type BoardSubtaskRow = Pick<
+  InferSelectModel<typeof subTasks>,
+  keyof typeof BOARD_SUBTASK_COLUMNS
+>;
 
 export type BoardSubtaskAssigneeRow = {
   subTaskId: string;
@@ -227,7 +228,7 @@ export async function listBoardSubtaskOpenActivities(
 ): Promise<BoardSubtaskActivityRow[]> {
   if (subTaskIds.length === 0) return [];
 
-  const latestRows = await db
+  const activityRows = await db
     .select({
       subTaskId: activities.subTaskId,
       colaboratorId: activities.colaboratorId,
@@ -244,12 +245,21 @@ export async function listBoardSubtaskOpenActivities(
         inArray(activities.action, ["started", "stoped"]),
       ),
     )
-    .distinctOn([activities.subTaskId, activities.colaboratorId])
     .orderBy(
       activities.subTaskId,
       activities.colaboratorId,
       desc(activities.timestamp),
     );
+
+  const latestByPair = new Map<string, (typeof activityRows)[number]>();
+  for (const row of activityRows) {
+    const key = `${row.subTaskId}:${row.colaboratorId}`;
+    if (!latestByPair.has(key)) {
+      latestByPair.set(key, row);
+    }
+  }
+
+  const latestRows = [...latestByPair.values()];
 
   return latestRows
     .filter((row) => row.action === "started")

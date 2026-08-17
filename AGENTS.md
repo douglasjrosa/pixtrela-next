@@ -12,6 +12,7 @@ Secrets are injected by Cursor (My Secrets). Required:
 | `DATABASE_URL` | **Dev** Postgres on VPS: `postgresql://pixtrela:…@179.0.179.210:5433/pixtrela_dev` |
 | `AUTH_SECRET` | Auth.js |
 | `MEDIA_DRIVER` / `S3_*` / `MEDIA_PUBLIC_BASE_URL` | Cloudflare R2 |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` / `SMTP_USER` / `SMTP_PASS` / `FROM_EMAIL` | Password reset emails |
 
 **Do not** open an SSH tunnel. Connect straight to `179.0.179.210:5433`.
 

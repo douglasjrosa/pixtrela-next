@@ -163,7 +163,7 @@ export function KioskHomeClient({
                 identifyingRef.current = false;
                 return;
               }
-              clearAuthCountdown();
+              clearAuthCountdown({ navigatingAway: true });
               if (result.welcome) {
                 stashWelcomePayload(result.welcome);
               }
@@ -201,7 +201,7 @@ export function KioskHomeClient({
 
   const navigateToColaborator = useCallback(
     (member: KioskFaceIdentifyCandidate) => {
-      clearAuthCountdown();
+      clearAuthCountdown({ navigatingAway: true });
       stashWelcomePayload({
         name: member.name,
         greetingGender: member.greetingGender,
@@ -215,7 +215,7 @@ export function KioskHomeClient({
 
   const navigateWithWelcome = useCallback(
     (path: string, welcome: KioskWelcomeProfile | null) => {
-      clearAuthCountdown();
+      clearAuthCountdown({ navigatingAway: true });
       if (welcome) {
         stashWelcomePayload(welcome);
       }

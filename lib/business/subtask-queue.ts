@@ -92,6 +92,7 @@ export function isUnlockedSubTask(subTask: QueuedSubTask): boolean {
 /** Whether the subtask is blocked by dependencies and shown as locked on kiosk. */
 export function isLockedSubTask(subTask: QueuedSubTask): boolean {
   if (isFinishedSubTask(subTask)) return false;
+  if (subTask.status === "producing" || hasViewerSession(subTask)) return false;
   return resolveActivationStatus(subTask.activationStatus) === "locked";
 }
 

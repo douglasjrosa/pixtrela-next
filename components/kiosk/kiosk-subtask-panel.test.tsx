@@ -41,6 +41,73 @@ const subTasks = [
 ];
 
 describe("KioskSubtaskPanel", () => {
+  it("keeps exit enabled before blocking begins", () => {
+    const producing = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Tarefa A",
+        status: "producing",
+        startedAt: "2026-06-05T10:00:00.000Z",
+        activeWorkerCount: 1,
+      }),
+    ];
+
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={producing}
+        allSubTasks={producing}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Sair da subtarefa" }),
+    ).toBeEnabled();
+  });
+
+  it("shows remaining qty badge on pending qty cards", () => {
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={[
+          kioskSubTask({
+            documentId: "a",
+            name: "Montar",
+            status: "waiting",
+            sharingType: "qty",
+            targetQty: 10,
+            completedQty: 2,
+          }),
+        ]}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("8 pçs. restantes")).toBeInTheDocument();
+  });
+
+  it("hides status badge and time spent on compact finished cards", () => {
+    renderWithIntl(
+      <KioskSubtaskPanel
+        compactFinishedCards
+        subTasks={[
+          kioskSubTask({
+            documentId: "a",
+            name: "Montar",
+            status: "finished",
+            timeSpent: 120,
+          }),
+        ]}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Finalizada")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Tempo gasto:/)).not.toBeInTheDocument();
+  });
+
   it("shows lock overlay and muted background for locked queued subtasks", () => {
     renderWithIntl(
       <KioskSubtaskPanel
@@ -59,6 +126,32 @@ describe("KioskSubtaskPanel", () => {
       within(unlockedItem!).queryByTestId("subtask-locked-overlay"),
     ).toBeNull();
     expect(lockedItem).toHaveClass("bg-muted");
+  });
+
+  it("uses a light green background without lock overlay on producing cards", () => {
+    const producing = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Tarefa A",
+        status: "producing",
+        startedAt: "2026-06-05T10:00:00.000Z",
+        activationStatus: "locked",
+      }),
+    ];
+
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={producing}
+        allSubTasks={producing}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    const card = screen.getByText("Tarefa A").closest("li");
+    expect(card).not.toBeNull();
+    expect(card).toHaveClass("bg-success/10");
+    expect(within(card!).queryByTestId("subtask-locked-overlay")).toBeNull();
   });
 
   it("shows only start on unlocked startable subtasks when idle", () => {
@@ -182,6 +275,7 @@ describe("KioskSubtaskPanel", () => {
         name: "Tarefa A",
         status: "producing",
         timeSpent: 30,
+        expectedTime: 120,
         startedAt: "2026-06-05T10:00:00.000Z",
       }),
     ];
@@ -193,8 +287,10 @@ describe("KioskSubtaskPanel", () => {
       />,
     );
 
-    expect(screen.getByText(/Início:/)).toBeInTheDocument();
-    expect(screen.getByText(/Tempo decorrido:/)).toBeInTheDocument();
+    expect(screen.getByText("Início")).toBeInTheDocument();
+    expect(screen.getByText("Tempo previsto")).toBeInTheDocument();
+    expect(screen.getByText("Tempo decorrido")).toBeInTheDocument();
+    expect(screen.getByText("Produzindo")).toBeInTheDocument();
   });
 
   it("shows finished subtask with time spent and no actions", () => {

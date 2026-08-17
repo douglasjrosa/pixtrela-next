@@ -48,6 +48,29 @@ describe("KioskExitSubtaskForm", () => {
     });
   });
 
+  it("accepts zero completed qty", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+
+    renderWithIntl(
+      <KioskExitSubtaskForm
+        sharingType="qty"
+        maxQty={10}
+        onCancel={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    await user.clear(screen.getByLabelText("Quantas peças você concluiu?"));
+    await user.type(screen.getByLabelText("Quantas peças você concluiu?"), "0");
+    await user.click(screen.getByRole("button", { name: "Confirmar saída" }));
+
+    expect(onConfirm).toHaveBeenCalledWith({
+      sharingType: "qty",
+      qtyCompleted: 0,
+    });
+  });
+
   it("rejects qty above max", async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();

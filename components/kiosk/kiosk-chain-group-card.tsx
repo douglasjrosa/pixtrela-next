@@ -1,7 +1,7 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { KioskGroupUnit } from "@/lib/business/kiosk-queue-units";
@@ -9,18 +9,19 @@ import { isChainMemberAnswerComplete } from "@/lib/business/subtask-chain-alloca
 import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
 import { getRemainingSubTaskQty } from "@/lib/business/subtask-queue";
 import { Duration } from "@/components/ui/duration";
-import { formatDateTimePtBr } from "@/lib/format/datetime";
 import { cn } from "@/lib/utils";
 
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainAdvanceTimer } from "./kiosk-chain-advance-timer";
 import { KioskChainMemberFields } from "./kiosk-chain-member-fields";
-import { SubtaskElapsedTimer } from "./subtask-elapsed-timer";
+import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
+import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
 
 export interface KioskChainGroupCardProps {
   unit: KioskGroupUnit;
   readOnly?: boolean;
-  pending?: boolean;
+  blockingUi?: boolean;
+  compactFinishedCards?: boolean;
   flash?: boolean;
   onStartChain?: (headId: string) => void | Promise<void>;
   onConfirmChainStop?: (
@@ -33,15 +34,16 @@ export interface KioskChainGroupCardProps {
 export function KioskChainGroupCard({
   unit,
   readOnly = false,
-  pending,
+  blockingUi = false,
+  compactFinishedCards = false,
   flash,
   onStartChain,
   onConfirmChainStop,
   onAdvanceChain,
 }: KioskChainGroupCardProps) {
   const t = useTranslations("kiosk");
-  const tStatus = useTranslations("tasks.status");
   const [collecting, setCollecting] = useState(false);
+  const [confirmingStop, setConfirmingStop] = useState(false);
   const [answers, setAnswers] = useState<Record<string, ChainStopAnswer>>({});
 
   const answersComplete = useMemo(
@@ -53,20 +55,36 @@ export function KioskChainGroupCard({
   );
 
   const taskName = unit.members[0]?.taskName;
+  const showLockOverlay = unit.locked && !unit.principalActive;
   const showStart = !readOnly && unit.showStart;
-  const showStop = !readOnly && !unit.locked && unit.principalActive;
-  const stopDisabled = pending || (collecting && !answersComplete);
+  const showStop =
+    !readOnly && !unit.locked && unit.principalActive && !collecting;
+
+  function resetCollecting(): void {
+    setCollecting(false);
+    setConfirmingStop(false);
+    setAnswers({});
+  }
+
+  useEffect(() => {
+    if (!blockingUi) {
+      setCollecting(false);
+      setConfirmingStop(false);
+      setAnswers({});
+    }
+  }, [blockingUi]);
 
   function handleStopClick(): void {
-    if (!collecting) {
-      setCollecting(true);
-      return;
-    }
-    if (!unit.chainRunId || !answersComplete) return;
+    setCollecting(true);
+  }
+
+  function handleConfirmStop(): void {
+    if (!unit.chainRunId || !answersComplete || confirmingStop) return;
+    setConfirmingStop(true);
     const payload = unit.members.map(
       (member) => answers[member.documentId] ?? { documentId: member.documentId },
     );
-    void onConfirmChainStop?.(unit.chainRunId, payload);
+    onConfirmChainStop?.(unit.chainRunId, payload);
   }
 
   return (
@@ -74,9 +92,10 @@ export function KioskChainGroupCard({
       data-testid="kiosk-chain-group"
       className={cn(
         "relative rounded-2xl border bg-card p-4 transition-colors duration-300",
-        unit.locked && "bg-muted",
-        unit.principalActive && "border-l-4 border-l-[var(--success)] shadow-sm",
-        flash && "bg-muted",
+        unit.principalActive &&
+          "border-l-4 border-l-[var(--success)] bg-success/10 shadow-sm",
+        showLockOverlay && "bg-muted",
+        flash && !unit.principalActive && "bg-muted",
       )}
     >
       <div className="flex flex-col gap-4">
@@ -92,27 +111,21 @@ export function KioskChainGroupCard({
               <li
                 key={member.documentId}
                 data-testid={`kiosk-chain-member-${member.documentId}`}
-                className="min-w-0 space-y-1 rounded-xl border bg-background p-3"
+                className="min-w-0 space-y-3 rounded-xl border bg-background p-3"
               >
-                <p className="text-lg font-semibold leading-snug">{member.name}</p>
-                <p className="text-base text-muted-foreground">
-                  {tStatus(member.status)}
-                </p>
-                {isProducing && member.startedAt ? (
-                  <div className="space-y-2 text-base text-muted-foreground">
-                    <p>
-                      {t("startedAt")}: {formatDateTimePtBr(member.startedAt)}
-                    </p>
-                    <p className="flex flex-wrap items-center gap-2">
-                      <span>{t("elapsed")}:</span>
-                      <SubtaskElapsedTimer
-                        startedAt={member.startedAt}
-                        baseSeconds={member.timeSpent}
-                      />
-                    </p>
-                  </div>
+                <p className="text-lg font-bold leading-snug">{member.name}</p>
+                {!compactFinishedCards ? (
+                  <KioskSubtaskStatusBadge status={member.status} />
                 ) : null}
-                {member.status === "finished" ? (
+                {isProducing && member.startedAt ? (
+                  <KioskSubtaskProducingMetrics
+                    startedAt={member.startedAt}
+                    timeSpent={member.timeSpent}
+                    expectedTime={member.expectedTime}
+                    timerPaused={blockingUi}
+                  />
+                ) : null}
+                {member.status === "finished" && !compactFinishedCards ? (
                   <p className="text-base text-muted-foreground">
                     {t("timeSpent")}:{" "}
                     <span className="tabular-nums">
@@ -131,7 +144,7 @@ export function KioskChainGroupCard({
                         : undefined
                     }
                     value={answers[member.documentId]}
-                    disabled={pending}
+                    disabled={confirmingStop}
                     onChange={(answer) =>
                       setAnswers((current) => ({
                         ...current,
@@ -144,12 +157,12 @@ export function KioskChainGroupCard({
             );
           })}
         </ul>
-        {!readOnly && (showStart || showStop) ? (
+        {!readOnly && (showStart || showStop || collecting) ? (
           <div className="flex w-full flex-col gap-2">
             {showStart ? (
               <KioskActionButton
                 actionVariant="produce"
-                disabled={pending}
+                disabled={blockingUi}
                 onClick={() => onStartChain?.(unit.headId)}
               >
                 {t("start")}
@@ -158,20 +171,25 @@ export function KioskChainGroupCard({
             {showStop ? (
               <KioskActionButton
                 actionVariant="outline"
-                disabled={stopDisabled}
                 onClick={handleStopClick}
               >
                 {t("stop")}
               </KioskActionButton>
             ) : null}
+            {collecting && answersComplete ? (
+              <KioskActionButton
+                actionVariant="produce"
+                disabled={confirmingStop}
+                onClick={handleConfirmStop}
+              >
+                {t("exitConfirm")}
+              </KioskActionButton>
+            ) : null}
             {collecting ? (
               <KioskActionButton
                 actionVariant="outline"
-                disabled={pending}
-                onClick={() => {
-                  setCollecting(false);
-                  setAnswers({});
-                }}
+                disabled={confirmingStop}
+                onClick={resetCollecting}
               >
                 {t("exitCancel")}
               </KioskActionButton>
@@ -179,7 +197,7 @@ export function KioskChainGroupCard({
           </div>
         ) : null}
       </div>
-      {unit.locked ? (
+      {showLockOverlay ? (
         <div
           className="pointer-events-none absolute inset-0 flex items-center justify-center"
           data-testid="subtask-locked-overlay"

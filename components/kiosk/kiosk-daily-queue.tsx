@@ -20,8 +20,8 @@ export interface KioskDailyQueueProps {
   openRuns?: readonly OpenChainRun[];
   maxSimultaneousSubtaskIntervalSeconds?: number;
   readOnly?: boolean;
-  pending?: boolean;
   flashDocumentId?: string | null;
+  blockingUi?: boolean;
   onStart?: (documentId: string) => void | Promise<void>;
   onExit?: (documentId: string, input: KioskExitInput) => void | Promise<void>;
   onStartChain?: (headId: string) => void | Promise<void>;
@@ -39,7 +39,7 @@ export function KioskDailyQueue({
   openRuns,
   maxSimultaneousSubtaskIntervalSeconds = 0,
   readOnly = false,
-  pending,
+  blockingUi = false,
   flashDocumentId,
   onStart,
   onExit,
@@ -79,14 +79,13 @@ export function KioskDailyQueue({
             units={sections.producing}
             allSubTasks={subTasks}
             readOnly={readOnly}
-            pending={pending}
+            blockingUi={blockingUi}
             flashDocumentId={flashDocumentId}
             onStart={onStart}
             onExit={onExit}
             onStartChain={onStartChain}
             onConfirmChainStop={onConfirmChainStop}
             onAdvanceChain={onAdvanceChain}
-            highlightProducing
           />
         </section>
       ) : null}
@@ -100,7 +99,7 @@ export function KioskDailyQueue({
             units={sections.pending}
             allSubTasks={subTasks}
             readOnly={readOnly}
-            pending={pending}
+            blockingUi={blockingUi}
             flashDocumentId={flashDocumentId}
             onStart={onStart}
             onExit={onExit}
@@ -123,7 +122,8 @@ export function KioskDailyQueue({
             units={sections.finishedToday}
             allSubTasks={subTasks}
             readOnly={readOnly}
-            pending={pending}
+            blockingUi={blockingUi}
+            compactFinishedCards
             flashDocumentId={flashDocumentId}
             onStart={onStart}
             onExit={onExit}

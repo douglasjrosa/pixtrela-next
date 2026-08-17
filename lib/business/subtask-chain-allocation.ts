@@ -29,7 +29,7 @@ export function isChainMemberAnswerComplete(
 ): boolean {
   if (!answer) return false;
   if (sharingType === "duration") return typeof answer.completed === "boolean";
-  return typeof answer.qty === "number" && Number.isInteger(answer.qty) && answer.qty >= 1;
+  return typeof answer.qty === "number" && Number.isInteger(answer.qty) && answer.qty >= 0;
 }
 
 export function isFinishedThisRun(
