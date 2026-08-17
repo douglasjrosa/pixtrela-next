@@ -795,4 +795,69 @@ describe("BoardActions", () => {
     ).not.toBeInTheDocument();
     vi.unstubAllGlobals();
   });
+
+  it("applies in-flight prefetch to the open modal instead of empty state", async () => {
+    const user = userEvent.setup();
+    let resolvePrefetch!: (value: ReturnType<typeof boardSubTaskSummaryStub>[]) => void;
+    const prefetchGate = new Promise<ReturnType<typeof boardSubTaskSummaryStub>[]>(
+      (resolve) => {
+        resolvePrefetch = resolve;
+      },
+    );
+    const clickGate = new Promise<ReturnType<typeof boardSubTaskSummaryStub>[]>(
+      () => undefined,
+    );
+    let prefetchStarted = false;
+    const loadSubtasks = vi.fn().mockImplementation(async (taskId: string) => {
+      if (taskId !== "task-10") return [];
+      if (!prefetchStarted) {
+        prefetchStarted = true;
+        return prefetchGate;
+      }
+      return clickGate;
+    });
+
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        callback: (entries: { isIntersecting: boolean }[]) => void;
+        constructor(callback: (entries: { isIntersecting: boolean }[]) => void) {
+          this.callback = callback;
+        }
+        observe(): void {
+          this.callback([{ isIntersecting: true }]);
+        }
+        unobserve(): void {}
+        disconnect(): void {}
+      },
+    );
+
+    renderBoard({ loadSubtasks });
+    await vi.waitFor(() => {
+      expect(loadSubtasks).toHaveBeenCalledWith("task-10");
+    });
+
+    await user.click(screen.getByText("1 - Tarefa A"));
+    expect(screen.getByTestId("kanban-subtasks-loading")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Nenhuma subtarefa nesta tarefa."),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolvePrefetch([
+        boardSubTaskSummaryStub({
+          documentId: "st-1",
+          name: "Soldar",
+          status: "waiting",
+          assignedTo: [],
+        }),
+      ]);
+    });
+
+    expect(await screen.findByText("Soldar")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Nenhuma subtarefa nesta tarefa."),
+    ).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
 });

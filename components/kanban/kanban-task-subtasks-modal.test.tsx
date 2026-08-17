@@ -197,6 +197,18 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(screen.queryByText("Soldar")).not.toBeInTheDocument();
   });
 
+  it("keeps skeletons while a refresh is in flight with an empty list", () => {
+    renderModal({
+      refreshing: true,
+      subtasks: [],
+    });
+
+    expect(screen.getByTestId("kanban-subtasks-loading")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Nenhuma subtarefa nesta tarefa."),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows assignee name badges under pending subtask titles", () => {
     renderModal();
 

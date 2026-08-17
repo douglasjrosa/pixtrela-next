@@ -539,7 +539,8 @@ export function KanbanTaskSubtasksModal({
   }
 
   const { pending, finished } = splitSubtasksByFinished(subtasks);
-  const showInitialLoading = loading && subtasks.length === 0;
+  const showInitialLoading =
+    (loading || refreshing) && subtasks.length === 0;
 
   useEffect(() => {
     if (!infoSubtask || !loadSubtaskSession) return;
