@@ -30,6 +30,7 @@ export interface KioskDailyQueueProps {
     answers: ChainStopAnswer[],
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
+  blockingUi?: boolean;
 }
 
 export function KioskDailyQueue({
@@ -46,6 +47,7 @@ export function KioskDailyQueue({
   onStartChain,
   onConfirmChainStop,
   onAdvanceChain,
+  blockingUi = false,
 }: KioskDailyQueueProps) {
   const t = useTranslations("kiosk");
   const units = buildKioskQueueUnits({
@@ -80,13 +82,13 @@ export function KioskDailyQueue({
             allSubTasks={subTasks}
             readOnly={readOnly}
             pending={pending}
+            blockingUi={blockingUi}
             flashDocumentId={flashDocumentId}
             onStart={onStart}
             onExit={onExit}
             onStartChain={onStartChain}
             onConfirmChainStop={onConfirmChainStop}
             onAdvanceChain={onAdvanceChain}
-            highlightProducing
           />
         </section>
       ) : null}
@@ -101,6 +103,7 @@ export function KioskDailyQueue({
             allSubTasks={subTasks}
             readOnly={readOnly}
             pending={pending}
+            blockingUi={blockingUi}
             flashDocumentId={flashDocumentId}
             onStart={onStart}
             onExit={onExit}
@@ -124,6 +127,7 @@ export function KioskDailyQueue({
             allSubTasks={subTasks}
             readOnly={readOnly}
             pending={pending}
+            blockingUi={blockingUi}
             flashDocumentId={flashDocumentId}
             onStart={onStart}
             onExit={onExit}

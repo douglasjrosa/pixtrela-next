@@ -87,6 +87,32 @@ describe("KioskSubtaskPanel", () => {
     expect(lockedItem).toHaveClass("bg-muted");
   });
 
+  it("uses a light green background without lock overlay on producing cards", () => {
+    const producing = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Tarefa A",
+        status: "producing",
+        startedAt: "2026-06-05T10:00:00.000Z",
+        activationStatus: "locked",
+      }),
+    ];
+
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={producing}
+        allSubTasks={producing}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    const card = screen.getByText("Tarefa A").closest("li");
+    expect(card).not.toBeNull();
+    expect(card).toHaveClass("bg-success/10");
+    expect(within(card!).queryByTestId("subtask-locked-overlay")).toBeNull();
+  });
+
   it("shows only start on unlocked startable subtasks when idle", () => {
     renderWithIntl(
       <KioskSubtaskPanel

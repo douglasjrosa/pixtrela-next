@@ -12,12 +12,14 @@ export interface KioskSubtaskProducingMetricsProps {
   startedAt: string;
   timeSpent: number;
   expectedTime: number;
+  timerPaused?: boolean;
 }
 
 export function KioskSubtaskProducingMetrics({
   startedAt,
   timeSpent,
   expectedTime,
+  timerPaused = false,
 }: KioskSubtaskProducingMetricsProps) {
   const t = useTranslations("kiosk");
   const tDuration = useTranslations("duration");
@@ -37,6 +39,7 @@ export function KioskSubtaskProducingMetrics({
           startedAt={startedAt}
           baseSeconds={timeSpent}
           expectedTime={expectedTime}
+          paused={timerPaused}
         />
       </KioskSubtaskMetricBlock>
     </div>

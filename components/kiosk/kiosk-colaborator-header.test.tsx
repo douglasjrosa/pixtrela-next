@@ -24,9 +24,16 @@ describe("KioskColaboratorHeader", () => {
   });
 
   it("renders a fallback icon when avatar is missing", () => {
-    renderWithIntl(<KioskColaboratorHeader name="Bruno" avatarUrl={null} />);
+    renderWithIntl(
+      <KioskColaboratorHeader
+        name="Bruno"
+        avatarUrl={null}
+        className="sticky top-0"
+      />,
+    );
 
     expect(screen.getByRole("heading", { name: "Bruno" })).toBeInTheDocument();
     expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
+    expect(screen.getByRole("banner")).toHaveClass("sticky");
   });
 });

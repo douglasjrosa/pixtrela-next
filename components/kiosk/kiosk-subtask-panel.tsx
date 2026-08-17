@@ -30,7 +30,6 @@ export interface KioskSubtaskPanelProps {
   units?: KioskQueueUnit[];
   allSubTasks?: KioskSubTask[];
   readOnly?: boolean;
-  highlightProducing?: boolean;
   flashDocumentId?: string | null;
   onStart?: (documentId: string) => void | Promise<void>;
   onExit?: (documentId: string, input: KioskExitInput) => void | Promise<void>;
@@ -41,6 +40,7 @@ export interface KioskSubtaskPanelProps {
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
   pending?: boolean;
+  blockingUi?: boolean;
 }
 
 function unitsFromSubTasks(subTasks: KioskSubTask[]): KioskQueueUnit[] {
@@ -57,7 +57,6 @@ export function KioskSubtaskPanel({
   units,
   allSubTasks,
   readOnly = false,
-  highlightProducing = false,
   flashDocumentId,
   onStart,
   onExit,
@@ -65,6 +64,7 @@ export function KioskSubtaskPanel({
   onConfirmChainStop,
   onAdvanceChain,
   pending,
+  blockingUi = false,
 }: KioskSubtaskPanelProps) {
   const t = useTranslations("kiosk");
   const [exitingId, setExitingId] = useState<string | null>(null);
@@ -81,6 +81,7 @@ export function KioskSubtaskPanel({
               unit={unit}
               readOnly={readOnly}
               pending={pending}
+              blockingUi={blockingUi}
               flash={unit.memberIds.includes(flashDocumentId ?? "")}
               onStartChain={onStartChain}
               onConfirmChainStop={onConfirmChainStop}
@@ -93,6 +94,7 @@ export function KioskSubtaskPanel({
         const helperMode = unit.helperMode;
         const finished = isFinishedSubTask(subTask);
         const locked = isLockedSubTask(subTask);
+        const showLockOverlay = locked;
         const showStart = !readOnly && unit.showStart;
         const showExit =
           !readOnly && shouldShowExitButton(queueContext, subTask);
@@ -109,11 +111,10 @@ export function KioskSubtaskPanel({
             className={cn(
               "relative rounded-2xl border bg-card p-4 transition-colors duration-300",
               finished && "border-muted bg-muted opacity-80",
-              locked && "bg-muted",
-              highlightProducing &&
-                isProducing &&
-                "border-l-4 border-l-[var(--success)] shadow-sm",
-              isFlashing && "bg-muted",
+              isProducing &&
+                "border-l-4 border-l-[var(--success)] bg-success/10 shadow-sm",
+              showLockOverlay && "bg-muted",
+              isFlashing && !isProducing && "bg-muted",
             )}
           >
             <div className="flex flex-col gap-4">
@@ -130,6 +131,7 @@ export function KioskSubtaskPanel({
                     startedAt={subTask.startedAt}
                     timeSpent={subTask.timeSpent}
                     expectedTime={subTask.expectedTime}
+                    timerPaused={blockingUi}
                   />
                 ) : null}
                 {finished ? (
@@ -163,7 +165,7 @@ export function KioskSubtaskPanel({
                 </div>
               ) : null}
             </div>
-            {locked ? (
+            {showLockOverlay ? (
               <div
                 className="pointer-events-none absolute inset-0 flex items-center justify-center"
                 data-testid="subtask-locked-overlay"
@@ -188,10 +190,10 @@ export function KioskSubtaskPanel({
                         )
                       : undefined
                   }
-                  disabled={pending}
+                  disabled={blockingUi}
                   onCancel={() => setExitingId(null)}
                   onConfirm={(input) => {
-                    void onExit(subTask.documentId, input);
+                    onExit(subTask.documentId, input);
                     setExitingId(null);
                   }}
                 />

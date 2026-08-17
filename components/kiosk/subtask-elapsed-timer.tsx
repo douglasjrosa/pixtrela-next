@@ -11,15 +11,17 @@ export interface SubtaskElapsedTimerProps {
   startedAt: string | null;
   baseSeconds?: number;
   expectedTime?: number;
+  paused?: boolean;
 }
 
 export function SubtaskElapsedTimer({
   startedAt,
   baseSeconds = 0,
   expectedTime = 0,
+  paused = false,
 }: SubtaskElapsedTimerProps) {
   const t = useTranslations("duration");
-  const elapsedSeconds = useElapsedSeconds(startedAt, baseSeconds);
+  const elapsedSeconds = useElapsedSeconds(startedAt, baseSeconds, paused);
   if (elapsedSeconds === null) return null;
 
   const isOverExpected =
