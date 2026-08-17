@@ -51,9 +51,14 @@ import {
 import { getSubtaskAssigneeIds } from "@/lib/business/board-assignee-draft";
 import {
   canEditAssignees,
+  chainIdsForClickSelection,
   chainItemsFromBoard,
   findChainContaining,
+  isMultiMemberChain,
+  nextChainSubtaskClick,
   resolveChains,
+  type AssigneeApplyScope,
+  type ChainClickSelection,
 } from "@/lib/business/subtask-chain";
 import {
   buildMultiAssignUpdates,
@@ -127,6 +132,7 @@ export interface KanbanTaskSubtasksModalProps {
   onAssigneesChange: (
     subtask: BoardSubTaskSummary,
     assignedToIds: string[],
+    applyScope?: AssigneeApplyScope,
   ) => void;
   onSave: () => void;
   onReorder?: (
@@ -422,6 +428,8 @@ export function KanbanTaskSubtasksModal({
   const [selectedSubtaskId, setSelectedSubtaskId] = useState<string | null>(
     null,
   );
+  const [chainClickSelection, setChainClickSelection] =
+    useState<ChainClickSelection | null>(null);
   const [selectedCollaboratorId, setSelectedCollaboratorId] = useState<
     string | null
   >(null);
@@ -442,6 +450,7 @@ export function KanbanTaskSubtasksModal({
     if (open) {
       setFocusMode("subtasks");
       setSelectedSubtaskId(null);
+      setChainClickSelection(null);
       setSelectedCollaboratorId(null);
       setMultiEnabled(false);
       setSelectedSubtaskIds([]);
@@ -519,9 +528,35 @@ export function KanbanTaskSubtasksModal({
         : mainTab;
   const selectedSubtask =
     pending.find((item) => item.documentId === selectedSubtaskId) ?? null;
+  const selectedAssigneeRole = selectedSubtask
+    ? assigneeRoleFor(selectedSubtask.documentId)
+    : "solo";
+  const selectedApplyScope: AssigneeApplyScope | undefined =
+    chainClickSelection?.scope ??
+    (selectedAssigneeRole === "head"
+      ? "group"
+      : selectedAssigneeRole === "helper"
+        ? "self"
+        : undefined);
   const selectedAssigneeLocked =
     selectedSubtask != null &&
-    assigneeRoleFor(selectedSubtask.documentId) === "none";
+    selectedAssigneeRole === "none" &&
+    selectedApplyScope !== "group";
+  const selectedHelperSelfLocked =
+    selectedSubtask != null &&
+    selectedAssigneeRole === "helper" &&
+    selectedApplyScope === "self";
+  const selectedChain = selectedSubtask
+    ? findChainContaining(chains, selectedSubtask.documentId)
+    : null;
+  const selectedHeadAssignees = (() => {
+    if (!selectedHelperSelfLocked || !selectedChain) return [];
+    const head = pending.find(
+      (item) => item.documentId === selectedChain.headId,
+    );
+    return head ? getSubtaskAssigneeIds(head) : [];
+  })();
+  const selectedHeadAssigneeIdSet = new Set(selectedHeadAssignees);
   const selectedAssigneeIds = selectedSubtask
     ? getSubtaskAssigneeIds(selectedSubtask)
     : [];
@@ -540,6 +575,7 @@ export function KanbanTaskSubtasksModal({
     setSelectedSubtaskIds([]);
     setSelectedCollaboratorIds([]);
     setSelectedSubtaskId(null);
+    setChainClickSelection(null);
     setSelectedCollaboratorId(null);
   }
 
@@ -597,6 +633,7 @@ export function KanbanTaskSubtasksModal({
     setSelectedSubtaskIds([]);
     setSelectedCollaboratorIds([]);
     setSelectedSubtaskId(null);
+    setChainClickSelection(null);
     setSelectedCollaboratorId(null);
   }
 
@@ -634,11 +671,29 @@ export function KanbanTaskSubtasksModal({
     if (multiEnabled) return;
     setFocusMode(next);
     setSelectedSubtaskId(null);
+    setChainClickSelection(null);
     setSelectedCollaboratorId(null);
   }
 
   function requestClose(): void {
     confirmIfDirty(onClose);
+  }
+
+  function emitAssigneesChange(
+    source: BoardSubTaskSummary,
+    assignedToIds: string[],
+  ): void {
+    const chain = findChainContaining(chains, source.documentId);
+    if (!chain || !isMultiMemberChain(chain)) {
+      onAssigneesChange(source, assignedToIds);
+      return;
+    }
+    const applyScope = selectedApplyScope ?? "self";
+    const target =
+      applyScope === "group"
+        ? (pending.find((item) => item.documentId === chain.headId) ?? source)
+        : source;
+    onAssigneesChange(target, assignedToIds, applyScope);
   }
 
   function handlePendingSubtaskClick(subtask: BoardSubTaskSummary): void {
@@ -650,6 +705,18 @@ export function KanbanTaskSubtasksModal({
     }
 
     if (focusMode === "subtasks") {
+      const chain = findChainContaining(chains, subtask.documentId);
+      if (chain && isMultiMemberChain(chain)) {
+        const next = nextChainSubtaskClick({
+          clickedId: subtask.documentId,
+          clickedMaxWorkers: subtask.maxSameTimeWorkers,
+          current: chainClickSelection,
+        });
+        setChainClickSelection(next);
+        setSelectedSubtaskId(next?.selectedId ?? null);
+        return;
+      }
+      setChainClickSelection(null);
       setSelectedSubtaskId((current) =>
         current === subtask.documentId ? null : subtask.documentId,
       );
@@ -690,7 +757,7 @@ export function KanbanTaskSubtasksModal({
       showHintToast(tKanban("chooseSubtaskFirst"));
       return;
     }
-    if (assigneeRoleFor(selectedSubtask.documentId) === "none") {
+    if (selectedAssigneeLocked) {
       showHintToast(tKanban("assigneesFollowHead"));
       return;
     }
@@ -698,7 +765,7 @@ export function KanbanTaskSubtasksModal({
       getSubtaskAssigneeIds(selectedSubtask),
       collaboratorId,
     );
-    onAssigneesChange(selectedSubtask, nextIds);
+    emitAssigneesChange(selectedSubtask, nextIds);
   }
 
   function handleTeamClick(team: TeamAssignmentOption): void {
@@ -715,7 +782,7 @@ export function KanbanTaskSubtasksModal({
       showHintToast(tKanban("chooseSubtaskFirst"));
       return;
     }
-    if (assigneeRoleFor(selectedSubtask.documentId) === "none") {
+    if (selectedAssigneeLocked) {
       showHintToast(tKanban("assigneesFollowHead"));
       return;
     }
@@ -723,7 +790,7 @@ export function KanbanTaskSubtasksModal({
       getSubtaskAssigneeIds(selectedSubtask),
       teamIds,
     );
-    onAssigneesChange(selectedSubtask, nextIds);
+    emitAssigneesChange(selectedSubtask, nextIds);
   }
 
   function applyUpdates(
@@ -785,6 +852,11 @@ export function KanbanTaskSubtasksModal({
       return selectedSubtaskIds.includes(subtask.documentId);
     }
     if (focusMode === "subtasks") {
+      if (chainClickSelection) {
+        return chainIdsForClickSelection(chains, chainClickSelection).includes(
+          subtask.documentId,
+        );
+      }
       return subtask.documentId === selectedSubtaskId;
     }
     if (!selectedCollaboratorId) return false;
@@ -1163,11 +1235,17 @@ export function KanbanTaskSubtasksModal({
                                 assignedCount,
                                 assignWarnMax,
                               );
+                              const locksHeadAssignee =
+                                selectedHelperSelfLocked &&
+                                selectedHeadAssigneeIdSet.has(
+                                  member.documentId,
+                                );
                               const memberDisabled =
                                 saving ||
                                 (!multiEnabled &&
                                   focusMode === "subtasks" &&
-                                  selectedAssigneeLocked);
+                                  (selectedAssigneeLocked ||
+                                    locksHeadAssignee));
                               return (
                                 <button
                                   key={member.documentId}

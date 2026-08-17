@@ -887,7 +887,7 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(onLinkToggle).toHaveBeenCalledWith("st-2", true);
   });
 
-  it("blocks independent assignees on chained members with max workers 1", async () => {
+  it("highlights the whole chain when a max=1 member is clicked", async () => {
     const user = userEvent.setup();
     const onAssigneesChange = vi.fn();
     const chained = [
@@ -915,7 +915,73 @@ describe("KanbanTaskSubtasksModal", () => {
     });
 
     await user.click(screen.getByRole("button", { name: /Pintar/ }));
-    expect(screen.getByRole("button", { name: "Atribuir Bob" })).toBeDisabled();
-    expect(onAssigneesChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /Pintar/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /Soldar/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(screen.getByRole("button", { name: "Atribuir Bob" }));
+    expect(onAssigneesChange).toHaveBeenCalledWith(
+      chained[0],
+      ["u-1", "u-2"],
+      "group",
+    );
+  });
+
+  it("dims head assignees on a helper until the row toggles to the group", async () => {
+    const user = userEvent.setup();
+    const onAssigneesChange = vi.fn();
+    const chained = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Pintar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: true,
+        maxSameTimeWorkers: 2,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+    ];
+    renderModal({
+      subtasks: chained,
+      onReorder: vi.fn(),
+      onLinkToggle: vi.fn(),
+      onAssigneesChange,
+    });
+
+    await user.click(screen.getByRole("button", { name: /Pintar/ }));
+    expect(screen.getByRole("button", { name: /Pintar/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /Soldar/ })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: "Remover Ana" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Atribuir Bob" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: /Pintar/ }));
+    expect(screen.getByRole("button", { name: /Soldar/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Remover Ana" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Atribuir Bob" }));
+    expect(onAssigneesChange).toHaveBeenCalledWith(
+      chained[0],
+      ["u-1", "u-2"],
+      "group",
+    );
   });
 });

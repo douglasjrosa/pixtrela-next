@@ -314,6 +314,62 @@ describe("board/actions drizzle", () => {
     );
   });
 
+  it("updateBoardSubtaskAssignees can update only the head", async () => {
+    const siblings = [
+      {
+        id: "st-1",
+        taskId: "task-1",
+        name: "Cut",
+        qty: 1,
+        expectedTime: 10,
+        sharingType: "duration",
+        index: 0,
+        status: "waiting",
+        activationStatus: "unlocked",
+        reasonForDeactivation: null,
+        linkedToPrevious: false,
+        maxSameTimeWorkers: 2,
+        assignedToIds: ["u-head"],
+        dependencyIds: [],
+      },
+      {
+        id: "st-2",
+        taskId: "task-1",
+        name: "Pack",
+        qty: 1,
+        expectedTime: 10,
+        sharingType: "duration",
+        index: 1,
+        status: "waiting",
+        activationStatus: "unlocked",
+        reasonForDeactivation: null,
+        linkedToPrevious: true,
+        maxSameTimeWorkers: 1,
+        assignedToIds: ["u-head"],
+        dependencyIds: [],
+      },
+    ];
+    listSubTasksWithRelationsForTask.mockResolvedValue(siblings);
+    getSubTaskById.mockImplementation(async (id: string) =>
+      siblings.find((row) => row.id === id) ?? null,
+    );
+
+    const { updateBoardSubtaskAssignees } = await import("./actions");
+    await updateBoardSubtaskAssignees(
+      "st-1",
+      "task-1",
+      ["u-head", "u-new"],
+      false,
+    );
+
+    expect(updateSubTask).toHaveBeenCalledTimes(1);
+    expect(updateSubTask).toHaveBeenCalledWith(
+      "st-1",
+      "task-1",
+      expect.objectContaining({ assignedToIds: ["u-head", "u-new"] }),
+    );
+  });
+
   it("updateBoardSubtaskAssignees rejects locked chain members", async () => {
     listSubTasksWithRelationsForTask.mockResolvedValue([
       {

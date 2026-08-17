@@ -144,6 +144,72 @@ export function constrainHelperAssignees(
   return uniqueIds([...headIds, ...extras]);
 }
 
+export type ChainClickScope = "self" | "group";
+
+export type ChainClickSelection = {
+  selectedId: string;
+  scope: ChainClickScope;
+};
+
+export type AssigneeApplyScope = ChainClickScope;
+
+/**
+ * Clicking max=1 selects the whole chain. Clicking max>1 starts on that row
+ * only; a later click on the same row toggles self/group.
+ */
+export function nextChainSubtaskClick(input: {
+  clickedId: string;
+  clickedMaxWorkers: number;
+  current: ChainClickSelection | null;
+}): ChainClickSelection | null {
+  const { clickedId, clickedMaxWorkers, current } = input;
+  if (clickedMaxWorkers <= 1) {
+    if (current?.selectedId === clickedId && current.scope === "group") {
+      return null;
+    }
+    return { selectedId: clickedId, scope: "group" };
+  }
+  if (current?.selectedId === clickedId) {
+    return {
+      selectedId: clickedId,
+      scope: current.scope === "self" ? "group" : "self",
+    };
+  }
+  return { selectedId: clickedId, scope: "self" };
+}
+
+export function chainIdsForClickSelection(
+  chains: readonly SubTaskChain[],
+  selection: ChainClickSelection | null,
+): string[] {
+  if (!selection) return [];
+  if (selection.scope === "self") return [selection.selectedId];
+  const chain = findChainContaining(chains, selection.selectedId);
+  if (!chain || !isMultiMemberChain(chain)) return [selection.selectedId];
+  return [...chain.memberIds];
+}
+
+export function sameAssigneeIdSet(
+  left: readonly string[],
+  right: readonly string[],
+): boolean {
+  const uniqueLeft = uniqueIds(left);
+  const uniqueRight = uniqueIds(right);
+  if (uniqueLeft.length !== uniqueRight.length) return false;
+  const rightSet = new Set(uniqueRight);
+  return uniqueLeft.every((id) => rightSet.has(id));
+}
+
+/** Head save may cascade only when every member already matches the new set. */
+export function shouldPropagateHeadAssigneeSave(
+  memberAssignedToIds: readonly (readonly string[])[],
+  nextHeadIds: readonly string[],
+): boolean {
+  return memberAssignedToIds.every((ids) =>
+    sameAssigneeIdSet(ids, nextHeadIds),
+  );
+}
+
 /** Linking copies the previous row's assignees and discards the current set. */
 export function assigneesAfterLinkToPrevious(
   previousAssignedToIds: readonly string[],

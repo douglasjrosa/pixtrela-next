@@ -37,8 +37,11 @@ import {
   chainItemsFromBoard,
   constrainHelperAssignees,
   findChainContaining,
+  isMultiMemberChain,
   reconcileChainReorder,
   resolveChains,
+  shouldPropagateHeadAssigneeSave,
+  type AssigneeApplyScope,
 } from "@/lib/business/subtask-chain";
 import { countUnassignedSubTasks } from "@/lib/business/kanban-card-badges";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
@@ -72,6 +75,7 @@ export interface BoardActionsProps {
     subtaskDocumentId: string,
     taskDocumentId: string,
     assignedToIds: string[],
+    propagateChain?: boolean,
   ) => Promise<void>;
   createSubtask: (
     taskDocumentId: string,
@@ -424,6 +428,7 @@ export function BoardActions({
   function handleAssigneesChange(
     subtask: BoardSubTaskSummary,
     assignedToIds: string[],
+    applyScope?: AssigneeApplyScope,
   ): void {
     rememberAssigneeNames(
       subtasksRef.current.flatMap((item) => item.assignedTo),
@@ -455,13 +460,19 @@ export function BoardActions({
         subtask.maxSameTimeWorkers,
         chain,
       );
-      if (role === "none") return current;
-      if (role === "helper") {
+      const scope =
+        applyScope ??
+        (role === "head" ? "group" : role === "helper" ? "self" : undefined);
+      if (role === "none" && scope !== "group") return current;
+      if (scope === "self") {
         const head = current.find((item) => item.documentId === chain.headId);
-        const nextIds = constrainHelperAssignees(
-          head?.assignedTo.map((assignee) => assignee.documentId) ?? [],
-          assignedToIds,
-        );
+        const nextIds =
+          role === "helper"
+            ? constrainHelperAssignees(
+                head?.assignedTo.map((assignee) => assignee.documentId) ?? [],
+                assignedToIds,
+              )
+            : assignedToIds;
         return current.map((item) =>
           item.documentId === subtask.documentId
             ? {
@@ -529,13 +540,28 @@ export function BoardActions({
           const current = chainItems.find(
             (item) => item.documentId === update.documentId,
           );
-          if (chain && chain.memberIds.length > 1 && current) {
+          if (chain && isMultiMemberChain(chain) && current) {
             const role = canEditAssignees(
               current.documentId,
               current.maxSameTimeWorkers,
               chain,
             );
             if (role === "none") continue;
+            if (role === "head") {
+              const memberIds = chain.memberIds.map((id) => {
+                const row = subtasks.find((item) => item.documentId === id);
+                return (
+                  row?.assignedTo.map((assignee) => assignee.documentId) ?? []
+                );
+              });
+              await updateSubtaskAssignees(
+                update.documentId,
+                taskDocumentId,
+                update.assignedToIds,
+                shouldPropagateHeadAssigneeSave(memberIds, update.assignedToIds),
+              );
+              continue;
+            }
           }
           await updateSubtaskAssignees(
             update.documentId,

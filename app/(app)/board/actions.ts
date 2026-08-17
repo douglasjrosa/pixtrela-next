@@ -473,6 +473,7 @@ export async function updateBoardSubtaskAssignees(
   subtaskDocumentId: string,
   taskDocumentId: string,
   assignedToIds: string[],
+  propagateChain = true,
 ): Promise<void> {
   await assertCanManageBoardSubtasks();
   const siblings = await listSubTasksWithRelationsForTask(taskDocumentId);
@@ -512,6 +513,17 @@ export async function updateBoardSubtaskAssignees(
       subtaskDocumentId,
       taskDocumentId,
       toSubTaskFormInput(subtask, nextIds),
+    );
+    return;
+  }
+
+  if (!propagateChain) {
+    const subtask = await fetchSubTaskForUpdate(subtaskDocumentId);
+    if (!subtask) throw new Error("notFound");
+    await updateSubTask(
+      subtaskDocumentId,
+      taskDocumentId,
+      toSubTaskFormInput(subtask, assignedToIds),
     );
     return;
   }
