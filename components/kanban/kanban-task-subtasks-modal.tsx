@@ -33,10 +33,7 @@ import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager
 import { Button } from "@/components/ui/button";
 import { Card, CardBadge, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS,
-  FormModalShell,
-} from "@/components/ui/form-modal-shell";
+import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { StackedDateTime } from "@/components/ui/stacked-date-time";
 import {
   reorderPendingSubtasksInPlace,
@@ -1051,6 +1048,8 @@ export function KanbanTaskSubtasksModal({
         disabled={saving}
         size="xl"
         layout="viewport"
+        bodyScroll={false}
+        fillBody={false}
         footerStart={
           multiEnabled && showMultiAssignSwitch ? (
             <KanbanMultiAssignClearButton
@@ -1154,12 +1153,7 @@ export function KanbanTaskSubtasksModal({
             {renderAddSubtaskButton("w-full sm:w-auto")}
           </div>
         ) : activeMainTab === "finished" ? (
-          <ul
-            className={cn(
-              "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-2.5",
-              FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS,
-            )}
-          >
+          <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-2.5">
             {renderSubtasksRefreshStatusItem()}
             {finished.length === 0 ? (
               <li className="text-sm text-muted-foreground" role="status">
@@ -1238,12 +1232,7 @@ export function KanbanTaskSubtasksModal({
             {renderAddSubtaskButton("w-full")}
           </ul>
         ) : (
-          <div
-            className={cn(
-              "flex min-h-0 min-w-0 flex-1 flex-col gap-4",
-              FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS,
-            )}
-          >
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
             <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[7fr_3fr] gap-4">
               <section className="flex min-h-0 min-w-0 flex-col gap-2">
                 {multiEnabled ? (

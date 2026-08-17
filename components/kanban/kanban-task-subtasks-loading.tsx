@@ -7,7 +7,6 @@ import { KanbanFloatingCountBadge } from "@/components/kanban/kanban-floating-co
 import { TaskProgressBarSkeleton } from "@/components/kanban/task-progress-bar-skeleton";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import { Card, CardBadge, CardContent } from "@/components/ui/card";
-import { FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS } from "@/components/ui/form-modal-shell";
 import { shouldShowAssignWarn } from "@/lib/business/assign-warn";
 import { cn } from "@/lib/utils";
 
@@ -167,10 +166,7 @@ export function KanbanTaskSubtasksLoadingBody({
 
   return (
     <div
-      className={cn(
-        "flex min-h-0 min-w-0 flex-1 flex-col gap-4",
-        FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS,
-      )}
+      className="flex min-h-0 min-w-0 flex-1 flex-col gap-4"
       role="status"
       aria-busy="true"
       aria-label={tKanban("loading")}

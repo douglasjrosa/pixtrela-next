@@ -149,6 +149,22 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(screen.queryByText("Histórico")).not.toBeInTheDocument();
   });
 
+  it("scrolls subtasks and teams columns independently without modal body scroll", () => {
+    renderModal();
+
+    const body = document.querySelector('[data-slot="form-modal-body"]');
+    expect(body?.className).toContain("overflow-hidden");
+    expect(body?.className).not.toContain("overflow-y-auto");
+
+    const subtasksColumn = screen.getByRole("button", { name: "Subtarefas" })
+      .parentElement?.querySelector("ul");
+    const teamsColumn = screen.getByRole("button", { name: "Equipes" })
+      .parentElement?.querySelector("div.overflow-y-auto");
+
+    expect(subtasksColumn?.className).toContain("overflow-y-auto");
+    expect(teamsColumn?.className).toContain("overflow-y-auto");
+  });
+
   it("keeps modal chrome and skeletons while subtasks load", () => {
     renderModal({
       loading: true,
