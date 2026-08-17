@@ -356,7 +356,7 @@ export function toChainSubTaskFromBoard(
 ): ChainSubTask {
   return {
     documentId: item.documentId,
-    index: item.index ?? fallbackIndex,
+    index: fallbackIndex,
     status: item.status,
     linkedToPrevious: item.linkedToPrevious,
     maxSameTimeWorkers: item.maxSameTimeWorkers,

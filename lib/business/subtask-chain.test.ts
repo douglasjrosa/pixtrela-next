@@ -8,6 +8,7 @@ import {
   constrainHelperAssignees,
   chainHasExternalDependencyBlock,
   findChainContaining,
+  chainItemsFromBoard,
   reconcileChainReorder,
   remainingExecutableMembers,
   resolveChains,
@@ -431,6 +432,53 @@ describe("chain board rules", () => {
     ).toEqual([
       { documentId: "a", assignedToIds: ["next"] },
       { documentId: "b", assignedToIds: ["next"] },
+    ]);
+  });
+
+  it("treats a moved former head as a member using list order, not stale index", () => {
+    const items = [
+      {
+        documentId: "b",
+        index: 1,
+        status: "waiting",
+        linkedToPrevious: false,
+        maxSameTimeWorkers: 1,
+        assignedTo: [{ documentId: "u-b" }],
+      },
+      {
+        documentId: "a",
+        index: 0,
+        status: "waiting",
+        linkedToPrevious: true,
+        maxSameTimeWorkers: 1,
+        assignedTo: [{ documentId: "u-a" }],
+      },
+      {
+        documentId: "c",
+        index: 2,
+        status: "waiting",
+        linkedToPrevious: true,
+        maxSameTimeWorkers: 1,
+        assignedTo: [{ documentId: "u-c" }],
+      },
+    ];
+    expect(resolveChains(chainItemsFromBoard(items))).toEqual([
+      { headId: "b", memberIds: ["b", "a", "c"] },
+    ]);
+    expect(
+      applyHeadAssigneePropagation(
+        items.map((row) => ({
+          documentId: row.documentId,
+          assignedToIds: row.assignedTo.map((assignee) => assignee.documentId),
+          maxSameTimeWorkers: row.maxSameTimeWorkers,
+        })),
+        "b",
+        ["u-b-new"],
+      ),
+    ).toEqual([
+      { documentId: "b", assignedToIds: ["u-b-new"] },
+      { documentId: "a", assignedToIds: ["u-b-new"] },
+      { documentId: "c", assignedToIds: ["u-b-new"] },
     ]);
   });
 });

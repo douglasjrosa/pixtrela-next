@@ -39,7 +39,6 @@ import {
   findChainContaining,
   reconcileChainReorder,
   resolveChains,
-  sortChainSubTasks,
 } from "@/lib/business/subtask-chain";
 import { countUnassignedSubTasks } from "@/lib/business/kanban-card-badges";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
@@ -285,7 +284,7 @@ export function BoardActions({
       sortSubtasksByDocumentIds(
         applyChainStatesToSubtasks(subtasks, reconciled),
         orderedDocumentIds,
-      ),
+      ).map((item, index) => ({ ...item, index })),
     );
     setReorderingSubtasks(true);
 
@@ -309,9 +308,7 @@ export function BoardActions({
     linkedToPrevious: boolean,
   ): void {
     const current = subtasksRef.current;
-    const pending = sortChainSubTasks(
-      current.filter((item) => item.status !== FINISHED_STATUS),
-    );
+    const pending = current.filter((item) => item.status !== FINISHED_STATUS);
     const nextStates = applyChainLinkToggle(
       chainAssigneeStateFromBoard(pending),
       subtaskDocumentId,
