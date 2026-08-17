@@ -8,7 +8,7 @@ export type SendMailInput = {
 export async function sendMail(input: SendMailInput): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from =
-    process.env.MAIL_FROM?.trim() ?? "noreply@example.com";
+    process.env.MAIL_FROM?.trim() ?? "noreply@example.com"; // pragma: allowlist secret
 
   if (!apiKey) {
     console.info(
