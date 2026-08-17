@@ -907,6 +907,11 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(
       screen.getByRole("button", { name: "Desligar da anterior" }),
     ).toHaveAttribute("aria-pressed", "true");
+    const pintarCard = screen.getByRole("button", { name: /Pintar/ });
+    expect(pintarCard.parentElement).toHaveClass("relative");
+    expect(pintarCard.parentElement).toHaveClass("z-10");
+    expect(screen.getByTestId("subtask-chain-link")).toHaveClass("z-0");
+    expect(pintarCard.closest("ul")).toHaveClass("isolate");
   });
 
   it("toggles chain link from the subtask row", async () => {

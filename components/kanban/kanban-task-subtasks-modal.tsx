@@ -361,7 +361,9 @@ function SortablePendingSubtaskCard({
   const hideLinkVisuals = isDragging || Boolean(active);
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    ...(transform
+      ? { transform: CSS.Transform.toString(transform) }
+      : {}),
     transition,
   };
 
@@ -401,7 +403,7 @@ function SortablePendingSubtaskCard({
             onToggle={(linked) => onLinkToggle?.(linked)}
           />
         ) : null}
-        <div className="relative min-w-0 flex-1">
+        <div className="relative z-10 min-w-0 flex-1">
           <button
             type="button"
             aria-pressed={highlighted}

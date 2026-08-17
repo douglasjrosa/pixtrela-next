@@ -42,6 +42,8 @@ describe("SubtaskChainLinkControl", () => {
     expect(button).toHaveClass("relative");
     expect(button).toHaveClass("z-10");
 
+    expect(screen.getByTestId("subtask-chain-link")).toHaveClass("z-0");
+
     const frame = document.querySelector('[data-slot="chain-line"]');
     expect(frame).toHaveClass("absolute");
     expect(frame).toHaveClass("left-1/2");
@@ -53,6 +55,7 @@ describe("SubtaskChainLinkControl", () => {
     expect(frame).toHaveClass("border-b");
     expect(frame).toHaveClass("border-r-0");
     expect(frame).toHaveClass("h-[calc(var(--subtask-chain-gap)+5rem)]");
+    expect(frame?.className).not.toMatch(/\bz-\[-1\]\b/);
   });
 
   it("hides the button and connector while dragging", () => {

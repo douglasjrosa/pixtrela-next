@@ -8,13 +8,13 @@ import { cn } from "@/lib/utils";
 
 /** Tight list gap; the C-frame height includes this token. */
 export const SUBTASK_CHAIN_LIST_GAP_CLASS =
-  "gap-[var(--subtask-chain-gap)] [--subtask-chain-gap:0.5rem]";
+  "isolate gap-[var(--subtask-chain-gap)] [--subtask-chain-gap:0.5rem]";
 
 const LINK_COLUMN_CLASS =
-  "relative flex h-full w-7 shrink-0 flex-col items-center";
+  "relative z-0 flex h-full w-7 shrink-0 flex-col items-center";
 
 const CHAIN_FRAME_CLASS = cn(
-  "pointer-events-none absolute left-1/2 top-3.5 z-0 -translate-y-1/2",
+  "pointer-events-none absolute left-1/2 top-3.5 -translate-y-1/2",
   "h-[calc(var(--subtask-chain-gap)+5rem)] w-5",
   "border-2 border-b border-l border-r-0 border-t border-dashed border-primary",
 );
