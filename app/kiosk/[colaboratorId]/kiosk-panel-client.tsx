@@ -1,13 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { KioskBlockingOverlay } from "@/components/kiosk/kiosk-blocking-overlay";
 import { KioskColaboratorHeader } from "@/components/kiosk/kiosk-colaborator-header";
 import { KioskDailyQueue } from "@/components/kiosk/kiosk-daily-queue";
 import type { OpenChainRun } from "@/lib/business/kiosk-queue-units";
+import {
+  applyOptimisticKioskStartToOpenRuns,
+  applyOptimisticKioskStartToSubTasks,
+  isOptimisticKioskStartSettled,
+  type OptimisticKioskStart,
+} from "@/lib/business/kiosk-optimistic-start";
 import {
   formatRemainingWorkerNames,
   hasActiveSubTask,
@@ -54,89 +59,131 @@ export function KioskPanelClient({
 }: KioskPanelClientProps) {
   const t = useTranslations("kiosk");
   const router = useRouter();
-  const [, startTransition] = useTransition();
-  const [blockingUi, setBlockingUi] = useState(false);
+  const [queueBusy, setQueueBusy] = useState<"start" | "exit" | null>(null);
+  const [optimisticStart, setOptimisticStart] =
+    useState<OptimisticKioskStart | null>(null);
   const [flashDocumentId, setFlashDocumentId] = useState<string | null>(null);
-  const blockingFingerprintRef = useRef<string | null>(null);
+  const exitFingerprintRef = useRef<string | null>(null);
+
+  const displaySubTasks = applyOptimisticKioskStartToSubTasks(
+    subTasks,
+    optimisticStart,
+  );
+  const displayCatalog = applyOptimisticKioskStartToSubTasks(
+    catalog ?? subTasks,
+    optimisticStart,
+  );
+  const displayOpenRuns = applyOptimisticKioskStartToOpenRuns(
+    openRuns,
+    optimisticStart,
+    colaboratorId,
+  );
 
   useEffect(() => {
     markKioskColaboratorReady();
   }, []);
 
-  const clearBlocking = useCallback(() => {
-    blockingFingerprintRef.current = null;
-    setBlockingUi(false);
-  }, []);
-
-  const beginBlocking = useCallback(() => {
-    blockingFingerprintRef.current = buildKioskQueueFingerprint(
-      subTasks,
-      openRuns,
-    );
-    setBlockingUi(true);
-  }, [openRuns, subTasks]);
+  useEffect(() => {
+    if (!optimisticStart) return;
+    if (isOptimisticKioskStartSettled(subTasks, optimisticStart)) {
+      setOptimisticStart(null);
+      setQueueBusy((current) => (current === "start" ? null : current));
+    }
+  }, [optimisticStart, subTasks]);
 
   useEffect(() => {
-    if (!blockingUi || blockingFingerprintRef.current === null) return;
+    if (queueBusy !== "exit" || exitFingerprintRef.current === null) return;
     const nextFingerprint = buildKioskQueueFingerprint(subTasks, openRuns);
-    if (nextFingerprint !== blockingFingerprintRef.current) {
-      clearBlocking();
+    if (nextFingerprint !== exitFingerprintRef.current) {
+      exitFingerprintRef.current = null;
+      setQueueBusy(null);
     }
-  }, [blockingUi, clearBlocking, openRuns, subTasks]);
+  }, [openRuns, queueBusy, subTasks]);
 
-  const runBlockedAction = useCallback(
+  const runBackgroundAction = useCallback(
     (action: () => Promise<void>, onError?: () => void): void => {
-      beginBlocking();
-      startTransition(async () => {
+      void (async () => {
         try {
           await action();
           router.refresh();
         } catch (error) {
           rethrowIfNavigationError(error);
-          clearBlocking();
+          setOptimisticStart(null);
+          setQueueBusy(null);
+          exitFingerprintRef.current = null;
           onError?.();
         }
-      });
+      })();
     },
-    [beginBlocking, clearBlocking, router],
+    [router],
   );
 
   function handleStart(documentId: string): void {
+    if (queueBusy) return;
     setFlashDocumentId(documentId);
     window.setTimeout(() => setFlashDocumentId(null), START_FLASH_MS);
-
-    runBlockedAction(async () => {
-      if (hasActiveSubTask(subTasks)) {
+    const startedAt = new Date().toISOString();
+    const mode = hasActiveSubTask(subTasks) ? "join" : "solo";
+    setOptimisticStart({ documentId, startedAt, mode });
+    setQueueBusy("start");
+    runBackgroundAction(async () => {
+      if (mode === "join") {
         await joinLiveChain(colaboratorId, documentId);
       } else {
         await startSubTask(colaboratorId, documentId);
       }
+    }, () => {
+      showErrorToast(t("startFailed"));
     });
   }
 
   function handleStartChain(headId: string): void {
+    if (queueBusy) return;
     setFlashDocumentId(headId);
     window.setTimeout(() => setFlashDocumentId(null), START_FLASH_MS);
-
-    runBlockedAction(async () => {
+    const startedAt = new Date().toISOString();
+    setOptimisticStart({
+      documentId: headId,
+      startedAt,
+      mode: "chain",
+      chainHeadId: headId,
+    });
+    setQueueBusy("start");
+    runBackgroundAction(async () => {
       await startChain(colaboratorId, headId);
+    }, () => {
+      showErrorToast(t("startFailed"));
     });
   }
 
   const handleAdvanceChain = useCallback(
     (chainRunId: string): void => {
-      runBlockedAction(async () => {
+      if (queueBusy) return;
+      exitFingerprintRef.current = buildKioskQueueFingerprint(
+        subTasks,
+        openRuns,
+      );
+      setQueueBusy("exit");
+      runBackgroundAction(async () => {
         await advanceChainRun(chainRunId);
+      }, () => {
+        showErrorToast(t("exitFailed"));
       });
     },
-    [runBlockedAction],
+    [openRuns, queueBusy, runBackgroundAction, subTasks, t],
   );
 
   function handleConfirmChainStop(
     chainRunId: string,
     answers: ChainStopAnswer[],
   ): void {
-    runBlockedAction(async () => {
+    if (queueBusy) return;
+    exitFingerprintRef.current = buildKioskQueueFingerprint(
+      subTasks,
+      openRuns,
+    );
+    setQueueBusy("exit");
+    runBackgroundAction(async () => {
       await confirmChainStop(colaboratorId, chainRunId, answers);
     }, () => {
       showErrorToast(t("exitFailed"));
@@ -144,10 +191,17 @@ export function KioskPanelClient({
   }
 
   function handleExit(documentId: string, input: KioskExitInput): void {
-    const subTask = subTasks.find((item) => item.documentId === documentId);
-    if (!subTask) return;
+    const subTask = displaySubTasks.find(
+      (item) => item.documentId === documentId,
+    );
+    if (!subTask || queueBusy) return;
 
-    runBlockedAction(async () => {
+    exitFingerprintRef.current = buildKioskQueueFingerprint(
+      subTasks,
+      openRuns,
+    );
+    setQueueBusy("exit");
+    runBackgroundAction(async () => {
       const result = await exitSubTask(
         colaboratorId,
         documentId,
@@ -159,7 +213,9 @@ export function KioskPanelClient({
       const names = formatRemainingWorkerNames(result.remainingWorkerNames);
       if (names) {
         showSuccessToast(t("exitOthersStillActive", { name: names }));
+        return;
       }
+      showSuccessToast(t("exitRecorded"));
     }, () => {
       showErrorToast(t("exitFailed"));
     });
@@ -175,30 +231,26 @@ export function KioskPanelClient({
         />
       ) : null}
       <div className="relative min-h-0 flex-1">
-        <div
-          className={blockingUi ? "pointer-events-none select-none" : undefined}
-          {...(blockingUi ? { inert: true } : {})}
-        >
-          <KioskDailyQueue
-            colaboratorId={colaboratorId}
-            subTasks={subTasks}
-            catalog={catalog}
-            openRuns={openRuns}
-            maxSimultaneousSubtaskIntervalSeconds={
-              maxSimultaneousSubtaskIntervalSeconds
-            }
-            readOnly={readOnly}
-            blockingUi={blockingUi}
-            flashDocumentId={flashDocumentId}
-            onStart={readOnly ? undefined : handleStart}
-            onExit={readOnly ? undefined : handleExit}
-            onStartChain={readOnly ? undefined : handleStartChain}
-            onConfirmChainStop={readOnly ? undefined : handleConfirmChainStop}
-            onAdvanceChain={readOnly ? undefined : handleAdvanceChain}
-          />
-        </div>
+        <KioskDailyQueue
+          colaboratorId={colaboratorId}
+          subTasks={displaySubTasks}
+          catalog={displayCatalog}
+          openRuns={displayOpenRuns}
+          maxSimultaneousSubtaskIntervalSeconds={
+            maxSimultaneousSubtaskIntervalSeconds
+          }
+          readOnly={readOnly}
+          blockingUi={queueBusy !== null}
+          timerPaused={queueBusy === "exit"}
+          exitBusy={queueBusy === "exit"}
+          flashDocumentId={flashDocumentId}
+          onStart={readOnly ? undefined : handleStart}
+          onExit={readOnly ? undefined : handleExit}
+          onStartChain={readOnly ? undefined : handleStartChain}
+          onConfirmChainStop={readOnly ? undefined : handleConfirmChainStop}
+          onAdvanceChain={readOnly ? undefined : handleAdvanceChain}
+        />
       </div>
-      {blockingUi ? <KioskBlockingOverlay /> : null}
     </div>
   );
 }

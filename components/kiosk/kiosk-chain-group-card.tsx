@@ -21,6 +21,8 @@ export interface KioskChainGroupCardProps {
   unit: KioskGroupUnit;
   readOnly?: boolean;
   blockingUi?: boolean;
+  timerPaused?: boolean;
+  exitBusy?: boolean;
   compactFinishedCards?: boolean;
   flash?: boolean;
   onStartChain?: (headId: string) => void | Promise<void>;
@@ -35,6 +37,8 @@ export function KioskChainGroupCard({
   unit,
   readOnly = false,
   blockingUi = false,
+  timerPaused,
+  exitBusy = false,
   compactFinishedCards = false,
   flash,
   onStartChain,
@@ -111,7 +115,7 @@ export function KioskChainGroupCard({
                     startedAt={member.startedAt}
                     timeSpent={member.timeSpent}
                     expectedTime={member.expectedTime}
-                    timerPaused={blockingUi}
+                    timerPaused={timerPaused ?? blockingUi}
                   />
                 ) : null}
                 {member.status === "finished" && !compactFinishedCards ? (
@@ -160,6 +164,7 @@ export function KioskChainGroupCard({
             {showStop ? (
               <KioskActionButton
                 actionVariant="outline"
+                disabled={blockingUi}
                 onClick={handleStopClick}
               >
                 {t("stop")}
@@ -171,7 +176,7 @@ export function KioskChainGroupCard({
                 disabled={blockingUi}
                 onClick={handleConfirmStop}
               >
-                {t("exitConfirm")}
+                {exitBusy ? t("actionLoading") : t("exitConfirm")}
               </KioskActionButton>
             ) : null}
             {collecting ? (

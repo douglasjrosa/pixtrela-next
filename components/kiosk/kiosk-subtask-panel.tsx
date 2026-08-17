@@ -41,6 +41,8 @@ export interface KioskSubtaskPanelProps {
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
   blockingUi?: boolean;
+  timerPaused?: boolean;
+  exitBusy?: boolean;
   compactFinishedCards?: boolean;
 }
 
@@ -65,6 +67,8 @@ export function KioskSubtaskPanel({
   onConfirmChainStop,
   onAdvanceChain,
   blockingUi = false,
+  timerPaused,
+  exitBusy = false,
   compactFinishedCards = false,
 }: KioskSubtaskPanelProps) {
   const t = useTranslations("kiosk");
@@ -82,6 +86,8 @@ export function KioskSubtaskPanel({
               unit={unit}
               readOnly={readOnly}
               blockingUi={blockingUi}
+              timerPaused={timerPaused}
+              exitBusy={exitBusy}
               compactFinishedCards={compactFinishedCards}
               flash={unit.memberIds.includes(flashDocumentId ?? "")}
               onStartChain={onStartChain}
@@ -147,7 +153,7 @@ export function KioskSubtaskPanel({
                     startedAt={subTask.startedAt}
                     timeSpent={subTask.timeSpent}
                     expectedTime={subTask.expectedTime}
-                    timerPaused={blockingUi}
+                    timerPaused={timerPaused ?? blockingUi}
                   />
                 ) : null}
                 {finished && !compactFinishedCards ? (
@@ -173,6 +179,7 @@ export function KioskSubtaskPanel({
                   {showExit ? (
                     <KioskActionButton
                       actionVariant="outline"
+                      disabled={blockingUi}
                       onClick={() => setExitingId(subTask.documentId)}
                     >
                       {t("exitSubtask")}
@@ -207,6 +214,7 @@ export function KioskSubtaskPanel({
                       : undefined
                   }
                   disabled={blockingUi}
+                  busy={exitBusy}
                   onCancel={() => setExitingId(null)}
                   onConfirm={(input) => {
                     onExit(subTask.documentId, input);

@@ -22,6 +22,8 @@ export interface KioskDailyQueueProps {
   readOnly?: boolean;
   flashDocumentId?: string | null;
   blockingUi?: boolean;
+  timerPaused?: boolean;
+  exitBusy?: boolean;
   onStart?: (documentId: string) => void | Promise<void>;
   onExit?: (documentId: string, input: KioskExitInput) => void | Promise<void>;
   onStartChain?: (headId: string) => void | Promise<void>;
@@ -40,6 +42,8 @@ export function KioskDailyQueue({
   maxSimultaneousSubtaskIntervalSeconds = 0,
   readOnly = false,
   blockingUi = false,
+  timerPaused,
+  exitBusy = false,
   flashDocumentId,
   onStart,
   onExit,
@@ -80,6 +84,8 @@ export function KioskDailyQueue({
             allSubTasks={subTasks}
             readOnly={readOnly}
             blockingUi={blockingUi}
+            timerPaused={timerPaused}
+            exitBusy={exitBusy}
             flashDocumentId={flashDocumentId}
             onStart={onStart}
             onExit={onExit}
@@ -100,6 +106,8 @@ export function KioskDailyQueue({
             allSubTasks={subTasks}
             readOnly={readOnly}
             blockingUi={blockingUi}
+            timerPaused={timerPaused}
+            exitBusy={exitBusy}
             flashDocumentId={flashDocumentId}
             onStart={onStart}
             onExit={onExit}

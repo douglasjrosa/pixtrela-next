@@ -791,6 +791,8 @@
     "exitQtyWithoutCompleteHint": "Outros colaboradores ainda estão ativos. Informe apenas a quantidade que você concluiu; a subtarefa só poderá ser finalizada quando o último sair.",
     "exitOthersStillActive": "Para que a subtarefa seja concluída, {name} precisa sair da subtarefa e defini-la como finalizada.",
     "exitFailed": "Não foi possível sair da subtarefa. Tente novamente.",
+    "exitRecorded": "Saída registrada.",
+    "startFailed": "Não foi possível iniciar a subtarefa. Tente novamente.",
     "noTasks": "Nenhuma subtarefa atribuída.",
     "colaboratorHeader": "Colaborador {name}",
     "startedAt": "Início",
