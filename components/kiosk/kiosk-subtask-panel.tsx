@@ -1,7 +1,7 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { KioskQueueUnit } from "@/lib/business/kiosk-queue-units";
@@ -78,7 +78,7 @@ export function KioskSubtaskPanel({
         if (unit.type === "group") {
           return (
             <KioskChainGroupCard
-              key={`group-${unit.headId}`}
+              key={`group-${unit.headId}-${unit.principalActive ? "active" : "idle"}`}
               unit={unit}
               readOnly={readOnly}
               blockingUi={blockingUi}
