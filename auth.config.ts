@@ -77,6 +77,7 @@ export const authConfig = {
         token.jwt = user.jwt ?? "";
         token.role = user.role;
         token.id = user.id;
+        token.avatarUrl = user.avatarUrl ?? null;
       }
       return token;
     },
@@ -89,6 +90,8 @@ export const authConfig = {
       if (session.user) {
         session.user.role = token.role as string;
         session.user.id = token.id as string;
+        session.user.avatarUrl =
+          typeof token.avatarUrl === "string" ? token.avatarUrl : null;
       }
       return session;
     },
