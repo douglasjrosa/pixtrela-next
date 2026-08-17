@@ -16,7 +16,7 @@ const LINK_COLUMN_CLASS =
 const CHAIN_FRAME_CLASS = cn(
   "pointer-events-none absolute left-1/2 top-3.5 -translate-y-1/2",
   "h-[calc(var(--subtask-chain-gap)+5rem)] w-5",
-  "border-2 border-b border-l border-r-0 border-t border-dashed border-primary",
+  "border-4 border-b border-l border-r-0 border-t border-dashed border-primary",
 );
 
 export interface SubtaskChainLinkControlProps {

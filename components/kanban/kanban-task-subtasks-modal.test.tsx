@@ -21,6 +21,22 @@ vi.mock("@/lib/ui/app-toast", () => ({
   showConfirmToast: (...args: unknown[]) => showConfirmToast(...args),
 }));
 
+const sortableDrag = vi.hoisted(() => ({ id: null as string | null }));
+
+vi.mock("@dnd-kit/sortable", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@dnd-kit/sortable")>();
+  return {
+    ...actual,
+    useSortable: (options: { id: string; disabled?: boolean }) => {
+      const result = actual.useSortable(options);
+      return {
+        ...result,
+        isDragging: sortableDrag.id === options.id,
+      };
+    },
+  };
+});
+
 const teams: TeamAssignmentOption[] = [
   {
     documentId: "team-1",
@@ -98,6 +114,7 @@ function renderModal(
 
 describe("KanbanTaskSubtasksModal", () => {
   beforeEach(() => {
+    sortableDrag.id = null;
     showSuccessToast.mockReset();
     showHintToast.mockReset();
     showConfirmToast.mockReset();
@@ -912,6 +929,66 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(pintarCard.parentElement).toHaveClass("z-10");
     expect(screen.getByTestId("subtask-chain-link")).toHaveClass("z-0");
     expect(pintarCard.closest("ul")).toHaveClass("isolate");
+  });
+
+  it("hides chain visuals only on the row being dragged", () => {
+    sortableDrag.id = "st-2";
+    const chained = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        linkedToPrevious: false,
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Pintar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: true,
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-3",
+        name: "Embalar",
+        status: "waiting",
+        index: 2,
+        linkedToPrevious: true,
+      }),
+    ];
+    renderModal({
+      subtasks: chained,
+      onReorder: vi.fn(),
+      onLinkToggle: vi.fn(),
+    });
+
+    const pintarRow = screen.getByRole("button", { name: /Pintar/ }).closest("li");
+    const embalarRow = screen.getByRole("button", { name: /Embalar/ }).closest("li");
+    expect(pintarRow).toBeTruthy();
+    expect(embalarRow).toBeTruthy();
+
+    expect(
+      within(pintarRow as HTMLElement).getByTestId("subtask-chain-link"),
+    ).toHaveAttribute("data-hidden", "true");
+    expect(
+      within(pintarRow as HTMLElement).queryByRole("button", {
+        name: "Desligar da anterior",
+      }),
+    ).not.toBeInTheDocument();
+
+    expect(
+      within(embalarRow as HTMLElement).getByTestId("subtask-chain-link"),
+    ).toHaveAttribute("data-hidden", "false");
+    expect(
+      within(embalarRow as HTMLElement).getByRole("button", {
+        name: "Desligar da anterior",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(embalarRow as HTMLElement)
+        .getByTestId("subtask-chain-link")
+        .querySelector('[data-slot="chain-line"]'),
+    ).not.toBeNull();
   });
 
   it("toggles chain link from the subtask row", async () => {

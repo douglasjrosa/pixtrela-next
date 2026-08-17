@@ -48,7 +48,7 @@ describe("SubtaskChainLinkControl", () => {
     expect(frame).toHaveClass("absolute");
     expect(frame).toHaveClass("left-1/2");
     expect(frame).toHaveClass("-translate-y-1/2");
-    expect(frame).toHaveClass("border-2");
+    expect(frame).toHaveClass("border-4");
     expect(frame).toHaveClass("border-dashed");
     expect(frame).toHaveClass("border-l");
     expect(frame).toHaveClass("border-t");

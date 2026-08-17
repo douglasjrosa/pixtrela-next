@@ -6,7 +6,6 @@ import {
   KeyboardSensor,
   PointerSensor,
   closestCenter,
-  useDndContext,
   type DragEndEvent,
   useSensor,
   useSensors,
@@ -357,8 +356,6 @@ function SortablePendingSubtaskCard({
     id: subtask.documentId,
     disabled: dragDisabled,
   });
-  const { active } = useDndContext();
-  const hideLinkVisuals = isDragging || Boolean(active);
 
   const style = {
     ...(transform
@@ -396,7 +393,7 @@ function SortablePendingSubtaskCard({
           <SubtaskChainLinkControl
             linked={subtask.linkedToPrevious}
             showButton={showLinkButton}
-            hidden={hideLinkVisuals}
+            hidden={isDragging}
             disabled={saving}
             linkLabel={linkLabel}
             unlinkLabel={unlinkLabel}
