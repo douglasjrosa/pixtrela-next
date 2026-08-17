@@ -18,6 +18,7 @@ import { buildKioskQueueFingerprint } from "@/lib/kiosk/queue-fingerprint";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import { markKioskColaboratorReady } from "@/lib/welcome/kiosk-welcome-ready";
 
 import {
   advanceChainRun,
@@ -57,6 +58,10 @@ export function KioskPanelClient({
   const [blockingUi, setBlockingUi] = useState(false);
   const [flashDocumentId, setFlashDocumentId] = useState<string | null>(null);
   const blockingFingerprintRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    markKioskColaboratorReady();
+  }, []);
 
   const clearBlocking = useCallback(() => {
     blockingFingerprintRef.current = null;

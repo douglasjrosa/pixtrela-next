@@ -4,6 +4,10 @@ import { act, screen } from "@testing-library/react";
 import { renderWithIntl } from "@/test/test-utils";
 import { WelcomeOverlayHost } from "./welcome-overlay-host";
 import {
+  markKioskColaboratorReady,
+  resetKioskColaboratorReady,
+} from "@/lib/welcome/kiosk-welcome-ready";
+import {
   WELCOME_SESSION_KEY,
   stashWelcomePayload,
 } from "@/lib/welcome/welcome-session";
@@ -27,6 +31,7 @@ describe("WelcomeOverlayHost", () => {
       },
     });
     usePathname.mockReturnValue("/kiosk/c1");
+    resetKioskColaboratorReady();
   });
 
   it("shows the welcome modal from a stashed payload", () => {
@@ -40,16 +45,44 @@ describe("WelcomeOverlayHost", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Bem vinda Ana!")).toBeInTheDocument();
+    expect(screen.getByText("Carregando...")).toBeInTheDocument();
     // Payload stays until onDone so Strict Mode remounts still see it.
     expect(window.sessionStorage.getItem(WELCOME_SESSION_KEY)).toBeTruthy();
   });
 
-  it("clears the modal after the welcome duration", () => {
+  it("keeps welcome until the kiosk queue is ready", () => {
     vi.useFakeTimers();
     stashWelcomePayload({ name: "Bruno" });
 
     renderWithIntl(<WelcomeOverlayHost />);
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Carregando...")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    act(() => {
+      markKioskColaboratorReady();
+    });
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(window.sessionStorage.getItem(WELCOME_SESSION_KEY)).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it("clears a non-kiosk welcome after the duration", () => {
+    vi.useFakeTimers();
+    usePathname.mockReturnValue("/board");
+    stashWelcomePayload({ name: "Bruno" });
+
+    renderWithIntl(<WelcomeOverlayHost />);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.queryByText("Carregando...")).not.toBeInTheDocument();
 
     act(() => {
       vi.advanceTimersByTime(800);

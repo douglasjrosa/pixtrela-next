@@ -76,4 +76,30 @@ describe("KioskFaceWelcome", () => {
     );
     expect(screen.getByText("Bem vindo Bruno!")).toBeInTheDocument();
   });
+
+  it("shows loading under the greeting and waits until ready", () => {
+    vi.useFakeTimers();
+    const onDone = vi.fn();
+
+    renderWithIntl(
+      <KioskFaceWelcome
+        name="Bruno Costa"
+        showLoading
+        ready={false}
+        onDone={onDone}
+        durationMs={800}
+        fadeMs={300}
+      />,
+    );
+
+    expect(screen.getByText("Bem vindo Bruno!")).toBeInTheDocument();
+    expect(screen.getByText("Carregando...")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(onDone).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
 });

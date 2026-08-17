@@ -155,10 +155,18 @@ export async function deactivateActiveTasksByName(
 }
 
 export async function listSubTasksForTask(taskId: string, db: Db = getDb()) {
+  return listSubTasksForTasks([taskId], db);
+}
+
+export async function listSubTasksForTasks(
+  taskIds: readonly string[],
+  db: Db = getDb(),
+) {
+  if (taskIds.length === 0) return [];
   return db
     .select()
     .from(subTasks)
-    .where(eq(subTasks.taskId, taskId))
+    .where(inArray(subTasks.taskId, [...taskIds]))
     .orderBy(asc(subTasks.index));
 }
 
@@ -599,25 +607,33 @@ export async function listSubTasksWithRelationsForTask(
   taskId: string,
   db: Db = getDb(),
 ): Promise<SubTaskWithAssignees[]> {
-  const rows = await listSubTasksForTask(taskId, db);
+  return listSubTasksWithRelationsForTasks([taskId], db);
+}
+
+export async function listSubTasksWithRelationsForTasks(
+  taskIds: readonly string[],
+  db: Db = getDb(),
+): Promise<SubTaskWithAssignees[]> {
+  const rows = await listSubTasksForTasks(taskIds, db);
   if (rows.length === 0) return [];
 
   const subTaskIds = rows.map((row) => row.id);
-  const assigneeRows = await db
-    .select({
-      subTaskId: subTaskAssignees.subTaskId,
-      userId: subTaskAssignees.userId,
-    })
-    .from(subTaskAssignees)
-    .where(inArray(subTaskAssignees.subTaskId, subTaskIds));
-
-  const dependencyRows = await db
-    .select({
-      subTaskId: subTaskDependencies.subTaskId,
-      dependsOnSubTaskId: subTaskDependencies.dependsOnSubTaskId,
-    })
-    .from(subTaskDependencies)
-    .where(inArray(subTaskDependencies.subTaskId, subTaskIds));
+  const [assigneeRows, dependencyRows] = await Promise.all([
+    db
+      .select({
+        subTaskId: subTaskAssignees.subTaskId,
+        userId: subTaskAssignees.userId,
+      })
+      .from(subTaskAssignees)
+      .where(inArray(subTaskAssignees.subTaskId, subTaskIds)),
+    db
+      .select({
+        subTaskId: subTaskDependencies.subTaskId,
+        dependsOnSubTaskId: subTaskDependencies.dependsOnSubTaskId,
+      })
+      .from(subTaskDependencies)
+      .where(inArray(subTaskDependencies.subTaskId, subTaskIds)),
+  ]);
 
   const assigneesBySubTask = new Map<string, string[]>();
   for (const row of assigneeRows) {

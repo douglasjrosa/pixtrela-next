@@ -13,7 +13,7 @@ import {
 import { calculateActivityDurationSeconds } from "@/lib/business/activity-duration";
 import type { OpenChainRun } from "@/lib/business/kiosk-queue-units";
 import { resolveChains } from "@/lib/business/subtask-chain";
-import { listSubTasksWithRelationsForTask } from "@/lib/repos/tasks";
+import { listSubTasksWithRelationsForTasks } from "@/lib/repos/tasks";
 import {
   filterKioskDailyQueue,
   sortKioskDailyQueue,
@@ -66,7 +66,7 @@ import {
   attachHelperStartToOpenRun,
   findLatestChainRunIdForSubTask,
   findOpenChainRunForSubTask,
-  findOpenChainRunId,
+  findOpenChainRunsForMemberGroups,
   reallocateChainRunAfterHelperStop,
 } from "@/lib/repos/kiosk-chains";
 
@@ -374,12 +374,10 @@ export async function listAssignedSubTasks(
   const rows = [...assignedRows, ...orphanRows];
 
   const subTaskIds = rows.map((row) => row.id);
-  const enrichment = await loadActivityEnrichment(
-    subTaskIds,
-    colaboratorId,
-    db,
-  );
-  const relationMaps = await loadAssigneeAndDependencyMaps(subTaskIds, db);
+  const [enrichment, relationMaps] = await Promise.all([
+    loadActivityEnrichment(subTaskIds, colaboratorId, db),
+    loadAssigneeAndDependencyMaps(subTaskIds, db),
+  ]);
 
   const now = new Date();
   const mapped = filterKioskVisibleSubTasks(
@@ -451,40 +449,37 @@ export async function listKioskQueueData(
 ): Promise<KioskQueueData> {
   const subTasks = await listAssignedSubTasks(colaboratorId, db);
   const taskIds = [...new Set(subTasks.map((item) => item.taskDocumentId))];
-  const catalog: KioskSubTask[] = [];
-  for (const taskId of taskIds) {
-    const siblings = await listSubTasksWithRelationsForTask(taskId, db);
-    for (const row of siblings) {
-      const existing = subTasks.find((item) => item.documentId === row.id);
-      if (existing) {
-        catalog.push(existing);
-        continue;
-      }
-      catalog.push({
-        documentId: row.id,
-        name: row.name,
-        index: row.index,
-        status: row.status as KioskSubTask["status"],
-        activationStatus: fromDrizzleActivationStatus(row.activationStatus),
-        qty: row.qty,
-        targetQty: row.qty,
-        completedQty: 0,
-        sharingType: row.sharingType === "qty" ? "qty" : "duration",
-        timeSpent: row.timeSpent,
-        startedAt: null,
-        expectedTime: row.expectedTime,
-        taskDocumentId: row.taskId,
-        taskName: "",
-        taskIndex: 0,
-        finishedAt: null,
-        activeWorkerCount: 0,
-        linkedToPrevious: row.linkedToPrevious,
-        maxSameTimeWorkers: row.maxSameTimeWorkers,
-        assignedToIds: row.assignedToIds,
-        dependencyIds: row.dependencyIds,
-      });
-    }
-  }
+  const siblingRows = await listSubTasksWithRelationsForTasks(taskIds, db);
+  const assignedById = new Map(
+    subTasks.map((item) => [item.documentId, item]),
+  );
+  const catalog: KioskSubTask[] = siblingRows.map((row) => {
+    const existing = assignedById.get(row.id);
+    if (existing) return existing;
+    return {
+      documentId: row.id,
+      name: row.name,
+      index: row.index,
+      status: row.status as KioskSubTask["status"],
+      activationStatus: fromDrizzleActivationStatus(row.activationStatus),
+      qty: row.qty,
+      targetQty: row.qty,
+      completedQty: 0,
+      sharingType: row.sharingType === "qty" ? "qty" : "duration",
+      timeSpent: row.timeSpent,
+      startedAt: null,
+      expectedTime: row.expectedTime,
+      taskDocumentId: row.taskId,
+      taskName: "",
+      taskIndex: 0,
+      finishedAt: null,
+      activeWorkerCount: 0,
+      linkedToPrevious: row.linkedToPrevious,
+      maxSameTimeWorkers: row.maxSameTimeWorkers,
+      assignedToIds: row.assignedToIds,
+      dependencyIds: row.dependencyIds,
+    };
+  });
 
   const chains = resolveChains(
     catalog.map((item) => ({
@@ -498,10 +493,19 @@ export async function listKioskQueueData(
       dependencyIds: item.dependencyIds ?? [],
     })),
   );
+  const multiMemberChains = chains.filter(
+    (chain) => chain.memberIds.length > 1,
+  );
+  const openByHead = await findOpenChainRunsForMemberGroups(
+    multiMemberChains.map((chain) => ({
+      headId: chain.headId,
+      memberIds: chain.memberIds,
+    })),
+    db,
+  );
   const openRuns: OpenChainRun[] = [];
-  for (const chain of chains) {
-    if (chain.memberIds.length <= 1) continue;
-    const open = await findOpenChainRunId({ subTaskIds: chain.memberIds, db });
+  for (const chain of multiMemberChains) {
+    const open = openByHead.get(chain.headId);
     if (!open) continue;
     openRuns.push({
       chainHeadId: chain.headId,
