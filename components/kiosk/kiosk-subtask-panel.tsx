@@ -165,7 +165,6 @@ export function KioskSubtaskPanel({
                   {showExit ? (
                     <KioskActionButton
                       actionVariant="outline"
-                      disabled={pending}
                       onClick={() => setExitingId(subTask.documentId)}
                     >
                       {t("exitSubtask")}

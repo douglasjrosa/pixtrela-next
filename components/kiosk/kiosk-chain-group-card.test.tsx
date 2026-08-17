@@ -74,6 +74,39 @@ describe("KioskChainGroupCard", () => {
     expect(onStartChain).toHaveBeenCalledWith("a");
   });
 
+  it("keeps stop enabled while start refresh is pending", () => {
+    const members = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Cortar",
+        status: "producing",
+        startedAt: "2026-08-16T12:00:00.000Z",
+      }),
+      kioskSubTask({
+        documentId: "b",
+        name: "Embalar",
+        index: 1,
+        linkedToPrevious: true,
+        status: "waiting",
+      }),
+    ];
+    renderWithIntl(
+      <KioskChainGroupCard
+        unit={groupUnit({
+          members,
+          principalActive: true,
+          chainRunId: "run-1",
+          runStartedAt: "2026-08-16T12:00:00.000Z",
+        })}
+        pending
+        onConfirmChainStop={vi.fn()}
+        onAdvanceChain={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Parar" })).toBeEnabled();
+  });
+
   it("collects member answers before confirming stop", async () => {
     const user = userEvent.setup();
     const onConfirmChainStop = vi.fn();

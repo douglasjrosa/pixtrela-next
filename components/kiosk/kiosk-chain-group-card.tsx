@@ -55,7 +55,7 @@ export function KioskChainGroupCard({
   const taskName = unit.members[0]?.taskName;
   const showStart = !readOnly && unit.showStart;
   const showStop = !readOnly && !unit.locked && unit.principalActive;
-  const stopDisabled = pending || (collecting && !answersComplete);
+  const stopDisabled = collecting && (!answersComplete || Boolean(pending));
 
   function handleStopClick(): void {
     if (!collecting) {

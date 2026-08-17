@@ -41,6 +41,32 @@ const subTasks = [
 ];
 
 describe("KioskSubtaskPanel", () => {
+  it("keeps exit enabled while an unrelated action is pending", () => {
+    const producing = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Tarefa A",
+        status: "producing",
+        startedAt: "2026-06-05T10:00:00.000Z",
+        activeWorkerCount: 1,
+      }),
+    ];
+
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={producing}
+        allSubTasks={producing}
+        pending
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Sair da subtarefa" }),
+    ).toBeEnabled();
+  });
+
   it("shows lock overlay and muted background for locked queued subtasks", () => {
     renderWithIntl(
       <KioskSubtaskPanel
