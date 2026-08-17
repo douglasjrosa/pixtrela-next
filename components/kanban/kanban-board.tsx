@@ -36,6 +36,8 @@ export interface KanbanBoardProps {
     updates: { documentId: string; index: number; stepId: number | null }[],
   ) => void | Promise<void>;
   onTaskClick?: (task: KanbanTask) => void;
+  onTaskPrefetch?: (task: KanbanTask) => void;
+  onTaskPrefetchCancel?: () => void;
 }
 
 const KANBAN_DND_CONTEXT_ID = "kanban-board-dnd";
@@ -57,6 +59,8 @@ export function KanbanBoard({
   tasks,
   onApplyOrder,
   onTaskClick,
+  onTaskPrefetch,
+  onTaskPrefetchCancel,
 }: KanbanBoardProps) {
   const t = useTranslations("kanban");
   const [activeTask, setActiveTask] = useState<KanbanTask | null>(null);
@@ -147,6 +151,8 @@ export function KanbanBoard({
               step={step}
               tasks={stepCards}
               onTaskClick={onTaskClick}
+              onTaskPrefetch={onTaskPrefetch}
+              onTaskPrefetchCancel={onTaskPrefetchCancel}
             />
           );
         })}

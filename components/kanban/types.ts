@@ -55,6 +55,7 @@ export interface BoardSubTaskSummary {
   openActivityStartedAts: string[];
   /** Colaborators with an open started activity on this sub-task. */
   producingColaboratorIds: string[];
+  /** Empty on fast board load; filled after lazy session fetch (finished tab / info). */
   sessions: import("@/lib/business/task-progress").ActivitySession[];
   assignedTo: BoardSubTaskAssignee[];
 }

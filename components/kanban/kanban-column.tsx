@@ -16,10 +16,14 @@ export function KanbanColumn({
   step,
   tasks,
   onTaskClick,
+  onTaskPrefetch,
+  onTaskPrefetchCancel,
 }: {
   step: KanbanStep;
   tasks: KanbanTask[];
   onTaskClick?: (task: KanbanTask) => void;
+  onTaskPrefetch?: (task: KanbanTask) => void;
+  onTaskPrefetchCancel?: () => void;
 }) {
   const t = useTranslations("kanban");
   const { setNodeRef, isOver } = useDroppable({ id: toKanbanColumnId(step.id) });
@@ -53,6 +57,8 @@ export function KanbanColumn({
                   key={task.id}
                   task={task}
                   onTaskClick={onTaskClick}
+                  onTaskPrefetch={onTaskPrefetch}
+                  onTaskPrefetchCancel={onTaskPrefetchCancel}
                 />
               ))}
             </div>
