@@ -3,7 +3,6 @@
 import { revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
-import { activities, users } from "@/drizzle/schema";
 import { getRemainingSubTaskQty } from "@/lib/business/subtask-queue";
 import {
   startChain as startChainRepo,
@@ -36,57 +35,6 @@ async function assertKioskSession(): Promise<void> {
   if (session?.user?.role !== "kiosk") {
     throw new Error("forbidden");
   }
-}
-
-async function loadActivityRefs(
-  subTaskDocumentId: string,
-): Promise<ActivitySessionRef[]> {
-  const db = getDb();
-  const activityRows = await db
-    .select({
-      action: activities.action,
-      timestamp: activities.timestamp,
-      qty: activities.qty,
-      colaboratorId: activities.colaboratorId,
-      colaboratorName: users.name,
-    })
-    .from(activities)
-    .innerJoin(users, eq(activities.colaboratorId, users.id))
-    .where(
-      and(
-        eq(activities.subTaskId, subTaskDocumentId),
-        inArray(activities.action, ["started", "stoped"]),
-      ),
-    )
-    .orderBy(asc(activities.timestamp));
-
-  return activityRows.flatMap((row) => {
-    if (!row.timestamp) return [];
-    return [
-      {
-        subTaskDocumentId,
-        colaboratorDocumentId: row.colaboratorId,
-        colaboratorName: row.colaboratorName ?? "",
-        action: row.action as "started" | "stoped",
-        timestamp: row.timestamp.toISOString(),
-        qty: Number(row.qty ?? 0),
-      },
-    ];
-  });
-}
-
-async function remainingWorkerNames(
-  subTaskDocumentId: string,
-  excludeColaboratorId: string,
-): Promise<string[]> {
-  const refs = await loadActivityRefs(subTaskDocumentId);
-  const openIds = listOpenColaboratorDocumentIds(refs).filter(
-    (id) => id !== excludeColaboratorId,
-  );
-  const nameById = new Map(
-    refs.map((ref) => [ref.colaboratorDocumentId, ref.colaboratorName ?? ""]),
-  );
-  return openIds.map((id) => nameById.get(id) ?? "").filter(Boolean);
 }
 
 export async function startSubTask(
