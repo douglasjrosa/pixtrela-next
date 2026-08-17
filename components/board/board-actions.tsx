@@ -80,7 +80,6 @@ export interface BoardActionsProps {
   createSubtask: (
     taskDocumentId: string,
     values: SubTaskFormInput,
-    options?: { addToTemplate?: boolean },
   ) => Promise<void>;
   reorderSubtasks: (
     taskDocumentId: string,
@@ -591,10 +590,7 @@ export function BoardActions({
     })();
   }
 
-  function handleCreateSubtask(
-    values: SubTaskFormInput,
-    options: { addToTemplate: boolean },
-  ): void {
+  function handleCreateSubtask(values: SubTaskFormInput): void {
     if (!selectedTask) return;
 
     const taskDocumentId = selectedTask.documentId;
@@ -602,7 +598,7 @@ export function BoardActions({
 
     void (async () => {
       try {
-        await createSubtask(taskDocumentId, values, options);
+        await createSubtask(taskDocumentId, values);
         await refreshSubtasksList(taskDocumentId, { keepDraftAssignees: true });
         setOrderedTasks((current) =>
           current.map((task) =>

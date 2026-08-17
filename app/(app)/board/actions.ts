@@ -10,10 +10,6 @@ import {
 import { auth } from "@/auth";
 import type { BoardSubTaskSummary } from "@/components/kanban/types";
 import {
-  appendSubtaskToTemplateComponents,
-  mapDependencyIdsToTemplateIndexes,
-} from "@/lib/business/append-subtask-to-template";
-import {
   applyChainLinkToggle,
   applyHeadAssigneePropagation,
   applyMaxWorkerSelfAssigneeChange,
@@ -30,7 +26,6 @@ import {
 import type { Role } from "@/lib/auth/nav";
 import {
   canManageTasks,
-  canManageTemplates,
   canMoveBoardTasks,
 } from "@/lib/auth/permissions";
 import { isAuthenticatedSession } from "@/lib/auth/session";
@@ -58,22 +53,15 @@ import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map
 import { parseSubTaskDependencyIds } from "@/lib/business/subtask-dependencies";
 import { listSteps as listStepsRepo } from "@/lib/repos/steps";
 import {
-  findTemplateByCode,
-  listTemplateSubTasks,
-  updateTemplateTask,
-} from "@/lib/repos/templates";
-import {
   getTaskById,
   getSubTaskById,
   listBoardSubtaskRows,
-  listSubTasksForTask,
   listSubTasksWithRelationsForTask,
   replaceSubTaskAssignees,
   updateSubTaskLinkedToPrevious,
   updateTaskBoardFields,
 } from "@/lib/repos/tasks";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
-import type { TemplateSubTaskComponentInput } from "@/lib/schemas/template-task";
 
 const FINISHED_STATUS = "finished";
 
@@ -108,13 +96,6 @@ async function assertCanManageBoardSubtasks(): Promise<void> {
 function invalidateBoardTasks(): void {
   revalidateTag("drizzle:tasks", "default");
   revalidateTag("drizzle:steps", "default");
-}
-
-function dependencyIndexesFrom(
-  dependencies: TemplateSubTaskComponentInput["dependencies"],
-): number[] {
-  if (!Array.isArray(dependencies)) return [];
-  return dependencies.filter((value): value is number => typeof value === "number");
 }
 
 function mapBoardSubtasksFromDrizzle(
@@ -265,103 +246,9 @@ function toSubTaskFormInput(
 export async function createBoardSubtask(
   taskDocumentId: string,
   values: SubTaskFormInput,
-  options?: { addToTemplate?: boolean },
 ): Promise<void> {
   await assertCanManageBoardSubtasks();
   await createSubTask(taskDocumentId, values);
-  if (options?.addToTemplate) {
-    await appendBoardSubtaskToTaskTemplate(taskDocumentId, values);
-  }
-}
-
-async function fetchTaskTemplateCode(
-  taskDocumentId: string,
-): Promise<string | null> {
-  const task = await getTaskById(taskDocumentId);
-  const code = task?.templateTaskCode?.trim();
-  return code ? code : null;
-}
-
-async function fetchTemplateByCode(code: string): Promise<{
-  documentId: string;
-  name: string;
-  code: string;
-  subTask: TemplateSubTaskComponentInput[];
-} | null> {
-  const template = await findTemplateByCode(code);
-  if (!template) return null;
-  const subTaskRows = await listTemplateSubTasks(template.id);
-  return {
-    documentId: template.id,
-    name: template.name,
-    code: template.code,
-    subTask: subTaskRows.map((row) => ({
-      name: row.name,
-      qty: row.qty,
-      index: row.index,
-      expectedTime: row.expectedTime,
-      sharingType: row.sharingType,
-      maxSameTimeWorkers: row.maxSameTimeWorkers,
-      dependencyIndexes: row.dependencyIndexes ?? [],
-      linkedToPrevious: row.linkedToPrevious,
-    })),
-  };
-}
-
-async function fetchTaskSubtaskRefs(
-  taskDocumentId: string,
-): Promise<{ documentId: string; name: string }[]> {
-  const rows = await listSubTasksForTask(taskDocumentId);
-  return rows.map((row) => ({ documentId: row.id, name: row.name }));
-}
-
-async function appendBoardSubtaskToTaskTemplate(
-  taskDocumentId: string,
-  values: SubTaskFormInput,
-): Promise<void> {
-  const session = await auth();
-  if (!canManageTemplates(session?.user?.role as Role | undefined)) {
-    throw new Error("forbidden");
-  }
-
-  const templateCode = await fetchTaskTemplateCode(taskDocumentId);
-  if (!templateCode) {
-    throw new Error("no_template");
-  }
-
-  const template = await fetchTemplateByCode(templateCode);
-  if (!template) {
-    throw new Error("template_not_found");
-  }
-
-  const taskSubtasks = await fetchTaskSubtaskRefs(taskDocumentId);
-  const dependencyIndexes = mapDependencyIdsToTemplateIndexes(
-    values.dependencyIds ?? [],
-    taskSubtasks,
-    template.subTask.map((row) => row.name),
-  );
-  const nextSubTasks = appendSubtaskToTemplateComponents(
-    template.subTask,
-    values,
-    dependencyIndexes,
-  );
-
-  await updateTemplateTask({
-    id: template.documentId,
-    name: template.name,
-    code: template.code,
-    subTasks: nextSubTasks.map((row) => ({
-      name: row.name,
-      qty: row.qty,
-      index: row.index,
-      expectedTime: row.expectedTime,
-      sharingType: row.sharingType,
-      maxSameTimeWorkers: row.maxSameTimeWorkers,
-      dependencyIndexes: dependencyIndexesFrom(row.dependencies),
-      linkedToPrevious: row.linkedToPrevious ?? false,
-    })),
-  });
-  revalidateTag("drizzle:templates", "default");
 }
 
 function toAssigneeState(row: ChainSubTask): ChainAssigneeState {

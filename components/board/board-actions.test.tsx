@@ -210,7 +210,6 @@ describe("BoardActions", () => {
       expect(createSubtask).toHaveBeenCalledWith(
         "task-10",
         expect.objectContaining({ name: "Cortar" }),
-        { addToTemplate: false },
       );
     });
     expect(
