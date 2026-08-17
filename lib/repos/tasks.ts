@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray, max } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, max } from "drizzle-orm";
 
 import {
   activities,
@@ -160,6 +160,200 @@ export async function listSubTasksForTask(taskId: string, db: Db = getDb()) {
     .from(subTasks)
     .where(eq(subTasks.taskId, taskId))
     .orderBy(asc(subTasks.index));
+}
+
+const BOARD_SUBTASK_COLUMNS = {
+  id: subTasks.id,
+  name: subTasks.name,
+  status: subTasks.status,
+  sharingType: subTasks.sharingType,
+  qty: subTasks.qty,
+  index: subTasks.index,
+  expectedTime: subTasks.expectedTime,
+  timeSpent: subTasks.timeSpent,
+  maxSameTimeWorkers: subTasks.maxSameTimeWorkers,
+  linkedToPrevious: subTasks.linkedToPrevious,
+} as const;
+
+export type BoardSubtaskRow = Awaited<
+  ReturnType<typeof listBoardSubTasksForTask>
+>[number];
+
+export type BoardSubtaskAssigneeRow = {
+  subTaskId: string;
+  userId: string;
+  name: string;
+};
+
+export type BoardSubtaskActivityRow = {
+  subTaskId: string;
+  colaboratorId: string;
+  colaboratorName: string;
+  action: "started" | "stoped";
+  timestamp: Date;
+  qty: number;
+};
+
+export async function listBoardSubTasksForTask(
+  taskId: string,
+  db: Db = getDb(),
+): Promise<BoardSubtaskRow[]> {
+  return db
+    .select(BOARD_SUBTASK_COLUMNS)
+    .from(subTasks)
+    .where(eq(subTasks.taskId, taskId))
+    .orderBy(asc(subTasks.index));
+}
+
+export async function listBoardSubtaskAssignees(
+  subTaskIds: readonly string[],
+  db: Db = getDb(),
+): Promise<BoardSubtaskAssigneeRow[]> {
+  if (subTaskIds.length === 0) return [];
+  return db
+    .select({
+      subTaskId: subTaskAssignees.subTaskId,
+      userId: subTaskAssignees.userId,
+      name: users.name,
+    })
+    .from(subTaskAssignees)
+    .innerJoin(users, eq(subTaskAssignees.userId, users.id))
+    .where(inArray(subTaskAssignees.subTaskId, [...subTaskIds]));
+}
+
+export async function listBoardSubtaskOpenActivities(
+  subTaskIds: readonly string[],
+  db: Db = getDb(),
+): Promise<BoardSubtaskActivityRow[]> {
+  if (subTaskIds.length === 0) return [];
+
+  const latestRows = await db
+    .select({
+      subTaskId: activities.subTaskId,
+      colaboratorId: activities.colaboratorId,
+      colaboratorName: users.name,
+      action: activities.action,
+      timestamp: activities.timestamp,
+      qty: activities.qty,
+    })
+    .from(activities)
+    .innerJoin(users, eq(activities.colaboratorId, users.id))
+    .where(
+      and(
+        inArray(activities.subTaskId, [...subTaskIds]),
+        inArray(activities.action, ["started", "stoped"]),
+      ),
+    )
+    .distinctOn([activities.subTaskId, activities.colaboratorId])
+    .orderBy(
+      activities.subTaskId,
+      activities.colaboratorId,
+      desc(activities.timestamp),
+    );
+
+  return latestRows
+    .filter((row) => row.action === "started")
+    .map((row) => ({
+      subTaskId: row.subTaskId,
+      colaboratorId: row.colaboratorId,
+      colaboratorName: row.colaboratorName ?? "",
+      action: row.action,
+      timestamp: row.timestamp,
+      qty: Number(row.qty ?? 0),
+    }));
+}
+
+export async function listBoardSubtaskSessionHistory(
+  subTaskIds: readonly string[],
+  db: Db = getDb(),
+): Promise<BoardSubtaskActivityRow[]> {
+  if (subTaskIds.length === 0) return [];
+
+  const activityRows = await db
+    .select({
+      subTaskId: activities.subTaskId,
+      colaboratorId: activities.colaboratorId,
+      colaboratorName: users.name,
+      action: activities.action,
+      timestamp: activities.timestamp,
+      qty: activities.qty,
+    })
+    .from(activities)
+    .innerJoin(users, eq(activities.colaboratorId, users.id))
+    .where(
+      and(
+        inArray(activities.subTaskId, [...subTaskIds]),
+        inArray(activities.action, ["started", "stoped"]),
+      ),
+    )
+    .orderBy(asc(activities.timestamp));
+
+  return activityRows
+    .filter((row) => row.timestamp != null)
+    .map((row) => ({
+      subTaskId: row.subTaskId,
+      colaboratorId: row.colaboratorId,
+      colaboratorName: row.colaboratorName ?? "",
+      action: row.action,
+      timestamp: row.timestamp,
+      qty: Number(row.qty ?? 0),
+    }));
+}
+
+function toActivitySessionRefs(
+  rows: readonly BoardSubtaskActivityRow[],
+): import("@/lib/business/task-progress").ActivitySessionRef[] {
+  return rows.map((row) => ({
+    subTaskDocumentId: row.subTaskId,
+    colaboratorDocumentId: row.colaboratorId,
+    colaboratorName: row.colaboratorName,
+    action: row.action,
+    timestamp: row.timestamp.toISOString(),
+    qty: row.qty,
+  }));
+}
+
+export function mapBoardSubtaskSessionHistory(
+  rows: readonly BoardSubtaskActivityRow[],
+): Record<string, ActivitySession[]> {
+  const bySubTask = new Map<string, BoardSubtaskActivityRow[]>();
+  for (const row of rows) {
+    const list = bySubTask.get(row.subTaskId) ?? [];
+    list.push(row);
+    bySubTask.set(row.subTaskId, list);
+  }
+
+  const sessionsBySubTask: Record<string, ActivitySession[]> = {};
+  for (const [subTaskId, subTaskRows] of bySubTask) {
+    sessionsBySubTask[subTaskId] = listActivitySessions(
+      toActivitySessionRefs(subTaskRows),
+    );
+  }
+  return sessionsBySubTask;
+}
+
+export type BoardSubtaskRowsBundle = {
+  rows: BoardSubtaskRow[];
+  assigneeRows: BoardSubtaskAssigneeRow[];
+  openActivityRows: BoardSubtaskActivityRow[];
+};
+
+export async function listBoardSubtaskRows(
+  taskId: string,
+  db: Db = getDb(),
+): Promise<BoardSubtaskRowsBundle> {
+  const rows = await listBoardSubTasksForTask(taskId, db);
+  if (rows.length === 0) {
+    return { rows: [], assigneeRows: [], openActivityRows: [] };
+  }
+
+  const subTaskIds = rows.map((row) => row.id);
+  const [assigneeRows, openActivityRows] = await Promise.all([
+    listBoardSubtaskAssignees(subTaskIds, db),
+    listBoardSubtaskOpenActivities(subTaskIds, db),
+  ]);
+
+  return { rows, assigneeRows, openActivityRows };
 }
 
 export async function listSubTaskCompletionSnapshotsForTasks(
@@ -548,82 +742,12 @@ export async function deleteSubTaskById(id: string, db: Db = getDb()): Promise<v
   await db.delete(subTasks).where(eq(subTasks.id, id));
 }
 
-export async function listBoardSubtaskRows(taskId: string, db: Db = getDb()) {
-  const rows = await listSubTasksForTask(taskId, db);
-  if (rows.length === 0) {
-    return { rows: [], assigneeRows: [], activityRows: [] };
-  }
-
-  const subTaskIds = rows.map((row) => row.id);
-  const assigneeRows = await db
-    .select({
-      subTaskId: subTaskAssignees.subTaskId,
-      userId: subTaskAssignees.userId,
-      name: users.name,
-    })
-    .from(subTaskAssignees)
-    .innerJoin(users, eq(subTaskAssignees.userId, users.id))
-    .where(inArray(subTaskAssignees.subTaskId, subTaskIds));
-
-  const activityRows = await db
-    .select({
-      action: activities.action,
-      timestamp: activities.timestamp,
-      qty: activities.qty,
-      subTaskId: activities.subTaskId,
-      colaboratorId: activities.colaboratorId,
-      colaboratorName: users.name,
-    })
-    .from(activities)
-    .innerJoin(users, eq(activities.colaboratorId, users.id))
-    .where(
-      and(
-        inArray(activities.subTaskId, subTaskIds),
-        inArray(activities.action, ["started", "stoped"]),
-      ),
-    )
-    .orderBy(asc(activities.timestamp));
-
-  return { rows, assigneeRows, activityRows };
-}
-
 export async function listSubTaskActivitySessions(
   subTaskId: string,
   db: Db = getDb(),
 ): Promise<ActivitySession[]> {
-  const activityRows = await db
-    .select({
-      action: activities.action,
-      timestamp: activities.timestamp,
-      qty: activities.qty,
-      colaboratorId: activities.colaboratorId,
-      colaboratorName: users.name,
-    })
-    .from(activities)
-    .innerJoin(users, eq(activities.colaboratorId, users.id))
-    .where(
-      and(
-        eq(activities.subTaskId, subTaskId),
-        inArray(activities.action, ["started", "stoped"]),
-      ),
-    )
-    .orderBy(asc(activities.timestamp));
-
-  return listActivitySessions(
-    activityRows.flatMap((row) => {
-      if (!row.timestamp) return [];
-      return [
-        {
-          subTaskDocumentId: subTaskId,
-          colaboratorDocumentId: row.colaboratorId,
-          colaboratorName: row.colaboratorName ?? "",
-          action: row.action,
-          timestamp: row.timestamp.toISOString(),
-          qty: Number(row.qty ?? 0),
-        },
-      ];
-    }),
-  );
+  const activityRows = await listBoardSubtaskSessionHistory([subTaskId], db);
+  return listActivitySessions(toActivitySessionRefs(activityRows));
 }
 
 /**

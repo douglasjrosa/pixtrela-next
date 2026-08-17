@@ -37,6 +37,8 @@ const FINISHED_STATUS = "finished";
 export interface KanbanCardProps {
   task: KanbanTask;
   onTaskClick?: (task: KanbanTask) => void;
+  onTaskPrefetch?: (task: KanbanTask) => void;
+  onTaskPrefetchCancel?: () => void;
 }
 
 function KanbanUnassignedFloatingBadge({ count }: { count: number }) {
@@ -192,7 +194,12 @@ export function KanbanCardDragOverlay({ task }: { task: KanbanTask }) {
   );
 }
 
-export function KanbanCard({ task, onTaskClick }: KanbanCardProps) {
+export function KanbanCard({
+  task,
+  onTaskClick,
+  onTaskPrefetch,
+  onTaskPrefetchCancel,
+}: KanbanCardProps) {
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const {
     attributes,
@@ -241,6 +248,8 @@ export function KanbanCard({ task, onTaskClick }: KanbanCardProps) {
       )}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
+      onPointerEnter={() => onTaskPrefetch?.(task)}
+      onPointerLeave={() => onTaskPrefetchCancel?.()}
       {...attributes}
     >
       <KanbanCardSurface task={task} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -75,6 +75,7 @@ import {
   PRODUCING_STATUS,
 } from "@/lib/business/kanban-status-badge";
 import { calculateSubtaskPayment } from "@/lib/business/subtask-payment";
+import type { ActivitySession } from "@/lib/business/task-progress";
 import {
   countSessionParticipants,
   resolveLatestSessionFinishedAt,
@@ -125,6 +126,9 @@ export interface KanbanTaskSubtasksModalProps {
   assignedCountByColaboratorId: Record<string, number>;
   paymentCurrency?: SubtaskPaymentCurrency;
   loading: boolean;
+  refreshing?: boolean;
+  loadedAt?: number | null;
+  loadingSessions?: boolean;
   dirty: boolean;
   saving: boolean;
   reordering?: boolean;
@@ -144,6 +148,10 @@ export interface KanbanTaskSubtasksModalProps {
     linkedToPrevious: boolean,
   ) => void | Promise<void>;
   onAddSubtask?: () => void;
+  onLoadSessions?: () => void | Promise<void>;
+  loadSubtaskSession?: (
+    subTaskDocumentId: string,
+  ) => Promise<ActivitySession[]>;
 }
 
 function getTeamMemberIds(team: TeamAssignmentOption): string[] {
@@ -450,6 +458,9 @@ export function KanbanTaskSubtasksModal({
   assignedCountByColaboratorId,
   paymentCurrency = EMPTY_PAYMENT_CURRENCY,
   loading,
+  refreshing = false,
+  loadedAt = null,
+  loadingSessions = false,
   dirty,
   saving,
   reordering = false,
@@ -459,6 +470,8 @@ export function KanbanTaskSubtasksModal({
   onReorder,
   onLinkToggle,
   onAddSubtask,
+  onLoadSessions,
+  loadSubtaskSession,
 }: KanbanTaskSubtasksModalProps) {
   const tCommon = useTranslations("common");
   const tKanban = useTranslations("kanban");
@@ -488,7 +501,24 @@ export function KanbanTaskSubtasksModal({
   const [infoSubtask, setInfoSubtask] = useState<BoardSubTaskSummary | null>(
     null,
   );
+  const [infoSessions, setInfoSessions] = useState<ActivitySession[] | null>(
+    null,
+  );
+  const [infoSessionsLoading, setInfoSessionsLoading] = useState(false);
   const [prevOpen, setPrevOpen] = useState(open);
+
+  function closeInfoPanel(): void {
+    setInfoSubtask(null);
+    setInfoSessions(null);
+    setInfoSessionsLoading(false);
+  }
+
+  function openInfoPanel(subtask: BoardSubTaskSummary): void {
+    setInfoSubtask(subtask);
+    setInfoSessions(null);
+    setInfoSessionsLoading(Boolean(loadSubtaskSession));
+  }
+
   if (open !== prevOpen) {
     setPrevOpen(open);
     if (open) {
@@ -501,13 +531,50 @@ export function KanbanTaskSubtasksModal({
       setSelectedCollaboratorIds([]);
       setExitConfirmOpen(false);
       setPendingExitAction(null);
-      setInfoSubtask(null);
+      closeInfoPanel();
       setMainTab("pending");
       setPreferFinishedTab(false);
     }
   }
 
   const { pending, finished } = splitSubtasksByFinished(subtasks);
+  const showInitialLoading = loading && subtasks.length === 0;
+
+  useEffect(() => {
+    if (!infoSubtask || !loadSubtaskSession) return;
+    let cancelled = false;
+    void loadSubtaskSession(infoSubtask.documentId).then((sessions) => {
+      if (!cancelled) {
+        setInfoSessions(sessions);
+        setInfoSessionsLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [infoSubtask, loadSubtaskSession]);
+
+  const refreshStatusTime = loadedAt
+    ? new Intl.DateTimeFormat("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(loadedAt))
+    : null;
+
+  function requestFinishedTab(): void {
+    void onLoadSessions?.();
+  }
+
+  const shouldLoadFinishedSessions =
+    open &&
+    finished.length > 0 &&
+    (pending.length === 0 || preferFinishedTab || mainTab === "finished");
+
+  useEffect(() => {
+    if (!shouldLoadFinishedSessions) return;
+    void onLoadSessions?.();
+  }, [shouldLoadFinishedSessions, onLoadSessions]);
+
   const pendingSubtaskIds = useMemo(
     () => pending.map((item) => item.documentId),
     [pending],
@@ -636,6 +703,7 @@ export function KanbanTaskSubtasksModal({
     clearMultiState();
     if (action === "go-finished") {
       setPreferFinishedTab(true);
+      requestFinishedTab();
       setMainTab("finished");
     }
     setExitConfirmOpen(false);
@@ -687,23 +755,24 @@ export function KanbanTaskSubtasksModal({
       setMainTab(next);
       return;
     }
+    const goFinished = (): void => {
+      setPreferFinishedTab(true);
+      requestFinishedTab();
+      if (multiEnabled) {
+        applyExitAction("go-finished");
+        return;
+      }
+      setMainTab("finished");
+    };
     if (dirty) {
-      confirmIfDirty(() => {
-        setPreferFinishedTab(true);
-        if (multiEnabled) {
-          applyExitAction("go-finished");
-          return;
-        }
-        setMainTab("finished");
-      });
+      confirmIfDirty(goFinished);
       return;
     }
     if (multiEnabled) {
       requestExitMulti("go-finished");
       return;
     }
-    setPreferFinishedTab(true);
-    setMainTab("finished");
+    goFinished();
   }
 
   function handleAddSubtask(): void {
@@ -956,6 +1025,15 @@ export function KanbanTaskSubtasksModal({
         }
       >
         <p className="text-sm text-muted-foreground">{taskName}</p>
+        {refreshing ? (
+          <p className="text-xs text-muted-foreground" role="status">
+            {tKanban("refreshingSubtasks")}
+          </p>
+        ) : refreshStatusTime ? (
+          <p className="text-xs text-muted-foreground" role="status">
+            {tKanban("subtasksUpdatedAt", { time: refreshStatusTime })}
+          </p>
+        ) : null}
 
         {hasPendingSubtasks || hasFinishedSubtasks || loading ? (
           <div
@@ -998,7 +1076,7 @@ export function KanbanTaskSubtasksModal({
           </div>
         ) : null}
 
-        {loading ? (
+        {showInitialLoading ? (
           <KanbanTaskSubtasksLoadingBody
             teams={teams}
             assignWarnMax={assignWarnMax}
@@ -1021,6 +1099,8 @@ export function KanbanTaskSubtasksModal({
               </li>
             ) : (
               finished.map((subtask) => {
+                const sessionsPending =
+                  loadingSessions && subtask.sessions.length === 0;
                 const participantCount = countSessionParticipants(
                   subtask.sessions,
                 );
@@ -1038,7 +1118,7 @@ export function KanbanTaskSubtasksModal({
                         "relative w-full rounded-lg border bg-background p-3",
                         "text-left transition-colors hover:bg-muted/40",
                       )}
-                      onClick={() => setInfoSubtask(subtask)}
+                      onClick={() => openInfoPanel(subtask)}
                     >
                       <SubTaskUnassignedFloatingBadge
                         assignedCount={subtask.assignedTo.length}
@@ -1047,22 +1127,31 @@ export function KanbanTaskSubtasksModal({
                         <span className="min-w-0 flex-1 font-medium">
                           {subtask.name}
                         </span>
-                        <span
-                          className="inline-flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground"
-                          aria-label={tKanban("finishedParticipants", {
-                            count: participantCount,
-                          })}
-                        >
-                          <Users className="size-3.5 shrink-0" aria-hidden />
-                          <span>{participantCount}</span>
-                        </span>
+                        {sessionsPending ? (
+                          <span
+                            className="text-xs text-muted-foreground"
+                            role="status"
+                          >
+                            {tSubtasks("sessionsLoading")}
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground"
+                            aria-label={tKanban("finishedParticipants", {
+                              count: participantCount,
+                            })}
+                          >
+                            <Users className="size-3.5 shrink-0" aria-hidden />
+                            <span>{participantCount}</span>
+                          </span>
+                        )}
                       </div>
                       <div className="mt-1 space-y-1">
                         <TimeMetrics
                           expectedTime={subtask.expectedTime}
                           timeSpent={subtask.timeSpent}
                         />
-                        {finishedAt && finishedParts ? (
+                        {sessionsPending ? null : finishedAt && finishedParts ? (
                           <StackedDateTime
                             value={finishedAt}
                             className="text-xs text-muted-foreground"
@@ -1336,7 +1425,7 @@ export function KanbanTaskSubtasksModal({
       <FormModalShell
         open={infoSubtask !== null}
         title={tKanban("infoTitle")}
-        onClose={() => setInfoSubtask(null)}
+        onClose={closeInfoPanel}
         size="lg"
         layer="nested"
       >
@@ -1366,15 +1455,25 @@ export function KanbanTaskSubtasksModal({
                 timeSpent={infoSubtask.timeSpent}
               />
             </div>
-            <SubTaskSessionsPanel
-              sessions={infoSubtask.sessions}
-              sharingType={infoSubtask.sharingType}
-              expectedTime={infoSubtask.expectedTime}
-              timeSpent={infoSubtask.timeSpent}
-              targetQty={Math.max(1, infoSubtask.qty) * Math.max(1, taskQty)}
-              paymentCurrency={paymentCurrency}
-              totalsFirst
-            />
+            {infoSessionsLoading && loadSubtaskSession ? (
+              <p className="text-sm text-muted-foreground" role="status">
+                {tSubtasks("sessionsLoading")}
+              </p>
+            ) : (
+              <SubTaskSessionsPanel
+                sessions={
+                  loadSubtaskSession
+                    ? (infoSessions ?? [])
+                    : infoSubtask.sessions
+                }
+                sharingType={infoSubtask.sharingType}
+                expectedTime={infoSubtask.expectedTime}
+                timeSpent={infoSubtask.timeSpent}
+                targetQty={Math.max(1, infoSubtask.qty) * Math.max(1, taskQty)}
+                paymentCurrency={paymentCurrency}
+                totalsFirst
+              />
+            )}
           </div>
         ) : null}
       </FormModalShell>

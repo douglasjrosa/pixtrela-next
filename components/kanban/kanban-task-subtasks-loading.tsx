@@ -24,7 +24,7 @@ function range(count: number): number[] {
   return Array.from({ length: count }, (_, index) => index);
 }
 
-export function KanbanPendingSubtaskCardSkeleton() {
+function KanbanPendingSubtaskCardSkeleton() {
   return (
     <li className="overflow-visible">
       <div className="flex items-stretch gap-1">

@@ -1149,4 +1149,50 @@ describe("KanbanTaskSubtasksModal", () => {
       "group",
     );
   });
+
+  it("shows refreshing status while background refetch runs", () => {
+    renderModal({
+      subtasks: [
+        boardSubTaskSummaryStub({
+          documentId: "st-1",
+          name: "Soldar",
+          status: "waiting",
+          assignedTo: [],
+        }),
+      ],
+      loading: false,
+      refreshing: true,
+    });
+
+    expect(screen.getByText("Atualizando…")).toBeInTheDocument();
+    expect(screen.getByText("Soldar")).toBeInTheDocument();
+  });
+
+  it("loads finished sessions when the finished tab is opened", async () => {
+    const user = userEvent.setup();
+    const onLoadSessions = vi.fn();
+
+    renderModal({
+      subtasks: [
+        boardSubTaskSummaryStub({
+          documentId: "st-1",
+          name: "Soldar",
+          status: "waiting",
+          assignedTo: [],
+        }),
+        boardSubTaskSummaryStub({
+          documentId: "st-3",
+          name: "Embalar",
+          status: "finished",
+          assignedTo: [],
+          sessions: [],
+        }),
+      ],
+      onLoadSessions,
+    });
+
+    await user.click(screen.getByRole("tab", { name: "Finalizadas" }));
+
+    expect(onLoadSessions).toHaveBeenCalled();
+  });
 });

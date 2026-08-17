@@ -24,6 +24,8 @@ import {
   applyBoardTaskOrder,
   createBoardSubtask,
   loadBoardSubtasks,
+  loadBoardSubtaskSession,
+  loadBoardSubtaskSessions,
   pollBoardProgress,
   reorderBoardSubtasks,
   updateBoardSubtaskAssignees,
@@ -129,6 +131,8 @@ function BoardCanvas({
       pollBoardProgress={pollBoardProgress}
       applyBoardTaskOrder={applyBoardTaskOrder}
       loadSubtasks={loadBoardSubtasks}
+      loadSubtaskSessions={loadBoardSubtaskSessions}
+      loadSubtaskSession={loadBoardSubtaskSession}
       reorderSubtasks={reorderBoardSubtasks}
       updateSubtaskAssignees={updateBoardSubtaskAssignees}
       linkSubtask={updateBoardSubtaskLink}

@@ -4,6 +4,10 @@ const revalidateTag = vi.fn();
 const updateTaskBoardFields = vi.fn();
 const listStepsRepo = vi.fn();
 const listBoardSubtaskRows = vi.fn();
+const listBoardSubTasksForTask = vi.fn();
+const listBoardSubtaskSessionHistory = vi.fn();
+const listBoardSubtaskAssignees = vi.fn();
+const listSubTaskActivitySessions = vi.fn();
 const getTaskById = vi.fn();
 const getSubTaskById = vi.fn();
 const listSubTasksWithRelationsForTask = vi.fn();
@@ -40,18 +44,30 @@ vi.mock("@/lib/repos/steps", () => ({
   listSteps: (...args: unknown[]) => listStepsRepo(...args),
 }));
 
-vi.mock("@/lib/repos/tasks", () => ({
-  updateTaskBoardFields: (...args: unknown[]) => updateTaskBoardFields(...args),
-  listBoardSubtaskRows: (...args: unknown[]) => listBoardSubtaskRows(...args),
-  getTaskById: (...args: unknown[]) => getTaskById(...args),
-  getSubTaskById: (...args: unknown[]) => getSubTaskById(...args),
-  listSubTasksWithRelationsForTask: (...args: unknown[]) =>
-    listSubTasksWithRelationsForTask(...args),
-  updateSubTaskLinkedToPrevious: (...args: unknown[]) =>
-    updateSubTaskLinkedToPrevious(...args),
-  replaceSubTaskAssignees: (...args: unknown[]) =>
-    replaceSubTaskAssignees(...args),
-}));
+vi.mock("@/lib/repos/tasks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/repos/tasks")>();
+  return {
+    ...actual,
+    updateTaskBoardFields: (...args: unknown[]) => updateTaskBoardFields(...args),
+    listBoardSubtaskRows: (...args: unknown[]) => listBoardSubtaskRows(...args),
+    listBoardSubTasksForTask: (...args: unknown[]) =>
+      listBoardSubTasksForTask(...args),
+    listBoardSubtaskSessionHistory: (...args: unknown[]) =>
+      listBoardSubtaskSessionHistory(...args),
+    listBoardSubtaskAssignees: (...args: unknown[]) =>
+      listBoardSubtaskAssignees(...args),
+    listSubTaskActivitySessions: (...args: unknown[]) =>
+      listSubTaskActivitySessions(...args),
+    getTaskById: (...args: unknown[]) => getTaskById(...args),
+    getSubTaskById: (...args: unknown[]) => getSubTaskById(...args),
+    listSubTasksWithRelationsForTask: (...args: unknown[]) =>
+      listSubTasksWithRelationsForTask(...args),
+    updateSubTaskLinkedToPrevious: (...args: unknown[]) =>
+      updateSubTaskLinkedToPrevious(...args),
+    replaceSubTaskAssignees: (...args: unknown[]) =>
+      replaceSubTaskAssignees(...args),
+  };
+});
 
 vi.mock("@/lib/business/apply-step-task-order", () => ({
   applyAutoStepTaskOrderingAfterTaskChange: (...args: unknown[]) =>
@@ -65,6 +81,10 @@ describe("board/actions drizzle", () => {
     updateTaskBoardFields.mockReset();
     listStepsRepo.mockReset();
     listBoardSubtaskRows.mockReset();
+    listBoardSubTasksForTask.mockReset();
+    listBoardSubtaskSessionHistory.mockReset();
+    listBoardSubtaskAssignees.mockReset();
+    listSubTaskActivitySessions.mockReset();
     getTaskById.mockReset();
     getSubTaskById.mockReset();
     listSubTasksWithRelationsForTask.mockReset();
@@ -108,7 +128,7 @@ describe("board/actions drizzle", () => {
         },
       ],
       assigneeRows: [],
-      activityRows: [],
+      openActivityRows: [],
     });
 
     const { loadBoardSubtasks } = await import("./actions");
@@ -117,6 +137,58 @@ describe("board/actions drizzle", () => {
     expect(result[0]?.documentId).toBe("sub-1");
     expect(result[0]?.linkedToPrevious).toBe(false);
     expect(result[0]?.maxSameTimeWorkers).toBe(1);
+    expect(result[0]?.sessions).toEqual([]);
+  });
+
+  it("loadBoardSubtaskSessions loads history for finished subtasks only", async () => {
+    listBoardSubTasksForTask.mockResolvedValue([
+      { id: "sub-pending", status: "waiting" },
+      { id: "sub-done", status: "finished" },
+    ]);
+    listBoardSubtaskSessionHistory.mockResolvedValue([
+      {
+        subTaskId: "sub-done",
+        colaboratorId: "u-1",
+        colaboratorName: "Ana",
+        action: "started",
+        timestamp: new Date("2026-07-16T10:00:00.000Z"),
+        qty: 0,
+      },
+      {
+        subTaskId: "sub-done",
+        colaboratorId: "u-1",
+        colaboratorName: "Ana",
+        action: "stoped",
+        timestamp: new Date("2026-07-16T10:01:00.000Z"),
+        qty: 0,
+      },
+    ]);
+
+    const { loadBoardSubtaskSessions } = await import("./actions");
+    const result = await loadBoardSubtaskSessions("task-1");
+
+    expect(listBoardSubtaskSessionHistory).toHaveBeenCalledWith(["sub-done"]);
+    expect(result["sub-done"]).toHaveLength(1);
+    expect(result["sub-pending"]).toBeUndefined();
+  });
+
+  it("loadBoardSubtaskSession delegates to listSubTaskActivitySessions", async () => {
+    listSubTaskActivitySessions.mockResolvedValue([
+      {
+        colaboratorDocumentId: "u-1",
+        colaboratorName: "Ana",
+        startedAt: "2026-07-16T10:00:00.000Z",
+        finishedAt: "2026-07-16T10:01:00.000Z",
+        durationSec: 60,
+        qty: 0,
+      },
+    ]);
+
+    const { loadBoardSubtaskSession } = await import("./actions");
+    const result = await loadBoardSubtaskSession("sub-1");
+
+    expect(listSubTaskActivitySessions).toHaveBeenCalledWith("sub-1");
+    expect(result).toHaveLength(1);
   });
 
   it("pollBoardProgress loads totals and layout from task repo", async () => {
@@ -174,24 +246,9 @@ describe("board/actions drizzle", () => {
         dependencyIds: [],
       },
     ]);
-    listBoardSubtaskRows.mockResolvedValue({
-      rows: [
-        {
-          id: "st-2",
-          name: "Cortar",
-          status: "waiting",
-          sharingType: "duration",
-          qty: 1,
-          expectedTime: 0,
-          timeSpent: 0,
-          linkedToPrevious: true,
-        },
-      ],
-      assigneeRows: [
-        { subTaskId: "st-2", userId: "u-head", name: "Head" },
-      ],
-      activityRows: [],
-    });
+    listBoardSubtaskAssignees.mockResolvedValue([
+      { subTaskId: "st-2", userId: "u-head", name: "Head" },
+    ]);
 
     const { updateBoardSubtaskLink } = await import("./actions");
     const result = await updateBoardSubtaskLink("task-1", "st-2", true);
@@ -228,24 +285,9 @@ describe("board/actions drizzle", () => {
         dependencyIds: [],
       },
     ]);
-    listBoardSubtaskRows.mockResolvedValue({
-      rows: [
-        {
-          id: "st-2",
-          name: "Cortar",
-          status: "waiting",
-          sharingType: "duration",
-          qty: 1,
-          expectedTime: 0,
-          timeSpent: 0,
-          linkedToPrevious: false,
-        },
-      ],
-      assigneeRows: [
-        { subTaskId: "st-2", userId: "u-head", name: "Head" },
-      ],
-      activityRows: [],
-    });
+    listBoardSubtaskAssignees.mockResolvedValue([
+      { subTaskId: "st-2", userId: "u-head", name: "Head" },
+    ]);
 
     const { updateBoardSubtaskLink } = await import("./actions");
     await updateBoardSubtaskLink("task-1", "st-2", false);
