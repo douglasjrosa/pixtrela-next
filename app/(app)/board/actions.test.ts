@@ -401,7 +401,63 @@ describe("board/actions drizzle", () => {
     expect(updateSubTask).not.toHaveBeenCalled();
   });
 
-  it("updateBoardSubtaskAssignees keeps head ids on a helper patch", async () => {
+  it("updateBoardSubtaskAssignees strips shared removals from the group", async () => {
+    const siblings = [
+      {
+        id: "st-1",
+        taskId: "task-1",
+        name: "Cut",
+        qty: 1,
+        expectedTime: 10,
+        sharingType: "duration",
+        index: 0,
+        status: "waiting",
+        activationStatus: "unlocked",
+        reasonForDeactivation: null,
+        linkedToPrevious: false,
+        maxSameTimeWorkers: 2,
+        assignedToIds: ["u-head", "u-extra"],
+        dependencyIds: [],
+      },
+      {
+        id: "st-2",
+        taskId: "task-1",
+        name: "Pack",
+        qty: 1,
+        expectedTime: 10,
+        sharingType: "duration",
+        index: 1,
+        status: "waiting",
+        activationStatus: "unlocked",
+        reasonForDeactivation: null,
+        linkedToPrevious: true,
+        maxSameTimeWorkers: 1,
+        assignedToIds: ["u-head"],
+        dependencyIds: [],
+      },
+    ];
+    listSubTasksWithRelationsForTask.mockResolvedValue(siblings);
+    getSubTaskById.mockImplementation(async (id: string) =>
+      siblings.find((row) => row.id === id) ?? null,
+    );
+
+    const { updateBoardSubtaskAssignees } = await import("./actions");
+    await updateBoardSubtaskAssignees("st-1", "task-1", ["u-extra"], false);
+
+    expect(updateSubTask).toHaveBeenCalledTimes(2);
+    expect(updateSubTask).toHaveBeenCalledWith(
+      "st-1",
+      "task-1",
+      expect.objectContaining({ assignedToIds: ["u-extra"] }),
+    );
+    expect(updateSubTask).toHaveBeenCalledWith(
+      "st-2",
+      "task-1",
+      expect.objectContaining({ assignedToIds: [] }),
+    );
+  });
+
+  it("updateBoardSubtaskAssignees keeps extras local on a helper patch", async () => {
     const siblings = [
       {
         id: "st-1",
@@ -442,8 +498,9 @@ describe("board/actions drizzle", () => {
     );
 
     const { updateBoardSubtaskAssignees } = await import("./actions");
-    await updateBoardSubtaskAssignees("st-2", "task-1", ["u-extra"]);
+    await updateBoardSubtaskAssignees("st-2", "task-1", ["u-head", "u-extra"]);
 
+    expect(updateSubTask).toHaveBeenCalledTimes(1);
     expect(updateSubTask).toHaveBeenCalledWith(
       "st-2",
       "task-1",

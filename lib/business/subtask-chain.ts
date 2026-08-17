@@ -238,6 +238,46 @@ export function applyHeadAssigneePropagation(
   }));
 }
 
+/**
+ * A max>1 row may keep extras the rest of the group does not have, but it
+ * cannot drop an assignee who remains on siblings — that removal is shared.
+ */
+export function applyMaxWorkerSelfAssigneeChange(
+  members: readonly AssigneeMember[],
+  editedId: string,
+  nextEditedIds: readonly string[],
+): Array<{ documentId: string; assignedToIds: string[] }> {
+  const nextEdited = uniqueIds(nextEditedIds);
+  const current = members.find((member) => member.documentId === editedId);
+  const previousIds = uniqueIds(current?.assignedToIds ?? []);
+  const removedIds = previousIds.filter((id) => !nextEdited.includes(id));
+  const sharedRemoved = new Set(
+    removedIds.filter((id) =>
+      members.some(
+        (member) =>
+          member.documentId !== editedId && member.assignedToIds.includes(id),
+      ),
+    ),
+  );
+  return members.map((member) => {
+    if (member.documentId === editedId) {
+      return { documentId: member.documentId, assignedToIds: nextEdited };
+    }
+    if (sharedRemoved.size === 0) {
+      return {
+        documentId: member.documentId,
+        assignedToIds: uniqueIds(member.assignedToIds),
+      };
+    }
+    return {
+      documentId: member.documentId,
+      assignedToIds: uniqueIds(member.assignedToIds).filter(
+        (id) => !sharedRemoved.has(id),
+      ),
+    };
+  });
+}
+
 export type ChainAssigneeState = {
   documentId: string;
   linkedToPrevious: boolean;

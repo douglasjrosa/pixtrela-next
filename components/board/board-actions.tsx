@@ -32,10 +32,10 @@ import {
 import {
   applyChainLinkToggle,
   applyHeadAssigneePropagation,
+  applyMaxWorkerSelfAssigneeChange,
   canEditAssignees,
   chainAssigneeStateFromBoard,
   chainItemsFromBoard,
-  constrainHelperAssignees,
   findChainContaining,
   isMultiMemberChain,
   reconcileChainReorder,
@@ -465,26 +465,28 @@ export function BoardActions({
         (role === "head" ? "group" : role === "helper" ? "self" : undefined);
       if (role === "none" && scope !== "group") return current;
       if (scope === "self") {
-        const head = current.find((item) => item.documentId === chain.headId);
-        const nextIds =
-          role === "helper"
-            ? constrainHelperAssignees(
-                head?.assignedTo.map((assignee) => assignee.documentId) ?? [],
-                assignedToIds,
-              )
-            : assignedToIds;
-        return current.map((item) =>
-          item.documentId === subtask.documentId
-            ? {
-                ...item,
-                assignedTo: mergeAssigneesByIds(
-                  item.assignedTo,
-                  nextIds,
-                  directory,
-                ),
-              }
-            : item,
+        const members = chain.memberIds
+          .map((id) => chainItems.find((item) => item.documentId === id))
+          .filter((item): item is NonNullable<typeof item> => Boolean(item));
+        const nextById = new Map(
+          applyMaxWorkerSelfAssigneeChange(
+            members,
+            subtask.documentId,
+            assignedToIds,
+          ).map((item) => [item.documentId, item.assignedToIds]),
         );
+        return current.map((item) => {
+          const nextIds = nextById.get(item.documentId);
+          if (!nextIds) return item;
+          return {
+            ...item,
+            assignedTo: mergeAssigneesByIds(
+              item.assignedTo,
+              nextIds,
+              directory,
+            ),
+          };
+        });
       }
 
       const members = chain.memberIds

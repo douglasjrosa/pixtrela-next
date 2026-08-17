@@ -16,9 +16,10 @@ import {
 import {
   applyChainLinkToggle,
   applyHeadAssigneePropagation,
+  applyMaxWorkerSelfAssigneeChange,
   canEditAssignees,
-  constrainHelperAssignees,
   findChainContaining,
+  sameAssigneeIdSet,
   previousChainMember,
   reconcileChainReorder,
   resolveChains,
@@ -501,36 +502,37 @@ export async function updateBoardSubtaskAssignees(
   );
   if (role === "none") throw new Error("forbidden");
 
-  if (role === "helper") {
-    const head = chainItems.find((item) => item.documentId === chain.headId);
-    const nextIds = constrainHelperAssignees(
-      head?.assignedToIds ?? [],
-      assignedToIds,
-    );
-    const subtask = await fetchSubTaskForUpdate(subtaskDocumentId);
-    if (!subtask) throw new Error("notFound");
-    await updateSubTask(
-      subtaskDocumentId,
-      taskDocumentId,
-      toSubTaskFormInput(subtask, nextIds),
-    );
-    return;
-  }
-
-  if (!propagateChain) {
-    const subtask = await fetchSubTaskForUpdate(subtaskDocumentId);
-    if (!subtask) throw new Error("notFound");
-    await updateSubTask(
-      subtaskDocumentId,
-      taskDocumentId,
-      toSubTaskFormInput(subtask, assignedToIds),
-    );
-    return;
-  }
-
   const members = chain.memberIds
     .map((id) => chainItems.find((item) => item.documentId === id))
     .filter((item): item is ChainSubTask => Boolean(item));
+
+  if (role === "helper" || !propagateChain) {
+    const nextRows = applyMaxWorkerSelfAssigneeChange(
+      members,
+      subtaskDocumentId,
+      assignedToIds,
+    );
+    for (const update of nextRows) {
+      const previous = members.find(
+        (item) => item.documentId === update.documentId,
+      );
+      if (
+        previous &&
+        sameAssigneeIdSet(previous.assignedToIds, update.assignedToIds)
+      ) {
+        continue;
+      }
+      const subtask = await fetchSubTaskForUpdate(update.documentId);
+      if (!subtask) continue;
+      await updateSubTask(
+        update.documentId,
+        taskDocumentId,
+        toSubTaskFormInput(subtask, update.assignedToIds),
+      );
+    }
+    return;
+  }
+
   const propagated = applyHeadAssigneePropagation(
     members,
     chain.headId,

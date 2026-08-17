@@ -591,6 +591,54 @@ describe("BoardActions", () => {
     expect(screen.getByRole("button", { name: "Atribuir Bob" })).toBeInTheDocument();
   });
 
+  it("propagates removing a shared assignee from a max>1 head", async () => {
+    const user = userEvent.setup();
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        maxSameTimeWorkers: 2,
+        assignedTo: [
+          { documentId: "u-1", name: "Ana" },
+          { documentId: "u-2", name: "Bob" },
+        ],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: true,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+    ]);
+
+    renderBoard({
+      loadSubtasks,
+      teams: [
+        {
+          documentId: "team-1",
+          name: "Equipe A",
+          members: [
+            { documentId: "u-1", name: "Ana" },
+            { documentId: "u-2", name: "Bob" },
+          ],
+        },
+      ],
+    });
+    await user.click(screen.getByText("1 - Tarefa A"));
+    await user.click(await screen.findByRole("button", { name: /Soldar/ }));
+    await user.click(screen.getByRole("button", { name: "Remover Ana" }));
+    expect(screen.getByRole("button", { name: "Remover Bob" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Atribuir Ana" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Cortar/ }));
+    expect(screen.getByRole("button", { name: "Atribuir Ana" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Atribuir Bob" })).toBeInTheDocument();
+  });
+
   it("propagates head extras after toggling a max>1 head to the group", async () => {
     const user = userEvent.setup();
     const loadSubtasks = vi.fn().mockResolvedValue([

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyChainLinkToggle,
   applyHeadAssigneePropagation,
+  applyMaxWorkerSelfAssigneeChange,
   assigneesAfterLinkToPrevious,
   canEditAssignees,
   constrainHelperAssignees,
@@ -299,6 +300,28 @@ describe("chain board rules", () => {
     const chain = { headId: "a", memberIds: ["a", "b"] };
     expect(canEditAssignees("b", 1, chain)).toBe("none");
     expect(canEditAssignees("a", 1, chain)).toBe("head");
+  });
+
+  it("keeps extras local on a max>1 row and strips shared removals", () => {
+    const members = [
+      { documentId: "a", assignedToIds: ["ana", "bob"], maxSameTimeWorkers: 2 },
+      { documentId: "b", assignedToIds: ["ana"], maxSameTimeWorkers: 1 },
+      { documentId: "c", assignedToIds: ["ana"], maxSameTimeWorkers: 1 },
+    ];
+    expect(
+      applyMaxWorkerSelfAssigneeChange(members, "a", ["ana"]),
+    ).toEqual([
+      { documentId: "a", assignedToIds: ["ana"] },
+      { documentId: "b", assignedToIds: ["ana"] },
+      { documentId: "c", assignedToIds: ["ana"] },
+    ]);
+    expect(
+      applyMaxWorkerSelfAssigneeChange(members, "a", ["bob"]),
+    ).toEqual([
+      { documentId: "a", assignedToIds: ["bob"] },
+      { documentId: "b", assignedToIds: [] },
+      { documentId: "c", assignedToIds: [] },
+    ]);
   });
 
   it("keeps head assignees on a helper and allows extras to change", () => {
