@@ -1,7 +1,7 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { KioskGroupUnit } from "@/lib/business/kiosk-queue-units";
@@ -43,7 +43,6 @@ export function KioskChainGroupCard({
 }: KioskChainGroupCardProps) {
   const t = useTranslations("kiosk");
   const [collecting, setCollecting] = useState(false);
-  const [confirmingStop, setConfirmingStop] = useState(false);
   const [answers, setAnswers] = useState<Record<string, ChainStopAnswer>>({});
 
   const answersComplete = useMemo(
@@ -62,25 +61,15 @@ export function KioskChainGroupCard({
 
   function resetCollecting(): void {
     setCollecting(false);
-    setConfirmingStop(false);
     setAnswers({});
   }
-
-  useEffect(() => {
-    if (!blockingUi) {
-      setCollecting(false);
-      setConfirmingStop(false);
-      setAnswers({});
-    }
-  }, [blockingUi]);
 
   function handleStopClick(): void {
     setCollecting(true);
   }
 
   function handleConfirmStop(): void {
-    if (!unit.chainRunId || !answersComplete || confirmingStop) return;
-    setConfirmingStop(true);
+    if (!unit.chainRunId || !answersComplete || blockingUi) return;
     const payload = unit.members.map(
       (member) => answers[member.documentId] ?? { documentId: member.documentId },
     );
@@ -144,7 +133,7 @@ export function KioskChainGroupCard({
                         : undefined
                     }
                     value={answers[member.documentId]}
-                    disabled={confirmingStop}
+                    disabled={blockingUi}
                     onChange={(answer) =>
                       setAnswers((current) => ({
                         ...current,
@@ -179,7 +168,7 @@ export function KioskChainGroupCard({
             {collecting && answersComplete ? (
               <KioskActionButton
                 actionVariant="produce"
-                disabled={confirmingStop}
+                disabled={blockingUi}
                 onClick={handleConfirmStop}
               >
                 {t("exitConfirm")}
@@ -188,7 +177,7 @@ export function KioskChainGroupCard({
             {collecting ? (
               <KioskActionButton
                 actionVariant="outline"
-                disabled={confirmingStop}
+                disabled={blockingUi}
                 onClick={resetCollecting}
               >
                 {t("exitCancel")}
