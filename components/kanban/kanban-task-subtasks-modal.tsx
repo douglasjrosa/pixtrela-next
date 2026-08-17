@@ -789,7 +789,7 @@ export function KanbanTaskSubtasksModal({
       <Button
         type="button"
         variant="outline"
-        className={className}
+        className={cn("shrink-0 self-start", className)}
         disabled={saving || loading}
         onClick={handleAddSubtask}
       >
@@ -1143,14 +1143,14 @@ export function KanbanTaskSubtasksModal({
               assignedCountByColaboratorId={assignedCountByColaboratorId}
               subtasksListHeader={renderSubtasksRefreshStatus()}
             />
-            {renderAddSubtaskButton("w-full sm:w-auto")}
+            {renderAddSubtaskButton()}
           </>
         ) : subtasks.length === 0 ? (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-muted-foreground" role="status">
               {tKanban("subtasksEmpty")}
             </p>
-            {renderAddSubtaskButton("w-full sm:w-auto")}
+            {renderAddSubtaskButton()}
           </div>
         ) : activeMainTab === "finished" ? (
           <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-2.5">
@@ -1229,7 +1229,7 @@ export function KanbanTaskSubtasksModal({
                 );
               })
             )}
-            {renderAddSubtaskButton("w-full")}
+            {renderAddSubtaskButton()}
           </ul>
         ) : (
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
@@ -1320,7 +1320,7 @@ export function KanbanTaskSubtasksModal({
                       </SortableContext>
                     </DndContext>
                   )}
-                  {renderAddSubtaskButton("w-full shrink-0")}
+                  {renderAddSubtaskButton()}
                 </ul>
               </section>
 
