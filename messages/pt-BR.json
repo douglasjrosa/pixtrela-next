@@ -420,6 +420,9 @@
     "timeSpent": "Tempo gasto (s)",
     "qty": "Quantidade",
     "maxSameTimeWorkers": "Máx. colaboradores simultâneos",
+    "maxSameTimeWorkersShort": "Max",
+    "maxSameTimeWorkersTimes": "x {count}",
+    "maxSameTimeWorkersBadge": "Máx. colaboradores simultâneos: {count}",
     "sharingTypeLabel": "Tipo de compartilhamento",
     "sharingType": {
       "qty": "Por quantidade",

@@ -154,6 +154,8 @@ function areAllSelected(ids: string[], value: string[]): boolean {
   return ids.length > 0 && ids.every((id) => value.includes(id));
 }
 
+const MIN_SAME_TIME_WORKERS = 1;
+
 function SubTaskCardHeader({
   name,
   status,
@@ -161,6 +163,7 @@ function SubTaskCardHeader({
   workingCount,
   assignedTo,
   producingColaboratorIds,
+  maxSameTimeWorkers,
 }: {
   name: string;
   status: BoardSubTaskSummary["status"];
@@ -168,44 +171,62 @@ function SubTaskCardHeader({
   workingCount: number;
   assignedTo: BoardSubTaskSummary["assignedTo"];
   producingColaboratorIds: readonly string[];
+  maxSameTimeWorkers: number;
 }) {
   const tKanban = useTranslations("kanban");
   const tSubtasks = useTranslations("subtasks");
   const isProducing = status === PRODUCING_STATUS;
   const showActive = isProducing && workingCount > 0;
   const producingIdSet = new Set(producingColaboratorIds);
+  const maxWorkers = Math.max(MIN_SAME_TIME_WORKERS, maxSameTimeWorkers);
 
   return (
     <div className="mb-3 flex flex-col gap-1 md:flex-row md:items-start md:justify-between md:gap-2">
       <div className="flex w-full min-w-0 flex-col gap-1.5 md:flex-1">
         <span className="font-medium">{name}</span>
-        {assignedTo.length > 0 ? (
-          <ul
-            className="flex flex-wrap gap-1"
-            aria-label={tSubtasks("assignedTo")}
-          >
-            {assignedTo.map((assignee) => {
-              const isAssigneeProducing = producingIdSet.has(
-                assignee.documentId,
-              );
-              return (
-                <li key={assignee.documentId} className="min-w-0">
-                  <CardBadge
-                    title={assignee.name}
-                    className={cn(
-                      "max-w-full truncate px-1.5 py-0 text-xs font-medium",
-                      isAssigneeProducing
-                        ? "border-transparent bg-success text-success-foreground"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {assignee.name}
-                  </CardBadge>
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
+        <ul
+          className="flex flex-wrap gap-1"
+          aria-label={tSubtasks("assignedTo")}
+        >
+          <li className="min-w-0">
+            <CardBadge
+              className={cn(
+                "inline-flex max-w-full items-center gap-0.5",
+                "px-1.5 py-0 text-xs font-medium",
+                "bg-muted text-muted-foreground",
+              )}
+              aria-label={tSubtasks("maxSameTimeWorkersBadge", {
+                count: maxWorkers,
+              })}
+            >
+              <span>{tSubtasks("maxSameTimeWorkersShort")}</span>
+              <User aria-hidden className="size-3 shrink-0" />
+              <span className="tabular-nums">
+                {tSubtasks("maxSameTimeWorkersTimes", { count: maxWorkers })}
+              </span>
+            </CardBadge>
+          </li>
+          {assignedTo.map((assignee) => {
+            const isAssigneeProducing = producingIdSet.has(
+              assignee.documentId,
+            );
+            return (
+              <li key={assignee.documentId} className="min-w-0">
+                <CardBadge
+                  title={assignee.name}
+                  className={cn(
+                    "max-w-full truncate px-1.5 py-0 text-xs font-medium",
+                    isAssigneeProducing
+                      ? "border-transparent bg-success text-success-foreground"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {assignee.name}
+                </CardBadge>
+              </li>
+            );
+          })}
+        </ul>
       </div>
       <CardBadge
         className={cn(
@@ -285,6 +306,7 @@ function PendingSubtaskCard({
           workingCount={subtask.openActivityStartedAts.length}
           assignedTo={subtask.assignedTo}
           producingColaboratorIds={subtask.producingColaboratorIds}
+          maxSameTimeWorkers={subtask.maxSameTimeWorkers}
         />
         <SubTaskProgressBar
           status={subtask.status}
@@ -382,6 +404,7 @@ function SortablePendingSubtaskCard({
               workingCount={subtask.openActivityStartedAts.length}
               assignedTo={subtask.assignedTo}
               producingColaboratorIds={subtask.producingColaboratorIds}
+              maxSameTimeWorkers={subtask.maxSameTimeWorkers}
             />
             <SubTaskProgressBar
               status={subtask.status}

@@ -142,9 +142,47 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(within(pintarCard).getByText("Ana")).toHaveClass("bg-success");
 
     const soldarCard = screen.getByRole("button", { name: /Soldar/ });
+    expect(within(soldarCard).getByLabelText("Atribuído a")).toBeInTheDocument();
+    expect(within(soldarCard).queryByText("Ana")).not.toBeInTheDocument();
+  });
+
+  it("shows a permanent max-workers badge before assignee names", () => {
+    renderModal({
+      subtasks: [
+        boardSubTaskSummaryStub({
+          documentId: "st-1",
+          name: "Soldar",
+          status: "waiting",
+          maxSameTimeWorkers: 1,
+          assignedTo: [],
+        }),
+        boardSubTaskSummaryStub({
+          documentId: "st-2",
+          name: "Pintar",
+          status: "waiting",
+          maxSameTimeWorkers: 2,
+          assignedTo: [{ documentId: "u-1", name: "Ana" }],
+        }),
+      ],
+    });
+
+    const soldarCard = screen.getByRole("button", { name: /Soldar/ });
+    const soldarMax = within(soldarCard).getByLabelText(
+      "Máx. colaboradores simultâneos: 1",
+    );
+    expect(soldarMax).toHaveTextContent("Max");
+    expect(soldarMax).toHaveTextContent("x 1");
+
+    const pintarCard = screen.getByRole("button", { name: /Pintar/ });
+    const pintarMax = within(pintarCard).getByLabelText(
+      "Máx. colaboradores simultâneos: 2",
+    );
+    const anaBadge = within(pintarCard).getByText("Ana");
+    expect(pintarMax).toHaveTextContent("x 2");
     expect(
-      within(soldarCard).queryByLabelText("Atribuído a"),
-    ).not.toBeInTheDocument();
+      pintarMax.compareDocumentPosition(anaBadge) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("keeps non-producing assignee badges muted", () => {
