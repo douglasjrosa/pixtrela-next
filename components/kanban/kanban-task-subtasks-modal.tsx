@@ -506,6 +506,19 @@ export function KanbanTaskSubtasksModal({
   );
   const [infoSessionsLoading, setInfoSessionsLoading] = useState(false);
   const [prevOpen, setPrevOpen] = useState(open);
+
+  function closeInfoPanel(): void {
+    setInfoSubtask(null);
+    setInfoSessions(null);
+    setInfoSessionsLoading(false);
+  }
+
+  function openInfoPanel(subtask: BoardSubTaskSummary): void {
+    setInfoSubtask(subtask);
+    setInfoSessions(null);
+    setInfoSessionsLoading(Boolean(loadSubtaskSession));
+  }
+
   if (open !== prevOpen) {
     setPrevOpen(open);
     if (open) {
@@ -518,9 +531,7 @@ export function KanbanTaskSubtasksModal({
       setSelectedCollaboratorIds([]);
       setExitConfirmOpen(false);
       setPendingExitAction(null);
-      setInfoSubtask(null);
-      setInfoSessions(null);
-      setInfoSessionsLoading(false);
+      closeInfoPanel();
       setMainTab("pending");
       setPreferFinishedTab(false);
     }
@@ -530,14 +541,8 @@ export function KanbanTaskSubtasksModal({
   const showInitialLoading = loading && subtasks.length === 0;
 
   useEffect(() => {
-    if (!infoSubtask || !loadSubtaskSession) {
-      setInfoSessions(null);
-      setInfoSessionsLoading(false);
-      return;
-    }
+    if (!infoSubtask || !loadSubtaskSession) return;
     let cancelled = false;
-    setInfoSessions(null);
-    setInfoSessionsLoading(true);
     void loadSubtaskSession(infoSubtask.documentId).then((sessions) => {
       if (!cancelled) {
         setInfoSessions(sessions);
@@ -1113,7 +1118,7 @@ export function KanbanTaskSubtasksModal({
                         "relative w-full rounded-lg border bg-background p-3",
                         "text-left transition-colors hover:bg-muted/40",
                       )}
-                      onClick={() => setInfoSubtask(subtask)}
+                      onClick={() => openInfoPanel(subtask)}
                     >
                       <SubTaskUnassignedFloatingBadge
                         assignedCount={subtask.assignedTo.length}
@@ -1420,7 +1425,7 @@ export function KanbanTaskSubtasksModal({
       <FormModalShell
         open={infoSubtask !== null}
         title={tKanban("infoTitle")}
-        onClose={() => setInfoSubtask(null)}
+        onClose={closeInfoPanel}
         size="lg"
         layer="nested"
       >
