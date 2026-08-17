@@ -18,7 +18,7 @@ const CHAIN_UPPER_LINE_CLASS =
   "h-[calc(var(--subtask-chain-gap)+1.75rem)]";
 
 /** Half column + row gap-1 + reach into the card's left edge. */
-const CHAIN_ELBOW_WIDTH_CLASS = "w-[calc(50%+1.25rem)]";
+const CHAIN_ELBOW_WIDTH_CLASS = "w-[calc(50%+0.25rem)]";
 
 export interface SubtaskChainLinkControlProps {
   linked: boolean;
@@ -92,9 +92,9 @@ export function SubtaskChainLinkControl({
           {linked ? (
             <span
               className={cn(
-                "pointer-events-none -mt-px ml-[50%] h-0",
+                "pointer-events-none ml-[50%] h-7",
                 CHAIN_ELBOW_WIDTH_CLASS,
-                "border-t border-dashed border-primary",
+                "border-b border-l border-dashed border-primary",
               )}
               aria-hidden
               data-slot="chain-line-lower"
