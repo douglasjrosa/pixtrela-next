@@ -162,10 +162,25 @@ describe("tasks/actions drizzle CRUD", () => {
       pageCount: 2,
       hasMore: false,
     });
-    const filters = { statuses: ["waiting"], from: "2026-06-01" };
+    const filters = {
+      statuses: ["waiting"],
+      from: "2026-06-01",
+      to: "2026-06-30",
+    };
     const { loadMoreTasks } = await import("./actions");
     const result = await loadMoreTasks(filters, 2);
-    expect(loadTaskListPage).toHaveBeenCalledWith(filters, 2);
+    expect(loadTaskListPage).toHaveBeenCalledWith(
+      {
+        statuses: ["waiting"],
+        from: "2026-06-01",
+        to: "2026-06-30",
+        q: undefined,
+        column: "deliveryDate",
+        direction: "asc",
+        showArchived: false,
+      },
+      2,
+    );
     expect(result.page).toBe(2);
   });
 });

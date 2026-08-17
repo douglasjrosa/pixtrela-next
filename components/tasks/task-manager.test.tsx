@@ -98,7 +98,8 @@ describe("TasksPageHeader", () => {
 
     await user.click(screen.getByRole("button", { name: "Nova tarefa" }));
     await user.type(screen.getByLabelText("Nome"), "Nova tarefa");
-    await user.type(screen.getByLabelText("Data de entrega"), "2026-07-18");
+    await user.type(screen.getByLabelText("Data de entrega"), "18/07/2026");
+    await user.tab();
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(createTask).toHaveBeenCalledWith(
@@ -125,7 +126,8 @@ describe("TasksPageHeader", () => {
 
     await user.click(screen.getByRole("button", { name: "Nova tarefa" }));
     await user.type(screen.getByLabelText("Nome"), "Nova tarefa");
-    await user.type(screen.getByLabelText("Data de entrega"), "2026-07-18");
+    await user.type(screen.getByLabelText("Data de entrega"), "18/07/2026");
+    await user.tab();
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(showErrorToast).toHaveBeenCalledWith(
