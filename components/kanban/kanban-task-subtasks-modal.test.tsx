@@ -846,7 +846,7 @@ describe("KanbanTaskSubtasksModal", () => {
     );
   });
 
-  it("shows a chain link button only between pending rows", () => {
+  it("shows a chain link button on later pending rows", () => {
     const chained = [
       boardSubTaskSummaryStub({
         documentId: "st-1",
@@ -867,8 +867,16 @@ describe("KanbanTaskSubtasksModal", () => {
       onReorder: vi.fn(),
       onLinkToggle: vi.fn(),
     });
+    const pintarCard = screen.getByRole("button", { name: /Pintar/ });
+    const pintarRow = pintarCard.closest("li");
+    expect(pintarRow).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Ligar à anterior" }),
+      within(pintarRow as HTMLElement).getByRole("button", {
+        name: "Ligar à anterior",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(pintarRow as HTMLElement).getByLabelText("Arrastar para reordenar"),
     ).toBeInTheDocument();
     expect(screen.getAllByTestId("subtask-chain-link")).toHaveLength(1);
   });
@@ -899,7 +907,7 @@ describe("KanbanTaskSubtasksModal", () => {
     ).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("toggles chain link from the row between cards", async () => {
+  it("toggles chain link from the subtask row", async () => {
     const user = userEvent.setup();
     const onLinkToggle = vi.fn();
     const chained = [

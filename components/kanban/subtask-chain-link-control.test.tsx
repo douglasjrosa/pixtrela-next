@@ -7,16 +7,14 @@ import { renderWithIntl } from "@/test/test-utils";
 import { SubtaskChainLinkControl } from "./subtask-chain-link-control";
 
 describe("SubtaskChainLinkControl", () => {
-  it("renders an open-link button between cards when unlinked", () => {
+  it("hides the connector when unlinked", () => {
     renderWithIntl(
-      <div className="relative">
-        <SubtaskChainLinkControl
-          linked={false}
-          linkLabel="Ligar à anterior"
-          unlinkLabel="Desligar da anterior"
-          onToggle={vi.fn()}
-        />
-      </div>,
+      <SubtaskChainLinkControl
+        linked={false}
+        linkLabel="Ligar à anterior"
+        unlinkLabel="Desligar da anterior"
+        onToggle={vi.fn()}
+      />,
     );
 
     const button = screen.getByRole("button", { name: "Ligar à anterior" });
@@ -25,19 +23,17 @@ describe("SubtaskChainLinkControl", () => {
       "data-linked",
       "false",
     );
-    expect(document.querySelector('[data-slot="chain-line"]')).toBeTruthy();
+    expect(document.querySelector('[data-slot="chain-line"]')).toBeNull();
   });
 
-  it("renders a closed-link button when linked", () => {
+  it("shows a dashed connector when linked", () => {
     renderWithIntl(
-      <div className="relative">
-        <SubtaskChainLinkControl
-          linked
-          linkLabel="Ligar à anterior"
-          unlinkLabel="Desligar da anterior"
-          onToggle={vi.fn()}
-        />
-      </div>,
+      <SubtaskChainLinkControl
+        linked
+        linkLabel="Ligar à anterior"
+        unlinkLabel="Desligar da anterior"
+        onToggle={vi.fn()}
+      />,
     );
 
     const button = screen.getByRole("button", { name: "Desligar da anterior" });
@@ -46,6 +42,45 @@ describe("SubtaskChainLinkControl", () => {
       "data-linked",
       "true",
     );
+    expect(document.querySelector('[data-slot="chain-line"]')).toBeTruthy();
+  });
+
+  it("hides the button and connector while dragging", () => {
+    renderWithIntl(
+      <SubtaskChainLinkControl
+        linked
+        hidden
+        linkLabel="Ligar à anterior"
+        unlinkLabel="Desligar da anterior"
+        onToggle={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Desligar da anterior" }),
+    ).not.toBeInTheDocument();
+    expect(document.querySelector('[data-slot="chain-line"]')).toBeNull();
+    expect(screen.getByTestId("subtask-chain-link")).toHaveAttribute(
+      "data-hidden",
+      "true",
+    );
+  });
+
+  it("keeps column space without a button on the first row", () => {
+    renderWithIntl(
+      <SubtaskChainLinkControl
+        linked={false}
+        showButton={false}
+        linkLabel="Ligar à anterior"
+        unlinkLabel="Desligar da anterior"
+        onToggle={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("subtask-chain-link")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Ligar à anterior" }),
+    ).not.toBeInTheDocument();
   });
 
   it("toggles linked state on click", async () => {
@@ -53,14 +88,12 @@ describe("SubtaskChainLinkControl", () => {
     const onToggle = vi.fn();
 
     renderWithIntl(
-      <div className="relative">
-        <SubtaskChainLinkControl
-          linked={false}
-          linkLabel="Ligar à anterior"
-          unlinkLabel="Desligar da anterior"
-          onToggle={onToggle}
-        />
-      </div>,
+      <SubtaskChainLinkControl
+        linked={false}
+        linkLabel="Ligar à anterior"
+        unlinkLabel="Desligar da anterior"
+        onToggle={onToggle}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Ligar à anterior" }));
@@ -72,15 +105,13 @@ describe("SubtaskChainLinkControl", () => {
     const onToggle = vi.fn();
 
     renderWithIntl(
-      <div className="relative">
-        <SubtaskChainLinkControl
-          linked={false}
-          disabled
-          linkLabel="Ligar à anterior"
-          unlinkLabel="Desligar da anterior"
-          onToggle={onToggle}
-        />
-      </div>,
+      <SubtaskChainLinkControl
+        linked={false}
+        disabled
+        linkLabel="Ligar à anterior"
+        unlinkLabel="Desligar da anterior"
+        onToggle={onToggle}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Ligar à anterior" }));

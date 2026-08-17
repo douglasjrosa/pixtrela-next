@@ -1,11 +1,12 @@
 "use client";
 
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   DndContext,
   KeyboardSensor,
   PointerSensor,
   closestCenter,
+  useDndContext,
   type DragEndEvent,
   useSensor,
   useSensors,
@@ -22,7 +23,6 @@ import { useTranslations } from "next-intl";
 
 import { CurrencyMediaIcon } from "@/components/currency/currency-media-icon";
 import {
-  SUBTASK_CHAIN_GRIP_SPACER_CLASS,
   SUBTASK_CHAIN_LIST_GAP_CLASS,
   SubtaskChainLinkControl,
 } from "@/components/kanban/subtask-chain-link-control";
@@ -322,6 +322,11 @@ interface SortablePendingSubtaskCardProps {
   saving: boolean;
   dragLabel: string;
   statusLabel: string;
+  showLinkColumn?: boolean;
+  showLinkButton?: boolean;
+  onLinkToggle?: (linked: boolean) => void;
+  linkLabel?: string;
+  unlinkLabel?: string;
   onClick: () => void;
 }
 
@@ -332,6 +337,11 @@ function SortablePendingSubtaskCard({
   saving,
   dragLabel,
   statusLabel,
+  showLinkColumn = false,
+  showLinkButton = false,
+  onLinkToggle,
+  linkLabel = "",
+  unlinkLabel = "",
   onClick,
 }: SortablePendingSubtaskCardProps) {
   const {
@@ -345,6 +355,8 @@ function SortablePendingSubtaskCard({
     id: subtask.documentId,
     disabled: dragDisabled,
   });
+  const { active } = useDndContext();
+  const hideLinkVisuals = isDragging || Boolean(active);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -376,6 +388,17 @@ function SortablePendingSubtaskCard({
         >
           <GripVertical className="size-4" aria-hidden />
         </button>
+        {showLinkColumn ? (
+          <SubtaskChainLinkControl
+            linked={subtask.linkedToPrevious}
+            showButton={showLinkButton}
+            hidden={hideLinkVisuals}
+            disabled={saving}
+            linkLabel={linkLabel}
+            unlinkLabel={unlinkLabel}
+            onToggle={(linked) => onLinkToggle?.(linked)}
+          />
+        ) : null}
         <div className="relative min-w-0 flex-1">
           <button
             type="button"
@@ -1129,47 +1152,26 @@ export function KanbanTaskSubtasksModal({
                         {pending.map((subtask, index) => {
                           const highlighted =
                             isPendingSubtaskHighlighted(subtask);
-                          const showLink =
-                            Boolean(onLinkToggle) && index > 0;
                           return (
-                            <Fragment key={subtask.documentId}>
-                              {showLink ? (
-                                <li className="flex items-center gap-1">
-                                  <span
-                                    className={cn(
-                                      "shrink-0",
-                                      SUBTASK_CHAIN_GRIP_SPACER_CLASS,
-                                    )}
-                                    aria-hidden
-                                  />
-                                  <SubtaskChainLinkControl
-                                    linked={subtask.linkedToPrevious}
-                                    disabled={saving}
-                                    linkLabel={tKanban("linkToPrevious")}
-                                    unlinkLabel={tKanban(
-                                      "unlinkFromPrevious",
-                                    )}
-                                    onToggle={(linked) =>
-                                      onLinkToggle?.(
-                                        subtask.documentId,
-                                        linked,
-                                      )
-                                    }
-                                  />
-                                </li>
-                              ) : null}
-                              <SortablePendingSubtaskCard
-                                subtask={subtask}
-                                highlighted={highlighted}
-                                dragDisabled={dragDisabled}
-                                saving={saving}
-                                dragLabel={tSubtasks("dragToReorder")}
-                                statusLabel={tStatus(subtask.status)}
-                                onClick={() =>
-                                  handlePendingSubtaskClick(subtask)
-                                }
-                              />
-                            </Fragment>
+                            <SortablePendingSubtaskCard
+                              key={subtask.documentId}
+                              subtask={subtask}
+                              highlighted={highlighted}
+                              dragDisabled={dragDisabled}
+                              saving={saving}
+                              dragLabel={tSubtasks("dragToReorder")}
+                              statusLabel={tStatus(subtask.status)}
+                              showLinkColumn={Boolean(onLinkToggle)}
+                              showLinkButton={Boolean(onLinkToggle) && index > 0}
+                              linkLabel={tKanban("linkToPrevious")}
+                              unlinkLabel={tKanban("unlinkFromPrevious")}
+                              onLinkToggle={(linked) =>
+                                onLinkToggle?.(subtask.documentId, linked)
+                              }
+                              onClick={() =>
+                                handlePendingSubtaskClick(subtask)
+                              }
+                            />
                           );
                         })}
                       </SortableContext>
