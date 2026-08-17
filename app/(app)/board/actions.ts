@@ -213,8 +213,8 @@ export async function loadBoardSubtaskSessions(
   await assertCanManageBoardSubtasks();
   const rows = await listBoardSubTasksForTask(taskDocumentId);
   const finishedIds = rows
-    .filter((row) => row.status === FINISHED_STATUS)
-    .map((row) => row.id);
+    .filter((row: { status: string }) => row.status === FINISHED_STATUS)
+    .map((row: { id: string }) => row.id);
   if (finishedIds.length === 0) return {};
   const historyRows = await listBoardSubtaskSessionHistory(finishedIds);
   return mapBoardSubtaskSessionHistory(historyRows);

@@ -10,13 +10,14 @@ describe("buildCreateUserPayload", () => {
     const payload = buildCreateUserPayload({
       name: "Maria",
       username: "maria.1",
+      email: "maria@example.com",
       password: "123456",
       code: 1,
       roleType: "colaborator",
     });
     expect(payload).toEqual({
       username: "maria.1",
-      email: "maria.1@pixtrela.local",
+      email: "maria@example.com",
       password: "123456",
       name: "Maria",
       code: 1,
@@ -34,10 +35,12 @@ describe("buildUpdateUserPayload", () => {
     });
   });
 
-  it("syncs synthetic email when username changes", () => {
-    expect(buildUpdateUserPayload({ username: "Maria.9" })).toEqual({
+  it("includes email when provided on update", () => {
+    expect(
+      buildUpdateUserPayload({ username: "Maria.9", email: "maria@example.com" }),
+    ).toEqual({
       username: "Maria.9",
-      email: "maria.9@pixtrela.local",
+      email: "maria@example.com",
     });
   });
 });

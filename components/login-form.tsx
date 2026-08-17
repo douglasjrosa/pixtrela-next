@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -57,7 +58,15 @@ export function LoginForm() {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">{t("password")}</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="password">{t("password")}</Label>
+          <Link
+            href="/login/forgot-password"
+            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+          >
+            {t("forgotPassword")}
+          </Link>
+        </div>
         <Input id="password" type="password" {...register("password")} />
       </div>
       {formError ? (

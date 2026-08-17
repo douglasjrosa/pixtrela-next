@@ -107,6 +107,7 @@ describe("users/actions drizzle CRUD", () => {
     await createUser({
       name: "Ana",
       username: "ana",
+      email: "ana@example.com",
       password: "secret1",
       code: null,
       roleType: "colaborator",
@@ -116,6 +117,7 @@ describe("users/actions drizzle CRUD", () => {
       expect.objectContaining({
         name: "Ana",
         username: "ana",
+        email: "ana@example.com",
         role: "colaborator",
         code: null,
       }),
@@ -134,6 +136,7 @@ describe("users/actions drizzle CRUD", () => {
     await createUser({
       name: "Maria",
       username: "maria.1",
+      email: "maria@example.com",
       password: "secret1",
       code: 1,
       roleType: "colaborator",
@@ -143,6 +146,7 @@ describe("users/actions drizzle CRUD", () => {
       expect.objectContaining({
         name: "Maria",
         username: "maria.1",
+        email: "maria@example.com",
         role: "colaborator",
         code: 1,
       }),

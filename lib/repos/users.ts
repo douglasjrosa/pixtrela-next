@@ -1,10 +1,11 @@
-import { and, asc, count, desc, eq, ilike } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import bcrypt from "bcryptjs";
 
 import { mediaAssets, users } from "@/drizzle/schema";
 import { canEstablishAppSession } from "@/lib/domain/auth-session";
 import { getDb, type Db } from "@/lib/db/client";
+import { normalizeEmail } from "@/lib/mail/deliverable-email";
 import type { UserFormOwner } from "@/lib/schemas/user";
 import type { UserListSort } from "@/lib/schemas/user-list-sort";
 
@@ -284,6 +285,16 @@ export async function updateUserPersonal(
   input: UpdateUserPersonalInput,
   db: Db = getDb(),
 ): Promise<UserRecord> {
+  if (input.email !== undefined) {
+    const normalized = input.email?.trim().toLowerCase() || null;
+    if (
+      normalized &&
+      (await isEmailTakenByAnotherUser(normalized, input.id, db))
+    ) {
+      throw new Error("emailTaken");
+    }
+  }
+
   const patch: Partial<typeof users.$inferInsert> & { updatedAt: Date } = {
     name: input.name.trim(),
     lastName: input.lastName?.trim() || null,
@@ -395,7 +406,16 @@ export async function updateUserAccount(
   };
   if (input.name !== undefined) patch.name = input.name.trim();
   if (input.username !== undefined) patch.username = input.username.trim();
-  if (input.email !== undefined) patch.email = input.email;
+  if (input.email !== undefined) {
+    const normalized = input.email?.trim().toLowerCase() || null;
+    if (
+      normalized &&
+      (await isEmailTakenByAnotherUser(normalized, input.id, db))
+    ) {
+      throw new Error("emailTaken");
+    }
+    patch.email = normalized;
+  }
   if (input.code !== undefined) patch.code = input.code;
   if (input.role !== undefined) patch.role = input.role;
   if (input.greetingGender !== undefined) {
@@ -413,6 +433,47 @@ export async function updateUserAccount(
     .returning(USER_COLUMNS);
   if (!row) throw new Error("userNotFound");
   return mapUserRow(row);
+}
+
+export async function findUserIdByEmail(
+  email: string,
+  db: Db = getDb(),
+): Promise<string | null> {
+  const normalized = normalizeEmail(email);
+  const [row] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(sql`lower(${users.email})`, normalized))
+    .limit(1);
+  return row?.id ?? null;
+}
+
+export async function isEmailTakenByAnotherUser(
+  email: string,
+  excludeUserId: string,
+  db: Db = getDb(),
+): Promise<boolean> {
+  const normalized = normalizeEmail(email);
+  const [row] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(
+      and(
+        eq(sql`lower(${users.email})`, normalized),
+        ne(users.id, excludeUserId),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
+}
+
+export async function findUserByEmail(
+  email: string,
+  db: Db = getDb(),
+): Promise<UserRecord | null> {
+  const userId = await findUserIdByEmail(email, db);
+  if (!userId) return null;
+  return findUserById(userId, db);
 }
 
 export async function findUserByUsername(

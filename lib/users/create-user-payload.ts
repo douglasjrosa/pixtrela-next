@@ -10,7 +10,7 @@ export function deriveUserEmail(username: string): string {
 export function buildCreateUserPayload(data: UserFormInput): Record<string, unknown> {
   return {
     username: data.username,
-    email: deriveUserEmail(data.username),
+    email: data.email,
     password: data.password,
     name: data.name,
     code: data.code,
@@ -28,10 +28,8 @@ export function buildUpdateUserPayload(
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   if (data.name) payload.name = data.name;
-  if (data.username) {
-    payload.username = data.username;
-    payload.email = deriveUserEmail(data.username);
-  }
+  if (data.username) payload.username = data.username;
+  if (data.email) payload.email = data.email;
   if (data.password) payload.password = data.password;
   if (data.code !== undefined) payload.code = data.code;
   if (data.roleType) payload.roleType = data.roleType;
