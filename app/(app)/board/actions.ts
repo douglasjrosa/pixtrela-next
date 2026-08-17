@@ -42,8 +42,8 @@ import {
   resolveDrizzleTaskIdByKanbanNumericId,
 } from "@/lib/board/load-board-data";
 import type { BoardProgressPollSnapshot } from "@/lib/board/progress-poll";
+import type { ActivitySession } from "@/lib/business/task-progress";
 import {
-  listActivitySessions,
   listOpenActivityStartedAts,
   listOpenColaboratorDocumentIds,
   type ActivitySessionRef,
@@ -55,8 +55,13 @@ import { listSteps as listStepsRepo } from "@/lib/repos/steps";
 import {
   getTaskById,
   getSubTaskById,
+  listBoardSubtaskAssignees,
   listBoardSubtaskRows,
+  listBoardSubtaskSessionHistory,
+  listBoardSubTasksForTask,
+  listSubTaskActivitySessions,
   listSubTasksWithRelationsForTask,
+  mapBoardSubtaskSessionHistory,
   replaceSubTaskAssignees,
   updateSubTaskLinkedToPrevious,
   updateTaskBoardFields,
@@ -103,7 +108,7 @@ function mapBoardSubtasksFromDrizzle(
 ): BoardSubTaskSummary[] {
   if (!bundle || bundle.rows.length === 0) return [];
 
-  const { rows, assigneeRows, activityRows } = bundle;
+  const { rows, assigneeRows, openActivityRows } = bundle;
   const assigneesBySubTask = new Map<string, { documentId: string; name: string }[]>();
   for (const row of assigneeRows) {
     const list = assigneesBySubTask.get(row.subTaskId) ?? [];
@@ -111,9 +116,9 @@ function mapBoardSubtasksFromDrizzle(
     assigneesBySubTask.set(row.subTaskId, list);
   }
 
-  const activitiesBySubTask = new Map<string, ActivitySessionRef[]>();
-  for (const activity of activityRows) {
-    const list = activitiesBySubTask.get(activity.subTaskId) ?? [];
+  const openActivitiesBySubTask = new Map<string, ActivitySessionRef[]>();
+  for (const activity of openActivityRows) {
+    const list = openActivitiesBySubTask.get(activity.subTaskId) ?? [];
     list.push({
       subTaskDocumentId: activity.subTaskId,
       colaboratorDocumentId: activity.colaboratorId,
@@ -122,11 +127,11 @@ function mapBoardSubtasksFromDrizzle(
       timestamp: activity.timestamp.toISOString(),
       qty: activity.qty,
     });
-    activitiesBySubTask.set(activity.subTaskId, list);
+    openActivitiesBySubTask.set(activity.subTaskId, list);
   }
 
   return rows.map((subtask) => {
-    const activityRefs = activitiesBySubTask.get(subtask.id) ?? [];
+    const openActivityRefs = openActivitiesBySubTask.get(subtask.id) ?? [];
     return {
       documentId: subtask.id,
       name: subtask.name,
@@ -138,11 +143,22 @@ function mapBoardSubtasksFromDrizzle(
       timeSpent: subtask.timeSpent ?? 0,
       maxSameTimeWorkers: subtask.maxSameTimeWorkers ?? 1,
       linkedToPrevious: subtask.linkedToPrevious ?? false,
-      openActivityStartedAts: listOpenActivityStartedAts(activityRefs),
-      producingColaboratorIds: listOpenColaboratorDocumentIds(activityRefs),
-      sessions: listActivitySessions(activityRefs),
+      openActivityStartedAts: listOpenActivityStartedAts(openActivityRefs),
+      producingColaboratorIds: listOpenColaboratorDocumentIds(openActivityRefs),
+      sessions: [],
       assignedTo: assigneesBySubTask.get(subtask.id) ?? [],
     };
+  });
+}
+
+function mergeSessionsIntoBoardSubtasks(
+  subtasks: BoardSubTaskSummary[],
+  sessionsBySubTask: Record<string, ActivitySession[]>,
+): BoardSubTaskSummary[] {
+  return subtasks.map((subtask) => {
+    const sessions = sessionsBySubTask[subtask.documentId];
+    if (!sessions) return subtask;
+    return { ...subtask, sessions };
   });
 }
 
@@ -201,6 +217,28 @@ export async function loadBoardSubtasks(
   const bundle = await listBoardSubtaskRows(taskDocumentId);
   return mapBoardSubtasksFromDrizzle(bundle);
 }
+
+export async function loadBoardSubtaskSessions(
+  taskDocumentId: string,
+): Promise<Record<string, ActivitySession[]>> {
+  await assertCanManageBoardSubtasks();
+  const rows = await listBoardSubTasksForTask(taskDocumentId);
+  const finishedIds = rows
+    .filter((row) => row.status === FINISHED_STATUS)
+    .map((row) => row.id);
+  if (finishedIds.length === 0) return {};
+  const historyRows = await listBoardSubtaskSessionHistory(finishedIds);
+  return mapBoardSubtaskSessionHistory(historyRows);
+}
+
+export async function loadBoardSubtaskSession(
+  subTaskDocumentId: string,
+): Promise<ActivitySession[]> {
+  await assertCanManageBoardSubtasks();
+  return listSubTaskActivitySessions(subTaskDocumentId);
+}
+
+export { mergeSessionsIntoBoardSubtasks };
 
 async function fetchSubTaskForUpdate(
   documentId: string,
@@ -345,15 +383,19 @@ export async function updateBoardSubtaskLink(
   const after = applyChainLinkToggle(before, subtaskDocumentId, linkedToPrevious);
   await persistChainAssigneeStates(before, after);
 
-  const mapped = mapBoardSubtasksFromDrizzle(
-    await listBoardSubtaskRows(taskDocumentId),
+  const updatedState = after.find(
+    (row) => row.documentId === subtaskDocumentId,
   );
-  const updated = mapped.find((item) => item.documentId === subtaskDocumentId);
-  if (!updated) throw new Error("notFound");
+  if (!updatedState) throw new Error("notFound");
+
+  const assigneeRows = await listBoardSubtaskAssignees([subtaskDocumentId]);
   return {
-    documentId: updated.documentId,
-    linkedToPrevious: updated.linkedToPrevious,
-    assignedTo: updated.assignedTo,
+    documentId: subtaskDocumentId,
+    linkedToPrevious: updatedState.linkedToPrevious,
+    assignedTo: assigneeRows.map((row) => ({
+      documentId: row.userId,
+      name: row.name,
+    })),
   };
 }
 
