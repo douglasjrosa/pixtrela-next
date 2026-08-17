@@ -9,13 +9,13 @@ import { isChainMemberAnswerComplete } from "@/lib/business/subtask-chain-alloca
 import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
 import { getRemainingSubTaskQty } from "@/lib/business/subtask-queue";
 import { Duration } from "@/components/ui/duration";
-import { formatDateTimePtBr } from "@/lib/format/datetime";
 import { cn } from "@/lib/utils";
 
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainAdvanceTimer } from "./kiosk-chain-advance-timer";
 import { KioskChainMemberFields } from "./kiosk-chain-member-fields";
-import { SubtaskElapsedTimer } from "./subtask-elapsed-timer";
+import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
+import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
 
 export interface KioskChainGroupCardProps {
   unit: KioskGroupUnit;
@@ -40,7 +40,6 @@ export function KioskChainGroupCard({
   onAdvanceChain,
 }: KioskChainGroupCardProps) {
   const t = useTranslations("kiosk");
-  const tStatus = useTranslations("tasks.status");
   const [collecting, setCollecting] = useState(false);
   const [answers, setAnswers] = useState<Record<string, ChainStopAnswer>>({});
 
@@ -55,7 +54,7 @@ export function KioskChainGroupCard({
   const taskName = unit.members[0]?.taskName;
   const showStart = !readOnly && unit.showStart;
   const showStop = !readOnly && !unit.locked && unit.principalActive;
-  const stopDisabled = pending || (collecting && !answersComplete);
+  const stopDisabled = collecting && (!answersComplete || Boolean(pending));
 
   function handleStopClick(): void {
     if (!collecting) {
@@ -92,25 +91,16 @@ export function KioskChainGroupCard({
               <li
                 key={member.documentId}
                 data-testid={`kiosk-chain-member-${member.documentId}`}
-                className="min-w-0 space-y-1 rounded-xl border bg-background p-3"
+                className="min-w-0 space-y-3 rounded-xl border bg-background p-3"
               >
-                <p className="text-lg font-semibold leading-snug">{member.name}</p>
-                <p className="text-base text-muted-foreground">
-                  {tStatus(member.status)}
-                </p>
+                <p className="text-lg font-bold leading-snug">{member.name}</p>
+                <KioskSubtaskStatusBadge status={member.status} />
                 {isProducing && member.startedAt ? (
-                  <div className="space-y-2 text-base text-muted-foreground">
-                    <p>
-                      {t("startedAt")}: {formatDateTimePtBr(member.startedAt)}
-                    </p>
-                    <p className="flex flex-wrap items-center gap-2">
-                      <span>{t("elapsed")}:</span>
-                      <SubtaskElapsedTimer
-                        startedAt={member.startedAt}
-                        baseSeconds={member.timeSpent}
-                      />
-                    </p>
-                  </div>
+                  <KioskSubtaskProducingMetrics
+                    startedAt={member.startedAt}
+                    timeSpent={member.timeSpent}
+                    expectedTime={member.expectedTime}
+                  />
                 ) : null}
                 {member.status === "finished" ? (
                   <p className="text-base text-muted-foreground">

@@ -17,13 +17,13 @@ import {
 } from "@/lib/business/subtask-queue";
 import { cn } from "@/lib/utils";
 import { Duration } from "@/components/ui/duration";
-import { formatDateTimePtBr } from "@/lib/format/datetime";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainGroupCard } from "./kiosk-chain-group-card";
 import { KioskExitSubtaskForm } from "./kiosk-exit-subtask-form";
-import { SubtaskElapsedTimer } from "./subtask-elapsed-timer";
+import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
+import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
 
 export interface KioskSubtaskPanelProps {
   subTasks?: KioskSubTask[];
@@ -67,7 +67,6 @@ export function KioskSubtaskPanel({
   pending,
 }: KioskSubtaskPanelProps) {
   const t = useTranslations("kiosk");
-  const tStatus = useTranslations("tasks.status");
   const [exitingId, setExitingId] = useState<string | null>(null);
   const queueContext = allSubTasks ?? subTasks;
   const resolvedUnits = units ?? unitsFromSubTasks(subTasks);
@@ -118,29 +117,20 @@ export function KioskSubtaskPanel({
             )}
           >
             <div className="flex flex-col gap-4">
-              <div className="min-w-0 space-y-1">
+              <div className="min-w-0 space-y-3">
                 {subTask.taskName ? (
                   <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                     {subTask.taskName}
                   </p>
                 ) : null}
-                <p className="text-lg font-semibold leading-snug">{subTask.name}</p>
-                <p className="text-base text-muted-foreground">
-                  {tStatus(subTask.status)}
-                </p>
+                <p className="text-lg font-bold leading-snug">{subTask.name}</p>
+                <KioskSubtaskStatusBadge status={subTask.status} />
                 {isProducing && subTask.startedAt ? (
-                  <div className="space-y-2 text-base text-muted-foreground">
-                    <p>
-                      {t("startedAt")}: {formatDateTimePtBr(subTask.startedAt)}
-                    </p>
-                    <p className="flex flex-wrap items-center gap-2">
-                      <span>{t("elapsed")}:</span>
-                      <SubtaskElapsedTimer
-                        startedAt={subTask.startedAt}
-                        baseSeconds={subTask.timeSpent}
-                      />
-                    </p>
-                  </div>
+                  <KioskSubtaskProducingMetrics
+                    startedAt={subTask.startedAt}
+                    timeSpent={subTask.timeSpent}
+                    expectedTime={subTask.expectedTime}
+                  />
                 ) : null}
                 {finished ? (
                   <p className="text-base text-muted-foreground">
@@ -165,7 +155,6 @@ export function KioskSubtaskPanel({
                   {showExit ? (
                     <KioskActionButton
                       actionVariant="outline"
-                      disabled={pending}
                       onClick={() => setExitingId(subTask.documentId)}
                     >
                       {t("exitSubtask")}
