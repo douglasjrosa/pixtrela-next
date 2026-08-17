@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { User, Users } from "lucide-react";
@@ -38,7 +38,9 @@ export interface KanbanCardProps {
   task: KanbanTask;
   onTaskClick?: (task: KanbanTask) => void;
   onTaskPrefetch?: (task: KanbanTask) => void;
+  onTaskVisiblePrefetch?: (task: KanbanTask) => void;
   onTaskPrefetchCancel?: () => void;
+  prefetchRootRef?: RefObject<HTMLElement | null>;
 }
 
 function KanbanUnassignedFloatingBadge({ count }: { count: number }) {
@@ -198,9 +200,12 @@ export function KanbanCard({
   task,
   onTaskClick,
   onTaskPrefetch,
+  onTaskVisiblePrefetch,
   onTaskPrefetchCancel,
+  prefetchRootRef,
 }: KanbanCardProps) {
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
+  const nodeRef = useRef<HTMLDivElement | null>(null);
   const {
     attributes,
     listeners,
@@ -214,6 +219,32 @@ export function KanbanCard({
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  function setCardRef(node: HTMLDivElement | null): void {
+    nodeRef.current = node;
+    setNodeRef(node);
+  }
+
+  useEffect(() => {
+    const node = nodeRef.current;
+    if (!node || !onTaskVisiblePrefetch) return;
+    if (typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          onTaskVisiblePrefetch(task);
+        }
+      },
+      {
+        root: prefetchRootRef?.current ?? null,
+        rootMargin: "80px",
+        threshold: 0.01,
+      },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [onTaskVisiblePrefetch, prefetchRootRef, task]);
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>): void {
     pointerStart.current = { x: event.clientX, y: event.clientY };
@@ -239,7 +270,7 @@ export function KanbanCard({
 
   return (
     <div
-      ref={setNodeRef}
+      ref={setCardRef}
       style={style}
       className={cn(
         "relative overflow-visible",

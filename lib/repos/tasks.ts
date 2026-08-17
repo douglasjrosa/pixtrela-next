@@ -228,15 +228,18 @@ export async function listBoardSubtaskOpenActivities(
 ): Promise<BoardSubtaskActivityRow[]> {
   if (subTaskIds.length === 0) return [];
 
-  const activityRows = await db
-    .select({
-      subTaskId: activities.subTaskId,
-      colaboratorId: activities.colaboratorId,
-      colaboratorName: users.name,
-      action: activities.action,
-      timestamp: activities.timestamp,
-      qty: activities.qty,
-    })
+  const latestRows = await db
+    .selectDistinctOn(
+      [activities.subTaskId, activities.colaboratorId],
+      {
+        subTaskId: activities.subTaskId,
+        colaboratorId: activities.colaboratorId,
+        colaboratorName: users.name,
+        action: activities.action,
+        timestamp: activities.timestamp,
+        qty: activities.qty,
+      },
+    )
     .from(activities)
     .innerJoin(users, eq(activities.colaboratorId, users.id))
     .where(
@@ -250,16 +253,6 @@ export async function listBoardSubtaskOpenActivities(
       activities.colaboratorId,
       desc(activities.timestamp),
     );
-
-  const latestByPair = new Map<string, (typeof activityRows)[number]>();
-  for (const row of activityRows) {
-    const key = `${row.subTaskId}:${row.colaboratorId}`;
-    if (!latestByPair.has(key)) {
-      latestByPair.set(key, row);
-    }
-  }
-
-  const latestRows = [...latestByPair.values()];
 
   return latestRows
     .filter((row) => row.action === "started")
@@ -342,28 +335,25 @@ export function mapBoardSubtaskSessionHistory(
   return sessionsBySubTask;
 }
 
-export type BoardSubtaskRowsBundle = {
+export type BoardSubtaskCoreBundle = {
   rows: BoardSubtaskRow[];
   assigneeRows: BoardSubtaskAssigneeRow[];
-  openActivityRows: BoardSubtaskActivityRow[];
 };
 
-export async function listBoardSubtaskRows(
+export async function listBoardSubtaskCore(
   taskId: string,
   db: Db = getDb(),
-): Promise<BoardSubtaskRowsBundle> {
+): Promise<BoardSubtaskCoreBundle> {
   const rows = await listBoardSubTasksForTask(taskId, db);
   if (rows.length === 0) {
-    return { rows: [], assigneeRows: [], openActivityRows: [] };
+    return { rows: [], assigneeRows: [] };
   }
 
-  const subTaskIds = rows.map((row) => row.id);
-  const [assigneeRows, openActivityRows] = await Promise.all([
-    listBoardSubtaskAssignees(subTaskIds, db),
-    listBoardSubtaskOpenActivities(subTaskIds, db),
-  ]);
-
-  return { rows, assigneeRows, openActivityRows };
+  const assigneeRows = await listBoardSubtaskAssignees(
+    rows.map((row) => row.id),
+    db,
+  );
+  return { rows, assigneeRows };
 }
 
 export async function listSubTaskCompletionSnapshotsForTasks(

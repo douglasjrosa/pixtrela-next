@@ -19,21 +19,15 @@ describe("AppNavMobileMenu", () => {
         open={false}
         items={items}
         onOpenChange={vi.fn()}
-        onSignOut={vi.fn()}
       />,
     );
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("renders links and sign out when open", () => {
+  it("renders navigation links when open", () => {
     renderWithIntl(
-      <AppNavMobileMenu
-        open
-        items={items}
-        onOpenChange={vi.fn()}
-        onSignOut={vi.fn()}
-      />,
+      <AppNavMobileMenu open items={items} onOpenChange={vi.fn()} />,
     );
 
     const dialog = screen.getByRole("dialog");
@@ -47,7 +41,7 @@ describe("AppNavMobileMenu", () => {
       "href",
       "/board",
     );
-    expect(screen.getByRole("button", { name: "Sair" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sair" })).not.toBeInTheDocument();
   });
 
   it("closes when pressing the close button", async () => {
@@ -55,12 +49,7 @@ describe("AppNavMobileMenu", () => {
     const onOpenChange = vi.fn();
 
     renderWithIntl(
-      <AppNavMobileMenu
-        open
-        items={items}
-        onOpenChange={onOpenChange}
-        onSignOut={vi.fn()}
-      />,
+      <AppNavMobileMenu open items={items} onOpenChange={onOpenChange} />,
     );
 
     await user.click(screen.getByRole("button", { name: "Fechar menu" }));
@@ -72,33 +61,11 @@ describe("AppNavMobileMenu", () => {
     const onOpenChange = vi.fn();
 
     renderWithIntl(
-      <AppNavMobileMenu
-        open
-        items={items}
-        onOpenChange={onOpenChange}
-        onSignOut={vi.fn()}
-      />,
+      <AppNavMobileMenu open items={items} onOpenChange={onOpenChange} />,
     );
 
     await user.click(screen.getByRole("link", { name: "Tarefas" }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
-  });
-
-  it("calls onSignOut when sign out is pressed", async () => {
-    const user = userEvent.setup();
-    const onSignOut = vi.fn();
-
-    renderWithIntl(
-      <AppNavMobileMenu
-        open
-        items={items}
-        onOpenChange={vi.fn()}
-        onSignOut={onSignOut}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Sair" }));
-    expect(onSignOut).toHaveBeenCalledOnce();
   });
 
   it("closes when Escape is pressed", async () => {
@@ -106,12 +73,7 @@ describe("AppNavMobileMenu", () => {
     const onOpenChange = vi.fn();
 
     renderWithIntl(
-      <AppNavMobileMenu
-        open
-        items={items}
-        onOpenChange={onOpenChange}
-        onSignOut={vi.fn()}
-      />,
+      <AppNavMobileMenu open items={items} onOpenChange={onOpenChange} />,
     );
 
     await user.keyboard("{Escape}");
