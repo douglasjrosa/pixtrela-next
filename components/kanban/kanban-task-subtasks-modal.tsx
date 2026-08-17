@@ -789,7 +789,7 @@ export function KanbanTaskSubtasksModal({
       <Button
         type="button"
         variant="outline"
-        className={cn("shrink-0 self-start", className)}
+        className={cn("shrink-0 self-center", className)}
         disabled={saving || loading}
         onClick={handleAddSubtask}
       >
