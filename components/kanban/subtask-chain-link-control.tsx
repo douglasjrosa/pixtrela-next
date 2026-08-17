@@ -6,24 +6,18 @@ import { Link2, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** Tight list gap; the upper dash uses the same token to enter the card above. */
+/** Tight list gap; the C-frame height includes this token. */
 export const SUBTASK_CHAIN_LIST_GAP_CLASS =
   "gap-[var(--subtask-chain-gap)] [--subtask-chain-gap:0.5rem]";
 
 const LINK_COLUMN_CLASS =
   "relative flex h-full w-7 shrink-0 flex-col items-center";
 
-const CHAIN_STROKE_CLASS = "border-2 border-dashed border-primary";
-const CHAIN_ANCHOR_CLASS = "pointer-events-none absolute left-1/2";
-
-const CHAIN_UPPER_LINE_CLASS =
-  "top-[calc(-1*var(--subtask-chain-gap)-1.75rem)] " +
-  "h-[calc(var(--subtask-chain-gap)+1.75rem)]";
-
-const CHAIN_LOWER_LINE_CLASS = "top-7 h-7";
-
-/** Half column + row gap-1 + reach into the card's left edge. */
-const CHAIN_ELBOW_WIDTH_CLASS = "w-[calc(50%+0.25rem)]";
+const CHAIN_FRAME_CLASS = cn(
+  "pointer-events-none absolute left-1/2 top-3.5 z-0 -translate-y-1/2",
+  "h-[calc(var(--subtask-chain-gap)+5rem)] w-5",
+  "border-2 border-b border-l border-r-0 border-t border-dashed border-primary",
+);
 
 export interface SubtaskChainLinkControlProps {
   linked: boolean;
@@ -65,30 +59,11 @@ export function SubtaskChainLinkControl({
       data-hidden={hidden ? "true" : "false"}
     >
       {showVisuals && linked ? (
-        <>
-          <span
-            className={cn(
-              CHAIN_ANCHOR_CLASS,
-              CHAIN_UPPER_LINE_CLASS,
-              CHAIN_ELBOW_WIDTH_CLASS,
-              CHAIN_STROKE_CLASS,
-              "border-l border-t",
-            )}
-            aria-hidden
-            data-slot="chain-line-upper"
-          />
-          <span
-            className={cn(
-              CHAIN_ANCHOR_CLASS,
-              CHAIN_LOWER_LINE_CLASS,
-              CHAIN_ELBOW_WIDTH_CLASS,
-              CHAIN_STROKE_CLASS,
-              "border-b border-l",
-            )}
-            aria-hidden
-            data-slot="chain-line-lower"
-          />
-        </>
+        <div
+          className={CHAIN_FRAME_CLASS}
+          aria-hidden
+          data-slot="chain-line"
+        />
       ) : null}
       {showVisuals ? (
         <Button

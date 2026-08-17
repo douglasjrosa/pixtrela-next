@@ -23,11 +23,10 @@ describe("SubtaskChainLinkControl", () => {
       "data-linked",
       "false",
     );
-    expect(document.querySelector('[data-slot="chain-line-upper"]')).toBeNull();
-    expect(document.querySelector('[data-slot="chain-line-lower"]')).toBeNull();
+    expect(document.querySelector('[data-slot="chain-line"]')).toBeNull();
   });
 
-  it("aligns both elbows on the same axis with a thicker dash", () => {
+  it("draws one C-frame behind the button when linked", () => {
     renderWithIntl(
       <SubtaskChainLinkControl
         linked
@@ -41,24 +40,19 @@ describe("SubtaskChainLinkControl", () => {
     expect(button).toHaveAttribute("aria-pressed", "true");
     expect(button.className).not.toMatch(/\babsolute\b/);
     expect(button).toHaveClass("relative");
+    expect(button).toHaveClass("z-10");
 
-    const upper = document.querySelector('[data-slot="chain-line-upper"]');
-    const lower = document.querySelector('[data-slot="chain-line-lower"]');
-    expect(upper).toHaveClass("absolute");
-    expect(upper).toHaveClass("left-1/2");
-    expect(upper).toHaveClass("border-2");
-    expect(upper).toHaveClass("border-dashed");
-    expect(upper).toHaveClass("border-l");
-    expect(upper).toHaveClass("border-t");
-    expect(upper).not.toHaveClass("border-b");
-
-    expect(lower).toHaveClass("absolute");
-    expect(lower).toHaveClass("left-1/2");
-    expect(lower).toHaveClass("border-2");
-    expect(lower).toHaveClass("border-dashed");
-    expect(lower).toHaveClass("border-l");
-    expect(lower).toHaveClass("border-b");
-    expect(lower).not.toHaveClass("border-t");
+    const frame = document.querySelector('[data-slot="chain-line"]');
+    expect(frame).toHaveClass("absolute");
+    expect(frame).toHaveClass("left-1/2");
+    expect(frame).toHaveClass("-translate-y-1/2");
+    expect(frame).toHaveClass("border-2");
+    expect(frame).toHaveClass("border-dashed");
+    expect(frame).toHaveClass("border-l");
+    expect(frame).toHaveClass("border-t");
+    expect(frame).toHaveClass("border-b");
+    expect(frame).toHaveClass("border-r-0");
+    expect(frame).toHaveClass("h-[calc(var(--subtask-chain-gap)+5rem)]");
   });
 
   it("hides the button and connector while dragging", () => {
@@ -75,8 +69,7 @@ describe("SubtaskChainLinkControl", () => {
     expect(
       screen.queryByRole("button", { name: "Desligar da anterior" }),
     ).not.toBeInTheDocument();
-    expect(document.querySelector('[data-slot="chain-line-upper"]')).toBeNull();
-    expect(document.querySelector('[data-slot="chain-line-lower"]')).toBeNull();
+    expect(document.querySelector('[data-slot="chain-line"]')).toBeNull();
     expect(screen.getByTestId("subtask-chain-link")).toHaveAttribute(
       "data-hidden",
       "true",
