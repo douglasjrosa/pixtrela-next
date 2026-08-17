@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -780,6 +780,21 @@ export function KanbanTaskSubtasksModal({
     confirmIfDirty(onAddSubtask);
   }
 
+  function renderAddSubtaskButton(className?: string): ReactNode {
+    if (!onAddSubtask) return null;
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        className={className}
+        disabled={saving || loading}
+        onClick={handleAddSubtask}
+      >
+        {tKanban("addSubtask")}
+      </Button>
+    );
+  }
+
   function handleFocusModeChange(next: FocusMode): void {
     if (multiEnabled) return;
     setFocusMode(next);
@@ -1006,22 +1021,20 @@ export function KanbanTaskSubtasksModal({
         disabled={saving}
         size="xl"
         layout="viewport"
+        footerStart={
+          <Button
+            type="button"
+            variant="outline"
+            disabled={saving}
+            onClick={requestClose}
+          >
+            {tCommon("cancel")}
+          </Button>
+        }
         footerEnd={
-          <>
-            {onAddSubtask ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={saving || loading}
-                onClick={handleAddSubtask}
-              >
-                {tKanban("addSubtask")}
-              </Button>
-            ) : null}
-            <Button type="button" disabled={!dirty || saving} onClick={onSave}>
-              {tCommon("save")}
-            </Button>
-          </>
+          <Button type="button" disabled={!dirty || saving} onClick={onSave}>
+            {tCommon("save")}
+          </Button>
         }
       >
         <p className="text-sm text-muted-foreground">{taskName}</p>
@@ -1077,15 +1090,21 @@ export function KanbanTaskSubtasksModal({
         ) : null}
 
         {showInitialLoading ? (
-          <KanbanTaskSubtasksLoadingBody
-            teams={teams}
-            assignWarnMax={assignWarnMax}
-            assignedCountByColaboratorId={assignedCountByColaboratorId}
-          />
+          <>
+            <KanbanTaskSubtasksLoadingBody
+              teams={teams}
+              assignWarnMax={assignWarnMax}
+              assignedCountByColaboratorId={assignedCountByColaboratorId}
+            />
+            {renderAddSubtaskButton("w-full sm:w-auto")}
+          </>
         ) : subtasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground" role="status">
-            {tKanban("subtasksEmpty")}
-          </p>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground" role="status">
+              {tKanban("subtasksEmpty")}
+            </p>
+            {renderAddSubtaskButton("w-full sm:w-auto")}
+          </div>
         ) : activeMainTab === "finished" ? (
           <ul
             className={cn(
@@ -1167,6 +1186,7 @@ export function KanbanTaskSubtasksModal({
                 );
               })
             )}
+            {renderAddSubtaskButton("w-full")}
           </ul>
         ) : (
           <div
@@ -1270,6 +1290,7 @@ export function KanbanTaskSubtasksModal({
                       </SortableContext>
                     </DndContext>
                   )}
+                  {renderAddSubtaskButton("w-full shrink-0")}
                 </ul>
               </section>
 
