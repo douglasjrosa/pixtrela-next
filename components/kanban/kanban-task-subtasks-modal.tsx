@@ -21,6 +21,7 @@ import { GripVertical, User, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { CurrencyMediaIcon } from "@/components/currency/currency-media-icon";
+import { KanbanTaskSubtasksLoadingBody } from "@/components/kanban/kanban-task-subtasks-loading";
 import {
   SUBTASK_CHAIN_LIST_GAP_CLASS,
   SubtaskChainLinkControl,
@@ -942,7 +943,7 @@ export function KanbanTaskSubtasksModal({
               <Button
                 type="button"
                 variant="outline"
-                disabled={saving}
+                disabled={saving || loading}
                 onClick={handleAddSubtask}
               >
                 {tKanban("addSubtask")}
@@ -956,13 +957,13 @@ export function KanbanTaskSubtasksModal({
       >
         <p className="text-sm text-muted-foreground">{taskName}</p>
 
-        {hasPendingSubtasks || hasFinishedSubtasks ? (
+        {hasPendingSubtasks || hasFinishedSubtasks || loading ? (
           <div
             role="tablist"
             aria-label={tKanban("subtasksTitle")}
             className="flex gap-4 border-b"
           >
-            {hasPendingSubtasks ? (
+            {hasPendingSubtasks || loading ? (
               <button
                 type="button"
                 role="tab"
@@ -998,9 +999,11 @@ export function KanbanTaskSubtasksModal({
         ) : null}
 
         {loading ? (
-          <p className="text-sm text-muted-foreground" role="status">
-            {tKanban("loading")}
-          </p>
+          <KanbanTaskSubtasksLoadingBody
+            teams={teams}
+            assignWarnMax={assignWarnMax}
+            assignedCountByColaboratorId={assignedCountByColaboratorId}
+          />
         ) : subtasks.length === 0 ? (
           <p className="text-sm text-muted-foreground" role="status">
             {tKanban("subtasksEmpty")}

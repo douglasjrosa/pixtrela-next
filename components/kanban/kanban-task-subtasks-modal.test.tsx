@@ -149,6 +149,38 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(screen.queryByText("Histórico")).not.toBeInTheDocument();
   });
 
+  it("keeps modal chrome and skeletons while subtasks load", () => {
+    renderModal({
+      loading: true,
+      subtasks: [],
+      onAddSubtask: vi.fn(),
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "Subtarefas" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1 - Tarefa A")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Pendentes" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      screen.queryByRole("tab", { name: "Finalizadas" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Multi-seleção" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(screen.getByTestId("kanban-subtasks-loading")).toBeInTheDocument();
+    expect(screen.queryByTestId("subtask-chain-link")).not.toBeInTheDocument();
+    expect(screen.getByText("Equipe A")).toBeInTheDocument();
+    expect(screen.getByText("Ana")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Adicionar subtarefa" }),
+    ).toBeDisabled();
+    expect(screen.queryByText("Soldar")).not.toBeInTheDocument();
+  });
+
   it("shows assignee name badges under pending subtask titles", () => {
     renderModal();
 
