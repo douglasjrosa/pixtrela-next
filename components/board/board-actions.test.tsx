@@ -727,4 +727,72 @@ describe("BoardActions", () => {
       screen.queryByRole("heading", { name: "Subtarefas" }),
     ).not.toBeInTheDocument();
   });
+
+  it("shows the subtask list before live producing state arrives", async () => {
+    const user = userEvent.setup();
+    let releaseLive!: () => void;
+    const liveGate = new Promise<void>((resolve) => {
+      releaseLive = resolve;
+    });
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "producing",
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+    ]);
+    const loadSubtaskLive = vi.fn().mockImplementation(async () => {
+      await liveGate;
+      return {
+        "st-1": {
+          producingColaboratorIds: ["u-1"],
+          openActivityStartedAts: ["2026-07-16T11:00:00.000Z"],
+        },
+      };
+    });
+
+    renderBoard({ loadSubtasks, loadSubtaskLive });
+    await user.click(screen.getByText("1 - Tarefa A"));
+
+    expect(await screen.findByText("Soldar")).toBeInTheDocument();
+    expect(loadSubtaskLive).toHaveBeenCalledWith("task-10");
+    await act(async () => {
+      releaseLive();
+    });
+  });
+
+  it("prefetches when a card intersects the column", async () => {
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        callback: (entries: { isIntersecting: boolean }[]) => void;
+        constructor(callback: (entries: { isIntersecting: boolean }[]) => void) {
+          this.callback = callback;
+        }
+        observe(): void {
+          this.callback([{ isIntersecting: true }]);
+        }
+        unobserve(): void {}
+        disconnect(): void {}
+      },
+    );
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        assignedTo: [],
+      }),
+    ]);
+
+    renderBoard({ loadSubtasks });
+    await vi.waitFor(() => {
+      expect(loadSubtasks).toHaveBeenCalled();
+    });
+    expect(
+      screen.queryByRole("heading", { name: "Subtarefas" }),
+    ).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
 });
