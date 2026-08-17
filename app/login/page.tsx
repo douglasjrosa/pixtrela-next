@@ -3,18 +3,19 @@ import { Suspense } from "react";
 
 import { AuthEntryTitle } from "@/components/auth/auth-entry-title";
 import { LoginEntryClient } from "@/components/auth/login-entry-client";
+import { PasswordResetSuccessNotice } from "@/components/auth/password-reset-success-notice";
 import { SessionExpiredNotice } from "@/components/auth/session-expired-notice";
 import { Card, CardContent } from "@/components/ui/card";
 import { loadEntryAccessSettings } from "@/lib/entry-access/load-entry-access";
 
 interface LoginPageProps {
-  searchParams: Promise<{ reason?: string }>;
+  searchParams: Promise<{ reason?: string; reset?: string }>;
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const t = await getTranslations("auth");
   const tApp = await getTranslations("app");
-  const { reason } = await searchParams;
+  const { reason, reset } = await searchParams;
   const accessSettings = await loadEntryAccessSettings("login");
 
   return (
@@ -25,6 +26,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <Card className="w-full">
         <CardContent className="pt-6">
           <SessionExpiredNotice reason={reason} />
+          <PasswordResetSuccessNotice reset={reset} />
           <Suspense fallback={null}>
             <LoginEntryClient accessSettings={accessSettings} />
           </Suspense>

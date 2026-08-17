@@ -179,7 +179,10 @@ export async function updateOwnPersonal(
       email: updated.email ?? "",
       phone: updated.phone ?? "",
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "emailTaken") {
+      return { ok: false, error: "emailTaken" };
+    }
     return { ok: false, error: "failed" };
   }
 }

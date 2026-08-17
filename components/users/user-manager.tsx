@@ -34,6 +34,7 @@ import {
 } from "@/lib/kiosk/nfc-read";
 import {
   USER_CODE_NOT_UNIQUE_KEY,
+  USER_EMAIL_NOT_UNIQUE_KEY,
   USER_LOGIN_NOT_UNIQUE_KEY,
   USER_ROLES,
   createUserFormSchema,
@@ -91,6 +92,7 @@ export interface UserManagerProps {
 const EMPTY_FORM: UserFormInput = {
   name: "",
   username: "",
+  email: "",
   password: "",
   code: null,
   roleType: "colaborator",
@@ -135,11 +137,26 @@ function loginErrorMessage(
   return message;
 }
 
+function emailErrorMessage(
+  message: string | undefined,
+  translate: (key: "emailNotUnique" | "invalidEmail") => string,
+): string | undefined {
+  if (!message) return undefined;
+  if (message === USER_EMAIL_NOT_UNIQUE_KEY) {
+    return translate("emailNotUnique");
+  }
+  if (message === "invalidEmail") {
+    return translate("invalidEmail");
+  }
+  return message;
+}
+
 function isLoginConflictError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   const message = error.message.toLowerCase();
   return (
     message.includes("email already taken") ||
+    message.includes("emailtaken") ||
     message.includes("username already taken")
   );
 }
@@ -210,6 +227,7 @@ function UserFormDialog({
     ? {
         name: editingUser.name,
         username: editingUser.username,
+        email: editingUser.email ?? "",
         password: "",
         code: editingUser.code,
         roleType: editingUser.roleType,
@@ -250,6 +268,7 @@ function UserFormDialog({
 
   const codeError = codeErrorMessage(errors.code?.message, tUsers);
   const loginError = loginErrorMessage(errors.username?.message, tUsers);
+  const emailFieldError = emailErrorMessage(errors.email?.message, tUsers);
   const usernameRegister = register("username");
   const formId = "user-form";
 
@@ -365,6 +384,14 @@ function UserFormDialog({
               {tUsers("loginAutoFill")}
             </p>
           )}
+        </div>
+
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="email">{tUsers("email")}</Label>
+          <Input id="email" type="email" autoComplete="email" {...register("email")} />
+          {emailFieldError ? (
+            <p className="text-sm text-destructive">{emailFieldError}</p>
+          ) : null}
         </div>
 
         {canSetPassword ? (

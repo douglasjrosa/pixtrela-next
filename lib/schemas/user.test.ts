@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   USER_CODE_NOT_UNIQUE_KEY,
+  USER_EMAIL_NOT_UNIQUE_KEY,
   USER_LOGIN_NOT_UNIQUE_KEY,
   buildUserFormSchema,
   createUserFormSchema,
@@ -16,6 +17,7 @@ const existingUsers = [
 const validUser = {
   name: "Maria",
   username: "maria.9876",
+  email: "maria@example.com",
   password: "123456",
   code: 9876,
   roleType: "colaborator" as const,
@@ -27,6 +29,7 @@ describe("userFormSchema", () => {
       userFormSchema.parse({
         name: "Maria",
         username: "maria.9876",
+        email: "maria@example.com",
         password: "123456",
         code: 9876,
         roleType: "colaborator",
@@ -47,6 +50,7 @@ describe("userFormSchema", () => {
       schema.safeParse({
         name: validUser.name,
         username: validUser.username,
+        email: validUser.email,
         code: validUser.code,
         roleType: validUser.roleType,
       }).success,
@@ -58,6 +62,7 @@ describe("userFormSchema", () => {
       userFormSchema.parse({
         name: "Maria",
         username: "maria.9876",
+        email: "maria@example.com",
         password: "",
         code: 9876,
         roleType: "colaborator",
@@ -125,24 +130,23 @@ describe("userFormSchema", () => {
     expect(result.error.issues[0]?.message).toBe(USER_LOGIN_NOT_UNIQUE_KEY);
   });
 
-  it("rejects login whose derived email collides with an orphan email", () => {
-    const withOrphan = [
+  it("rejects duplicate email on create", () => {
+    const withEmail = [
       ...existingUsers,
       {
         documentId: "u3",
         code: 2,
-        username: "joao.silva.2",
-        email: "joao.2@pixtrela.local",
+        username: "joao.2",
+        email: "joao@example.com",
       },
     ];
-    const result = createUserFormSchema(withOrphan).safeParse({
+    const result = createUserFormSchema(withEmail).safeParse({
       ...validUser,
-      username: "joao.2",
-      code: 9999,
+      email: "joao@example.com",
     });
 
     expect(result.success).toBe(false);
     if (result.success) return;
-    expect(result.error.issues[0]?.message).toBe(USER_LOGIN_NOT_UNIQUE_KEY);
+    expect(result.error.issues[0]?.message).toBe(USER_EMAIL_NOT_UNIQUE_KEY);
   });
 });

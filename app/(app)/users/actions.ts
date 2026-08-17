@@ -27,7 +27,6 @@ import {
 } from "@/lib/repos/users";
 import { buildUserFormSchema, type UserFormInput } from "@/lib/schemas/user";
 import { userListFiltersSchema } from "@/lib/schemas/user-list-filters";
-import { deriveUserEmail } from "@/lib/users/create-user-payload";
 import {
   loadUserListPage,
   type UserListPageResult,
@@ -121,7 +120,7 @@ export async function createUser(raw: UserFormInput): Promise<void> {
     password: data.password!,
     name: data.name,
     role: data.roleType as UserRole,
-    email: deriveUserEmail(data.username),
+    email: data.email,
     code: data.code,
     greetingGender: data.greetingGender ?? "neutral",
   });
@@ -154,7 +153,7 @@ export async function updateUser(
     id: toUserIdString(userId),
     name: data.name,
     username: data.username,
-    email: data.username ? deriveUserEmail(data.username) : undefined,
+    email: data.email,
     password: data.password,
     code: data.code,
     role: data.roleType as UserRole | undefined,
