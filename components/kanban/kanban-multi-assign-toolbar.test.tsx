@@ -65,4 +65,21 @@ describe("KanbanMultiAssignToolbar", () => {
     expect(onAssign).toHaveBeenCalledOnce();
     expect(onRemove).toHaveBeenCalledOnce();
   });
+
+  it("hides the switch when showSwitch is false", () => {
+    renderWithIntl(
+      <KanbanMultiAssignToolbar
+        multiEnabled={false}
+        canApply={false}
+        showSwitch={false}
+        onMultiEnabledChange={vi.fn()}
+        onAssign={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("switch", { name: "Multi-seleção" }),
+    ).not.toBeInTheDocument();
+  });
 });

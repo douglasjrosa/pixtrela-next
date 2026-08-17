@@ -90,7 +90,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { KanbanFloatingCountBadge } from "./kanban-floating-count-badge";
-import { KanbanMultiAssignToolbar } from "./kanban-multi-assign-toolbar";
+import { KanbanMultiAssignSwitch, KanbanMultiAssignToolbar } from "./kanban-multi-assign-toolbar";
 import type { BoardSubTaskSummary } from "./types";
 
 type MainTab = "pending" | "finished";
@@ -637,6 +637,8 @@ export function KanbanTaskSubtasksModal({
       : preferFinishedTab
         ? "finished"
         : mainTab;
+  const showMultiAssignSwitch =
+    (hasPendingSubtasks || loading) && activeMainTab === "pending";
   const selectedSubtask =
     pending.find((item) => item.documentId === selectedSubtaskId) ?? null;
   const selectedAssigneeRole = selectedSubtask
@@ -1049,42 +1051,52 @@ export function KanbanTaskSubtasksModal({
         ) : null}
 
         {hasPendingSubtasks || hasFinishedSubtasks || loading ? (
-          <div
-            role="tablist"
-            aria-label={tKanban("subtasksTitle")}
-            className="flex gap-4 border-b"
-          >
-            {hasPendingSubtasks || loading ? (
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeMainTab === "pending"}
-                className={cn(
-                  "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
-                  activeMainTab === "pending"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-                onClick={() => handleMainTabChange("pending")}
-              >
-                {tKanban("pendingTab")}
-              </button>
-            ) : null}
-            {hasFinishedSubtasks ? (
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeMainTab === "finished"}
-                className={cn(
-                  "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
-                  activeMainTab === "finished"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-                onClick={() => handleMainTabChange("finished")}
-              >
-                {tKanban("finishedTab")}
-              </button>
+          <div className="flex items-center justify-between gap-4 border-b">
+            <div
+              role="tablist"
+              aria-label={tKanban("subtasksTitle")}
+              className="flex gap-4"
+            >
+              {hasPendingSubtasks || loading ? (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeMainTab === "pending"}
+                  className={cn(
+                    "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
+                    activeMainTab === "pending"
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={() => handleMainTabChange("pending")}
+                >
+                  {tKanban("pendingTab")}
+                </button>
+              ) : null}
+              {hasFinishedSubtasks ? (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeMainTab === "finished"}
+                  className={cn(
+                    "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
+                    activeMainTab === "finished"
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={() => handleMainTabChange("finished")}
+                >
+                  {tKanban("finishedTab")}
+                </button>
+              ) : null}
+            </div>
+            {showMultiAssignSwitch ? (
+              <KanbanMultiAssignSwitch
+                multiEnabled={multiEnabled}
+                disabled={saving || loading}
+                className="pb-2"
+                onMultiEnabledChange={handleMultiEnabledChange}
+              />
             ) : null}
           </div>
         ) : null}
@@ -1199,6 +1211,7 @@ export function KanbanTaskSubtasksModal({
               multiEnabled={multiEnabled}
               canApply={canApply}
               disabled={saving}
+              showSwitch={false}
               onMultiEnabledChange={handleMultiEnabledChange}
               onAssign={handleMultiAssign}
               onRemove={handleMultiRemove}

@@ -3,7 +3,6 @@
 import { useTranslations } from "next-intl";
 
 import { KanbanFloatingCountBadge } from "@/components/kanban/kanban-floating-count-badge";
-import { KanbanMultiAssignToolbar } from "@/components/kanban/kanban-multi-assign-toolbar";
 import { TaskProgressBarSkeleton } from "@/components/kanban/task-progress-bar-skeleton";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import { Card, CardBadge, CardContent } from "@/components/ui/card";
@@ -174,15 +173,6 @@ export function KanbanTaskSubtasksLoadingBody({
       aria-label={tKanban("loading")}
       data-testid="kanban-subtasks-loading"
     >
-      <KanbanMultiAssignToolbar
-        multiEnabled={false}
-        canApply={false}
-        disabled
-        onMultiEnabledChange={() => undefined}
-        onAssign={() => undefined}
-        onRemove={() => undefined}
-      />
-
       <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[7fr_3fr] gap-4">
         <section className="flex min-h-0 min-w-0 flex-col gap-2">
           <p className="text-sm font-semibold text-foreground">
