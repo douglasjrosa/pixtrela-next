@@ -146,7 +146,7 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(within(soldarCard).queryByText("Ana")).not.toBeInTheDocument();
   });
 
-  it("shows a permanent max-workers badge before assignee names", () => {
+  it("shows permanent max-workers text before assignee names", () => {
     renderModal({
       subtasks: [
         boardSubTaskSummaryStub({
@@ -172,6 +172,8 @@ describe("KanbanTaskSubtasksModal", () => {
     );
     expect(soldarMax).toHaveTextContent("Max");
     expect(soldarMax).toHaveTextContent("x 1");
+    expect(soldarMax).toHaveClass("text-xs");
+    expect(soldarMax).not.toHaveClass("bg-muted");
 
     const pintarCard = screen.getByRole("button", { name: /Pintar/ });
     const pintarMax = within(pintarCard).getByLabelText(

@@ -189,12 +189,8 @@ function SubTaskCardHeader({
           aria-label={tSubtasks("assignedTo")}
         >
           <li className="min-w-0">
-            <CardBadge
-              className={cn(
-                "inline-flex max-w-full items-center gap-0.5",
-                "px-1.5 py-0 text-xs font-medium",
-                "bg-muted text-muted-foreground",
-              )}
+            <span
+              className="inline-flex max-w-full items-center gap-0.5 text-xs"
               aria-label={tSubtasks("maxSameTimeWorkersBadge", {
                 count: maxWorkers,
               })}
@@ -204,7 +200,7 @@ function SubTaskCardHeader({
               <span className="tabular-nums">
                 {tSubtasks("maxSameTimeWorkersTimes", { count: maxWorkers })}
               </span>
-            </CardBadge>
+            </span>
           </li>
           {assignedTo.map((assignee) => {
             const isAssigneeProducing = producingIdSet.has(
