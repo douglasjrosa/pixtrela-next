@@ -2,9 +2,10 @@
 
 import { useTranslations } from "next-intl";
 
-import { Duration } from "@/components/ui/duration";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
+import { formatDurationHms } from "@/lib/format/duration";
 
+import { KioskSubtaskMetricBlock } from "./kiosk-subtask-metric-block";
 import { SubtaskElapsedTimer } from "./subtask-elapsed-timer";
 
 export interface KioskSubtaskProducingMetricsProps {
@@ -19,26 +20,25 @@ export function KioskSubtaskProducingMetrics({
   expectedTime,
 }: KioskSubtaskProducingMetricsProps) {
   const t = useTranslations("kiosk");
+  const tDuration = useTranslations("duration");
 
   return (
-    <div className="space-y-2 text-base text-muted-foreground">
-      <p>
-        {t("startedAt")}: {formatDateTimePtBr(startedAt)}
-      </p>
-      <p>
-        {t("expectedTime")}:{" "}
-        <span className="tabular-nums">
-          <Duration seconds={expectedTime} />
-        </span>
-      </p>
-      <p className="flex flex-wrap items-center gap-2">
-        <span>{t("elapsed")}:</span>
+    <div className="space-y-3">
+      <KioskSubtaskMetricBlock label={t("startedAt")}>
+        {formatDateTimePtBr(startedAt)}
+      </KioskSubtaskMetricBlock>
+      <KioskSubtaskMetricBlock label={t("expectedTime")}>
+        {formatDurationHms(expectedTime, (key, values) =>
+          tDuration(key, values),
+        )}
+      </KioskSubtaskMetricBlock>
+      <KioskSubtaskMetricBlock label={t("elapsed")}>
         <SubtaskElapsedTimer
           startedAt={startedAt}
           baseSeconds={timeSpent}
           expectedTime={expectedTime}
         />
-      </p>
+      </KioskSubtaskMetricBlock>
     </div>
   );
 }

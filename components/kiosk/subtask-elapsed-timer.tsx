@@ -28,7 +28,6 @@ export function SubtaskElapsedTimer({
   return (
     <span
       className={cn(
-        "font-mono tabular-nums",
         isOverExpected && "font-semibold text-destructive",
       )}
     >

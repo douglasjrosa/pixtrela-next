@@ -220,9 +220,10 @@ describe("KioskSubtaskPanel", () => {
       />,
     );
 
-    expect(screen.getByText(/Início:/)).toBeInTheDocument();
-    expect(screen.getByText(/Tempo previsto:/)).toBeInTheDocument();
-    expect(screen.getByText(/Tempo decorrido:/)).toBeInTheDocument();
+    expect(screen.getByText("Início")).toBeInTheDocument();
+    expect(screen.getByText("Tempo previsto")).toBeInTheDocument();
+    expect(screen.getByText("Tempo decorrido")).toBeInTheDocument();
+    expect(screen.getByText("Produzindo")).toBeInTheDocument();
   });
 
   it("shows finished subtask with time spent and no actions", () => {

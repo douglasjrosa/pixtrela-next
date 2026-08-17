@@ -23,6 +23,7 @@ import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainGroupCard } from "./kiosk-chain-group-card";
 import { KioskExitSubtaskForm } from "./kiosk-exit-subtask-form";
 import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
+import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
 
 export interface KioskSubtaskPanelProps {
   subTasks?: KioskSubTask[];
@@ -66,7 +67,6 @@ export function KioskSubtaskPanel({
   pending,
 }: KioskSubtaskPanelProps) {
   const t = useTranslations("kiosk");
-  const tStatus = useTranslations("tasks.status");
   const [exitingId, setExitingId] = useState<string | null>(null);
   const queueContext = allSubTasks ?? subTasks;
   const resolvedUnits = units ?? unitsFromSubTasks(subTasks);
@@ -117,16 +117,14 @@ export function KioskSubtaskPanel({
             )}
           >
             <div className="flex flex-col gap-4">
-              <div className="min-w-0 space-y-1">
+              <div className="min-w-0 space-y-3">
                 {subTask.taskName ? (
                   <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                     {subTask.taskName}
                   </p>
                 ) : null}
-                <p className="text-lg font-semibold leading-snug">{subTask.name}</p>
-                <p className="text-base text-muted-foreground">
-                  {tStatus(subTask.status)}
-                </p>
+                <p className="text-lg font-bold leading-snug">{subTask.name}</p>
+                <KioskSubtaskStatusBadge status={subTask.status} />
                 {isProducing && subTask.startedAt ? (
                   <KioskSubtaskProducingMetrics
                     startedAt={subTask.startedAt}

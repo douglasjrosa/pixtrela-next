@@ -15,6 +15,7 @@ import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainAdvanceTimer } from "./kiosk-chain-advance-timer";
 import { KioskChainMemberFields } from "./kiosk-chain-member-fields";
 import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
+import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
 
 export interface KioskChainGroupCardProps {
   unit: KioskGroupUnit;
@@ -39,7 +40,6 @@ export function KioskChainGroupCard({
   onAdvanceChain,
 }: KioskChainGroupCardProps) {
   const t = useTranslations("kiosk");
-  const tStatus = useTranslations("tasks.status");
   const [collecting, setCollecting] = useState(false);
   const [answers, setAnswers] = useState<Record<string, ChainStopAnswer>>({});
 
@@ -91,12 +91,10 @@ export function KioskChainGroupCard({
               <li
                 key={member.documentId}
                 data-testid={`kiosk-chain-member-${member.documentId}`}
-                className="min-w-0 space-y-1 rounded-xl border bg-background p-3"
+                className="min-w-0 space-y-3 rounded-xl border bg-background p-3"
               >
-                <p className="text-lg font-semibold leading-snug">{member.name}</p>
-                <p className="text-base text-muted-foreground">
-                  {tStatus(member.status)}
-                </p>
+                <p className="text-lg font-bold leading-snug">{member.name}</p>
+                <KioskSubtaskStatusBadge status={member.status} />
                 {isProducing && member.startedAt ? (
                   <KioskSubtaskProducingMetrics
                     startedAt={member.startedAt}
