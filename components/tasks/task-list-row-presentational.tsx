@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { CardBadge } from "@/components/ui/card";
 import { formatDatePtBr } from "@/lib/format/datetime";
-import { cn } from "@/lib/utils";
 
 import { TaskListRowCheckbox } from "./task-list-row-checkbox";
 import type { TaskRow } from "./types";

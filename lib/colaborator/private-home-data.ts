@@ -57,20 +57,21 @@ export async function loadColaboratorPrivateHome(
 
     let balance: CurrencyBalanceProps = { ...EMPTY_BALANCE };
     if (payment) {
+      const currencyLabel = resolveCurrencyPluralTitle({
+        pluralTitle: payment.currencyPluralTitle,
+        title: payment.currencyTitle,
+        name: payment.currencyName,
+      });
       const monthly = await getOrCreateMonthlyBalance({
         userId,
-        currencyPluralTitle:
-          payment.currencyPluralTitle ||
-          payment.currencyTitle ||
-          payment.currencyName,
+        currencyPluralTitle: currencyLabel,
       });
       balance = {
         balance: monthly.balance,
         previousBalance: monthly.previousBalance,
         totalIncome: monthly.totalIncome,
         totalOutcome: monthly.totalOutcome,
-        currencyLabel:
-          payment.currencyPluralTitle || payment.currencyTitle || undefined,
+        currencyLabel,
       };
     }
 

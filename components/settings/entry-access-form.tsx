@@ -91,7 +91,7 @@ export function EntryAccessForm({ value, onSave }: EntryAccessFormProps) {
   }
 
   function renderDeviceSection(device: EntryAccessDevice): ReactNode {
-        const methods = current[device];
+    const methods = current[device];
     const deviceLabel = tSettings(
       device === "computer" ? "entryAccessComputer" : "entryAccessMobile",
     );

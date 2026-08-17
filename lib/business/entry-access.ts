@@ -63,6 +63,8 @@ export function pickEntryAccessMethods(
 
 export const MOBILE_ENTRY_MEDIA_QUERY = "(max-width: 767px)";
 
-export function entryDeviceFromMediaQuery(matchesMobile: boolean): EntryAccessDevice {
+export function entryDeviceFromMediaQuery(
+  matchesMobile: boolean,
+): EntryAccessDevice {
   return matchesMobile ? "mobile" : "computer";
 }
