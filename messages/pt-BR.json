@@ -773,6 +773,7 @@
     "noTasks": "Nenhuma subtarefa atribuída.",
     "colaboratorHeader": "Colaborador {name}",
     "startedAt": "Início",
+    "expectedTime": "Tempo previsto",
     "elapsed": "Tempo decorrido",
     "timeSpent": "Tempo gasto",
     "sectionProducing": "Em execução",

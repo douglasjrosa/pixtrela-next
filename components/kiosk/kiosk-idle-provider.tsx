@@ -30,7 +30,7 @@ type KioskIdleContextValue = {
   lockSession: () => void;
   /** Fixed countdown (no activity reset). Used on home camera/code flows. */
   startAuthCountdown: (onExpire: () => void) => void;
-  clearAuthCountdown: () => void;
+  clearAuthCountdown: (options?: { navigatingAway?: boolean }) => void;
   setAuthCancelHandler: (handler: (() => void) | null) => void;
 };
 
@@ -79,9 +79,13 @@ export function KioskIdleProvider({
         setProgress(1);
         setPhase("home");
       }
-    } else if (phase !== "auth" && phase !== "expiring") {
+    } else if (phase !== "expiring") {
       setPhase("active");
+      setProgress(0);
     }
+  } else if (!isHomeScreen && phase === "home") {
+    setPhase("active");
+    setProgress(0);
   }
 
   useEffect(() => {
@@ -99,14 +103,22 @@ export function KioskIdleProvider({
     controllerRef.current = null;
   }, []);
 
-  const clearAuthCountdown = useCallback(() => {
-    authExpireRef.current = null;
-    clearController();
-    if (pathname === KIOSK_HOME_PATH) {
-      setPhaseSafe("home");
-      setProgress(1);
-    }
-  }, [clearController, pathname, setPhaseSafe]);
+  const clearAuthCountdown = useCallback(
+    (options?: { navigatingAway?: boolean }) => {
+      authExpireRef.current = null;
+      clearController();
+      if (options?.navigatingAway) {
+        setPhaseSafe("active");
+        setProgress(0);
+        return;
+      }
+      if (pathname === KIOSK_HOME_PATH) {
+        setPhaseSafe("home");
+        setProgress(1);
+      }
+    },
+    [clearController, pathname, setPhaseSafe],
+  );
 
   const startAuthCountdown = useCallback(
     (onExpire: () => void) => {
