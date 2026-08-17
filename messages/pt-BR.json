@@ -189,6 +189,8 @@
     "createTitle": "Nova subtarefa",
     "addSubtask": "Adicionar subtarefa",
     "loading": "Carregando...",
+    "refreshingSubtasks": "Atualizando…",
+    "subtasksUpdatedAt": "Atualizado às {time}",
     "progressTowardExpected": "Progresso em relação ao tempo previsto",
     "subtasksTitle": "Subtarefas",
     "pendingTab": "Pendentes",

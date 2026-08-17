@@ -679,4 +679,52 @@ describe("BoardActions", () => {
     await user.click(screen.getByRole("button", { name: /Cortar/ }));
     expect(screen.getByRole("button", { name: "Remover Bob" })).toBeInTheDocument();
   });
+
+  it("shows cached subtasks immediately and refetches in background", async () => {
+    const user = userEvent.setup();
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        assignedTo: [],
+      }),
+    ]);
+
+    renderBoard({ loadSubtasks });
+
+    await user.hover(screen.getByText("1 - Tarefa A"));
+    await vi.waitFor(() => {
+      expect(loadSubtasks).toHaveBeenCalledWith("task-10");
+    });
+
+    loadSubtasks.mockClear();
+    await user.click(screen.getByText("1 - Tarefa A"));
+
+    expect(await screen.findByText("Soldar")).toBeInTheDocument();
+    expect(loadSubtasks).toHaveBeenCalledWith("task-10");
+  });
+
+  it("prefetch does not open the subtasks modal", async () => {
+    const user = userEvent.setup();
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        assignedTo: [],
+      }),
+    ]);
+
+    renderBoard({ loadSubtasks });
+
+    await user.hover(screen.getByText("1 - Tarefa A"));
+    await vi.waitFor(() => {
+      expect(loadSubtasks).toHaveBeenCalled();
+    });
+
+    expect(
+      screen.queryByRole("heading", { name: "Subtarefas" }),
+    ).not.toBeInTheDocument();
+  });
 });
