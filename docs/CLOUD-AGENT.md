@@ -24,6 +24,12 @@ S3_BUCKET=pixtrela-media
 S3_ACCESS_KEY_ID=<r2 key>
 S3_SECRET_ACCESS_KEY=<r2 secret>
 MEDIA_PUBLIC_BASE_URL=https://media.pixtrela.ribermax.com.br
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=<smtp user>
+SMTP_PASS=<smtp password>
+FROM_EMAIL=App <noreply@your-domain.com>
 ```
 
 `DATABASE_URL` must use **public IP + port 5433** (dev), not `127.0.0.1`.

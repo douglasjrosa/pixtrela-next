@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const createPasswordResetToken = vi.fn();
 const markPasswordResetTokenUsed = vi.fn();
+const revokePasswordResetTokensForUser = vi.fn();
 const verifyPasswordResetToken = vi.fn();
 const findUserByEmail = vi.fn();
 const updateUserAccount = vi.fn();
@@ -12,6 +13,8 @@ vi.mock("@/lib/repos/password-reset", () => ({
     createPasswordResetToken(...args),
   markPasswordResetTokenUsed: (...args: unknown[]) =>
     markPasswordResetTokenUsed(...args),
+  revokePasswordResetTokensForUser: (...args: unknown[]) =>
+    revokePasswordResetTokensForUser(...args),
   verifyPasswordResetToken: (...args: unknown[]) =>
     verifyPasswordResetToken(...args),
 }));
@@ -30,6 +33,7 @@ describe("password-reset-actions", () => {
     vi.resetModules();
     createPasswordResetToken.mockReset();
     markPasswordResetTokenUsed.mockReset();
+    revokePasswordResetTokensForUser.mockReset();
     verifyPasswordResetToken.mockReset();
     findUserByEmail.mockReset();
     updateUserAccount.mockReset();
@@ -64,6 +68,22 @@ describe("password-reset-actions", () => {
     const result = await requestPasswordReset({ email: "missing@example.com" });
     expect(result).toEqual({ ok: true });
     expect(sendMail).not.toHaveBeenCalled();
+  });
+
+  it("requestPasswordReset returns mailUnavailable when send fails", async () => {
+    findUserByEmail.mockResolvedValue({
+      id: "u1",
+      blocked: false,
+      active: true,
+    });
+    createPasswordResetToken.mockResolvedValue("plain-token");
+    sendMail.mockRejectedValue(new Error("SMTP failed"));
+
+    const { requestPasswordReset } = await import("./password-reset-actions");
+    const result = await requestPasswordReset({ email: "ana@example.com" });
+
+    expect(result).toEqual({ ok: false, error: "mailUnavailable" });
+    expect(revokePasswordResetTokensForUser).toHaveBeenCalledWith("u1");
   });
 
   it("resetPassword updates account and consumes token", async () => {

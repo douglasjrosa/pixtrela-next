@@ -63,3 +63,12 @@ export async function markPasswordResetTokenUsed(
     .set({ usedAt: new Date() })
     .where(eq(passwordResetTokens.tokenHash, tokenHash));
 }
+
+export async function revokePasswordResetTokensForUser(
+  userId: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await db
+    .delete(passwordResetTokens)
+    .where(eq(passwordResetTokens.userId, userId));
+}

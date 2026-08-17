@@ -32,7 +32,11 @@ export function ForgotPasswordForm() {
     setFormError(null);
     const result = await requestPasswordReset(values);
     if (!result.ok) {
-      setFormError(t("forgotPasswordInvalidEmail"));
+      setFormError(
+        result.error === "mailUnavailable"
+          ? t("forgotPasswordMailUnavailable")
+          : t("forgotPasswordInvalidEmail"),
+      );
       return;
     }
     setSubmitted(true);
