@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
 import { KioskActionButton } from "./kiosk-action-button";
+import { KioskQtyStepper } from "./kiosk-qty-stepper";
 
 export interface KioskExitSubtaskFormProps {
   sharingType: SubTaskFormInput["sharingType"];
@@ -29,7 +29,8 @@ export function KioskExitSubtaskForm({
   onConfirm,
 }: KioskExitSubtaskFormProps) {
   const t = useTranslations("kiosk");
-  const [qtyCompleted, setQtyCompleted] = useState("1");
+  const safeMaxQty = Math.max(0, maxQty);
+  const [qtyCompleted, setQtyCompleted] = useState(safeMaxQty);
   const [qtyError, setQtyError] = useState<string | null>(null);
 
   if (sharingType === "duration") {
@@ -93,8 +94,6 @@ export function KioskExitSubtaskForm({
     );
   }
 
-  const safeMaxQty = Math.max(0, maxQty);
-
   return (
     <div className="space-y-3 rounded-2xl border bg-muted p-3">
       {!allowComplete ? (
@@ -106,17 +105,13 @@ export function KioskExitSubtaskForm({
         <Label htmlFor="kiosk-exit-qty" className="text-base">
           {t("exitQtyLabel")}
         </Label>
-        <Input
+        <KioskQtyStepper
           id="kiosk-exit-qty"
-          type="number"
-          inputMode="numeric"
-          min={0}
-          max={safeMaxQty}
           value={qtyCompleted}
+          max={safeMaxQty}
           disabled={disabled}
-          className="h-14 rounded-2xl text-lg"
-          onChange={(event) => {
-            setQtyCompleted(event.target.value);
+          onChange={(next) => {
+            setQtyCompleted(next);
             setQtyError(null);
           }}
         />
@@ -134,16 +129,15 @@ export function KioskExitSubtaskForm({
           actionVariant="produce"
           disabled={disabled}
           onClick={() => {
-            const parsed = Number.parseInt(qtyCompleted, 10);
-            if (!Number.isInteger(parsed) || parsed < 0) {
+            if (!Number.isInteger(qtyCompleted) || qtyCompleted < 0) {
               setQtyError(t("exitQtyInvalid"));
               return;
             }
-            if (parsed > safeMaxQty) {
+            if (qtyCompleted > safeMaxQty) {
               setQtyError(t("exitQtyExceeds"));
               return;
             }
-            onConfirm({ sharingType: "qty", qtyCompleted: parsed });
+            onConfirm({ sharingType: "qty", qtyCompleted });
           }}
         >
           {t("exitConfirm")}

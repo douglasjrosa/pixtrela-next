@@ -23,7 +23,7 @@ export function parseDurationStopBody(body: KioskStopBody): boolean {
 
 export function parseQtyStopBody(body: KioskStopBody): number {
   const qty = body.qty;
-  if (typeof qty !== "number" || !Number.isInteger(qty) || qty < 1) {
+  if (typeof qty !== "number" || !Number.isInteger(qty) || qty < 0) {
     throw new Error("qty required");
   }
   return qty;
@@ -45,7 +45,7 @@ export function resolveQtyStop(
   const targetQty = Math.max(1, subTaskQty);
   const remaining = targetQty - totalCompletedQty;
 
-  if (sessionQty < 1 || sessionQty > remaining) {
+  if (sessionQty < 0 || sessionQty > remaining) {
     throw new Error("qty exceeds sub-task quantity");
   }
 

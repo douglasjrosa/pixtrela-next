@@ -782,6 +782,8 @@
     "exitCompletedYes": "Sim, concluí",
     "exitCompletedNo": "Não, ainda não",
     "exitQtyLabel": "Quantas peças você concluiu?",
+    "exitQtyDecrease": "Diminuir quantidade",
+    "exitQtyIncrease": "Aumentar quantidade",
     "exitQtyMax": "Máximo: {max} peça(s) restante(s)",
     "exitQtyInvalid": "Informe uma quantidade válida.",
     "exitQtyExceeds": "A quantidade não pode exceder o restante da subtarefa.",
