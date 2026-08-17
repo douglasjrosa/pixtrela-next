@@ -23,10 +23,11 @@ describe("SubtaskChainLinkControl", () => {
       "data-linked",
       "false",
     );
-    expect(document.querySelector('[data-slot="chain-line"]')).toBeNull();
+    expect(document.querySelector('[data-slot="chain-line-upper"]')).toBeNull();
+    expect(document.querySelector('[data-slot="chain-line-lower"]')).toBeNull();
   });
 
-  it("shows a dashed connector when linked", () => {
+  it("draws an in-flow lower dash and an absolute upper dash when linked", () => {
     renderWithIntl(
       <SubtaskChainLinkControl
         linked
@@ -38,20 +39,21 @@ describe("SubtaskChainLinkControl", () => {
 
     const button = screen.getByRole("button", { name: "Desligar da anterior" });
     expect(button).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByTestId("subtask-chain-link")).toHaveAttribute(
-      "data-linked",
-      "true",
-    );
-    const line = document.querySelector('[data-slot="chain-line"]');
-    expect(line).toBeTruthy();
-    expect(line).toHaveClass("absolute");
-    expect(line).toHaveClass("border-dashed");
-    expect(line).toHaveClass("border-l");
-    expect(line).toHaveClass("border-t");
-    expect(line).toHaveClass("border-b");
-    expect(line).toHaveClass("h-[var(--subtask-chain-gap)]");
     expect(button.className).not.toMatch(/\babsolute\b/);
     expect(button).toHaveClass("relative");
+
+    const upper = document.querySelector('[data-slot="chain-line-upper"]');
+    expect(upper).toHaveClass("absolute");
+    expect(upper).toHaveClass("border-dashed");
+    expect(upper).toHaveClass("border-l");
+    expect(upper).toHaveClass("border-t");
+    expect(upper).not.toHaveClass("border-b");
+
+    const lower = document.querySelector('[data-slot="chain-line-lower"]');
+    expect(lower).toBeTruthy();
+    expect(lower).toHaveClass("border-dashed");
+    expect(lower).toHaveClass("border-t");
+    expect(lower?.className ?? "").not.toMatch(/\babsolute\b/);
   });
 
   it("hides the button and connector while dragging", () => {
@@ -68,7 +70,8 @@ describe("SubtaskChainLinkControl", () => {
     expect(
       screen.queryByRole("button", { name: "Desligar da anterior" }),
     ).not.toBeInTheDocument();
-    expect(document.querySelector('[data-slot="chain-line"]')).toBeNull();
+    expect(document.querySelector('[data-slot="chain-line-upper"]')).toBeNull();
+    expect(document.querySelector('[data-slot="chain-line-lower"]')).toBeNull();
     expect(screen.getByTestId("subtask-chain-link")).toHaveAttribute(
       "data-hidden",
       "true",

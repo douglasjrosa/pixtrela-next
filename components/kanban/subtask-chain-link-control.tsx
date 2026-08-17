@@ -6,21 +6,19 @@ import { Link2, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/**
- * Must stay taller than the link button so the vertical dash stays visible
- * above and below it (the C bracket, not two stubs from the button).
- */
+/** Tight list gap; the upper dash uses the same token to enter the card above. */
 export const SUBTASK_CHAIN_LIST_GAP_CLASS =
-  "gap-[var(--subtask-chain-gap)] [--subtask-chain-gap:3.5rem]";
+  "gap-[var(--subtask-chain-gap)] [--subtask-chain-gap:0.5rem]";
 
 const LINK_COLUMN_CLASS =
-  "relative flex h-full w-7 shrink-0 items-start justify-center";
+  "relative flex h-full w-7 shrink-0 flex-col items-center";
+
+const CHAIN_UPPER_LINE_CLASS =
+  "top-[calc(-1*var(--subtask-chain-gap)-1.75rem)] " +
+  "h-[calc(var(--subtask-chain-gap)+1.75rem)]";
 
 /** Half column + row gap-1 + reach into the card's left edge. */
 const CHAIN_ELBOW_WIDTH_CLASS = "w-[calc(50%+1.25rem)]";
-
-const LINK_BUTTON_OFFSET_CLASS =
-  "-mt-[calc(var(--subtask-chain-gap)/2+0.875rem)]";
 
 export interface SubtaskChainLinkControlProps {
   linked: boolean;
@@ -65,33 +63,44 @@ export function SubtaskChainLinkControl({
         <span
           className={cn(
             "pointer-events-none absolute left-1/2",
-            "top-[calc(-1*var(--subtask-chain-gap))]",
-            "h-[var(--subtask-chain-gap)]",
+            CHAIN_UPPER_LINE_CLASS,
             CHAIN_ELBOW_WIDTH_CLASS,
-            "border-b border-l border-t border-dashed border-primary",
+            "border-l border-t border-dashed border-primary",
           )}
           aria-hidden
-          data-slot="chain-line"
+          data-slot="chain-line-upper"
         />
       ) : null}
       {showVisuals ? (
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="outline"
-          className={cn(
-            "relative z-10 rounded-full",
-            LINK_BUTTON_OFFSET_CLASS,
-            linked ? "border-primary text-primary" : "text-muted-foreground",
-          )}
-          aria-pressed={linked}
-          aria-label={linked ? unlinkLabel : linkLabel}
-          disabled={disabled}
-          onClick={handleClick}
-          onPointerDown={handlePointerDown}
-        >
-          <Icon aria-hidden />
-        </Button>
+        <>
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="outline"
+            className={cn(
+              "relative z-10 rounded-full",
+              linked ? "border-primary text-primary" : "text-muted-foreground",
+            )}
+            aria-pressed={linked}
+            aria-label={linked ? unlinkLabel : linkLabel}
+            disabled={disabled}
+            onClick={handleClick}
+            onPointerDown={handlePointerDown}
+          >
+            <Icon aria-hidden />
+          </Button>
+          {linked ? (
+            <span
+              className={cn(
+                "pointer-events-none -mt-px ml-[50%] h-0",
+                CHAIN_ELBOW_WIDTH_CLASS,
+                "border-t border-dashed border-primary",
+              )}
+              aria-hidden
+              data-slot="chain-line-lower"
+            />
+          ) : null}
+        </>
       ) : null}
     </div>
   );
