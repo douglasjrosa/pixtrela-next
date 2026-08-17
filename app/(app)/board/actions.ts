@@ -151,17 +151,6 @@ function mapBoardSubtasksFromDrizzle(
   });
 }
 
-function mergeSessionsIntoBoardSubtasks(
-  subtasks: BoardSubTaskSummary[],
-  sessionsBySubTask: Record<string, ActivitySession[]>,
-): BoardSubTaskSummary[] {
-  return subtasks.map((subtask) => {
-    const sessions = sessionsBySubTask[subtask.documentId];
-    if (!sessions) return subtask;
-    return { ...subtask, sessions };
-  });
-}
-
 export async function pollBoardProgress(
   tasks: ReadonlyArray<{ documentId: string; status: KanbanProgressStatus }>,
 ): Promise<BoardProgressPollSnapshot> {
@@ -237,8 +226,6 @@ export async function loadBoardSubtaskSession(
   await assertCanManageBoardSubtasks();
   return listSubTaskActivitySessions(subTaskDocumentId);
 }
-
-export { mergeSessionsIntoBoardSubtasks };
 
 async function fetchSubTaskForUpdate(
   documentId: string,
