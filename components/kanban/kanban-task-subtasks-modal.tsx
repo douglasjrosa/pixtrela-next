@@ -369,7 +369,7 @@ function SortablePendingSubtaskCard({
     <li
       ref={setNodeRef}
       style={style}
-      className={isDragging ? "opacity-80" : undefined}
+      className={cn("overflow-visible", isDragging && "opacity-80")}
     >
       <div className="flex items-stretch gap-1">
         <button

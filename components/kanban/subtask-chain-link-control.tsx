@@ -6,12 +6,18 @@ import { Link2, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** Card list gap; the dashed connector uses the same token to reach the card above. */
+/** Card list gap; the C-connector uses the same token to reach the card above. */
 export const SUBTASK_CHAIN_LIST_GAP_CLASS =
-  "gap-[var(--subtask-chain-gap)] [--subtask-chain-gap:0.75rem]";
+  "gap-[var(--subtask-chain-gap)] [--subtask-chain-gap:1.5rem]";
 
 const LINK_COLUMN_CLASS =
-  "relative flex h-full w-7 shrink-0 items-center justify-center";
+  "relative flex h-full w-7 shrink-0 items-start justify-center";
+
+/** Half column + row gap-1 + a bit into the card edge. */
+const CHAIN_ELBOW_WIDTH_CLASS = "w-[calc(50%+0.5rem)]";
+
+const LINK_BUTTON_OFFSET_CLASS =
+  "-mt-[calc(var(--subtask-chain-gap)/2+0.875rem)]";
 
 export interface SubtaskChainLinkControlProps {
   linked: boolean;
@@ -55,9 +61,11 @@ export function SubtaskChainLinkControl({
       {showVisuals && linked ? (
         <span
           className={cn(
-            "pointer-events-none absolute bottom-1/2 left-1/2 w-0",
-            "-translate-x-1/2 border-l border-dashed border-primary",
+            "pointer-events-none absolute left-1/2",
             "top-[calc(-1*var(--subtask-chain-gap))]",
+            "h-[var(--subtask-chain-gap)]",
+            CHAIN_ELBOW_WIDTH_CLASS,
+            "border-b border-l border-t border-dashed border-primary",
           )}
           aria-hidden
           data-slot="chain-line"
@@ -70,6 +78,7 @@ export function SubtaskChainLinkControl({
           variant="outline"
           className={cn(
             "relative z-10 rounded-full",
+            LINK_BUTTON_OFFSET_CLASS,
             linked ? "border-primary text-primary" : "text-muted-foreground",
           )}
           aria-pressed={linked}

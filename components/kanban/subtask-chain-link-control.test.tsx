@@ -42,7 +42,15 @@ describe("SubtaskChainLinkControl", () => {
       "data-linked",
       "true",
     );
-    expect(document.querySelector('[data-slot="chain-line"]')).toBeTruthy();
+    const line = document.querySelector('[data-slot="chain-line"]');
+    expect(line).toBeTruthy();
+    expect(line).toHaveClass("absolute");
+    expect(line).toHaveClass("border-dashed");
+    expect(line).toHaveClass("border-l");
+    expect(line).toHaveClass("border-t");
+    expect(line).toHaveClass("border-b");
+    expect(button.className).not.toMatch(/\babsolute\b/);
+    expect(button).toHaveClass("relative");
   });
 
   it("hides the button and connector while dragging", () => {
