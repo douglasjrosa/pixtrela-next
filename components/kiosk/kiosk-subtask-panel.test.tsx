@@ -208,6 +208,7 @@ describe("KioskSubtaskPanel", () => {
         name: "Tarefa A",
         status: "producing",
         timeSpent: 30,
+        expectedTime: 120,
         startedAt: "2026-06-05T10:00:00.000Z",
       }),
     ];
@@ -220,6 +221,7 @@ describe("KioskSubtaskPanel", () => {
     );
 
     expect(screen.getByText(/Início:/)).toBeInTheDocument();
+    expect(screen.getByText(/Tempo previsto:/)).toBeInTheDocument();
     expect(screen.getByText(/Tempo decorrido:/)).toBeInTheDocument();
   });
 

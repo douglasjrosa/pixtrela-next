@@ -9,13 +9,12 @@ import { isChainMemberAnswerComplete } from "@/lib/business/subtask-chain-alloca
 import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
 import { getRemainingSubTaskQty } from "@/lib/business/subtask-queue";
 import { Duration } from "@/components/ui/duration";
-import { formatDateTimePtBr } from "@/lib/format/datetime";
 import { cn } from "@/lib/utils";
 
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainAdvanceTimer } from "./kiosk-chain-advance-timer";
 import { KioskChainMemberFields } from "./kiosk-chain-member-fields";
-import { SubtaskElapsedTimer } from "./subtask-elapsed-timer";
+import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
 
 export interface KioskChainGroupCardProps {
   unit: KioskGroupUnit;
@@ -99,18 +98,11 @@ export function KioskChainGroupCard({
                   {tStatus(member.status)}
                 </p>
                 {isProducing && member.startedAt ? (
-                  <div className="space-y-2 text-base text-muted-foreground">
-                    <p>
-                      {t("startedAt")}: {formatDateTimePtBr(member.startedAt)}
-                    </p>
-                    <p className="flex flex-wrap items-center gap-2">
-                      <span>{t("elapsed")}:</span>
-                      <SubtaskElapsedTimer
-                        startedAt={member.startedAt}
-                        baseSeconds={member.timeSpent}
-                      />
-                    </p>
-                  </div>
+                  <KioskSubtaskProducingMetrics
+                    startedAt={member.startedAt}
+                    timeSpent={member.timeSpent}
+                    expectedTime={member.expectedTime}
+                  />
                 ) : null}
                 {member.status === "finished" ? (
                   <p className="text-base text-muted-foreground">

@@ -17,13 +17,12 @@ import {
 } from "@/lib/business/subtask-queue";
 import { cn } from "@/lib/utils";
 import { Duration } from "@/components/ui/duration";
-import { formatDateTimePtBr } from "@/lib/format/datetime";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainGroupCard } from "./kiosk-chain-group-card";
 import { KioskExitSubtaskForm } from "./kiosk-exit-subtask-form";
-import { SubtaskElapsedTimer } from "./subtask-elapsed-timer";
+import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
 
 export interface KioskSubtaskPanelProps {
   subTasks?: KioskSubTask[];
@@ -129,18 +128,11 @@ export function KioskSubtaskPanel({
                   {tStatus(subTask.status)}
                 </p>
                 {isProducing && subTask.startedAt ? (
-                  <div className="space-y-2 text-base text-muted-foreground">
-                    <p>
-                      {t("startedAt")}: {formatDateTimePtBr(subTask.startedAt)}
-                    </p>
-                    <p className="flex flex-wrap items-center gap-2">
-                      <span>{t("elapsed")}:</span>
-                      <SubtaskElapsedTimer
-                        startedAt={subTask.startedAt}
-                        baseSeconds={subTask.timeSpent}
-                      />
-                    </p>
-                  </div>
+                  <KioskSubtaskProducingMetrics
+                    startedAt={subTask.startedAt}
+                    timeSpent={subTask.timeSpent}
+                    expectedTime={subTask.expectedTime}
+                  />
                 ) : null}
                 {finished ? (
                   <p className="text-base text-muted-foreground">
