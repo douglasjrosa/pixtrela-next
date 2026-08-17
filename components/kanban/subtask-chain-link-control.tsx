@@ -6,15 +6,18 @@ import { Link2, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** Card list gap; the C-connector uses the same token to reach the card above. */
+/**
+ * Must stay taller than the link button so the vertical dash stays visible
+ * above and below it (the C bracket, not two stubs from the button).
+ */
 export const SUBTASK_CHAIN_LIST_GAP_CLASS =
-  "gap-[var(--subtask-chain-gap)] [--subtask-chain-gap:1.5rem]";
+  "gap-[var(--subtask-chain-gap)] [--subtask-chain-gap:3.5rem]";
 
 const LINK_COLUMN_CLASS =
   "relative flex h-full w-7 shrink-0 items-start justify-center";
 
-/** Half column + row gap-1 + a bit into the card edge. */
-const CHAIN_ELBOW_WIDTH_CLASS = "w-[calc(50%+0.5rem)]";
+/** Half column + row gap-1 + reach into the card's left edge. */
+const CHAIN_ELBOW_WIDTH_CLASS = "w-[calc(50%+1.25rem)]";
 
 const LINK_BUTTON_OFFSET_CLASS =
   "-mt-[calc(var(--subtask-chain-gap)/2+0.875rem)]";

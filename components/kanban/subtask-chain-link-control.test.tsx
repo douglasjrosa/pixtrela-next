@@ -49,6 +49,7 @@ describe("SubtaskChainLinkControl", () => {
     expect(line).toHaveClass("border-l");
     expect(line).toHaveClass("border-t");
     expect(line).toHaveClass("border-b");
+    expect(line).toHaveClass("h-[var(--subtask-chain-gap)]");
     expect(button.className).not.toMatch(/\babsolute\b/);
     expect(button).toHaveClass("relative");
   });
