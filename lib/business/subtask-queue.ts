@@ -50,11 +50,15 @@ export function getRemainingSubTaskQty(
 }
 
 /** Sort subtasks by index ascending. */
-export function sortSubTasksByIndex<T extends { index: number }>(items: T[]): T[] {
+export function sortSubTasksByIndex<T extends { index: number }>(
+  items: readonly T[],
+): T[] {
   return [...items].sort((a, b) => a.index - b.index);
 }
 
-export function splitKioskQueueSections(subTasks: KioskSubTask[]): KioskQueueSections {
+export function splitKioskQueueSections(
+  subTasks: readonly KioskSubTask[],
+): KioskQueueSections {
   return {
     producing: subTasks.filter((subTask) => subTask.status === "producing"),
     pending: subTasks.filter(
@@ -71,7 +75,7 @@ export function hasViewerSession(subTask: QueuedSubTask): boolean {
 }
 
 /** Whether the viewer has any open session in the queue. */
-export function hasActiveSubTask(subTasks: QueuedSubTask[]): boolean {
+export function hasActiveSubTask(subTasks: readonly QueuedSubTask[]): boolean {
   return subTasks.some((st) => hasViewerSession(st));
 }
 
@@ -93,7 +97,7 @@ export function isLockedSubTask(subTask: QueuedSubTask): boolean {
 
 /** Next unlocked queued subtask when none is active for the viewer. */
 export function nextStartableSubTask(
-  subTasks: QueuedSubTask[],
+  subTasks: readonly QueuedSubTask[],
 ): QueuedSubTask | null {
   if (hasActiveSubTask(subTasks)) return null;
   const sorted = sortSubTasksByIndex(subTasks);
@@ -108,7 +112,7 @@ export function nextStartableSubTask(
 
 /** Whether the given subtask can be started now by the viewer. */
 export function canStartSubTask(
-  subTasks: QueuedSubTask[],
+  subTasks: readonly QueuedSubTask[],
   documentId: string,
 ): boolean {
   if (hasActiveSubTask(subTasks)) return false;
@@ -146,7 +150,7 @@ export function canCompleteSubTaskOnExit(subTask: QueuedSubTask): boolean {
 
 /** Whether the start button should render for this subtask card. */
 export function shouldShowStartButton(
-  subTasks: QueuedSubTask[],
+  subTasks: readonly QueuedSubTask[],
   subTask: QueuedSubTask,
 ): boolean {
   return canStartSubTask(subTasks, subTask.documentId);
@@ -154,7 +158,7 @@ export function shouldShowStartButton(
 
 /** Whether the exit button should render for this subtask card. */
 export function shouldShowExitButton(
-  subTasks: QueuedSubTask[],
+  subTasks: readonly QueuedSubTask[],
   subTask: QueuedSubTask,
 ): boolean {
   return canStopSubTask(subTask);
