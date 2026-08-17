@@ -51,6 +51,14 @@ import {
   SubtaskListCache,
   type SubtaskListCacheEntry,
 } from "@/lib/board/subtask-list-cache";
+import {
+  mergeBoardSubtaskLiveState,
+  type BoardSubtaskLiveState,
+} from "@/lib/board/board-subtask-live";
+import {
+  LimitedPrefetchQueue,
+  PREFETCH_MAX_IN_FLIGHT,
+} from "@/lib/board/subtask-prefetch-queue";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import type { SubtaskPaymentCurrency } from "@/lib/settings/currency-for-subtasks-types";
 
@@ -89,6 +97,9 @@ export interface BoardActionsProps {
     updates: { documentId: string; index: number; stepId: number | null }[],
   ) => void | Promise<void>;
   loadSubtasks: (taskDocumentId: string) => Promise<BoardSubTaskSummary[]>;
+  loadSubtaskLive?: (
+    taskDocumentId: string,
+  ) => Promise<Record<string, BoardSubtaskLiveState>>;
   loadSubtaskSessions?: (
     taskDocumentId: string,
   ) => Promise<Record<string, ActivitySession[]>>;
@@ -128,6 +139,7 @@ export function BoardActions({
   paymentCurrency,
   applyBoardTaskOrder,
   loadSubtasks,
+  loadSubtaskLive,
   loadSubtaskSessions,
   loadSubtaskSession,
   updateSubtaskAssignees,
@@ -167,6 +179,7 @@ export function BoardActions({
   const assigneesBaselineRef = useRef(assigneesBaseline);
   const subtaskCacheRef = useRef(new SubtaskListCache());
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prefetchQueueRef = useRef<LimitedPrefetchQueue | null>(null);
   const sessionsLoadedRef = useRef(false);
   selectedTaskRef.current = selectedTask;
   subtasksRef.current = subtasks;
@@ -274,12 +287,40 @@ export function BoardActions({
     applyLoadedSubtasks(loaded);
   }
 
+  async function applyLiveState(
+    taskDocumentId: string,
+    live: Record<string, BoardSubtaskLiveState>,
+  ): Promise<void> {
+    if (selectedTaskRef.current?.documentId !== taskDocumentId) return;
+    setSubtasks((current) => {
+      const next = mergeBoardSubtaskLiveState(current, live);
+      const cached = subtaskCacheRef.current.get(taskDocumentId);
+      if (cached) {
+        subtaskCacheRef.current.set(taskDocumentId, {
+          ...cached,
+          subtasks: next,
+        });
+      }
+      return next;
+    });
+  }
+
+  async function fetchLiveState(taskDocumentId: string): Promise<void> {
+    if (!loadSubtaskLive) return;
+    const live = await loadSubtaskLive(taskDocumentId);
+    await applyLiveState(taskDocumentId, live);
+  }
+
   async function fetchSubtasks(
     taskDocumentId: string,
     options?: { keepDraftAssignees?: boolean },
   ): Promise<BoardSubTaskSummary[]> {
     const loaded = await loadSubtasks(taskDocumentId);
+    if (selectedTaskRef.current?.documentId !== taskDocumentId) {
+      return loaded;
+    }
     applyFetchedSubtasks(loaded, options);
+    void fetchLiveState(taskDocumentId);
     return loaded;
   }
 
@@ -323,12 +364,21 @@ export function BoardActions({
 
   function prefetchSubtasks(task: KanbanTask): void {
     if (subtaskCacheRef.current.get(task.documentId)) return;
-    void loadSubtasks(task.documentId).then((loaded) => {
-      subtaskCacheRef.current.set(
-        task.documentId,
-        createSubtaskListCacheEntry(loaded),
+    if (!prefetchQueueRef.current) {
+      prefetchQueueRef.current = new LimitedPrefetchQueue(
+        PREFETCH_MAX_IN_FLIGHT,
+        async (taskDocumentId) => {
+          if (subtaskCacheRef.current.get(taskDocumentId)) return;
+          const loaded = await loadSubtasks(taskDocumentId);
+          if (subtaskCacheRef.current.get(taskDocumentId)) return;
+          subtaskCacheRef.current.set(
+            taskDocumentId,
+            createSubtaskListCacheEntry(loaded),
+          );
+        },
       );
-    });
+    }
+    prefetchQueueRef.current.enqueue(task.documentId);
   }
 
   function handleTaskPrefetch(task: KanbanTask): void {
@@ -787,6 +837,7 @@ export function BoardActions({
           onApplyOrder={handleApplyOrder}
           onTaskClick={handleTaskClick}
           onTaskPrefetch={handleTaskPrefetch}
+          onTaskVisiblePrefetch={prefetchSubtasks}
           onTaskPrefetchCancel={cancelTaskPrefetch}
         />
       </div>

@@ -1,6 +1,8 @@
 "use server";
 
+import { getAppBaseUrl } from "@/lib/app/app-base-url";
 import { isDeliverableEmail } from "@/lib/mail/deliverable-email";
+import { buildPasswordResetEmail } from "@/lib/mail/password-reset-email";
 import { sendMail } from "@/lib/mail/send-mail";
 import {
   createPasswordResetToken,
@@ -14,12 +16,6 @@ import {
   resetPasswordSchema,
 } from "@/lib/schemas/password-reset";
 
-function appBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-    "http://localhost:3000" // pragma: allowlist secret
-  );
-}
 
 export type RequestPasswordResetResult =
   | { ok: true }
@@ -44,25 +40,15 @@ export async function requestPasswordReset(
   }
 
   const token = await createPasswordResetToken(user.id);
-  const resetUrl = `${appBaseUrl()}/login/reset-password?token=${encodeURIComponent(token)}`;
+  const resetUrl = `${getAppBaseUrl()}/login/reset-password?token=${encodeURIComponent(token)}`;
+  const { text, html } = buildPasswordResetEmail(resetUrl);
 
   try {
     await sendMail({
       to: email,
       subject: "Redefinição de senha",
-      text: [
-        "Recebemos um pedido para redefinir sua senha.",
-        "",
-        `Abra o link abaixo para criar uma nova senha (válido por 1 hora):`,
-        resetUrl,
-        "",
-        "Se você não solicitou isso, ignore este e-mail.",
-      ].join("\n"),
-      html: [
-        "<p>Recebemos um pedido para redefinir sua senha.</p>",
-        `<p><a href="${resetUrl}">Redefinir senha</a></p>`,
-        "<p>Se você não solicitou isso, ignore este e-mail.</p>",
-      ].join(""),
+      text,
+      html,
     });
   } catch (error) {
     await revokePasswordResetTokensForUser(user.id);

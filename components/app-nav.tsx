@@ -7,12 +7,15 @@ import { useSession, signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
 
 import { AppNavMobileMenu } from "@/components/app-nav-mobile-menu";
+import { AppNavUserMenu } from "@/components/app-nav-user-menu";
 import { Button } from "@/components/ui/button";
+import { canAccessOwnProfile } from "@/lib/auth/profile-access";
 import { homeHrefForRole, navItemsForRole, type Role } from "@/lib/auth/nav";
 import {
   resolveNavLayoutMode,
   type NavLayoutMode,
 } from "@/lib/auth/nav-layout";
+import { buildProfilePath } from "@/lib/profile/profile-path";
 
 export const APP_NAV_HEIGHT_CLASS = "h-14";
 
@@ -21,8 +24,12 @@ export function AppNav() {
   const { data: session } = useSession();
   const role = (session?.user?.role ?? "colaborator") as Role;
   const userId = session?.user?.id;
+  const userName = session?.user?.name ?? t("profile.title");
+  const avatarUrl = session?.user?.avatarUrl ?? null;
   const items = navItemsForRole(role, { userId });
   const homeHref = homeHrefForRole(role, userId);
+  const profileHref =
+    canAccessOwnProfile(role) && userId ? buildProfilePath(userId) : null;
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [layoutMode, setLayoutMode] = useState<NavLayoutMode>("desktop");
@@ -90,6 +97,21 @@ export function AppNav() {
           className={`flex items-center gap-3 px-4 ${APP_NAV_HEIGHT_CLASS}`}
           aria-label={t("app.name")}
         >
+          {!showDesktopLinks ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="shrink-0"
+              aria-label={t("nav.openMenu")}
+              aria-expanded={effectiveMenuOpen}
+              aria-haspopup="dialog"
+              onClick={() => setMenuOpen(true)}
+            >
+              <Menu aria-hidden />
+            </Button>
+          ) : null}
+
           <Link href={homeHref} className="shrink-0 font-bold">
             {t("app.name")}
           </Link>
@@ -128,34 +150,15 @@ export function AppNav() {
                   </li>
                 ))}
               </ul>
-            ) : (
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  aria-label={t("nav.openMenu")}
-                  aria-expanded={effectiveMenuOpen}
-                  aria-haspopup="dialog"
-                  onClick={() => setMenuOpen(true)}
-                >
-                  <Menu aria-hidden />
-                </Button>
-              </div>
-            )}
+            ) : null}
           </div>
 
-          {showDesktopLinks ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="shrink-0"
-              onClick={handleSignOut}
-            >
-              {t("auth.signOut")}
-            </Button>
-          ) : null}
+          <AppNavUserMenu
+            userName={userName}
+            avatarUrl={avatarUrl}
+            profileHref={profileHref}
+            onSignOut={handleSignOut}
+          />
         </nav>
       </header>
 
@@ -165,7 +168,6 @@ export function AppNav() {
         open={effectiveMenuOpen}
         items={items}
         onOpenChange={setMenuOpen}
-        onSignOut={handleSignOut}
       />
     </>
   );

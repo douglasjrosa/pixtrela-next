@@ -37,6 +37,7 @@ export interface KanbanBoardProps {
   ) => void | Promise<void>;
   onTaskClick?: (task: KanbanTask) => void;
   onTaskPrefetch?: (task: KanbanTask) => void;
+  onTaskVisiblePrefetch?: (task: KanbanTask) => void;
   onTaskPrefetchCancel?: () => void;
 }
 
@@ -60,6 +61,7 @@ export function KanbanBoard({
   onApplyOrder,
   onTaskClick,
   onTaskPrefetch,
+  onTaskVisiblePrefetch,
   onTaskPrefetchCancel,
 }: KanbanBoardProps) {
   const t = useTranslations("kanban");
@@ -152,6 +154,7 @@ export function KanbanBoard({
               tasks={stepCards}
               onTaskClick={onTaskClick}
               onTaskPrefetch={onTaskPrefetch}
+              onTaskVisiblePrefetch={onTaskVisiblePrefetch}
               onTaskPrefetchCancel={onTaskPrefetchCancel}
             />
           );
