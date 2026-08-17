@@ -85,19 +85,67 @@ export function applyAssigneeDraftDeltasToCounts(
   return counts;
 }
 
+export function ingestAssigneeDirectory(
+  directory: Map<string, string>,
+  people: readonly { documentId: string; name?: string | null }[],
+): void {
+  for (const person of people) {
+    const name = person.name?.trim() ?? "";
+    if (!name) continue;
+    if (directory.has(person.documentId)) continue;
+    directory.set(person.documentId, name);
+  }
+}
+
+export function ingestTeamsIntoAssigneeDirectory(
+  directory: Map<string, string>,
+  teams: readonly TeamAssignmentOption[],
+): void {
+  for (const team of teams) {
+    ingestAssigneeDirectory(directory, team.members);
+  }
+}
+
+export function ingestSubtasksIntoAssigneeDirectory(
+  directory: Map<string, string>,
+  items: readonly BoardSubTaskSummary[],
+): void {
+  for (const item of items) {
+    ingestAssigneeDirectory(directory, item.assignedTo);
+    ingestAssigneeDirectory(
+      directory,
+      item.sessions.map((session) => ({
+        documentId: session.colaboratorDocumentId,
+        name: session.colaboratorName,
+      })),
+    );
+  }
+}
+
+export function mergeAssigneesByIds(
+  existing: readonly BoardSubTaskSummary["assignedTo"][number][],
+  nextIds: readonly string[],
+  directory: ReadonlyMap<string, string>,
+): BoardSubTaskSummary["assignedTo"] {
+  const byId = new Map(
+    existing.map((assignee) => [assignee.documentId, assignee]),
+  );
+  return nextIds.map((documentId) => {
+    const previous = byId.get(documentId);
+    if (previous?.name) return previous;
+    return { documentId, name: directory.get(documentId) ?? "" };
+  });
+}
+
 export function resolveAssigneeNames(
   teams: TeamAssignmentOption[],
   assignedToIds: string[],
+  knownAssignees: readonly { documentId: string; name: string }[] = [],
 ): BoardSubTaskSummary["assignedTo"] {
-  const membersById = new Map(
-    teams.flatMap((team) =>
-      team.members.map((member) => [member.documentId, member.name] as const),
-    ),
-  );
-  return assignedToIds.map((documentId) => ({
-    documentId,
-    name: membersById.get(documentId) ?? documentId,
-  }));
+  const directory = new Map<string, string>();
+  ingestAssigneeDirectory(directory, knownAssignees);
+  ingestTeamsIntoAssigneeDirectory(directory, teams);
+  return mergeAssigneesByIds([], assignedToIds, directory);
 }
 
 export function mergeLoadedSubtasksWithDraft(

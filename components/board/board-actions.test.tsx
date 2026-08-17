@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
@@ -210,7 +210,6 @@ describe("BoardActions", () => {
       expect(createSubtask).toHaveBeenCalledWith(
         "task-10",
         expect.objectContaining({ name: "Cortar" }),
-        { addToTemplate: false },
       );
     });
     expect(
@@ -304,7 +303,22 @@ describe("BoardActions", () => {
 
   it("persists link-to-previous from the subtasks modal", async () => {
     const user = userEvent.setup();
-    const linkSubtask = vi.fn().mockResolvedValue(undefined);
+    let finishLink = (): void => undefined;
+    const linkSubtask = vi.fn(
+      () =>
+        new Promise<{
+          documentId: string;
+          linkedToPrevious: boolean;
+          assignedTo: { documentId: string; name: string }[];
+        }>((resolve) => {
+          finishLink = () =>
+            resolve({
+              documentId: "st-2",
+              linkedToPrevious: true,
+              assignedTo: [{ documentId: "u-1", name: "Ana" }],
+            });
+        }),
+    );
     const loadSubtasks = vi.fn().mockResolvedValue([
       boardSubTaskSummaryStub({
         documentId: "st-1",
@@ -331,9 +345,338 @@ describe("BoardActions", () => {
       (toggle) => !toggle.hasAttribute("disabled"),
     );
     expect(enabled).toBeTruthy();
-    await user.click(enabled!);
-    await vi.waitFor(() => {
-      expect(linkSubtask).toHaveBeenCalledWith("task-10", "st-2", true);
+    fireEvent.click(enabled!);
+    fireEvent.click(enabled!);
+    expect(linkSubtask).toHaveBeenCalledTimes(1);
+    expect(linkSubtask).toHaveBeenCalledWith("task-10", "st-2", true);
+    await act(async () => {
+      finishLink();
     });
+    expect(loadSubtasks).toHaveBeenCalledTimes(1);
+  });
+
+  it("flushes the last desired link after an in-flight toggle", async () => {
+    const user = userEvent.setup();
+    const finishQueue: Array<() => void> = [];
+    const linkSubtask = vi.fn(
+      (
+        _taskId: string,
+        _subtaskId: string,
+        linkedToPrevious: boolean,
+      ) =>
+        new Promise<{
+          documentId: string;
+          linkedToPrevious: boolean;
+          assignedTo: { documentId: string; name: string }[];
+        }>((resolve) => {
+          finishQueue.push(() =>
+            resolve({
+              documentId: "st-2",
+              linkedToPrevious,
+              assignedTo: [{ documentId: "u-1", name: "Ana" }],
+            }),
+          );
+        }),
+    );
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        index: 1,
+        assignedTo: [],
+      }),
+    ]);
+
+    renderBoard({ loadSubtasks, linkSubtask });
+    await user.click(screen.getByText("1 - Tarefa A"));
+    const linkButton = await screen.findByRole("button", {
+      name: "Ligar à anterior",
+    });
+    fireEvent.click(linkButton);
+    await vi.waitFor(() => {
+      expect(linkSubtask).toHaveBeenCalledTimes(1);
+    });
+    const unlinkButton = await screen.findByRole("button", {
+      name: "Desligar da anterior",
+    });
+    fireEvent.click(unlinkButton);
+    expect(linkSubtask).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finishQueue[0]?.();
+    });
+    await vi.waitFor(() => {
+      expect(linkSubtask).toHaveBeenCalledTimes(2);
+    });
+    expect(linkSubtask).toHaveBeenLastCalledWith("task-10", "st-2", false);
+  });
+
+  it("keeps loaded assignee names that are not on a team", async () => {
+    const user = userEvent.setup();
+    const liveWorkerId = "11111111-1111-1111-1111-111111111111";
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        assignedTo: [{ documentId: liveWorkerId, name: "Live Worker" }],
+      }),
+    ]);
+
+    renderBoard({
+      loadSubtasks,
+      assigneePeople: [{ documentId: liveWorkerId, name: "Live Worker" }],
+    });
+    await user.click(screen.getByText("1 - Tarefa A"));
+    expect(await screen.findByText("Live Worker")).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: /Soldar/ }));
+    await user.click(screen.getByRole("button", { name: "Atribuir Ana" }));
+
+    expect(screen.getByText("Live Worker")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remover Ana" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(liveWorkerId)).not.toBeInTheDocument();
+  });
+
+  it("keeps inherited assignees when the link response returns stale originals", async () => {
+    const user = userEvent.setup();
+    let finishLink = (): void => undefined;
+    const linkSubtask = vi.fn(
+      () =>
+        new Promise<{
+          documentId: string;
+          linkedToPrevious: boolean;
+          assignedTo: { documentId: string; name: string }[];
+        }>((resolve) => {
+          finishLink = () =>
+            resolve({
+              documentId: "st-2",
+              linkedToPrevious: true,
+              assignedTo: [{ documentId: "u-2", name: "Bia" }],
+            });
+        }),
+    );
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        index: 1,
+        assignedTo: [{ documentId: "u-2", name: "Bia" }],
+      }),
+    ]);
+
+    renderBoard({ loadSubtasks, linkSubtask });
+    await user.click(screen.getByText("1 - Tarefa A"));
+    expect(await screen.findByText("Bia")).toBeInTheDocument();
+    const linkButton = await screen.findByRole("button", {
+      name: "Ligar à anterior",
+    });
+    fireEvent.click(linkButton);
+    expect(screen.getAllByText("Ana").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Bia")).not.toBeInTheDocument();
+
+    await act(async () => {
+      finishLink();
+    });
+    expect(screen.getAllByText("Ana").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Bia")).not.toBeInTheDocument();
+  });
+
+  it("lets a max>1 member add extras but not drop head assignees", async () => {
+    const user = userEvent.setup();
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: true,
+        maxSameTimeWorkers: 2,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+    ]);
+
+    renderBoard({
+      loadSubtasks,
+      teams: [
+        {
+          documentId: "team-1",
+          name: "Equipe A",
+          members: [
+            { documentId: "u-1", name: "Ana" },
+            { documentId: "u-2", name: "Bob" },
+          ],
+        },
+      ],
+    });
+    await user.click(screen.getByText("1 - Tarefa A"));
+    await user.click(await screen.findByRole("button", { name: /Cortar/ }));
+    await user.click(screen.getByRole("button", { name: "Remover Ana" }));
+    expect(screen.getByRole("button", { name: "Remover Ana" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Atribuir Bob" }));
+    expect(screen.getByRole("button", { name: "Remover Bob" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remover Ana" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Remover Bob" }));
+    expect(screen.getByRole("button", { name: "Atribuir Bob" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remover Ana" })).toBeInTheDocument();
+  });
+
+  it("assigns extras only to a max>1 head on the first click", async () => {
+    const user = userEvent.setup();
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        maxSameTimeWorkers: 2,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: true,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+    ]);
+
+    renderBoard({
+      loadSubtasks,
+      teams: [
+        {
+          documentId: "team-1",
+          name: "Equipe A",
+          members: [
+            { documentId: "u-1", name: "Ana" },
+            { documentId: "u-2", name: "Bob" },
+          ],
+        },
+      ],
+    });
+    await user.click(screen.getByText("1 - Tarefa A"));
+    await user.click(await screen.findByRole("button", { name: /Soldar/ }));
+    await user.click(screen.getByRole("button", { name: "Atribuir Bob" }));
+    expect(screen.getByRole("button", { name: "Remover Bob" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Cortar/ }));
+    expect(screen.getByRole("button", { name: "Atribuir Bob" })).toBeInTheDocument();
+  });
+
+  it("propagates removing a shared assignee from a max>1 head", async () => {
+    const user = userEvent.setup();
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        maxSameTimeWorkers: 2,
+        assignedTo: [
+          { documentId: "u-1", name: "Ana" },
+          { documentId: "u-2", name: "Bob" },
+        ],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: true,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+    ]);
+
+    renderBoard({
+      loadSubtasks,
+      teams: [
+        {
+          documentId: "team-1",
+          name: "Equipe A",
+          members: [
+            { documentId: "u-1", name: "Ana" },
+            { documentId: "u-2", name: "Bob" },
+          ],
+        },
+      ],
+    });
+    await user.click(screen.getByText("1 - Tarefa A"));
+    await user.click(await screen.findByRole("button", { name: /Soldar/ }));
+    await user.click(screen.getByRole("button", { name: "Remover Ana" }));
+    expect(screen.getByRole("button", { name: "Remover Bob" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Atribuir Ana" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Cortar/ }));
+    expect(screen.getByRole("button", { name: "Atribuir Ana" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Atribuir Bob" })).toBeInTheDocument();
+  });
+
+  it("propagates head extras after toggling a max>1 head to the group", async () => {
+    const user = userEvent.setup();
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        maxSameTimeWorkers: 2,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        index: 1,
+        linkedToPrevious: true,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+    ]);
+
+    renderBoard({
+      loadSubtasks,
+      teams: [
+        {
+          documentId: "team-1",
+          name: "Equipe A",
+          members: [
+            { documentId: "u-1", name: "Ana" },
+            { documentId: "u-2", name: "Bob" },
+          ],
+        },
+      ],
+    });
+    await user.click(screen.getByText("1 - Tarefa A"));
+    await user.click(await screen.findByRole("button", { name: /Soldar/ }));
+    await user.click(screen.getByRole("button", { name: /Soldar/ }));
+    await user.click(screen.getByRole("button", { name: "Atribuir Bob" }));
+    await user.click(screen.getByRole("button", { name: /Cortar/ }));
+    expect(screen.getByRole("button", { name: "Remover Bob" })).toBeInTheDocument();
   });
 });

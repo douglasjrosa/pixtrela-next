@@ -121,6 +121,32 @@ describe("tasks/actions drizzle CRUD", () => {
     expect(deleteTaskById).toHaveBeenCalledWith("task-1");
   });
 
+  it("bulkDeactivateTasks archives each selected task with shared reason", async () => {
+    getTaskById.mockResolvedValue({ active: true });
+    const reason = "x".repeat(50);
+    const { bulkDeactivateTasks } = await import("./actions");
+    await bulkDeactivateTasks(["task-1", "task-2"], reason);
+    expect(setTaskActive).toHaveBeenCalledTimes(2);
+    expect(setTaskActive).toHaveBeenCalledWith("task-1", false, reason);
+    expect(setTaskActive).toHaveBeenCalledWith("task-2", false, reason);
+  });
+
+  it("bulkDeleteTasks deletes only inactive tasks", async () => {
+    getTaskById.mockResolvedValue({ active: false });
+    const { bulkDeleteTasks } = await import("./actions");
+    await bulkDeleteTasks(["task-1", "task-2"]);
+    expect(deleteTaskById).toHaveBeenCalledTimes(2);
+    expect(deleteTaskById).toHaveBeenCalledWith("task-1");
+    expect(deleteTaskById).toHaveBeenCalledWith("task-2");
+  });
+
+  it("bulkDeleteTasks rejects active tasks", async () => {
+    getTaskById.mockResolvedValue({ active: true });
+    const { bulkDeleteTasks } = await import("./actions");
+    await expect(bulkDeleteTasks(["task-1"])).rejects.toThrow("activeTask");
+    expect(deleteTaskById).not.toHaveBeenCalled();
+  });
+
   it("lookupTemplateNameByCode reads template repo", async () => {
     findTemplateByCode.mockResolvedValue({ name: "Modelo A" });
     const { lookupTemplateNameByCode } = await import("./actions");

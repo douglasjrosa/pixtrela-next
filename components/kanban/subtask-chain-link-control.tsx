@@ -6,42 +6,40 @@ import { Link2, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** List gap that leaves room for the mid-gap chain button and line stubs. */
-export const SUBTASK_CHAIN_LIST_GAP_CLASS = "gap-12";
+/** Tight list gap; the C-frame height includes this token. */
+export const SUBTASK_CHAIN_LIST_GAP_CLASS =
+  "isolate gap-[var(--subtask-chain-gap)] [--subtask-chain-gap:0.5rem]";
 
-/** Half of `gap-12` — anchor sits in the middle of the gap above this card. */
-const GAP_MID_OFFSET_CLASS = "-top-6";
+const LINK_COLUMN_CLASS =
+  "relative z-0 flex h-full w-7 shrink-0 flex-col items-center";
 
-/** Line stub from each card edge to the button (half of `gap-12`). */
-const LINE_STUB_HEIGHT_CLASS = "h-6";
+const CHAIN_FRAME_CLASS = cn(
+  "pointer-events-none absolute left-1/2 top-3.5 -translate-y-1/2",
+  "h-[calc(var(--subtask-chain-gap)+5rem)] w-5",
+  "border-4 border-b border-l border-r-0 border-t border-dashed border-primary",
+);
 
 export interface SubtaskChainLinkControlProps {
   linked: boolean;
+  showButton?: boolean;
+  hidden?: boolean;
   disabled?: boolean;
   linkLabel: string;
   unlinkLabel: string;
   onToggle: (linked: boolean) => void;
 }
 
-function chainLineClass(linked: boolean, side: "above" | "below"): string {
-  return cn(
-    "pointer-events-none absolute left-0 -translate-x-1/2",
-    LINE_STUB_HEIGHT_CLASS,
-    side === "above" ? "bottom-full" : "top-full",
-    linked
-      ? "w-px bg-primary"
-      : "w-0 border-l border-dashed border-muted-foreground/50",
-  );
-}
-
 export function SubtaskChainLinkControl({
   linked,
+  showButton = true,
+  hidden = false,
   disabled = false,
   linkLabel,
   unlinkLabel,
   onToggle,
 }: SubtaskChainLinkControlProps) {
   const Icon = linked ? Link2 : Unlink;
+  const showVisuals = showButton && !hidden;
 
   function handleClick(event: MouseEvent<HTMLButtonElement>): void {
     event.stopPropagation();
@@ -55,36 +53,36 @@ export function SubtaskChainLinkControl({
 
   return (
     <div
-      className={cn("absolute left-0 z-10", GAP_MID_OFFSET_CLASS)}
-      data-testid="subtask-chain-link"
+      className={LINK_COLUMN_CLASS}
+      data-testid={showButton ? "subtask-chain-link" : undefined}
       data-linked={linked ? "true" : "false"}
+      data-hidden={hidden ? "true" : "false"}
     >
-      <span
-        className={chainLineClass(linked, "above")}
-        aria-hidden
-        data-slot="chain-line-above"
-      />
-      <span
-        className={chainLineClass(linked, "below")}
-        aria-hidden
-        data-slot="chain-line-below"
-      />
-      <Button
-        type="button"
-        size="icon-sm"
-        variant="outline"
-        className={cn(
-          "absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full",
-          linked ? "border-primary text-primary" : "text-muted-foreground",
-        )}
-        aria-pressed={linked}
-        aria-label={linked ? unlinkLabel : linkLabel}
-        disabled={disabled}
-        onClick={handleClick}
-        onPointerDown={handlePointerDown}
-      >
-        <Icon aria-hidden />
-      </Button>
+      {showVisuals && linked ? (
+        <div
+          className={CHAIN_FRAME_CLASS}
+          aria-hidden
+          data-slot="chain-line"
+        />
+      ) : null}
+      {showVisuals ? (
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="outline"
+          className={cn(
+            "relative z-10 rounded-full",
+            linked ? "border-primary text-primary" : "text-muted-foreground",
+          )}
+          aria-pressed={linked}
+          aria-label={linked ? unlinkLabel : linkLabel}
+          disabled={disabled}
+          onClick={handleClick}
+          onPointerDown={handlePointerDown}
+        >
+          <Icon aria-hidden />
+        </Button>
+      ) : null}
     </div>
   );
 }

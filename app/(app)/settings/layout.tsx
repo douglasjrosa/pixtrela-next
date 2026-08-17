@@ -37,6 +37,7 @@ export default async function SettingsLayout({
             { href: "/settings/currency", label: t("tabs.currency") },
             { href: "/settings/automations", label: t("tabs.automations") },
             { href: "/settings/kiosk", label: t("tabs.kiosk") },
+            { href: "/settings/login", label: t("tabs.login") },
             { href: "/settings/themes", label: t("tabs.themes") },
           ]}
         />

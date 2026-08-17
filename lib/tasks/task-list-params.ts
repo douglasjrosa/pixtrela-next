@@ -5,6 +5,13 @@ import {
   taskListFiltersSchema,
   type TaskListFilters,
 } from "@/lib/schemas/task-list-filters";
+import {
+  isDefaultTaskListSort,
+  TASK_LIST_DEFAULT_SORT_COLUMN,
+  TASK_LIST_DEFAULT_SORT_DIRECTION,
+  TASK_LIST_SORT_COLUMNS,
+  TASK_LIST_SORT_DIRECTIONS,
+} from "@/lib/schemas/task-list-sort";
 import { TASK_STATUSES } from "@/lib/schemas/task";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -41,6 +48,8 @@ export function defaultTaskListFilters(now: Date = new Date()): TaskListFilters 
   return taskListFiltersSchema.parse({
     statuses: [...TASK_LIST_DEFAULT_STATUSES],
     from: defaultTaskListFrom(now),
+    to: formatDateOnly(now),
+    showArchived: false,
   });
 }
 
@@ -52,6 +61,20 @@ function parseStatusesCsv(raw: string | undefined): string[] | undefined {
     .map((part) => part.trim())
     .filter((part) => allowed.has(part));
   return values.length > 0 ? values : undefined;
+}
+
+function parseSortColumn(
+  raw: string | undefined,
+): (typeof TASK_LIST_SORT_COLUMNS)[number] | undefined {
+  if (!raw?.trim()) return undefined;
+  return TASK_LIST_SORT_COLUMNS.find((column) => column === raw.trim());
+}
+
+function parseSortDirection(
+  raw: string | undefined,
+): (typeof TASK_LIST_SORT_DIRECTIONS)[number] | undefined {
+  if (!raw?.trim()) return undefined;
+  return TASK_LIST_SORT_DIRECTIONS.find((direction) => direction === raw.trim());
 }
 
 /**
@@ -66,21 +89,51 @@ export function parseTaskListSearchParams(
   const from = firstParam(params.from)?.trim() || defaultTaskListFrom(now);
   const toRaw = firstParam(params.to)?.trim();
   const qRaw = firstParam(params.q)?.trim();
+  const showArchived = firstParam(params.archived) === "1";
+  const sortColumn = parseSortColumn(firstParam(params.sort));
+  const sortDirection = parseSortDirection(firstParam(params.dir));
 
   const result = taskListFiltersSchema.safeParse({
     statuses: statuses ?? [...TASK_LIST_DEFAULT_STATUSES],
     from,
-    to: toRaw || undefined,
+    to: toRaw || formatDateOnly(now),
     q:
       qRaw && qRaw.length >= TASK_LIST_NAME_MIN_CHARS
         ? qRaw
         : undefined,
+    showArchived,
+    column: sortColumn ?? TASK_LIST_DEFAULT_SORT_COLUMN,
+    direction: sortDirection ?? TASK_LIST_DEFAULT_SORT_DIRECTION,
   });
 
   if (!result.success) {
     return defaultTaskListFilters(now);
   }
   return result.data;
+}
+
+/** Whether bulk-selection mode is active (`select=1`). */
+export function parseTaskListSelectMode(params: SearchParamsRecord): boolean {
+  return firstParam(params.select) === "1";
+}
+
+/** True when filters match the default list configuration (excluding sort). */
+export function isDefaultTaskListFilters(
+  filters: TaskListFilters,
+  now: Date = new Date(),
+): boolean {
+  const defaults = defaultTaskListFilters(now);
+  return (
+    sameStatuses(filters.statuses, defaults.statuses) &&
+    filters.from === defaults.from &&
+    filters.to === defaults.to &&
+    !filters.showArchived &&
+    !filters.q &&
+    isDefaultTaskListSort({
+      column: filters.column,
+      direction: filters.direction,
+    })
+  );
 }
 
 function sameStatuses(
@@ -99,6 +152,7 @@ function sameStatuses(
 export function serializeTaskListSearchParams(
   filters: TaskListFilters,
   now: Date = new Date(),
+  options: { selectMode?: boolean } = {},
 ): URLSearchParams {
   const params = new URLSearchParams();
   const defaults = defaultTaskListFilters(now);
@@ -109,11 +163,21 @@ export function serializeTaskListSearchParams(
   if (filters.from !== defaults.from) {
     params.set("from", filters.from);
   }
-  if (filters.to) {
+  if (filters.to !== defaults.to) {
     params.set("to", filters.to);
+  }
+  if (filters.showArchived) {
+    params.set("archived", "1");
   }
   if (filters.q) {
     params.set("q", filters.q);
+  }
+  if (!isDefaultTaskListSort({ column: filters.column, direction: filters.direction })) {
+    params.set("sort", filters.column);
+    params.set("dir", filters.direction);
+  }
+  if (options.selectMode) {
+    params.set("select", "1");
   }
   return params;
 }
@@ -125,5 +189,8 @@ export function taskListFilterKey(filters: TaskListFilters): string {
     filters.from,
     filters.to ?? "",
     filters.q ?? "",
+    filters.showArchived ? "1" : "0",
+    filters.column,
+    filters.direction,
   ].join("|");
 }

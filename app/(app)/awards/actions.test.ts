@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const revalidateTag = vi.fn();
 const createAwardRepo = vi.fn();
 const replaceAwardPrices = vi.fn();
+const deleteAwardRepo = vi.fn();
+const findAwardById = vi.fn();
+const hardDeleteAward = vi.fn();
 const getDb = vi.fn();
 const storeMedia = vi.fn();
 
@@ -17,6 +20,15 @@ vi.mock("next/cache", () => ({
 vi.mock("@/lib/repos/awards", () => ({
   createAward: (...args: unknown[]) => createAwardRepo(...args),
   replaceAwardPrices: (...args: unknown[]) => replaceAwardPrices(...args),
+  deleteAward: (...args: unknown[]) => deleteAwardRepo(...args),
+  findAwardById: (...args: unknown[]) => findAwardById(...args),
+  hardDeleteAward: (...args: unknown[]) => hardDeleteAward(...args),
+}));
+
+const loadAwardListPageMock = vi.fn();
+
+vi.mock("@/lib/awards/load-award-list-page", () => ({
+  loadAwardListPage: (...args: unknown[]) => loadAwardListPageMock(...args),
 }));
 
 vi.mock("@/lib/db/client", () => ({
@@ -39,9 +51,31 @@ describe("awards/actions drizzle CRUD", () => {
     revalidateTag.mockReset();
     createAwardRepo.mockReset();
     replaceAwardPrices.mockReset();
+    deleteAwardRepo.mockReset();
+    findAwardById.mockReset();
+    hardDeleteAward.mockReset();
     storeMedia.mockReset();
+    loadAwardListPageMock.mockReset();
     getDb.mockReturnValue({ update });
     update.mockClear();
+  });
+
+  it("loadMoreAwards parses filters and loads a page", async () => {
+    loadAwardListPageMock.mockResolvedValueOnce({
+      awards: [],
+      page: 2,
+      pageCount: 2,
+      hasMore: false,
+    });
+    const { loadMoreAwards } = await import("./actions");
+    await loadMoreAwards(
+      { column: "title", direction: "asc", showArchived: false },
+      2,
+    );
+    expect(loadAwardListPageMock).toHaveBeenCalledWith(
+      { q: undefined, column: "title", direction: "asc", showArchived: false },
+      2,
+    );
   });
 
   it("createAward writes through repo", async () => {
@@ -52,29 +86,67 @@ describe("awards/actions drizzle CRUD", () => {
       description: "",
       warnings: "",
       imageId: null,
+      showInStore: true,
+      stock: 5,
       values: [{ currencyDocumentId: "cur-1", numberOf: 10 }],
     });
     expect(createAwardRepo).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "Arroz",
+        active: true,
+        showInStore: true,
+        stock: 5,
         prices: [{ currencyId: "cur-1", numberOf: 10 }],
       }),
     );
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
   });
 
-  it("deleteAward soft-deactivates the award", async () => {
-    const where = vi.fn().mockResolvedValue(undefined);
-    const set = vi.fn().mockReturnValue({ where });
-    update.mockReturnValue({ set });
-
+  it("deleteAward archives through repo for manager+", async () => {
     const { deleteAward } = await import("./actions");
     await deleteAward("award-1");
-
-    expect(set).toHaveBeenCalledWith(
-      expect.objectContaining({ active: false }),
-    );
+    expect(deleteAwardRepo).toHaveBeenCalledWith("award-1");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
+  });
+
+  it("permanentlyDeleteAward hard-deletes archived awards only", async () => {
+    findAwardById.mockResolvedValue({ id: "award-1", active: false });
+    const { permanentlyDeleteAward } = await import("./actions");
+    await permanentlyDeleteAward("award-1");
+    expect(hardDeleteAward).toHaveBeenCalledWith("award-1");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
+  });
+
+  it("permanentlyDeleteAward rejects active awards", async () => {
+    findAwardById.mockResolvedValue({ id: "award-1", active: true });
+    const { permanentlyDeleteAward } = await import("./actions");
+    await expect(permanentlyDeleteAward("award-1")).rejects.toThrow("activeAward");
+    expect(hardDeleteAward).not.toHaveBeenCalled();
+  });
+
+  it("bulkArchiveAwards archives each selected award", async () => {
+    findAwardById.mockResolvedValue({ id: "award-1", active: true });
+    const { bulkArchiveAwards } = await import("./actions");
+    await bulkArchiveAwards(["award-1", "award-2"]);
+    expect(deleteAwardRepo).toHaveBeenCalledTimes(2);
+    expect(deleteAwardRepo).toHaveBeenCalledWith("award-1");
+    expect(deleteAwardRepo).toHaveBeenCalledWith("award-2");
+  });
+
+  it("bulkDeleteAwards hard-deletes archived awards only", async () => {
+    findAwardById.mockResolvedValue({ id: "award-1", active: false });
+    const { bulkDeleteAwards } = await import("./actions");
+    await bulkDeleteAwards(["award-1", "award-2"]);
+    expect(hardDeleteAward).toHaveBeenCalledTimes(2);
+    expect(hardDeleteAward).toHaveBeenCalledWith("award-1");
+    expect(hardDeleteAward).toHaveBeenCalledWith("award-2");
+  });
+
+  it("bulkDeleteAwards rejects active awards", async () => {
+    findAwardById.mockResolvedValue({ id: "award-1", active: true });
+    const { bulkDeleteAwards } = await import("./actions");
+    await expect(bulkDeleteAwards(["award-1"])).rejects.toThrow("activeAward");
+    expect(hardDeleteAward).not.toHaveBeenCalled();
   });
 
   it("updateAward updates row and replaces prices", async () => {
@@ -89,6 +161,8 @@ describe("awards/actions drizzle CRUD", () => {
       description: "",
       warnings: "",
       imageId: "00000000-0000-4000-8000-000000000001",
+      showInStore: false,
+      stock: 3,
       values: [{ currencyDocumentId: "cur-1", numberOf: 5 }],
     });
 
@@ -96,7 +170,12 @@ describe("awards/actions drizzle CRUD", () => {
       expect.objectContaining({
         name: "Feijão",
         imageMediaId: "00000000-0000-4000-8000-000000000001",
+        showInStore: false,
+        stock: 3,
       }),
+    );
+    expect(set).toHaveBeenCalledWith(
+      expect.not.objectContaining({ active: expect.anything() }),
     );
     expect(replaceAwardPrices).toHaveBeenCalledWith(
       "award-1",

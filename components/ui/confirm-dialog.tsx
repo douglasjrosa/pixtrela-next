@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { cn } from "@/lib/utils";
 export interface ConfirmDialogProps {
   open: boolean;
   title: string;
-  description: string;
+  description: ReactNode;
   titleId?: string;
   confirmLabel?: string;
   cancelLabel?: string;
@@ -56,7 +57,7 @@ export function ConfirmDialog({
             <h2 id={titleId} className="text-lg font-semibold">
               {title}
             </h2>
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <div className="text-sm text-muted-foreground">{description}</div>
           </div>
 
           <div className="flex justify-end gap-2">

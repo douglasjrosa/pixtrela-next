@@ -14,9 +14,13 @@ import { KioskFaceVerify } from "@/components/kiosk/kiosk-face-verify";
 import { KioskHomeChooser } from "@/components/kiosk/kiosk-home-chooser";
 import type { Role } from "@/lib/auth/nav";
 import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
+import {
+  pickEntryAccessMethods,
+  type EntryAccessByDevice,
+  type EntryAccessMethods,
+} from "@/lib/business/entry-access";
+import { useEntryAccessDevice } from "@/lib/entry-access/use-entry-access-device";
 import { FACE_1N_NONE_MESSAGE_MS } from "@/lib/kiosk/face/face-match-constants";
-import { loadFaceModels } from "@/lib/kiosk/face/load-face-models";
-import { isNfcReadSupported, watchNfcSerialNumbers } from "@/lib/kiosk/nfc-read";
 import { stashWelcomePayload } from "@/lib/welcome/welcome-session";
 
 import {
@@ -56,11 +60,19 @@ async function establishSessionFromLoginTicket(
   return !result?.error;
 }
 
-export function LoginEntryClient() {
+export function LoginEntryClient({
+  accessSettings,
+}: {
+  accessSettings?: EntryAccessByDevice;
+}) {
   const t = useTranslations("auth");
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
+  const device = useEntryAccessDevice();
+  const methods: EntryAccessMethods = accessSettings
+    ? pickEntryAccessMethods(accessSettings, device)
+    : { username: true, code: true, face: true, nfc: true };
 
   const [step, setStep] = useState<LoginStep>("choose");
   const [selectedMember, setSelectedMember] =
@@ -136,66 +148,80 @@ export function LoginEntryClient() {
   );
 
   const openCode = useCallback(() => {
+    if (!methods.code) return;
     clearNoneMessageTimer();
     setSelectedMember(null);
     setCandidates([]);
     setUnidentifiedMessage(null);
     setErrorKey(null);
     setStep("code");
-  }, [clearNoneMessageTimer]);
+  }, [clearNoneMessageTimer, methods.code]);
 
   const openCamera = useCallback(() => {
+    if (!methods.face) return;
     clearNoneMessageTimer();
     setSelectedMember(null);
     setCandidates([]);
     setUnidentifiedMessage(null);
     setErrorKey(null);
     setStep("face1n");
-  }, [clearNoneMessageTimer]);
+  }, [clearNoneMessageTimer, methods.face]);
 
   useEffect(() => {
-    void loadFaceModels().catch(() => {
-      /* best-effort warm-up */
+    if (!methods.face) return;
+    void import("@/lib/kiosk/face/load-face-models").then(({ loadFaceModels }) => {
+      void loadFaceModels().catch(() => {
+        /* best-effort warm-up */
+      });
     });
-  }, []);
+  }, [methods.face]);
 
   useEffect(() => {
+    if (!methods.nfc) return;
     if (step !== "choose") return;
-    if (!isNfcReadSupported()) return;
 
     let cancelled = false;
     const identifyingRef = { current: false };
+    let stopWatcher: (() => void) | undefined;
 
-    const { stop } = watchNfcSerialNumbers({
-      onTag: (userTag) => {
-        if (cancelled || identifyingRef.current || finishingRef.current) return;
-        identifyingRef.current = true;
-        void (async () => {
-          const result = await loginByTag(userTag);
-          if (cancelled) return;
-          if (!result.ok) {
-            setUnidentifiedMessage(t("tagNotFound"));
-            clearNoneMessageTimer();
-            noneMessageTimerRef.current = setTimeout(() => {
-              setUnidentifiedMessage(null);
-            }, FACE_1N_NONE_MESSAGE_MS);
-            identifyingRef.current = false;
-            return;
-          }
-          await finishWithSession({
-            jwt: result.jwt || undefined,
-            loginTicket: result.loginTicket,
-            welcome: result.welcome,
-          });
-        })();
+    void import("@/lib/kiosk/nfc-read").then(
+      ({ isNfcReadSupported, watchNfcSerialNumbers }) => {
+        if (cancelled || !isNfcReadSupported()) return;
+        const { stop } = watchNfcSerialNumbers({
+          onTag: (userTag) => {
+            if (cancelled || identifyingRef.current || finishingRef.current) {
+              return;
+            }
+            identifyingRef.current = true;
+            void (async () => {
+              const result = await loginByTag(userTag);
+              if (cancelled) return;
+              if (!result.ok) {
+                setUnidentifiedMessage(t("tagNotFound"));
+                clearNoneMessageTimer();
+                noneMessageTimerRef.current = setTimeout(() => {
+                  setUnidentifiedMessage(null);
+                }, FACE_1N_NONE_MESSAGE_MS);
+                identifyingRef.current = false;
+                return;
+              }
+              await finishWithSession({
+                jwt: result.jwt || undefined,
+                loginTicket: result.loginTicket,
+                welcome: result.welcome,
+              });
+            })();
+          },
+        });
+        stopWatcher = stop;
       },
-    });
+    );
 
     return () => {
       cancelled = true;
-      stop();
+      stopWatcher?.();
     };
-  }, [step, t, clearNoneMessageTimer, finishWithSession]);
+  }, [methods.nfc, step, t, clearNoneMessageTimer, finishWithSession]);
 
   useEffect(() => {
     return () => {
@@ -301,7 +327,7 @@ export function LoginEntryClient() {
     });
   }
 
-  if (step === "username") {
+  if (step === "username" && methods.username) {
     return (
       <div className="flex flex-col gap-4">
         <LoginForm />
@@ -319,7 +345,7 @@ export function LoginEntryClient() {
     );
   }
 
-  if (step === "face1to1" && selectedMember) {
+  if (methods.face && step === "face1to1" && selectedMember) {
     return (
       <KioskFaceVerify
         colaboratorName={selectedMember.name}
@@ -332,7 +358,7 @@ export function LoginEntryClient() {
     );
   }
 
-  if (step === "ambiguous") {
+  if (methods.face && step === "ambiguous") {
     return (
       <KioskFaceAmbiguousList
         candidates={candidates}
@@ -344,7 +370,7 @@ export function LoginEntryClient() {
     );
   }
 
-  if (step === "face1n") {
+  if (methods.face && step === "face1n") {
     return (
       <KioskFace1nCapture
         disabled={pending}
@@ -355,7 +381,7 @@ export function LoginEntryClient() {
     );
   }
 
-  if (step === "code") {
+  if (methods.code && step === "code") {
     return (
       <div className="flex flex-col gap-6">
         {errorKey ? (
@@ -388,7 +414,10 @@ export function LoginEntryClient() {
       onPassword={openCode}
       message={unidentifiedMessage}
       messagesNamespace="auth"
-      onUsernameLogin={() => setStep("username")}
+      onUsernameLogin={
+        methods.username ? () => setStep("username") : undefined
+      }
+      access={methods}
     />
   );
 }

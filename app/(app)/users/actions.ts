@@ -26,7 +26,12 @@ import {
   type UserRole,
 } from "@/lib/repos/users";
 import { buildUserFormSchema, type UserFormInput } from "@/lib/schemas/user";
+import { userListFiltersSchema } from "@/lib/schemas/user-list-filters";
 import { deriveUserEmail } from "@/lib/users/create-user-payload";
+import {
+  loadUserListPage,
+  type UserListPageResult,
+} from "@/lib/users/load-user-list-page";
 
 export type UserImageType = "avatar" | "facePhoto";
 export type UserId = number | string;
@@ -71,6 +76,15 @@ async function assertCanManageTargetRole(targetRole: Role): Promise<void> {
 
 function invalidateUsers(): void {
   revalidateTag("drizzle:users", "default");
+}
+
+export async function loadMoreUsers(
+  rawFilters: unknown,
+  page: number,
+): Promise<UserListPageResult> {
+  await assertCanView();
+  const filters = userListFiltersSchema.parse(rawFilters);
+  return loadUserListPage(filters, page);
 }
 
 function sanitizePasswordFields(

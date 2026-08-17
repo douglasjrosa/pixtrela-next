@@ -145,7 +145,12 @@ describe("StepManager", () => {
 
   it("closes modal after successful create with name only", async () => {
     const user = userEvent.setup();
-    const onCreate = vi.fn().mockResolvedValue(undefined);
+    const onCreate = vi.fn().mockResolvedValue({
+      documentId: "s-new",
+      name: "Corte",
+      index: 0,
+      orderBy: "manual" as const,
+    });
     renderWithIntl(
       <StepManager
         steps={[]}
@@ -169,5 +174,32 @@ describe("StepManager", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
+    expect(screen.getByText("Corte")).toBeInTheDocument();
+  });
+
+  it("removes a step from the list after confirm delete", async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn().mockResolvedValue(undefined);
+    renderWithIntl(
+      <StepManager
+        steps={steps}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onReorder={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    await user.click(screen.getByText("Fila"));
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => {
+      expect(onDelete).toHaveBeenCalledWith("s1");
+    });
+    await waitFor(() => {
+      expect(screen.queryByText("Fila")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Produção")).toBeInTheDocument();
   });
 });

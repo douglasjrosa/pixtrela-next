@@ -1,18 +1,26 @@
-"use client";
-
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 import { ListEmptyMessage } from "@/components/ui/list-empty-message";
+import type { TemplateListSort } from "@/lib/schemas/template-list-sort";
+import type { TemplateListFilters } from "@/lib/schemas/template-list-filters";
 
-import { TemplateListRowView } from "./template-list-row";
+import { TemplatesListMobileList } from "./templates-list-mobile-list";
+import { TemplatesListTableBody } from "./templates-list-table-body";
+import { TemplatesListTableHeader } from "./templates-list-table-header";
 import type { TemplateListRow } from "./types";
 
 export interface TemplatesListViewProps {
   templates: TemplateListRow[];
+  sort: TemplateListSort;
+  filters: TemplateListFilters;
 }
 
-export function TemplatesListView({ templates }: TemplatesListViewProps) {
-  const tTemplates = useTranslations("templates");
+export async function TemplatesListView({
+  templates,
+  sort,
+  filters,
+}: TemplatesListViewProps) {
+  const tTemplates = await getTranslations("templates");
 
   if (templates.length === 0) {
     return <ListEmptyMessage>{tTemplates("empty")}</ListEmptyMessage>;
@@ -20,34 +28,9 @@ export function TemplatesListView({ templates }: TemplatesListViewProps) {
 
   return (
     <>
-      <table className="hidden w-full text-sm md:table">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="py-2">{tTemplates("name")}</th>
-            <th>{tTemplates("code")}</th>
-            <th>{tTemplates("subtasks")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {templates.map((template) => (
-            <TemplateListRowView
-              key={template.documentId}
-              template={template}
-              variant="table"
-            />
-          ))}
-        </tbody>
-      </table>
-
-      <ul className="md:hidden">
-        {templates.map((template) => (
-          <TemplateListRowView
-            key={template.documentId}
-            template={template}
-            variant="mobile"
-          />
-        ))}
-      </ul>
+      <TemplatesListTableHeader sort={sort} filters={filters} />
+      <TemplatesListTableBody templates={templates} />
+      <TemplatesListMobileList templates={templates} />
     </>
   );
 }

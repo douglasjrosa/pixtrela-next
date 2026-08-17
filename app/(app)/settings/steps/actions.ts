@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import { applyAutoStepTaskOrdering } from "@/lib/business/apply-step-task-order";
@@ -23,6 +23,10 @@ import {
   stepNameFormSchema,
   type StepNameFormInput,
 } from "@/lib/schemas/step";
+import {
+  mapStepRecordToSettingsRow,
+  type SettingsStepRow,
+} from "@/lib/steps/map-settings-step";
 
 async function assertCanManage(): Promise<void> {
   const session = await auth();
@@ -34,6 +38,7 @@ async function assertCanManage(): Promise<void> {
 function invalidateSteps(): void {
   revalidateTag("drizzle:steps", "default");
   revalidateTag("drizzle:tasks", "default");
+  revalidatePath("/settings/steps");
 }
 
 async function fetchStepIndexes(): Promise<number[]> {
@@ -46,7 +51,9 @@ async function fetchStepIds(): Promise<string[]> {
   return rows.map((step) => step.id);
 }
 
-export async function createStep(raw: StepNameFormInput): Promise<void> {
+export async function createStep(
+  raw: StepNameFormInput,
+): Promise<SettingsStepRow> {
   await assertCanManage();
   const { name, orderBy } = stepNameFormSchema.parse(raw);
   const indexes = await fetchStepIndexes();
@@ -57,6 +64,7 @@ export async function createStep(raw: StepNameFormInput): Promise<void> {
     await applyAutoStepTaskOrdering({ stepIds: [created.id] });
   }
   invalidateSteps();
+  return mapStepRecordToSettingsRow(created);
 }
 
 export async function updateStep(

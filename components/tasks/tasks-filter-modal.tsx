@@ -6,14 +6,16 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { Label } from "@/components/ui/label";
+import { isTaskListDateRangeWithinMaxMonths } from "@/lib/business/task-list-date-range";
 import { TASK_STATUSES } from "@/lib/schemas/task";
 import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
 import {
   defaultTaskListFilters,
   serializeTaskListSearchParams,
 } from "@/lib/tasks/task-list-params";
+import { showErrorToast } from "@/lib/ui/app-toast";
 import { cn } from "@/lib/utils";
 
 export interface TasksFilterModalProps {
@@ -71,6 +73,10 @@ export function TasksFilterModal({
   }
 
   function handleApply(): void {
+    if (!isTaskListDateRangeWithinMaxMonths(draft.from, draft.to)) {
+      showErrorToast(tManage("dateRangeTooLong"));
+      return;
+    }
     applyFilters(draft);
   }
 
@@ -132,31 +138,46 @@ export function TasksFilterModal({
           ))}
         </fieldset>
 
+        <label className="mb-4 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className={cn("size-4 rounded border accent-primary")}
+            checked={draft.showArchived}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                showArchived: event.target.checked,
+              }))
+            }
+          />
+          {tManage("showArchivedTasks")}
+        </label>
+
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <Label htmlFor="task-filter-from">{tManage("dateFrom")}</Label>
-            <Input
+            <DatePtBrInput
               id="task-filter-from"
-              type="date"
               value={draft.from}
-              onChange={(event) =>
+              disabled={isPending}
+              onChange={(from) =>
                 setDraft((current) => ({
                   ...current,
-                  from: event.target.value,
+                  from,
                 }))
               }
             />
           </div>
           <div className="space-y-1">
             <Label htmlFor="task-filter-to">{tManage("dateTo")}</Label>
-            <Input
+            <DatePtBrInput
               id="task-filter-to"
-              type="date"
-              value={draft.to ?? ""}
-              onChange={(event) =>
+              value={draft.to}
+              disabled={isPending}
+              onChange={(to) =>
                 setDraft((current) => ({
                   ...current,
-                  to: event.target.value || undefined,
+                  to,
                 }))
               }
             />

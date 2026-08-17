@@ -1,3 +1,4 @@
+import { KioskContentSurface } from "@/components/kiosk/kiosk-content-surface";
 import { KioskStaffHome } from "@/components/kiosk/kiosk-staff-home";
 import { canKioskSignOutDevice } from "@/lib/business/kiosk-staff-access";
 import { loadKioskStaffUser } from "@/lib/kiosk/load-staff-user";
@@ -11,9 +12,11 @@ export default async function KioskStaffPage({ params }: PageProps) {
   const staffUser = await loadKioskStaffUser(userId);
 
   return (
-    <KioskStaffHome
-      userId={userId}
-      canSignOut={canKioskSignOutDevice(staffUser?.role)}
-    />
+    <KioskContentSurface>
+      <KioskStaffHome
+        userId={userId}
+        canSignOut={canKioskSignOutDevice(staffUser?.role)}
+      />
+    </KioskContentSurface>
   );
 }

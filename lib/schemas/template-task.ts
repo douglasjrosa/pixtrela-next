@@ -23,3 +23,7 @@ export type TemplateSubTaskComponentInput = z.infer<
   typeof templateSubTaskComponentSchema
 >;
 export type TemplateTaskFormInput = z.infer<typeof templateTaskFormSchema>;
+
+export const bulkTemplateIdsSchema = z
+  .array(z.string().trim().min(1))
+  .min(1, "emptySelection");

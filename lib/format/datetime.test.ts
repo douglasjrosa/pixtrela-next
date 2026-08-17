@@ -4,13 +4,20 @@ import {
   elapsedSecondsSince,
   formatDatePtBr,
   formatDateTimePtBr,
+  formatIsoDateToPtBrInput,
   formatTimePtBr,
+  parsePtBrInputToIsoDate,
   splitDateTimePtBr,
 } from "./datetime";
 
 describe("formatDatePtBr", () => {
   it("formats date-only values as dd/mm/yyyy", () => {
     expect(formatDatePtBr("2026-06-12")).toBe("12/06/2026");
+  });
+
+  it("formats ISO values for pt-BR date inputs", () => {
+    expect(formatIsoDateToPtBrInput("2026-06-12")).toBe("12/06/2026");
+    expect(parsePtBrInputToIsoDate("12/06/2026")).toBe("2026-06-12");
   });
 
   it("returns em dash for empty values", () => {

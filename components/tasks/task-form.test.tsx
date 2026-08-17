@@ -252,6 +252,7 @@ describe("TaskForm", () => {
     );
 
     expect(screen.getByLabelText("Status")).toBeInTheDocument();
+    expect(screen.getByLabelText("Data de entrega")).toHaveValue("18/07/2026");
   });
 
   it("submits the default stepDocumentId without a step select", async () => {

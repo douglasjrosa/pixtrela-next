@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
 
-import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
+import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
 import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
-import { createAward, createCurrency } from "@/lib/repos/awards";
+import { createAward, createCurrency, deleteAward, findAwardById, hardDeleteAward } from "@/lib/repos/awards";
 import {
   creditBalanceIncome,
   getOrCreateMonthlyBalance,
@@ -31,7 +31,7 @@ import {
 import { createTeam } from "@/lib/repos/teams";
 import { createTemplateTask } from "@/lib/repos/templates";
 import { createUser } from "@/lib/repos/users";
-import { activities, currencies, currencyForSubtasks } from "@/drizzle/schema";
+import { activities, currencies, currencyForSubtasks, exchanges } from "@/drizzle/schema";
 import { asc, eq } from "drizzle-orm";
 
 describeWithDb("drizzle repos integration", () => {
@@ -78,7 +78,7 @@ describeWithDb("drizzle repos integration", () => {
 
       const balance = await getOrCreateMonthlyBalance({
         userId: colaborator.id,
-        currencyId: currency.id,
+        currencyPluralTitle: resolveCurrencyPluralTitle(currency),
         now: new Date("2026-08-09T12:00:00Z"),
       });
       await creditBalanceIncome({ balanceId: balance.id, amount: 20 });
@@ -93,6 +93,74 @@ describeWithDb("drizzle repos integration", () => {
 
       expect(result.cost).toBe(10);
       expect(result.exchangeId).toBeTruthy();
+    },
+    45_000,
+  );
+
+  it(
+    "hard-deletes archived award while preserving exchange history labels",
+    async () => {
+      const suffix = String(Date.now());
+      const currency = await createCurrency({
+        name: `DelAward-${suffix}`,
+        currencyPerSecond: 1,
+      });
+      const colaborator = await createUser({
+        username: `del-colab-${suffix}`,
+        password: "Secret123!",
+        name: "Del Colab",
+        role: "colaborator",
+        code: Number(String(suffix).slice(-6)),
+      });
+      await createTeam({
+        name: `Del Team ${suffix}`,
+        memberIds: [colaborator.id],
+        exchangesFirstDay: 1,
+        exchangesLastDay: 31,
+      });
+      const award = await createAward({
+        name: `Del Award ${suffix}`,
+        prices: [{ currencyId: currency.id, numberOf: 1 }],
+      });
+
+      const balance = await getOrCreateMonthlyBalance({
+        userId: colaborator.id,
+        currencyPluralTitle: resolveCurrencyPluralTitle(currency),
+        now: new Date("2026-08-09T12:00:00Z"),
+      });
+      await creditBalanceIncome({ balanceId: balance.id, amount: 20 });
+
+      await redeemAward({
+        userId: colaborator.id,
+        awardId: award.id,
+        currencyId: currency.id,
+        qty: 1,
+        now: new Date("2026-08-09T12:00:00Z"),
+      });
+
+      const [exchangeBeforeDelete] = await getDb()
+        .select({
+          awardTitle: exchanges.awardTitle,
+          currencyPluralTitle: exchanges.currencyPluralTitle,
+        })
+        .from(exchanges)
+        .where(eq(exchanges.userId, colaborator.id))
+        .limit(1);
+
+      await deleteAward(award.id);
+      await hardDeleteAward(award.id);
+
+      expect(await findAwardById(award.id)).toBeNull();
+      const [exchangeAfterDelete] = await getDb()
+        .select({
+          awardTitle: exchanges.awardTitle,
+          currencyPluralTitle: exchanges.currencyPluralTitle,
+        })
+        .from(exchanges)
+        .where(eq(exchanges.userId, colaborator.id))
+        .limit(1);
+      expect(exchangeAfterDelete).toEqual(exchangeBeforeDelete);
+      expect(exchangeAfterDelete?.awardTitle).toBe(`Del Award ${suffix}`);
     },
     45_000,
   );

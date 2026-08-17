@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 const SIZE_CLASS = {
   md: "max-w-lg",
+  lgNarrow: "max-w-xl",
   lg: "max-w-2xl",
   xl: "max-w-4xl",
 } as const;

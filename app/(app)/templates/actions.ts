@@ -6,14 +6,21 @@ import { auth } from "@/auth";
 import { buildTemplateFromBox } from "@/lib/business/template-from-box";
 import { fetchBoxTemplateData } from "@/lib/legacy/rbx-client";
 import type { Role } from "@/lib/auth/nav";
-import { canManageTemplates } from "@/lib/auth/permissions";
+import {
+  canDeactivateTemplates,
+  canDeleteTemplates,
+  canManageTemplates,
+} from "@/lib/auth/permissions";
 import {
   createTemplateTask as createTemplateTaskRepo,
   deleteTemplateTask as deleteTemplateTaskRepo,
+  findTemplateById,
+  hardDeleteTemplateTask,
   updateTemplateTask as updateTemplateTaskRepo,
 } from "@/lib/repos/templates";
 import { templateListFiltersSchema } from "@/lib/schemas/template-list-filters";
 import {
+  bulkTemplateIdsSchema,
   templateTaskFormSchema,
   type TemplateSubTaskComponentInput,
   type TemplateTaskFormInput,
@@ -26,6 +33,13 @@ import {
 async function assertCanManage(): Promise<void> {
   const session = await auth();
   if (!canManageTemplates(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+}
+
+async function assertCanDeactivate(): Promise<void> {
+  const session = await auth();
+  if (!canDeactivateTemplates(session?.user?.role as Role | undefined)) {
     throw new Error("forbidden");
   }
 }
@@ -113,5 +127,38 @@ export async function loadTemplateFromLegacy(
 export async function deleteTemplate(documentId: string): Promise<void> {
   await assertCanManage();
   await deleteTemplateTaskRepo(documentId);
+  invalidateTemplates();
+}
+
+export async function bulkArchiveTemplates(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanDeactivate();
+  const ids = bulkTemplateIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const template = await findTemplateById(documentId);
+    if (!template) throw new Error("notFound");
+    await deleteTemplateTaskRepo(documentId);
+  }
+  invalidateTemplates();
+}
+
+export async function bulkDeleteTemplates(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanManage();
+  const session = await auth();
+  if (!canDeleteTemplates(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+  const ids = bulkTemplateIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const template = await findTemplateById(documentId);
+    if (!template) throw new Error("notFound");
+    if (template.active) throw new Error("activeTemplate");
+    await hardDeleteTemplateTask(documentId);
+  }
   invalidateTemplates();
 }

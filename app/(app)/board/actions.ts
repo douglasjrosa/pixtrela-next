@@ -10,23 +10,22 @@ import {
 import { auth } from "@/auth";
 import type { BoardSubTaskSummary } from "@/components/kanban/types";
 import {
-  appendSubtaskToTemplateComponents,
-  mapDependencyIdsToTemplateIndexes,
-} from "@/lib/business/append-subtask-to-template";
-import {
+  applyChainLinkToggle,
   applyHeadAssigneePropagation,
-  assigneesAfterLinkToPrevious,
+  applyMaxWorkerSelfAssigneeChange,
   canEditAssignees,
   findChainContaining,
+  sameAssigneeIdSet,
   previousChainMember,
+  reconcileChainReorder,
   resolveChains,
   sortChainSubTasks,
+  type ChainAssigneeState,
   type ChainSubTask,
 } from "@/lib/business/subtask-chain";
 import type { Role } from "@/lib/auth/nav";
 import {
   canManageTasks,
-  canManageTemplates,
   canMoveBoardTasks,
 } from "@/lib/auth/permissions";
 import { isAuthenticatedSession } from "@/lib/auth/session";
@@ -38,6 +37,7 @@ import {
   applyAutoStepTaskOrderingAfterTaskChange,
 } from "@/lib/business/apply-step-task-order";
 import { loadBoardProgressByTaskId } from "@/lib/board/load-board-progress";
+import type { BoardSubtaskLinkResult } from "@/lib/business/board-link-queue";
 import {
   resolveDrizzleTaskIdByKanbanNumericId,
 } from "@/lib/board/load-board-data";
@@ -53,22 +53,17 @@ import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map
 import { parseSubTaskDependencyIds } from "@/lib/business/subtask-dependencies";
 import { listSteps as listStepsRepo } from "@/lib/repos/steps";
 import {
-  findTemplateByCode,
-  listTemplateSubTasks,
-  updateTemplateTask,
-} from "@/lib/repos/templates";
-import {
   getTaskById,
   getSubTaskById,
   listBoardSubtaskRows,
-  listSubTasksForTask,
   listSubTasksWithRelationsForTask,
   replaceSubTaskAssignees,
   updateSubTaskLinkedToPrevious,
   updateTaskBoardFields,
 } from "@/lib/repos/tasks";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
-import type { TemplateSubTaskComponentInput } from "@/lib/schemas/template-task";
+
+const FINISHED_STATUS = "finished";
 
 interface SubTaskEntity {
   documentId: string;
@@ -101,13 +96,6 @@ async function assertCanManageBoardSubtasks(): Promise<void> {
 function invalidateBoardTasks(): void {
   revalidateTag("drizzle:tasks", "default");
   revalidateTag("drizzle:steps", "default");
-}
-
-function dependencyIndexesFrom(
-  dependencies: TemplateSubTaskComponentInput["dependencies"],
-): number[] {
-  if (!Array.isArray(dependencies)) return [];
-  return dependencies.filter((value): value is number => typeof value === "number");
 }
 
 function mapBoardSubtasksFromDrizzle(
@@ -258,110 +246,57 @@ function toSubTaskFormInput(
 export async function createBoardSubtask(
   taskDocumentId: string,
   values: SubTaskFormInput,
-  options?: { addToTemplate?: boolean },
 ): Promise<void> {
   await assertCanManageBoardSubtasks();
   await createSubTask(taskDocumentId, values);
-  if (options?.addToTemplate) {
-    await appendBoardSubtaskToTaskTemplate(taskDocumentId, values);
-  }
 }
 
-async function fetchTaskTemplateCode(
-  taskDocumentId: string,
-): Promise<string | null> {
-  const task = await getTaskById(taskDocumentId);
-  const code = task?.templateTaskCode?.trim();
-  return code ? code : null;
-}
-
-async function fetchTemplateByCode(code: string): Promise<{
-  documentId: string;
-  name: string;
-  code: string;
-  subTask: TemplateSubTaskComponentInput[];
-} | null> {
-  const template = await findTemplateByCode(code);
-  if (!template) return null;
-  const subTaskRows = await listTemplateSubTasks(template.id);
+function toAssigneeState(row: ChainSubTask): ChainAssigneeState {
   return {
-    documentId: template.id,
-    name: template.name,
-    code: template.code,
-    subTask: subTaskRows.map((row) => ({
-      name: row.name,
-      qty: row.qty,
-      index: row.index,
-      expectedTime: row.expectedTime,
-      sharingType: row.sharingType,
-      maxSameTimeWorkers: row.maxSameTimeWorkers,
-      dependencyIndexes: row.dependencyIndexes ?? [],
-      linkedToPrevious: row.linkedToPrevious,
-    })),
+    documentId: row.documentId,
+    linkedToPrevious: row.linkedToPrevious,
+    maxSameTimeWorkers: row.maxSameTimeWorkers,
+    assignedToIds: row.assignedToIds,
   };
 }
 
-async function fetchTaskSubtaskRefs(
-  taskDocumentId: string,
-): Promise<{ documentId: string; name: string }[]> {
-  const rows = await listSubTasksForTask(taskDocumentId);
-  return rows.map((row) => ({ documentId: row.id, name: row.name }));
+function assigneeIdsEqual(left: readonly string[], right: readonly string[]): boolean {
+  if (left.length !== right.length) return false;
+  const rightSet = new Set(right);
+  return left.every((id) => rightSet.has(id));
 }
 
-async function appendBoardSubtaskToTaskTemplate(
-  taskDocumentId: string,
-  values: SubTaskFormInput,
+async function persistChainAssigneeStates(
+  before: readonly ChainAssigneeState[],
+  after: readonly ChainAssigneeState[],
 ): Promise<void> {
-  const session = await auth();
-  if (!canManageTemplates(session?.user?.role as Role | undefined)) {
-    throw new Error("forbidden");
+  const beforeById = new Map(before.map((row) => [row.documentId, row]));
+  for (const row of after) {
+    const previous = beforeById.get(row.documentId);
+    if (!previous) continue;
+    if (previous.linkedToPrevious !== row.linkedToPrevious) {
+      await updateSubTaskLinkedToPrevious(row.documentId, row.linkedToPrevious);
+    }
+    if (!assigneeIdsEqual(previous.assignedToIds, row.assignedToIds)) {
+      await replaceSubTaskAssignees(row.documentId, row.assignedToIds);
+    }
   }
-
-  const templateCode = await fetchTaskTemplateCode(taskDocumentId);
-  if (!templateCode) {
-    throw new Error("no_template");
-  }
-
-  const template = await fetchTemplateByCode(templateCode);
-  if (!template) {
-    throw new Error("template_not_found");
-  }
-
-  const taskSubtasks = await fetchTaskSubtaskRefs(taskDocumentId);
-  const dependencyIndexes = mapDependencyIdsToTemplateIndexes(
-    values.dependencyIds ?? [],
-    taskSubtasks,
-    template.subTask.map((row) => row.name),
-  );
-  const nextSubTasks = appendSubtaskToTemplateComponents(
-    template.subTask,
-    values,
-    dependencyIndexes,
-  );
-
-  await updateTemplateTask({
-    id: template.documentId,
-    name: template.name,
-    code: template.code,
-    subTasks: nextSubTasks.map((row) => ({
-      name: row.name,
-      qty: row.qty,
-      index: row.index,
-      expectedTime: row.expectedTime,
-      sharingType: row.sharingType,
-      maxSameTimeWorkers: row.maxSameTimeWorkers,
-      dependencyIndexes: dependencyIndexesFrom(row.dependencies),
-      linkedToPrevious: row.linkedToPrevious ?? false,
-    })),
-  });
-  revalidateTag("drizzle:templates", "default");
 }
 
 export async function reorderBoardSubtasks(
   taskDocumentId: string,
   orderedDocumentIds: string[],
+  movedDocumentId: string,
 ): Promise<void> {
   await assertCanManageBoardSubtasks();
+  const siblings = await listSubTasksWithRelationsForTask(taskDocumentId);
+  const ordered = sortChainSubTasks(siblings.map(toChainSubTask));
+  const pending = ordered.filter((row) => row.status !== FINISHED_STATUS);
+  const pendingIds = new Set(pending.map((row) => row.documentId));
+  const before = pending.map(toAssigneeState);
+  const pendingOrder = orderedDocumentIds.filter((id) => pendingIds.has(id));
+  const after = reconcileChainReorder(before, pendingOrder, movedDocumentId);
+  await persistChainAssigneeStates(before, after);
   await reorderSubTasks(taskDocumentId, orderedDocumentIds);
 }
 
@@ -391,31 +326,42 @@ export async function updateBoardSubtaskLink(
   taskDocumentId: string,
   subtaskDocumentId: string,
   linkedToPrevious: boolean,
-): Promise<void> {
+): Promise<BoardSubtaskLinkResult> {
   await assertCanManageBoardSubtasks();
   const siblings = await listSubTasksWithRelationsForTask(taskDocumentId);
-  const ordered = sortChainSubTasks(siblings.map(toChainSubTask));
-  const current = ordered.find((item) => item.documentId === subtaskDocumentId);
+  const pending = sortChainSubTasks(siblings.map(toChainSubTask)).filter(
+    (row) => row.status !== FINISHED_STATUS,
+  );
+  const current = pending.find((item) => item.documentId === subtaskDocumentId);
   if (!current) throw new Error("notFound");
-  if (linkedToPrevious && previousChainMember(ordered, subtaskDocumentId) == null) {
+  if (
+    linkedToPrevious &&
+    previousChainMember(pending, subtaskDocumentId) == null
+  ) {
     throw new Error("invalid_link");
   }
 
-  await updateSubTaskLinkedToPrevious(subtaskDocumentId, linkedToPrevious);
-  if (!linkedToPrevious) return;
+  const before = pending.map(toAssigneeState);
+  const after = applyChainLinkToggle(before, subtaskDocumentId, linkedToPrevious);
+  await persistChainAssigneeStates(before, after);
 
-  const previous = previousChainMember(ordered, subtaskDocumentId);
-  if (!previous) return;
-  await replaceSubTaskAssignees(
-    subtaskDocumentId,
-    assigneesAfterLinkToPrevious(previous.assignedToIds),
+  const mapped = mapBoardSubtasksFromDrizzle(
+    await listBoardSubtaskRows(taskDocumentId),
   );
+  const updated = mapped.find((item) => item.documentId === subtaskDocumentId);
+  if (!updated) throw new Error("notFound");
+  return {
+    documentId: updated.documentId,
+    linkedToPrevious: updated.linkedToPrevious,
+    assignedTo: updated.assignedTo,
+  };
 }
 
 export async function updateBoardSubtaskAssignees(
   subtaskDocumentId: string,
   taskDocumentId: string,
   assignedToIds: string[],
+  propagateChain = true,
 ): Promise<void> {
   await assertCanManageBoardSubtasks();
   const siblings = await listSubTasksWithRelationsForTask(taskDocumentId);
@@ -443,24 +389,40 @@ export async function updateBoardSubtaskAssignees(
   );
   if (role === "none") throw new Error("forbidden");
 
-  if (role === "helper") {
-    const subtask = await fetchSubTaskForUpdate(subtaskDocumentId);
-    if (!subtask) throw new Error("notFound");
-    await updateSubTask(
-      subtaskDocumentId,
-      taskDocumentId,
-      toSubTaskFormInput(subtask, assignedToIds),
-    );
-    return;
-  }
-
   const members = chain.memberIds
     .map((id) => chainItems.find((item) => item.documentId === id))
     .filter((item): item is ChainSubTask => Boolean(item));
+
+  if (role === "helper" || !propagateChain) {
+    const nextRows = applyMaxWorkerSelfAssigneeChange(
+      members,
+      subtaskDocumentId,
+      assignedToIds,
+    );
+    for (const update of nextRows) {
+      const previous = members.find(
+        (item) => item.documentId === update.documentId,
+      );
+      if (
+        previous &&
+        sameAssigneeIdSet(previous.assignedToIds, update.assignedToIds)
+      ) {
+        continue;
+      }
+      const subtask = await fetchSubTaskForUpdate(update.documentId);
+      if (!subtask) continue;
+      await updateSubTask(
+        update.documentId,
+        taskDocumentId,
+        toSubTaskFormInput(subtask, update.assignedToIds),
+      );
+    }
+    return;
+  }
+
   const propagated = applyHeadAssigneePropagation(
     members,
     chain.headId,
-    current.assignedToIds,
     assignedToIds,
   );
   for (const update of propagated) {

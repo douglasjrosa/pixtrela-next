@@ -35,4 +35,8 @@ describe("buildDefaultLogin", () => {
   it("includes zero as a valid code suffix", () => {
     expect(buildDefaultLogin("Ana", 0)).toBe("ana.0");
   });
+
+  it("builds login without code suffix when code is null", () => {
+    expect(buildDefaultLogin("Ana Maria", null)).toBe("ana.maria");
+  });
 });

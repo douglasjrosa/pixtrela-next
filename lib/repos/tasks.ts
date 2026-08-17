@@ -162,6 +162,21 @@ export async function listSubTasksForTask(taskId: string, db: Db = getDb()) {
     .orderBy(asc(subTasks.index));
 }
 
+export async function listSubTaskCompletionSnapshotsForTasks(
+  taskIds: string[],
+  db: Db = getDb(),
+) {
+  if (taskIds.length === 0) return [];
+  return db
+    .select({
+      taskId: subTasks.taskId,
+      status: subTasks.status,
+      activationStatus: subTasks.activationStatus,
+    })
+    .from(subTasks)
+    .where(inArray(subTasks.taskId, taskIds));
+}
+
 export async function listActiveTasksForBoard(db: Db = getDb()) {
   return db
     .select()

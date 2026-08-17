@@ -1,8 +1,15 @@
+import { getTranslations } from "next-intl/server";
+
 import { auth } from "@/auth";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { APP_LIST_PAGE_SHELL_CLASS } from "@/components/layout/app-page-layout";
-import { UserManager, type UserRow } from "@/components/users/user-manager";
+import { ListEmptyMessage } from "@/components/ui/list-empty-message";
+import { UserManager } from "@/components/users/user-manager";
+import { UsersListMobileList } from "@/components/users/users-list-mobile-list";
+import { UsersListTableBody } from "@/components/users/users-list-table-body";
+import { UsersListTableFrame } from "@/components/users/users-list-table-frame";
+import { UsersListTableHeader } from "@/components/users/users-list-table-header";
 import type { Role } from "@/lib/auth/nav";
 import {
   canEditUserLogin,
@@ -12,8 +19,9 @@ import {
   canViewUsers,
 } from "@/lib/auth/permissions";
 import { canDeleteUsers, manageableTargetRoles } from "@/lib/business/roles";
-import { listUsers as listUsersRepo } from "@/lib/repos/users";
-import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
+import { listUserUniquenessOwners } from "@/lib/repos/users";
+import { loadUserListPage } from "@/lib/users/load-user-list-page";
+import { parseUserListSearchParams } from "@/lib/users/user-list-params";
 
 import {
   createUser,
@@ -24,30 +32,11 @@ import {
   updateUserImage,
 } from "./actions";
 
-async function loadUsers(): Promise<UserRow[]> {
-  try {
-    const rows = await listUsersRepo();
-    return rows.map((user) => ({
-      id: user.id,
-      documentId: user.id,
-      name: user.name,
-      username: user.username,
-      email: user.email,
-      code: user.code,
-      roleType: user.role,
-      greetingGender:
-        user.greetingGender === "neutral" ? null : user.greetingGender,
-      blocked: user.blocked || !user.active,
-      avatarUrl: toBrowserMediaUrl(user.avatarUrl),
-      facePhotoUrl: toBrowserMediaUrl(user.facePhotoUrl),
-    }));
-  } catch (error) {
-    rethrowIfNavigationError(error);
-    return [];
-  }
+interface UsersPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function UsersPage() {
+export default async function UsersPage({ searchParams }: UsersPageProps) {
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
 
@@ -55,13 +44,51 @@ export default async function UsersPage() {
     return <ForbiddenMessage />;
   }
 
-  const users = await loadUsers();
+  const params = await searchParams;
+  const filters = parseUserListSearchParams(params);
+  const tUsers = await getTranslations("users");
+  const sort = { column: filters.column, direction: filters.direction };
   const actorRole = role!;
+
+  const [pageResult, existingUsers] = await Promise.all([
+    loadUserListPage(filters, 1).catch((error) => {
+      rethrowIfNavigationError(error);
+      return {
+        users: [],
+        page: 1,
+        pageCount: 1,
+        hasMore: false,
+      };
+    }),
+    listUserUniquenessOwners().catch((error) => {
+      rethrowIfNavigationError(error);
+      return [];
+    }),
+  ]);
+
+  let listContent;
+  if (pageResult.users.length === 0) {
+    listContent = <ListEmptyMessage>{tUsers("empty")}</ListEmptyMessage>;
+  } else {
+    listContent = (
+      <UsersListTableFrame
+        filters={filters}
+        initialUsers={pageResult.users}
+        initialPage={pageResult.page}
+        initialHasMore={pageResult.hasMore}
+        tableHeader={
+          <UsersListTableHeader sort={sort} filters={filters} />
+        }
+        tableBody={<UsersListTableBody users={pageResult.users} />}
+        mobileList={<UsersListMobileList users={pageResult.users} />}
+      />
+    );
+  }
 
   return (
     <section className={APP_LIST_PAGE_SHELL_CLASS}>
       <UserManager
-        users={users}
+        existingUsers={existingUsers}
         onCreate={createUser}
         onUpdate={updateUser}
         onUpdateImage={updateUserImage}
@@ -76,7 +103,9 @@ export default async function UsersPage() {
         canEditUserLogin={canEditUserLogin(actorRole)}
         canManageImages={actorRole === "admin"}
         onPairUserTag={pairUserTag}
-      />
+      >
+        {listContent}
+      </UserManager>
     </section>
   );
 }

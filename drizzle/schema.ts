@@ -82,7 +82,7 @@ export const users = pgTable("users", {
   name: varchar("name", { length: 128 }).notNull(),
   lastName: varchar("last_name", { length: 128 }),
   phone: varchar("phone", { length: 32 }),
-  code: integer("code").default(0).notNull(),
+  code: integer("code"),
   role: userRoleEnum("role").notNull(),
   blocked: boolean("blocked").default(false).notNull(),
   active: boolean("active").default(true).notNull(),
@@ -148,6 +148,8 @@ export const awards = pgTable("awards", {
   warnings: text("warnings"),
   imageMediaId: uuid("image_media_id").references(() => mediaAssets.id),
   active: boolean("active").default(true).notNull(),
+  showInStore: boolean("show_in_store").default(true).notNull(),
+  stock: integer("stock").default(0).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -199,6 +201,30 @@ export const routeThemes = pgTable("route_themes", {
 export const kioskSettings = pgTable("kiosk_settings", {
   id: uuid("id").defaultRandom().primaryKey(),
   sessionIdleSeconds: integer("session_idle_seconds").default(120).notNull(),
+  maxSimultaneousSubtaskIntervalSeconds: integer(
+    "max_simultaneous_subtask_interval_seconds",
+  )
+    .default(300)
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const entryAccessSettings = pgTable("entry_access_settings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  surface: varchar("surface", { length: 16 }).notNull().unique(),
+  computerUsername: boolean("computer_username").default(true).notNull(),
+  computerCode: boolean("computer_code").default(false).notNull(),
+  computerFace: boolean("computer_face").default(false).notNull(),
+  computerNfc: boolean("computer_nfc").default(false).notNull(),
+  mobileUsername: boolean("mobile_username").default(true).notNull(),
+  mobileCode: boolean("mobile_code").default(false).notNull(),
+  mobileFace: boolean("mobile_face").default(true).notNull(),
+  mobileNfc: boolean("mobile_nfc").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -395,9 +421,7 @@ export const balances = pgTable("balances", {
   userId: uuid("user_id")
     .references(() => users.id)
     .notNull(),
-  currencyId: uuid("currency_id")
-    .references(() => currencies.id)
-    .notNull(),
+  currencyPluralTitle: text("currency_plural_title").notNull(),
   date: date("date").notNull(),
   previousBalance: doublePrecision("previous_balance").default(0).notNull(),
   totalIncome: doublePrecision("total_income").default(0).notNull(),
@@ -416,12 +440,8 @@ export const exchanges = pgTable("exchanges", {
   userId: uuid("user_id")
     .references(() => users.id)
     .notNull(),
-  awardId: uuid("award_id")
-    .references(() => awards.id)
-    .notNull(),
-  currencyId: uuid("currency_id")
-    .references(() => currencies.id)
-    .notNull(),
+  awardTitle: text("award_title").notNull(),
+  currencyPluralTitle: text("currency_plural_title").notNull(),
   qty: integer("qty").default(1).notNull(),
   numberOf: doublePrecision("number_of").notNull(),
   timestamp: timestamp("timestamp", { withTimezone: true })

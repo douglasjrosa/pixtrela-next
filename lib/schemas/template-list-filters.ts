@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { templateListSortSchema } from "./template-list-sort";
+
 export const TEMPLATE_LIST_PAGE_SIZE = 10;
 export const TEMPLATE_LIST_SEARCH_MIN_CHARS = 3;
 export const TEMPLATE_LIST_SEARCH_DEBOUNCE_MS = 300;
@@ -7,7 +9,9 @@ export const TEMPLATE_LIST_SEARCH_DEBOUNCE_MS = 300;
 export const templateListFiltersSchema = z
   .object({
     q: z.string().optional(),
+    showArchived: z.boolean().default(false),
   })
+  .merge(templateListSortSchema)
   .superRefine((data, ctx) => {
     const trimmedQ = data.q?.trim() ?? "";
     if (
@@ -28,6 +32,9 @@ export const templateListFiltersSchema = z
         trimmedQ.length >= TEMPLATE_LIST_SEARCH_MIN_CHARS
           ? trimmedQ
           : undefined,
+      column: data.column,
+      direction: data.direction,
+      showArchived: data.showArchived,
     };
   });
 

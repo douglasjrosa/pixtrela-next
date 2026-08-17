@@ -1,7 +1,9 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 
 import { teamMembers, teams, users } from "@/drizzle/schema";
+import { toCalendarDateKey } from "@/lib/business/datetime-timezone";
 import { getDb, type Db } from "@/lib/db/client";
+import type { TeamListSort } from "@/lib/schemas/team-list-sort";
 
 export type TeamRecord = {
   id: string;
@@ -81,13 +83,13 @@ export async function listActiveTeams(db: Db = getDb()): Promise<TeamRecord[]> {
     .orderBy(teams.name);
 }
 
-export async function listTeamsWithMembers(
-  db: Db = getDb(),
-): Promise<TeamWithMembers[]> {
-  const rows = await listTeams(db);
-  if (rows.length === 0) return [];
+async function loadColaboratorsByTeamIds(
+  teamIds: string[],
+  db: Db,
+): Promise<Map<string, TeamMemberRef[]>> {
+  const membersByTeam = new Map<string, TeamMemberRef[]>();
+  if (teamIds.length === 0) return membersByTeam;
 
-  const teamIds = rows.map((row) => row.id);
   const memberships = await db
     .select({
       teamId: teamMembers.teamId,
@@ -98,12 +100,24 @@ export async function listTeamsWithMembers(
     .innerJoin(users, eq(teamMembers.userId, users.id))
     .where(inArray(teamMembers.teamId, teamIds));
 
-  const membersByTeam = new Map<string, TeamMemberRef[]>();
   for (const membership of memberships) {
     const list = membersByTeam.get(membership.teamId) ?? [];
     list.push({ documentId: membership.userId, name: membership.name });
     membersByTeam.set(membership.teamId, list);
   }
+  return membersByTeam;
+}
+
+export async function listTeamsWithMembers(
+  db: Db = getDb(),
+): Promise<TeamWithMembers[]> {
+  const rows = await listTeams(db);
+  if (rows.length === 0) return [];
+
+  const membersByTeam = await loadColaboratorsByTeamIds(
+    rows.map((row) => row.id),
+    db,
+  );
 
   const leaderIds = rows
     .map((row) => row.leaderId)
@@ -127,6 +141,101 @@ export async function listTeamsWithMembers(
       colaborators: membersByTeam.get(row.id) ?? [],
     };
   });
+}
+
+const TEAM_MEMBER_COUNT = sql<number>`
+  (select count(*)::int from ${teamMembers} where ${teamMembers.teamId} = ${teams.id})
+`;
+
+function teamListOrderBy(sort: TeamListSort) {
+  const dir = sort.direction === "desc" ? desc : asc;
+  if (sort.column === "since") {
+    return [dir(teams.since), asc(teams.name), asc(teams.id)];
+  }
+  if (sort.column === "untill") {
+    return [dir(teams.until), asc(teams.name), asc(teams.id)];
+  }
+  if (sort.column === "exchangePeriod") {
+    return [
+      dir(teams.exchangesFirstDay),
+      dir(teams.exchangesLastDay),
+      asc(teams.name),
+      asc(teams.id),
+    ];
+  }
+  if (sort.column === "leader") {
+    return [dir(users.name), asc(teams.name), asc(teams.id)];
+  }
+  if (sort.column === "members") {
+    return [dir(TEAM_MEMBER_COUNT), asc(teams.name), asc(teams.id)];
+  }
+  return [dir(teams.name), asc(teams.id)];
+}
+
+export async function listTeamsPage(
+  options: {
+    q?: string;
+    page?: number;
+    pageSize?: number;
+    sort?: TeamListSort;
+    showArchived?: boolean;
+  } = {},
+  db: Db = getDb(),
+): Promise<{ items: TeamWithMembers[]; total: number }> {
+  const page = Math.max(1, options.page ?? 1);
+  const pageSize = Math.max(1, options.pageSize ?? 10);
+  const offset = (page - 1) * pageSize;
+  const q = options.q?.trim();
+  const sort = options.sort ?? { column: "name", direction: "asc" };
+
+  const activeClause = options.showArchived
+    ? undefined
+    : eq(teams.active, true);
+
+  const searchClause = q ? ilike(teams.name, `%${q}%`) : undefined;
+
+  const where = and(activeClause, searchClause);
+
+  const [totalRow] = await db
+    .select({ total: count() })
+    .from(teams)
+    .where(where);
+
+  const rows = await db
+    .select({
+      ...TEAM_COLUMNS,
+      leaderName: users.name,
+    })
+    .from(teams)
+    .leftJoin(users, eq(teams.leaderId, users.id))
+    .where(where)
+    .orderBy(...teamListOrderBy(sort))
+    .limit(pageSize)
+    .offset(offset);
+
+  const membersByTeam = await loadColaboratorsByTeamIds(
+    rows.map((row) => row.id),
+    db,
+  );
+
+  return {
+    items: rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      leaderId: row.leaderId,
+      exchangesFirstDay: row.exchangesFirstDay,
+      exchangesLastDay: row.exchangesLastDay,
+      since: row.since,
+      until: row.until,
+      active: row.active,
+      leader:
+        row.leaderId && row.leaderName
+          ? { documentId: row.leaderId, name: row.leaderName }
+          : null,
+      colaborators: membersByTeam.get(row.id) ?? [],
+    })),
+    total: totalRow?.total ?? 0,
+  };
 }
 
 export async function listTeamMemberIds(
@@ -172,6 +281,7 @@ export async function updateTeam(
       exchangesFirstDay: input.exchangesFirstDay,
       exchangesLastDay: input.exchangesLastDay,
       until: input.until ?? null,
+      active: input.until ? false : true,
       updatedAt: new Date(),
     })
     .where(eq(teams.id, input.id))
@@ -190,8 +300,31 @@ export async function deleteTeam(
 ): Promise<void> {
   await db
     .update(teams)
-    .set({ active: false, updatedAt: new Date() })
+    .set({
+      active: false,
+      until: toCalendarDateKey(new Date()),
+      updatedAt: new Date(),
+    })
     .where(eq(teams.id, id));
+}
+
+export async function findTeamById(
+  id: string,
+  db: Db = getDb(),
+): Promise<TeamRecord | null> {
+  const [row] = await db
+    .select(TEAM_COLUMNS)
+    .from(teams)
+    .where(eq(teams.id, id))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function hardDeleteTeam(
+  id: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await db.delete(teams).where(eq(teams.id, id));
 }
 
 export async function findActiveTeamWindowForUser(

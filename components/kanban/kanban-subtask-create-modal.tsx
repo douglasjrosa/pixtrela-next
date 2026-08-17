@@ -9,7 +9,6 @@ import type { SubTaskDependencyOption } from "@/components/subtasks/subtask-depe
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import { Button } from "@/components/ui/button";
 import { FORM_MODAL_NESTED_OVERLAY_Z_CLASS } from "@/components/ui/form-modal-shell";
-import { Label } from "@/components/ui/label";
 import { normalizeSubTaskCreateValues } from "@/lib/business/subtask-create-fields";
 import {
   subTaskFormSchema,
@@ -30,10 +29,6 @@ const EMPTY_FORM: SubTaskFormInput = {
   assignedToIds: [],
 };
 
-export type KanbanSubtaskCreateOptions = {
-  addToTemplate: boolean;
-};
-
 export interface KanbanSubtaskCreateModalProps {
   open: boolean;
   taskName: string;
@@ -45,10 +40,7 @@ export interface KanbanSubtaskCreateModalProps {
   }>;
   saving: boolean;
   onClose: () => void;
-  onCreate: (
-    values: SubTaskFormInput,
-    options: KanbanSubtaskCreateOptions,
-  ) => void;
+  onCreate: (values: SubTaskFormInput) => void;
 }
 
 export function KanbanSubtaskCreateModal({
@@ -64,7 +56,6 @@ export function KanbanSubtaskCreateModal({
   const tCommon = useTranslations("common");
   const tKanban = useTranslations("kanban");
   const [draft, setDraft] = useState<SubTaskFormInput>(EMPTY_FORM);
-  const [addToTemplate, setAddToTemplate] = useState(false);
   const [resetNonce, setResetNonce] = useState(0);
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
@@ -75,7 +66,6 @@ export function KanbanSubtaskCreateModal({
   if (resetNonce !== appliedResetNonce) {
     setAppliedResetNonce(resetNonce);
     setDraft(EMPTY_FORM);
-    setAddToTemplate(false);
   }
   const formKey = `kanban-create-subtask-${resetNonce}`;
 
@@ -86,7 +76,6 @@ export function KanbanSubtaskCreateModal({
     if (!parsed.success) return;
     onCreate(
       normalizeSubTaskCreateValues(parsed.data, dependencyStatusSiblings),
-      { addToTemplate },
     );
   }
 
@@ -143,20 +132,7 @@ export function KanbanSubtaskCreateModal({
             onChange={setDraft}
           />
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <input
-                id="kanban-add-to-template"
-                type="checkbox"
-                className="size-4 accent-primary"
-                checked={addToTemplate}
-                disabled={saving}
-                onChange={(event) => setAddToTemplate(event.target.checked)}
-              />
-              <Label htmlFor="kanban-add-to-template" className="font-normal">
-                {tKanban("addToTemplate")}
-              </Label>
-            </div>
+          <div className="flex justify-end">
             <Button type="button" onClick={handleSave} disabled={saving}>
               {tCommon("save")}
             </Button>

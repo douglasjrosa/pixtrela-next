@@ -2,7 +2,10 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 
 import { renderWithIntl } from "@/test/test-utils";
+import type { UserManagerProps } from "./user-manager";
 import { UserManager } from "./user-manager";
+import { UserListRowPresentational } from "./user-list-row-presentational";
+import type { UserRow } from "./types";
 
 const refresh = vi.fn();
 const push = vi.fn();
@@ -14,7 +17,8 @@ const isNfcOnCooldown = vi.fn();
 const getNfcCooldownRemainingMs = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh, push }),
+  useRouter: () => ({ refresh, push, replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/lib/ui/app-toast", () => ({
@@ -63,6 +67,30 @@ const users = [
   },
 ];
 
+function TestUserManager({
+  users: listUsers = [],
+  ...props
+}: Omit<UserManagerProps, "existingUsers" | "children"> & {
+  users?: UserRow[];
+}) {
+  return (
+    <UserManager existingUsers={listUsers} {...props}>
+      <table>
+        <tbody>
+          {listUsers.map((user) => (
+            <UserListRowPresentational
+              key={user.documentId}
+              user={user}
+              variant="table"
+              labels={{ role: user.roleType }}
+            />
+          ))}
+        </tbody>
+      </table>
+    </UserManager>
+  );
+}
+
 describe("UserManager", () => {
   beforeEach(() => {
     showSuccessToast.mockReset();
@@ -76,7 +104,7 @@ describe("UserManager", () => {
 
   it("renders user list", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -89,7 +117,7 @@ describe("UserManager", () => {
 
   it("hides user form by default", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -103,7 +131,7 @@ describe("UserManager", () => {
 
   it("shows password field for admin on create", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={[]}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -118,7 +146,7 @@ describe("UserManager", () => {
 
   it("hides password field for manager on create", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={[]}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -133,7 +161,7 @@ describe("UserManager", () => {
 
   it("hides password field for leader on edit", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -142,13 +170,13 @@ describe("UserManager", () => {
         canSetPassword={false}
       />,
     );
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     expect(screen.queryByLabelText("Senha")).not.toBeInTheDocument();
   });
 
   it("opens create modal when Novo usuário is clicked", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={[]}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -166,7 +194,7 @@ describe("UserManager", () => {
 
   it("shows delete action in edit modal when canDelete is true", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={[users[0]!]}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -176,13 +204,13 @@ describe("UserManager", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: "Excluir" })).toBeNull();
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
   });
 
   it("shows deactivate action for manageable users when canDeactivate", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={[users[0]!]}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -193,7 +221,7 @@ describe("UserManager", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: "Desativar" })).toBeNull();
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     expect(screen.getByRole("button", { name: "Desativar" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Excluir" })).toBeNull();
   });
@@ -207,7 +235,7 @@ describe("UserManager", () => {
       roleType: "leader" as const,
     };
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={[leaderUser]}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -224,7 +252,7 @@ describe("UserManager", () => {
   it("hides deactivate for already blocked users", () => {
     const blockedUser = { ...users[0]!, blocked: true };
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={[blockedUser]}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -234,14 +262,14 @@ describe("UserManager", () => {
         manageableRoles={["colaborator"]}
       />,
     );
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     expect(screen.queryByRole("button", { name: "Desativar" })).toBeNull();
   });
 
   it("confirms deactivate and calls onDeactivate", async () => {
     const onDeactivate = vi.fn().mockResolvedValue(undefined);
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={[users[0]!]}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -251,7 +279,7 @@ describe("UserManager", () => {
         manageableRoles={["colaborator"]}
       />,
     );
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
     const confirm = screen.getByRole("dialog", { name: "Desativar usuário" });
     fireEvent.click(within(confirm).getByRole("button", { name: "Desativar" }));
@@ -262,7 +290,7 @@ describe("UserManager", () => {
 
   it("shows both deactivate and delete for admin", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={[users[0]!]}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -273,14 +301,14 @@ describe("UserManager", () => {
         manageableRoles={["colaborator"]}
       />,
     );
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     expect(screen.getByRole("button", { name: "Desativar" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
   });
 
   it("opens edit modal when user name is clicked", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -288,7 +316,7 @@ describe("UserManager", () => {
         manageableRoles={["colaborator"]}
       />,
     );
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Editar usuário" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toHaveValue("Maria");
@@ -297,7 +325,7 @@ describe("UserManager", () => {
 
   it("uses compact modal height and shows user image fields for admin", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -308,7 +336,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
 
     const body = document.querySelector('[data-slot="form-modal-body"]');
     expect(body?.firstElementChild?.className).not.toContain(
@@ -322,7 +350,7 @@ describe("UserManager", () => {
 
   it("hides user image fields without image management permission", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -332,13 +360,13 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     expect(screen.queryByLabelText("Imagem de avatar")).not.toBeInTheDocument();
   });
 
   it("closes modal on cancel", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -346,7 +374,7 @@ describe("UserManager", () => {
         manageableRoles={["colaborator"]}
       />,
     );
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -354,7 +382,7 @@ describe("UserManager", () => {
   it("calls onUpdate when saving an edited user", async () => {
     const onUpdate = vi.fn().mockResolvedValue(undefined);
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={onUpdate}
@@ -362,7 +390,7 @@ describe("UserManager", () => {
         manageableRoles={["colaborator"]}
       />,
     );
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Maria Silva" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => {
@@ -379,7 +407,7 @@ describe("UserManager", () => {
 
   it("does not show edit action for users outside manageable roles", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={[
           {
             id: 2,
@@ -403,7 +431,7 @@ describe("UserManager", () => {
   it("blocks create when code is already used by another user", async () => {
     const onCreate = vi.fn();
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={onCreate}
         onUpdate={vi.fn()}
@@ -428,7 +456,7 @@ describe("UserManager", () => {
   it("allows saving edit with the user's own code", async () => {
     const onUpdate = vi.fn().mockResolvedValue(undefined);
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={onUpdate}
@@ -437,7 +465,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => {
@@ -451,7 +479,7 @@ describe("UserManager", () => {
   it("allows create with a unique code", async () => {
     const onCreate = vi.fn().mockResolvedValue(undefined);
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={onCreate}
         onUpdate={vi.fn()}
@@ -478,9 +506,36 @@ describe("UserManager", () => {
     });
   });
 
+  it("allows create without code", async () => {
+    const onCreate = vi.fn().mockResolvedValue(undefined);
+    renderWithIntl(
+      <TestUserManager
+        users={users}
+        onCreate={onCreate}
+        onUpdate={vi.fn()}
+        canDelete={false}
+        manageableRoles={["colaborator"]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Novo usuário" }));
+    fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Ana" } });
+    fireEvent.click(screen.getByRole("button", { name: "Criar" }));
+
+    await waitFor(() => {
+      expect(onCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: null,
+          name: "Ana",
+          username: "ana",
+        }),
+      );
+    });
+  });
+
   it("auto-fills login from name and code on create", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={[]}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -502,7 +557,7 @@ describe("UserManager", () => {
 
   it("keeps login read-only for manager and leader", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={[]}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -519,7 +574,7 @@ describe("UserManager", () => {
   it("allows admin to override auto-generated login", async () => {
     const onCreate = vi.fn().mockResolvedValue(undefined);
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={[]}
         onCreate={onCreate}
         onUpdate={vi.fn()}
@@ -554,7 +609,7 @@ describe("UserManager", () => {
   it("updates login when editing name and code", async () => {
     const onUpdate = vi.fn().mockResolvedValue(undefined);
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={onUpdate}
@@ -563,7 +618,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     fireEvent.change(screen.getByLabelText("Nome"), {
       target: { value: "Maria Silva" },
     });
@@ -585,7 +640,7 @@ describe("UserManager", () => {
 
   it("shows NFC pair button when canPairUserTag and editing", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -596,7 +651,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
 
     expect(
       screen.getByRole("button", { name: "Vincular chaveiro NFC" }),
@@ -605,7 +660,7 @@ describe("UserManager", () => {
 
   it("hides NFC pair button on create modal", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -625,7 +680,7 @@ describe("UserManager", () => {
 
   it("shows preview button for admin and navigates to kiosk panel", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -635,7 +690,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     fireEvent.click(
       screen.getByRole("button", {
         name: "Visualizar painel do kiosk do colaborador",
@@ -650,7 +705,7 @@ describe("UserManager", () => {
 
   it("hides preview button when admin preview is not allowed", () => {
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -661,7 +716,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
 
     expect(
       screen.queryByRole("button", {
@@ -677,7 +732,7 @@ describe("UserManager", () => {
     const onPairUserTag = vi.fn().mockResolvedValue({ ok: true });
 
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -688,7 +743,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     fireEvent.click(
       screen.getByRole("button", { name: "Vincular chaveiro NFC" }),
     );
@@ -711,7 +766,7 @@ describe("UserManager", () => {
     isNfcReadSupported.mockReturnValue(false);
 
     renderWithIntl(
-      <UserManager
+      <TestUserManager
         users={users}
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
@@ -722,7 +777,7 @@ describe("UserManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole("link", { name: "Maria" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     fireEvent.click(
       screen.getByRole("button", { name: "Vincular chaveiro NFC" }),
     );
