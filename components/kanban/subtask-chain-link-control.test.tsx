@@ -27,7 +27,7 @@ describe("SubtaskChainLinkControl", () => {
     expect(document.querySelector('[data-slot="chain-line-lower"]')).toBeNull();
   });
 
-  it("draws an in-flow lower elbow and an absolute upper elbow when linked", () => {
+  it("aligns both elbows on the same axis with a thicker dash", () => {
     renderWithIntl(
       <SubtaskChainLinkControl
         linked
@@ -43,19 +43,22 @@ describe("SubtaskChainLinkControl", () => {
     expect(button).toHaveClass("relative");
 
     const upper = document.querySelector('[data-slot="chain-line-upper"]');
+    const lower = document.querySelector('[data-slot="chain-line-lower"]');
     expect(upper).toHaveClass("absolute");
+    expect(upper).toHaveClass("left-1/2");
+    expect(upper).toHaveClass("border-2");
     expect(upper).toHaveClass("border-dashed");
     expect(upper).toHaveClass("border-l");
     expect(upper).toHaveClass("border-t");
     expect(upper).not.toHaveClass("border-b");
 
-    const lower = document.querySelector('[data-slot="chain-line-lower"]');
-    expect(lower).toBeTruthy();
+    expect(lower).toHaveClass("absolute");
+    expect(lower).toHaveClass("left-1/2");
+    expect(lower).toHaveClass("border-2");
     expect(lower).toHaveClass("border-dashed");
     expect(lower).toHaveClass("border-l");
     expect(lower).toHaveClass("border-b");
     expect(lower).not.toHaveClass("border-t");
-    expect(lower?.className ?? "").not.toMatch(/\babsolute\b/);
   });
 
   it("hides the button and connector while dragging", () => {

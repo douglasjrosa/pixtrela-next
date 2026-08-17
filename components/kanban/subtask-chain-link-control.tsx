@@ -13,9 +13,14 @@ export const SUBTASK_CHAIN_LIST_GAP_CLASS =
 const LINK_COLUMN_CLASS =
   "relative flex h-full w-7 shrink-0 flex-col items-center";
 
+const CHAIN_STROKE_CLASS = "border-2 border-dashed border-primary";
+const CHAIN_ANCHOR_CLASS = "pointer-events-none absolute left-1/2";
+
 const CHAIN_UPPER_LINE_CLASS =
   "top-[calc(-1*var(--subtask-chain-gap)-1.75rem)] " +
   "h-[calc(var(--subtask-chain-gap)+1.75rem)]";
+
+const CHAIN_LOWER_LINE_CLASS = "top-7 h-7";
 
 /** Half column + row gap-1 + reach into the card's left edge. */
 const CHAIN_ELBOW_WIDTH_CLASS = "w-[calc(50%+0.25rem)]";
@@ -60,47 +65,48 @@ export function SubtaskChainLinkControl({
       data-hidden={hidden ? "true" : "false"}
     >
       {showVisuals && linked ? (
-        <span
-          className={cn(
-            "pointer-events-none absolute left-1/2",
-            CHAIN_UPPER_LINE_CLASS,
-            CHAIN_ELBOW_WIDTH_CLASS,
-            "border-l border-t border-dashed border-primary",
-          )}
-          aria-hidden
-          data-slot="chain-line-upper"
-        />
+        <>
+          <span
+            className={cn(
+              CHAIN_ANCHOR_CLASS,
+              CHAIN_UPPER_LINE_CLASS,
+              CHAIN_ELBOW_WIDTH_CLASS,
+              CHAIN_STROKE_CLASS,
+              "border-l border-t",
+            )}
+            aria-hidden
+            data-slot="chain-line-upper"
+          />
+          <span
+            className={cn(
+              CHAIN_ANCHOR_CLASS,
+              CHAIN_LOWER_LINE_CLASS,
+              CHAIN_ELBOW_WIDTH_CLASS,
+              CHAIN_STROKE_CLASS,
+              "border-b border-l",
+            )}
+            aria-hidden
+            data-slot="chain-line-lower"
+          />
+        </>
       ) : null}
       {showVisuals ? (
-        <>
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="outline"
-            className={cn(
-              "relative z-10 rounded-full",
-              linked ? "border-primary text-primary" : "text-muted-foreground",
-            )}
-            aria-pressed={linked}
-            aria-label={linked ? unlinkLabel : linkLabel}
-            disabled={disabled}
-            onClick={handleClick}
-            onPointerDown={handlePointerDown}
-          >
-            <Icon aria-hidden />
-          </Button>
-          {linked ? (
-            <span
-              className={cn(
-                "pointer-events-none ml-[50%] h-7",
-                CHAIN_ELBOW_WIDTH_CLASS,
-                "border-b border-l border-dashed border-primary",
-              )}
-              aria-hidden
-              data-slot="chain-line-lower"
-            />
-          ) : null}
-        </>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="outline"
+          className={cn(
+            "relative z-10 rounded-full",
+            linked ? "border-primary text-primary" : "text-muted-foreground",
+          )}
+          aria-pressed={linked}
+          aria-label={linked ? unlinkLabel : linkLabel}
+          disabled={disabled}
+          onClick={handleClick}
+          onPointerDown={handlePointerDown}
+        >
+          <Icon aria-hidden />
+        </Button>
       ) : null}
     </div>
   );
