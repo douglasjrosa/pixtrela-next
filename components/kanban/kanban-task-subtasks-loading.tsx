@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 import { KanbanFloatingCountBadge } from "@/components/kanban/kanban-floating-count-badge";
@@ -153,12 +154,14 @@ export interface KanbanTaskSubtasksLoadingBodyProps {
   teams: readonly TeamAssignmentOption[];
   assignWarnMax: number;
   assignedCountByColaboratorId: Record<string, number>;
+  subtasksListHeader?: ReactNode;
 }
 
 export function KanbanTaskSubtasksLoadingBody({
   teams,
   assignWarnMax,
   assignedCountByColaboratorId,
+  subtasksListHeader,
 }: KanbanTaskSubtasksLoadingBodyProps) {
   const tKanban = useTranslations("kanban");
 
@@ -179,6 +182,9 @@ export function KanbanTaskSubtasksLoadingBody({
             {tKanban("subtasksColumn")}
           </p>
           <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pt-2 pr-2.5">
+            {subtasksListHeader ? (
+              <li className="shrink-0 list-none">{subtasksListHeader}</li>
+            ) : null}
             {range(SUBTASK_LOADING_SKELETON_COUNT).map((index) => (
               <KanbanPendingSubtaskCardSkeleton key={index} />
             ))}

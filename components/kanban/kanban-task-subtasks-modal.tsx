@@ -801,6 +801,30 @@ export function KanbanTaskSubtasksModal({
     );
   }
 
+  function renderSubtasksRefreshStatus(): ReactNode {
+    if (refreshing) {
+      return (
+        <p className="text-xs text-muted-foreground" role="status">
+          {tKanban("refreshingSubtasks")}
+        </p>
+      );
+    }
+    if (refreshStatusTime) {
+      return (
+        <p className="text-xs text-muted-foreground" role="status">
+          {tKanban("subtasksUpdatedAt", { time: refreshStatusTime })}
+        </p>
+      );
+    }
+    return null;
+  }
+
+  function renderSubtasksRefreshStatusItem(): ReactNode {
+    const status = renderSubtasksRefreshStatus();
+    if (!status) return null;
+    return <li className="shrink-0 list-none">{status}</li>;
+  }
+
   function handleFocusModeChange(next: FocusMode): void {
     if (multiEnabled) return;
     setFocusMode(next);
@@ -1060,15 +1084,6 @@ export function KanbanTaskSubtasksModal({
         }
       >
         <p className="text-sm text-muted-foreground">{taskName}</p>
-        {refreshing ? (
-          <p className="text-xs text-muted-foreground" role="status">
-            {tKanban("refreshingSubtasks")}
-          </p>
-        ) : refreshStatusTime ? (
-          <p className="text-xs text-muted-foreground" role="status">
-            {tKanban("subtasksUpdatedAt", { time: refreshStatusTime })}
-          </p>
-        ) : null}
 
         {hasPendingSubtasks || hasFinishedSubtasks || loading ? (
           <div className="flex items-center justify-between gap-4 border-b">
@@ -1127,6 +1142,7 @@ export function KanbanTaskSubtasksModal({
               teams={teams}
               assignWarnMax={assignWarnMax}
               assignedCountByColaboratorId={assignedCountByColaboratorId}
+              subtasksListHeader={renderSubtasksRefreshStatus()}
             />
             {renderAddSubtaskButton("w-full sm:w-auto")}
           </>
@@ -1144,6 +1160,7 @@ export function KanbanTaskSubtasksModal({
               FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS,
             )}
           >
+            {renderSubtasksRefreshStatusItem()}
             {finished.length === 0 ? (
               <li className="text-sm text-muted-foreground" role="status">
                 {tKanban("subtasksEmpty")}
@@ -1256,6 +1273,7 @@ export function KanbanTaskSubtasksModal({
                       : "gap-3",
                   )}
                 >
+                  {renderSubtasksRefreshStatusItem()}
                   {pending.length === 0 ? (
                     <li className="text-sm text-muted-foreground" role="status">
                       {tKanban("subtasksEmpty")}
