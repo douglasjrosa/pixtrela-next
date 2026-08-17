@@ -33,9 +33,7 @@ import {
   buildStepKanbanLookup,
   resolveStepUuidFromKanbanId,
 } from "@/lib/board/kanban-drizzle-ids";
-import {
-  applyAutoStepTaskOrderingAfterTaskChange,
-} from "@/lib/business/apply-step-task-order";
+import { applyAutoStepTaskOrderingAfterTaskChange } from "@/lib/business/apply-step-task-order";
 import { loadBoardProgressByTaskId } from "@/lib/board/load-board-progress";
 import type { BoardSubtaskLinkResult } from "@/lib/business/board-link-queue";
 import {
