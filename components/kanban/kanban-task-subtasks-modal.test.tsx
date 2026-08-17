@@ -666,7 +666,7 @@ describe("KanbanTaskSubtasksModal", () => {
 
     expect(showConfirmToast).not.toHaveBeenCalled();
     expect(
-      screen.getByRole("button", { name: "Atribuir subtarefas" }),
+      screen.getByRole("button", { name: "Atribuir" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Multi-seleção" })).toBeChecked();
   });
@@ -680,7 +680,7 @@ describe("KanbanTaskSubtasksModal", () => {
     await user.click(screen.getByRole("button", { name: "Ana" }));
 
     expect(
-      screen.getByRole("button", { name: "Atribuir subtarefas" }),
+      screen.getByRole("button", { name: "Atribuir" }),
     ).toBeEnabled();
 
     await user.click(screen.getByRole("switch", { name: "Multi-seleção" }));
@@ -690,7 +690,7 @@ describe("KanbanTaskSubtasksModal", () => {
       screen.queryByRole("heading", { name: "Sair da multi-seleção" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Atribuir subtarefas" }),
+      screen.queryByRole("button", { name: "Atribuir" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Multi-seleção" })).not.toBeChecked();
   });
@@ -737,7 +737,7 @@ describe("KanbanTaskSubtasksModal", () => {
 
     expect(onAssigneesChange).not.toHaveBeenCalled();
     expect(
-      screen.getByRole("button", { name: "Atribuir subtarefas" }),
+      screen.getByRole("button", { name: "Atribuir" }),
     ).toBeEnabled();
   });
 
@@ -748,17 +748,17 @@ describe("KanbanTaskSubtasksModal", () => {
     await user.click(screen.getByRole("switch", { name: "Multi-seleção" }));
 
     expect(
-      screen.getByRole("button", { name: "Atribuir subtarefas" }),
+      screen.getByRole("button", { name: "Atribuir" }),
     ).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: /Soldar/ }));
     expect(
-      screen.getByRole("button", { name: "Atribuir subtarefas" }),
+      screen.getByRole("button", { name: "Atribuir" }),
     ).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Ana" }));
     expect(
-      screen.getByRole("button", { name: "Atribuir subtarefas" }),
+      screen.getByRole("button", { name: "Atribuir" }),
     ).toBeEnabled();
   });
 
@@ -773,7 +773,7 @@ describe("KanbanTaskSubtasksModal", () => {
     await user.click(screen.getByRole("button", { name: /Pintar/ }));
     await user.click(screen.getByRole("button", { name: "Ana" }));
     await user.click(
-      screen.getByRole("button", { name: "Atribuir subtarefas" }),
+      screen.getByRole("button", { name: "Atribuir" }),
     );
 
     expect(onAssigneesChange).toHaveBeenCalledWith(subtasks[0], ["u-1"]);
@@ -783,7 +783,7 @@ describe("KanbanTaskSubtasksModal", () => {
       "2 subtarefas foram atribuídas a 1 colaboradores.",
     );
     expect(
-      screen.queryByRole("button", { name: "Atribuir subtarefas" }),
+      screen.queryByRole("button", { name: "Atribuir" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Multi-seleção" })).not.toBeChecked();
   });
@@ -798,12 +798,12 @@ describe("KanbanTaskSubtasksModal", () => {
     await user.click(screen.getByRole("button", { name: /Pintar/ }));
     await user.click(screen.getByRole("button", { name: "Ana" }));
     await user.click(
-      screen.getByRole("button", { name: "Remover atribuições" }),
+      screen.getByRole("button", { name: "Limpar" }),
     );
 
     expect(onAssigneesChange).toHaveBeenCalledWith(subtasks[1], []);
     expect(
-      screen.queryByRole("button", { name: "Remover atribuições" }),
+      screen.queryByRole("button", { name: "Limpar" }),
     ).not.toBeInTheDocument();
   });
 
@@ -831,7 +831,7 @@ describe("KanbanTaskSubtasksModal", () => {
       "true",
     );
     expect(
-      screen.getByRole("button", { name: "Atribuir subtarefas" }),
+      screen.getByRole("button", { name: "Atribuir" }),
     ).toBeEnabled();
   });
 

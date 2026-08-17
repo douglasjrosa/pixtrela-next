@@ -90,7 +90,11 @@ import {
 import { cn } from "@/lib/utils";
 
 import { KanbanFloatingCountBadge } from "./kanban-floating-count-badge";
-import { KanbanMultiAssignSwitch, KanbanMultiAssignToolbar } from "./kanban-multi-assign-toolbar";
+import {
+  KanbanMultiAssignClearButton,
+  KanbanMultiAssignSubmitButton,
+  KanbanMultiAssignSwitch,
+} from "./kanban-multi-assign-toolbar";
 import type { BoardSubTaskSummary } from "./types";
 
 type MainTab = "pending" | "finished";
@@ -1024,19 +1028,35 @@ export function KanbanTaskSubtasksModal({
         size="xl"
         layout="viewport"
         footerStart={
-          <Button
-            type="button"
-            variant="outline"
-            disabled={saving}
-            onClick={requestClose}
-          >
-            {tCommon("cancel")}
-          </Button>
+          multiEnabled && showMultiAssignSwitch ? (
+            <KanbanMultiAssignClearButton
+              canApply={canApply}
+              disabled={saving}
+              onRemove={handleMultiRemove}
+            />
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={requestClose}
+            >
+              {tCommon("cancel")}
+            </Button>
+          )
         }
         footerEnd={
-          <Button type="button" disabled={!dirty || saving} onClick={onSave}>
-            {tCommon("save")}
-          </Button>
+          multiEnabled && showMultiAssignSwitch ? (
+            <KanbanMultiAssignSubmitButton
+              canApply={canApply}
+              disabled={saving}
+              onAssign={handleMultiAssign}
+            />
+          ) : (
+            <Button type="button" disabled={!dirty || saving} onClick={onSave}>
+              {tCommon("save")}
+            </Button>
+          )
         }
       >
         <p className="text-sm text-muted-foreground">{taskName}</p>
@@ -1207,16 +1227,6 @@ export function KanbanTaskSubtasksModal({
               FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS,
             )}
           >
-            <KanbanMultiAssignToolbar
-              multiEnabled={multiEnabled}
-              canApply={canApply}
-              disabled={saving}
-              showSwitch={false}
-              onMultiEnabledChange={handleMultiEnabledChange}
-              onAssign={handleMultiAssign}
-              onRemove={handleMultiRemove}
-            />
-
             <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[7fr_3fr] gap-4">
               <section className="flex min-h-0 min-w-0 flex-col gap-2">
                 {multiEnabled ? (

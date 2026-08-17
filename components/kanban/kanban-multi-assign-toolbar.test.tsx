@@ -19,10 +19,10 @@ describe("KanbanMultiAssignToolbar", () => {
 
     expect(screen.getByRole("switch", { name: "Multi-seleção" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Atribuir subtarefas" }),
+      screen.queryByRole("button", { name: "Atribuir" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Remover atribuições" }),
+      screen.queryByRole("button", { name: "Limpar" }),
     ).not.toBeInTheDocument();
   });
 
@@ -38,10 +38,10 @@ describe("KanbanMultiAssignToolbar", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: "Atribuir subtarefas" }),
+      screen.getByRole("button", { name: "Atribuir" }),
     ).toBeDisabled();
     expect(
-      screen.getByRole("button", { name: "Remover atribuições" }),
+      screen.getByRole("button", { name: "Limpar" }),
     ).toBeDisabled();
   });
 
@@ -59,8 +59,8 @@ describe("KanbanMultiAssignToolbar", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Atribuir subtarefas" }));
-    fireEvent.click(screen.getByRole("button", { name: "Remover atribuições" }));
+    fireEvent.click(screen.getByRole("button", { name: "Atribuir" }));
+    fireEvent.click(screen.getByRole("button", { name: "Limpar" }));
 
     expect(onAssign).toHaveBeenCalledOnce();
     expect(onRemove).toHaveBeenCalledOnce();
