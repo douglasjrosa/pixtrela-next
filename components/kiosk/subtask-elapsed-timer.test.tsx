@@ -47,4 +47,18 @@ describe("SubtaskElapsedTimer", () => {
     const timer = screen.getByText("2min 1s");
     expect(timer).toHaveClass("text-destructive");
   });
+
+  it("pauses the live counter while paused is true", () => {
+    renderWithIntl(
+      <SubtaskElapsedTimer
+        startedAt="2026-06-05T10:00:00.000Z"
+        paused
+      />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.getByText("0s")).toBeInTheDocument();
+  });
 });

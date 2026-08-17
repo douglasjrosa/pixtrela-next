@@ -776,6 +776,7 @@
     "expectedTime": "Tempo previsto",
     "elapsed": "Tempo decorrido",
     "timeSpent": "Tempo gasto",
+    "actionLoading": "Processando...",
     "sectionProducing": "Em execução",
     "sectionPending": "A fazer",
     "sectionFinishedToday": "Concluídas hoje",

@@ -27,6 +27,7 @@ export async function KioskContentSurface({
       className={cn(
         COLABORATOR_CONTENT_SURFACE_CLASS,
         routeThemeContentSurfaceRadiusClass(theme),
+        "flex min-h-0 flex-1 flex-col",
         className,
       )}
       style={panelStyle}

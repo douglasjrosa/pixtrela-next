@@ -277,6 +277,18 @@ describe("isLockedSubTask", () => {
       }),
     ).toBe(false);
   });
+
+  it("returns false while the subtask is producing", () => {
+    expect(
+      isLockedSubTask({
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "producing",
+        activationStatus: "locked",
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("canStopSubTask", () => {

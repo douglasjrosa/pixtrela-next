@@ -148,6 +148,38 @@ describe("KioskChainGroupCard", () => {
     ).toBeEnabled();
   });
 
+  it("hides dependency lock overlay while the chain is active", () => {
+    const members = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Cortar",
+        status: "producing",
+        startedAt: "2026-08-16T12:00:00.000Z",
+      }),
+      kioskSubTask({
+        documentId: "b",
+        name: "Embalar",
+        index: 1,
+        linkedToPrevious: true,
+        status: "waiting",
+      }),
+    ];
+    renderWithIntl(
+      <KioskChainGroupCard
+        unit={{
+          ...activeGroupProps(members),
+          locked: true,
+        }}
+        onConfirmChainStop={vi.fn()}
+        onAdvanceChain={vi.fn()}
+      />,
+    );
+
+    const card = screen.getByTestId("kiosk-chain-group");
+    expect(card).toHaveClass("bg-success/10");
+    expect(screen.queryByTestId("subtask-locked-overlay")).toBeNull();
+  });
+
   it("collects member answers before confirming stop", async () => {
     const user = userEvent.setup();
     const onConfirmChainStop = vi.fn();

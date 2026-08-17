@@ -28,6 +28,7 @@ export interface KioskChainGroupCardProps {
     answers: ChainStopAnswer[],
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
+  blockingUi?: boolean;
 }
 
 export function KioskChainGroupCard({
@@ -38,6 +39,7 @@ export function KioskChainGroupCard({
   onStartChain,
   onConfirmChainStop,
   onAdvanceChain,
+  blockingUi = false,
 }: KioskChainGroupCardProps) {
   const t = useTranslations("kiosk");
   const [collecting, setCollecting] = useState(false);
@@ -53,6 +55,7 @@ export function KioskChainGroupCard({
   );
 
   const taskName = unit.members[0]?.taskName;
+  const showLockOverlay = unit.locked && !unit.principalActive;
   const showStart = !readOnly && unit.showStart;
   const showStop =
     !readOnly && !unit.locked && unit.principalActive && !collecting;
@@ -81,9 +84,10 @@ export function KioskChainGroupCard({
       data-testid="kiosk-chain-group"
       className={cn(
         "relative rounded-2xl border bg-card p-4 transition-colors duration-300",
-        unit.locked && "bg-muted",
-        unit.principalActive && "border-l-4 border-l-[var(--success)] shadow-sm",
-        flash && "bg-muted",
+        unit.principalActive &&
+          "border-l-4 border-l-[var(--success)] bg-success/10 shadow-sm",
+        showLockOverlay && "bg-muted",
+        flash && !unit.principalActive && "bg-muted",
       )}
     >
       <div className="flex flex-col gap-4">
@@ -108,6 +112,7 @@ export function KioskChainGroupCard({
                     startedAt={member.startedAt}
                     timeSpent={member.timeSpent}
                     expectedTime={member.expectedTime}
+                    timerPaused={blockingUi}
                   />
                 ) : null}
                 {member.status === "finished" ? (
@@ -182,7 +187,7 @@ export function KioskChainGroupCard({
           </div>
         ) : null}
       </div>
-      {unit.locked ? (
+      {showLockOverlay ? (
         <div
           className="pointer-events-none absolute inset-0 flex items-center justify-center"
           data-testid="subtask-locked-overlay"
