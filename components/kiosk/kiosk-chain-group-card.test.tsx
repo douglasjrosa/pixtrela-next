@@ -60,6 +60,15 @@ function groupUnit(partial: Partial<KioskGroupUnit> = {}): KioskGroupUnit {
   };
 }
 
+function activeGroupProps(members = groupUnit().members) {
+  return groupUnit({
+    members,
+    principalActive: true,
+    chainRunId: "run-1",
+    runStartedAt: "2026-08-16T12:00:00.000Z",
+  });
+}
+
 describe("KioskChainGroupCard", () => {
   it("starts the chain with one button at the bottom", async () => {
     const user = userEvent.setup();
@@ -92,12 +101,7 @@ describe("KioskChainGroupCard", () => {
     ];
     renderWithIntl(
       <KioskChainGroupCard
-        unit={groupUnit({
-          members,
-          principalActive: true,
-          chainRunId: "run-1",
-          runStartedAt: "2026-08-16T12:00:00.000Z",
-        })}
+        unit={activeGroupProps(members)}
         pending
         onConfirmChainStop={vi.fn()}
         onAdvanceChain={vi.fn()}
@@ -105,6 +109,43 @@ describe("KioskChainGroupCard", () => {
     );
 
     expect(screen.getByRole("button", { name: "Parar" })).toBeEnabled();
+  });
+
+  it("hides stop and keeps member forms enabled while collecting", async () => {
+    const user = userEvent.setup();
+    const members = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Cortar",
+        status: "producing",
+        startedAt: "2026-08-16T12:00:00.000Z",
+      }),
+      kioskSubTask({
+        documentId: "b",
+        name: "Embalar",
+        index: 1,
+        linkedToPrevious: true,
+        status: "waiting",
+      }),
+    ];
+    renderWithIntl(
+      <KioskChainGroupCard
+        unit={activeGroupProps(members)}
+        pending
+        onConfirmChainStop={vi.fn()}
+        onAdvanceChain={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Parar" }));
+
+    expect(
+      screen.queryByRole("button", { name: "Parar" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeEnabled();
+    expect(
+      screen.getAllByRole("button", { name: "Sim, concluí" })[0],
+    ).toBeEnabled();
   });
 
   it("collects member answers before confirming stop", async () => {
@@ -127,28 +168,25 @@ describe("KioskChainGroupCard", () => {
     ];
     renderWithIntl(
       <KioskChainGroupCard
-        unit={groupUnit({
-          members,
-          principalActive: true,
-          chainRunId: "run-1",
-          runStartedAt: "2026-08-16T12:00:00.000Z",
-        })}
+        unit={activeGroupProps(members)}
         onConfirmChainStop={onConfirmChainStop}
         onAdvanceChain={vi.fn()}
       />,
     );
 
-    const stop = screen.getByRole("button", { name: "Parar" });
-    await user.click(stop);
-    expect(stop).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Parar" }));
     expect(screen.getAllByText("A subtarefa foi concluída?")).toHaveLength(2);
+    expect(
+      screen.queryByRole("button", { name: "Confirmar saída" }),
+    ).not.toBeInTheDocument();
 
     const yesButtons = screen.getAllByRole("button", { name: "Sim, concluí" });
     await user.click(yesButtons[0]!);
-    expect(stop).toBeDisabled();
     await user.click(yesButtons[1]!);
-    expect(stop).toBeEnabled();
-    await user.click(stop);
+
+    const confirm = screen.getByRole("button", { name: "Confirmar saída" });
+    expect(confirm).toBeEnabled();
+    await user.click(confirm);
     expect(onConfirmChainStop).toHaveBeenCalledWith("run-1", [
       { documentId: "a", completed: true },
       { documentId: "b", completed: true },
