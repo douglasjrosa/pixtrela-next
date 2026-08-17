@@ -38,7 +38,10 @@ describe("password-reset-actions", () => {
     findUserByEmail.mockReset();
     updateUserAccount.mockReset();
     sendMail.mockReset();
-    process.env.NEXT_PUBLIC_APP_URL = "https://app.example.com";
+    delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.AUTH_URL;
+    delete process.env.VERCEL_URL;
+    process.env.AUTH_URL = "https://app.example.com";
   });
 
   it("requestPasswordReset sends mail for active users", async () => {
@@ -58,6 +61,10 @@ describe("password-reset-actions", () => {
       expect.objectContaining({
         to: "ana@example.com",
         subject: "Redefinição de senha",
+        text: expect.stringContaining("Você produz. Você ganha. Você brilha."),
+        html: expect.stringContaining(
+          'href="https://app.example.com/login/reset-password?token=plain-token"',
+        ),
       }),
     );
   });
