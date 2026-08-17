@@ -41,6 +41,7 @@ export function KioskChainGroupCard({
 }: KioskChainGroupCardProps) {
   const t = useTranslations("kiosk");
   const [collecting, setCollecting] = useState(false);
+  const [confirmingStop, setConfirmingStop] = useState(false);
   const [answers, setAnswers] = useState<Record<string, ChainStopAnswer>>({});
 
   const answersComplete = useMemo(
@@ -53,19 +54,26 @@ export function KioskChainGroupCard({
 
   const taskName = unit.members[0]?.taskName;
   const showStart = !readOnly && unit.showStart;
-  const showStop = !readOnly && !unit.locked && unit.principalActive;
-  const stopDisabled = collecting && (!answersComplete || Boolean(pending));
+  const showStop =
+    !readOnly && !unit.locked && unit.principalActive && !collecting;
+
+  function resetCollecting(): void {
+    setCollecting(false);
+    setConfirmingStop(false);
+    setAnswers({});
+  }
 
   function handleStopClick(): void {
-    if (!collecting) {
-      setCollecting(true);
-      return;
-    }
-    if (!unit.chainRunId || !answersComplete) return;
+    setCollecting(true);
+  }
+
+  function handleConfirmStop(): void {
+    if (!unit.chainRunId || !answersComplete || confirmingStop) return;
+    setConfirmingStop(true);
     const payload = unit.members.map(
       (member) => answers[member.documentId] ?? { documentId: member.documentId },
     );
-    void onConfirmChainStop?.(unit.chainRunId, payload);
+    onConfirmChainStop?.(unit.chainRunId, payload);
   }
 
   return (
@@ -121,7 +129,7 @@ export function KioskChainGroupCard({
                         : undefined
                     }
                     value={answers[member.documentId]}
-                    disabled={pending}
+                    disabled={confirmingStop}
                     onChange={(answer) =>
                       setAnswers((current) => ({
                         ...current,
@@ -134,7 +142,7 @@ export function KioskChainGroupCard({
             );
           })}
         </ul>
-        {!readOnly && (showStart || showStop) ? (
+        {!readOnly && (showStart || showStop || collecting) ? (
           <div className="flex w-full flex-col gap-2">
             {showStart ? (
               <KioskActionButton
@@ -148,20 +156,25 @@ export function KioskChainGroupCard({
             {showStop ? (
               <KioskActionButton
                 actionVariant="outline"
-                disabled={stopDisabled}
                 onClick={handleStopClick}
               >
                 {t("stop")}
               </KioskActionButton>
             ) : null}
+            {collecting && answersComplete ? (
+              <KioskActionButton
+                actionVariant="produce"
+                disabled={confirmingStop}
+                onClick={handleConfirmStop}
+              >
+                {t("exitConfirm")}
+              </KioskActionButton>
+            ) : null}
             {collecting ? (
               <KioskActionButton
                 actionVariant="outline"
-                disabled={pending}
-                onClick={() => {
-                  setCollecting(false);
-                  setAnswers({});
-                }}
+                disabled={confirmingStop}
+                onClick={resetCollecting}
               >
                 {t("exitCancel")}
               </KioskActionButton>
