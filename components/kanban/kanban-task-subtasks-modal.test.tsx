@@ -173,6 +173,8 @@ describe("KanbanTaskSubtasksModal", () => {
     expect(soldarMax).toHaveTextContent("Max");
     expect(soldarMax).toHaveTextContent("x 1");
     expect(soldarMax).toHaveClass("text-xs");
+    expect(soldarMax).toHaveClass("flex-col");
+    expect(soldarMax).toHaveClass("items-center");
     expect(soldarMax).not.toHaveClass("bg-muted");
 
     const pintarCard = screen.getByRole("button", { name: /Pintar/ });

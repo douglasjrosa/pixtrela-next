@@ -190,15 +190,17 @@ function SubTaskCardHeader({
         >
           <li className="min-w-0">
             <span
-              className="inline-flex max-w-full items-center gap-0.5 text-xs"
+              className="inline-flex max-w-full flex-col items-center text-xs"
               aria-label={tSubtasks("maxSameTimeWorkersBadge", {
                 count: maxWorkers,
               })}
             >
               <span>{tSubtasks("maxSameTimeWorkersShort")}</span>
-              <User aria-hidden className="size-3 shrink-0" />
-              <span className="tabular-nums">
-                {tSubtasks("maxSameTimeWorkersTimes", { count: maxWorkers })}
+              <span className="inline-flex items-center gap-0.5">
+                <User aria-hidden className="size-3 shrink-0" />
+                <span className="tabular-nums">
+                  {tSubtasks("maxSameTimeWorkersTimes", { count: maxWorkers })}
+                </span>
               </span>
             </span>
           </li>
