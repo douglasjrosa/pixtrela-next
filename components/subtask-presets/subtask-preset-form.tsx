@@ -32,8 +32,6 @@ export function SubTaskPresetForm({
   const {
     register,
     control,
-    watch,
-    setValue,
     handleSubmit,
     formState: { errors },
   } = useForm<SubTaskPresetFormInput>({
@@ -114,17 +112,18 @@ export function SubTaskPresetForm({
       </div>
 
       <div className="sm:col-span-2">
-        <SubTaskCategorySelect
-          id={`${formId}-category`}
-          value={watch("subTaskCategoryId")}
-          disabled={disabled}
-          onChange={(next) =>
-            setValue("subTaskCategoryId", next, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
-        />
+          <Controller
+            name="subTaskCategoryId"
+            control={control}
+            render={({ field }) => (
+              <SubTaskCategorySelect
+                id={`${formId}-category`}
+                value={field.value}
+                disabled={disabled}
+                onChange={field.onChange}
+              />
+            )}
+          />
       </div>
     </form>
   );

@@ -62,6 +62,7 @@ type BoardLiveProgressProps = BoardLiveProgressDataProps & {
   updateSubtaskAssignees: BoardActionsProps["updateSubtaskAssignees"];
   linkSubtask: BoardActionsProps["linkSubtask"];
   createSubtask: BoardActionsProps["createSubtask"];
+  releaseSubtaskFlags?: BoardActionsProps["releaseSubtaskFlags"];
 };
 
 export function BoardLiveProgress({
@@ -83,6 +84,7 @@ export function BoardLiveProgress({
   updateSubtaskAssignees,
   linkSubtask,
   createSubtask,
+  releaseSubtaskFlags,
 }: BoardLiveProgressProps) {
   const [subtasksModalOpen, setSubtasksModalOpen] = useState(false);
   useBoardRevisionRefresh(subtasksModalOpen);
@@ -113,6 +115,7 @@ export function BoardLiveProgress({
           updateSubtaskAssignees={updateSubtaskAssignees}
           linkSubtask={linkSubtask}
           createSubtask={createSubtask}
+          releaseSubtaskFlags={releaseSubtaskFlags}
           assigneePeople={assigneePeople}
           onSubtasksModalOpenChange={setSubtasksModalOpen}
         />

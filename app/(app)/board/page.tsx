@@ -28,6 +28,7 @@ import {
   loadBoardSubtaskSession,
   loadBoardSubtaskSessions,
   pollBoardProgress,
+  releaseBoardSubTaskFlags,
   reorderBoardSubtasks,
   updateBoardSubtaskAssignees,
   updateBoardSubtaskLink,
@@ -139,6 +140,7 @@ function BoardCanvas({
       updateSubtaskAssignees={updateBoardSubtaskAssignees}
       linkSubtask={updateBoardSubtaskLink}
       createSubtask={createBoardSubtask}
+      releaseSubtaskFlags={releaseBoardSubTaskFlags}
     />
   );
 }

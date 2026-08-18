@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/app/(app)/settings/subtasks/actions", () => ({
+  listCategoryOptions: vi.fn(async () => []),
+}));
 
 import {
   BOARD_LIVE_PROGRESS_DATA_PROP_KEYS,

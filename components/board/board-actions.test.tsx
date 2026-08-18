@@ -11,6 +11,10 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
 }));
 
+vi.mock("@/app/(app)/settings/subtasks/actions", () => ({
+  listCategoryOptions: vi.fn(async () => []),
+}));
+
 vi.mock("@/lib/ui/app-toast", () => ({
   showSuccessToast: (...args: unknown[]) => showSuccessToast(...args),
   showErrorToast: (...args: unknown[]) => showErrorToast(...args),

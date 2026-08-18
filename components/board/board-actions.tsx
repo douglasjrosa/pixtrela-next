@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { KanbanBoard } from "@/components/kanban/kanban-board";
-import { releaseBoardSubTaskFlags } from "@/app/(app)/board/actions";
 import { KanbanSubtaskCreateModal } from "@/components/kanban/kanban-subtask-create-modal";
 import { KanbanTaskSubtasksModal } from "@/components/kanban/kanban-task-subtasks-modal";
 import type {
@@ -119,6 +118,7 @@ export interface BoardActionsProps {
     taskDocumentId: string,
     values: SubTaskFormInput,
   ) => Promise<void>;
+  releaseSubtaskFlags?: (subTaskDocumentId: string) => Promise<void>;
   reorderSubtasks: (
     taskDocumentId: string,
     orderedDocumentIds: string[],
@@ -149,6 +149,7 @@ export function BoardActions({
   createSubtask,
   reorderSubtasks,
   linkSubtask,
+  releaseSubtaskFlags,
   assigneePeople = [],
   onSubtasksModalOpenChange,
 }: BoardActionsProps) {
@@ -462,7 +463,8 @@ export function BoardActions({
     const taskDocumentId = selectedTaskRef.current?.documentId;
     if (!taskDocumentId) return;
     try {
-      await releaseBoardSubTaskFlags(subTaskDocumentId);
+      if (!releaseSubtaskFlags) return;
+      await releaseSubtaskFlags(subTaskDocumentId);
       const loaded = await loadSubtasks(taskDocumentId);
       applyFetchedSubtasks(loaded, { taskDocumentId });
       showSuccessToast(tKiosk("flagsReleased"));
