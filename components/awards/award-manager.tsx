@@ -19,6 +19,7 @@ import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { buildAwardValuesForCurrencies } from "@/lib/awards/build-award-form-values";
 import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
@@ -145,12 +146,6 @@ function AwardFormDialog({
     });
   }
 
-  const textareaClass = cn(
-    "flex min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2",
-    "text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none",
-    "focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
-    "disabled:opacity-50",
-  );
   const formId = "award-form";
 
   return (
@@ -216,9 +211,8 @@ function AwardFormDialog({
 
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="description">{tAwards("description")}</Label>
-          <textarea
+          <Textarea
             id="description"
-            className={textareaClass}
             disabled={formDisabled}
             {...register("description")}
           />
@@ -226,9 +220,8 @@ function AwardFormDialog({
 
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="warnings">{tAwards("warnings")}</Label>
-          <textarea
+          <Textarea
             id="warnings"
-            className={textareaClass}
             disabled={formDisabled}
             {...register("warnings")}
           />
