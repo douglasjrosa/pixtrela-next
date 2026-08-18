@@ -268,33 +268,45 @@ function AwardFormDialog({
 
         <div className="space-y-3 sm:col-span-2">
           <Label>{tAwards("values")}</Label>
-          {currencies.map((currency, index) => (
-            <div key={currency.documentId} className="flex flex-wrap items-center gap-3">
-              <Label
-                htmlFor={`award-value-${currency.documentId}`}
-                className="w-32 shrink-0 text-sm font-normal"
-              >
-                {currencyLabel(currency)}
-              </Label>
-              <input
-                type="hidden"
-                {...register(`values.${index}.currencyDocumentId`)}
-              />
+          <div className="flex flex-wrap items-start gap-4">
+            {currencies.map((currency, index) => (
+              <div key={currency.documentId} className="space-y-2">
+                <Label htmlFor={`award-value-${currency.documentId}`}>
+                  {currencyLabel(currency)}
+                </Label>
+                <input
+                  type="hidden"
+                  {...register(`values.${index}.currencyDocumentId`)}
+                />
+                <NumberInput
+                  id={`award-value-${currency.documentId}`}
+                  min={1}
+                  className="w-28"
+                  disabled={formDisabled}
+                  {...register(`values.${index}.numberOf`, { valueAsNumber: true })}
+                />
+              </div>
+            ))}
+            <div className="space-y-2">
+              <Label htmlFor="stock">{tAwards("stock")}</Label>
               <NumberInput
-                id={`award-value-${currency.documentId}`}
-                min={1}
-                className="w-28"
+                id="stock"
+                min={0}
+                className="w-32"
                 disabled={formDisabled}
-                {...register(`values.${index}.numberOf`, { valueAsNumber: true })}
+                {...register("stock", { valueAsNumber: true })}
               />
+              {errors.stock ? (
+                <p className="text-sm text-destructive">{errors.stock.message}</p>
+              ) : null}
             </div>
-          ))}
+          </div>
           {errors.values ? (
             <p className="text-sm text-destructive">{errors.values.message}</p>
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-end gap-6 sm:col-span-2">
+        <div className="sm:col-span-2">
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -304,19 +316,6 @@ function AwardFormDialog({
             />
             {tAwards("showInStore")}
           </label>
-          <div className="space-y-2">
-            <Label htmlFor="stock">{tAwards("stock")}</Label>
-            <NumberInput
-              id="stock"
-              min={0}
-              className="w-32"
-              disabled={formDisabled}
-              {...register("stock", { valueAsNumber: true })}
-            />
-            {errors.stock ? (
-              <p className="text-sm text-destructive">{errors.stock.message}</p>
-            ) : null}
-          </div>
         </div>
       </form>
     </FormModalShell>
