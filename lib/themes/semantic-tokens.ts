@@ -188,17 +188,55 @@ export function normalizeSemanticHexColor(value: string): string | null {
   return trimmed.toLowerCase();
 }
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const normalized = normalizeSemanticHexColor(hex);
+  if (!normalized) return null;
+  return {
+    r: Number.parseInt(normalized.slice(1, 3), 16),
+    g: Number.parseInt(normalized.slice(3, 5), 16),
+    b: Number.parseInt(normalized.slice(5, 7), 16),
+  };
+}
+
+function relativeLuminanceFromHex(hex: string): number {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 1;
+
+  const channels = [rgb.r, rgb.g, rgb.b].map((channel) => {
+    const normalized = channel / 255;
+    return normalized <= 0.03928
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+  });
+
+  return (
+    0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+  );
+}
+
+const DARK_BACKGROUND_LUMINANCE_THRESHOLD = 0.45;
+
+export function resolveSemanticColorScheme(
+  background: string,
+): "light" | "dark" {
+  return relativeLuminanceFromHex(background) < DARK_BACKGROUND_LUMINANCE_THRESHOLD
+    ? "dark"
+    : "light";
+}
+
+export function buildSemanticThemeCss(tokens: SemanticTokens): string {
+  const colorScheme = resolveSemanticColorScheme(tokens.background);
+  const lines = [
+    ...SEMANTIC_TOKEN_KEYS.map((key) => `  --${key}: ${tokens[key]};`),
+    `  color-scheme: ${colorScheme};`,
+  ];
+  return `:root {\n${lines.join("\n")}\n}`;
+}
+
 export function mergeSemanticTokens(
   partial: Partial<SemanticTokens> | null | undefined,
 ): SemanticTokens {
   return { ...DEFAULT_SEMANTIC_TOKENS, ...partial };
-}
-
-export function buildSemanticThemeCss(tokens: SemanticTokens): string {
-  const lines = SEMANTIC_TOKEN_KEYS.map(
-    (key) => `  --${key}: ${tokens[key]};`,
-  );
-  return `:root {\n${lines.join("\n")}\n}`;
 }
 
 export function semanticTokenLabelKey(key: SemanticTokenKey): string {

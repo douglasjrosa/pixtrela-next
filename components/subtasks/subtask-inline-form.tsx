@@ -22,6 +22,7 @@ import {
   subTaskFormSchema,
   type SubTaskFormInput,
 } from "@/lib/schemas/sub-task";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 
 import { SubTaskAssigneePicker } from "./subtask-assignee-picker";
 import { SubTaskCategorySelect } from "./subtask-category-select";
@@ -215,7 +216,7 @@ export function SubTaskInlineForm({
         <Label htmlFor={fieldId("sharingType")}>{tSubtasks("sharingTypeLabel")}</Label>
         <select
           id={fieldId("sharingType")}
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          className={NATIVE_SELECT_CLASS_NAME}
           disabled={disabled}
           {...register("sharingType")}
         >
@@ -246,7 +247,7 @@ export function SubTaskInlineForm({
           <Label htmlFor={fieldId("status")}>{tTasks("manage.status")}</Label>
           <select
             id={fieldId("status")}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className={NATIVE_SELECT_CLASS_NAME}
             disabled={disabled}
             {...register("status")}
           >
@@ -268,7 +269,7 @@ export function SubTaskInlineForm({
           </Label>
           <select
             id={fieldId("activationStatus")}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className={NATIVE_SELECT_CLASS_NAME}
             disabled={disabled}
             {...register("activationStatus")}
           >

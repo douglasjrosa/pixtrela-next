@@ -20,6 +20,7 @@ import {
   templateSubTaskFormSchema,
   type TemplateSubTaskFormInput,
 } from "@/lib/schemas/template-sub-task";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 
 import {
   SubTaskDependenciesModal,
@@ -205,7 +206,7 @@ export function TemplateSubTaskInlineForm({
         </Label>
         <select
           id={fieldId("sharingType")}
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          className={NATIVE_SELECT_CLASS_NAME}
           disabled={disabled}
           {...register("sharingType")}
         >

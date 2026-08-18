@@ -44,6 +44,7 @@ import {
 } from "@/lib/schemas/user";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 
 import type { UserRow } from "./types";
 import {
@@ -435,7 +436,7 @@ function UserFormDialog({
           <Label htmlFor="roleType">{tUsers("role")}</Label>
           <select
             id="roleType"
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className={NATIVE_SELECT_CLASS_NAME}
             {...register("roleType")}
           >
             {roleOptions.map((role) => (
@@ -450,7 +451,7 @@ function UserFormDialog({
           <Label htmlFor="greetingGender">{tUsers("greetingGender")}</Label>
           <select
             id="greetingGender"
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className={NATIVE_SELECT_CLASS_NAME}
             {...register("greetingGender")}
           >
             <option value="masculine">{tUsers("greetingGenderMasculine")}</option>

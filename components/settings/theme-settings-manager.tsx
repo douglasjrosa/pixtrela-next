@@ -14,6 +14,7 @@ import { SettingsSectionHeading } from "@/components/settings/settings-section-h
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NATIVE_SELECT_TALL_CLASS_NAME } from "@/lib/ui/native-select";
 import type { RouteThemeFormInput } from "@/lib/schemas/route-theme";
 import {
   BACKGROUND_MOTIONS,
@@ -95,8 +96,7 @@ function draftFromTheme(theme: RouteThemeView): ThemeDraft {
   };
 }
 
-const selectClassName =
-  "flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm";
+const selectClassName = NATIVE_SELECT_TALL_CLASS_NAME;
 
 const CHECKERBOARD =
   "repeating-conic-gradient(#d4d4d4 0% 25%, #fafafa 0% 50%) 50% / 10px 10px";

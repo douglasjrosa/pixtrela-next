@@ -1,6 +1,7 @@
 import {
   SEMANTIC_TOKEN_KEYS,
   buildSemanticThemeCss,
+  resolveSemanticColorScheme,
   type SemanticTokens,
 } from "@/lib/themes/semantic-tokens";
 
@@ -18,6 +19,10 @@ export function applySemanticThemeToDocument(tokens: SemanticTokens): void {
   }
 
   const root = document.documentElement;
+  root.style.setProperty(
+    "color-scheme",
+    resolveSemanticColorScheme(tokens.background),
+  );
   for (const key of SEMANTIC_TOKEN_KEYS) {
     root.style.setProperty(`--${key}`, tokens[key]);
   }

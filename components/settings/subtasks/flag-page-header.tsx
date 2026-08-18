@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 
 const FORM_ID = "create-flag-form";
 
@@ -111,7 +112,7 @@ export function FlagPageHeader({
               <Label htmlFor="flag-cat">{t("flagCategory")}</Label>
               <select
                 id="flag-cat"
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                className={NATIVE_SELECT_CLASS_NAME}
                 value={categoryId}
                 required
                 onChange={(event) => handleCategoryChange(event.target.value)}

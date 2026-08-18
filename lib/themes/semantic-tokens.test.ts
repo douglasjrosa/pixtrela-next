@@ -25,6 +25,15 @@ describe("semantic-tokens", () => {
     expect(css).toContain(":root {");
     expect(css).toContain("--primary: #4a7fd4;");
     expect(css).toContain("--foreground: #002555;");
+    expect(css).toContain("color-scheme: light;");
+  });
+
+  it("uses dark color-scheme for dark backgrounds", () => {
+    const css = buildSemanticThemeCss({
+      ...DEFAULT_SEMANTIC_TOKENS,
+      background: "#0f172a",
+    });
+    expect(css).toContain("color-scheme: dark;");
   });
 
   it("merges partial tokens with defaults", () => {

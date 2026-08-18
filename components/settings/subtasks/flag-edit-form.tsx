@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 
 export function FlagEditForm({
   documentId,
@@ -81,7 +82,7 @@ export function FlagEditForm({
         <Label htmlFor="edit-flag-cat">{t("flagCategory")}</Label>
         <select
           id="edit-flag-cat"
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          className={NATIVE_SELECT_CLASS_NAME}
           value={categoryId}
           required
           onChange={(event) => setCategoryId(event.target.value)}

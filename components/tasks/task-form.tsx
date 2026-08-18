@@ -237,7 +237,7 @@ export function TaskForm({
               id="status"
               className={cn(
                 "flex h-9 min-w-0 flex-1 rounded-md border border-input",
-                "bg-transparent px-3 text-sm",
+                "bg-background px-3 text-sm text-foreground",
               )}
               {...register("status")}
             >

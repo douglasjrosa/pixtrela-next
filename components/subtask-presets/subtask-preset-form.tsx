@@ -95,7 +95,7 @@ export function SubTaskPresetForm({
               id={`${formId}-sharingType`}
               className={
                 "flex h-9 w-full rounded-md border border-input " +
-                "bg-transparent px-3 text-sm"
+                "bg-background px-3 text-sm text-foreground"
               }
               disabled={disabled}
               value={field.value}

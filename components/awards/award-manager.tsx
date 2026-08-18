@@ -288,7 +288,7 @@ function AwardFormDialog({
               <select
                 className={
                   "flex h-9 min-w-40 flex-1 rounded-md border border-input " +
-                  "bg-transparent px-3 text-sm"
+                  "bg-background px-3 text-sm text-foreground"
                 }
                 disabled={formDisabled}
                 aria-label={tAwards("currency")}

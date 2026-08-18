@@ -11,10 +11,10 @@ import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { currencyForSubtasksSchema } from "@/lib/schemas/currency-for-subtasks";
 import { primaryCurrencyDocumentId } from "@/lib/business/primary-currency";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
-const SELECT_CLASS_NAME =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm";
+const SELECT_CLASS_NAME = NATIVE_SELECT_CLASS_NAME;
 
 type ActiveCurrencyFormInput = z.infer<typeof currencyForSubtasksSchema>;
 
