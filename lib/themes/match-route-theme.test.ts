@@ -14,8 +14,10 @@ import {
   routeThemeColorOverlayRgba,
   routeThemeContentFrameClass,
   routeThemeContentSurfaceRadiusClass,
+  pickContrastingForeground,
   routeThemeForegroundStyle,
   routeThemeSurfaceBackgroundStyle,
+  routeThemeSurfacePanelStyle,
   normalizeForegroundColor,
   normalizeSurfaceColor,
   pageMarginFromStoredIndex,
@@ -326,6 +328,30 @@ describe("foreground color", () => {
       "--card-foreground": "#334455",
       "--popover-foreground": "#334455",
     });
+  });
+
+  it("replaces unreadable ink when the surface is dark", () => {
+    expect(
+      pickContrastingForeground("#0b1220", "#002555"),
+    ).toBe("#f8fafc");
+    expect(
+      routeThemeForegroundStyle({
+        foregroundColor: "#002555",
+        surfaceColor: "#0b1220",
+      }).color,
+    ).toBe("#f8fafc");
+    expect(
+      routeThemeSurfacePanelStyle({
+        ...themes[0],
+        surfaceColor: "#0b1220",
+        surfaceColorOpacity: 100,
+        foregroundColor: "#002555",
+      }).color,
+    ).toBe("#f8fafc");
+  });
+
+  it("keeps brand ink on a light surface", () => {
+    expect(pickContrastingForeground("#ffffff", "#002555")).toBe("#002555");
   });
 });
 
