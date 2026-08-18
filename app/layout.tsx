@@ -63,7 +63,9 @@ export default async function RootLayout({
       lang={locale}
       className={`${comfortaa.variable} ${merriweatherSans.variable} h-full antialiased`}
     >
-      <SemanticThemeStyle />
+      <head>
+        <SemanticThemeStyle />
+      </head>
       <body className="flex min-h-full flex-col font-sans">
         <SerwistProvider swUrl="/serwist/sw.js">
           <NextIntlClientProvider locale={locale} messages={messages}>

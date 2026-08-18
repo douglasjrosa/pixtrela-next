@@ -5,6 +5,8 @@ export async function SemanticThemeStyle() {
   return (
     <style
       id="semantic-theme"
+      precedence="default"
+      href="semantic-theme"
       dangerouslySetInnerHTML={{ __html: css }}
     />
   );
