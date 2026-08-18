@@ -625,6 +625,8 @@
     "flagsEmpty": "Nenhuma bandeira cadastrada.",
     "searchCategories": "Buscar por nome ou referência",
     "searchFlags": "Buscar bandeiras",
+    "loadMore": "Carregar mais",
+    "loadingMore": "Carregando...",
     "categorySaved": "Categoria salva.",
     "categoryDeleted": "Categoria excluída.",
     "flagSaved": "Bandeira salva.",

@@ -100,7 +100,12 @@ export function CategoryListTableFrame({
       </ul>
       {hasMore ? (
         <LoadMoreButtonRow>
-          <LoadMoreButton disabled={loading} onClick={handleLoadMore} />
+          <LoadMoreButton
+            loading={loading}
+            label={t("loadMore")}
+            loadingLabel={t("loadingMore")}
+            onClick={handleLoadMore}
+          />
         </LoadMoreButtonRow>
       ) : null}
     </div>
