@@ -147,7 +147,7 @@ export function DefaultColorsSection({
     <section className="space-y-4">
       <SettingsSectionHeading title={t("defaultColorsTitle")} />
 
-      <div className="flex flex-wrap justify-around gap-3">
+      <div className="flex flex-wrap justify-center gap-3">
         {SEMANTIC_THEME_PRESETS.map((preset) => {
           const isSelected = selectedPresetId === preset.id;
           return (
