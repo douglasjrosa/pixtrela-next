@@ -17,7 +17,7 @@ import { resolveSubTaskActivationStatusUpdates } from "@/lib/business/subtask-ac
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { calculateTaskTotalTimeSpent } from "@/lib/business/task-time-spent";
 import type { ActivityTimeRow } from "@/lib/business/task-time-spent";
-import { getDb, type Db } from "@/lib/db/client";
+import { loadHasAssignedFlagsBySubTaskId } from "@/lib/repos/material-flags";
 
 async function loadTaskSubTaskContext(
   taskId: string,
@@ -30,6 +30,7 @@ async function loadTaskSubTaskContext(
     maxSameTimeWorkers: number;
     timeSpent: number;
     dependencyIds: string[];
+    hasAssignedFlags: boolean;
   }>;
   activitiesBySubTaskId: Map<string, ActivityTimeRow[]>;
 }> {
@@ -44,13 +45,16 @@ async function loadTaskSubTaskContext(
   }
 
   const subTaskIds = siblingRows.map((row) => row.id);
-  const dependencyRows = await tx
-    .select({
-      subTaskId: subTaskDependencies.subTaskId,
-      dependsOnSubTaskId: subTaskDependencies.dependsOnSubTaskId,
-    })
-    .from(subTaskDependencies)
-    .where(inArray(subTaskDependencies.subTaskId, subTaskIds));
+  const [dependencyRows, flagSet] = await Promise.all([
+    tx
+      .select({
+        subTaskId: subTaskDependencies.subTaskId,
+        dependsOnSubTaskId: subTaskDependencies.dependsOnSubTaskId,
+      })
+      .from(subTaskDependencies)
+      .where(inArray(subTaskDependencies.subTaskId, subTaskIds)),
+    loadHasAssignedFlagsBySubTaskId(subTaskIds, tx),
+  ]);
 
   const depsBySubTask = new Map<string, string[]>();
   for (const row of dependencyRows) {
@@ -93,6 +97,7 @@ async function loadTaskSubTaskContext(
     maxSameTimeWorkers: row.maxSameTimeWorkers,
     timeSpent: row.timeSpent,
     dependencyIds: depsBySubTask.get(row.id) ?? [],
+    hasAssignedFlags: flagSet.has(row.id),
   }));
 
   return { siblings, activitiesBySubTaskId };

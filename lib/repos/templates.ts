@@ -20,6 +20,7 @@ export type TemplateSubTaskInput = {
   maxSameTimeWorkers?: number;
   dependencyIndexes?: number[];
   linkedToPrevious?: boolean;
+  subTaskCategoryId?: string | null;
 };
 
 export type TemplateTaskListItem = TemplateTaskRecord & {
@@ -47,6 +48,7 @@ function mapSubTaskValues(
     maxSameTimeWorkers: sub.maxSameTimeWorkers ?? 1,
     dependencyIndexes: sub.dependencyIndexes ?? [],
     linkedToPrevious: sub.linkedToPrevious ?? false,
+    subTaskCategoryId: sub.subTaskCategoryId || null,
   }));
 }
 

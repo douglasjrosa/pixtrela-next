@@ -16,7 +16,7 @@ export function StarBalanceHero({ balance, currencyLabel }: StarBalanceHeroProps
       className="rounded-2xl bg-[var(--star-gold-muted)] p-6 text-center"
     >
       <div className="mb-2 flex items-center justify-center gap-2 text-[var(--star-gold-foreground)]">
-        <Star className="size-6 fill-[var(--star-gold)] text-[var(--star-gold)]" aria-hidden />
+        <Star className="size-6 fill-star-gold text-star-gold" aria-hidden />
         <p className="text-sm font-semibold uppercase tracking-wide">{t("heroLabel")}</p>
       </div>
       <p className="text-5xl font-bold tabular-nums text-[var(--star-gold-foreground)]">

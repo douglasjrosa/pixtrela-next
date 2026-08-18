@@ -5,16 +5,19 @@ import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
+import type { MaterialFlagOption } from "@/lib/business/subtask-queue";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import { cn } from "@/lib/utils";
 
 import { KioskActionButton } from "./kiosk-action-button";
+import { KioskMaterialFlagPicker } from "./kiosk-material-flag-picker";
 
 export interface KioskChainMemberFieldsProps {
   documentId: string;
   name: string;
   sharingType: SubTaskFormInput["sharingType"];
   maxQty?: number;
+  availableFlags?: MaterialFlagOption[];
   value?: ChainStopAnswer;
   disabled?: boolean;
   onChange: (answer: ChainStopAnswer) => void;
@@ -25,6 +28,7 @@ export function KioskChainMemberFields({
   name,
   sharingType,
   maxQty = 1,
+  availableFlags = [],
   value,
   disabled = false,
   onChange,
@@ -42,7 +46,13 @@ export function KioskChainMemberFields({
             actionVariant={value?.completed === true ? "produce" : "outline"}
             disabled={disabled}
             aria-pressed={value?.completed === true}
-            onClick={() => onChange({ documentId, completed: true })}
+            onClick={() =>
+              onChange({
+                documentId,
+                completed: true,
+                flagIds: value?.flagIds,
+              })
+            }
           >
             {t("exitCompletedYes")}
           </KioskActionButton>
@@ -50,7 +60,13 @@ export function KioskChainMemberFields({
             actionVariant={value?.completed === false ? "produce" : "outline"}
             disabled={disabled}
             aria-pressed={value?.completed === false}
-            onClick={() => onChange({ documentId, completed: false })}
+            onClick={() =>
+              onChange({
+                documentId,
+                completed: false,
+                flagIds: value?.flagIds,
+              })
+            }
           >
             {t("exitCompletedNo")}
           </KioskActionButton>
@@ -77,6 +93,7 @@ export function KioskChainMemberFields({
               onChange({
                 documentId,
                 qty: Number.isInteger(parsed) ? parsed : undefined,
+                flagIds: value?.flagIds,
               });
             }}
           />
@@ -85,6 +102,19 @@ export function KioskChainMemberFields({
           </p>
         </div>
       )}
+      <KioskMaterialFlagPicker
+        flags={availableFlags}
+        selectedIds={value?.flagIds ?? []}
+        disabled={disabled}
+        onChange={(flagIds) =>
+          onChange({
+            documentId,
+            completed: value?.completed,
+            qty: value?.qty,
+            flagIds,
+          })
+        }
+      />
     </div>
   );
 }

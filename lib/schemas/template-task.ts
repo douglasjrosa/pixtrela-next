@@ -11,6 +11,7 @@ export const templateSubTaskComponentSchema = z.object({
   expectedTime: z.number().int().min(0),
   dependencies: z.unknown().optional().nullable(),
   linkedToPrevious: z.boolean().optional(),
+  subTaskCategoryId: z.string().uuid().optional().nullable(),
 });
 
 export const templateTaskFormSchema = z.object({

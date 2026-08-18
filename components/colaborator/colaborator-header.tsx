@@ -29,7 +29,7 @@ export function ColaboratorHeader({
       <div className="flex items-center gap-3">
         <Link href={homeHref} className="flex items-center gap-2">
           <Star
-            className="size-5 fill-[var(--star-gold)] text-[var(--star-gold)]"
+            className="size-5 fill-star-gold text-star-gold"
             aria-hidden
           />
           <span className="text-lg font-bold">{t("app.name")}</span>

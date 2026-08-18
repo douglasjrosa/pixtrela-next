@@ -16,6 +16,10 @@ vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
   deleteSubTaskPreset: (...args: unknown[]) => deleteSubTaskPreset(...args),
 }));
 
+vi.mock("@/app/(app)/settings/subtasks/actions", () => ({
+  listCategoryOptions: vi.fn(async () => []),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh, replace: vi.fn() }),
 }));

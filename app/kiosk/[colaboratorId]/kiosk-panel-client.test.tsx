@@ -33,6 +33,7 @@ vi.mock("./actions", () => ({
   exitSubTask: (...args: unknown[]) => exitSubTask(...args),
   advanceChainRun: vi.fn(),
   confirmChainStop: vi.fn(),
+  releaseSubTaskFlags: vi.fn(),
 }));
 
 import { KioskPanelClient } from "./kiosk-panel-client";

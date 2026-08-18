@@ -16,7 +16,7 @@ type MetricTone = "muted" | "warning" | "success" | "danger";
 
 const TONE_CLASS: Record<MetricTone, string> = {
   muted: "text-muted-foreground",
-  warning: "text-yellow-600",
+  warning: "text-warning",
   success: "text-success",
   danger: "text-destructive",
 };

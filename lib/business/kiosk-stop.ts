@@ -6,6 +6,7 @@ export interface KioskStopBody {
   completed?: boolean;
   isCompleted?: boolean;
   qty?: number;
+  flagIds?: string[];
 }
 
 export interface KioskStopResult {

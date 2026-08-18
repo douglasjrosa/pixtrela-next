@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
-import { DeactivationReasonField } from "@/components/ui/deactivation-reason-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -25,6 +24,7 @@ import {
 } from "@/lib/schemas/sub-task";
 
 import { SubTaskAssigneePicker } from "./subtask-assignee-picker";
+import { SubTaskCategorySelect } from "./subtask-category-select";
 import {
   SubTaskDependenciesModal,
   type SubTaskDependencyOption,
@@ -91,7 +91,6 @@ export function SubTaskInlineForm({
     watch,
     getValues,
     setValue,
-    trigger,
     formState: { errors },
   } = useForm<SubTaskFormInput>({
     resolver: zodResolver(subTaskFormSchema) as Resolver<SubTaskFormInput>,
@@ -113,6 +112,10 @@ export function SubTaskInlineForm({
       shouldDirty: true,
       shouldValidate: true,
     });
+    setValue("subTaskCategoryId", next.subTaskCategoryId ?? null, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   }
 
   useEffect(() => {
@@ -130,15 +133,8 @@ export function SubTaskInlineForm({
     return () => subscription.unsubscribe();
   }, [watch, onChange, currentDocumentId]);
 
-  const activationStatus = watch("activationStatus");
   const dependencyIds = watch("dependencyIds") ?? [];
-  const isDisabled = activationStatus === "disabled";
   const fieldId = (name: string): string => `${formKey}-${name}`;
-
-  useEffect(() => {
-    if (!isDisabled) return;
-    void trigger("reasonForDisabling");
-  }, [isDisabled, trigger]);
 
   return (
     <div
@@ -231,6 +227,18 @@ export function SubTaskInlineForm({
         </select>
       </div>
 
+      <SubTaskCategorySelect
+        id={fieldId("subTaskCategoryId")}
+        value={watch("subTaskCategoryId")}
+        disabled={disabled}
+        onChange={(next) =>
+          setValue("subTaskCategoryId", next, {
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+        }
+      />
+
       {hideStatus ? (
         <input type="hidden" {...register("status")} />
       ) : (
@@ -272,26 +280,6 @@ export function SubTaskInlineForm({
           </select>
         </div>
       )}
-
-      {!hideActivationStatus && isDisabled ? (
-        <Controller
-          name="reasonForDisabling"
-          control={control}
-          render={({ field }) => (
-            <DeactivationReasonField
-              id={fieldId("reasonForDisabling")}
-              label={tSubtasks("reasonForDisabling")}
-              value={field.value ?? ""}
-              disabled={disabled}
-              errorMessage={errors.reasonForDisabling?.message}
-              onChange={(next) => {
-                field.onChange(next);
-                void trigger("reasonForDisabling");
-              }}
-            />
-          )}
-        />
-      ) : null}
 
       {hideAssignees ? null : (
         <div className="sm:col-span-2">

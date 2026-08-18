@@ -7,6 +7,7 @@ export const subTaskPresetFormSchema = z.object({
   sharingType: z.enum(SHARING_TYPES),
   maxSameTimeWorkers: z.number().int().min(1),
   expectedTime: z.number().int().min(0),
+  subTaskCategoryId: z.string().uuid().optional().nullable(),
 });
 
 export type SubTaskPresetFormInput = z.infer<typeof subTaskPresetFormSchema>;

@@ -8,11 +8,18 @@ import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
 import { getDb } from "@/lib/db/client";
 import { storeMedia } from "@/lib/media/store-media";
-import { updateRouteTheme as updateRouteThemeRepo } from "@/lib/repos/settings";
+import {
+  updateRouteTheme as updateRouteThemeRepo,
+  upsertSemanticThemeSettings,
+} from "@/lib/repos/settings";
 import {
   routeThemeFormSchema,
   type RouteThemeFormInput,
 } from "@/lib/schemas/route-theme";
+import {
+  parseSemanticTokens,
+  type SemanticTokensInput,
+} from "@/lib/schemas/semantic-theme";
 import {
   DEFAULT_BACKGROUND_COLOR_OPACITY,
   DEFAULT_BACKGROUND_MOTION,
@@ -41,6 +48,11 @@ async function assertCanManage(): Promise<void> {
 
 function invalidateThemes(): void {
   revalidateTag("drizzle:route-themes", "default");
+  revalidatePath("/", "layout");
+}
+
+function invalidateSemanticTheme(): void {
+  revalidateTag("drizzle:semantic-theme", "default");
   revalidatePath("/", "layout");
 }
 
@@ -141,4 +153,13 @@ export async function updateRouteTheme(
         : undefined,
   });
   invalidateThemes();
+}
+
+export async function updateSemanticTheme(
+  raw: SemanticTokensInput,
+): Promise<void> {
+  await assertCanManage();
+  const tokens = parseSemanticTokens(raw);
+  await upsertSemanticThemeSettings(tokens);
+  invalidateSemanticTheme();
 }

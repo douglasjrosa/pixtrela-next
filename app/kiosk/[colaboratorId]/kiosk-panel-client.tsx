@@ -30,11 +30,23 @@ import {
   confirmChainStop,
   exitSubTask,
   joinLiveChain,
+  releaseSubTaskFlags,
   startChain,
   startSubTask,
 } from "./actions";
 
 const START_FLASH_MS = 300;
+
+function kioskActionErrorMessage(
+  t: (key: string) => string,
+  error: unknown,
+): string {
+  const code = error instanceof Error ? error.message : "";
+  if (code === "flagsRequired") return t("flagsRequired");
+  if (code === "subTaskHasNoCategory") return t("subTaskHasNoCategory");
+  if (code === "flagOccupied") return t("flagOccupied");
+  return t("exitFailed");
+}
 
 export interface KioskPanelClientProps {
   colaboratorId: string;
@@ -101,7 +113,7 @@ export function KioskPanelClient({
   }, [openRuns, queueBusy, subTasks]);
 
   const runBackgroundAction = useCallback(
-    (action: () => Promise<void>, onError?: () => void): void => {
+    (action: () => Promise<void>, onError?: (error: unknown) => void): void => {
       void (async () => {
         try {
           await action();
@@ -111,7 +123,7 @@ export function KioskPanelClient({
           setOptimisticStart(null);
           setQueueBusy(null);
           exitFingerprintRef.current = null;
-          onError?.();
+          onError?.(error);
         }
       })();
     },
@@ -185,8 +197,8 @@ export function KioskPanelClient({
     setQueueBusy("exit");
     runBackgroundAction(async () => {
       await confirmChainStop(colaboratorId, chainRunId, answers);
-    }, () => {
-      showErrorToast(t("exitFailed"));
+    }, (error) => {
+      showErrorToast(kioskActionErrorMessage(t, error));
     });
   }
 
@@ -216,8 +228,20 @@ export function KioskPanelClient({
         return;
       }
       showSuccessToast(t("exitRecorded"));
-    }, () => {
-      showErrorToast(t("exitFailed"));
+    }, (error) => {
+      showErrorToast(kioskActionErrorMessage(t, error));
+    });
+  }
+
+  function handleReleaseFlags(documentId: string): void {
+    if (queueBusy) return;
+    setQueueBusy("exit");
+    runBackgroundAction(async () => {
+      await releaseSubTaskFlags(documentId);
+      showSuccessToast(t("flagsReleased"));
+      setQueueBusy(null);
+    }, (error) => {
+      showErrorToast(kioskActionErrorMessage(t, error));
     });
   }
 
@@ -249,6 +273,7 @@ export function KioskPanelClient({
           onStartChain={readOnly ? undefined : handleStartChain}
           onConfirmChainStop={readOnly ? undefined : handleConfirmChainStop}
           onAdvanceChain={readOnly ? undefined : handleAdvanceChain}
+          onReleaseFlags={readOnly ? undefined : handleReleaseFlags}
         />
       </div>
     </div>

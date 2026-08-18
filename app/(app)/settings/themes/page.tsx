@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 
 import { ThemeSettingsManager } from "@/components/settings/theme-settings-manager";
 import { ensureRouteThemes } from "@/lib/repos/settings";
+import { loadSemanticThemeForSettings } from "@/lib/themes/load-semantic-theme";
 import { loadRouteThemes } from "@/lib/themes/load-route-themes";
 import {
   ROUTE_THEME_KEYS,
@@ -11,6 +12,7 @@ import {
 
 import {
   updateRouteTheme,
+  updateSemanticTheme,
   uploadRouteThemeImage,
 } from "./actions";
 
@@ -29,7 +31,10 @@ async function loadThemes(): Promise<RouteThemeView[]> {
 }
 
 export default async function SettingsThemesPage() {
-  const themes = await loadThemes();
+  const [themes, semanticTokens] = await Promise.all([
+    loadThemes(),
+    loadSemanticThemeForSettings(),
+  ]);
 
   async function handleSave(
     documentId: string,
@@ -37,6 +42,13 @@ export default async function SettingsThemesPage() {
   ): Promise<void> {
     "use server";
     await updateRouteTheme(documentId, values);
+  }
+
+  async function handleSaveSemanticTokens(
+    values: Parameters<typeof updateSemanticTheme>[0],
+  ): Promise<void> {
+    "use server";
+    await updateSemanticTheme(values);
   }
 
   async function handleUpload(
@@ -49,7 +61,9 @@ export default async function SettingsThemesPage() {
   return (
     <ThemeSettingsManager
       themes={themes}
+      initialSemanticTokens={semanticTokens}
       onSave={handleSave}
+      onSaveSemanticTokens={handleSaveSemanticTokens}
       onUploadImage={handleUpload}
     />
   );

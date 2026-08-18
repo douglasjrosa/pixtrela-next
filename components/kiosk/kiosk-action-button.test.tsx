@@ -26,7 +26,7 @@ describe("KioskActionButton", () => {
       <KioskActionButton actionVariant="produce">Produzir</KioskActionButton>,
     );
     expect(screen.getByRole("button", { name: "Produzir" })).toHaveClass(
-      "bg-[var(--success)]",
+      "bg-success",
     );
 
     renderWithIntl(

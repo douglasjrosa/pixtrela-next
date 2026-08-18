@@ -63,6 +63,8 @@ import {
   updateSubTaskLinkedToPrevious,
   updateTaskBoardFields,
 } from "@/lib/repos/tasks";
+import { releaseFlagsForSubTask } from "@/lib/repos/material-flags";
+import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
 const FINISHED_STATUS = "finished";
@@ -76,7 +78,6 @@ interface SubTaskEntity {
   maxSameTimeWorkers: number;
   status: SubTaskFormInput["status"];
   activationStatus?: SubTaskFormInput["activationStatus"];
-  reasonForDisabling?: string | null;
   dependencies?: unknown;
   assignedTo?: { documentId: string }[] | null;
 }
@@ -110,7 +111,7 @@ function mapBoardSubtasksFromCore(
 ): BoardSubTaskSummary[] {
   if (!bundle || bundle.rows.length === 0) return [];
 
-  const { rows, assigneeRows } = bundle;
+  const { rows, assigneeRows, flagRows = [], dependencyRows = [] } = bundle;
   const assigneesBySubTask = new Map<
     string,
     { documentId: string; name: string }[]
@@ -119,6 +120,19 @@ function mapBoardSubtasksFromCore(
     const list = assigneesBySubTask.get(row.subTaskId) ?? [];
     list.push({ documentId: row.userId, name: row.name });
     assigneesBySubTask.set(row.subTaskId, list);
+  }
+  const codesBySubTask = new Map<string, string[]>();
+  for (const row of flagRows) {
+    const list = codesBySubTask.get(row.subTaskId) ?? [];
+    list.push(row.code);
+    codesBySubTask.set(row.subTaskId, list);
+  }
+  const nameById = new Map(rows.map((row) => [row.id, row.name]));
+  const producersByConsumer = new Map<string, string[]>();
+  for (const row of dependencyRows) {
+    const list = producersByConsumer.get(row.consumerId) ?? [];
+    list.push(row.producerId);
+    producersByConsumer.set(row.consumerId, list);
   }
 
   return rows.map((subtask) => ({
@@ -136,6 +150,13 @@ function mapBoardSubtasksFromCore(
     producingColaboratorIds: [],
     sessions: [],
     assignedTo: assigneesBySubTask.get(subtask.id) ?? [],
+    assignedFlagCodes: codesBySubTask.get(subtask.id) ?? [],
+    dependencyFlags: (producersByConsumer.get(subtask.id) ?? [])
+      .map((producerId) => ({
+        predecessorName: nameById.get(producerId) ?? "",
+        codes: codesBySubTask.get(producerId) ?? [],
+      }))
+      .filter((hint) => hint.codes.length > 0),
   }));
 }
 
@@ -243,7 +264,6 @@ async function fetchSubTaskForUpdate(
     maxSameTimeWorkers: row.maxSameTimeWorkers,
     status: row.status,
     activationStatus: fromDrizzleActivationStatus(row.activationStatus),
-    reasonForDisabling: row.reasonForDeactivation,
     dependencies: row.dependencyIds,
     assignedTo: row.assignedToIds.map((id) => ({ documentId: id })),
   };
@@ -261,7 +281,6 @@ function toSubTaskFormInput(
     maxSameTimeWorkers: subtask.maxSameTimeWorkers ?? 1,
     status: subtask.status,
     activationStatus: subtask.activationStatus ?? "locked",
-    reasonForDisabling: subtask.reasonForDisabling ?? "",
     dependencyIds: parseSubTaskDependencyIds(subtask.dependencies),
     assignedToIds,
   };
@@ -555,4 +574,15 @@ export async function moveTaskToStep(
     });
   }
   invalidateBoardTasks();
+}
+
+export async function releaseBoardSubTaskFlags(
+  subTaskDocumentId: string,
+): Promise<void> {
+  await assertCanManageBoardSubtasks();
+  const subtask = await getSubTaskById(subTaskDocumentId);
+  if (!subtask) throw new Error("notFound");
+  await releaseFlagsForSubTask(subTaskDocumentId);
+  await runTaskSubTaskSyncRoutine(subtask.taskId);
+  invalidateBoardSubtaskReads(subtask.taskId);
 }

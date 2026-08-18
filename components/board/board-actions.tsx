@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { KanbanBoard } from "@/components/kanban/kanban-board";
+import { releaseBoardSubTaskFlags } from "@/app/(app)/board/actions";
 import { KanbanSubtaskCreateModal } from "@/components/kanban/kanban-subtask-create-modal";
 import { KanbanTaskSubtasksModal } from "@/components/kanban/kanban-task-subtasks-modal";
 import type {
@@ -153,6 +154,7 @@ export function BoardActions({
 }: BoardActionsProps) {
   const router = useRouter();
   const tKanban = useTranslations("kanban");
+  const tKiosk = useTranslations("kiosk");
   const [, startTransition] = useTransition();
   const [orderedTasks, setOrderedTasks] = useState(tasks);
   const [prevTasks, setPrevTasks] = useState(tasks);
@@ -451,6 +453,21 @@ export function BoardActions({
       );
     } finally {
       setLoadingSessions(false);
+    }
+  }
+
+  async function handleReleaseFlags(
+    subTaskDocumentId: string,
+  ): Promise<void> {
+    const taskDocumentId = selectedTaskRef.current?.documentId;
+    if (!taskDocumentId) return;
+    try {
+      await releaseBoardSubTaskFlags(subTaskDocumentId);
+      const loaded = await loadSubtasks(taskDocumentId);
+      applyFetchedSubtasks(loaded, { taskDocumentId });
+      showSuccessToast(tKiosk("flagsReleased"));
+    } catch {
+      showErrorToast(tKiosk("exitFailed"));
     }
   }
 
@@ -902,6 +919,7 @@ export function BoardActions({
         onAddSubtask={() => setCreateOpen(true)}
         onLoadSessions={loadSubtaskSessions ? handleLoadSessions : undefined}
         loadSubtaskSession={loadSubtaskSession}
+        onReleaseFlags={handleReleaseFlags}
       />
 
       {selectedTask ? (

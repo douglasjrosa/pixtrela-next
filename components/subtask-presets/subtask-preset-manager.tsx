@@ -28,6 +28,7 @@ const EMPTY_FORM: SubTaskPresetFormInput = {
   sharingType: "qty",
   maxSameTimeWorkers: 2,
   expectedTime: 0,
+  subTaskCategoryId: null,
 };
 
 type ModalState =
@@ -94,6 +95,7 @@ export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
           sharingType: modal.preset.sharingType,
           maxSameTimeWorkers: modal.preset.maxSameTimeWorkers,
           expectedTime: modal.preset.expectedTime,
+          subTaskCategoryId: modal.preset.subTaskCategoryId ?? null,
         }
       : EMPTY_FORM;
 

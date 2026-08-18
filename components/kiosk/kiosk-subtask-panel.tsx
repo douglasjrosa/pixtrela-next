@@ -22,6 +22,7 @@ import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainGroupCard } from "./kiosk-chain-group-card";
 import { KioskExitSubtaskForm } from "./kiosk-exit-subtask-form";
+import { MaterialFlagHintList } from "./material-flag-hint-list";
 import { KioskSubtaskEarnedCredits } from "./kiosk-subtask-earned-credits";
 import { KioskSubtaskRemainingQtyBadge } from "./kiosk-subtask-remaining-qty-badge";
 import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
@@ -41,6 +42,7 @@ export interface KioskSubtaskPanelProps {
     answers: ChainStopAnswer[],
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
+  onReleaseFlags?: (documentId: string) => void | Promise<void>;
   blockingUi?: boolean;
   timerPaused?: boolean;
   exitBusy?: boolean;
@@ -67,6 +69,7 @@ export function KioskSubtaskPanel({
   onStartChain,
   onConfirmChainStop,
   onAdvanceChain,
+  onReleaseFlags,
   blockingUi = false,
   timerPaused,
   exitBusy = false,
@@ -94,6 +97,7 @@ export function KioskSubtaskPanel({
               onStartChain={onStartChain}
               onConfirmChainStop={onConfirmChainStop}
               onAdvanceChain={onAdvanceChain}
+              onReleaseFlags={onReleaseFlags}
             />
           );
         }
@@ -170,6 +174,16 @@ export function KioskSubtaskPanel({
                     amount={subTask.viewerCurrencyAwarded ?? 0}
                   />
                 ) : null}
+                <MaterialFlagHintList
+                  dependencyFlags={subTask.dependencyFlags}
+                  assignedFlagCodes={subTask.assignedFlagCodes}
+                  onRelease={
+                    !readOnly && (subTask.assignedFlagCodes?.length ?? 0) > 0
+                      ? () => onReleaseFlags?.(subTask.documentId)
+                      : undefined
+                  }
+                  releaseDisabled={blockingUi}
+                />
               </div>
               {!finished && !isExiting ? (
                 <div className="flex w-full flex-col gap-2">
@@ -221,6 +235,7 @@ export function KioskSubtaskPanel({
                   }
                   disabled={blockingUi}
                   busy={exitBusy}
+                  availableFlags={subTask.availableFlags}
                   onCancel={() => setExitingId(null)}
                   onConfirm={(input) => {
                     onExit(subTask.documentId, input);

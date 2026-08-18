@@ -36,18 +36,18 @@ export function ProgressTrack({
       <div className="relative h-[3px] min-w-0 flex-1 overflow-hidden rounded-full bg-muted-foreground/25">
         <div
           aria-hidden
-          className="absolute inset-y-0 right-0 bg-red-400/20"
+          className="absolute inset-y-0 right-0 bg-destructive/20"
           style={{ left: `${markPercent}%` }}
         />
         <div
           aria-hidden
-          className="absolute inset-y-0 left-0 bg-blue-500 transition-[width] duration-300 ease-out"
+          className="absolute inset-y-0 left-0 bg-primary transition-[width] duration-300 ease-out"
           style={{ width: `${okFillPercent}%` }}
         />
         {overFillPercent > 0 ? (
           <div
             aria-hidden
-            className="absolute inset-y-0 bg-red-400 transition-[width] duration-300 ease-out"
+            className="absolute inset-y-0 bg-destructive transition-[width] duration-300 ease-out"
             style={{
               left: `${okFillPercent}%`,
               width: `${overFillPercent}%`,
@@ -63,7 +63,7 @@ export function ProgressTrack({
       <span
         className={cn(
           "shrink-0 text-[0.7rem] tabular-nums",
-          remainingSec < 0 ? "text-red-400" : "text-muted-foreground",
+          remainingSec < 0 ? "text-destructive" : "text-muted-foreground",
         )}
       >
         {remainingSec < 0 ? "-" : null}

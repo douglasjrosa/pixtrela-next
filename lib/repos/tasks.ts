@@ -20,6 +20,8 @@ import { scaleExpectedTimeByTaskQty } from "@/lib/domain/work-currency";
 import { getDb, type Db } from "@/lib/db/client";
 import type { TasksRevision } from "@/lib/tasks/tasks-revision";
 import { recordActivityViaKiosk } from "@/lib/repos/kiosk-subtasks";
+import { listAssignedFlagsForSubTasks } from "@/lib/repos/material-flags";
+import { formatMaterialFlagCode } from "@/lib/business/material-flag-code";
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 
 export type CreateTaskInput = {
@@ -90,6 +92,7 @@ export async function createTask(
               sharingType: row.sharingType,
               maxSameTimeWorkers: row.maxSameTimeWorkers,
               linkedToPrevious: row.linkedToPrevious,
+              subTaskCategoryId: row.subTaskCategoryId,
             })
             .returning({ id: subTasks.id, index: subTasks.index });
           createdByIndex.set(created.index, created.id);
@@ -346,6 +349,8 @@ export function mapBoardSubtaskSessionHistory(
 export type BoardSubtaskCoreBundle = {
   rows: BoardSubtaskRow[];
   assigneeRows: BoardSubtaskAssigneeRow[];
+  flagRows: { subTaskId: string; code: string }[];
+  dependencyRows: { consumerId: string; producerId: string }[];
 };
 
 export async function listBoardSubtaskCore(
@@ -354,14 +359,31 @@ export async function listBoardSubtaskCore(
 ): Promise<BoardSubtaskCoreBundle> {
   const rows = await listBoardSubTasksForTask(taskId, db);
   if (rows.length === 0) {
-    return { rows: [], assigneeRows: [] };
+    return { rows: [], assigneeRows: [], flagRows: [], dependencyRows: [] };
   }
 
-  const assigneeRows = await listBoardSubtaskAssignees(
-    rows.map((row) => row.id),
-    db,
-  );
-  return { rows, assigneeRows };
+  const ids = rows.map((row) => row.id);
+  const [assigneeRows, assignedFlags, dependencyRows] = await Promise.all([
+    listBoardSubtaskAssignees(ids, db),
+    listAssignedFlagsForSubTasks(ids, db),
+    db
+      .select({
+        consumerId: subTaskDependencies.subTaskId,
+        producerId: subTaskDependencies.dependsOnSubTaskId,
+      })
+      .from(subTaskDependencies)
+      .where(inArray(subTaskDependencies.subTaskId, ids)),
+  ]);
+
+  return {
+    rows,
+    assigneeRows,
+    flagRows: assignedFlags.map((row) => ({
+      subTaskId: row.subTaskId,
+      code: formatMaterialFlagCode(row.categoryRef, row.index),
+    })),
+    dependencyRows,
+  };
 }
 
 export async function listSubTaskCompletionSnapshotsForTasks(
@@ -663,10 +685,6 @@ export async function createSubTaskForTask(
   db: Db = getDb(),
 ) {
   return db.transaction(async (tx) => {
-    const reason =
-      input.activationStatus === "disabled"
-        ? input.reasonForDisabling?.trim() || null
-        : null;
     const [created] = await tx
       .insert(subTasks)
       .values({
@@ -679,7 +697,7 @@ export async function createSubTaskForTask(
         maxSameTimeWorkers: input.maxSameTimeWorkers,
         status: input.status,
         activationStatus: toDrizzleActivationStatus(input.activationStatus),
-        reasonForDeactivation: reason,
+        subTaskCategoryId: input.subTaskCategoryId || null,
       })
       .returning();
 
@@ -705,10 +723,6 @@ export async function updateSubTaskFields(
   db: Db = getDb(),
 ) {
   return db.transaction(async (tx) => {
-    const reason =
-      input.activationStatus === "disabled"
-        ? input.reasonForDisabling?.trim() || null
-        : null;
     const [updated] = await tx
       .update(subTasks)
       .set({
@@ -721,7 +735,7 @@ export async function updateSubTaskFields(
         maxSameTimeWorkers: input.maxSameTimeWorkers,
         status: input.status,
         activationStatus: toDrizzleActivationStatus(input.activationStatus),
-        reasonForDeactivation: reason,
+        subTaskCategoryId: input.subTaskCategoryId || null,
         updatedAt: new Date(),
       })
       .where(eq(subTasks.id, id))

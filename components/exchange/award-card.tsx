@@ -94,7 +94,7 @@ export function AwardCard({ award, windowOpen, balance, onRedeem }: AwardCardPro
               aria-valuemax={100}
             >
               <div
-                className="h-full rounded-full bg-[var(--star-gold)] transition-all duration-300"
+                className="h-full rounded-full bg-star-gold transition-all duration-300"
                 style={{ width: `${progress * 100}%` }}
               />
             </div>

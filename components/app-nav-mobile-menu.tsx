@@ -49,7 +49,7 @@ export function AppNavMobileMenu({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex justify-end bg-black/50"
+      className="fixed inset-0 z-[60] flex justify-end bg-overlay/50"
       role="presentation"
       onClick={close}
     >

@@ -87,6 +87,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { KanbanFloatingCountBadge } from "./kanban-floating-count-badge";
+import { MaterialFlagHintList } from "@/components/kiosk/material-flag-hint-list";
 import {
   KanbanMultiAssignClearButton,
   KanbanMultiAssignSubmitButton,
@@ -153,6 +154,7 @@ export interface KanbanTaskSubtasksModalProps {
   loadSubtaskSession?: (
     subTaskDocumentId: string,
   ) => Promise<ActivitySession[]>;
+  onReleaseFlags?: (subTaskDocumentId: string) => void | Promise<void>;
 }
 
 function getTeamMemberIds(team: TeamAssignmentOption): string[] {
@@ -321,6 +323,10 @@ function PendingSubtaskCard({
           timeSpent={subtask.timeSpent}
           openActivityStartedAts={subtask.openActivityStartedAts}
         />
+        <MaterialFlagHintList
+          dependencyFlags={subtask.dependencyFlags}
+          assignedFlagCodes={subtask.assignedFlagCodes}
+        />
       </button>
     </li>
   );
@@ -442,6 +448,10 @@ function SortablePendingSubtaskCard({
               timeSpent={subtask.timeSpent}
               openActivityStartedAts={subtask.openActivityStartedAts}
             />
+            <MaterialFlagHintList
+              dependencyFlags={subtask.dependencyFlags}
+              assignedFlagCodes={subtask.assignedFlagCodes}
+            />
           </button>
         </div>
       </div>
@@ -473,6 +483,7 @@ export function KanbanTaskSubtasksModal({
   onAddSubtask,
   onLoadSessions,
   loadSubtaskSession,
+  onReleaseFlags,
 }: KanbanTaskSubtasksModalProps) {
   const tCommon = useTranslations("common");
   const tKanban = useTranslations("kanban");
@@ -1225,6 +1236,10 @@ export function KanbanTaskSubtasksModal({
                           />
                         ) : null}
                       </div>
+                      <MaterialFlagHintList
+                        dependencyFlags={subtask.dependencyFlags}
+                        assignedFlagCodes={subtask.assignedFlagCodes}
+                      />
                     </button>
                   </li>
                 );
@@ -1505,6 +1520,16 @@ export function KanbanTaskSubtasksModal({
               <TimeMetrics
                 expectedTime={infoSubtask.expectedTime}
                 timeSpent={infoSubtask.timeSpent}
+              />
+              <MaterialFlagHintList
+                dependencyFlags={infoSubtask.dependencyFlags}
+                assignedFlagCodes={infoSubtask.assignedFlagCodes}
+                onRelease={
+                  onReleaseFlags &&
+                  (infoSubtask.assignedFlagCodes?.length ?? 0) > 0
+                    ? () => onReleaseFlags(infoSubtask.documentId)
+                    : undefined
+                }
               />
             </div>
             {infoSessionsLoading && loadSubtaskSession ? (

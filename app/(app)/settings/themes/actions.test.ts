@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const revalidateTag = vi.fn();
 const revalidatePath = vi.fn();
 const updateRouteThemeRepo = vi.fn();
+const upsertSemanticThemeSettings = vi.fn();
 const storeMedia = vi.fn();
 const getDb = vi.fn();
 
@@ -17,6 +18,8 @@ vi.mock("next/cache", () => ({
 
 vi.mock("@/lib/repos/settings", () => ({
   updateRouteTheme: (...args: unknown[]) => updateRouteThemeRepo(...args),
+  upsertSemanticThemeSettings: (...args: unknown[]) =>
+    upsertSemanticThemeSettings(...args),
 }));
 
 vi.mock("@/lib/media/store-media", () => ({
@@ -31,7 +34,9 @@ describe("settings/themes/actions drizzle paths", () => {
   beforeEach(() => {
     vi.resetModules();
     revalidateTag.mockReset();
+    revalidatePath.mockReset();
     updateRouteThemeRepo.mockReset();
+    upsertSemanticThemeSettings.mockReset();
     storeMedia.mockReset();
   });
 
@@ -49,6 +54,19 @@ describe("settings/themes/actions drizzle paths", () => {
       }),
     );
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:route-themes", "default");
+  });
+
+  it("updateSemanticTheme persists tokens and revalidates layout", async () => {
+    const { updateSemanticTheme } = await import("./actions");
+    await updateSemanticTheme({ primary: "#112233" });
+    expect(upsertSemanticThemeSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ primary: "#112233" }),
+    );
+    expect(revalidateTag).toHaveBeenCalledWith(
+      "drizzle:semantic-theme",
+      "default",
+    );
+    expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
   });
 
   it("uploadRouteThemeImage stores media and returns id", async () => {

@@ -45,6 +45,16 @@ import {
   type SubTaskWithAssignees,
 } from "@/lib/repos/tasks";
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
+import {
+  assignFlagsToSubTask,
+  listFlagIdsForSubTask,
+  releaseProducerFlagsWhenConsumersFinished,
+  subTaskHasDependents,
+} from "@/lib/repos/material-flags";
+import {
+  assertFinishFlagsAllowed,
+  mergeFlagIds,
+} from "@/lib/business/subtask-material-flags";
 import { currencies, currencyForSubtasks } from "@/drizzle/schema";
 
 const PRODUCING_STATUS = "producing";
@@ -74,6 +84,7 @@ function toChainItem(row: SubTaskWithAssignees): ChainSubTask {
     maxSameTimeWorkers: row.maxSameTimeWorkers,
     assignedToIds: row.assignedToIds,
     dependencyIds: row.dependencyIds,
+    hasAssignedFlags: false,
   };
 }
 
@@ -96,7 +107,14 @@ async function loadChainContext(subTaskId: string, db: Db) {
     .limit(1);
   if (!sub) throw new Error("notFound");
   const siblings = await listSubTasksWithRelationsForTask(sub.taskId, db);
-  const items = siblings.map(toChainItem);
+  const flagSet = await loadHasAssignedFlagsBySubTaskId(
+    siblings.map((row) => row.id),
+    db,
+  );
+  const items = siblings.map((row) => ({
+    ...toChainItem(row),
+    hasAssignedFlags: flagSet.has(row.id),
+  }));
   const chains = resolveChains(items);
   const chain = findChainContaining(chains, subTaskId);
   if (!chain) throw new Error("notFound");
@@ -668,6 +686,22 @@ async function reallocateChainRunInternal(
   });
   const creditDeltas = diffChainRunCredits(nextAwards, previousAwards);
 
+  for (const member of formMembers) {
+    if (pendingIds.has(member.documentId)) continue;
+    if (helperOpenBySubTask.has(member.documentId)) continue;
+    const sibling = siblingById.get(member.documentId);
+    if (!sibling) continue;
+    const flagIds = answersById.get(member.documentId)?.flagIds ?? [];
+    const existingFlagIds = await listFlagIdsForSubTask(member.documentId, db);
+    const hasDependents = await subTaskHasDependents(member.documentId, db);
+    assertFinishFlagsAllowed({
+      willFinish: true,
+      hasDependents,
+      categoryId: sibling.subTaskCategoryId,
+      totalFlagCount: mergeFlagIds(existingFlagIds, flagIds).length,
+    });
+  }
+
   await db.transaction(async (tx) => {
     for (const event of planned) {
       const existing = runRows.find(
@@ -766,6 +800,14 @@ async function reallocateChainRunInternal(
           updatedAt: stopAt,
         })
         .where(eq(subTasks.id, member.documentId));
+      const flagIds = answersById.get(member.documentId)?.flagIds ?? [];
+      if (flagIds.length > 0 && !helperOpen) {
+        await assignFlagsToSubTask(
+          member.documentId,
+          flagIds,
+          tx as unknown as Db,
+        );
+      }
     }
 
     await applyCreditDeltas(
@@ -777,6 +819,10 @@ async function reallocateChainRunInternal(
       tx as unknown as Db,
     );
     await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, stopAt);
+    await releaseProducerFlagsWhenConsumersFinished(
+      sub.taskId,
+      tx as unknown as Db,
+    );
   });
 }
 

@@ -58,4 +58,6 @@ export interface BoardSubTaskSummary {
   /** Empty on fast board load; filled after lazy session fetch (finished tab / info). */
   sessions: import("@/lib/business/task-progress").ActivitySession[];
   assignedTo: BoardSubTaskAssignee[];
+  assignedFlagCodes?: string[];
+  dependencyFlags?: { predecessorName: string; codes: string[] }[];
 }

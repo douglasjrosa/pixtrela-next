@@ -14,6 +14,7 @@ export type ChainStopAnswer = {
   documentId: string;
   completed?: boolean;
   qty?: number;
+  flagIds?: string[];
 };
 
 export type AllocationSegment = {
