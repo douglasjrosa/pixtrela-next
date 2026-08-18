@@ -122,7 +122,7 @@ export function AppNav() {
               aria-hidden
               className={
                 "pointer-events-none invisible absolute left-0 top-0 flex " +
-                "gap-3 whitespace-nowrap text-sm"
+                "gap-3 whitespace-nowrap pl-4 text-sm"
               }
             >
               {items.map((item) => (
@@ -135,7 +135,7 @@ export function AppNav() {
             </ul>
 
             {showDesktopLinks ? (
-              <ul className="flex gap-3 overflow-hidden text-sm">
+              <ul className="flex gap-3 overflow-hidden pl-4 text-sm">
                 {items.map((item) => (
                   <li key={item.href} className="shrink-0">
                     <Link
