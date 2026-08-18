@@ -2,6 +2,7 @@ import {
   boolean,
   date,
   doublePrecision,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -65,17 +66,50 @@ export const activityActionEnum = pgEnum("activity_action", [
   "stoped",
 ]);
 
-export const mediaAssets = pgTable("media_assets", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  storageKey: text("storage_key").notNull(),
-  url: text("url").notNull(),
-  mimeType: varchar("mime_type", { length: 128 }),
-  byteSize: integer("byte_size"),
-  originalFilename: varchar("original_filename", { length: 255 }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
+export const mediaCategoryEnum = pgEnum("media_category", [
+  "avatar",
+  "face",
+  "award",
+  "currency",
+  "branding",
+  "route_theme",
+  "document",
+  "other",
+]);
+
+export const mediaSensitivityEnum = pgEnum("media_sensitivity", [
+  "public",
+  "internal",
+  "biometric",
+]);
+
+export const mediaAssets = pgTable(
+  "media_assets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    storageKey: text("storage_key").notNull(),
+    url: text("url").notNull(),
+    mimeType: varchar("mime_type", { length: 128 }),
+    byteSize: integer("byte_size"),
+    originalFilename: varchar("original_filename", { length: 255 }),
+    displayName: varchar("display_name", { length: 255 }),
+    description: text("description"),
+    altText: varchar("alt_text", { length: 512 }),
+    title: varchar("title", { length: 255 }),
+    category: mediaCategoryEnum("category").default("other").notNull(),
+    sensitivity: mediaSensitivityEnum("sensitivity").default("public").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("media_assets_category_idx").on(table.category),
+    index("media_assets_sensitivity_idx").on(table.sensitivity),
+  ],
+);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),

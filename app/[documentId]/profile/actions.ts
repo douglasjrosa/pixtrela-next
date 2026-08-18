@@ -3,9 +3,9 @@
 import { auth } from "@/auth";
 import { canAccessOwnProfile } from "@/lib/auth/profile-access";
 import type { Role } from "@/lib/auth/nav";
-import { getDb } from "@/lib/db/client";
 import { storeMedia } from "@/lib/media/store-media";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
+import { insertMediaAsset } from "@/lib/repos/media";
 import {
   changeUserPassword,
   findUserAvatarUrl,
@@ -19,7 +19,6 @@ import {
   type ChangeOwnPasswordInput,
   type UpdateOwnPersonalInput,
 } from "@/lib/schemas/profile";
-import { mediaAssets } from "@/drizzle/schema";
 
 export type ChangeOwnPasswordResult =
   | { ok: true; jwt?: string }
@@ -124,16 +123,11 @@ export async function updateOwnAvatar(
       mimeType: file.type,
       extension,
     });
-    const db = getDb();
-    const [media] = await db
-      .insert(mediaAssets)
-      .values({
-        storageKey: stored.storageKey,
-        url: stored.url,
-        mimeType: stored.mimeType,
-        byteSize: stored.byteSize,
-      })
-      .returning({ id: mediaAssets.id, url: mediaAssets.url });
+    const media = await insertMediaAsset(stored, {
+      originalFilename: file.name?.trim() || null,
+      category: "avatar",
+      sensitivity: "internal",
+    });
     await setUserAvatarMedia(access.userId, media.id);
     return { ok: true, avatarUrl: toBrowserMediaUrl(media.url) };
   } catch {

@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, ilike, ne, or, sql, type SQL } from "drizzle-orm";
 
 import {
   appBrandingSettings,
@@ -13,6 +13,18 @@ import { deleteMediaObject } from "@/lib/media/delete-media";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 import type { StoredMedia } from "@/lib/media/storage";
 
+export type MediaCategory =
+  | "avatar"
+  | "face"
+  | "award"
+  | "currency"
+  | "branding"
+  | "route_theme"
+  | "document"
+  | "other";
+
+export type MediaSensitivity = "public" | "internal" | "biometric";
+
 export type MediaAssetRecord = {
   id: string;
   storageKey: string;
@@ -21,7 +33,14 @@ export type MediaAssetRecord = {
   mimeType: string | null;
   byteSize: number | null;
   originalFilename: string | null;
+  displayName: string | null;
+  description: string | null;
+  altText: string | null;
+  title: string | null;
+  category: MediaCategory;
+  sensitivity: MediaSensitivity;
   createdAt: Date;
+  updatedAt: Date;
 };
 
 export type MediaMimeFilter = "all" | "image" | "pdf";
@@ -40,6 +59,68 @@ export type MediaReference = {
 };
 
 export type MediaReferenceSummary = Pick<MediaReference, "label" | "sectionKey">;
+
+export type InsertMediaAssetOptions = {
+  originalFilename?: string | null;
+  displayName?: string | null;
+  description?: string | null;
+  altText?: string | null;
+  title?: string | null;
+  category?: MediaCategory;
+  sensitivity?: MediaSensitivity;
+};
+
+export type MediaAssetMetadataInput = {
+  displayName?: string | null;
+  description?: string | null;
+  altText?: string | null;
+  title?: string | null;
+  category?: MediaCategory;
+};
+
+const MEDIA_ASSET_COLUMNS = {
+  id: mediaAssets.id,
+  storageKey: mediaAssets.storageKey,
+  url: mediaAssets.url,
+  mimeType: mediaAssets.mimeType,
+  byteSize: mediaAssets.byteSize,
+  originalFilename: mediaAssets.originalFilename,
+  displayName: mediaAssets.displayName,
+  description: mediaAssets.description,
+  altText: mediaAssets.altText,
+  title: mediaAssets.title,
+  category: mediaAssets.category,
+  sensitivity: mediaAssets.sensitivity,
+  createdAt: mediaAssets.createdAt,
+  updatedAt: mediaAssets.updatedAt,
+} as const;
+
+function mapMediaAssetRow(row: {
+  id: string;
+  storageKey: string;
+  url: string;
+  mimeType: string | null;
+  byteSize: number | null;
+  originalFilename: string | null;
+  displayName: string | null;
+  description: string | null;
+  altText: string | null;
+  title: string | null;
+  category: MediaCategory;
+  sensitivity: MediaSensitivity;
+  createdAt: Date;
+  updatedAt: Date;
+}): MediaAssetRecord {
+  return {
+    ...row,
+    browserUrl: toBrowserMediaUrl(row.url),
+  };
+}
+
+function displayNameFromFilename(filename: string | null | undefined): string | null {
+  if (!filename?.trim()) return null;
+  return filename.replace(/\.[^.]+$/, "").trim() || null;
+}
 
 function mediaReferenceSectionKey(
   kind: MediaReference["kind"],
@@ -63,6 +144,8 @@ export async function listMediaAssets(
   options: {
     q?: string;
     mimeFilter?: MediaMimeFilter;
+    category?: MediaCategory;
+    includeBiometric?: boolean;
     page?: number;
     pageSize?: number;
   } = {},
@@ -74,6 +157,12 @@ export async function listMediaAssets(
   const q = options.q?.trim();
 
   const clauses: SQL[] = [];
+  if (!options.includeBiometric) {
+    clauses.push(ne(mediaAssets.sensitivity, "biometric"));
+  }
+  if (options.category) {
+    clauses.push(eq(mediaAssets.category, options.category));
+  }
   if (options.mimeFilter === "image") {
     clauses.push(sql`${mediaAssets.mimeType} ilike 'image/%'`);
   } else if (options.mimeFilter === "pdf") {
@@ -83,6 +172,9 @@ export async function listMediaAssets(
     clauses.push(
       or(
         ilike(mediaAssets.originalFilename, `%${q}%`),
+        ilike(mediaAssets.displayName, `%${q}%`),
+        ilike(mediaAssets.description, `%${q}%`),
+        ilike(mediaAssets.altText, `%${q}%`),
         ilike(mediaAssets.storageKey, `%${q}%`),
         ilike(mediaAssets.mimeType, `%${q}%`),
       )!,
@@ -96,15 +188,7 @@ export async function listMediaAssets(
     .where(where);
 
   const rows = await db
-    .select({
-      id: mediaAssets.id,
-      storageKey: mediaAssets.storageKey,
-      url: mediaAssets.url,
-      mimeType: mediaAssets.mimeType,
-      byteSize: mediaAssets.byteSize,
-      originalFilename: mediaAssets.originalFilename,
-      createdAt: mediaAssets.createdAt,
-    })
+    .select(MEDIA_ASSET_COLUMNS)
     .from(mediaAssets)
     .where(where)
     .orderBy(desc(mediaAssets.createdAt))
@@ -113,10 +197,7 @@ export async function listMediaAssets(
 
   return {
     total: totalRow?.total ?? 0,
-    items: rows.map((row) => ({
-      ...row,
-      browserUrl: toBrowserMediaUrl(row.url),
-    })),
+    items: rows.map(mapMediaAssetRow),
   };
 }
 
@@ -125,27 +206,25 @@ export async function getMediaAsset(
   db: Db = getDb(),
 ): Promise<MediaAssetRecord | null> {
   const [row] = await db
-    .select({
-      id: mediaAssets.id,
-      storageKey: mediaAssets.storageKey,
-      url: mediaAssets.url,
-      mimeType: mediaAssets.mimeType,
-      byteSize: mediaAssets.byteSize,
-      originalFilename: mediaAssets.originalFilename,
-      createdAt: mediaAssets.createdAt,
-    })
+    .select(MEDIA_ASSET_COLUMNS)
     .from(mediaAssets)
     .where(eq(mediaAssets.id, id))
     .limit(1);
   if (!row) return null;
-  return { ...row, browserUrl: toBrowserMediaUrl(row.url) };
+  return mapMediaAssetRow(row);
 }
 
 export async function insertMediaAsset(
   stored: StoredMedia,
-  originalFilename: string | null = null,
+  options: InsertMediaAssetOptions = {},
   db: Db = getDb(),
 ): Promise<MediaAssetRecord> {
+  const originalFilename = options.originalFilename ?? null;
+  const displayName =
+    options.displayName ?? displayNameFromFilename(originalFilename);
+  const category = options.category ?? "other";
+  const sensitivity = options.sensitivity ?? "public";
+
   const [row] = await db
     .insert(mediaAssets)
     .values({
@@ -154,27 +233,34 @@ export async function insertMediaAsset(
       mimeType: stored.mimeType,
       byteSize: stored.byteSize,
       originalFilename,
+      displayName,
+      description: options.description ?? null,
+      altText: options.altText ?? null,
+      title: options.title ?? null,
+      category,
+      sensitivity,
     })
-    .returning({
-      id: mediaAssets.id,
-      storageKey: mediaAssets.storageKey,
-      url: mediaAssets.url,
-      mimeType: mediaAssets.mimeType,
-      byteSize: mediaAssets.byteSize,
-      originalFilename: mediaAssets.originalFilename,
-      createdAt: mediaAssets.createdAt,
-    });
-  return { ...row, browserUrl: toBrowserMediaUrl(row.url) };
+    .returning(MEDIA_ASSET_COLUMNS);
+  return mapMediaAssetRow(row);
 }
 
 export async function replaceMediaAsset(
   id: string,
   stored: StoredMedia,
-  originalFilename: string | null = null,
+  options: InsertMediaAssetOptions = {},
   db: Db = getDb(),
 ): Promise<MediaAssetRecord> {
   const existing = await getMediaAsset(id, db);
   if (!existing) throw new Error("notFound");
+
+  const originalFilename =
+    options.originalFilename !== undefined
+      ? options.originalFilename
+      : existing.originalFilename;
+  const displayName =
+    options.displayName !== undefined
+      ? options.displayName
+      : existing.displayName ?? displayNameFromFilename(originalFilename);
 
   const [row] = await db
     .update(mediaAssets)
@@ -184,23 +270,55 @@ export async function replaceMediaAsset(
       mimeType: stored.mimeType,
       byteSize: stored.byteSize,
       originalFilename,
+      displayName,
+      description:
+        options.description !== undefined
+          ? options.description
+          : existing.description,
+      altText:
+        options.altText !== undefined ? options.altText : existing.altText,
+      title: options.title !== undefined ? options.title : existing.title,
+      category: options.category ?? existing.category,
+      sensitivity: options.sensitivity ?? existing.sensitivity,
+      updatedAt: new Date(),
     })
     .where(eq(mediaAssets.id, id))
-    .returning({
-      id: mediaAssets.id,
-      storageKey: mediaAssets.storageKey,
-      url: mediaAssets.url,
-      mimeType: mediaAssets.mimeType,
-      byteSize: mediaAssets.byteSize,
-      originalFilename: mediaAssets.originalFilename,
-      createdAt: mediaAssets.createdAt,
-    });
+    .returning(MEDIA_ASSET_COLUMNS);
 
   if (existing.storageKey !== stored.storageKey) {
     await deleteMediaObject(existing.storageKey);
   }
 
-  return { ...row, browserUrl: toBrowserMediaUrl(row.url) };
+  return mapMediaAssetRow(row);
+}
+
+export async function updateMediaAssetMetadata(
+  id: string,
+  input: MediaAssetMetadataInput,
+  db: Db = getDb(),
+): Promise<MediaAssetRecord> {
+  const existing = await getMediaAsset(id, db);
+  if (!existing) throw new Error("notFound");
+  if (existing.sensitivity === "biometric") {
+    throw new Error("forbidden");
+  }
+
+  const [row] = await db
+    .update(mediaAssets)
+    .set({
+      displayName:
+        input.displayName !== undefined ? input.displayName : existing.displayName,
+      description:
+        input.description !== undefined ? input.description : existing.description,
+      altText: input.altText !== undefined ? input.altText : existing.altText,
+      title: input.title !== undefined ? input.title : existing.title,
+      category: input.category ?? existing.category,
+      updatedAt: new Date(),
+    })
+    .where(eq(mediaAssets.id, id))
+    .returning(MEDIA_ASSET_COLUMNS);
+
+  return mapMediaAssetRow(row);
 }
 
 export async function findMediaReferences(
@@ -273,7 +391,11 @@ export async function findMediaReferences(
   if (branding) {
     const brandingSectionKey = mediaReferenceSectionKey("branding");
     if (branding.menuLogoMediaId === id) {
-      refs.push({ kind: "branding", label: "menuLogo", sectionKey: brandingSectionKey });
+      refs.push({
+        kind: "branding",
+        label: "menuLogo",
+        sectionKey: brandingSectionKey,
+      });
     }
     if (branding.rankingFirstMediaId === id) {
       refs.push({

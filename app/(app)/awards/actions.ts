@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
-import { awards, mediaAssets } from "@/drizzle/schema";
+import { awards } from "@/drizzle/schema";
 import type { Role } from "@/lib/auth/nav";
 import {
   canDeactivateAwards,
@@ -21,6 +21,7 @@ import {
   hardDeleteAward,
   replaceAwardPrices,
 } from "@/lib/repos/awards";
+import { insertMediaAsset } from "@/lib/repos/media";
 import {
   awardFormSchema,
   bulkAwardIdsSchema,
@@ -85,16 +86,15 @@ export async function uploadAwardImage(
   const buffer = Buffer.from(await entry.arrayBuffer());
   const extension = mimeType.includes("png") ? "png" : "jpg";
   const stored = await storeMedia({ bytes: buffer, mimeType, extension });
-  const db = getDb();
-  const [media] = await db
-    .insert(mediaAssets)
-    .values({
-      storageKey: stored.storageKey,
-      url: stored.url,
-      mimeType: stored.mimeType,
-      byteSize: stored.byteSize,
-    })
-    .returning({ id: mediaAssets.id });
+  const originalFilename =
+    "name" in entry && typeof entry.name === "string" && entry.name.trim()
+      ? entry.name.trim()
+      : null;
+  const media = await insertMediaAsset(stored, {
+    originalFilename,
+    category: "award",
+    sensitivity: "public",
+  });
   return media.id;
 }
 

@@ -59,7 +59,11 @@ async function upsertProductAsset(asset: (typeof PRODUCT_ASSETS)[number]) {
     mimeType: asset.mimeType,
     extension,
   });
-  const inserted = await insertMediaAsset(stored, filename);
+  const inserted = await insertMediaAsset(stored, {
+    originalFilename: filename,
+    category: "branding",
+    sensitivity: "public",
+  });
   console.log(`Uploaded ${filename} → ${inserted.id}`);
   return inserted.id;
 }

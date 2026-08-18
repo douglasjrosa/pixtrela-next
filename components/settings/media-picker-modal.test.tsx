@@ -14,7 +14,14 @@ const sampleAsset: MediaAssetRecord = {
   mimeType: "image/png",
   byteSize: 12,
   originalFilename: "logo.png",
+  displayName: "logo",
+  description: null,
+  altText: null,
+  title: null,
+  category: "branding",
+  sensitivity: "public",
   createdAt: new Date("2026-01-01T00:00:00Z"),
+  updatedAt: new Date("2026-01-01T00:00:00Z"),
 };
 
 describe("MediaPickerModal", () => {

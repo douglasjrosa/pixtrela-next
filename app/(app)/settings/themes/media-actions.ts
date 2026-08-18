@@ -21,10 +21,24 @@ import {
   insertMediaAsset,
   listMediaAssets,
   replaceMediaAsset,
+  updateMediaAssetMetadata,
+  type MediaAssetMetadataInput,
   type MediaAssetRecord,
+  type MediaCategory,
   type MediaMimeFilter,
   type MediaReferenceSummary,
 } from "@/lib/repos/media";
+
+const LIBRARY_CATEGORIES: ReadonlySet<MediaCategory> = new Set([
+  "avatar",
+  "face",
+  "award",
+  "currency",
+  "branding",
+  "route_theme",
+  "document",
+  "other",
+]);
 
 async function assertCanManage(): Promise<void> {
   const session = await auth();
@@ -45,9 +59,21 @@ function invalidateBranding(): void {
   revalidatePath("/settings/themes/preferences");
 }
 
+function parseCategory(raw: FormDataEntryValue | null | undefined): MediaCategory | null {
+  if (typeof raw !== "string") return null;
+  return LIBRARY_CATEGORIES.has(raw as MediaCategory)
+    ? (raw as MediaCategory)
+    : null;
+}
+
+function defaultLibraryCategory(mimeType: string): MediaCategory {
+  return mimeType === "application/pdf" ? "document" : "other";
+}
+
 async function storeFromFormData(formData: FormData): Promise<{
   stored: Awaited<ReturnType<typeof storeMedia>>;
   originalFilename: string | null;
+  category: MediaCategory;
 }> {
   const entry = formData.get("file");
   if (!(entry instanceof Blob) || entry.size === 0) {
@@ -61,15 +87,18 @@ async function storeFromFormData(formData: FormData): Promise<{
     "name" in entry && typeof entry.name === "string" && entry.name.trim()
       ? entry.name.trim()
       : null;
+  const category =
+    parseCategory(formData.get("category")) ?? defaultLibraryCategory(mimeType);
   const buffer = Buffer.from(await entry.arrayBuffer());
   const extension = extensionFromMime(mimeType, originalFilename);
   const stored = await storeMedia({ bytes: buffer, mimeType, extension });
-  return { stored, originalFilename };
+  return { stored, originalFilename, category };
 }
 
 export async function listLibraryMedia(raw: {
   q?: string;
   mimeFilter?: MediaMimeFilter;
+  category?: MediaCategory;
   page?: number;
   pageSize?: number;
 }): Promise<{ items: MediaAssetRecord[]; total: number }> {
@@ -77,6 +106,8 @@ export async function listLibraryMedia(raw: {
   return listMediaAssets({
     q: raw.q,
     mimeFilter: raw.mimeFilter ?? "all",
+    category: raw.category,
+    includeBiometric: false,
     page: raw.page,
     pageSize: raw.pageSize,
   });
@@ -86,8 +117,12 @@ export async function uploadLibraryMedia(
   formData: FormData,
 ): Promise<MediaAssetRecord> {
   await assertCanManage();
-  const { stored, originalFilename } = await storeFromFormData(formData);
-  const asset = await insertMediaAsset(stored, originalFilename);
+  const { stored, originalFilename, category } = await storeFromFormData(formData);
+  const asset = await insertMediaAsset(stored, {
+    originalFilename,
+    category,
+    sensitivity: "public",
+  });
   invalidateMediaLibrary();
   return asset;
 }
@@ -99,10 +134,25 @@ export async function replaceLibraryMedia(
   await assertCanManage();
   const existing = await getMediaAsset(mediaId);
   if (!existing) throw new Error("notFound");
+  if (existing.sensitivity === "biometric") throw new Error("forbidden");
   const { stored, originalFilename } = await storeFromFormData(formData);
-  const asset = await replaceMediaAsset(mediaId, stored, originalFilename);
+  const asset = await replaceMediaAsset(mediaId, stored, {
+    originalFilename,
+    category: existing.category,
+    sensitivity: existing.sensitivity,
+  });
   invalidateMediaLibrary();
   invalidateBranding();
+  return asset;
+}
+
+export async function updateLibraryMediaMetadata(
+  mediaId: string,
+  input: MediaAssetMetadataInput,
+): Promise<MediaAssetRecord> {
+  await assertCanManage();
+  const asset = await updateMediaAssetMetadata(mediaId, input);
+  invalidateMediaLibrary();
   return asset;
 }
 
@@ -116,6 +166,9 @@ export async function deleteLibraryMedia(
   const existing = await getMediaAsset(mediaId);
   if (!existing) {
     return { ok: false, reason: "notFound", refs: [] };
+  }
+  if (existing.sensitivity === "biometric") {
+    return { ok: false, reason: "inUse", refs: [] };
   }
   const refs = await findMediaReferences(mediaId);
   if (refs.length > 0) {

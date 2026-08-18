@@ -14,6 +14,7 @@ export default async function SettingsThemePreferencesPage() {
     "use server";
     const result = await listLibraryMedia({
       mimeFilter: "image",
+      category: "branding",
       page: 1,
       pageSize: 100,
     });
@@ -22,6 +23,7 @@ export default async function SettingsThemePreferencesPage() {
 
   async function handleUploadImage(formData: FormData) {
     "use server";
+    formData.set("category", "branding");
     return uploadLibraryMedia(formData);
   }
 

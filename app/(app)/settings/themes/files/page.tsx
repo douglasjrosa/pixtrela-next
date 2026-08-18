@@ -5,6 +5,7 @@ import {
   deleteLibraryMedia,
   listLibraryMedia,
   replaceLibraryMedia,
+  updateLibraryMediaMetadata,
   uploadLibraryMedia,
 } from "../media-actions";
 
@@ -18,6 +19,7 @@ export default async function SettingsThemeFilesPage() {
       onList={listLibraryMedia}
       onUpload={uploadLibraryMedia}
       onReplace={replaceLibraryMedia}
+      onUpdateMetadata={updateLibraryMediaMetadata}
       onDelete={deleteLibraryMedia}
     />
   );
