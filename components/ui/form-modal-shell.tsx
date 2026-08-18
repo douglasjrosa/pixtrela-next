@@ -80,6 +80,10 @@ export function FormModalShell({
   const generatedTitleId = useId();
   const titleId = titleIdProp ?? generatedTitleId;
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  const disabledRef = useRef(disabled);
+  onCloseRef.current = onClose;
+  disabledRef.current = disabled;
   const showFooter = footerStart != null || footerEnd != null;
   const isViewport = layout === "viewport";
   const overlayZ =
@@ -95,7 +99,9 @@ export function FormModalShell({
     closeButtonRef.current?.focus();
 
     function handleKeyDown(event: KeyboardEvent): void {
-      if (event.key === "Escape" && !disabled) onClose();
+      if (event.key === "Escape" && !disabledRef.current) {
+        onCloseRef.current();
+      }
     }
 
     window.addEventListener("keydown", handleKeyDown);
@@ -103,7 +109,7 @@ export function FormModalShell({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, onClose, disabled]);
+  }, [open]);
 
   if (!open) return null;
 
