@@ -48,7 +48,7 @@ export function CategoryPageHeader() {
 
   return (
     <>
-      <AddNewButton onClick={() => setOpen(true)}>{t("newCategory")}</AddNewButton>
+      <AddNewButton label={t("newCategory")} onClick={() => setOpen(true)} />
       {open ? (
         <FormModalShell
           open

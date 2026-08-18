@@ -66,7 +66,7 @@ export function FlagPageHeader({
 
   return (
     <>
-      <AddNewButton onClick={() => setOpen(true)}>{t("newFlag")}</AddNewButton>
+      <AddNewButton label={t("newFlag")} onClick={() => setOpen(true)} />
       {open ? (
         <FormModalShell
           open
