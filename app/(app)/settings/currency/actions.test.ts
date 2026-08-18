@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTag = vi.fn();
 const createCurrencyRepo = vi.fn();
+const listCurrenciesRepo = vi.fn();
 const getCurrencyForSubtasks = vi.fn();
 const upsertCurrencyForSubtasks = vi.fn();
 const getDb = vi.fn();
@@ -17,7 +18,7 @@ vi.mock("next/cache", () => ({
 
 vi.mock("@/lib/repos/awards", () => ({
   createCurrency: (...args: unknown[]) => createCurrencyRepo(...args),
-  listCurrencies: vi.fn(),
+  listCurrencies: (...args: unknown[]) => listCurrenciesRepo(...args),
 }));
 
 vi.mock("@/lib/repos/settings", () => ({
@@ -44,6 +45,7 @@ describe("settings/currency/actions drizzle CRUD", () => {
     vi.resetModules();
     revalidateTag.mockReset();
     createCurrencyRepo.mockReset();
+    listCurrenciesRepo.mockReset();
     getCurrencyForSubtasks.mockReset();
     upsertCurrencyForSubtasks.mockReset();
     storeMedia.mockReset();
@@ -72,11 +74,27 @@ describe("settings/currency/actions drizzle CRUD", () => {
     );
   });
 
-  it("deleteCurrency clears payment setting then deletes", async () => {
-    getCurrencyForSubtasks.mockResolvedValue({ currencyId: "cur-star" });
+  it("deleteCurrency rejects the primary currency", async () => {
+    listCurrenciesRepo.mockResolvedValue([
+      { id: "cur-star" },
+      { id: "cur-gem" },
+    ]);
     const { deleteCurrency } = await import("./actions");
-    await deleteCurrency("cur-star");
-    expect(upsertCurrencyForSubtasks).toHaveBeenCalledWith(null);
+    await expect(deleteCurrency("cur-star")).rejects.toThrow(
+      "primaryCurrencyProtected",
+    );
+    expect(deleteFn).not.toHaveBeenCalled();
+  });
+
+  it("deleteCurrency reassigns active payment to the primary currency", async () => {
+    listCurrenciesRepo.mockResolvedValue([
+      { id: "cur-star" },
+      { id: "cur-gem" },
+    ]);
+    getCurrencyForSubtasks.mockResolvedValue({ currencyId: "cur-gem" });
+    const { deleteCurrency } = await import("./actions");
+    await deleteCurrency("cur-gem");
+    expect(upsertCurrencyForSubtasks).toHaveBeenCalledWith("cur-star");
     expect(deleteFn).toHaveBeenCalled();
   });
 

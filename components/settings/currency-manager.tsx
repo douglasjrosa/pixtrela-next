@@ -8,6 +8,7 @@ import { CurrencyFormModal } from "@/components/settings/currency-form-modal";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import { isPrimaryCurrencyDocument } from "@/lib/business/primary-currency";
 import type { CurrencyFormInput } from "@/lib/schemas/currency";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
@@ -127,6 +128,8 @@ export function CurrencyManager({
       ? `currency-edit-${modal.currency.documentId}`
       : "currency-create";
 
+  const primaryCurrencyDocumentId = currencies[0]?.documentId ?? null;
+
   const defaultValues: CurrencyFormInput =
     modal.mode === "edit" ? toFormValues(modal.currency) : EMPTY_FORM;
 
@@ -225,7 +228,10 @@ export function CurrencyManager({
         defaultValues={defaultValues}
         initialIconUrl={initialIconUrl}
         saving={isPending}
-        showDelete={modal.mode === "edit"}
+        showDelete={
+          modal.mode === "edit" &&
+          !isPrimaryCurrencyDocument(modal.currency.documentId, currencies)
+        }
         onClose={closeModal}
         onSave={handleSave}
         onDelete={() => setDeleteOpen(true)}

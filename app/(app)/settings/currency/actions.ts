@@ -17,6 +17,7 @@ import {
   getCurrencyForSubtasks,
   upsertCurrencyForSubtasks,
 } from "@/lib/repos/settings";
+import { isPrimaryCurrencyId, primaryCurrencyId } from "@/lib/business/primary-currency";
 import {
   currencyFormSchema,
   type CurrencyFormInput,
@@ -101,9 +102,15 @@ export async function updateCurrency(
 export async function deleteCurrency(documentId: string): Promise<void> {
   await assertCanManage();
 
+  const all = await listCurrenciesRepo();
+  const primaryId = primaryCurrencyId(all);
+  if (isPrimaryCurrencyId(documentId, all)) {
+    throw new Error("primaryCurrencyProtected");
+  }
+
   const active = await getCurrencyForSubtasks();
-  if (active?.currencyId === documentId) {
-    await upsertCurrencyForSubtasks(null);
+  if (active?.currencyId === documentId && primaryId) {
+    await upsertCurrencyForSubtasks(primaryId);
     revalidateTag("drizzle:currency-for-subtasks", "default");
   }
   const db = getDb();
