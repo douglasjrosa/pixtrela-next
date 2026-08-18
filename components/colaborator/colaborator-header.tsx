@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Star } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
 
+import { AppBrandLink } from "@/components/app-brand-link";
 import { Button } from "@/components/ui/button";
 import { buildProfilePath } from "@/lib/profile/profile-path";
 
@@ -27,13 +27,7 @@ export function ColaboratorHeader({
       }
     >
       <div className="flex items-center gap-3">
-        <Link href={homeHref} className="flex items-center gap-2">
-          <Star
-            className="size-5 fill-star-gold text-star-gold"
-            aria-hidden
-          />
-          <span className="text-lg font-bold">{t("app.name")}</span>
-        </Link>
+        <AppBrandLink href={homeHref} nameClassName="text-lg" />
         {userId ? (
           <Link
             href={buildProfilePath(userId)}

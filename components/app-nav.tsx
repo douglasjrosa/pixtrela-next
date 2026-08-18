@@ -6,6 +6,7 @@ import { Menu } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
 
+import { AppBrandLink } from "@/components/app-brand-link";
 import { AppNavMobileMenu } from "@/components/app-nav-mobile-menu";
 import { AppNavUserMenu } from "@/components/app-nav-user-menu";
 import { Button } from "@/components/ui/button";
@@ -112,9 +113,7 @@ export function AppNav() {
             </Button>
           ) : null}
 
-          <Link href={homeHref} className="shrink-0 font-bold">
-            {t("app.name")}
-          </Link>
+          <AppBrandLink href={homeHref} />
 
           <div ref={slotRef} className="relative min-w-0 flex-1">
             <ul

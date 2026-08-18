@@ -8,6 +8,7 @@ import {
   APP_FAVICON_PNG,
   APP_ICON_192,
   APP_ICON_512,
+  APP_LOGO_MARK,
 } from "./branding";
 
 const PUBLIC_DIR = join(process.cwd(), "public");
@@ -22,6 +23,7 @@ describe("branding assets", () => {
     for (const asset of [
       APP_FAVICON_PNG,
       APP_FAVICON_JPG,
+      APP_LOGO_MARK,
       APP_ICON_192,
       APP_ICON_512,
       APP_APPLE_TOUCH_ICON,

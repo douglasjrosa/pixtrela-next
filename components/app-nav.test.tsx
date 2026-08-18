@@ -20,7 +20,28 @@ vi.mock("next-auth/react", () => ({
   signOut: (...args: unknown[]) => signOut(...args),
 }));
 
+vi.mock("next/image", () => ({
+  default: ({
+    src,
+    alt,
+    ...props
+  }: {
+    src: string;
+    alt: string;
+    width?: number;
+    height?: number;
+    className?: string;
+  }) => <img src={src} alt={alt} {...props} />,
+}));
+
 import { AppNav } from "./app-nav";
+import { APP_LOGO_MARK } from "@/lib/assets/branding";
+
+function findBrandLink() {
+  return screen.getAllByRole("link").find((link) =>
+    link.querySelector(`img[src="${APP_LOGO_MARK}"]`),
+  );
+}
 
 describe("AppNav", () => {
   beforeEach(() => {
@@ -41,9 +62,7 @@ describe("AppNav", () => {
 
     const header = screen.getByRole("banner");
     expect(header.className).toContain("fixed");
-    expect(
-      screen.getAllByRole("link").some((link) => link.className.includes("font-bold")),
-    ).toBe(true);
+    expect(findBrandLink()).toBeDefined();
     expect(screen.getByRole("link", { name: "Painel" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Configurações" })).toBeInTheDocument();
     expect(
@@ -65,9 +84,7 @@ describe("AppNav", () => {
     renderWithIntl(<AppNav />);
 
     const menuButton = screen.getByRole("button", { name: "Abrir menu" });
-    const brandLink = screen.getAllByRole("link").find((link) =>
-      link.className.includes("font-bold"),
-    );
+    const brandLink = findBrandLink();
     expect(brandLink).toBeDefined();
     expect(menuButton.compareDocumentPosition(brandLink!)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
