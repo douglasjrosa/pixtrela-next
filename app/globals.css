@@ -162,13 +162,3 @@
     font-weight: 700;
   }
 }
-
-@keyframes kiosk-blocking-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.kiosk-blocking-spinner {
-  animation: kiosk-blocking-spin 0.8s linear infinite;
-}
