@@ -1,23 +1,31 @@
 "use client";
 
-import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 
 import { AppBrandLink } from "@/components/app-brand-link";
-import { Button } from "@/components/ui/button";
+import { AppNavUserMenu } from "@/components/app-nav-user-menu";
+import type { Role } from "@/lib/auth/nav";
+import { canAccessOwnProfile } from "@/lib/auth/profile-access";
 import { buildProfilePath } from "@/lib/profile/profile-path";
 
 export interface ColaboratorHeaderProps {
-  userId?: string;
   homeHref?: string;
 }
 
-export function ColaboratorHeader({
-  userId,
-  homeHref = "/",
-}: ColaboratorHeaderProps) {
+export function ColaboratorHeader({ homeHref = "/" }: ColaboratorHeaderProps) {
   const t = useTranslations();
+  const { data: session } = useSession();
+  const role = (session?.user?.role ?? "colaborator") as Role;
+  const userId = session?.user?.id;
+  const userName = session?.user?.name ?? t("profile.title");
+  const avatarUrl = session?.user?.avatarUrl ?? null;
+  const profileHref =
+    canAccessOwnProfile(role) && userId ? buildProfilePath(userId) : null;
+
+  function handleSignOut(): void {
+    void signOut({ callbackUrl: "/login" });
+  }
 
   return (
     <header
@@ -26,25 +34,13 @@ export function ColaboratorHeader({
         "bg-card px-4 py-3 shadow-sm"
       }
     >
-      <div className="flex items-center gap-3">
-        <AppBrandLink href={homeHref} nameClassName="text-lg" />
-        {userId ? (
-          <Link
-            href={buildProfilePath(userId)}
-            className="text-sm font-medium hover:underline"
-          >
-            {t("nav.profile")}
-          </Link>
-        ) : null}
-      </div>
-      <Button
-        variant="outline"
-        size="sm"
-        className="min-h-10 rounded-2xl"
-        onClick={() => signOut({ callbackUrl: "/login" })}
-      >
-        {t("auth.signOut")}
-      </Button>
+      <AppBrandLink href={homeHref} nameClassName="text-lg" />
+      <AppNavUserMenu
+        userName={userName}
+        avatarUrl={avatarUrl}
+        profileHref={profileHref}
+        onSignOut={handleSignOut}
+      />
     </header>
   );
 }

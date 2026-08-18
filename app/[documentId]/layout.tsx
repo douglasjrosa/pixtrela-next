@@ -40,7 +40,6 @@ export default async function DocumentIdLayout({
     <ColaboratorSurface>
       <RouteThemeFrame theme={theme} fallbackClassName="bg-[var(--surface-warm)]">
         <ColaboratorHeader
-          userId={session?.user?.id}
           homeHref={session?.user?.id ? `/${session.user.id}` : "/"}
         />
         <main
