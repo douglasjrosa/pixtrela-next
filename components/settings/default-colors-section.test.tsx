@@ -165,4 +165,51 @@ describe("DefaultColorsSection", () => {
       `--primary: ${DEFAULT_SEMANTIC_TOKENS.primary};`,
     );
   });
+
+  it("renders token groups as accordions with expand and collapse all", async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <DefaultColorsSection
+        initialTokens={DEFAULT_SEMANTIC_TOKENS}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const surfacesToggle = screen.getByRole("button", { name: "Superfícies" });
+    expect(surfacesToggle).toHaveAttribute("aria-expanded", "true");
+
+    await user.click(surfacesToggle);
+    expect(surfacesToggle).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(screen.getByRole("button", { name: "Mostrar tudo" }));
+    expect(surfacesToggle).toHaveAttribute("aria-expanded", "true");
+
+    await user.click(screen.getByRole("button", { name: "Esconder tudo" }));
+    expect(surfacesToggle).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("places save above the accordion and restore below it", () => {
+    renderWithIntl(
+      <DefaultColorsSection
+        initialTokens={DEFAULT_SEMANTIC_TOKENS}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const saveButton = screen.getByRole("button", { name: "Salvar" });
+    const restoreButton = screen.getByRole("button", {
+      name: "Restaurar padrão original",
+    });
+    const surfacesToggle = screen.getByRole("button", { name: "Superfícies" });
+
+    expect(
+      saveButton.compareDocumentPosition(surfacesToggle) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      surfacesToggle.compareDocumentPosition(restoreButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });

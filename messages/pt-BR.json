@@ -757,6 +757,8 @@
     "defaultColorsTitle": "Cores padrão",
     "routeThemesTitle": "Temas por rota",
     "defaultColorsRestore": "Restaurar padrão original",
+    "defaultColorsExpandAll": "Mostrar tudo",
+    "defaultColorsCollapseAll": "Esconder tudo",
     "defaultColorsSaved": "Cores padrão salvas.",
     "semanticPresets": {
       "default": "Padrão",
