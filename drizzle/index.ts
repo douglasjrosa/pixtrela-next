@@ -1,4 +1,4 @@
-export { mediaAssets } from "./schema";
+export { mediaAssets, appBrandingSettings } from "./schema";
 export {
   users,
   steps,

@@ -20,7 +20,11 @@ import { buildProfilePath } from "@/lib/profile/profile-path";
 
 export const APP_NAV_HEIGHT_CLASS = "h-14";
 
-export function AppNav() {
+export interface AppNavProps {
+  logoUrl?: string | null;
+}
+
+export function AppNav({ logoUrl = null }: AppNavProps) {
   const t = useTranslations();
   const { data: session } = useSession();
   const role = (session?.user?.role ?? "colaborator") as Role;
@@ -113,7 +117,7 @@ export function AppNav() {
             </Button>
           ) : null}
 
-          <AppBrandLink href={homeHref} />
+          <AppBrandLink href={homeHref} logoUrl={logoUrl} />
 
           <div ref={slotRef} className="relative min-w-0 flex-1">
             <ul

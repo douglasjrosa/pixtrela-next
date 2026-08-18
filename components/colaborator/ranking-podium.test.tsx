@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 
 import { renderWithIntl } from "@/test/test-utils";
@@ -10,6 +10,11 @@ describe("RankingPodium", () => {
     renderWithIntl(
       <RankingPodium
         currentUserDocumentId="u2"
+        podiumImageUrls={{
+          1: "https://media.example/1.svg",
+          2: "https://media.example/2.svg",
+          3: "https://media.example/3.svg",
+        }}
         topRows={[
           { rank: 1, userDocumentId: "u1", name: "Ana", totalIncome: 200 },
           { rank: 2, userDocumentId: "u2", name: "Bruno", totalIncome: 150 },
@@ -22,5 +27,17 @@ describe("RankingPodium", () => {
     expect(screen.getByText("Bruno")).toBeInTheDocument();
     expect(screen.getByAltText(/1/i)).toBeInTheDocument();
     expect(screen.getByText("Bruno").closest("li")).toHaveClass("ring-2");
+  });
+
+  it("falls back to rank number when podium images are missing", () => {
+    renderWithIntl(
+      <RankingPodium
+        currentUserDocumentId="u1"
+        topRows={[
+          { rank: 1, userDocumentId: "u1", name: "Ana", totalIncome: 200 },
+        ]}
+      />,
+    );
+    expect(screen.getByText("1")).toBeInTheDocument();
   });
 });

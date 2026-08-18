@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithIntl } from "@/test/test-utils";
 
 const signOut = vi.fn();
+const LOGO_URL = "https://media.example/logo.png";
 
 vi.mock("next-auth/react", () => ({
   useSession: () => ({
@@ -20,26 +21,11 @@ vi.mock("next-auth/react", () => ({
   signOut: (...args: unknown[]) => signOut(...args),
 }));
 
-vi.mock("next/image", () => ({
-  default: ({
-    src,
-    alt,
-    ...props
-  }: {
-    src: string;
-    alt: string;
-    width?: number;
-    height?: number;
-    className?: string;
-  }) => <img src={src} alt={alt} {...props} />,
-}));
-
 import { AppNav } from "./app-nav";
-import { APP_LOGO_MARK } from "@/lib/assets/branding";
 
 function findBrandLink() {
   return screen.getAllByRole("link").find((link) =>
-    link.querySelector(`img[src="${APP_LOGO_MARK}"]`),
+    link.querySelector(`img[src="${LOGO_URL}"]`),
   );
 }
 
@@ -58,7 +44,7 @@ describe("AppNav", () => {
   });
 
   it("renders fixed header with brand, desktop links, and user menu", () => {
-    renderWithIntl(<AppNav />);
+    renderWithIntl(<AppNav logoUrl={LOGO_URL} />);
 
     const header = screen.getByRole("banner");
     expect(header.className).toContain("fixed");
@@ -81,7 +67,7 @@ describe("AppNav", () => {
       value: 500,
     });
 
-    renderWithIntl(<AppNav />);
+    renderWithIntl(<AppNav logoUrl={LOGO_URL} />);
 
     const menuButton = screen.getByRole("button", { name: "Abrir menu" });
     const brandLink = findBrandLink();
@@ -103,7 +89,7 @@ describe("AppNav", () => {
       value: 500,
     });
 
-    renderWithIntl(<AppNav />);
+    renderWithIntl(<AppNav logoUrl={LOGO_URL} />);
 
     await user.click(screen.getByRole("button", { name: "Abrir menu" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();

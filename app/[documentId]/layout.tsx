@@ -7,6 +7,7 @@ import { ColaboratorHeader } from "@/components/colaborator/colaborator-header";
 import { ColaboratorSurface } from "@/components/colaborator/colaborator-surface";
 import { RouteThemeFrame } from "@/components/themes/route-theme-frame";
 import type { Role } from "@/lib/auth/nav";
+import { loadBrandingForLayout } from "@/lib/themes/load-branding";
 import { loadRouteThemes } from "@/lib/themes/load-route-themes";
 import { cn } from "@/lib/utils";
 import {
@@ -22,11 +23,12 @@ export default async function DocumentIdLayout({
 }) {
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
+  const branding = await loadBrandingForLayout();
 
   if (role === "manager" || role === "leader") {
     return (
       <div className="relative flex min-h-dvh flex-col">
-        <AppNav />
+        <AppNav logoUrl={branding.menuLogoUrl} />
         <main className="relative z-10 flex-1 px-4 py-6">{children}</main>
       </div>
     );
@@ -41,6 +43,7 @@ export default async function DocumentIdLayout({
       <RouteThemeFrame theme={theme} fallbackClassName="bg-[var(--surface-warm)]">
         <ColaboratorHeader
           homeHref={session?.user?.id ? `/${session.user.id}` : "/"}
+          logoUrl={branding.menuLogoUrl}
         />
         <main
           className={cn("relative z-10", routeThemeContentFrameClass(theme))}

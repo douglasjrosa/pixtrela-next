@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 
@@ -11,9 +12,13 @@ import { buildProfilePath } from "@/lib/profile/profile-path";
 
 export interface ColaboratorHeaderProps {
   homeHref?: string;
+  logoUrl?: string | null;
 }
 
-export function ColaboratorHeader({ homeHref = "/" }: ColaboratorHeaderProps) {
+export function ColaboratorHeader({
+  homeHref = "/",
+  logoUrl = null,
+}: ColaboratorHeaderProps) {
   const t = useTranslations();
   const { data: session } = useSession();
   const role = (session?.user?.role ?? "colaborator") as Role;
@@ -34,7 +39,7 @@ export function ColaboratorHeader({ homeHref = "/" }: ColaboratorHeaderProps) {
         "bg-card px-4 py-3 shadow-sm"
       }
     >
-      <AppBrandLink href={homeHref} nameClassName="text-lg" />
+      <AppBrandLink href={homeHref} logoUrl={logoUrl} nameClassName="text-lg" />
       <AppNavUserMenu
         userName={userName}
         avatarUrl={avatarUrl}

@@ -71,6 +71,7 @@ export const mediaAssets = pgTable("media_assets", {
   url: text("url").notNull(),
   mimeType: varchar("mime_type", { length: 128 }),
   byteSize: integer("byte_size"),
+  originalFilename: varchar("original_filename", { length: 255 }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -216,6 +217,28 @@ export const routeThemes = pgTable("route_themes", {
 export const semanticThemeSettings = pgTable("semantic_theme_settings", {
   id: uuid("id").defaultRandom().primaryKey(),
   tokens: jsonb("tokens").$type<Record<string, string>>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const appBrandingSettings = pgTable("app_branding_settings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  menuLogoMediaId: uuid("menu_logo_media_id").references(() => mediaAssets.id, {
+    onDelete: "set null",
+  }),
+  rankingFirstMediaId: uuid("ranking_first_media_id").references(
+    () => mediaAssets.id,
+    { onDelete: "set null" },
+  ),
+  rankingSecondMediaId: uuid("ranking_second_media_id").references(
+    () => mediaAssets.id,
+    { onDelete: "set null" },
+  ),
+  rankingThirdMediaId: uuid("ranking_third_media_id").references(
+    () => mediaAssets.id,
+    { onDelete: "set null" },
+  ),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

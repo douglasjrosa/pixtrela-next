@@ -25,6 +25,14 @@ export default async function SettingsThemesLayout({
             href: "/settings/themes/routes",
             label: t("themeTabs.routes"),
           },
+          {
+            href: "/settings/themes/files",
+            label: t("themeTabs.files"),
+          },
+          {
+            href: "/settings/themes/preferences",
+            label: t("themeTabs.preferences"),
+          },
         ]}
       />
       {children}
