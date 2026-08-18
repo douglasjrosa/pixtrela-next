@@ -1,19 +1,14 @@
 import {
-  ensureSemanticThemeSettings,
-  loadSemanticThemeTokens,
-} from "@/lib/repos/settings";
-import {
   buildSemanticThemeCss,
   type SemanticTokens,
 } from "@/lib/themes/semantic-tokens";
+import { loadCachedSemanticThemeTokens } from "@/lib/themes/load-cached-semantic-theme";
 
 export async function loadSemanticThemeCss(): Promise<string> {
-  await ensureSemanticThemeSettings();
-  const tokens = await loadSemanticThemeTokens();
+  const tokens = await loadCachedSemanticThemeTokens();
   return buildSemanticThemeCss(tokens);
 }
 
 export async function loadSemanticThemeForSettings(): Promise<SemanticTokens> {
-  await ensureSemanticThemeSettings();
-  return loadSemanticThemeTokens();
+  return loadCachedSemanticThemeTokens();
 }
