@@ -1,13 +1,39 @@
-import { toast } from "sonner";
+import { toast, type ExternalToast } from "sonner";
 
 export const HINT_TOAST_DURATION_MS = 2000;
+export const BOTTOM_CENTER_TOAST_POSITION = "bottom-center" as const;
 
-export function showSuccessToast(message: string): void {
-  toast.success(message);
+export type AppToastPosition = ExternalToast["position"];
+
+export interface AppToastOptions {
+  toastId?: string | number;
+  position?: AppToastPosition;
 }
 
-export function showErrorToast(message: string): void {
-  toast.error(message);
+export function showLoadingToast(
+  message: string,
+  options?: Pick<AppToastOptions, "position">,
+): string | number {
+  return toast.loading(message, {
+    position: options?.position ?? BOTTOM_CENTER_TOAST_POSITION,
+  });
+}
+
+export function showSuccessToast(
+  message: string,
+  options?: AppToastOptions,
+): void {
+  toast.success(message, {
+    id: options?.toastId,
+    position: options?.position,
+  });
+}
+
+export function showErrorToast(message: string, options?: AppToastOptions): void {
+  toast.error(message, {
+    id: options?.toastId,
+    position: options?.position,
+  });
 }
 
 export function showHintToast(message: string): void {

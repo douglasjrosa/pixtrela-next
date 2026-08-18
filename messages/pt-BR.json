@@ -228,6 +228,7 @@
     "chooseSubtaskFirst": "Primeiro, escolha uma Subtarefa.",
     "chooseCollaboratorFirst": "Primeiro, escolha um Colaborador.",
     "exitUnsavedConfirm": "Tem certeza de que deseja sair da página sem salvar?",
+    "taskUpdating": "Atualizando a tarefa {title}…",
     "taskUpdated": "A tarefa {title} foi atualizada com sucesso.",
     "taskUpdateFailed": "Não foi possível atualizar a tarefa {title}.",
     "infoTitle": "Detalhes",
