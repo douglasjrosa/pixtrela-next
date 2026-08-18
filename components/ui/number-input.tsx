@@ -119,7 +119,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
           step={step}
           disabled={disabled}
           className={cn(
-            "h-9 w-full min-w-0 rounded-md border border-input bg-background",
+            "h-9 w-full min-w-0 rounded-md border border-input bg-transparent",
             "py-1 pl-3 pr-8 text-center text-sm shadow-sm transition-colors",
             "placeholder:text-muted-foreground focus-visible:outline-none",
             "focus-visible:ring-2 focus-visible:ring-ring",

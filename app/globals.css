@@ -178,7 +178,7 @@
   }
 
   select {
-    background-color: var(--background);
+    background-color: transparent;
     color: var(--foreground);
     color-scheme: inherit;
   }

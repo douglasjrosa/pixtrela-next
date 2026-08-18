@@ -173,7 +173,7 @@ function TeamFormDialog({
             disabled={isPending}
             className={
               "flex h-9 w-full rounded-md border border-input " +
-              "bg-background px-3 text-sm text-foreground"
+              "bg-transparent px-3 text-sm text-foreground"
             }
             {...register("leaderDocumentId")}
           >

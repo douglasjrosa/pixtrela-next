@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Label } from "@/components/ui/label";
+import { NATIVE_SELECT_TALL_CLASS_NAME } from "@/lib/ui/native-select";
 import type { ColaboratorOption } from "@/lib/dashboard/types";
 
 export interface ColaboratorPickerProps {
