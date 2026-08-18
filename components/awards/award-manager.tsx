@@ -287,26 +287,26 @@ function AwardFormDialog({
                 />
               </div>
             ))}
-            <div className="space-y-2">
-              <Label htmlFor="stock">{tAwards("stock")}</Label>
-              <NumberInput
-                id="stock"
-                min={0}
-                className="w-32"
-                disabled={formDisabled}
-                {...register("stock", { valueAsNumber: true })}
-              />
-              {errors.stock ? (
-                <p className="text-sm text-destructive">{errors.stock.message}</p>
-              ) : null}
-            </div>
           </div>
           {errors.values ? (
             <p className="text-sm text-destructive">{errors.values.message}</p>
           ) : null}
         </div>
 
-        <div className="sm:col-span-2">
+        <div className="flex flex-wrap items-end justify-between gap-6 sm:col-span-2">
+          <div className="space-y-2">
+            <Label htmlFor="stock">{tAwards("stock")}</Label>
+            <NumberInput
+              id="stock"
+              min={0}
+              className="w-32"
+              disabled={formDisabled}
+              {...register("stock", { valueAsNumber: true })}
+            />
+            {errors.stock ? (
+              <p className="text-sm text-destructive">{errors.stock.message}</p>
+            ) : null}
+          </div>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
