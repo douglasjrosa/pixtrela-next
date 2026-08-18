@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useLayoutEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -16,13 +16,16 @@ import {
   type SemanticThemePresetId,
 } from "@/lib/themes/semantic-theme-presets";
 import {
+  clearSemanticThemePreview,
+  applySemanticThemePreview,
+} from "@/lib/themes/semantic-theme-preview";
+import {
   DEFAULT_SEMANTIC_TOKENS,
   SEMANTIC_TOKEN_GROUPS,
   semanticTokenLabelKey,
   type SemanticTokenKey,
   type SemanticTokens,
 } from "@/lib/themes/semantic-tokens";
-import { applySemanticThemeToDocument } from "@/lib/themes/apply-semantic-theme-document";
 import { cn } from "@/lib/utils";
 
 export interface DefaultColorsSectionProps {
@@ -62,14 +65,26 @@ export function DefaultColorsSection({
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const savedBaselineRef = useRef(initialTokens);
   const initialKey = JSON.stringify(initialTokens);
   const [prevInitialKey, setPrevInitialKey] = useState(initialKey);
   if (initialKey !== prevInitialKey) {
     setPrevInitialKey(initialKey);
     setDraft(initialTokens);
+    savedBaselineRef.current = initialTokens;
   }
   const busy = isPending || isSaving;
   const selectedPresetId = matchSemanticThemePreset(draft);
+
+  useLayoutEffect(() => {
+    applySemanticThemePreview(draft);
+  }, [draft]);
+
+  useLayoutEffect(() => {
+    return () => {
+      clearSemanticThemePreview(savedBaselineRef.current);
+    };
+  }, []);
 
   function patchToken(key: SemanticTokenKey, value: string): void {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -93,7 +108,8 @@ export function DefaultColorsSection({
     setIsSaving(true);
     try {
       await onSave(draft);
-      applySemanticThemeToDocument(draft);
+      savedBaselineRef.current = draft;
+      applySemanticThemePreview(draft);
       setMessage(t("defaultColorsSaved"));
       router.refresh();
     } catch {

@@ -51,6 +51,8 @@ describe("DefaultColorsSection", () => {
       (document.getElementById("semantic-token-primary") as HTMLInputElement)
         ?.value,
     ).toBe("#1e6fbf");
+    const style = document.getElementById(SEMANTIC_THEME_STYLE_ID);
+    expect(style?.textContent).toContain("--primary: #1e6fbf;");
     expect(onSave).not.toHaveBeenCalled();
   });
 
@@ -139,6 +141,28 @@ describe("DefaultColorsSection", () => {
     expect(screen.getByRole("button", { name: "Oceano" })).toHaveAttribute(
       "aria-pressed",
       "false",
+    );
+  });
+
+  it("restores the saved palette preview when leaving the page", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    const view = renderWithIntl(
+      <DefaultColorsSection
+        initialTokens={DEFAULT_SEMANTIC_TOKENS}
+        onSave={onSave}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Néon" }));
+    const style = document.getElementById(SEMANTIC_THEME_STYLE_ID);
+    expect(style?.textContent).toContain("--primary: #d946ef;");
+
+    view.unmount();
+
+    expect(style?.textContent).toContain(
+      `--primary: ${DEFAULT_SEMANTIC_TOKENS.primary};`,
     );
   });
 });

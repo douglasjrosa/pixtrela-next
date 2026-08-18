@@ -41,6 +41,7 @@ export function RouteThemeContentFrame({
     <main className={cn("relative z-10", frameClass, className)}>
       <div
         className={cn(surfaceClassName, radiusClass)}
+        data-route-theme-surface
         style={panelStyle}
       >
         {children}
