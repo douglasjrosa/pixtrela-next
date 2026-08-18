@@ -43,12 +43,12 @@ describe("app-toast", () => {
     });
   });
 
-  it("replaces a loading toast with success", async () => {
+  it("replaces a loading toast with success at the bottom", async () => {
     const { showSuccessToast } = await import("./app-toast");
     showSuccessToast("Salvo", { toastId: "toast-1" });
     expect(toastSuccess).toHaveBeenCalledWith("Salvo", {
       id: "toast-1",
-      position: undefined,
+      position: "bottom-center",
     });
   });
 
@@ -58,6 +58,15 @@ describe("app-toast", () => {
     expect(toastError).toHaveBeenCalledWith("Erro", {
       id: undefined,
       position: undefined,
+    });
+  });
+
+  it("replaces a loading toast with error at the bottom", async () => {
+    const { showErrorToast } = await import("./app-toast");
+    showErrorToast("Erro", { toastId: "toast-1" });
+    expect(toastError).toHaveBeenCalledWith("Erro", {
+      id: "toast-1",
+      position: "bottom-center",
     });
   });
 

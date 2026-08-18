@@ -19,20 +19,28 @@ export function showLoadingToast(
   });
 }
 
+function resolveToastPosition(
+  options?: AppToastOptions,
+): AppToastPosition | undefined {
+  if (options?.position) return options.position;
+  if (options?.toastId) return BOTTOM_CENTER_TOAST_POSITION;
+  return undefined;
+}
+
 export function showSuccessToast(
   message: string,
   options?: AppToastOptions,
 ): void {
   toast.success(message, {
     id: options?.toastId,
-    position: options?.position,
+    position: resolveToastPosition(options),
   });
 }
 
 export function showErrorToast(message: string, options?: AppToastOptions): void {
   toast.error(message, {
     id: options?.toastId,
-    position: options?.position,
+    position: resolveToastPosition(options),
   });
 }
 
