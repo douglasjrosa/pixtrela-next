@@ -564,6 +564,14 @@ describeWithDb("drizzle repos integration", () => {
         new Date("2026-08-16T10:00:12Z"),
       );
 
+      const afterAdvance = await listSubTasksForTask(task.id);
+      expect(afterAdvance.find((row) => row.id === subs[0]!.id)?.status).toBe(
+        "paused",
+      );
+      expect(afterAdvance.find((row) => row.id === subs[1]!.id)?.status).toBe(
+        "producing",
+      );
+
       await startSubTask(
         helper.id,
         subs[1]!.id,

@@ -22,6 +22,7 @@ import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainGroupCard } from "./kiosk-chain-group-card";
 import { KioskExitSubtaskForm } from "./kiosk-exit-subtask-form";
+import { KioskSubtaskEarnedCredits } from "./kiosk-subtask-earned-credits";
 import { KioskSubtaskRemainingQtyBadge } from "./kiosk-subtask-remaining-qty-badge";
 import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
 import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
@@ -41,6 +42,8 @@ export interface KioskSubtaskPanelProps {
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
   blockingUi?: boolean;
+  timerPaused?: boolean;
+  exitBusy?: boolean;
   compactFinishedCards?: boolean;
 }
 
@@ -65,6 +68,8 @@ export function KioskSubtaskPanel({
   onConfirmChainStop,
   onAdvanceChain,
   blockingUi = false,
+  timerPaused,
+  exitBusy = false,
   compactFinishedCards = false,
 }: KioskSubtaskPanelProps) {
   const t = useTranslations("kiosk");
@@ -82,6 +87,8 @@ export function KioskSubtaskPanel({
               unit={unit}
               readOnly={readOnly}
               blockingUi={blockingUi}
+              timerPaused={timerPaused}
+              exitBusy={exitBusy}
               compactFinishedCards={compactFinishedCards}
               flash={unit.memberIds.includes(flashDocumentId ?? "")}
               onStartChain={onStartChain}
@@ -147,7 +154,7 @@ export function KioskSubtaskPanel({
                     startedAt={subTask.startedAt}
                     timeSpent={subTask.timeSpent}
                     expectedTime={subTask.expectedTime}
-                    timerPaused={blockingUi}
+                    timerPaused={timerPaused ?? blockingUi}
                   />
                 ) : null}
                 {finished && !compactFinishedCards ? (
@@ -157,6 +164,11 @@ export function KioskSubtaskPanel({
                       <Duration seconds={subTask.timeSpent} />
                     </span>
                   </p>
+                ) : null}
+                {finished && compactFinishedCards ? (
+                  <KioskSubtaskEarnedCredits
+                    amount={subTask.viewerCurrencyAwarded ?? 0}
+                  />
                 ) : null}
               </div>
               {!finished && !isExiting ? (
@@ -173,6 +185,7 @@ export function KioskSubtaskPanel({
                   {showExit ? (
                     <KioskActionButton
                       actionVariant="outline"
+                      disabled={blockingUi}
                       onClick={() => setExitingId(subTask.documentId)}
                     >
                       {t("exitSubtask")}
@@ -207,6 +220,7 @@ export function KioskSubtaskPanel({
                       : undefined
                   }
                   disabled={blockingUi}
+                  busy={exitBusy}
                   onCancel={() => setExitingId(null)}
                   onConfirm={(input) => {
                     onExit(subTask.documentId, input);

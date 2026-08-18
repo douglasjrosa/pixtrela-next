@@ -147,4 +147,19 @@ describe("KioskExitSubtaskForm", () => {
       isCompleted: false,
     });
   });
+
+  it("shows processing copy and disables actions while busy", () => {
+    renderWithIntl(
+      <KioskExitSubtaskForm
+        sharingType="qty"
+        maxQty={4}
+        busy
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Processando..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeDisabled();
+  });
 });

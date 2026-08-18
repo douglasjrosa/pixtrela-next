@@ -20,6 +20,7 @@ function row(
     activationStatus: overrides.activationStatus ?? 'unlocked',
     taskIndex: overrides.taskIndex ?? 0,
     finishedAt: overrides.finishedAt ?? null,
+    viewerParticipated: overrides.viewerParticipated,
   };
 }
 
@@ -41,20 +42,30 @@ describe('isVisibleInKioskDailyQueue', () => {
     ).toBe(true);
   });
 
-  it('keeps finished subtasks completed today', () => {
+  it('keeps finished subtasks completed today when the viewer participated', () => {
     expect(
       isVisibleInKioskDailyQueue(
-        { status: 'finished' },
+        { status: 'finished', viewerParticipated: true },
         new Date('2026-07-07T10:00:00.000Z'),
         NOW,
       ),
     ).toBe(true);
   });
 
-  it('hides finished subtasks completed on a previous day', () => {
+  it('hides finished subtasks when the viewer did not participate', () => {
     expect(
       isVisibleInKioskDailyQueue(
         { status: 'finished' },
+        new Date('2026-07-07T10:00:00.000Z'),
+        NOW,
+      ),
+    ).toBe(false);
+  });
+
+  it('hides finished subtasks completed on a previous day', () => {
+    expect(
+      isVisibleInKioskDailyQueue(
+        { status: 'finished', viewerParticipated: true },
         new Date('2026-07-06T23:00:00.000Z'),
         NOW,
       ),
@@ -63,13 +74,17 @@ describe('isVisibleInKioskDailyQueue', () => {
 
   it('hides finished subtasks without finishedAt', () => {
     expect(
-      isVisibleInKioskDailyQueue({ status: 'finished' }, null, NOW),
+      isVisibleInKioskDailyQueue(
+        { status: 'finished', viewerParticipated: true },
+        null,
+        NOW,
+      ),
     ).toBe(false);
   });
 });
 
 describe('filterKioskDailyQueue', () => {
-  it('removes finished subtasks from previous days', () => {
+  it('removes finished subtasks from previous days or without participation', () => {
     const rows = filterKioskDailyQueue(
       [
         row({ documentId: 'a', status: 'waiting' }),
@@ -77,11 +92,18 @@ describe('filterKioskDailyQueue', () => {
           documentId: 'b',
           status: 'finished',
           finishedAt: '2026-07-06T12:00:00.000Z',
+          viewerParticipated: true,
         }),
         row({
           documentId: 'c',
           status: 'finished',
           finishedAt: '2026-07-07T12:00:00.000Z',
+          viewerParticipated: true,
+        }),
+        row({
+          documentId: 'd',
+          status: 'finished',
+          finishedAt: '2026-07-07T13:00:00.000Z',
         }),
       ],
       NOW,
