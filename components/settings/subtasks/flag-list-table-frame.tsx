@@ -10,6 +10,9 @@ import type { MaterialFlagListFilters } from "@/lib/schemas/material-flag";
 import { SETTINGS_ENTITY_LIST_PAGE_SIZE } from "@/lib/schemas/sub-task-category";
 import { flagListFilterKey } from "@/lib/settings/flag-list-params";
 
+const ROW_LINK_CLASS =
+  "text-inherit after:absolute after:inset-0 after:content-['']";
+
 export type FlagListRow = {
   id: string;
   code: string;
@@ -68,11 +71,15 @@ export function FlagListTableFrame({
         </thead>
         <tbody>
           {items.map((row) => (
-            <tr key={row.id} className="border-b hover:bg-muted/40">
+            <tr
+              key={row.id}
+              className="relative cursor-pointer border-b hover:bg-muted/40"
+            >
               <td className="py-3">
                 <Link
                   href={`/settings/subtasks/flags/${row.id}`}
-                  className="font-mono font-medium hover:underline"
+                  className={`font-mono font-medium ${ROW_LINK_CLASS}`}
+                  aria-label={row.code}
                 >
                   {row.code}
                 </Link>
