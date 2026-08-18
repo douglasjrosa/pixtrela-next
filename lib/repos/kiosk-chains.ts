@@ -48,6 +48,7 @@ import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import {
   assignFlagsToSubTask,
   listFlagIdsForSubTask,
+  loadHasAssignedFlagsBySubTaskId,
   releaseProducerFlagsWhenConsumersFinished,
   subTaskHasDependents,
 } from "@/lib/repos/material-flags";
