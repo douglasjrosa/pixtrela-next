@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
         destination: "/settings/subtasks/categories",
         permanent: false,
       },
+      {
+        source: "/settings/themes",
+        destination: "/settings/themes/colors",
+        permanent: false,
+      },
     ];
   },
 };

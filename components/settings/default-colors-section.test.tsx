@@ -34,6 +34,26 @@ describe("DefaultColorsSection", () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
+  it("applies the midnight preset tokens without saving", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    renderWithIntl(
+      <DefaultColorsSection
+        initialTokens={DEFAULT_SEMANTIC_TOKENS}
+        onSave={onSave}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Noturno" }));
+
+    expect(
+      (document.getElementById("semantic-token-background") as HTMLInputElement)
+        ?.value,
+    ).toBe("#0f172a");
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it("calls onSave with draft tokens when save is clicked", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);
