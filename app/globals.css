@@ -7,6 +7,10 @@
 /* Color tokens are injected at runtime by SemanticThemeStyle (DB-backed). */
 :root {
   --radius: 0.625rem;
+  --scrollbar-size: 0.5rem;
+  --scrollbar-thumb: color-mix(in oklch, var(--foreground) 24%, transparent);
+  --scrollbar-thumb-hover: color-mix(in oklch, var(--foreground) 40%, transparent);
+  --scrollbar-track: transparent;
 }
 
 .colaborator-surface {
@@ -114,7 +118,33 @@
   * {
     border-color: var(--color-border);
     outline-color: var(--color-ring);
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-width: thin;
     @apply border-border outline-ring/50;
+  }
+
+  *::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: padding-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
   }
   body {
     background-color: var(--color-background);
