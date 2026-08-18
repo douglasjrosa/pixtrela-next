@@ -30,7 +30,7 @@ export function ColaboratorPicker({
       <Label htmlFor="dashboard-colaborator">{t("colaborator")}</Label>
       <select
         id="dashboard-colaborator"
-        className="w-full max-w-md rounded-md border bg-background px-3 py-2 text-sm"
+        className={NATIVE_SELECT_TALL_CLASS_NAME + " max-w-md"}
         value={selectedDocumentId}
         onChange={handleChange}
       >
