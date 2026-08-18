@@ -216,6 +216,43 @@ function relativeLuminanceFromHex(hex: string): number {
 
 const DARK_BACKGROUND_LUMINANCE_THRESHOLD = 0.45;
 
+export const SELECT_OPTION_CSS_VAR_KEYS = [
+  "select-option-background",
+  "select-option-foreground",
+  "select-option-highlight-background",
+  "select-option-highlight-foreground",
+] as const;
+
+export type SelectOptionCssVarKey =
+  (typeof SELECT_OPTION_CSS_VAR_KEYS)[number];
+
+export function resolveSelectOptionCssVars(
+  tokens: SemanticTokens,
+): Record<SelectOptionCssVarKey, string> {
+  const isDark = resolveSemanticColorScheme(tokens.background) === "dark";
+
+  if (isDark) {
+    const optionBackground =
+      relativeLuminanceFromHex(tokens.card) < DARK_BACKGROUND_LUMINANCE_THRESHOLD
+        ? tokens.card
+        : tokens.background;
+
+    return {
+      "select-option-background": optionBackground,
+      "select-option-foreground": tokens.foreground,
+      "select-option-highlight-background": tokens.primary,
+      "select-option-highlight-foreground": tokens["primary-foreground"],
+    };
+  }
+
+  return {
+    "select-option-background": tokens.popover,
+    "select-option-foreground": tokens["popover-foreground"],
+    "select-option-highlight-background": tokens.accent,
+    "select-option-highlight-foreground": tokens["accent-foreground"],
+  };
+}
+
 export function resolveSemanticColorScheme(
   background: string,
 ): "light" | "dark" {
@@ -226,11 +263,16 @@ export function resolveSemanticColorScheme(
 
 export function buildSemanticThemeCss(tokens: SemanticTokens): string {
   const colorScheme = resolveSemanticColorScheme(tokens.background);
+  const selectOptionVars = resolveSelectOptionCssVars(tokens);
   const lines = [
     ...SEMANTIC_TOKEN_KEYS.map((key) => `  --${key}: ${tokens[key]};`),
+    ...SELECT_OPTION_CSS_VAR_KEYS.map(
+      (key) => `  --${key}: ${selectOptionVars[key]};`,
+    ),
     `  color-scheme: ${colorScheme};`,
   ];
-  return `:root {\n${lines.join("\n")}\n}`;
+
+  return `:root {\n${lines.join("\n")}\n}\n\nselect,\nselect option {\n  color-scheme: ${colorScheme};\n}`;
 }
 
 export function mergeSemanticTokens(

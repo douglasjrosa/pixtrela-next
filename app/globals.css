@@ -8,6 +8,10 @@
 :root {
   --radius: 0.625rem;
   color-scheme: light;
+  --select-option-background: var(--popover);
+  --select-option-foreground: var(--popover-foreground);
+  --select-option-highlight-background: var(--accent);
+  --select-option-highlight-foreground: var(--accent-foreground);
   --scrollbar-size: 0.5rem;
   --scrollbar-radius: 9999px;
   --scrollbar-track: color-mix(in oklch, var(--foreground) 10%, transparent);
@@ -176,11 +180,19 @@
   select {
     background-color: var(--background);
     color: var(--foreground);
+    color-scheme: inherit;
   }
 
   select option,
   select optgroup {
-    background-color: var(--popover);
-    color: var(--popover-foreground);
+    background-color: var(--select-option-background);
+    color: var(--select-option-foreground);
+  }
+
+  select option:checked,
+  select option:hover,
+  select option:focus {
+    background-color: var(--select-option-highlight-background);
+    color: var(--select-option-highlight-foreground);
   }
 }

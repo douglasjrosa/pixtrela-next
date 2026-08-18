@@ -19,6 +19,7 @@ import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 import { cn } from "@/lib/utils";
 import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
 
@@ -286,10 +287,7 @@ function AwardFormDialog({
                 {...register(`values.${index}.numberOf`, { valueAsNumber: true })}
               />
               <select
-                className={
-                  "flex h-9 min-w-40 flex-1 rounded-md border border-input " +
-                  "bg-background px-3 text-sm text-foreground"
-                }
+                className={cn(NATIVE_SELECT_CLASS_NAME, "min-w-40 flex-1")}
                 disabled={formDisabled}
                 aria-label={tAwards("currency")}
                 {...register(`values.${index}.currencyDocumentId`)}
