@@ -420,7 +420,7 @@ export function MediaFilesManager({
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("mediaFilesEmpty")}</p>
       ) : (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
           {items.map((item) => {
             const title = assetLabel(item);
             const image = isImageMime(item.mimeType) && item.browserUrl;

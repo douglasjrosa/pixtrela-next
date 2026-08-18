@@ -6,9 +6,9 @@ import {
 } from "./media-thumbnail-styles";
 
 describe("media-thumbnail-styles", () => {
-  it("uses an opaque white frame and one-third image sizing", () => {
-    expect(MEDIA_THUMBNAIL_FRAME_CLASS).toContain("bg-white");
-    expect(MEDIA_THUMBNAIL_IMAGE_CLASS).toContain("size-1/3");
-    expect(MEDIA_THUMBNAIL_IMAGE_CLASS).toContain("object-contain");
+  it("uses a translucent white frame and full-size image cover", () => {
+    expect(MEDIA_THUMBNAIL_FRAME_CLASS).toContain("bg-white/15");
+    expect(MEDIA_THUMBNAIL_IMAGE_CLASS).toContain("size-full");
+    expect(MEDIA_THUMBNAIL_IMAGE_CLASS).toContain("object-cover");
   });
 });

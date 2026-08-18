@@ -138,7 +138,7 @@ export function MediaPickerModal({
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("mediaPickerEmpty")}</p>
       ) : (
-        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        <ul className="grid grid-cols-4 gap-2 sm:grid-cols-5">
           {items.map((item) => {
             const active = item.id === pendingId;
             const title = item.originalFilename?.trim() || item.storageKey;
