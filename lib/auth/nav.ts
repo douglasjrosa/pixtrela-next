@@ -67,7 +67,7 @@ export function navItemsForRole(
     }
     return [
       { href: `/${userId}`, labelKey: "myBalance" },
-      { href: `/${userId}#colaborator-store`, labelKey: "exchange" },
+      { href: `/${userId}/store`, labelKey: "store" },
       { href: `/${userId}/profile`, labelKey: "profile" },
     ];
   }

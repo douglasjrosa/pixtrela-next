@@ -207,8 +207,10 @@ describe("canAccessRoute", () => {
     expect(canAccessRoute("colaborator", "/balance", "col-1")).toBe(false);
     expect(canAccessRoute("colaborator", "/col-1", "col-1")).toBe(true);
     expect(canAccessRoute("colaborator", "/col-1/profile", "col-1")).toBe(true);
+    expect(canAccessRoute("colaborator", "/col-1/store", "col-1")).toBe(true);
     expect(canAccessRoute("colaborator", "/kiosk", "col-1")).toBe(false);
     expect(canAccessRoute("manager", "/balance")).toBe(false);
+    expect(canAccessRoute("manager", "/col-1/store", "mgr-1")).toBe(false);
   });
 
   it("allows kiosk only on kiosk paths", () => {

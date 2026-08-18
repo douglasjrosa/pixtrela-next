@@ -73,6 +73,7 @@ describeWithDb("drizzle repos integration", () => {
       });
       const award = await createAward({
         name: `Award ${suffix}`,
+        stock: 10,
         prices: [{ currencyId: currency.id, numberOf: 5 }],
       });
 
@@ -93,6 +94,8 @@ describeWithDb("drizzle repos integration", () => {
 
       expect(result.cost).toBe(10);
       expect(result.exchangeId).toBeTruthy();
+      const stockAfter = await findAwardById(award.id);
+      expect(stockAfter?.stock).toBe(8);
     },
     45_000,
   );
@@ -120,6 +123,7 @@ describeWithDb("drizzle repos integration", () => {
       });
       const award = await createAward({
         name: `Del Award ${suffix}`,
+        stock: 5,
         prices: [{ currencyId: currency.id, numberOf: 1 }],
       });
 

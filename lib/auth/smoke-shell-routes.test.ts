@@ -18,6 +18,7 @@ describe("smokeShellHrefsForRole", () => {
   it("returns private home routes for colaborator with userId", () => {
     expect(smokeShellHrefsForRole("colaborator", "col-1")).toEqual([
       "/col-1",
+      "/col-1/store",
       "/col-1/profile",
     ]);
   });

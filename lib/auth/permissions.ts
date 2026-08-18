@@ -3,6 +3,7 @@ import {
   isColaboratorPrivatePath,
   isKioskPath,
   isUserProfilePath,
+  isUserStorePath,
 } from "./colaborator-routes";
 import type { Role } from "./nav";
 import { canAccessOwnProfile } from "./profile-access";
@@ -167,6 +168,9 @@ export function canAccessRoute(
     if (!canAccessOwnProfile(role)) return false;
     if (!userId) return false;
     return pathname === `/${userId}/profile`;
+  }
+  if (isUserStorePath(pathname)) {
+    return false;
   }
   const guard = ROUTE_GUARDS.find((g) => pathname.startsWith(g.prefix));
   if (!guard) return true;
