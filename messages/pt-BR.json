@@ -570,6 +570,8 @@
     "addValue": "Adicionar valor",
     "showInStore": "Mostrar na loja",
     "stock": "Quantidade em estoque",
+    "listStock": "Estoque",
+    "listShowInStore": "Na loja",
     "saved": "Prêmio salvo.",
     "archived": "Prêmio arquivado.",
     "deleted": "Prêmio excluído.",

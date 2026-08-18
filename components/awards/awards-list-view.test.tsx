@@ -30,6 +30,8 @@ describe("AwardListRowPresentational", () => {
               variant="table"
               labels={{
                 cost: "2100 Estrelas",
+                stock: "0",
+                showInStore: "Sim",
                 inactive: "Inativo",
                 selectRow: "Selecionar Arroz 5kg",
               }}
@@ -43,6 +45,8 @@ describe("AwardListRowPresentational", () => {
     expect(image).toHaveAttribute("src", "/api/media/arroz.jpg");
     expect(image.className).toMatch(/rounded-full/);
     expect(screen.getByRole("button", { name: "Arroz 5kg" })).toBeInTheDocument();
+    expect(screen.getByText("0")).toBeInTheDocument();
+    expect(screen.getByText("Sim")).toBeInTheDocument();
   });
 
   it("opens the award when the title is clicked", () => {
@@ -56,6 +60,8 @@ describe("AwardListRowPresentational", () => {
               variant="table"
               labels={{
                 cost: "2100 Estrelas",
+                stock: "0",
+                showInStore: "Sim",
                 inactive: "Inativo",
                 selectRow: "Selecionar Arroz 5kg",
               }}
