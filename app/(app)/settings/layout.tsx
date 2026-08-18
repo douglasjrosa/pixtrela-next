@@ -39,6 +39,7 @@ export default async function SettingsLayout({
             { href: "/settings/kiosk", label: t("tabs.kiosk") },
             { href: "/settings/login", label: t("tabs.login") },
             { href: "/settings/themes", label: t("tabs.themes") },
+            { href: "/settings/subtasks", label: t("tabs.subtasks") },
           ]}
         />
       </div>

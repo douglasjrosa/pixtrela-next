@@ -1,3 +1,7 @@
+import {
+  isPredecessorSatisfied,
+} from "@/lib/business/subtask-dependencies";
+
 const FINISHED_STATUS = "finished";
 const DISABLED_ACTIVATION = "disabled";
 
@@ -10,6 +14,7 @@ export type ChainSubTask = {
   maxSameTimeWorkers: number;
   assignedToIds: string[];
   dependencyIds: string[];
+  hasAssignedFlags?: boolean;
 };
 
 export type SubTaskChain = {
@@ -102,13 +107,15 @@ export function isMultiMemberChain(chain: SubTaskChain): boolean {
 export function chainHasExternalDependencyBlock(
   chainMemberIds: ReadonlySet<string>,
   membersToCheck: readonly Pick<ChainSubTask, "dependencyIds">[],
-  siblingsById: Map<string, Pick<ChainSubTask, "status">>,
+  siblingsById: Map<
+    string,
+    Pick<ChainSubTask, "status" | "hasAssignedFlags">
+  >,
 ): boolean {
   for (const member of membersToCheck) {
     for (const depId of member.dependencyIds) {
       if (chainMemberIds.has(depId)) continue;
-      const sibling = siblingsById.get(depId);
-      if (sibling?.status !== FINISHED_STATUS) return true;
+      if (!isPredecessorSatisfied(siblingsById.get(depId))) return true;
     }
   }
   return false;

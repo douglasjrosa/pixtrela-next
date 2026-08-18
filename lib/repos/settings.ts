@@ -6,6 +6,7 @@ import {
   kioskSettings,
   mediaAssets,
   routeThemes,
+  semanticThemeSettings,
   taskAutomationSettings,
 } from "@/drizzle/schema";
 import {
@@ -22,6 +23,11 @@ import {
   pageMarginToStoredIndex,
   type RouteThemeKey,
 } from "@/lib/themes/match-route-theme";
+import {
+  DEFAULT_SEMANTIC_TOKENS,
+  mergeSemanticTokens,
+  type SemanticTokens,
+} from "@/lib/themes/semantic-tokens";
 
 export async function getKioskSettings(db: Db = getDb()) {
   const [row] = await db.select().from(kioskSettings).limit(1);
@@ -275,4 +281,47 @@ export async function updateRouteTheme(
     .update(routeThemes)
     .set(patch)
     .where(eq(routeThemes.id, input.id));
+}
+
+export async function getSemanticThemeSettings(db: Db = getDb()) {
+  const [row] = await db.select().from(semanticThemeSettings).limit(1);
+  return row ?? null;
+}
+
+export async function ensureSemanticThemeSettings(db: Db = getDb()) {
+  const existing = await getSemanticThemeSettings(db);
+  if (existing) return existing;
+  const [created] = await db
+    .insert(semanticThemeSettings)
+    .values({ tokens: DEFAULT_SEMANTIC_TOKENS })
+    .returning();
+  return created;
+}
+
+export async function upsertSemanticThemeSettings(
+  tokens: SemanticTokens,
+  db: Db = getDb(),
+) {
+  const existing = await getSemanticThemeSettings(db);
+  if (!existing) {
+    const [created] = await db
+      .insert(semanticThemeSettings)
+      .values({ tokens })
+      .returning();
+    return created;
+  }
+  const [updated] = await db
+    .update(semanticThemeSettings)
+    .set({ tokens, updatedAt: new Date() })
+    .where(eq(semanticThemeSettings.id, existing.id))
+    .returning();
+  return updated;
+}
+
+export async function loadSemanticThemeTokens(
+  db: Db = getDb(),
+): Promise<SemanticTokens> {
+  const row = await getSemanticThemeSettings(db);
+  if (!row?.tokens) return DEFAULT_SEMANTIC_TOKENS;
+  return mergeSemanticTokens(row.tokens as Partial<SemanticTokens>);
 }

@@ -15,7 +15,7 @@ export interface KioskActionButtonProps
 const VARIANT_CLASS: Record<KioskActionVariant, string> = {
   /** Relies on Button default (`bg-primary`). */
   primary: "",
-  produce: "bg-[var(--success)] text-white hover:bg-[var(--success)]/90",
+  produce: "bg-success text-success-foreground hover:bg-success/90",
   outline: "border-2 bg-card",
 };
 

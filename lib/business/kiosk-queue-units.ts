@@ -57,14 +57,21 @@ function toChainItem(subTask: KioskSubTask): ChainSubTask {
     maxSameTimeWorkers: subTask.maxSameTimeWorkers ?? 1,
     assignedToIds: subTask.assignedToIds ?? [],
     dependencyIds: subTask.dependencyIds ?? [],
+    hasAssignedFlags: (subTask.assignedFlagCodes?.length ?? 0) > 0,
   };
 }
 
 function siblingsById(
   items: readonly KioskSubTask[],
-): Map<string, Pick<ChainSubTask, "status">> {
+): Map<string, Pick<ChainSubTask, "status" | "hasAssignedFlags">> {
   return new Map(
-    items.map((item) => [item.documentId, { status: item.status }]),
+    items.map((item) => [
+      item.documentId,
+      {
+        status: item.status,
+        hasAssignedFlags: (item.assignedFlagCodes?.length ?? 0) > 0,
+      },
+    ]),
   );
 }
 

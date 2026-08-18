@@ -8,6 +8,7 @@ import {
   isFinishedThisRun,
   planPrincipalSegmentActivities,
   resolveChainAutoAdvance,
+  statusAfterChainTimeAdvance,
   type AllocationMember,
   type ChainStopAnswer,
 } from "@/lib/business/subtask-chain-allocation";
@@ -44,6 +45,16 @@ import {
   type SubTaskWithAssignees,
 } from "@/lib/repos/tasks";
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
+import {
+  assignFlagsToSubTask,
+  listFlagIdsForSubTask,
+  releaseProducerFlagsWhenConsumersFinished,
+  subTaskHasDependents,
+} from "@/lib/repos/material-flags";
+import {
+  assertFinishFlagsAllowed,
+  mergeFlagIds,
+} from "@/lib/business/subtask-material-flags";
 import { currencies, currencyForSubtasks } from "@/drizzle/schema";
 
 const PRODUCING_STATUS = "producing";
@@ -73,6 +84,7 @@ function toChainItem(row: SubTaskWithAssignees): ChainSubTask {
     maxSameTimeWorkers: row.maxSameTimeWorkers,
     assignedToIds: row.assignedToIds,
     dependencyIds: row.dependencyIds,
+    hasAssignedFlags: false,
   };
 }
 
@@ -95,7 +107,14 @@ async function loadChainContext(subTaskId: string, db: Db) {
     .limit(1);
   if (!sub) throw new Error("notFound");
   const siblings = await listSubTasksWithRelationsForTask(sub.taskId, db);
-  const items = siblings.map(toChainItem);
+  const flagSet = await loadHasAssignedFlagsBySubTaskId(
+    siblings.map((row) => row.id),
+    db,
+  );
+  const items = siblings.map((row) => ({
+    ...toChainItem(row),
+    hasAssignedFlags: flagSet.has(row.id),
+  }));
   const chains = resolveChains(items);
   const chain = findChainContaining(chains, subTaskId);
   if (!chain) throw new Error("notFound");
@@ -151,34 +170,24 @@ function hasOpenSession(
   return hasOpenStartedSessionFromActions(actions);
 }
 
-export async function findOpenChainRunId(input: {
-  subTaskIds: string[];
-  db?: Db;
-}): Promise<{
+export type OpenChainRunRef = {
   chainRunId: string;
   principalId: string;
   runStartedAt: Date;
-} | null> {
-  const db = input.db ?? getDb();
-  if (input.subTaskIds.length === 0) return null;
-  const rows = await db
-    .select({
-      chainRunId: activities.chainRunId,
-      colaboratorId: activities.colaboratorId,
-      action: activities.action,
-      timestamp: activities.timestamp,
-      subTaskId: activities.subTaskId,
-    })
-    .from(activities)
-    .where(
-      and(
-        inArray(activities.subTaskId, input.subTaskIds),
-        inArray(activities.action, ["started", "stoped"]),
-      ),
-    )
-    .orderBy(asc(activities.timestamp));
+};
 
-  const byRun = new Map<string, typeof rows>();
+type ChainActivityLookupRow = {
+  chainRunId: string | null;
+  colaboratorId: string;
+  action: "started" | "stoped";
+  timestamp: Date;
+  subTaskId: string;
+};
+
+export function resolveOpenChainRunFromActivityRows(
+  rows: readonly ChainActivityLookupRow[],
+): OpenChainRunRef | null {
+  const byRun = new Map<string, ChainActivityLookupRow[]>();
   for (const row of rows) {
     if (!row.chainRunId) continue;
     const list = byRun.get(row.chainRunId) ?? [];
@@ -200,6 +209,55 @@ export async function findOpenChainRunId(input: {
     };
   }
   return null;
+}
+
+async function listChainActivityLookupRows(
+  subTaskIds: readonly string[],
+  db: Db,
+): Promise<ChainActivityLookupRow[]> {
+  if (subTaskIds.length === 0) return [];
+  return db
+    .select({
+      chainRunId: activities.chainRunId,
+      colaboratorId: activities.colaboratorId,
+      action: activities.action,
+      timestamp: activities.timestamp,
+      subTaskId: activities.subTaskId,
+    })
+    .from(activities)
+    .where(
+      and(
+        inArray(activities.subTaskId, [...subTaskIds]),
+        inArray(activities.action, ["started", "stoped"]),
+      ),
+    )
+    .orderBy(asc(activities.timestamp));
+}
+
+export async function findOpenChainRunId(input: {
+  subTaskIds: string[];
+  db?: Db;
+}): Promise<OpenChainRunRef | null> {
+  const db = input.db ?? getDb();
+  const rows = await listChainActivityLookupRows(input.subTaskIds, db);
+  return resolveOpenChainRunFromActivityRows(rows);
+}
+
+export async function findOpenChainRunsForMemberGroups(
+  groups: readonly { headId: string; memberIds: readonly string[] }[],
+  db: Db = getDb(),
+): Promise<Map<string, OpenChainRunRef>> {
+  const allIds = [...new Set(groups.flatMap((group) => group.memberIds))];
+  const rows = await listChainActivityLookupRows(allIds, db);
+  const result = new Map<string, OpenChainRunRef>();
+  for (const group of groups) {
+    const memberIds = new Set(group.memberIds);
+    const open = resolveOpenChainRunFromActivityRows(
+      rows.filter((row) => memberIds.has(row.subTaskId)),
+    );
+    if (open) result.set(group.headId, open);
+  }
+  return result;
 }
 
 export async function findLatestChainRunIdForSubTask(
@@ -340,7 +398,7 @@ export async function advanceChainRun(
         await tx
           .update(subTasks)
           .set({
-            status: helperOpen ? PRODUCING_STATUS : WAITING_STATUS,
+            status: statusAfterChainTimeAdvance(helperOpen),
             updatedAt: now,
           })
           .where(eq(subTasks.id, completedId));
@@ -628,6 +686,22 @@ async function reallocateChainRunInternal(
   });
   const creditDeltas = diffChainRunCredits(nextAwards, previousAwards);
 
+  for (const member of formMembers) {
+    if (pendingIds.has(member.documentId)) continue;
+    if (helperOpenBySubTask.has(member.documentId)) continue;
+    const sibling = siblingById.get(member.documentId);
+    if (!sibling) continue;
+    const flagIds = answersById.get(member.documentId)?.flagIds ?? [];
+    const existingFlagIds = await listFlagIdsForSubTask(member.documentId, db);
+    const hasDependents = await subTaskHasDependents(member.documentId, db);
+    assertFinishFlagsAllowed({
+      willFinish: true,
+      hasDependents,
+      categoryId: sibling.subTaskCategoryId,
+      totalFlagCount: mergeFlagIds(existingFlagIds, flagIds).length,
+    });
+  }
+
   await db.transaction(async (tx) => {
     for (const event of planned) {
       const existing = runRows.find(
@@ -726,6 +800,14 @@ async function reallocateChainRunInternal(
           updatedAt: stopAt,
         })
         .where(eq(subTasks.id, member.documentId));
+      const flagIds = answersById.get(member.documentId)?.flagIds ?? [];
+      if (flagIds.length > 0 && !helperOpen) {
+        await assignFlagsToSubTask(
+          member.documentId,
+          flagIds,
+          tx as unknown as Db,
+        );
+      }
     }
 
     await applyCreditDeltas(
@@ -737,6 +819,10 @@ async function reallocateChainRunInternal(
       tx as unknown as Db,
     );
     await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, stopAt);
+    await releaseProducerFlagsWhenConsumersFinished(
+      sub.taskId,
+      tx as unknown as Db,
+    );
   });
 }
 

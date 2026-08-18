@@ -17,6 +17,8 @@ export function boardSubTaskSummaryStub(
     producingColaboratorIds: [],
     sessions: [],
     assignedTo: [],
+    assignedFlagCodes: [],
+    dependencyFlags: [],
     ...partial,
   };
 }

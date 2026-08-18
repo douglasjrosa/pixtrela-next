@@ -13,20 +13,23 @@ is the temporary integration/stabilization branch. Always use the
 
 ## 1. Prepare the `review` branch
 
-1. `git fetch origin` to get the latest `dev` and `master`.
-2. If `review` does not exist yet, create it from production:
+1. Merge all local PRs and local `dev` branch. Solve conflicts using
+   `optimize-merge`. Everything must to be consolidated in `dev` and all PR
+   branches must be deleted after merged.
+2. `git fetch origin` to get the latest `master`.
+3. If `review` does not exist yet, create it from production:
    `git checkout -B review origin/master`.
-3. If it already exists, check it out: `git checkout review`.
+4. If it already exists, check it out: `git checkout review`.
 
 ## 2. Consolidate master + dev into review
 
 1. Bring the production line in first (bug fixes / hotfixes):
    `git merge --no-ff origin/master`.
 2. Bring the parallel work in next (new features and edits):
-   `git merge --no-ff origin/dev`.
+   `git merge --no-ff dev`.
 3. Resolve every conflict with the `optimize-merge` skill. The rule is always:
    keep BOTH the new functionality (from `dev`) and the bug fixes (from
-   `master`), never drop one side.
+   `origin/master`), never drop one side.
 
 ## 3. Review, clean up, and get everything green (on review)
 
@@ -42,16 +45,42 @@ Then run the project's own checks and iterate until they all pass (for example
 `npm run lint` and `npm test`, or the equivalent for the project). Do not ignore
 any error or warning.
 
+## Commit messages
+
+Every commit in this cycle must describe the **actual changes** (features, fixes,
+refactors, config), not the `/optimize` workflow.
+
+- **Do** write subjects from the diff (e.g. `fix revalidateTag cache profile for
+  Next 16`, `sync user media URLs without setState in effect`).
+- **Do not** use `optimize`, `/optimize`, `review release`, `release gate`, or
+  similar meta labels in commit subjects or bodies.
+
+Before committing on `review`, read `git diff` (or `git log origin/master..HEAD`)
+and name what changed. If you make multiple logical fixes, use separate commits
+with specific messages rather than one vague cleanup commit.
+
 ## 4. Ship to master (production)
 
-1. Commit the reviewed result on `review` with a clear English message.
+1. Commit any remaining reviewed work on `review` using the rules above.
 2. Promote to production and push:
-   `git checkout master && git merge --no-ff review && git push origin master`.
-   Pushing to `master` triggers the production deploy.
+   `git checkout master && git merge --no-ff review -m "Merge branch 'review': <short summary of what ships>" && git push origin master`.
+   The merge message must summarize the **integrated work** (features, fixes,
+   config), not `/optimize` or `review release`. Pushing to `master` triggers the
+   production deploy.
 3. If the GitHub repository does not exist yet, create it under the GitHub
    account that owns this project and push (do not assume a fixed account).
 
-## 5. Continue on dev
+## 5. Sync origin `dev` with shipped `master`
 
-Fast-forward `dev` onto the shipped `master` so the next cycle starts clean:
-`git checkout dev && git merge --ff-only master && git push origin dev`.
+After pushing `master`, update **only** `origin/dev` so it matches production.
+**Do not** merge into or reset **local** `dev` — you may already have new work
+there while this cycle ran; that work joins the next `/optimize` or
+`/optimize-min`.
+
+```bash
+git fetch origin
+git push origin origin/master:refs/heads/dev
+```
+
+- `origin/dev` ends on the same commit as `origin/master`.
+- **Local `dev` stays unchanged** (do not `git checkout dev && git merge master`).

@@ -14,13 +14,18 @@ import { cn } from "@/lib/utils";
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainAdvanceTimer } from "./kiosk-chain-advance-timer";
 import { KioskChainMemberFields } from "./kiosk-chain-member-fields";
+import { MaterialFlagHintList } from "./material-flag-hint-list";
+import { KioskSubtaskEarnedCredits } from "./kiosk-subtask-earned-credits";
 import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
 import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
 
 export interface KioskChainGroupCardProps {
   unit: KioskGroupUnit;
   readOnly?: boolean;
-  pending?: boolean;
+  blockingUi?: boolean;
+  timerPaused?: boolean;
+  exitBusy?: boolean;
+  compactFinishedCards?: boolean;
   flash?: boolean;
   onStartChain?: (headId: string) => void | Promise<void>;
   onConfirmChainStop?: (
@@ -28,22 +33,24 @@ export interface KioskChainGroupCardProps {
     answers: ChainStopAnswer[],
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
-  blockingUi?: boolean;
+  onReleaseFlags?: (documentId: string) => void | Promise<void>;
 }
 
 export function KioskChainGroupCard({
   unit,
   readOnly = false,
-  pending,
+  blockingUi = false,
+  timerPaused,
+  exitBusy = false,
+  compactFinishedCards = false,
   flash,
   onStartChain,
   onConfirmChainStop,
   onAdvanceChain,
-  blockingUi = false,
+  onReleaseFlags,
 }: KioskChainGroupCardProps) {
   const t = useTranslations("kiosk");
   const [collecting, setCollecting] = useState(false);
-  const [confirmingStop, setConfirmingStop] = useState(false);
   const [answers, setAnswers] = useState<Record<string, ChainStopAnswer>>({});
 
   const answersComplete = useMemo(
@@ -62,7 +69,6 @@ export function KioskChainGroupCard({
 
   function resetCollecting(): void {
     setCollecting(false);
-    setConfirmingStop(false);
     setAnswers({});
   }
 
@@ -71,8 +77,7 @@ export function KioskChainGroupCard({
   }
 
   function handleConfirmStop(): void {
-    if (!unit.chainRunId || !answersComplete || confirmingStop) return;
-    setConfirmingStop(true);
+    if (!unit.chainRunId || !answersComplete || blockingUi) return;
     const payload = unit.members.map(
       (member) => answers[member.documentId] ?? { documentId: member.documentId },
     );
@@ -106,22 +111,39 @@ export function KioskChainGroupCard({
                 className="min-w-0 space-y-3 rounded-xl border bg-background p-3"
               >
                 <p className="text-lg font-bold leading-snug">{member.name}</p>
-                <KioskSubtaskStatusBadge status={member.status} />
+                <MaterialFlagHintList
+                  dependencyFlags={member.dependencyFlags}
+                  assignedFlagCodes={member.assignedFlagCodes}
+                  onRelease={
+                    !readOnly && (member.assignedFlagCodes?.length ?? 0) > 0
+                      ? () => onReleaseFlags?.(member.documentId)
+                      : undefined
+                  }
+                  releaseDisabled={blockingUi}
+                />
+                {!compactFinishedCards ? (
+                  <KioskSubtaskStatusBadge status={member.status} />
+                ) : null}
                 {isProducing && member.startedAt ? (
                   <KioskSubtaskProducingMetrics
                     startedAt={member.startedAt}
                     timeSpent={member.timeSpent}
                     expectedTime={member.expectedTime}
-                    timerPaused={blockingUi}
+                    timerPaused={timerPaused ?? blockingUi}
                   />
                 ) : null}
-                {member.status === "finished" ? (
+                {member.status === "finished" && !compactFinishedCards ? (
                   <p className="text-base text-muted-foreground">
                     {t("timeSpent")}:{" "}
                     <span className="tabular-nums">
                       <Duration seconds={member.timeSpent} />
                     </span>
                   </p>
+                ) : null}
+                {member.status === "finished" && compactFinishedCards ? (
+                  <KioskSubtaskEarnedCredits
+                    amount={member.viewerCurrencyAwarded ?? 0}
+                  />
                 ) : null}
                 {collecting ? (
                   <KioskChainMemberFields
@@ -133,8 +155,9 @@ export function KioskChainGroupCard({
                         ? getRemainingSubTaskQty(member.targetQty, member.completedQty)
                         : undefined
                     }
+                    availableFlags={member.availableFlags}
                     value={answers[member.documentId]}
-                    disabled={confirmingStop}
+                    disabled={blockingUi}
                     onChange={(answer) =>
                       setAnswers((current) => ({
                         ...current,
@@ -152,7 +175,7 @@ export function KioskChainGroupCard({
             {showStart ? (
               <KioskActionButton
                 actionVariant="produce"
-                disabled={pending}
+                disabled={blockingUi}
                 onClick={() => onStartChain?.(unit.headId)}
               >
                 {t("start")}
@@ -161,6 +184,7 @@ export function KioskChainGroupCard({
             {showStop ? (
               <KioskActionButton
                 actionVariant="outline"
+                disabled={blockingUi}
                 onClick={handleStopClick}
               >
                 {t("stop")}
@@ -169,16 +193,16 @@ export function KioskChainGroupCard({
             {collecting && answersComplete ? (
               <KioskActionButton
                 actionVariant="produce"
-                disabled={confirmingStop}
+                disabled={blockingUi}
                 onClick={handleConfirmStop}
               >
-                {t("exitConfirm")}
+                {exitBusy ? t("actionLoading") : t("exitConfirm")}
               </KioskActionButton>
             ) : null}
             {collecting ? (
               <KioskActionButton
                 actionVariant="outline"
-                disabled={confirmingStop}
+                disabled={blockingUi}
                 onClick={resetCollecting}
               >
                 {t("exitCancel")}

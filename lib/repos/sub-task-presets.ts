@@ -18,6 +18,7 @@ function mapPresetRow(
     sharingType: row.sharingType,
     maxSameTimeWorkers: row.maxSameTimeWorkers,
     expectedTime: row.expectedTime,
+    subTaskCategoryId: row.subTaskCategoryId,
   };
 }
 
@@ -105,6 +106,7 @@ export async function createSubTaskPresetRepo(
       sharingType: input.sharingType,
       maxSameTimeWorkers: input.maxSameTimeWorkers,
       expectedTime: input.expectedTime,
+      subTaskCategoryId: input.subTaskCategoryId || null,
     })
     .returning({ id: subTaskPresets.id });
   return row.id;
@@ -122,6 +124,7 @@ export async function updateSubTaskPresetRepo(
       sharingType: input.sharingType,
       maxSameTimeWorkers: input.maxSameTimeWorkers,
       expectedTime: input.expectedTime,
+      subTaskCategoryId: input.subTaskCategoryId || null,
       updatedAt: new Date(),
     })
     .where(eq(subTaskPresets.id, id));

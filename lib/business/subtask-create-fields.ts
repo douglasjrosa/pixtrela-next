@@ -37,6 +37,5 @@ export function normalizeSubTaskCreateValues(
       dependencyIds,
       siblings,
     ),
-    reasonForDisabling: "",
   };
 }

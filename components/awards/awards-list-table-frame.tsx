@@ -10,6 +10,7 @@ import {
   bulkDeleteAwards,
   loadMoreAwards,
 } from "@/app/(app)/awards/actions";
+import { LoadMoreButton, LoadMoreButtonRow } from "@/components/ui/load-more-button";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -229,16 +230,14 @@ export function AwardsListTableFrame({
         </div>
 
         {hasMore ? (
-          <div className="flex shrink-0 justify-center pt-3">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isPending}
+          <LoadMoreButtonRow>
+            <LoadMoreButton
+              loading={isPending}
+              label={tAwards("loadMore")}
+              loadingLabel={tAwards("loadingMore")}
               onClick={handleLoadMore}
-            >
-              {isPending ? tAwards("loadingMore") : tAwards("loadMore")}
-            </Button>
-          </div>
+            />
+          </LoadMoreButtonRow>
         ) : null}
 
         <ConfirmDialog

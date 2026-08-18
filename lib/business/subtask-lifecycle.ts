@@ -84,6 +84,7 @@ export function buildActivationSyncRows(
     activationStatus: string;
     maxSameTimeWorkers: number;
     dependencyIds: string[];
+    hasAssignedFlags: boolean;
   }>,
   activitiesBySubTaskId: Map<string, ActivityTimeRow[]>,
 ): SubTaskActivationSyncRow[] {
@@ -92,6 +93,7 @@ export function buildActivationSyncRows(
     status: row.status,
     activationStatus: fromDrizzleActivationStatus(row.activationStatus),
     dependencies: row.dependencyIds,
+    hasAssignedFlags: row.hasAssignedFlags,
     maxSameTimeWorkers: row.maxSameTimeWorkers,
     activeWorkerCount: countActiveWorkersFromActivities(
       activitiesBySubTaskId.get(row.id) ?? [],

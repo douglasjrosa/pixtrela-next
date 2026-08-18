@@ -26,6 +26,7 @@ import {
   type SubTaskDependencyOption,
 } from "../subtasks/subtask-dependencies-modal";
 import { SubTaskNamePresetField } from "../subtasks/subtask-name-preset-field";
+import { SubTaskCategorySelect } from "../subtasks/subtask-category-select";
 
 export interface TemplateSubTaskInlineFormProps {
   formKey: string;
@@ -92,6 +93,10 @@ export function TemplateSubTaskInlineForm({
       shouldValidate: true,
     });
     setValue("expectedTime", next.expectedTime, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("subTaskCategoryId", next.subTaskCategoryId ?? null, {
       shouldDirty: true,
       shouldValidate: true,
     });
@@ -211,6 +216,18 @@ export function TemplateSubTaskInlineForm({
           ))}
         </select>
       </div>
+
+      <SubTaskCategorySelect
+        id={fieldId("subTaskCategoryId")}
+        value={watch("subTaskCategoryId")}
+        disabled={disabled}
+        onChange={(next) =>
+          setValue("subTaskCategoryId", next, {
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
         <Button

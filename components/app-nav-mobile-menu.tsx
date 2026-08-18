@@ -12,14 +12,12 @@ export interface AppNavMobileMenuProps {
   open: boolean;
   items: NavItem[];
   onOpenChange: (open: boolean) => void;
-  onSignOut: () => void;
 }
 
 export function AppNavMobileMenu({
   open,
   items,
   onOpenChange,
-  onSignOut,
 }: AppNavMobileMenuProps) {
   const t = useTranslations();
   const titleId = useId();
@@ -51,7 +49,7 @@ export function AppNavMobileMenu({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex justify-end bg-black/50"
+      className="fixed inset-0 z-[60] flex justify-end bg-overlay/50"
       role="presentation"
       onClick={close}
     >
@@ -99,17 +97,6 @@ export function AppNavMobileMenu({
             ))}
           </ul>
         </nav>
-
-        <div className="border-t p-4">
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11 w-full"
-            onClick={onSignOut}
-          >
-            {t("auth.signOut")}
-          </Button>
-        </div>
       </div>
     </div>
   );

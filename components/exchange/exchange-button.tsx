@@ -31,7 +31,7 @@ export function ExchangeButton({
       className={cn(
         "min-h-12 w-full rounded-2xl font-bold",
         !disabled &&
-          "bg-[var(--star-gold)] text-[var(--star-gold-foreground)] hover:bg-[var(--star-gold)]/90",
+          "bg-star-gold text-star-gold-foreground hover:bg-star-gold/90",
       )}
     >
       {t("redeem")}

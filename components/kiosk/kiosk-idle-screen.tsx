@@ -12,7 +12,7 @@ export function KioskIdleScreen() {
       className="flex flex-col items-center justify-center gap-4 px-6 py-12 text-center"
     >
       <Contact
-        className="size-20 animate-pulse text-[var(--star-gold)]"
+        className="size-20 animate-pulse text-star-gold"
         strokeWidth={1.5}
         aria-hidden
       />

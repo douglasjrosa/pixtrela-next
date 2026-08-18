@@ -1,13 +1,12 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 import { KanbanFloatingCountBadge } from "@/components/kanban/kanban-floating-count-badge";
-import { KanbanMultiAssignToolbar } from "@/components/kanban/kanban-multi-assign-toolbar";
 import { TaskProgressBarSkeleton } from "@/components/kanban/task-progress-bar-skeleton";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import { Card, CardBadge, CardContent } from "@/components/ui/card";
-import { FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS } from "@/components/ui/form-modal-shell";
 import { shouldShowAssignWarn } from "@/lib/business/assign-warn";
 import { cn } from "@/lib/utils";
 
@@ -154,41 +153,34 @@ export interface KanbanTaskSubtasksLoadingBodyProps {
   teams: readonly TeamAssignmentOption[];
   assignWarnMax: number;
   assignedCountByColaboratorId: Record<string, number>;
+  subtasksListHeader?: ReactNode;
 }
 
 export function KanbanTaskSubtasksLoadingBody({
   teams,
   assignWarnMax,
   assignedCountByColaboratorId,
+  subtasksListHeader,
 }: KanbanTaskSubtasksLoadingBodyProps) {
   const tKanban = useTranslations("kanban");
 
   return (
     <div
-      className={cn(
-        "flex min-h-0 min-w-0 flex-1 flex-col gap-4",
-        FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS,
-      )}
+      className="flex min-h-0 min-w-0 flex-1 flex-col gap-4"
       role="status"
       aria-busy="true"
       aria-label={tKanban("loading")}
       data-testid="kanban-subtasks-loading"
     >
-      <KanbanMultiAssignToolbar
-        multiEnabled={false}
-        canApply={false}
-        disabled
-        onMultiEnabledChange={() => undefined}
-        onAssign={() => undefined}
-        onRemove={() => undefined}
-      />
-
       <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[7fr_3fr] gap-4">
         <section className="flex min-h-0 min-w-0 flex-col gap-2">
           <p className="text-sm font-semibold text-foreground">
             {tKanban("subtasksColumn")}
           </p>
           <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pt-2 pr-2.5">
+            {subtasksListHeader ? (
+              <li className="shrink-0 list-none">{subtasksListHeader}</li>
+            ) : null}
             {range(SUBTASK_LOADING_SKELETON_COUNT).map((index) => (
               <KanbanPendingSubtaskCardSkeleton key={index} />
             ))}

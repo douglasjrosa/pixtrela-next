@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const revalidateTag = vi.fn();
 const updateTaskBoardFields = vi.fn();
 const listStepsRepo = vi.fn();
-const listBoardSubtaskRows = vi.fn();
+const listBoardSubtaskCore = vi.fn();
+const listBoardSubtaskOpenActivities = vi.fn();
 const listBoardSubTasksForTask = vi.fn();
 const listBoardSubtaskSessionHistory = vi.fn();
 const listBoardSubtaskAssignees = vi.fn();
@@ -25,6 +26,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
+  unstable_cache: (fn: () => unknown) => fn,
 }));
 
 vi.mock("@/lib/board/load-board-progress", () => ({
@@ -49,7 +51,9 @@ vi.mock("@/lib/repos/tasks", async (importOriginal) => {
   return {
     ...actual,
     updateTaskBoardFields: (...args: unknown[]) => updateTaskBoardFields(...args),
-    listBoardSubtaskRows: (...args: unknown[]) => listBoardSubtaskRows(...args),
+    listBoardSubtaskCore: (...args: unknown[]) => listBoardSubtaskCore(...args),
+    listBoardSubtaskOpenActivities: (...args: unknown[]) =>
+      listBoardSubtaskOpenActivities(...args),
     listBoardSubTasksForTask: (...args: unknown[]) =>
       listBoardSubTasksForTask(...args),
     listBoardSubtaskSessionHistory: (...args: unknown[]) =>
@@ -80,7 +84,8 @@ describe("board/actions drizzle", () => {
     revalidateTag.mockReset();
     updateTaskBoardFields.mockReset();
     listStepsRepo.mockReset();
-    listBoardSubtaskRows.mockReset();
+    listBoardSubtaskCore.mockReset();
+    listBoardSubtaskOpenActivities.mockReset();
     listBoardSubTasksForTask.mockReset();
     listBoardSubtaskSessionHistory.mockReset();
     listBoardSubtaskAssignees.mockReset();
@@ -114,8 +119,8 @@ describe("board/actions drizzle", () => {
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps", "default");
   });
 
-  it("loadBoardSubtasks reads drizzle bundle", async () => {
-    listBoardSubtaskRows.mockResolvedValue({
+  it("loadBoardSubtasks reads cached core without live producing fields", async () => {
+    listBoardSubtaskCore.mockResolvedValue({
       rows: [
         {
           id: "sub-1",
@@ -128,16 +133,35 @@ describe("board/actions drizzle", () => {
         },
       ],
       assigneeRows: [],
-      openActivityRows: [],
     });
 
     const { loadBoardSubtasks } = await import("./actions");
     const result = await loadBoardSubtasks("task-1");
-    expect(listBoardSubtaskRows).toHaveBeenCalledWith("task-1");
+    expect(listBoardSubtaskCore).toHaveBeenCalledWith("task-1");
     expect(result[0]?.documentId).toBe("sub-1");
     expect(result[0]?.linkedToPrevious).toBe(false);
     expect(result[0]?.maxSameTimeWorkers).toBe(1);
     expect(result[0]?.sessions).toEqual([]);
+    expect(result[0]?.producingColaboratorIds).toEqual([]);
+  });
+
+  it("loadBoardSubtaskLive maps open activities", async () => {
+    listBoardSubTasksForTask.mockResolvedValue([{ id: "sub-1" }]);
+    listBoardSubtaskOpenActivities.mockResolvedValue([
+      {
+        subTaskId: "sub-1",
+        colaboratorId: "u-1",
+        colaboratorName: "Ana",
+        action: "started",
+        timestamp: new Date("2026-07-16T11:00:00.000Z"),
+        qty: 0,
+      },
+    ]);
+
+    const { loadBoardSubtaskLive } = await import("./actions");
+    const live = await loadBoardSubtaskLive("task-1");
+    expect(listBoardSubtaskOpenActivities).toHaveBeenCalledWith(["sub-1"]);
+    expect(live["sub-1"]?.producingColaboratorIds).toEqual(["u-1"]);
   });
 
   it("loadBoardSubtaskSessions loads history for finished subtasks only", async () => {
@@ -260,6 +284,11 @@ describe("board/actions drizzle", () => {
       linkedToPrevious: true,
       assignedTo: [{ documentId: "u-head", name: "Head" }],
     });
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:subTasks", "default");
+    expect(revalidateTag).toHaveBeenCalledWith(
+      "board-subtasks:task-1",
+      "default",
+    );
   });
 
   it("updateBoardSubtaskLink unlinks without clearing assignees", async () => {
@@ -308,7 +337,6 @@ describe("board/actions drizzle", () => {
         index: 0,
         status: "waiting",
         activationStatus: "unlocked",
-        reasonForDeactivation: null,
         linkedToPrevious: false,
         maxSameTimeWorkers: 1,
         assignedToIds: ["u-head"],
@@ -324,7 +352,6 @@ describe("board/actions drizzle", () => {
         index: 1,
         status: "waiting",
         activationStatus: "unlocked",
-        reasonForDeactivation: null,
         linkedToPrevious: true,
         maxSameTimeWorkers: 2,
         assignedToIds: ["u-head", "u-helper"],
@@ -368,7 +395,6 @@ describe("board/actions drizzle", () => {
         index: 0,
         status: "waiting",
         activationStatus: "unlocked",
-        reasonForDeactivation: null,
         linkedToPrevious: false,
         maxSameTimeWorkers: 2,
         assignedToIds: ["u-head"],
@@ -384,7 +410,6 @@ describe("board/actions drizzle", () => {
         index: 1,
         status: "waiting",
         activationStatus: "unlocked",
-        reasonForDeactivation: null,
         linkedToPrevious: true,
         maxSameTimeWorkers: 1,
         assignedToIds: ["u-head"],
@@ -455,7 +480,6 @@ describe("board/actions drizzle", () => {
         index: 0,
         status: "waiting",
         activationStatus: "unlocked",
-        reasonForDeactivation: null,
         linkedToPrevious: false,
         maxSameTimeWorkers: 2,
         assignedToIds: ["u-head", "u-extra"],
@@ -471,7 +495,6 @@ describe("board/actions drizzle", () => {
         index: 1,
         status: "waiting",
         activationStatus: "unlocked",
-        reasonForDeactivation: null,
         linkedToPrevious: true,
         maxSameTimeWorkers: 1,
         assignedToIds: ["u-head"],
@@ -511,7 +534,6 @@ describe("board/actions drizzle", () => {
         index: 0,
         status: "waiting",
         activationStatus: "unlocked",
-        reasonForDeactivation: null,
         linkedToPrevious: false,
         maxSameTimeWorkers: 1,
         assignedToIds: ["u-head"],
@@ -527,7 +549,6 @@ describe("board/actions drizzle", () => {
         index: 1,
         status: "waiting",
         activationStatus: "unlocked",
-        reasonForDeactivation: null,
         linkedToPrevious: true,
         maxSameTimeWorkers: 2,
         assignedToIds: ["u-head"],

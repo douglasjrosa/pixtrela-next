@@ -54,6 +54,7 @@ const users = [
     documentId: "u1",
     name: "Maria",
     username: "maria.1234",
+    email: "maria@example.com",
     code: 1234,
     roleType: "colaborator" as const,
   },
@@ -62,10 +63,17 @@ const users = [
     documentId: "u2",
     name: "João",
     username: "joao.5678",
+    email: "joao@example.com",
     code: 5678,
     roleType: "colaborator" as const,
   },
 ];
+
+function fillCreateEmail(email = "ana@example.com") {
+  fireEvent.change(screen.getByLabelText("E-mail"), {
+    target: { value: email },
+  });
+}
 
 function TestUserManager({
   users: listUsers = [],
@@ -442,6 +450,7 @@ describe("UserManager", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Novo usuário" }));
     fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Ana" } });
+    fillCreateEmail();
     fireEvent.change(screen.getByLabelText("Código"), {
       target: { value: "1234" },
     });
@@ -490,6 +499,7 @@ describe("UserManager", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Novo usuário" }));
     fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Ana" } });
+    fillCreateEmail();
     fireEvent.change(screen.getByLabelText("Código"), {
       target: { value: "9999" },
     });
@@ -520,6 +530,7 @@ describe("UserManager", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Novo usuário" }));
     fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Ana" } });
+    fillCreateEmail();
     fireEvent.click(screen.getByRole("button", { name: "Criar" }));
 
     await waitFor(() => {
@@ -586,6 +597,7 @@ describe("UserManager", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Novo usuário" }));
     fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Ana" } });
+    fillCreateEmail();
     fireEvent.change(screen.getByLabelText("Código"), {
       target: { value: "9999" },
     });

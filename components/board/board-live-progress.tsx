@@ -55,12 +55,14 @@ type BoardLiveProgressProps = BoardLiveProgressDataProps & {
   pollBoardProgress: PollBoardProgressFn;
   applyBoardTaskOrder: BoardActionsProps["applyBoardTaskOrder"];
   loadSubtasks: BoardActionsProps["loadSubtasks"];
+  loadSubtaskLive?: BoardActionsProps["loadSubtaskLive"];
   loadSubtaskSessions?: BoardActionsProps["loadSubtaskSessions"];
   loadSubtaskSession?: BoardActionsProps["loadSubtaskSession"];
   reorderSubtasks: BoardActionsProps["reorderSubtasks"];
   updateSubtaskAssignees: BoardActionsProps["updateSubtaskAssignees"];
   linkSubtask: BoardActionsProps["linkSubtask"];
   createSubtask: BoardActionsProps["createSubtask"];
+  releaseSubtaskFlags?: BoardActionsProps["releaseSubtaskFlags"];
 };
 
 export function BoardLiveProgress({
@@ -75,12 +77,14 @@ export function BoardLiveProgress({
   pollBoardProgress,
   applyBoardTaskOrder,
   loadSubtasks,
+  loadSubtaskLive,
   loadSubtaskSessions,
   loadSubtaskSession,
   reorderSubtasks,
   updateSubtaskAssignees,
   linkSubtask,
   createSubtask,
+  releaseSubtaskFlags,
 }: BoardLiveProgressProps) {
   const [subtasksModalOpen, setSubtasksModalOpen] = useState(false);
   useBoardRevisionRefresh(subtasksModalOpen);
@@ -104,12 +108,14 @@ export function BoardLiveProgress({
           paymentCurrency={paymentCurrency}
           applyBoardTaskOrder={applyBoardTaskOrder}
           loadSubtasks={loadSubtasks}
+          loadSubtaskLive={loadSubtaskLive}
           loadSubtaskSessions={loadSubtaskSessions}
           loadSubtaskSession={loadSubtaskSession}
           reorderSubtasks={reorderSubtasks}
           updateSubtaskAssignees={updateSubtaskAssignees}
           linkSubtask={linkSubtask}
           createSubtask={createSubtask}
+          releaseSubtaskFlags={releaseSubtaskFlags}
           assigneePeople={assigneePeople}
           onSubtasksModalOpenChange={setSubtasksModalOpen}
         />

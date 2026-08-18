@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
-import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -11,7 +10,7 @@ import {
   updateSubTaskPreset,
 } from "@/app/(app)/sub-task-presets/actions";
 import { SubTaskPresetFormModal } from "@/components/subtask-presets/subtask-preset-form-modal";
-import { Button } from "@/components/ui/button";
+import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
@@ -29,6 +28,7 @@ const EMPTY_FORM: SubTaskPresetFormInput = {
   sharingType: "qty",
   maxSameTimeWorkers: 2,
   expectedTime: 0,
+  subTaskCategoryId: null,
 };
 
 type ModalState =
@@ -95,6 +95,7 @@ export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
           sharingType: modal.preset.sharingType,
           maxSameTimeWorkers: modal.preset.maxSameTimeWorkers,
           expectedTime: modal.preset.expectedTime,
+          subTaskCategoryId: modal.preset.subTaskCategoryId ?? null,
         }
       : EMPTY_FORM;
 
@@ -107,14 +108,10 @@ export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
           <h2 className="text-xl font-semibold max-[500px]:text-base">
             {tPresets("title")}
           </h2>
-          <Button
-            type="button"
-            size="icon"
-            aria-label={tPresets("new")}
+          <AddNewButton
+            label={tPresets("new")}
             onClick={() => setModal({ mode: "create" })}
-          >
-            <Plus aria-hidden />
-          </Button>
+          />
         </div>
 
         {children}

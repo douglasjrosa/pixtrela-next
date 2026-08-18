@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -17,16 +18,19 @@ export function KanbanColumn({
   tasks,
   onTaskClick,
   onTaskPrefetch,
+  onTaskVisiblePrefetch,
   onTaskPrefetchCancel,
 }: {
   step: KanbanStep;
   tasks: KanbanTask[];
   onTaskClick?: (task: KanbanTask) => void;
   onTaskPrefetch?: (task: KanbanTask) => void;
+  onTaskVisiblePrefetch?: (task: KanbanTask) => void;
   onTaskPrefetchCancel?: () => void;
 }) {
   const t = useTranslations("kanban");
   const { setNodeRef, isOver } = useDroppable({ id: toKanbanColumnId(step.id) });
+  const scrollRef = useRef<HTMLDivElement>(null);
   const sortableIds = tasks.map((task) => toKanbanTaskId(task.id));
 
   return (
@@ -46,7 +50,7 @@ export function KanbanColumn({
       {tasks.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
           <SortableContext
             items={sortableIds}
             strategy={verticalListSortingStrategy}
@@ -58,7 +62,9 @@ export function KanbanColumn({
                   task={task}
                   onTaskClick={onTaskClick}
                   onTaskPrefetch={onTaskPrefetch}
+                  onTaskVisiblePrefetch={onTaskVisiblePrefetch}
                   onTaskPrefetchCancel={onTaskPrefetchCancel}
+                  prefetchRootRef={scrollRef}
                 />
               ))}
             </div>

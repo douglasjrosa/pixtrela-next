@@ -14,6 +14,7 @@ export type ChainStopAnswer = {
   documentId: string;
   completed?: boolean;
   qty?: number;
+  flagIds?: string[];
 };
 
 export type AllocationSegment = {
@@ -29,7 +30,7 @@ export function isChainMemberAnswerComplete(
 ): boolean {
   if (!answer) return false;
   if (sharingType === "duration") return typeof answer.completed === "boolean";
-  return typeof answer.qty === "number" && Number.isInteger(answer.qty) && answer.qty >= 1;
+  return typeof answer.qty === "number" && Number.isInteger(answer.qty) && answer.qty >= 0;
 }
 
 export function isFinishedThisRun(
@@ -156,6 +157,17 @@ export function resolveChainAutoAdvance(input: {
     completedIds,
     currentId: remaining[remaining.length - 1]!.documentId,
   };
+}
+
+/**
+ * Time-based chain roll is optimistic: the left-behind member is paused
+ * until the principal confirms finish on stop. Helpers still on it stay
+ * producing.
+ */
+export function statusAfterChainTimeAdvance(
+  helperStillOpen: boolean,
+): "producing" | "paused" {
+  return helperStillOpen ? "producing" : "paused";
 }
 
 export type PlannedActivity = {

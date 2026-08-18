@@ -20,16 +20,18 @@ export type KioskQueueRow = {
   activationStatus: string;
   taskIndex: number;
   finishedAt: string | null;
+  viewerParticipated?: boolean;
 };
 
 export function isVisibleInKioskDailyQueue(
-  subTask: { status: string },
+  subTask: { status: string; viewerParticipated?: boolean },
   finishedAt: Date | string | null,
   now: Date,
   timeZone = DEFAULT_TIME_ZONE,
 ): boolean {
   if (subTask.status !== FINISHED_STATUS) return true;
   if (!finishedAt) return false;
+  if (subTask.viewerParticipated !== true) return false;
 
   const finishedDate =
     finishedAt instanceof Date ? finishedAt : new Date(finishedAt);

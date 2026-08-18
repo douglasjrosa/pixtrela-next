@@ -133,6 +133,55 @@ describe('computeAutomaticActivationStatus', () => {
 
     expect(computeAutomaticActivationStatus(dualWorker, siblings)).toBe('unlocked');
   });
+
+  it('unlocks when a producing predecessor already has flags', () => {
+    const producer: SubTaskActivationSyncRow = {
+      documentId: 'cut-open',
+      status: 'producing',
+      activationStatus: 'unlocked',
+      dependencies: [],
+      hasAssignedFlags: true,
+      ...NO_ACTIVE_WORKERS,
+    };
+    const consumer: SubTaskActivationSyncRow = {
+      documentId: 'assembly-open',
+      status: 'waiting',
+      activationStatus: 'locked',
+      dependencies: ['cut-open'],
+      ...NO_ACTIVE_WORKERS,
+    };
+    const graph = new Map([
+      ['cut-open', producer],
+      ['assembly-open', consumer],
+    ]);
+
+    expect(areAllDependencySubTasksFinished(['cut-open'], graph)).toBe(true);
+    expect(computeAutomaticActivationStatus(consumer, graph)).toBe('unlocked');
+  });
+
+  it('re-locks waiting consumers when flags are released and producer is not finished', () => {
+    const producer: SubTaskActivationSyncRow = {
+      documentId: 'cut-open',
+      status: 'producing',
+      activationStatus: 'unlocked',
+      dependencies: [],
+      hasAssignedFlags: false,
+      ...NO_ACTIVE_WORKERS,
+    };
+    const consumer: SubTaskActivationSyncRow = {
+      documentId: 'assembly-open',
+      status: 'waiting',
+      activationStatus: 'unlocked',
+      dependencies: ['cut-open'],
+      ...NO_ACTIVE_WORKERS,
+    };
+    const graph = new Map([
+      ['cut-open', producer],
+      ['assembly-open', consumer],
+    ]);
+
+    expect(computeAutomaticActivationStatus(consumer, graph)).toBe('locked');
+  });
 });
 
 describe('resolveSubTaskActivationStatusUpdates', () => {

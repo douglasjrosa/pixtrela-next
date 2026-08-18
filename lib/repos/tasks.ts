@@ -20,6 +20,8 @@ import { scaleExpectedTimeByTaskQty } from "@/lib/domain/work-currency";
 import { getDb, type Db } from "@/lib/db/client";
 import type { TasksRevision } from "@/lib/tasks/tasks-revision";
 import { recordActivityViaKiosk } from "@/lib/repos/kiosk-subtasks";
+import { listAssignedFlagsForSubTasks } from "@/lib/repos/material-flags";
+import { formatMaterialFlagCode } from "@/lib/business/material-flag-code";
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 
 export type CreateTaskInput = {
@@ -90,6 +92,7 @@ export async function createTask(
               sharingType: row.sharingType,
               maxSameTimeWorkers: row.maxSameTimeWorkers,
               linkedToPrevious: row.linkedToPrevious,
+              subTaskCategoryId: row.subTaskCategoryId,
             })
             .returning({ id: subTasks.id, index: subTasks.index });
           createdByIndex.set(created.index, created.id);
@@ -155,10 +158,18 @@ export async function deactivateActiveTasksByName(
 }
 
 export async function listSubTasksForTask(taskId: string, db: Db = getDb()) {
+  return listSubTasksForTasks([taskId], db);
+}
+
+export async function listSubTasksForTasks(
+  taskIds: readonly string[],
+  db: Db = getDb(),
+) {
+  if (taskIds.length === 0) return [];
   return db
     .select()
     .from(subTasks)
-    .where(eq(subTasks.taskId, taskId))
+    .where(inArray(subTasks.taskId, [...taskIds]))
     .orderBy(asc(subTasks.index));
 }
 
@@ -228,15 +239,18 @@ export async function listBoardSubtaskOpenActivities(
 ): Promise<BoardSubtaskActivityRow[]> {
   if (subTaskIds.length === 0) return [];
 
-  const activityRows = await db
-    .select({
-      subTaskId: activities.subTaskId,
-      colaboratorId: activities.colaboratorId,
-      colaboratorName: users.name,
-      action: activities.action,
-      timestamp: activities.timestamp,
-      qty: activities.qty,
-    })
+  const latestRows = await db
+    .selectDistinctOn(
+      [activities.subTaskId, activities.colaboratorId],
+      {
+        subTaskId: activities.subTaskId,
+        colaboratorId: activities.colaboratorId,
+        colaboratorName: users.name,
+        action: activities.action,
+        timestamp: activities.timestamp,
+        qty: activities.qty,
+      },
+    )
     .from(activities)
     .innerJoin(users, eq(activities.colaboratorId, users.id))
     .where(
@@ -250,16 +264,6 @@ export async function listBoardSubtaskOpenActivities(
       activities.colaboratorId,
       desc(activities.timestamp),
     );
-
-  const latestByPair = new Map<string, (typeof activityRows)[number]>();
-  for (const row of activityRows) {
-    const key = `${row.subTaskId}:${row.colaboratorId}`;
-    if (!latestByPair.has(key)) {
-      latestByPair.set(key, row);
-    }
-  }
-
-  const latestRows = [...latestByPair.values()];
 
   return latestRows
     .filter((row) => row.action === "started")
@@ -342,28 +346,44 @@ export function mapBoardSubtaskSessionHistory(
   return sessionsBySubTask;
 }
 
-export type BoardSubtaskRowsBundle = {
+export type BoardSubtaskCoreBundle = {
   rows: BoardSubtaskRow[];
   assigneeRows: BoardSubtaskAssigneeRow[];
-  openActivityRows: BoardSubtaskActivityRow[];
+  flagRows: { subTaskId: string; code: string }[];
+  dependencyRows: { consumerId: string; producerId: string }[];
 };
 
-export async function listBoardSubtaskRows(
+export async function listBoardSubtaskCore(
   taskId: string,
   db: Db = getDb(),
-): Promise<BoardSubtaskRowsBundle> {
+): Promise<BoardSubtaskCoreBundle> {
   const rows = await listBoardSubTasksForTask(taskId, db);
   if (rows.length === 0) {
-    return { rows: [], assigneeRows: [], openActivityRows: [] };
+    return { rows: [], assigneeRows: [], flagRows: [], dependencyRows: [] };
   }
 
-  const subTaskIds = rows.map((row) => row.id);
-  const [assigneeRows, openActivityRows] = await Promise.all([
-    listBoardSubtaskAssignees(subTaskIds, db),
-    listBoardSubtaskOpenActivities(subTaskIds, db),
+  const ids = rows.map((row) => row.id);
+  const [assigneeRows, assignedFlags, dependencyRows] = await Promise.all([
+    listBoardSubtaskAssignees(ids, db),
+    listAssignedFlagsForSubTasks(ids, db),
+    db
+      .select({
+        consumerId: subTaskDependencies.subTaskId,
+        producerId: subTaskDependencies.dependsOnSubTaskId,
+      })
+      .from(subTaskDependencies)
+      .where(inArray(subTaskDependencies.subTaskId, ids)),
   ]);
 
-  return { rows, assigneeRows, openActivityRows };
+  return {
+    rows,
+    assigneeRows,
+    flagRows: assignedFlags.map((row) => ({
+      subTaskId: row.subTaskId,
+      code: formatMaterialFlagCode(row.categoryRef, row.index),
+    })),
+    dependencyRows,
+  };
 }
 
 export async function listSubTaskCompletionSnapshotsForTasks(
@@ -609,25 +629,33 @@ export async function listSubTasksWithRelationsForTask(
   taskId: string,
   db: Db = getDb(),
 ): Promise<SubTaskWithAssignees[]> {
-  const rows = await listSubTasksForTask(taskId, db);
+  return listSubTasksWithRelationsForTasks([taskId], db);
+}
+
+export async function listSubTasksWithRelationsForTasks(
+  taskIds: readonly string[],
+  db: Db = getDb(),
+): Promise<SubTaskWithAssignees[]> {
+  const rows = await listSubTasksForTasks(taskIds, db);
   if (rows.length === 0) return [];
 
   const subTaskIds = rows.map((row) => row.id);
-  const assigneeRows = await db
-    .select({
-      subTaskId: subTaskAssignees.subTaskId,
-      userId: subTaskAssignees.userId,
-    })
-    .from(subTaskAssignees)
-    .where(inArray(subTaskAssignees.subTaskId, subTaskIds));
-
-  const dependencyRows = await db
-    .select({
-      subTaskId: subTaskDependencies.subTaskId,
-      dependsOnSubTaskId: subTaskDependencies.dependsOnSubTaskId,
-    })
-    .from(subTaskDependencies)
-    .where(inArray(subTaskDependencies.subTaskId, subTaskIds));
+  const [assigneeRows, dependencyRows] = await Promise.all([
+    db
+      .select({
+        subTaskId: subTaskAssignees.subTaskId,
+        userId: subTaskAssignees.userId,
+      })
+      .from(subTaskAssignees)
+      .where(inArray(subTaskAssignees.subTaskId, subTaskIds)),
+    db
+      .select({
+        subTaskId: subTaskDependencies.subTaskId,
+        dependsOnSubTaskId: subTaskDependencies.dependsOnSubTaskId,
+      })
+      .from(subTaskDependencies)
+      .where(inArray(subTaskDependencies.subTaskId, subTaskIds)),
+  ]);
 
   const assigneesBySubTask = new Map<string, string[]>();
   for (const row of assigneeRows) {
@@ -657,10 +685,6 @@ export async function createSubTaskForTask(
   db: Db = getDb(),
 ) {
   return db.transaction(async (tx) => {
-    const reason =
-      input.activationStatus === "disabled"
-        ? input.reasonForDisabling?.trim() || null
-        : null;
     const [created] = await tx
       .insert(subTasks)
       .values({
@@ -673,7 +697,7 @@ export async function createSubTaskForTask(
         maxSameTimeWorkers: input.maxSameTimeWorkers,
         status: input.status,
         activationStatus: toDrizzleActivationStatus(input.activationStatus),
-        reasonForDeactivation: reason,
+        subTaskCategoryId: input.subTaskCategoryId || null,
       })
       .returning();
 
@@ -699,10 +723,6 @@ export async function updateSubTaskFields(
   db: Db = getDb(),
 ) {
   return db.transaction(async (tx) => {
-    const reason =
-      input.activationStatus === "disabled"
-        ? input.reasonForDisabling?.trim() || null
-        : null;
     const [updated] = await tx
       .update(subTasks)
       .set({
@@ -715,7 +735,7 @@ export async function updateSubTaskFields(
         maxSameTimeWorkers: input.maxSameTimeWorkers,
         status: input.status,
         activationStatus: toDrizzleActivationStatus(input.activationStatus),
-        reasonForDeactivation: reason,
+        subTaskCategoryId: input.subTaskCategoryId || null,
         updatedAt: new Date(),
       })
       .where(eq(subTasks.id, id))

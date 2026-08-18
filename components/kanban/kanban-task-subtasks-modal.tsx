@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -33,10 +33,7 @@ import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager
 import { Button } from "@/components/ui/button";
 import { Card, CardBadge, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS,
-  FormModalShell,
-} from "@/components/ui/form-modal-shell";
+import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { StackedDateTime } from "@/components/ui/stacked-date-time";
 import {
   reorderPendingSubtasksInPlace,
@@ -90,7 +87,12 @@ import {
 import { cn } from "@/lib/utils";
 
 import { KanbanFloatingCountBadge } from "./kanban-floating-count-badge";
-import { KanbanMultiAssignToolbar } from "./kanban-multi-assign-toolbar";
+import { MaterialFlagHintList } from "@/components/kiosk/material-flag-hint-list";
+import {
+  KanbanMultiAssignClearButton,
+  KanbanMultiAssignSubmitButton,
+  KanbanMultiAssignSwitch,
+} from "./kanban-multi-assign-toolbar";
 import type { BoardSubTaskSummary } from "./types";
 
 type MainTab = "pending" | "finished";
@@ -152,6 +154,7 @@ export interface KanbanTaskSubtasksModalProps {
   loadSubtaskSession?: (
     subTaskDocumentId: string,
   ) => Promise<ActivitySession[]>;
+  onReleaseFlags?: (subTaskDocumentId: string) => void | Promise<void>;
 }
 
 function getTeamMemberIds(team: TeamAssignmentOption): string[] {
@@ -320,6 +323,10 @@ function PendingSubtaskCard({
           timeSpent={subtask.timeSpent}
           openActivityStartedAts={subtask.openActivityStartedAts}
         />
+        <MaterialFlagHintList
+          dependencyFlags={subtask.dependencyFlags}
+          assignedFlagCodes={subtask.assignedFlagCodes}
+        />
       </button>
     </li>
   );
@@ -441,6 +448,10 @@ function SortablePendingSubtaskCard({
               timeSpent={subtask.timeSpent}
               openActivityStartedAts={subtask.openActivityStartedAts}
             />
+            <MaterialFlagHintList
+              dependencyFlags={subtask.dependencyFlags}
+              assignedFlagCodes={subtask.assignedFlagCodes}
+            />
           </button>
         </div>
       </div>
@@ -472,6 +483,7 @@ export function KanbanTaskSubtasksModal({
   onAddSubtask,
   onLoadSessions,
   loadSubtaskSession,
+  onReleaseFlags,
 }: KanbanTaskSubtasksModalProps) {
   const tCommon = useTranslations("common");
   const tKanban = useTranslations("kanban");
@@ -538,7 +550,8 @@ export function KanbanTaskSubtasksModal({
   }
 
   const { pending, finished } = splitSubtasksByFinished(subtasks);
-  const showInitialLoading = loading && subtasks.length === 0;
+  const showInitialLoading =
+    (loading || refreshing) && subtasks.length === 0;
 
   useEffect(() => {
     if (!infoSubtask || !loadSubtaskSession) return;
@@ -637,6 +650,8 @@ export function KanbanTaskSubtasksModal({
       : preferFinishedTab
         ? "finished"
         : mainTab;
+  const showMultiAssignSwitch =
+    (hasPendingSubtasks || loading) && activeMainTab === "pending";
   const selectedSubtask =
     pending.find((item) => item.documentId === selectedSubtaskId) ?? null;
   const selectedAssigneeRole = selectedSubtask
@@ -778,6 +793,45 @@ export function KanbanTaskSubtasksModal({
   function handleAddSubtask(): void {
     if (!onAddSubtask) return;
     confirmIfDirty(onAddSubtask);
+  }
+
+  function renderAddSubtaskButton(className?: string): ReactNode {
+    if (!onAddSubtask) return null;
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        className={cn("shrink-0 self-center", className)}
+        disabled={saving || loading}
+        onClick={handleAddSubtask}
+      >
+        {tKanban("addSubtask")}
+      </Button>
+    );
+  }
+
+  function renderSubtasksRefreshStatus(): ReactNode {
+    if (refreshing) {
+      return (
+        <p className="text-xs text-muted-foreground" role="status">
+          {tKanban("refreshingSubtasks")}
+        </p>
+      );
+    }
+    if (refreshStatusTime) {
+      return (
+        <p className="text-xs text-muted-foreground" role="status">
+          {tKanban("subtasksUpdatedAt", { time: refreshStatusTime })}
+        </p>
+      );
+    }
+    return null;
+  }
+
+  function renderSubtasksRefreshStatusItem(): ReactNode {
+    const status = renderSubtasksRefreshStatus();
+    if (!status) return null;
+    return <li className="shrink-0 list-none">{status}</li>;
   }
 
   function handleFocusModeChange(next: FocusMode): void {
@@ -1006,93 +1060,113 @@ export function KanbanTaskSubtasksModal({
         disabled={saving}
         size="xl"
         layout="viewport"
+        bodyScroll={false}
+        fillBody={false}
+        footerStart={
+          multiEnabled && showMultiAssignSwitch ? (
+            <KanbanMultiAssignClearButton
+              canApply={canApply}
+              disabled={saving}
+              onRemove={handleMultiRemove}
+            />
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={requestClose}
+            >
+              {tCommon("cancel")}
+            </Button>
+          )
+        }
         footerEnd={
-          <>
-            {onAddSubtask ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={saving || loading}
-                onClick={handleAddSubtask}
-              >
-                {tKanban("addSubtask")}
-              </Button>
-            ) : null}
+          multiEnabled && showMultiAssignSwitch ? (
+            <KanbanMultiAssignSubmitButton
+              canApply={canApply}
+              disabled={saving}
+              onAssign={handleMultiAssign}
+            />
+          ) : (
             <Button type="button" disabled={!dirty || saving} onClick={onSave}>
               {tCommon("save")}
             </Button>
-          </>
+          )
         }
       >
         <p className="text-sm text-muted-foreground">{taskName}</p>
-        {refreshing ? (
-          <p className="text-xs text-muted-foreground" role="status">
-            {tKanban("refreshingSubtasks")}
-          </p>
-        ) : refreshStatusTime ? (
-          <p className="text-xs text-muted-foreground" role="status">
-            {tKanban("subtasksUpdatedAt", { time: refreshStatusTime })}
-          </p>
-        ) : null}
 
         {hasPendingSubtasks || hasFinishedSubtasks || loading ? (
-          <div
-            role="tablist"
-            aria-label={tKanban("subtasksTitle")}
-            className="flex gap-4 border-b"
-          >
-            {hasPendingSubtasks || loading ? (
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeMainTab === "pending"}
-                className={cn(
-                  "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
-                  activeMainTab === "pending"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-                onClick={() => handleMainTabChange("pending")}
-              >
-                {tKanban("pendingTab")}
-              </button>
-            ) : null}
-            {hasFinishedSubtasks ? (
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeMainTab === "finished"}
-                className={cn(
-                  "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
-                  activeMainTab === "finished"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-                onClick={() => handleMainTabChange("finished")}
-              >
-                {tKanban("finishedTab")}
-              </button>
+          <div className="flex items-center justify-between gap-4 border-b">
+            <div
+              role="tablist"
+              aria-label={tKanban("subtasksTitle")}
+              className="flex gap-4"
+            >
+              {hasPendingSubtasks || loading ? (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeMainTab === "pending"}
+                  className={cn(
+                    "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
+                    activeMainTab === "pending"
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={() => handleMainTabChange("pending")}
+                >
+                  {tKanban("pendingTab")}
+                </button>
+              ) : null}
+              {hasFinishedSubtasks ? (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeMainTab === "finished"}
+                  className={cn(
+                    "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
+                    activeMainTab === "finished"
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={() => handleMainTabChange("finished")}
+                >
+                  {tKanban("finishedTab")}
+                </button>
+              ) : null}
+            </div>
+            {showMultiAssignSwitch ? (
+              <KanbanMultiAssignSwitch
+                multiEnabled={multiEnabled}
+                disabled={saving || loading}
+                className="pb-2"
+                onMultiEnabledChange={handleMultiEnabledChange}
+              />
             ) : null}
           </div>
         ) : null}
 
         {showInitialLoading ? (
-          <KanbanTaskSubtasksLoadingBody
-            teams={teams}
-            assignWarnMax={assignWarnMax}
-            assignedCountByColaboratorId={assignedCountByColaboratorId}
-          />
+          <>
+            <KanbanTaskSubtasksLoadingBody
+              teams={teams}
+              assignWarnMax={assignWarnMax}
+              assignedCountByColaboratorId={assignedCountByColaboratorId}
+              subtasksListHeader={renderSubtasksRefreshStatus()}
+            />
+            {renderAddSubtaskButton()}
+          </>
         ) : subtasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground" role="status">
-            {tKanban("subtasksEmpty")}
-          </p>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground" role="status">
+              {tKanban("subtasksEmpty")}
+            </p>
+            {renderAddSubtaskButton()}
+          </div>
         ) : activeMainTab === "finished" ? (
-          <ul
-            className={cn(
-              "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-2.5",
-              FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS,
-            )}
-          >
+          <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-2.5">
+            {renderSubtasksRefreshStatusItem()}
             {finished.length === 0 ? (
               <li className="text-sm text-muted-foreground" role="status">
                 {tKanban("subtasksEmpty")}
@@ -1162,28 +1236,19 @@ export function KanbanTaskSubtasksModal({
                           />
                         ) : null}
                       </div>
+                      <MaterialFlagHintList
+                        dependencyFlags={subtask.dependencyFlags}
+                        assignedFlagCodes={subtask.assignedFlagCodes}
+                      />
                     </button>
                   </li>
                 );
               })
             )}
+            {renderAddSubtaskButton()}
           </ul>
         ) : (
-          <div
-            className={cn(
-              "flex min-h-0 min-w-0 flex-1 flex-col gap-4",
-              FORM_MODAL_PRIMARY_PANEL_MIN_HEIGHT_CLASS,
-            )}
-          >
-            <KanbanMultiAssignToolbar
-              multiEnabled={multiEnabled}
-              canApply={canApply}
-              disabled={saving}
-              onMultiEnabledChange={handleMultiEnabledChange}
-              onAssign={handleMultiAssign}
-              onRemove={handleMultiRemove}
-            />
-
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
             <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[7fr_3fr] gap-4">
               <section className="flex min-h-0 min-w-0 flex-col gap-2">
                 {multiEnabled ? (
@@ -1213,6 +1278,7 @@ export function KanbanTaskSubtasksModal({
                       : "gap-3",
                   )}
                 >
+                  {renderSubtasksRefreshStatusItem()}
                   {pending.length === 0 ? (
                     <li className="text-sm text-muted-foreground" role="status">
                       {tKanban("subtasksEmpty")}
@@ -1270,6 +1336,7 @@ export function KanbanTaskSubtasksModal({
                       </SortableContext>
                     </DndContext>
                   )}
+                  {renderAddSubtaskButton()}
                 </ul>
               </section>
 
@@ -1453,6 +1520,16 @@ export function KanbanTaskSubtasksModal({
               <TimeMetrics
                 expectedTime={infoSubtask.expectedTime}
                 timeSpent={infoSubtask.timeSpent}
+              />
+              <MaterialFlagHintList
+                dependencyFlags={infoSubtask.dependencyFlags}
+                assignedFlagCodes={infoSubtask.assignedFlagCodes}
+                onRelease={
+                  onReleaseFlags &&
+                  (infoSubtask.assignedFlagCodes?.length ?? 0) > 0
+                    ? () => onReleaseFlags(infoSubtask.documentId)
+                    : undefined
+                }
               />
             </div>
             {infoSessionsLoading && loadSubtaskSession ? (

@@ -11,4 +11,14 @@ describe("activityFormSchema", () => {
       }),
     ).toMatchObject({ action: "started" });
   });
+
+  it("accepts stop activity with zero qty", () => {
+    expect(
+      activityFormSchema.parse({
+        subTaskDocumentId: "abc",
+        action: "stoped",
+        qty: 0,
+      }),
+    ).toMatchObject({ qty: 0 });
+  });
 });

@@ -28,6 +28,7 @@ function kioskSubTask(
     taskName: overrides.taskName ?? "Tarefa pai",
     taskIndex: overrides.taskIndex ?? 0,
     finishedAt: overrides.finishedAt ?? null,
+    viewerCurrencyAwarded: overrides.viewerCurrencyAwarded,
     activeWorkerCount: overrides.activeWorkerCount ?? 0,
     linkedToPrevious: overrides.linkedToPrevious ?? false,
     maxSameTimeWorkers: overrides.maxSameTimeWorkers ?? 1,
@@ -83,7 +84,7 @@ describe("KioskChainGroupCard", () => {
     expect(onStartChain).toHaveBeenCalledWith("a");
   });
 
-  it("keeps stop enabled while start refresh is pending", () => {
+  it("keeps stop enabled while the card is active", () => {
     const members = [
       kioskSubTask({
         documentId: "a",
@@ -102,7 +103,6 @@ describe("KioskChainGroupCard", () => {
     renderWithIntl(
       <KioskChainGroupCard
         unit={activeGroupProps(members)}
-        pending
         onConfirmChainStop={vi.fn()}
         onAdvanceChain={vi.fn()}
       />,
@@ -131,7 +131,6 @@ describe("KioskChainGroupCard", () => {
     renderWithIntl(
       <KioskChainGroupCard
         unit={activeGroupProps(members)}
-        pending
         onConfirmChainStop={vi.fn()}
         onAdvanceChain={vi.fn()}
       />,

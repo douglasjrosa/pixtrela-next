@@ -5,12 +5,14 @@ import type { SubTaskFormInput } from "./sub-task";
 export const kioskExitDurationSchema = z.object({
   sharingType: z.literal("duration"),
   isCompleted: z.boolean(),
+  flagIds: z.array(z.string().min(1)).optional(),
 });
 
 export function createKioskExitQtySchema(maxQty: number) {
   return z.object({
     sharingType: z.literal("qty"),
-    qtyCompleted: z.number().int().min(1).max(maxQty),
+    qtyCompleted: z.number().int().min(0).max(maxQty),
+    flagIds: z.array(z.string().min(1)).optional(),
   });
 }
 
@@ -26,16 +28,19 @@ export function parseKioskExitInput(
   if (sharingType === "duration") {
     return kioskExitDurationSchema.parse(values);
   }
-  const maxQty = Math.max(1, options?.maxQty ?? 1);
+  const maxQty = Math.max(0, options?.maxQty ?? 1);
   return createKioskExitQtySchema(maxQty).parse(values);
 }
 
 export function toActivityStopPayload(input: KioskExitInput): {
   completed?: boolean;
   qty?: number;
+  flagIds?: string[];
 } {
+  const flagIds = (input.flagIds ?? []).filter((id) => id.length > 0);
+  const extra = flagIds.length > 0 ? { flagIds } : {};
   if (input.sharingType === "duration") {
-    return { completed: input.isCompleted };
+    return { completed: input.isCompleted, ...extra };
   }
-  return { qty: input.qtyCompleted };
+  return { qty: input.qtyCompleted, ...extra };
 }

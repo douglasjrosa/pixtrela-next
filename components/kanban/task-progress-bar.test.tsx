@@ -77,7 +77,7 @@ describe("TaskProgressBar", () => {
       />,
     );
 
-    expect(container.querySelector(".bg-blue-500")).toBeTruthy();
+    expect(container.querySelector(".bg-primary")).toBeTruthy();
     expect(container.querySelector(".bg-success")).toBeNull();
   });
 });

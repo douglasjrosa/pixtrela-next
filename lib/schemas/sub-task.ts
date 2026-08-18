@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { refineDeactivationReason } from "./deactivation-reason";
-
 export const SUB_TASK_STATUSES = [
   "waiting",
   "producing",
@@ -23,16 +21,9 @@ const subTaskFormBaseSchema = z.object({
   assignedToIds: z.array(z.string()).optional(),
   dependencyIds: z.array(z.string()).default([]),
   activationStatus: z.enum(ACTIVATION_STATUSES).default("locked"),
-  reasonForDisabling: z.string().optional(),
+  subTaskCategoryId: z.string().uuid().optional().nullable(),
 });
 
-export const subTaskFormSchema = subTaskFormBaseSchema.superRefine(
-  (data, ctx) => {
-    if (data.activationStatus !== "disabled") return;
-    refineDeactivationReason(data.reasonForDisabling, ctx, [
-      "reasonForDisabling",
-    ]);
-  },
-);
+export const subTaskFormSchema = subTaskFormBaseSchema;
 
 export type SubTaskFormInput = z.infer<typeof subTaskFormSchema>;

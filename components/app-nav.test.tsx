@@ -9,7 +9,12 @@ const signOut = vi.fn();
 vi.mock("next-auth/react", () => ({
   useSession: () => ({
     data: {
-      user: { role: "admin", name: "Admin" },
+      user: {
+        role: "admin",
+        name: "Admin",
+        id: "admin-1",
+        avatarUrl: null,
+      },
     },
   }),
   signOut: (...args: unknown[]) => signOut(...args),
@@ -31,21 +36,26 @@ describe("AppNav", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders fixed header with brand and desktop links on large screens", () => {
+  it("renders fixed header with brand, desktop links, and user menu", () => {
     renderWithIntl(<AppNav />);
 
     const header = screen.getByRole("banner");
     expect(header.className).toContain("fixed");
-    expect(screen.getByRole("link", { name: "Pixtrela" })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link").some((link) => link.className.includes("font-bold")),
+    ).toBe(true);
     expect(screen.getByRole("link", { name: "Painel" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Configurações" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sair" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Admin, Abrir menu da conta" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sair" })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Abrir menu" }),
     ).not.toBeInTheDocument();
   });
 
-  it("shows mobile menu button on small screens", () => {
+  it("shows mobile menu button before the brand on small screens", () => {
     Object.defineProperty(window, "innerWidth", {
       configurable: true,
       writable: true,
@@ -54,11 +64,18 @@ describe("AppNav", () => {
 
     renderWithIntl(<AppNav />);
 
-    expect(
-      screen.getByRole("button", { name: "Abrir menu" }),
-    ).toBeInTheDocument();
+    const menuButton = screen.getByRole("button", { name: "Abrir menu" });
+    const brandLink = screen.getAllByRole("link").find((link) =>
+      link.className.includes("font-bold"),
+    );
+    expect(brandLink).toBeDefined();
+    expect(menuButton.compareDocumentPosition(brandLink!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
     expect(screen.queryByRole("link", { name: "Painel" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Sair" })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Admin, Abrir menu da conta" }),
+    ).toBeInTheDocument();
   });
 
   it("opens the mobile menu from the menu button", async () => {

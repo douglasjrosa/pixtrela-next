@@ -34,7 +34,6 @@ interface SubTaskEntity {
   maxSameTimeWorkers: number;
   status: SubTaskFormInput["status"];
   activationStatus?: SubTaskFormInput["activationStatus"];
-  reasonForDisabling?: string | null;
   dependencies?: unknown;
   assignedTo?: { documentId: string }[] | null;
 }
@@ -63,7 +62,6 @@ function mapDrizzleSubTaskToEntity(
     maxSameTimeWorkers: row.maxSameTimeWorkers,
     status: row.status,
     activationStatus: fromDrizzleActivationStatus(row.activationStatus),
-    reasonForDisabling: row.reasonForDeactivation,
     dependencies: row.dependencyIds,
     assignedTo: row.assignedToIds.map((documentId) => ({ documentId })),
   };

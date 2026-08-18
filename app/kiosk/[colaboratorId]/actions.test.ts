@@ -22,6 +22,18 @@ vi.mock("@/lib/repos/kiosk-subtasks", () => ({
   stopSubTask: (...args: unknown[]) => stopSubTaskRepo(...args),
 }));
 
+vi.mock("@/lib/repos/material-flags", () => ({
+  releaseFlagsForSubTask: vi.fn(),
+}));
+
+vi.mock("@/lib/repos/tasks", () => ({
+  getSubTaskById: vi.fn(),
+}));
+
+vi.mock("@/lib/repos/subtask-lifecycle", () => ({
+  runTaskSubTaskSyncRoutine: vi.fn(),
+}));
+
 vi.mock("@/lib/repos/kiosk-chains", () => ({
   startChain: (...args: unknown[]) => startChainRepo(...args),
   advanceChainRun: (...args: unknown[]) => advanceChainRunRepo(...args),
@@ -88,6 +100,22 @@ describe("kiosk/[colaboratorId]/actions drizzle", () => {
     );
 
     expect(stopSubTaskRepo).toHaveBeenCalledWith("col-1", "sub-1", { qty: 3 });
+  });
+
+  it("exitSubTask accepts zero completed qty", async () => {
+    stopSubTaskRepo.mockResolvedValue({ remainingWorkerNames: [] });
+
+    const { exitSubTask } = await import("./actions");
+    await exitSubTask(
+      "col-1",
+      "sub-1",
+      "qty",
+      { sharingType: "qty", qtyCompleted: 0 },
+      10,
+      2,
+    );
+
+    expect(stopSubTaskRepo).toHaveBeenCalledWith("col-1", "sub-1", { qty: 0 });
   });
 
   it("startChain delegates to repo and revalidates", async () => {

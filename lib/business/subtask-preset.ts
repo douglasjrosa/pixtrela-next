@@ -9,11 +9,16 @@ export interface SubTaskPreset {
   sharingType: "qty" | "duration";
   maxSameTimeWorkers: number;
   expectedTime: number;
+  subTaskCategoryId?: string | null;
 }
 
 export type SubTaskPresetApplyTarget = Pick<
   SubTaskFormInput | TemplateSubTaskFormInput,
-  "name" | "sharingType" | "maxSameTimeWorkers" | "expectedTime"
+  | "name"
+  | "sharingType"
+  | "maxSameTimeWorkers"
+  | "expectedTime"
+  | "subTaskCategoryId"
 >;
 
 export function shouldSearchSubTaskPresets(query: string): boolean {
@@ -30,5 +35,6 @@ export function applySubTaskPreset<T extends SubTaskPresetApplyTarget>(
     sharingType: preset.sharingType,
     maxSameTimeWorkers: preset.maxSameTimeWorkers,
     expectedTime: preset.expectedTime,
+    subTaskCategoryId: preset.subTaskCategoryId ?? null,
   };
 }

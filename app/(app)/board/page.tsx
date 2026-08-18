@@ -24,9 +24,11 @@ import {
   applyBoardTaskOrder,
   createBoardSubtask,
   loadBoardSubtasks,
+  loadBoardSubtaskLive,
   loadBoardSubtaskSession,
   loadBoardSubtaskSessions,
   pollBoardProgress,
+  releaseBoardSubTaskFlags,
   reorderBoardSubtasks,
   updateBoardSubtaskAssignees,
   updateBoardSubtaskLink,
@@ -131,12 +133,14 @@ function BoardCanvas({
       pollBoardProgress={pollBoardProgress}
       applyBoardTaskOrder={applyBoardTaskOrder}
       loadSubtasks={loadBoardSubtasks}
+      loadSubtaskLive={loadBoardSubtaskLive}
       loadSubtaskSessions={loadBoardSubtaskSessions}
       loadSubtaskSession={loadBoardSubtaskSession}
       reorderSubtasks={reorderBoardSubtasks}
       updateSubtaskAssignees={updateBoardSubtaskAssignees}
       linkSubtask={updateBoardSubtaskLink}
       createSubtask={createBoardSubtask}
+      releaseSubtaskFlags={releaseBoardSubTaskFlags}
     />
   );
 }

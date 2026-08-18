@@ -71,9 +71,9 @@ export interface SubTaskRow {
   maxSameTimeWorkers: number;
   status: SubTaskFormInput["status"];
   activationStatus: SubTaskFormInput["activationStatus"];
-  reasonForDisabling?: string;
   dependencyIds?: string[];
   assignedToIds?: string[];
+  subTaskCategoryId?: string | null;
   /** Client-only clone; persisted when the user saves the task. */
   isDraft?: boolean;
 }
@@ -112,9 +112,9 @@ const EMPTY_FORM: SubTaskFormInput = {
   maxSameTimeWorkers: 1,
   status: "waiting",
   activationStatus: "unlocked",
-  reasonForDisabling: "",
   dependencyIds: [],
   assignedToIds: [],
+  subTaskCategoryId: null,
 };
 
 const NEW_SUBTASK_KEY = "new";
@@ -139,9 +139,9 @@ function subTaskToFormValues(subtask: SubTaskRow): SubTaskFormInput {
     maxSameTimeWorkers: subtask.maxSameTimeWorkers,
     status: subtask.status,
     activationStatus: subtask.activationStatus ?? "locked",
-    reasonForDisabling: subtask.reasonForDisabling ?? "",
     dependencyIds: subtask.dependencyIds ?? [],
     assignedToIds: subtask.assignedToIds ?? [],
+    subTaskCategoryId: subtask.subTaskCategoryId ?? null,
   };
 }
 
@@ -158,9 +158,9 @@ function applyFormValuesToRow(
     maxSameTimeWorkers: values.maxSameTimeWorkers,
     status: values.status,
     activationStatus: values.activationStatus,
-    reasonForDisabling: values.reasonForDisabling,
     dependencyIds: values.dependencyIds,
     assignedToIds: values.assignedToIds,
+    subTaskCategoryId: values.subTaskCategoryId ?? null,
   };
 }
 

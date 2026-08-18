@@ -50,6 +50,10 @@ export interface FormModalShellProps {
    * Prefer for short forms (e.g. theme settings).
    */
   fillBody?: boolean;
+  /**
+   * When false, the body does not scroll; children must manage their own overflow.
+   */
+  bodyScroll?: boolean;
   headerActions?: ReactNode;
   footerStart?: ReactNode;
   footerEnd?: ReactNode;
@@ -66,6 +70,7 @@ export function FormModalShell({
   layout = "default",
   layer = "base",
   fillBody = true,
+  bodyScroll = true,
   headerActions,
   footerStart,
   footerEnd,
@@ -105,7 +110,7 @@ export function FormModalShell({
   return (
     <div
       className={cn(
-        "fixed inset-0 flex bg-black/50",
+        "fixed inset-0 flex bg-overlay/50",
         overlayZ,
         isViewport
           ? "items-start justify-center p-0 sm:px-4 sm:pb-4 sm:pt-[4.5rem]"
@@ -123,7 +128,9 @@ export function FormModalShell({
           isViewport
             ? cn(
                 "h-dvh max-w-none rounded-none border-0",
-                "sm:h-auto sm:max-h-[min(85vh,calc(100dvh-5.5rem))] sm:rounded-lg sm:border",
+                bodyScroll
+                  ? "sm:h-auto sm:max-h-[min(85vh,calc(100dvh-5.5rem))] sm:rounded-lg sm:border"
+                  : "sm:h-[min(85vh,calc(100dvh-5.5rem))] sm:max-h-[min(85vh,calc(100dvh-5.5rem))] sm:rounded-lg sm:border",
                 SIZE_CLASS[size],
               )
             : cn(
@@ -160,12 +167,16 @@ export function FormModalShell({
 
         <div
           data-slot="form-modal-body"
-          className="min-h-0 flex-1 overflow-y-auto"
+          className={cn(
+            "min-h-0 flex-1",
+            bodyScroll ? "overflow-y-auto" : "overflow-hidden",
+          )}
         >
           <div
             className={cn(
               "flex flex-col p-4",
-              fillBody && FORM_MODAL_BODY_MIN_HEIGHT_CLASS,
+              bodyScroll && fillBody && FORM_MODAL_BODY_MIN_HEIGHT_CLASS,
+              !bodyScroll && "h-full min-h-0",
             )}
           >
             <div className="flex min-h-0 flex-1 flex-col gap-4">{children}</div>

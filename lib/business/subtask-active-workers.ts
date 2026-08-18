@@ -1,11 +1,13 @@
 import type { ActivityTimeRow } from "@/lib/business/task-time-spent";
 
+export type SessionActivityAction = "started" | "stoped";
+
 /**
  * Walks chronological started/stoped actions for one colaborator.
  * Assignment is irrelevant — only the open session matters.
  */
 export function hasOpenStartedSessionFromActions(
-  actions: ReadonlyArray<"started" | "stoped">,
+  actions: ReadonlyArray<string>,
 ): boolean {
   let isActive = false;
   for (const action of actions) {

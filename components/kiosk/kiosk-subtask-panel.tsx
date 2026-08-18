@@ -22,6 +22,9 @@ import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainGroupCard } from "./kiosk-chain-group-card";
 import { KioskExitSubtaskForm } from "./kiosk-exit-subtask-form";
+import { MaterialFlagHintList } from "./material-flag-hint-list";
+import { KioskSubtaskEarnedCredits } from "./kiosk-subtask-earned-credits";
+import { KioskSubtaskRemainingQtyBadge } from "./kiosk-subtask-remaining-qty-badge";
 import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
 import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
 
@@ -39,8 +42,11 @@ export interface KioskSubtaskPanelProps {
     answers: ChainStopAnswer[],
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
-  pending?: boolean;
+  onReleaseFlags?: (documentId: string) => void | Promise<void>;
   blockingUi?: boolean;
+  timerPaused?: boolean;
+  exitBusy?: boolean;
+  compactFinishedCards?: boolean;
 }
 
 function unitsFromSubTasks(subTasks: KioskSubTask[]): KioskQueueUnit[] {
@@ -63,8 +69,11 @@ export function KioskSubtaskPanel({
   onStartChain,
   onConfirmChainStop,
   onAdvanceChain,
-  pending,
+  onReleaseFlags,
   blockingUi = false,
+  timerPaused,
+  exitBusy = false,
+  compactFinishedCards = false,
 }: KioskSubtaskPanelProps) {
   const t = useTranslations("kiosk");
   const [exitingId, setExitingId] = useState<string | null>(null);
@@ -77,15 +86,18 @@ export function KioskSubtaskPanel({
         if (unit.type === "group") {
           return (
             <KioskChainGroupCard
-              key={`group-${unit.headId}`}
+              key={`group-${unit.headId}-${unit.principalActive ? "active" : "idle"}`}
               unit={unit}
               readOnly={readOnly}
-              pending={pending}
               blockingUi={blockingUi}
+              timerPaused={timerPaused}
+              exitBusy={exitBusy}
+              compactFinishedCards={compactFinishedCards}
               flash={unit.memberIds.includes(flashDocumentId ?? "")}
               onStartChain={onStartChain}
               onConfirmChainStop={onConfirmChainStop}
               onAdvanceChain={onAdvanceChain}
+              onReleaseFlags={onReleaseFlags}
             />
           );
         }
@@ -99,11 +111,21 @@ export function KioskSubtaskPanel({
         const showExit =
           !readOnly && shouldShowExitButton(queueContext, subTask);
         const isProducing = subTask.status === "producing";
-        const isExiting = exitingId === subTask.documentId;
+        const isExiting =
+          exitingId === subTask.documentId && isProducing && onExit;
         const isFlashing = flashDocumentId === subTask.documentId;
         const allowComplete = helperMode
           ? false
           : canCompleteSubTaskOnExit(subTask);
+        const remainingQty = getRemainingSubTaskQty(
+          subTask.targetQty,
+          subTask.completedQty,
+        );
+        const showRemainingQtyBadge =
+          !compactFinishedCards &&
+          !finished &&
+          !isProducing &&
+          subTask.sharingType === "qty";
 
         return (
           <li
@@ -125,16 +147,21 @@ export function KioskSubtaskPanel({
                   </p>
                 ) : null}
                 <p className="text-lg font-bold leading-snug">{subTask.name}</p>
-                <KioskSubtaskStatusBadge status={subTask.status} />
+                {!compactFinishedCards ? (
+                  <KioskSubtaskStatusBadge status={subTask.status} />
+                ) : null}
+                {showRemainingQtyBadge ? (
+                  <KioskSubtaskRemainingQtyBadge remainingQty={remainingQty} />
+                ) : null}
                 {isProducing && subTask.startedAt ? (
                   <KioskSubtaskProducingMetrics
                     startedAt={subTask.startedAt}
                     timeSpent={subTask.timeSpent}
                     expectedTime={subTask.expectedTime}
-                    timerPaused={blockingUi}
+                    timerPaused={timerPaused ?? blockingUi}
                   />
                 ) : null}
-                {finished ? (
+                {finished && !compactFinishedCards ? (
                   <p className="text-base text-muted-foreground">
                     {t("timeSpent")}:{" "}
                     <span className="tabular-nums">
@@ -142,13 +169,28 @@ export function KioskSubtaskPanel({
                     </span>
                   </p>
                 ) : null}
+                {finished && compactFinishedCards ? (
+                  <KioskSubtaskEarnedCredits
+                    amount={subTask.viewerCurrencyAwarded ?? 0}
+                  />
+                ) : null}
+                <MaterialFlagHintList
+                  dependencyFlags={subTask.dependencyFlags}
+                  assignedFlagCodes={subTask.assignedFlagCodes}
+                  onRelease={
+                    !readOnly && (subTask.assignedFlagCodes?.length ?? 0) > 0
+                      ? () => onReleaseFlags?.(subTask.documentId)
+                      : undefined
+                  }
+                  releaseDisabled={blockingUi}
+                />
               </div>
               {!finished && !isExiting ? (
                 <div className="flex w-full flex-col gap-2">
                   {showStart ? (
                     <KioskActionButton
                       actionVariant="produce"
-                      disabled={pending}
+                      disabled={blockingUi}
                       onClick={() => onStart?.(subTask.documentId)}
                     >
                       {t("start")}
@@ -157,6 +199,7 @@ export function KioskSubtaskPanel({
                   {showExit ? (
                     <KioskActionButton
                       actionVariant="outline"
+                      disabled={blockingUi}
                       onClick={() => setExitingId(subTask.documentId)}
                     >
                       {t("exitSubtask")}
@@ -191,10 +234,11 @@ export function KioskSubtaskPanel({
                       : undefined
                   }
                   disabled={blockingUi}
+                  busy={exitBusy}
+                  availableFlags={subTask.availableFlags}
                   onCancel={() => setExitingId(null)}
                   onConfirm={(input) => {
                     onExit(subTask.documentId, input);
-                    setExitingId(null);
                   }}
                 />
               </div>

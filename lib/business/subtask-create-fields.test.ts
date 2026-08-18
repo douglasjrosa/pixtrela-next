@@ -39,7 +39,6 @@ describe("normalizeSubTaskCreateValues", () => {
         maxSameTimeWorkers: 2,
         status: "finished",
         activationStatus: "disabled",
-        reasonForDisabling: "some reason",
         dependencyIds: ["st-2"],
         assignedToIds: [],
       },
@@ -48,6 +47,5 @@ describe("normalizeSubTaskCreateValues", () => {
 
     expect(normalized.status).toBe("waiting");
     expect(normalized.activationStatus).toBe("locked");
-    expect(normalized.reasonForDisabling).toBe("");
   });
 });

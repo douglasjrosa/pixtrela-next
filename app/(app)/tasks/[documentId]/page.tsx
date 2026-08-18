@@ -115,9 +115,9 @@ async function loadSubTasks(taskDocumentId: string): Promise<SubTaskRow[]> {
       maxSameTimeWorkers: subtask.maxSameTimeWorkers ?? 1,
       status: subtask.status,
       activationStatus: fromDrizzleActivationStatus(subtask.activationStatus),
-      reasonForDisabling: subtask.reasonForDeactivation ?? "",
       dependencyIds: subtask.dependencyIds,
       assignedToIds: subtask.assignedToIds,
+      subTaskCategoryId: subtask.subTaskCategoryId ?? null,
     }));
   } catch (error) {
     rethrowIfNavigationError(error);

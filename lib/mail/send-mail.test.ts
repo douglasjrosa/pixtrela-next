@@ -10,6 +10,15 @@ vi.mock("nodemailer", () => ({
   },
 }));
 
+function setSmtpEnv(): void {
+  process.env.SMTP_HOST = "smtp.example.com";
+  process.env.SMTP_PORT = "587";
+  process.env.SMTP_SECURE = "false";
+  process.env.SMTP_USER = "smtp-user";
+  process.env.SMTP_PASS = "smtp-pass";
+  process.env.FROM_EMAIL = "noreply@example.com";
+}
+
 describe("sendMail", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -22,28 +31,20 @@ describe("sendMail", () => {
     delete process.env.FROM_EMAIL;
   });
 
-  it("skips delivery when SMTP is not configured", async () => {
-    const logSpy = vi.spyOn(console, "info").mockImplementation(() => {});
-
+  it("throws when SMTP is not configured", async () => {
     const { sendMail } = await import("./send-mail");
-    await sendMail({
-      to: "ana@example.com",
-      subject: "Test",
-      text: "Hello",
-    });
-
+    await expect(
+      sendMail({
+        to: "ana@example.com",
+        subject: "Test",
+        text: "Hello",
+      }),
+    ).rejects.toThrow(/SMTP is not configured/);
     expect(sendMailMock).not.toHaveBeenCalled();
-    expect(logSpy).toHaveBeenCalled();
-    logSpy.mockRestore();
   });
 
   it("sends mail when SMTP env vars are set", async () => {
-    process.env.SMTP_HOST = "smtp.example.com";
-    process.env.SMTP_PORT = "587";
-    process.env.SMTP_SECURE = "false";
-    process.env.SMTP_USER = "smtp-user";
-    process.env.SMTP_PASS = "smtp-pass";
-    process.env.FROM_EMAIL = "noreply@example.com";
+    setSmtpEnv();
 
     const { sendMail } = await import("./send-mail");
     await sendMail({

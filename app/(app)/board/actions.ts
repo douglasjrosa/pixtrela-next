@@ -33,22 +33,19 @@ import {
   buildStepKanbanLookup,
   resolveStepUuidFromKanbanId,
 } from "@/lib/board/kanban-drizzle-ids";
-import {
-  applyAutoStepTaskOrderingAfterTaskChange,
-} from "@/lib/business/apply-step-task-order";
+import { applyAutoStepTaskOrderingAfterTaskChange } from "@/lib/business/apply-step-task-order";
 import { loadBoardProgressByTaskId } from "@/lib/board/load-board-progress";
+import { loadCachedBoardSubtaskCore } from "@/lib/board/load-board-subtask-core";
+import {
+  liveStateFromOpenActivityRows,
+  type BoardSubtaskLiveState,
+} from "@/lib/board/board-subtask-live";
 import type { BoardSubtaskLinkResult } from "@/lib/business/board-link-queue";
 import {
   resolveDrizzleTaskIdByKanbanNumericId,
 } from "@/lib/board/load-board-data";
 import type { BoardProgressPollSnapshot } from "@/lib/board/progress-poll";
-import type { ActivitySession } from "@/lib/business/task-progress";
-import {
-  listOpenActivityStartedAts,
-  listOpenColaboratorDocumentIds,
-  type ActivitySessionRef,
-  type KanbanProgressStatus,
-} from "@/lib/business/task-progress";
+import type { ActivitySession, KanbanProgressStatus } from "@/lib/business/task-progress";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { parseSubTaskDependencyIds } from "@/lib/business/subtask-dependencies";
 import { listSteps as listStepsRepo } from "@/lib/repos/steps";
@@ -56,7 +53,7 @@ import {
   getTaskById,
   getSubTaskById,
   listBoardSubtaskAssignees,
-  listBoardSubtaskRows,
+  listBoardSubtaskOpenActivities,
   listBoardSubtaskSessionHistory,
   listBoardSubTasksForTask,
   listSubTaskActivitySessions,
@@ -66,6 +63,8 @@ import {
   updateSubTaskLinkedToPrevious,
   updateTaskBoardFields,
 } from "@/lib/repos/tasks";
+import { releaseFlagsForSubTask } from "@/lib/repos/material-flags";
+import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
 const FINISHED_STATUS = "finished";
@@ -79,7 +78,6 @@ interface SubTaskEntity {
   maxSameTimeWorkers: number;
   status: SubTaskFormInput["status"];
   activationStatus?: SubTaskFormInput["activationStatus"];
-  reasonForDisabling?: string | null;
   dependencies?: unknown;
   assignedTo?: { documentId: string }[] | null;
 }
@@ -103,52 +101,63 @@ function invalidateBoardTasks(): void {
   revalidateTag("drizzle:steps", "default");
 }
 
-function mapBoardSubtasksFromDrizzle(
-  bundle: Awaited<ReturnType<typeof listBoardSubtaskRows>>,
+function invalidateBoardSubtaskReads(taskId: string): void {
+  revalidateTag("drizzle:subTasks", "default");
+  revalidateTag(`board-subtasks:${taskId}`, "default");
+}
+
+function mapBoardSubtasksFromCore(
+  bundle: Awaited<ReturnType<typeof loadCachedBoardSubtaskCore>>,
 ): BoardSubTaskSummary[] {
   if (!bundle || bundle.rows.length === 0) return [];
 
-  const { rows, assigneeRows, openActivityRows } = bundle;
-  const assigneesBySubTask = new Map<string, { documentId: string; name: string }[]>();
+  const { rows, assigneeRows, flagRows = [], dependencyRows = [] } = bundle;
+  const assigneesBySubTask = new Map<
+    string,
+    { documentId: string; name: string }[]
+  >();
   for (const row of assigneeRows) {
     const list = assigneesBySubTask.get(row.subTaskId) ?? [];
     list.push({ documentId: row.userId, name: row.name });
     assigneesBySubTask.set(row.subTaskId, list);
   }
-
-  const openActivitiesBySubTask = new Map<string, ActivitySessionRef[]>();
-  for (const activity of openActivityRows) {
-    const list = openActivitiesBySubTask.get(activity.subTaskId) ?? [];
-    list.push({
-      subTaskDocumentId: activity.subTaskId,
-      colaboratorDocumentId: activity.colaboratorId,
-      colaboratorName: activity.colaboratorName,
-      action: activity.action,
-      timestamp: activity.timestamp.toISOString(),
-      qty: activity.qty,
-    });
-    openActivitiesBySubTask.set(activity.subTaskId, list);
+  const codesBySubTask = new Map<string, string[]>();
+  for (const row of flagRows) {
+    const list = codesBySubTask.get(row.subTaskId) ?? [];
+    list.push(row.code);
+    codesBySubTask.set(row.subTaskId, list);
+  }
+  const nameById = new Map(rows.map((row) => [row.id, row.name]));
+  const producersByConsumer = new Map<string, string[]>();
+  for (const row of dependencyRows) {
+    const list = producersByConsumer.get(row.consumerId) ?? [];
+    list.push(row.producerId);
+    producersByConsumer.set(row.consumerId, list);
   }
 
-  return rows.map((subtask) => {
-    const openActivityRefs = openActivitiesBySubTask.get(subtask.id) ?? [];
-    return {
-      documentId: subtask.id,
-      name: subtask.name,
-      status: subtask.status,
-      sharingType: subtask.sharingType === "qty" ? "qty" : "duration",
-      qty: Math.max(1, Math.floor(Number(subtask.qty) || 0) || 1),
-      index: subtask.index ?? 0,
-      expectedTime: subtask.expectedTime ?? 0,
-      timeSpent: subtask.timeSpent ?? 0,
-      maxSameTimeWorkers: subtask.maxSameTimeWorkers ?? 1,
-      linkedToPrevious: subtask.linkedToPrevious ?? false,
-      openActivityStartedAts: listOpenActivityStartedAts(openActivityRefs),
-      producingColaboratorIds: listOpenColaboratorDocumentIds(openActivityRefs),
-      sessions: [],
-      assignedTo: assigneesBySubTask.get(subtask.id) ?? [],
-    };
-  });
+  return rows.map((subtask) => ({
+    documentId: subtask.id,
+    name: subtask.name,
+    status: subtask.status,
+    sharingType: subtask.sharingType === "qty" ? "qty" : "duration",
+    qty: Math.max(1, Math.floor(Number(subtask.qty) || 0) || 1),
+    index: subtask.index ?? 0,
+    expectedTime: subtask.expectedTime ?? 0,
+    timeSpent: subtask.timeSpent ?? 0,
+    maxSameTimeWorkers: subtask.maxSameTimeWorkers ?? 1,
+    linkedToPrevious: subtask.linkedToPrevious ?? false,
+    openActivityStartedAts: [],
+    producingColaboratorIds: [],
+    sessions: [],
+    assignedTo: assigneesBySubTask.get(subtask.id) ?? [],
+    assignedFlagCodes: codesBySubTask.get(subtask.id) ?? [],
+    dependencyFlags: (producersByConsumer.get(subtask.id) ?? [])
+      .map((producerId) => ({
+        predecessorName: nameById.get(producerId) ?? "",
+        codes: codesBySubTask.get(producerId) ?? [],
+      }))
+      .filter((hint) => hint.codes.length > 0),
+  }));
 }
 
 export async function pollBoardProgress(
@@ -203,8 +212,19 @@ export async function loadBoardSubtasks(
   taskDocumentId: string,
 ): Promise<BoardSubTaskSummary[]> {
   await assertCanManageBoardSubtasks();
-  const bundle = await listBoardSubtaskRows(taskDocumentId);
-  return mapBoardSubtasksFromDrizzle(bundle);
+  const bundle = await loadCachedBoardSubtaskCore(taskDocumentId);
+  return mapBoardSubtasksFromCore(bundle);
+}
+
+export async function loadBoardSubtaskLive(
+  taskDocumentId: string,
+): Promise<Record<string, BoardSubtaskLiveState>> {
+  await assertCanManageBoardSubtasks();
+  const rows = await listBoardSubTasksForTask(taskDocumentId);
+  const openRows = await listBoardSubtaskOpenActivities(
+    rows.map((row) => row.id),
+  );
+  return liveStateFromOpenActivityRows(openRows);
 }
 
 export async function loadBoardSubtaskSessions(
@@ -244,7 +264,6 @@ async function fetchSubTaskForUpdate(
     maxSameTimeWorkers: row.maxSameTimeWorkers,
     status: row.status,
     activationStatus: fromDrizzleActivationStatus(row.activationStatus),
-    reasonForDisabling: row.reasonForDeactivation,
     dependencies: row.dependencyIds,
     assignedTo: row.assignedToIds.map((id) => ({ documentId: id })),
   };
@@ -262,7 +281,6 @@ function toSubTaskFormInput(
     maxSameTimeWorkers: subtask.maxSameTimeWorkers ?? 1,
     status: subtask.status,
     activationStatus: subtask.activationStatus ?? "locked",
-    reasonForDisabling: subtask.reasonForDisabling ?? "",
     dependencyIds: parseSubTaskDependencyIds(subtask.dependencies),
     assignedToIds,
   };
@@ -274,6 +292,7 @@ export async function createBoardSubtask(
 ): Promise<void> {
   await assertCanManageBoardSubtasks();
   await createSubTask(taskDocumentId, values);
+  invalidateBoardSubtaskReads(taskDocumentId);
 }
 
 function toAssigneeState(row: ChainSubTask): ChainAssigneeState {
@@ -323,6 +342,7 @@ export async function reorderBoardSubtasks(
   const after = reconcileChainReorder(before, pendingOrder, movedDocumentId);
   await persistChainAssigneeStates(before, after);
   await reorderSubTasks(taskDocumentId, orderedDocumentIds);
+  invalidateBoardSubtaskReads(taskDocumentId);
 }
 
 function toChainSubTask(row: {
@@ -376,6 +396,7 @@ export async function updateBoardSubtaskLink(
   if (!updatedState) throw new Error("notFound");
 
   const assigneeRows = await listBoardSubtaskAssignees([subtaskDocumentId]);
+  invalidateBoardSubtaskReads(taskDocumentId);
   return {
     documentId: subtaskDocumentId,
     linkedToPrevious: updatedState.linkedToPrevious,
@@ -408,6 +429,7 @@ export async function updateBoardSubtaskAssignees(
       taskDocumentId,
       toSubTaskFormInput(subtask, assignedToIds),
     );
+    invalidateBoardSubtaskReads(taskDocumentId);
     return;
   }
 
@@ -446,6 +468,7 @@ export async function updateBoardSubtaskAssignees(
         toSubTaskFormInput(subtask, update.assignedToIds),
       );
     }
+    invalidateBoardSubtaskReads(taskDocumentId);
     return;
   }
 
@@ -463,6 +486,7 @@ export async function updateBoardSubtaskAssignees(
       toSubTaskFormInput(subtask, update.assignedToIds),
     );
   }
+  invalidateBoardSubtaskReads(taskDocumentId);
 }
 
 export async function applyBoardTaskOrder(
@@ -550,4 +574,15 @@ export async function moveTaskToStep(
     });
   }
   invalidateBoardTasks();
+}
+
+export async function releaseBoardSubTaskFlags(
+  subTaskDocumentId: string,
+): Promise<void> {
+  await assertCanManageBoardSubtasks();
+  const subtask = await getSubTaskById(subTaskDocumentId);
+  if (!subtask) throw new Error("notFound");
+  await releaseFlagsForSubTask(subTaskDocumentId);
+  await runTaskSubTaskSyncRoutine(subtask.taskId);
+  invalidateBoardSubtaskReads(subtask.taskId);
 }
