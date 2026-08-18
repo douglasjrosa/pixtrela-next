@@ -173,17 +173,28 @@ export function DefaultColorsSection({
       </div>
 
       <div className="flex items-center justify-between gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={busy}
-          onClick={toggleAllGroups}
-        >
-          {allGroupsExpanded
-            ? t("defaultColorsCollapseAll")
-            : t("defaultColorsExpandAll")}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={toggleAllGroups}
+          >
+            {allGroupsExpanded
+              ? t("defaultColorsCollapseAll")
+              : t("defaultColorsExpandAll")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={restoreDefaults}
+          >
+            {t("defaultColorsRestore")}
+          </Button>
+        </div>
         <Button type="button" disabled={busy} onClick={handleSave}>
           {tCommon("save")}
         </Button>
@@ -243,17 +254,6 @@ export function DefaultColorsSection({
             </div>
           );
         })}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={busy}
-          onClick={restoreDefaults}
-        >
-          {t("defaultColorsRestore")}
-        </Button>
       </div>
 
       {message ? (

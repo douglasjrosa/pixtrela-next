@@ -189,7 +189,7 @@ describe("DefaultColorsSection", () => {
     expect(surfacesToggle).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("places save above the accordion and restore below it", () => {
+  it("places save and restore above the accordion toolbar", () => {
     renderWithIntl(
       <DefaultColorsSection
         initialTokens={DEFAULT_SEMANTIC_TOKENS}
@@ -201,6 +201,7 @@ describe("DefaultColorsSection", () => {
     const restoreButton = screen.getByRole("button", {
       name: "Restaurar padrão original",
     });
+    const expandAllButton = screen.getByRole("button", { name: "Esconder tudo" });
     const surfacesToggle = screen.getByRole("button", { name: "Superfícies" });
 
     expect(
@@ -208,7 +209,11 @@ describe("DefaultColorsSection", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      surfacesToggle.compareDocumentPosition(restoreButton) &
+      expandAllButton.compareDocumentPosition(restoreButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      restoreButton.compareDocumentPosition(surfacesToggle) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
