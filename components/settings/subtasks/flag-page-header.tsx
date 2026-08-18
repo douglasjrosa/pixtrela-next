@@ -91,6 +91,8 @@ export function FlagPageHeader({
           title={t("newFlag")}
           onClose={close}
           disabled={isPending}
+          size="md"
+          fillBody={false}
           footerEnd={
             <Button type="submit" form={FORM_ID} disabled={isPending}>
               {tCommon("save")}
