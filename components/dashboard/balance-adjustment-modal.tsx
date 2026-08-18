@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import type { BalanceAdjustmentResult } from "@/app/(app)/balance-adjustment-actions";
+import {
+  formatIsoDateLocal,
+  getBalanceAdjustmentDateBounds,
+  isBalanceAdjustmentDateInRange,
+} from "@/lib/dashboard/balance-adjustment-date";
 import { Button } from "@/components/ui/button";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
@@ -44,11 +49,7 @@ export interface BalanceAdjustmentModalProps {
 }
 
 function todayIsoDate(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return formatIsoDateLocal(new Date());
 }
 
 export function BalanceAdjustmentModal({
@@ -69,6 +70,7 @@ export function BalanceAdjustmentModal({
   const [amount, setAmount] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { min: minDate, max: maxDate } = getBalanceAdjustmentDateBounds();
 
   function resetForm(): void {
     setDate(todayIsoDate());
@@ -95,6 +97,10 @@ export function BalanceAdjustmentModal({
 
   function handleSubmit(): void {
     const parsedAmount = Number(amount);
+    if (!isBalanceAdjustmentDateInRange(date)) {
+      setFieldError(t("balanceAdjustmentDateInvalid"));
+      return;
+    }
     if (!currencyId) {
       setFieldError(t("balanceAdjustmentCurrencyRequired"));
       return;
@@ -160,6 +166,8 @@ export function BalanceAdjustmentModal({
             type="date"
             className="w-full"
             value={date}
+            min={minDate}
+            max={maxDate}
             disabled={isPending}
             onChange={(event) => setDate(event.target.value)}
           />
