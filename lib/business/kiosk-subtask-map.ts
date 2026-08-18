@@ -154,3 +154,28 @@ export function sumStoppedQtyBySubTaskId(
   }
   return map;
 }
+
+export type ViewerStopActivityRef = {
+  subTaskId: string;
+  action: string;
+  currencyAwarded?: number;
+};
+
+/** Viewer earned currency and participation from their own stop activities. */
+export function buildViewerStopStatsBySubTaskId(
+  activityRows: readonly ViewerStopActivityRef[],
+): {
+  participatedIds: Set<string>;
+  currencyBySubTaskId: Map<string, number>;
+} {
+  const participatedIds = new Set<string>();
+  const currencyBySubTaskId = new Map<string, number>();
+  for (const activity of activityRows) {
+    if (activity.action !== "stoped") continue;
+    participatedIds.add(activity.subTaskId);
+    const awarded = Math.max(0, Number(activity.currencyAwarded ?? 0));
+    const current = currencyBySubTaskId.get(activity.subTaskId) ?? 0;
+    currencyBySubTaskId.set(activity.subTaskId, current + awarded);
+  }
+  return { participatedIds, currencyBySubTaskId };
+}

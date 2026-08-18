@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { createTask } from "@/app/(app)/tasks/actions";
+import { AddNewButton } from "@/components/ui/add-new-button";
 import { Button } from "@/components/ui/button";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { buildCreateTaskFormDefaults } from "@/lib/business/default-task-step";
@@ -100,9 +101,10 @@ export function TasksPageHeader({ steps }: TasksPageHeaderProps) {
   return (
     <div className="flex shrink-0 items-center justify-between gap-3">
       <h1 className="text-2xl font-bold max-[500px]:text-lg">{tManage("title")}</h1>
-      <Button type="button" variant="outline" onClick={() => setCreateOpen(true)}>
-        {tManage("newTask")}
-      </Button>
+      <AddNewButton
+        label={tManage("newTask")}
+        onClick={() => setCreateOpen(true)}
+      />
 
       {createOpen ? (
         <CreateTaskDialog

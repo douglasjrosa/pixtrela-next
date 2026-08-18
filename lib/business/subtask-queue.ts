@@ -28,6 +28,10 @@ export interface KioskSubTask extends QueuedSubTask {
   taskName: string;
   taskIndex: number;
   finishedAt: string | null;
+  /** True when the kiosk viewer has a stop session on this subtask. */
+  viewerParticipated?: boolean;
+  /** Currency credited to the viewer from their stop activities. */
+  viewerCurrencyAwarded?: number;
   activeWorkerCount: number;
   linkedToPrevious?: boolean;
   maxSameTimeWorkers?: number;

@@ -5,7 +5,7 @@ import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
 export const chainStopAnswerSchema = z.object({
   documentId: z.string().min(1),
   completed: z.boolean().optional(),
-  qty: z.number().int().min(1).optional(),
+  qty: z.number().int().min(0).optional(),
 });
 
 export const chainStopAnswersSchema = z.array(chainStopAnswerSchema).min(1);

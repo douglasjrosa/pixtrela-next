@@ -52,8 +52,7 @@ Then run checks and iterate until clean:
    ```
 
    (`test:changed` runs `vitest run --changed origin/master`.)
-   `tests/e2e/**` is excluded from Vitest; do **not** run the full Playwright
-   suite unless the user asks.
+   `tests/e2e/**` is excluded from Vitest.
 
    If the command prints `No test files found` and exits 0, that is acceptable
    only when the diff vs `origin/master` truly has no related tests (e.g. docs
@@ -64,6 +63,21 @@ Then run checks and iterate until clean:
    ```bash
    npx vitest related $(git diff --name-only origin/master -- '*.ts' '*.tsx')
    ```
+
+3. **E2E (Playwright) — new specs only** — run **only** e2e files **added**
+   after the last release tip (`origin/master`). Do **not** run specs that already
+   existed on `origin/master`, even if they were edited in this cycle.
+
+   ```bash
+   git fetch origin
+   E2E_NEW=$(git diff --name-only --diff-filter=A origin/master -- 'tests/e2e/**')
+   if [ -n "$E2E_NEW" ]; then
+     npx playwright test $E2E_NEW
+   fi
+   ```
+
+   If there are no new e2e specs, skip Playwright entirely. Do **not** run the
+   full `tests/e2e` suite unless the user explicitly asks.
 
 Do not ignore lint or test failures.
 
@@ -93,10 +107,20 @@ with specific messages rather than one vague cleanup commit.
 4. If the GitHub repository does not exist yet, create it under the GitHub
    account that owns this project and push (do not assume a fixed account).
 
-## 5. Continue on dev
+## 5. Sync origin `dev` with shipped `master`
 
-Fast-forward `dev` onto the shipped `master` so the next cycle starts clean:
-`git checkout dev && git merge --ff-only master && git push origin dev`.
+After pushing `master`, update **only** `origin/dev` so it matches production.
+**Do not** merge into or reset **local** `dev` — you may already have new work
+there while this cycle ran; that work joins the next `/optimize` or
+`/optimize-min`.
+
+```bash
+git fetch origin
+git push origin origin/master:refs/heads/dev
+```
+
+- `origin/dev` ends on the same commit as `origin/master`.
+- **Local `dev` stays unchanged** (do not `git checkout dev && git merge master`).
 
 ## When to use `/optimize` instead
 

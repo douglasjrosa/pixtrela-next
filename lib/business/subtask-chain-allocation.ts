@@ -158,6 +158,17 @@ export function resolveChainAutoAdvance(input: {
   };
 }
 
+/**
+ * Time-based chain roll is optimistic: the left-behind member is paused
+ * until the principal confirms finish on stop. Helpers still on it stay
+ * producing.
+ */
+export function statusAfterChainTimeAdvance(
+  helperStillOpen: boolean,
+): "producing" | "paused" {
+  return helperStillOpen ? "producing" : "paused";
+}
+
 export type PlannedActivity = {
   subTaskId: string;
   colaboratorId: string;

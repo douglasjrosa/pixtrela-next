@@ -86,6 +86,18 @@ describe("FormModalShell", () => {
     expect(inner?.className).not.toContain(FORM_MODAL_BODY_MIN_HEIGHT_CLASS);
   });
 
+  it("can disable body scroll for nested panel scrolling", () => {
+    renderWithIntl(
+      <FormModalShell open title="Título" bodyScroll={false} onClose={vi.fn()}>
+        <p>Conteúdo</p>
+      </FormModalShell>,
+    );
+
+    const body = document.querySelector('[data-slot="form-modal-body"]');
+    expect(body?.className).toContain("overflow-hidden");
+    expect(body?.className).not.toContain("overflow-y-auto");
+  });
+
   it("stacks above the app navbar", () => {
     renderWithIntl(
       <FormModalShell open title="Título" onClose={vi.fn()}>
