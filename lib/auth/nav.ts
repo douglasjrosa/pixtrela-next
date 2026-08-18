@@ -44,6 +44,14 @@ export interface NavItemsOptions {
   userId?: string;
 }
 
+/** Primary colaborator header links (dashboard + store). */
+export function colaboratorMenuItems(userId: string): NavItem[] {
+  return [
+    { href: `/${userId}`, labelKey: "dashboard" },
+    { href: `/${userId}/store`, labelKey: "store" },
+  ];
+}
+
 /** Brand / home destination after login for the role. */
 export function homeHrefForRole(role: Role, userId?: string): string {
   if (role === "kiosk") return "/kiosk";
@@ -66,7 +74,7 @@ export function navItemsForRole(
       return [{ href: "/", labelKey: "panel" }];
     }
     return [
-      { href: `/${userId}`, labelKey: "myBalance" },
+      { href: `/${userId}`, labelKey: "dashboard" },
       { href: `/${userId}/store`, labelKey: "store" },
       { href: `/${userId}/profile`, labelKey: "profile" },
     ];

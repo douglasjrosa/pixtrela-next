@@ -6,6 +6,10 @@ import { renderWithIntl } from "@/test/test-utils";
 
 const signOut = vi.fn();
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/colab-1",
+}));
+
 vi.mock("next-auth/react", () => ({
   useSession: () => ({
     data: {
@@ -21,9 +25,17 @@ vi.mock("next-auth/react", () => ({
 }));
 
 describe("ColaboratorHeader", () => {
-  it("renders the account menu with the user avatar", () => {
+  it("renders dashboard and store links plus the account menu", () => {
     renderWithIntl(<ColaboratorHeader homeHref="/colab-1" />);
 
+    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute(
+      "href",
+      "/colab-1",
+    );
+    expect(screen.getByRole("link", { name: "Loja" })).toHaveAttribute(
+      "href",
+      "/colab-1/store",
+    );
     expect(
       screen.getByRole("button", { name: "Maria, Abrir menu da conta" }),
     ).toBeInTheDocument();

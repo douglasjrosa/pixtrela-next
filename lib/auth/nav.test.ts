@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { homeHrefForRole, navItemsForRole } from "./nav";
+import { colaboratorMenuItems, homeHrefForRole, navItemsForRole } from "./nav";
 
 function hrefs(role: Parameters<typeof navItemsForRole>[0]) {
   return navItemsForRole(role).map((item) => item.href);
@@ -11,7 +11,14 @@ describe("navItemsForRole", () => {
       .toEqual(["/col-1", "/col-1/store", "/col-1/profile"]);
     expect(
       navItemsForRole("colaborator", { userId: "col-1" }).map((i) => i.labelKey),
-    ).toEqual(["myBalance", "store", "profile"]);
+    ).toEqual(["dashboard", "store", "profile"]);
+  });
+
+  it("exposes dashboard and store for the colaborator header menu", () => {
+    expect(colaboratorMenuItems("col-1")).toEqual([
+      { href: "/col-1", labelKey: "dashboard" },
+      { href: "/col-1/store", labelKey: "store" },
+    ]);
   });
 
   it("falls back to panel root when colaborator has no userId", () => {
