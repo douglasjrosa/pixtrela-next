@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { KanbanBoard } from "@/components/kanban/kanban-board";
 import { KanbanSubtaskCreateModal } from "@/components/kanban/kanban-subtask-create-modal";
@@ -61,6 +62,7 @@ import {
 } from "@/lib/board/subtask-prefetch-queue";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import type { SubtaskPaymentCurrency } from "@/lib/settings/currency-for-subtasks-types";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 const FINISHED_STATUS = "finished";
 const PREFETCH_DEBOUNCE_MS = 200;
@@ -150,6 +152,7 @@ export function BoardActions({
   onSubtasksModalOpenChange,
 }: BoardActionsProps) {
   const router = useRouter();
+  const tKanban = useTranslations("kanban");
   const [, startTransition] = useTransition();
   const [orderedTasks, setOrderedTasks] = useState(tasks);
   const [prevTasks, setPrevTasks] = useState(tasks);
@@ -166,7 +169,6 @@ export function BoardActions({
   const [refreshingSubtasks, setRefreshingSubtasks] = useState(false);
   const [subtasksLoadedAt, setSubtasksLoadedAt] = useState<number | null>(null);
   const [loadingSessions, setLoadingSessions] = useState(false);
-  const [savingAssignees, setSavingAssignees] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [savingCreate, setSavingCreate] = useState(false);
   const [reorderingSubtasks, setReorderingSubtasks] = useState(false);
@@ -175,6 +177,7 @@ export function BoardActions({
   const inFlightLinkRef = useRef(new Set<string>());
   const ackedLinkRef = useRef(new Map<string, boolean>());
   const selectedTaskRef = useRef(selectedTask);
+  const openTaskIdRef = useRef<string | null>(null);
   const subtasksRef = useRef(subtasks);
   const assigneesBaselineRef = useRef(assigneesBaseline);
   const subtaskCacheRef = useRef(new SubtaskListCache());
@@ -257,10 +260,11 @@ export function BoardActions({
 
   function applyFetchedSubtasks(
     loaded: BoardSubTaskSummary[],
-    options?: { keepDraftAssignees?: boolean },
+    options?: { keepDraftAssignees?: boolean; taskDocumentId?: string },
   ): void {
     const entry = createSubtaskListCacheEntry(loaded);
-    const taskDocumentId = selectedTaskRef.current?.documentId;
+    const taskDocumentId =
+      options?.taskDocumentId ?? selectedTaskRef.current?.documentId;
     if (taskDocumentId) {
       subtaskCacheRef.current.set(taskDocumentId, entry);
     }
@@ -316,25 +320,27 @@ export function BoardActions({
     options?: { keepDraftAssignees?: boolean },
   ): Promise<BoardSubTaskSummary[]> {
     const loaded = await loadSubtasks(taskDocumentId);
-    if (selectedTaskRef.current?.documentId !== taskDocumentId) {
+    if (openTaskIdRef.current !== taskDocumentId) {
       return loaded;
     }
-    applyFetchedSubtasks(loaded, options);
+    applyFetchedSubtasks(loaded, { ...options, taskDocumentId });
     void fetchLiveState(taskDocumentId);
     return loaded;
   }
 
   function handleTaskClick(task: KanbanTask): void {
     onSubtasksModalOpenChange?.(true);
+    openTaskIdRef.current = task.documentId;
+    selectedTaskRef.current = task;
     setSelectedTask(task);
-    setSavingAssignees(false);
     setCreateOpen(false);
     setSavingCreate(false);
     sessionsLoadedRef.current = false;
     setLoadingSessions(false);
 
     const cached = subtaskCacheRef.current.get(task.documentId);
-    if (cached) {
+    const hasCachedItems = Boolean(cached && cached.subtasks.length > 0);
+    if (cached && hasCachedItems) {
       applyCacheEntry(cached);
       setLoadingSubtasks(false);
       setRefreshingSubtasks(true);
@@ -349,8 +355,10 @@ export function BoardActions({
       try {
         await fetchSubtasks(task.documentId);
       } finally {
-        setLoadingSubtasks(false);
-        setRefreshingSubtasks(false);
+        if (openTaskIdRef.current === task.documentId) {
+          setLoadingSubtasks(false);
+          setRefreshingSubtasks(false);
+        }
       }
     })();
   }
@@ -370,11 +378,21 @@ export function BoardActions({
         async (taskDocumentId) => {
           if (subtaskCacheRef.current.get(taskDocumentId)) return;
           const loaded = await loadSubtasks(taskDocumentId);
-          if (subtaskCacheRef.current.get(taskDocumentId)) return;
-          subtaskCacheRef.current.set(
-            taskDocumentId,
-            createSubtaskListCacheEntry(loaded),
-          );
+          if (
+            loaded.length > 0 &&
+            !subtaskCacheRef.current.get(taskDocumentId)
+          ) {
+            subtaskCacheRef.current.set(
+              taskDocumentId,
+              createSubtaskListCacheEntry(loaded),
+            );
+          }
+          if (
+            loaded.length > 0 &&
+            openTaskIdRef.current === taskDocumentId
+          ) {
+            applyFetchedSubtasks(loaded, { taskDocumentId });
+          }
         },
       );
     }
@@ -388,15 +406,20 @@ export function BoardActions({
     }, PREFETCH_DEBOUNCE_MS);
   }
 
-  function handleCloseSubtasksModal(): void {
+  function handleCloseSubtasksModal(options?: {
+    keepDraftCache?: boolean;
+  }): void {
     const taskId = selectedTaskRef.current?.documentId;
     if (
+      !options?.keepDraftCache &&
       taskId &&
       hasAssigneeDraftChanges(subtasksRef.current, assigneesBaselineRef.current)
     ) {
       invalidateSubtaskCache(taskId);
     }
     onSubtasksModalOpenChange?.(false);
+    openTaskIdRef.current = null;
+    selectedTaskRef.current = null;
     setSelectedTask(null);
     setSubtasks([]);
     setAssigneesBaseline({});
@@ -405,7 +428,6 @@ export function BoardActions({
     setSubtasksLoadedAt(null);
     setLoadingSessions(false);
     sessionsLoadedRef.current = false;
-    setSavingAssignees(false);
     setCreateOpen(false);
     setSavingCreate(false);
     setReorderingSubtasks(false);
@@ -709,18 +731,21 @@ export function BoardActions({
     if (!selectedTask) return;
 
     const taskDocumentId = selectedTask.documentId;
-    invalidateSubtaskCache(taskDocumentId);
+    const taskTitle = formatTaskDisplayTitle(
+      selectedTask.qty,
+      selectedTask.name,
+    );
+    const snapshot = subtasks;
     const dirtyUpdates = collectDirtyAssigneeUpdates(
-      subtasks,
+      snapshot,
       assigneesBaseline,
     );
     if (dirtyUpdates.length === 0) return;
 
-    const previous = subtasks;
-    const previousBaseline = assigneesBaseline;
-    setSavingAssignees(true);
-
-    const chainItems = chainItemsFromBoard(subtasks);
+    const previousUnassigned = orderedTasks.find(
+      (task) => task.documentId === taskDocumentId,
+    )?.unassignedSubTaskCount;
+    const chainItems = chainItemsFromBoard(snapshot);
     const chains = resolveChains(chainItems);
     const ranked = [...dirtyUpdates].sort((left, right) => {
       const leftChain = findChainContaining(chains, left.documentId);
@@ -729,6 +754,22 @@ export function BoardActions({
       const rightHead = rightChain?.headId === right.documentId ? 0 : 1;
       return leftHead - rightHead;
     });
+
+    subtaskCacheRef.current.set(
+      taskDocumentId,
+      createSubtaskListCacheEntry(snapshot),
+    );
+    setOrderedTasks((current) =>
+      current.map((task) =>
+        task.documentId === taskDocumentId
+          ? {
+              ...task,
+              unassignedSubTaskCount: resolveUnassignedSubTaskCount(snapshot),
+            }
+          : task,
+      ),
+    );
+    handleCloseSubtasksModal({ keepDraftCache: true });
 
     void (async () => {
       try {
@@ -746,7 +787,7 @@ export function BoardActions({
             if (role === "none") continue;
             if (role === "head") {
               const memberIds = chain.memberIds.map((id) => {
-                const row = subtasks.find((item) => item.documentId === id);
+                const row = snapshot.find((item) => item.documentId === id);
                 return (
                   row?.assignedTo.map((assignee) => assignee.documentId) ?? []
                 );
@@ -766,22 +807,17 @@ export function BoardActions({
             update.assignedToIds,
           );
         }
+        showSuccessToast(tKanban("taskUpdated", { title: taskTitle }));
+      } catch {
+        invalidateSubtaskCache(taskDocumentId);
         setOrderedTasks((current) =>
           current.map((task) =>
             task.documentId === taskDocumentId
-              ? {
-                  ...task,
-                  unassignedSubTaskCount:
-                    resolveUnassignedSubTaskCount(subtasks),
-                }
+              ? { ...task, unassignedSubTaskCount: previousUnassigned }
               : task,
           ),
         );
-        handleCloseSubtasksModal();
-      } catch {
-        setSubtasks(previous);
-        setAssigneesBaseline(previousBaseline);
-        setSavingAssignees(false);
+        showErrorToast(tKanban("taskUpdateFailed", { title: taskTitle }));
       }
     })();
   }
@@ -856,7 +892,7 @@ export function BoardActions({
         loadedAt={subtasksLoadedAt}
         loadingSessions={loadingSessions}
         dirty={hasAssigneeDraftChanges(subtasks, assigneesBaseline)}
-        saving={savingAssignees}
+        saving={false}
         reordering={reorderingSubtasks}
         onClose={handleCloseSubtasksModal}
         onAssigneesChange={handleAssigneesChange}

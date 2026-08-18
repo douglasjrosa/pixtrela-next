@@ -1,12 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
 const refresh = vi.fn();
+const showSuccessToast = vi.fn();
+const showErrorToast = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
+}));
+
+vi.mock("@/lib/ui/app-toast", () => ({
+  showSuccessToast: (...args: unknown[]) => showSuccessToast(...args),
+  showErrorToast: (...args: unknown[]) => showErrorToast(...args),
 }));
 
 import { renderWithIntl } from "@/test/test-utils";
@@ -83,6 +90,11 @@ const teams = [
 ];
 
 describe("BoardActions", () => {
+  beforeEach(() => {
+    showSuccessToast.mockReset();
+    showErrorToast.mockReset();
+  });
+
   it("renders kanban board with steps", () => {
     renderBoard();
     expect(screen.getByRole("region", { name: "Fila de produção" })).toBeInTheDocument();
@@ -157,12 +169,91 @@ describe("BoardActions", () => {
 
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
-    await vi.waitFor(() => {
-      expect(updateSubtaskAssignees).toHaveBeenCalledWith("st-1", "task-10", ["u-1"]);
-    });
     expect(
       screen.queryByRole("heading", { name: "Subtarefas" }),
     ).not.toBeInTheDocument();
+    await vi.waitFor(() => {
+      expect(updateSubtaskAssignees).toHaveBeenCalledWith("st-1", "task-10", ["u-1"]);
+    });
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      "A tarefa 1 - Tarefa A foi atualizada com sucesso.",
+    );
+  });
+
+  it("closes the modal immediately and keeps the board usable while save runs", async () => {
+    const user = userEvent.setup();
+    let resolveSave!: () => void;
+    const saveGate = new Promise<void>((resolve) => {
+      resolveSave = resolve;
+    });
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        assignedTo: [],
+      }),
+    ]);
+    const updateSubtaskAssignees = vi.fn().mockImplementation(async () => {
+      await saveGate;
+    });
+
+    renderBoard({ loadSubtasks, updateSubtaskAssignees });
+
+    await user.click(screen.getByText("1 - Tarefa A"));
+    await user.click(await screen.findByRole("button", { name: /Soldar/ }));
+    await user.click(screen.getByRole("button", { name: "Atribuir Ana" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(
+      screen.queryByRole("heading", { name: "Subtarefas" }),
+    ).not.toBeInTheDocument();
+    expect(updateSubtaskAssignees).toHaveBeenCalledWith("st-1", "task-10", ["u-1"]);
+    expect(showSuccessToast).not.toHaveBeenCalled();
+    expect(screen.getByText("1 - Tarefa A")).toBeInTheDocument();
+
+    await user.click(screen.getByText("2 - Tarefa B"));
+    expect(await screen.findByRole("heading", { name: "Subtarefas" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Fechar" }));
+
+    await act(async () => {
+      resolveSave();
+    });
+    await vi.waitFor(() => {
+      expect(showSuccessToast).toHaveBeenCalledWith(
+        "A tarefa 1 - Tarefa A foi atualizada com sucesso.",
+      );
+    });
+  });
+
+  it("toasts an error when background assignee save fails", async () => {
+    const user = userEvent.setup();
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        assignedTo: [],
+      }),
+    ]);
+    const updateSubtaskAssignees = vi.fn().mockRejectedValue(new Error("fail"));
+
+    renderBoard({ loadSubtasks, updateSubtaskAssignees });
+
+    await user.click(screen.getByText("1 - Tarefa A"));
+    await user.click(await screen.findByRole("button", { name: /Soldar/ }));
+    await user.click(screen.getByRole("button", { name: "Atribuir Ana" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(
+      screen.queryByRole("heading", { name: "Subtarefas" }),
+    ).not.toBeInTheDocument();
+    await vi.waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith(
+        "Não foi possível atualizar a tarefa 1 - Tarefa A.",
+      );
+    });
+    expect(showSuccessToast).not.toHaveBeenCalled();
   });
 
   it("opens create modal, saves subtask, and keeps subtasks modal open", async () => {
@@ -792,6 +883,71 @@ describe("BoardActions", () => {
     });
     expect(
       screen.queryByRole("heading", { name: "Subtarefas" }),
+    ).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it("applies in-flight prefetch to the open modal instead of empty state", async () => {
+    const user = userEvent.setup();
+    let resolvePrefetch!: (value: ReturnType<typeof boardSubTaskSummaryStub>[]) => void;
+    const prefetchGate = new Promise<ReturnType<typeof boardSubTaskSummaryStub>[]>(
+      (resolve) => {
+        resolvePrefetch = resolve;
+      },
+    );
+    const clickGate = new Promise<ReturnType<typeof boardSubTaskSummaryStub>[]>(
+      () => undefined,
+    );
+    let prefetchStarted = false;
+    const loadSubtasks = vi.fn().mockImplementation(async (taskId: string) => {
+      if (taskId !== "task-10") return [];
+      if (!prefetchStarted) {
+        prefetchStarted = true;
+        return prefetchGate;
+      }
+      return clickGate;
+    });
+
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        callback: (entries: { isIntersecting: boolean }[]) => void;
+        constructor(callback: (entries: { isIntersecting: boolean }[]) => void) {
+          this.callback = callback;
+        }
+        observe(): void {
+          this.callback([{ isIntersecting: true }]);
+        }
+        unobserve(): void {}
+        disconnect(): void {}
+      },
+    );
+
+    renderBoard({ loadSubtasks });
+    await vi.waitFor(() => {
+      expect(loadSubtasks).toHaveBeenCalledWith("task-10");
+    });
+
+    await user.click(screen.getByText("1 - Tarefa A"));
+    expect(screen.getByTestId("kanban-subtasks-loading")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Nenhuma subtarefa nesta tarefa."),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolvePrefetch([
+        boardSubTaskSummaryStub({
+          documentId: "st-1",
+          name: "Soldar",
+          status: "waiting",
+          assignedTo: [],
+        }),
+      ]);
+    });
+
+    expect(await screen.findByText("Soldar")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Nenhuma subtarefa nesta tarefa."),
     ).not.toBeInTheDocument();
     vi.unstubAllGlobals();
   });
