@@ -22,9 +22,15 @@ export const APP_NAV_HEIGHT_CLASS = "h-14";
 
 export interface AppNavProps {
   logoUrl?: string | null;
+  menuLogoBackgroundColor?: string | null;
+  menuLogoBackgroundColorOpacity?: number | null;
 }
 
-export function AppNav({ logoUrl = null }: AppNavProps) {
+export function AppNav({
+  logoUrl = null,
+  menuLogoBackgroundColor = null,
+  menuLogoBackgroundColorOpacity = null,
+}: AppNavProps) {
   const t = useTranslations();
   const { data: session } = useSession();
   const role = (session?.user?.role ?? "colaborator") as Role;
@@ -117,7 +123,12 @@ export function AppNav({ logoUrl = null }: AppNavProps) {
             </Button>
           ) : null}
 
-          <AppBrandLink href={homeHref} logoUrl={logoUrl} />
+          <AppBrandLink
+            href={homeHref}
+            logoUrl={logoUrl}
+            menuLogoBackgroundColor={menuLogoBackgroundColor}
+            menuLogoBackgroundColorOpacity={menuLogoBackgroundColorOpacity}
+          />
 
           <div ref={slotRef} className="relative min-w-0 flex-1">
             <ul

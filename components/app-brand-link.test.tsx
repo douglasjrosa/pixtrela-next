@@ -25,4 +25,18 @@ describe("AppBrandLink", () => {
     expect(link.querySelector("img")).toBeNull();
     expect(link).toHaveAttribute("href", "/home");
   });
+
+  it("applies background color behind the logo mark", () => {
+    renderWithIntl(
+      <AppBrandLink
+        href="/"
+        logoUrl="https://media.example/logo.png"
+        menuLogoBackgroundColor="#ffffff"
+        menuLogoBackgroundColorOpacity={40}
+      />,
+    );
+
+    const wrapper = screen.getByRole("link").querySelector("span");
+    expect(wrapper).toHaveStyle({ backgroundColor: "rgba(255, 255, 255, 0.4)" });
+  });
 });

@@ -261,6 +261,10 @@ export const appBrandingSettings = pgTable("app_branding_settings", {
   menuLogoMediaId: uuid("menu_logo_media_id").references(() => mediaAssets.id, {
     onDelete: "set null",
   }),
+  menuLogoBackgroundColor: varchar("menu_logo_background_color", { length: 32 }),
+  menuLogoBackgroundColorOpacity: doublePrecision(
+    "menu_logo_background_color_opacity",
+  ).default(0),
   rankingFirstMediaId: uuid("ranking_first_media_id").references(
     () => mediaAssets.id,
     { onDelete: "set null" },

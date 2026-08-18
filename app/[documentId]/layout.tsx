@@ -28,7 +28,11 @@ export default async function DocumentIdLayout({
   if (role === "manager" || role === "leader") {
     return (
       <div className="relative flex min-h-dvh flex-col">
-        <AppNav logoUrl={branding.menuLogoUrl} />
+        <AppNav
+          logoUrl={branding.menuLogoUrl}
+          menuLogoBackgroundColor={branding.menuLogoBackgroundColor}
+          menuLogoBackgroundColorOpacity={branding.menuLogoBackgroundColorOpacity}
+        />
         <main className="relative z-10 flex-1 px-4 py-6">{children}</main>
       </div>
     );
@@ -44,6 +48,8 @@ export default async function DocumentIdLayout({
         <ColaboratorHeader
           homeHref={session?.user?.id ? `/${session.user.id}` : "/"}
           logoUrl={branding.menuLogoUrl}
+          menuLogoBackgroundColor={branding.menuLogoBackgroundColor}
+          menuLogoBackgroundColorOpacity={branding.menuLogoBackgroundColorOpacity}
         />
         <main
           className={cn("relative z-10", routeThemeContentFrameClass(theme))}

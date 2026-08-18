@@ -120,6 +120,13 @@
       "when": 1787500000000,
       "tag": "0016_media_metadata_lgpd",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1787550000000,
+      "tag": "0017_menu_logo_background",
+      "breakpoints": true
     }
   ]
 }

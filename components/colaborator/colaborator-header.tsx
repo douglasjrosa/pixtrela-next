@@ -15,11 +15,15 @@ import { cn } from "@/lib/utils";
 export interface ColaboratorHeaderProps {
   homeHref?: string;
   logoUrl?: string | null;
+  menuLogoBackgroundColor?: string | null;
+  menuLogoBackgroundColorOpacity?: number | null;
 }
 
 export function ColaboratorHeader({
   homeHref = "/",
   logoUrl = null,
+  menuLogoBackgroundColor = null,
+  menuLogoBackgroundColorOpacity = null,
 }: ColaboratorHeaderProps) {
   const t = useTranslations();
   const pathname = usePathname();
@@ -43,7 +47,13 @@ export function ColaboratorHeader({
         "bg-card px-4 py-3 shadow-sm"
       }
     >
-      <AppBrandLink href={homeHref} logoUrl={logoUrl} nameClassName="text-lg" />
+      <AppBrandLink
+        href={homeHref}
+        logoUrl={logoUrl}
+        menuLogoBackgroundColor={menuLogoBackgroundColor}
+        menuLogoBackgroundColorOpacity={menuLogoBackgroundColorOpacity}
+        nameClassName="text-lg"
+      />
 
       {menuItems.length > 0 ? (
         <nav

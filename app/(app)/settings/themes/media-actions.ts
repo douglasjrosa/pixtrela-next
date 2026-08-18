@@ -12,8 +12,10 @@ import {
 import { storeMedia } from "@/lib/media/store-media";
 import {
   loadResolvedBrandingAssets,
+  updateMenuLogoBackground as updateMenuLogoBackgroundRepo,
   updateMenuLogoMediaId,
 } from "@/lib/repos/branding";
+import { normalizeOpacity } from "@/lib/themes/match-route-theme";
 import {
   deleteMediaAsset,
   findMediaReferences,
@@ -68,6 +70,15 @@ function parseCategory(raw: FormDataEntryValue | null | undefined): MediaCategor
 
 function defaultLibraryCategory(mimeType: string): MediaCategory {
   return mimeType === "application/pdf" ? "document" : "other";
+}
+
+function normalizeMenuLogoHexColor(value: string | null): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  if (!/^#([0-9A-Fa-f]{6})$/.test(trimmed)) {
+    throw new Error("invalid");
+  }
+  return trimmed.toUpperCase();
 }
 
 async function storeFromFormData(formData: FormData): Promise<{
@@ -186,12 +197,16 @@ export async function deleteLibraryMedia(
 export async function loadBrandingPreferences(): Promise<{
   menuLogoMediaId: string | null;
   menuLogoUrl: string | null;
+  menuLogoBackgroundColor: string | null;
+  menuLogoBackgroundColorOpacity: number;
 }> {
   await assertCanManage();
   const branding = await loadResolvedBrandingAssets();
   return {
     menuLogoMediaId: branding.menuLogoMediaId,
     menuLogoUrl: branding.menuLogoUrl,
+    menuLogoBackgroundColor: branding.menuLogoBackgroundColor,
+    menuLogoBackgroundColorOpacity: branding.menuLogoBackgroundColorOpacity,
   };
 }
 
@@ -207,5 +222,17 @@ export async function updateMenuLogo(
     }
   }
   await updateMenuLogoMediaId(menuLogoMediaId);
+  invalidateBranding();
+}
+
+export async function updateMenuLogoBackground(
+  backgroundColor: string | null,
+  backgroundColorOpacity: number,
+): Promise<void> {
+  await assertCanManage();
+  await updateMenuLogoBackgroundRepo({
+    backgroundColor: normalizeMenuLogoHexColor(backgroundColor),
+    backgroundColorOpacity: normalizeOpacity(backgroundColorOpacity),
+  });
   invalidateBranding();
 }

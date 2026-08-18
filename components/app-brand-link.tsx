@@ -3,12 +3,15 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
+import { resolveMenuLogoBackgroundStyle } from "@/lib/themes/menu-logo-background";
 import { cn } from "@/lib/utils";
 
 export interface AppBrandLinkProps {
   href: string;
   /** Resolved R2/media URL for the menu logo mark. */
   logoUrl?: string | null;
+  menuLogoBackgroundColor?: string | null;
+  menuLogoBackgroundColorOpacity?: number | null;
   className?: string;
   nameClassName?: string;
 }
@@ -17,22 +20,33 @@ export interface AppBrandLinkProps {
 export function AppBrandLink({
   href,
   logoUrl = null,
+  menuLogoBackgroundColor = null,
+  menuLogoBackgroundColorOpacity = null,
   className,
   nameClassName,
 }: AppBrandLinkProps) {
   const t = useTranslations("app");
+  const logoBackground = resolveMenuLogoBackgroundStyle(
+    menuLogoBackgroundColor,
+    menuLogoBackgroundColorOpacity,
+  );
 
   return (
     <Link href={href} className={cn("flex shrink-0 items-center gap-2", className)}>
       {logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- R2 /api media URLs
-        <img
-          src={logoUrl}
-          alt=""
-          width={28}
-          height={28}
-          className="size-7 shrink-0 object-contain"
-        />
+        <span
+          className="flex size-7 shrink-0 items-center justify-center rounded-sm p-0.5"
+          style={{ backgroundColor: logoBackground }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- R2 /api media URLs */}
+          <img
+            src={logoUrl}
+            alt=""
+            width={28}
+            height={28}
+            className="size-full object-contain"
+          />
+        </span>
       ) : null}
       <span className={cn("font-bold", nameClassName)}>{t("name")}</span>
     </Link>

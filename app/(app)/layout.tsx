@@ -15,7 +15,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="relative flex min-h-dvh flex-col">
       <RouteThemeBackground themes={themes} />
-      <AppNav logoUrl={branding.menuLogoUrl} />
+      <AppNav
+        logoUrl={branding.menuLogoUrl}
+        menuLogoBackgroundColor={branding.menuLogoBackgroundColor}
+        menuLogoBackgroundColorOpacity={branding.menuLogoBackgroundColorOpacity}
+      />
       <RouteThemeContentFrame themes={themes}>{children}</RouteThemeContentFrame>
     </div>
   );

@@ -4,6 +4,7 @@ import { loadResolvedBrandingAssets } from "@/lib/repos/branding";
 import {
   listLibraryMedia,
   updateMenuLogo,
+  updateMenuLogoBackground,
   uploadLibraryMedia,
 } from "../media-actions";
 
@@ -32,13 +33,26 @@ export default async function SettingsThemePreferencesPage() {
     await updateMenuLogo(mediaId);
   }
 
+  async function handleSaveMenuLogoBackground(
+    backgroundColor: string | null,
+    backgroundColorOpacity: number,
+  ) {
+    "use server";
+    await updateMenuLogoBackground(backgroundColor, backgroundColorOpacity);
+  }
+
   return (
     <ThemePreferencesForm
       initialMenuLogoMediaId={branding.menuLogoMediaId}
       initialMenuLogoUrl={branding.menuLogoUrl}
+      initialMenuLogoBackgroundColor={branding.menuLogoBackgroundColor}
+      initialMenuLogoBackgroundColorOpacity={
+        branding.menuLogoBackgroundColorOpacity
+      }
       onListImages={handleListImages}
       onUploadImage={handleUploadImage}
       onSaveMenuLogo={handleSaveMenuLogo}
+      onSaveMenuLogoBackground={handleSaveMenuLogoBackground}
     />
   );
 }
