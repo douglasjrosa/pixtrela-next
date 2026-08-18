@@ -42,7 +42,7 @@ export function KioskFaceWelcome({
   const t = useTranslations("kiosk");
   const tCommon = useTranslations("common");
   const [fadingOut, setFadingOut] = useState(false);
-  const startedAtRef = useRef(Date.now());
+  const startedAtRef = useRef<number | null>(null);
   const imageUrl =
     toBrowserMediaUrl(avatarUrl ?? null) ??
     toBrowserMediaUrl(facePhotoUrl ?? null);
@@ -51,6 +51,9 @@ export function KioskFaceWelcome({
   const holdMs = durationMs - safeFadeMs;
 
   useEffect(() => {
+    if (startedAtRef.current === null) {
+      startedAtRef.current = Date.now();
+    }
     if (!ready) return;
     const elapsedMs = Date.now() - startedAtRef.current;
     const waitHoldMs = Math.max(0, holdMs - elapsedMs);

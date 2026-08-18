@@ -1,7 +1,7 @@
 "use client";
 
 import { Minus, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -35,10 +35,12 @@ export function KioskQtyStepper({
   const safeMax = Math.max(min, max);
   const clampedValue = clampQty(value, min, safeMax);
   const [text, setText] = useState(String(clampedValue));
-
-  useEffect(() => {
-    setText(String(clampQty(value, min, safeMax)));
-  }, [value, min, safeMax]);
+  const valueKey = `${value}:${min}:${safeMax}`;
+  const [syncedKey, setSyncedKey] = useState(valueKey);
+  if (syncedKey !== valueKey) {
+    setSyncedKey(valueKey);
+    setText(String(clampedValue));
+  }
 
   function commitText(raw: string): void {
     const parsed = Number.parseInt(raw, 10);

@@ -79,17 +79,17 @@ export function KioskPanelClient({
     colaboratorId,
   );
 
+  if (
+    optimisticStart &&
+    isOptimisticKioskStartSettled(subTasks, optimisticStart)
+  ) {
+    setOptimisticStart(null);
+    setQueueBusy((current) => (current === "start" ? null : current));
+  }
+
   useEffect(() => {
     markKioskColaboratorReady();
   }, []);
-
-  useEffect(() => {
-    if (!optimisticStart) return;
-    if (isOptimisticKioskStartSettled(subTasks, optimisticStart)) {
-      setOptimisticStart(null);
-      setQueueBusy((current) => (current === "start" ? null : current));
-    }
-  }, [optimisticStart, subTasks]);
 
   useEffect(() => {
     if (queueBusy !== "exit" || exitFingerprintRef.current === null) return;

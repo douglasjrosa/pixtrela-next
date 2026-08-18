@@ -29,14 +29,18 @@ export function WelcomeOverlayHost() {
     if (next) setPayload(next);
     const waitForQueue = isKioskColaboratorPanelPath(pathname);
     setDestinationReady(!waitForQueue || isKioskColaboratorReady());
+  } else if (
+    payload &&
+    isKioskColaboratorPanelPath(pathname) &&
+    isKioskColaboratorReady() &&
+    !destinationReady
+  ) {
+    setDestinationReady(true);
   }
 
   useEffect(() => {
     if (!payload || !isKioskColaboratorPanelPath(pathname)) return;
-    if (isKioskColaboratorReady()) {
-      setDestinationReady(true);
-      return;
-    }
+    if (isKioskColaboratorReady()) return;
     function onReady(): void {
       setDestinationReady(true);
     }
