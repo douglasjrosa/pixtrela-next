@@ -10,6 +10,7 @@ vi.mock("next/navigation", () => ({
 
 import { renderWithIntl } from "@/test/test-utils";
 import type { RouteThemeView } from "@/lib/themes/match-route-theme";
+import { DEFAULT_SEMANTIC_TOKENS } from "@/lib/themes/semantic-tokens";
 
 import { ThemeSettingsManager } from "./theme-settings-manager";
 
@@ -55,14 +56,26 @@ const themes: RouteThemeView[] = [
 ];
 
 describe("ThemeSettingsManager", () => {
+  const defaultProps = {
+    themes,
+    initialSemanticTokens: DEFAULT_SEMANTIC_TOKENS,
+    onSave: vi.fn(),
+    onSaveSemanticTokens: vi.fn(),
+    onUploadImage: vi.fn(),
+  };
+
+  it("renders default colors before route themes with section headings", () => {
+    renderWithIntl(<ThemeSettingsManager {...defaultProps} />);
+
+    const headings = screen.getAllByRole("heading", { level: 2 });
+    expect(headings[0]).toHaveTextContent("Cores padrão");
+    expect(headings[1]).toHaveTextContent("Temas por rota");
+    expect(screen.getByText("Oceano")).toBeInTheDocument();
+    expect(screen.getByText(/Selecione uma rota para configurar/i)).toBeInTheDocument();
+  });
+
   it("renders a route list without the edit form by default", () => {
-    renderWithIntl(
-      <ThemeSettingsManager
-        themes={themes}
-        onSave={vi.fn()}
-        onUploadImage={vi.fn()}
-      />,
-    );
+    renderWithIntl(<ThemeSettingsManager {...defaultProps} />);
 
     expect(screen.getByText("Nome da rota")).toBeInTheDocument();
     expect(screen.getByText("Cor de fundo")).toBeInTheDocument();
@@ -75,13 +88,7 @@ describe("ThemeSettingsManager", () => {
 
   it("opens the theme modal when a row is clicked", async () => {
     const user = userEvent.setup();
-    renderWithIntl(
-      <ThemeSettingsManager
-        themes={themes}
-        onSave={vi.fn()}
-        onUploadImage={vi.fn()}
-      />,
-    );
+    renderWithIntl(<ThemeSettingsManager {...defaultProps} />);
 
     await user.click(screen.getAllByRole("button", { name: /Editar tema de Login/i })[0]);
 
@@ -104,17 +111,14 @@ describe("ThemeSettingsManager", () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);
     renderWithIntl(
-      <ThemeSettingsManager
-        themes={themes}
-        onSave={onSave}
-        onUploadImage={vi.fn()}
-      />,
+      <ThemeSettingsManager {...defaultProps} onSave={onSave} />,
     );
 
     await user.click(screen.getAllByRole("button", { name: /Editar tema de Login/i })[0]);
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
 
     expect(onSave).toHaveBeenCalledOnce();
     expect(refresh).toHaveBeenCalled();
@@ -125,11 +129,7 @@ describe("ThemeSettingsManager", () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);
     renderWithIntl(
-      <ThemeSettingsManager
-        themes={themes}
-        onSave={onSave}
-        onUploadImage={vi.fn()}
-      />,
+      <ThemeSettingsManager {...defaultProps} onSave={onSave} />,
     );
 
     await user.click(screen.getAllByRole("button", { name: /Editar tema de Login/i })[0]);
@@ -141,7 +141,8 @@ describe("ThemeSettingsManager", () => {
       screen.getByLabelText("Margem da página (desktop)"),
       "sm",
     );
-    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
 
     expect(onSave).toHaveBeenCalledWith(
       "doc-login",

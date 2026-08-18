@@ -11,6 +11,6 @@ describe("KioskSubtaskStatusBadge", () => {
 
     const badge = screen.getByText("Produzindo");
     expect(badge).toHaveClass("uppercase");
-    expect(badge).toHaveClass("bg-[#25D366]");
+    expect(badge).toHaveClass("bg-success");
   });
 });

@@ -92,6 +92,13 @@
       "when": 1787300000000,
       "tag": "0012_activities_subtask_colaborator_ts_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787350000000,
+      "tag": "0013_semantic_theme_settings",
+      "breakpoints": true
     }
   ]
 }

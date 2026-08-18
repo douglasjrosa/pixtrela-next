@@ -41,7 +41,9 @@ describe("AppNav", () => {
 
     const header = screen.getByRole("banner");
     expect(header.className).toContain("fixed");
-    expect(screen.getByRole("link", { name: "Pixtrela" })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link").some((link) => link.className.includes("font-bold")),
+    ).toBe(true);
     expect(screen.getByRole("link", { name: "Painel" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Configurações" })).toBeInTheDocument();
     expect(

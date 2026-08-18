@@ -35,7 +35,7 @@ export function RankingPodium({
             key={row.userDocumentId}
             className={cn(
               "flex flex-col items-center rounded-2xl bg-[var(--rank-cosmic)] p-3 text-center text-white",
-              isSelf && "ring-2 ring-[var(--star-gold)]",
+              isSelf && "ring-2 ring-star-gold",
             )}
           >
             {asset ? (

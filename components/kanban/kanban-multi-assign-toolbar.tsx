@@ -78,8 +78,8 @@ export function KanbanMultiAssignSubmitButton({
       type="button"
       disabled={disabled || !canApply}
       className={cn(
-        "bg-emerald-600 text-white hover:bg-emerald-600/90",
-        "focus-visible:border-emerald-600/40 focus-visible:ring-emerald-600/20",
+        "bg-success text-success-foreground hover:bg-success/90",
+        "focus-visible:border-success/40 focus-visible:ring-success/20",
       )}
       onClick={onAssign}
     >

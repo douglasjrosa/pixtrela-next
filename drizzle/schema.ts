@@ -211,6 +211,14 @@ export const routeThemes = pgTable("route_themes", {
     .notNull(),
 });
 
+export const semanticThemeSettings = pgTable("semantic_theme_settings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tokens: jsonb("tokens").$type<Record<string, string>>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 export const kioskSettings = pgTable("kiosk_settings", {
   id: uuid("id").defaultRandom().primaryKey(),
   sessionIdleSeconds: integer("session_idle_seconds").default(120).notNull(),

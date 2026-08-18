@@ -10,6 +10,8 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { DefaultColorsSection } from "@/components/settings/default-colors-section";
+import { SettingsSectionHeading } from "@/components/settings/settings-section-heading";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,7 +51,11 @@ import { cn } from "@/lib/utils";
 
 export interface ThemeSettingsManagerProps {
   themes: RouteThemeView[];
+  initialSemanticTokens: import("@/lib/themes/semantic-tokens").SemanticTokens;
   onSave: (documentId: string, values: RouteThemeFormInput) => Promise<void>;
+  onSaveSemanticTokens: (
+    tokens: import("@/lib/themes/semantic-tokens").SemanticTokens,
+  ) => Promise<void>;
   onUploadImage: (formData: FormData) => Promise<number | string>;
 }
 
@@ -152,7 +158,9 @@ function ImagePreviewRect({
 
 export function ThemeSettingsManager({
   themes,
+  initialSemanticTokens,
   onSave,
+  onSaveSemanticTokens,
   onUploadImage,
 }: ThemeSettingsManagerProps) {
   const router = useRouter();
@@ -277,8 +285,15 @@ export function ThemeSettingsManager({
   const formId = "route-theme-form";
 
   return (
-    <div className="space-y-6">
-      <p className="text-sm text-muted-foreground">{t("themesHelp")}</p>
+    <div className="space-y-10">
+      <DefaultColorsSection
+        initialTokens={initialSemanticTokens}
+        onSave={onSaveSemanticTokens}
+      />
+
+      <section className="space-y-4">
+        <SettingsSectionHeading title={t("routeThemesTitle")} />
+        <p className="text-sm text-muted-foreground">{t("themesHelp")}</p>
 
       {themes.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("themesEmpty")}</p>
@@ -361,6 +376,7 @@ export function ThemeSettingsManager({
           </ul>
         </>
       )}
+      </section>
 
       {editingTheme && draft ? (
         <FormModalShell

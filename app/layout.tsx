@@ -6,6 +6,7 @@ import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { SerwistProvider } from "@/components/serwist-provider";
+import { SemanticThemeStyle } from "@/components/themes/semantic-theme-style";
 import {
   APP_APPLE_TOUCH_ICON,
   APP_FAVICON_JPG,
@@ -62,6 +63,7 @@ export default async function RootLayout({
       lang={locale}
       className={`${comfortaa.variable} ${merriweatherSans.variable} h-full antialiased`}
     >
+      <SemanticThemeStyle />
       <body className="flex min-h-full flex-col font-sans">
         <SerwistProvider swUrl="/serwist/sw.js">
           <NextIntlClientProvider locale={locale} messages={messages}>

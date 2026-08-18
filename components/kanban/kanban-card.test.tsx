@@ -108,8 +108,10 @@ describe("KanbanCard", () => {
       </DndContext>,
     );
 
-    expect(screen.getByText("Pausada").className).toContain("bg-yellow-200");
-    expect(screen.getByText("Pausada").className).toContain("text-yellow-900");
+    expect(screen.getByText("Pausada").className).toContain("bg-warning");
+    expect(screen.getByText("Pausada").className).toContain(
+      "text-warning-foreground",
+    );
   });
 
   it("shows progress bar footer for waiting tasks", () => {

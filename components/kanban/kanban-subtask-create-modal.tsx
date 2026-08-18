@@ -82,7 +82,7 @@ export function KanbanSubtaskCreateModal({
   return (
     <div
       className={cn(
-        "fixed inset-0 flex items-center justify-center bg-black/50 p-4",
+        "fixed inset-0 flex items-center justify-center bg-overlay/50 p-4",
         FORM_MODAL_NESTED_OVERLAY_Z_CLASS,
       )}
       role="presentation"

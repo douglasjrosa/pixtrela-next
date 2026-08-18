@@ -7,6 +7,7 @@ export {
   awards,
   awardPrices,
   routeThemes,
+  semanticThemeSettings,
   kioskSettings,
   entryAccessSettings,
   taskAutomationSettings,

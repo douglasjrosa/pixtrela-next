@@ -110,7 +110,7 @@ export function FormModalShell({
   return (
     <div
       className={cn(
-        "fixed inset-0 flex bg-black/50",
+        "fixed inset-0 flex bg-overlay/50",
         overlayZ,
         isViewport
           ? "items-start justify-center p-0 sm:px-4 sm:pb-4 sm:pt-[4.5rem]"
