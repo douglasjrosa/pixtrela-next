@@ -139,7 +139,7 @@ export function BalanceAdjustmentModal({
       open={open}
       title={t("balanceAdjustmentTitle")}
       onClose={handleClose}
-      size="xs"
+      size="sm"
       fillBody={false}
       disabled={isPending}
       footerStart={
@@ -158,9 +158,14 @@ export function BalanceAdjustmentModal({
         </Button>
       }
     >
-      <div className="mx-auto flex w-full max-w-[12rem] flex-col gap-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="balance-adjustment-date">{t("balanceAdjustmentDate")}</Label>
+      <div className="flex flex-col gap-4 px-1">
+        <div className="mx-auto w-full max-w-[14rem] space-y-1.5">
+          <Label
+            htmlFor="balance-adjustment-date"
+            className="block text-center"
+          >
+            {t("balanceAdjustmentDate")}
+          </Label>
           <Input
             id="balance-adjustment-date"
             type="date"
@@ -173,8 +178,11 @@ export function BalanceAdjustmentModal({
           />
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="balance-adjustment-currency">
+        <div className="mx-auto w-full max-w-[14rem] space-y-1.5">
+          <Label
+            htmlFor="balance-adjustment-currency"
+            className="block text-center"
+          >
             {t("balanceAdjustmentCurrency")}
           </Label>
           <select
@@ -192,7 +200,7 @@ export function BalanceAdjustmentModal({
           </select>
         </div>
 
-        <div className="space-y-1.5">
+        <div className="mx-auto w-full max-w-[12rem] space-y-1.5">
           <Label htmlFor="balance-adjustment-amount">
             {t("balanceAdjustmentAmount")}
           </Label>
