@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/load-more-button";
 import { isImageMime } from "@/lib/media/media-mime";
 import type { MediaAssetRecord, MediaMimeFilter } from "@/lib/repos/media";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 24;
@@ -30,7 +31,9 @@ export interface MediaFilesManagerProps {
   }) => Promise<{ items: MediaAssetRecord[]; total: number }>;
   onUpload: (formData: FormData) => Promise<MediaAssetRecord>;
   onReplace: (mediaId: string, formData: FormData) => Promise<MediaAssetRecord>;
-  onDelete: (mediaId: string) => Promise<void>;
+  onDelete: (
+    mediaId: string,
+  ) => Promise<{ ok: true } | { ok: false; reason: string; refs: string[] }>;
 }
 
 function formatBytes(size: number | null): string {
@@ -138,16 +141,24 @@ export function MediaFilesManager({
     startTransition(async () => {
       setMessage(null);
       try {
-        await onDelete(mediaId);
+        const result = await onDelete(mediaId);
+        if (!result.ok) {
+          const detail =
+            result.reason === "inUse" && result.refs.length > 0
+              ? t("mediaInUseWithRefs", { refs: result.refs.join(", ") })
+              : t("mediaInUse");
+          setMessage(detail);
+          showErrorToast(detail);
+          return;
+        }
         setItems((current) => current.filter((item) => item.id !== mediaId));
         setTotal((current) => Math.max(0, current - 1));
         setDeleteId(null);
-      } catch (error) {
-        const code = error instanceof Error ? error.message : "";
-        setMessage(
-          code === "inUse" ? t("mediaInUse") : tCommon("errorGeneric"),
-        );
-        setDeleteId(null);
+        showSuccessToast(t("mediaDeleted"));
+      } catch {
+        const detail = tCommon("errorGeneric");
+        setMessage(detail);
+        showErrorToast(detail);
       }
     });
   }

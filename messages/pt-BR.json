@@ -628,6 +628,8 @@
     "mediaDelete": "Excluir",
     "mediaDeleteConfirm": "Excluir este arquivo permanentemente?",
     "mediaInUse": "Arquivo em uso e não pode ser excluído.",
+    "mediaInUseWithRefs": "Arquivo em uso ({refs}) e não pode ser excluído.",
+    "mediaDeleted": "Arquivo excluído.",
     "mediaFilterAll": "Todos",
     "mediaFilterImages": "Imagens",
     "mediaFilterPdf": "PDF",

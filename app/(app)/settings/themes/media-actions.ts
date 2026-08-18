@@ -16,6 +16,7 @@ import {
 } from "@/lib/repos/branding";
 import {
   deleteMediaAsset,
+  findMediaReferences,
   getMediaAsset,
   insertMediaAsset,
   listMediaAssets,
@@ -104,10 +105,25 @@ export async function replaceLibraryMedia(
   return asset;
 }
 
-export async function deleteLibraryMedia(mediaId: string): Promise<void> {
+export async function deleteLibraryMedia(
+  mediaId: string,
+): Promise<{ ok: true } | { ok: false; reason: "inUse" | "notFound"; refs: string[] }> {
   await assertCanManage();
+  const existing = await getMediaAsset(mediaId);
+  if (!existing) {
+    return { ok: false, reason: "notFound", refs: [] };
+  }
+  const refs = await findMediaReferences(mediaId);
+  if (refs.length > 0) {
+    return {
+      ok: false,
+      reason: "inUse",
+      refs: refs.map((ref) => ref.label),
+    };
+  }
   await deleteMediaAsset(mediaId);
   invalidateMediaLibrary();
+  return { ok: true };
 }
 
 export async function loadBrandingPreferences(): Promise<{
