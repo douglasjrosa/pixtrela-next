@@ -26,6 +26,8 @@ function kioskSubTask(
     taskName: overrides.taskName ?? "Tarefa pai",
     taskIndex: overrides.taskIndex ?? 0,
     finishedAt: overrides.finishedAt ?? null,
+    viewerParticipated: overrides.viewerParticipated,
+    viewerCurrencyAwarded: overrides.viewerCurrencyAwarded,
     activeWorkerCount: overrides.activeWorkerCount ?? 0,
   };
 }

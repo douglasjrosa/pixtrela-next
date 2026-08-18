@@ -28,6 +28,7 @@ function kioskSubTask(
     taskName: overrides.taskName ?? "Tarefa pai",
     taskIndex: overrides.taskIndex ?? 0,
     finishedAt: overrides.finishedAt ?? null,
+    viewerCurrencyAwarded: overrides.viewerCurrencyAwarded,
     activeWorkerCount: overrides.activeWorkerCount ?? 0,
     linkedToPrevious: overrides.linkedToPrevious ?? false,
     maxSameTimeWorkers: overrides.maxSameTimeWorkers ?? 1,
