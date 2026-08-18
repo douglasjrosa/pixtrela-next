@@ -285,7 +285,17 @@
     "day": "Dia",
     "income": "Ganho",
     "outcome": "Perdido",
-    "net": "Líquido"
+    "net": "Líquido",
+    "balanceAdjustmentButton": "Ajuste de saldo",
+    "balanceAdjustmentTitle": "Ajuste de saldo",
+    "balanceAdjustmentDate": "Data",
+    "balanceAdjustmentCurrency": "Moeda",
+    "balanceAdjustmentAmount": "Valor",
+    "balanceAdjustmentCurrencyRequired": "Selecione uma moeda.",
+    "balanceAdjustmentAmountRequired": "Informe um valor diferente de zero.",
+    "balanceAdjustmentSaved": "Saldo ajustado.",
+    "balanceAdjustmentSaveFailed": "Não foi possível ajustar o saldo.",
+    "balanceAdjustmentForbidden": "Você não tem permissão para ajustar saldos."
   },
   "exchange": {
     "title": "Trocar Estrelas por prêmios",

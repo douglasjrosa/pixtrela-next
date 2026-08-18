@@ -1,12 +1,16 @@
 import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
+import { adjustColaboratorBalance } from "@/app/(app)/balance-adjustment-actions";
 import { DashboardInsightsBlock } from "@/components/dashboard/dashboard-insights-block";
 import type { Role } from "@/lib/auth/nav";
+import { canAdjustColaboratorBalance } from "@/lib/auth/permissions";
+import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
 import { loadColaboratorInsights } from "@/lib/dashboard/load-colaborator-insights";
 import { loadColaboratorOptions } from "@/lib/dashboard/load-colaborator-options";
 import { loadMonthlyRanking } from "@/lib/dashboard/load-monthly-ranking";
 import { resolveDefaultColaboratorDocumentId } from "@/lib/dashboard/resolve-default-colaborator";
+import { listCurrencies } from "@/lib/repos/awards";
 
 interface DashboardPageProps {
   searchParams: Promise<{ colaborator?: string }>;
@@ -49,6 +53,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         previousMonthsByCurrency: [],
       };
 
+  const balanceCurrencyOptions = canAdjustColaboratorBalance(role)
+    ? (await listCurrencies()).map((currency) => ({
+        id: currency.id,
+        label: resolveCurrencyPluralTitle(currency),
+      }))
+    : [];
+
   return (
     <section className="space-y-10 p-6">
       <div className="space-y-2">
@@ -65,6 +76,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         selectedDocumentId={selectedDocumentId ?? ""}
         selectedName={selectedName}
         insights={insights}
+        balanceCurrencyOptions={balanceCurrencyOptions}
+        onAdjustBalance={adjustColaboratorBalance}
       />
     </section>
   );

@@ -10,6 +10,7 @@ import {
   canDeactivateTasks,
   canDeleteTasks,
   canExchange,
+  canAdjustColaboratorBalance,
   canDeactivateAwards,
   canDeleteAwards,
   canManageAwards,
@@ -125,6 +126,15 @@ describe("canViewAwards", () => {
     expect(canViewAwards("admin")).toBe(true);
     expect(canViewAwards("manager")).toBe(true);
     expect(canViewAwards("leader")).toBe(false);
+  });
+});
+
+describe("canAdjustColaboratorBalance", () => {
+  it("allows manager and admin only", () => {
+    expect(canAdjustColaboratorBalance("admin")).toBe(true);
+    expect(canAdjustColaboratorBalance("manager")).toBe(true);
+    expect(canAdjustColaboratorBalance("leader")).toBe(false);
+    expect(canAdjustColaboratorBalance("colaborator")).toBe(false);
   });
 });
 

@@ -57,11 +57,32 @@ describe("ColaboratorInsightsSection", () => {
         selectedName="Ana"
         insights={INSIGHTS}
         currencyRankings={CURRENCIES}
+        balanceCurrencyOptions={[{ id: "cur-1", label: "Estrelas" }]}
+        onAdjustBalance={vi.fn()}
       />,
     );
 
     expect(screen.getByRole("combobox")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ajuste de saldo" })).toBeInTheDocument();
     expect(screen.getByText("30")).toBeInTheDocument();
+  });
+
+  it("hides balance adjustment for leader", () => {
+    renderWithIntl(
+      <ColaboratorInsightsSection
+        mode="staff"
+        role="leader"
+        colaboratorOptions={[{ documentId: "c1", name: "Ana", code: 1 }]}
+        selectedDocumentId="c1"
+        selectedName="Ana"
+        insights={INSIGHTS}
+        currencyRankings={CURRENCIES}
+        balanceCurrencyOptions={[{ id: "cur-1", label: "Estrelas" }]}
+        onAdjustBalance={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Ajuste de saldo" })).not.toBeInTheDocument();
   });
 
   it("renders today gain for colaborator self mode", () => {

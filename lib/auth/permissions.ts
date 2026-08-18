@@ -86,6 +86,11 @@ export function canViewAwards(role: Role | undefined): boolean {
   return isAtLeast(role, "manager");
 }
 
+/** Manual colaborator balance adjustment: manager and admin. */
+export function canAdjustColaboratorBalance(role: Role | undefined): boolean {
+  return isAtLeast(role, "manager");
+}
+
 /** Settings (currency): admin only. */
 export function canManageSettings(role: Role | undefined): boolean {
   return role === "admin";
