@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
 import { KioskActionButton } from "./kiosk-action-button";
+import { KioskQtyStepper } from "./kiosk-qty-stepper";
 
 export interface KioskExitSubtaskFormProps {
   sharingType: SubTaskFormInput["sharingType"];
@@ -16,6 +16,7 @@ export interface KioskExitSubtaskFormProps {
   /** When false, duration completion and qty-based finish are blocked by peers. */
   allowComplete?: boolean;
   disabled?: boolean;
+  busy?: boolean;
   onCancel: () => void;
   onConfirm: (input: KioskExitInput) => void;
 }
@@ -25,12 +26,16 @@ export function KioskExitSubtaskForm({
   maxQty = 1,
   allowComplete = true,
   disabled = false,
+  busy = false,
   onCancel,
   onConfirm,
 }: KioskExitSubtaskFormProps) {
   const t = useTranslations("kiosk");
-  const [qtyCompleted, setQtyCompleted] = useState("1");
+  const safeMaxQty = Math.max(0, maxQty);
+  const [qtyCompleted, setQtyCompleted] = useState(safeMaxQty);
   const [qtyError, setQtyError] = useState<string | null>(null);
+  const actionsDisabled = disabled || busy;
+  const confirmLabel = busy ? t("actionLoading") : t("exitConfirm");
 
   if (sharingType === "duration") {
     if (!allowComplete) {
@@ -40,16 +45,16 @@ export function KioskExitSubtaskForm({
           <div className="flex flex-col gap-2">
             <KioskActionButton
               actionVariant="produce"
-              disabled={disabled}
+              disabled={actionsDisabled}
               onClick={() =>
                 onConfirm({ sharingType: "duration", isCompleted: false })
               }
             >
-              {t("exitConfirm")}
+              {confirmLabel}
             </KioskActionButton>
             <KioskActionButton
               actionVariant="outline"
-              disabled={disabled}
+              disabled={actionsDisabled}
               onClick={onCancel}
             >
               {t("exitCancel")}
@@ -65,16 +70,16 @@ export function KioskExitSubtaskForm({
         <div className="flex flex-col gap-2">
           <KioskActionButton
             actionVariant="produce"
-            disabled={disabled}
+            disabled={actionsDisabled}
             onClick={() =>
               onConfirm({ sharingType: "duration", isCompleted: true })
             }
           >
-            {t("exitCompletedYes")}
+            {busy ? t("actionLoading") : t("exitCompletedYes")}
           </KioskActionButton>
           <KioskActionButton
             actionVariant="outline"
-            disabled={disabled}
+            disabled={actionsDisabled}
             onClick={() =>
               onConfirm({ sharingType: "duration", isCompleted: false })
             }
@@ -83,7 +88,7 @@ export function KioskExitSubtaskForm({
           </KioskActionButton>
           <KioskActionButton
             actionVariant="outline"
-            disabled={disabled}
+            disabled={actionsDisabled}
             onClick={onCancel}
           >
             {t("exitCancel")}
@@ -92,8 +97,6 @@ export function KioskExitSubtaskForm({
       </div>
     );
   }
-
-  const safeMaxQty = Math.max(0, maxQty);
 
   return (
     <div className="space-y-3 rounded-2xl border bg-muted p-3">
@@ -106,17 +109,13 @@ export function KioskExitSubtaskForm({
         <Label htmlFor="kiosk-exit-qty" className="text-base">
           {t("exitQtyLabel")}
         </Label>
-        <Input
+        <KioskQtyStepper
           id="kiosk-exit-qty"
-          type="number"
-          inputMode="numeric"
-          min={0}
-          max={safeMaxQty}
           value={qtyCompleted}
-          disabled={disabled}
-          className="h-14 rounded-2xl text-lg"
-          onChange={(event) => {
-            setQtyCompleted(event.target.value);
+          max={safeMaxQty}
+          disabled={actionsDisabled}
+          onChange={(next) => {
+            setQtyCompleted(next);
             setQtyError(null);
           }}
         />
@@ -132,25 +131,24 @@ export function KioskExitSubtaskForm({
       <div className="flex flex-col gap-2">
         <KioskActionButton
           actionVariant="produce"
-          disabled={disabled}
+          disabled={actionsDisabled}
           onClick={() => {
-            const parsed = Number.parseInt(qtyCompleted, 10);
-            if (!Number.isInteger(parsed) || parsed < 0) {
+            if (!Number.isInteger(qtyCompleted) || qtyCompleted < 0) {
               setQtyError(t("exitQtyInvalid"));
               return;
             }
-            if (parsed > safeMaxQty) {
+            if (qtyCompleted > safeMaxQty) {
               setQtyError(t("exitQtyExceeds"));
               return;
             }
-            onConfirm({ sharingType: "qty", qtyCompleted: parsed });
+            onConfirm({ sharingType: "qty", qtyCompleted });
           }}
         >
-          {t("exitConfirm")}
+          {confirmLabel}
         </KioskActionButton>
         <KioskActionButton
           actionVariant="outline"
-          disabled={disabled}
+          disabled={actionsDisabled}
           onClick={onCancel}
         >
           {t("exitCancel")}

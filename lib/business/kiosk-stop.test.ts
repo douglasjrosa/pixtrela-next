@@ -19,9 +19,11 @@ describe('parseDurationStopBody', () => {
 });
 
 describe('parseQtyStopBody', () => {
-  it('requires positive integer qty', () => {
+  it('requires non-negative integer qty', () => {
     expect(parseQtyStopBody({ qty: 2 })).toBe(2);
+    expect(parseQtyStopBody({ qty: 0 })).toBe(0);
     expect(() => parseQtyStopBody({})).toThrow('qty required');
+    expect(() => parseQtyStopBody({ qty: -1 })).toThrow('qty required');
   });
 });
 
@@ -38,6 +40,10 @@ describe('resolveQtyStop', () => {
   it('rejects qty above remaining pieces', () => {
     expect(() => resolveQtyStop(10, 7, 4)).toThrow('qty exceeds sub-task quantity');
     expect(() => resolveQtyStop(10, 0, 11)).toThrow('qty exceeds sub-task quantity');
+  });
+
+  it('allows zero completed pieces in a session', () => {
+    expect(resolveQtyStop(10, 7, 0)).toEqual({ qty: 0, subTaskStatus: 'waiting' });
   });
 });
 

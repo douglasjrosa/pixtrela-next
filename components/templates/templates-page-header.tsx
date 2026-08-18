@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { createTemplate } from "@/app/(app)/templates/actions";
+import { AddNewButton } from "@/components/ui/add-new-button";
 import { Button } from "@/components/ui/button";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
@@ -94,9 +95,10 @@ export function TemplatesPageHeader() {
 
   return (
     <div className="flex shrink-0 items-center justify-end gap-3">
-      <Button type="button" variant="outline" onClick={() => setCreateOpen(true)}>
-        {tTemplates("newTemplate")}
-      </Button>
+      <AddNewButton
+        label={tTemplates("newTemplate")}
+        onClick={() => setCreateOpen(true)}
+      />
 
       {createOpen ? (
         <CreateTemplateDialog

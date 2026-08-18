@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
@@ -449,9 +450,7 @@ export function AwardManager({
             {tAwards("title")}
           </h1>
           {canManage ? (
-            <Button type="button" variant="outline" onClick={startCreate}>
-              {tAwards("newAward")}
-            </Button>
+            <AddNewButton label={tAwards("newAward")} onClick={startCreate} />
           ) : null}
         </div>
 

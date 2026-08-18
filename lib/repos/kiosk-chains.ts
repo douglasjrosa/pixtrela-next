@@ -8,6 +8,7 @@ import {
   isFinishedThisRun,
   planPrincipalSegmentActivities,
   resolveChainAutoAdvance,
+  statusAfterChainTimeAdvance,
   type AllocationMember,
   type ChainStopAnswer,
 } from "@/lib/business/subtask-chain-allocation";
@@ -151,34 +152,24 @@ function hasOpenSession(
   return hasOpenStartedSessionFromActions(actions);
 }
 
-export async function findOpenChainRunId(input: {
-  subTaskIds: string[];
-  db?: Db;
-}): Promise<{
+export type OpenChainRunRef = {
   chainRunId: string;
   principalId: string;
   runStartedAt: Date;
-} | null> {
-  const db = input.db ?? getDb();
-  if (input.subTaskIds.length === 0) return null;
-  const rows = await db
-    .select({
-      chainRunId: activities.chainRunId,
-      colaboratorId: activities.colaboratorId,
-      action: activities.action,
-      timestamp: activities.timestamp,
-      subTaskId: activities.subTaskId,
-    })
-    .from(activities)
-    .where(
-      and(
-        inArray(activities.subTaskId, input.subTaskIds),
-        inArray(activities.action, ["started", "stoped"]),
-      ),
-    )
-    .orderBy(asc(activities.timestamp));
+};
 
-  const byRun = new Map<string, typeof rows>();
+type ChainActivityLookupRow = {
+  chainRunId: string | null;
+  colaboratorId: string;
+  action: "started" | "stoped" | string;
+  timestamp: Date;
+  subTaskId: string;
+};
+
+export function resolveOpenChainRunFromActivityRows(
+  rows: readonly ChainActivityLookupRow[],
+): OpenChainRunRef | null {
+  const byRun = new Map<string, ChainActivityLookupRow[]>();
   for (const row of rows) {
     if (!row.chainRunId) continue;
     const list = byRun.get(row.chainRunId) ?? [];
@@ -200,6 +191,55 @@ export async function findOpenChainRunId(input: {
     };
   }
   return null;
+}
+
+async function listChainActivityLookupRows(
+  subTaskIds: readonly string[],
+  db: Db,
+): Promise<ChainActivityLookupRow[]> {
+  if (subTaskIds.length === 0) return [];
+  return db
+    .select({
+      chainRunId: activities.chainRunId,
+      colaboratorId: activities.colaboratorId,
+      action: activities.action,
+      timestamp: activities.timestamp,
+      subTaskId: activities.subTaskId,
+    })
+    .from(activities)
+    .where(
+      and(
+        inArray(activities.subTaskId, [...subTaskIds]),
+        inArray(activities.action, ["started", "stoped"]),
+      ),
+    )
+    .orderBy(asc(activities.timestamp));
+}
+
+export async function findOpenChainRunId(input: {
+  subTaskIds: string[];
+  db?: Db;
+}): Promise<OpenChainRunRef | null> {
+  const db = input.db ?? getDb();
+  const rows = await listChainActivityLookupRows(input.subTaskIds, db);
+  return resolveOpenChainRunFromActivityRows(rows);
+}
+
+export async function findOpenChainRunsForMemberGroups(
+  groups: readonly { headId: string; memberIds: readonly string[] }[],
+  db: Db = getDb(),
+): Promise<Map<string, OpenChainRunRef>> {
+  const allIds = [...new Set(groups.flatMap((group) => group.memberIds))];
+  const rows = await listChainActivityLookupRows(allIds, db);
+  const result = new Map<string, OpenChainRunRef>();
+  for (const group of groups) {
+    const memberIds = new Set(group.memberIds);
+    const open = resolveOpenChainRunFromActivityRows(
+      rows.filter((row) => memberIds.has(row.subTaskId)),
+    );
+    if (open) result.set(group.headId, open);
+  }
+  return result;
 }
 
 export async function findLatestChainRunIdForSubTask(
@@ -340,7 +380,7 @@ export async function advanceChainRun(
         await tx
           .update(subTasks)
           .set({
-            status: helperOpen ? PRODUCING_STATUS : WAITING_STATUS,
+            status: statusAfterChainTimeAdvance(helperOpen),
             updatedAt: now,
           })
           .where(eq(subTasks.id, completedId));

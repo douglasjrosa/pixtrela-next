@@ -70,7 +70,17 @@ with specific messages rather than one vague cleanup commit.
 3. If the GitHub repository does not exist yet, create it under the GitHub
    account that owns this project and push (do not assume a fixed account).
 
-## 5. Continue on dev
+## 5. Sync origin `dev` with shipped `master`
 
-Fast-forward `dev` onto the shipped `master` so the next cycle starts clean:
-`git checkout dev && git merge --ff-only master && git push origin dev`.
+After pushing `master`, update **only** `origin/dev` so it matches production.
+**Do not** merge into or reset **local** `dev` — you may already have new work
+there while this cycle ran; that work joins the next `/optimize` or
+`/optimize-min`.
+
+```bash
+git fetch origin
+git push origin origin/master:refs/heads/dev
+```
+
+- `origin/dev` ends on the same commit as `origin/master`.
+- **Local `dev` stays unchanged** (do not `git checkout dev && git merge master`).

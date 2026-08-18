@@ -1,13 +1,13 @@
 "use client";
 
 import { Suspense, useState, useTransition, type ReactNode } from "react";
-import { Plus } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
@@ -325,14 +325,7 @@ export function TeamManager({
           <h1 className="text-2xl font-bold max-[500px]:text-lg">
             {tTeams("title")}
           </h1>
-          <Button
-            type="button"
-            size="icon-lg"
-            aria-label={tTeams("newTeam")}
-            onClick={startCreate}
-          >
-            <Plus aria-hidden />
-          </Button>
+          <AddNewButton label={tTeams("newTeam")} onClick={startCreate} />
         </div>
 
         <Suspense fallback={null}>

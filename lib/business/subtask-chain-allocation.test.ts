@@ -7,6 +7,7 @@ import {
   msUntilNextAutoAdvance,
   planPrincipalSegmentActivities,
   resolveChainAutoAdvance,
+  statusAfterChainTimeAdvance,
 } from "./subtask-chain-allocation";
 
 const T0 = new Date("2026-08-16T12:00:00.000Z");
@@ -143,6 +144,16 @@ describe("resolveChainAutoAdvance", () => {
         remainingOrdered: [{ documentId: "c", expectedTime: 30 }],
       }),
     ).toEqual({ completedIds: [], currentId: "c" });
+  });
+});
+
+describe("statusAfterChainTimeAdvance", () => {
+  it("pauses the rolled member when no helper is still open", () => {
+    expect(statusAfterChainTimeAdvance(false)).toBe("paused");
+  });
+
+  it("keeps producing when a helper session is still open", () => {
+    expect(statusAfterChainTimeAdvance(true)).toBe("producing");
   });
 });
 
