@@ -538,7 +538,7 @@ async function reallocateChainRunInternal(
     ? remaining
     : chain.memberIds
         .map((id) => byId.get(id))
-        .filter((item): item is ChainSubTask => Boolean(item))
+        .filter((item): item is NonNullable<typeof item> => item != null)
         .filter((item) =>
           runRows.some((row) => row.subTaskId === item.documentId),
         );
