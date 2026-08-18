@@ -8,6 +8,7 @@ import { removeFlag, saveFlag } from "@/app/(app)/settings/subtasks/actions";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
@@ -96,9 +97,8 @@ export function FlagEditForm({
       </div>
       <div className="space-y-1">
         <Label htmlFor="edit-flag-index">{t("flagIndex")}</Label>
-        <Input
+        <NumberInput
           id="edit-flag-index"
-          type="number"
           min={1}
           value={index}
           required

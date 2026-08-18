@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { formatDatePtBr } from "@/lib/format/datetime";
 import {
@@ -145,9 +146,8 @@ function TeamFormDialog({
 
         <div className="space-y-2">
           <Label htmlFor="exchangesFirstDay">{tTeams("exchangesFirstDay")}</Label>
-          <Input
+          <NumberInput
             id="exchangesFirstDay"
-            type="number"
             min={1}
             max={31}
             disabled={isPending}
@@ -157,9 +157,8 @@ function TeamFormDialog({
 
         <div className="space-y-2">
           <Label htmlFor="exchangesLastDay">{tTeams("exchangesLastDay")}</Label>
-          <Input
+          <NumberInput
             id="exchangesLastDay"
-            type="number"
             min={1}
             max={31}
             disabled={isPending}

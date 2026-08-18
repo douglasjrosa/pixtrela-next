@@ -12,6 +12,7 @@ import { AddNewButton } from "@/components/ui/add-new-button";
 import { Button } from "@/components/ui/button";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
@@ -130,9 +131,8 @@ export function FlagPageHeader({
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <Label htmlFor="flag-index-from">{t("flagIndexFrom")}</Label>
-                  <Input
+                  <NumberInput
                     id="flag-index-from"
-                    type="number"
                     min={1}
                     value={indexFrom}
                     required
@@ -143,9 +143,8 @@ export function FlagPageHeader({
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="flag-index-to">{t("flagIndexTo")}</Label>
-                  <Input
+                  <NumberInput
                     id="flag-index-to"
-                    type="number"
                     min={1}
                     value={indexTo}
                     required

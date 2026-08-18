@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
@@ -65,10 +66,9 @@ export function KioskSessionIdleForm({
           <Label htmlFor="sessionIdleSeconds" className="shrink-0">
             {tSettings("kioskSessionIdleSeconds")}
           </Label>
-          <Input
+          <NumberInput
             id="sessionIdleSeconds"
             className="flex-1"
-            type="number"
             min={1}
             max={3600}
             step={1}
@@ -86,9 +86,8 @@ export function KioskSessionIdleForm({
         <Label htmlFor="maxSimultaneousSubtaskIntervalSeconds">
           {tSettings("kioskLiveChainIntervalSeconds")}
         </Label>
-        <Input
+        <NumberInput
           id="maxSimultaneousSubtaskIntervalSeconds"
-          type="number"
           min={0}
           max={86400}
           step={1}

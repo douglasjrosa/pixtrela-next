@@ -20,6 +20,7 @@ import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { buildDefaultLogin } from "@/lib/business/default-login";
 import { buildKioskColaboratorPath } from "@/lib/kiosk/kiosk-link";
@@ -410,9 +411,8 @@ function UserFormDialog({
 
         <div className="space-y-2">
           <Label htmlFor="code">{tUsers("code")}</Label>
-          <Input
+          <NumberInput
             id="code"
-            type="number"
             min={0}
             {...register("code", {
               setValueAs: (value) => {

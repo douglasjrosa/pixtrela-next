@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
@@ -165,9 +166,8 @@ export function TemplateSubTaskInlineForm({
 
       <div className="space-y-2">
         <Label htmlFor={fieldId("qty")}>{tSubtasks("qty")}</Label>
-        <Input
+        <NumberInput
           id={fieldId("qty")}
-          type="number"
           min={1}
           disabled={disabled}
           {...register("qty", { valueAsNumber: true })}
@@ -178,9 +178,8 @@ export function TemplateSubTaskInlineForm({
         <Label htmlFor={fieldId("expectedTime")}>
           {tSubtasks("expectedTime")}
         </Label>
-        <Input
+        <NumberInput
           id={fieldId("expectedTime")}
-          type="number"
           min={0}
           disabled={disabled}
           {...register("expectedTime", { valueAsNumber: true })}
@@ -191,9 +190,8 @@ export function TemplateSubTaskInlineForm({
         <Label htmlFor={fieldId("maxSameTimeWorkers")}>
           {tSubtasks("maxSameTimeWorkers")}
         </Label>
-        <Input
+        <NumberInput
           id={fieldId("maxSameTimeWorkers")}
-          type="number"
           min={1}
           disabled={disabled}
           {...register("maxSameTimeWorkers", { valueAsNumber: true })}

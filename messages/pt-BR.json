@@ -31,7 +31,9 @@
     "reasonMinLength": "Informe pelo menos 100 caracteres.",
     "reasonMinLength50": "Informe pelo menos 50 caracteres.",
     "selectAll": "Selecionar todas",
-    "selectRow": "Selecionar {name}"
+    "selectRow": "Selecionar {name}",
+    "increaseValue": "Aumentar valor",
+    "decreaseValue": "Diminuir valor"
   },
   "auth": {
     "loginTitle": "Entrar no Pixtrela",

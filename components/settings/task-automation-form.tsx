@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import {
@@ -118,10 +119,9 @@ export function TaskAutomationForm({
             <Label htmlFor="assignWarnMax" className="shrink-0">
               {tSettings("assignWarnMax")}
             </Label>
-            <Input
+            <NumberInput
               id="assignWarnMax"
               className="flex-1"
-              type="number"
               min={MIN_ASSIGN_WARN_MAX}
               max={MAX_ASSIGN_WARN_MAX}
               step={1}

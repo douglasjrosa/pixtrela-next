@@ -17,6 +17,7 @@ import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
@@ -277,8 +278,7 @@ function AwardFormDialog({
           <Label>{tAwards("values")}</Label>
           {fields.map((field, index) => (
             <div key={field.id} className="flex flex-wrap gap-2">
-              <Input
-                type="number"
+              <NumberInput
                 min={1}
                 className="w-28"
                 disabled={formDisabled}
@@ -341,9 +341,8 @@ function AwardFormDialog({
           </label>
           <div className="space-y-2">
             <Label htmlFor="stock">{tAwards("stock")}</Label>
-            <Input
+            <NumberInput
               id="stock"
-              type="number"
               min={0}
               className="w-32"
               disabled={formDisabled}
