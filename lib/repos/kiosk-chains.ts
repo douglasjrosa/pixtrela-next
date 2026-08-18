@@ -161,7 +161,7 @@ export type OpenChainRunRef = {
 type ChainActivityLookupRow = {
   chainRunId: string | null;
   colaboratorId: string;
-  action: "started" | "stoped" | string;
+  action: "started" | "stoped";
   timestamp: Date;
   subTaskId: string;
 };

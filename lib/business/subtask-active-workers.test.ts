@@ -29,6 +29,11 @@ describe("hasOpenStartedSessionFromActions", () => {
       hasOpenStartedSessionFromActions(["started", "stoped", "started"]),
     ).toBe(true);
   });
+
+  it("accepts string actions from drizzle row maps", () => {
+    const actions: string[] = ["started", "stoped"];
+    expect(hasOpenStartedSessionFromActions(actions)).toBe(false);
+  });
 });
 
 describe("countActiveWorkersFromActivities", () => {
