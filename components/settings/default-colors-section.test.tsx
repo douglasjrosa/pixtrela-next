@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -10,10 +10,21 @@ vi.mock("next/navigation", () => ({
 
 import { renderWithIntl } from "@/test/test-utils";
 import { DEFAULT_SEMANTIC_TOKENS } from "@/lib/themes/semantic-tokens";
+import { SEMANTIC_THEME_STYLE_ID } from "@/lib/themes/apply-semantic-theme-document";
 
 import { DefaultColorsSection } from "./default-colors-section";
 
 describe("DefaultColorsSection", () => {
+  beforeEach(() => {
+    const style = document.createElement("style");
+    style.id = SEMANTIC_THEME_STYLE_ID;
+    document.head.appendChild(style);
+  });
+
+  afterEach(() => {
+    document.getElementById(SEMANTIC_THEME_STYLE_ID)?.remove();
+  });
+
   it("applies a preset to color pickers without saving", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);
@@ -71,6 +82,8 @@ describe("DefaultColorsSection", () => {
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({ primary: "#6d28d9" }),
     );
+    const style = document.getElementById(SEMANTIC_THEME_STYLE_ID);
+    expect(style?.textContent).toContain("--primary: #6d28d9;");
     expect(refresh).toHaveBeenCalled();
   });
 });

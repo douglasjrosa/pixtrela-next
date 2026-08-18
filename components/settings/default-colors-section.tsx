@@ -21,6 +21,7 @@ import {
   type SemanticTokenKey,
   type SemanticTokens,
 } from "@/lib/themes/semantic-tokens";
+import { applySemanticThemeToDocument } from "@/lib/themes/apply-semantic-theme-document";
 import { cn } from "@/lib/utils";
 
 export interface DefaultColorsSectionProps {
@@ -90,6 +91,7 @@ export function DefaultColorsSection({
     setIsSaving(true);
     try {
       await onSave(draft);
+      applySemanticThemeToDocument(draft);
       setMessage(t("defaultColorsSaved"));
       router.refresh();
     } catch {
