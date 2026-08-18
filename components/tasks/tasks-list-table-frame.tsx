@@ -10,6 +10,7 @@ import {
   bulkDeleteTasks,
   loadMoreTasks,
 } from "@/app/(app)/tasks/actions";
+import { LoadMoreButton, LoadMoreButtonRow } from "@/components/ui/load-more-button";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -265,16 +266,14 @@ export function TasksListTableFrame({
         </div>
 
         {hasMore ? (
-          <div className="flex shrink-0 justify-center pt-3">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isPending}
+          <LoadMoreButtonRow>
+            <LoadMoreButton
+              loading={isPending}
+              label={tManage("loadMore")}
+              loadingLabel={tManage("loadingMore")}
               onClick={handleLoadMore}
-            >
-              {isPending ? tManage("loadingMore") : tManage("loadMore")}
-            </Button>
-          </div>
+            />
+          </LoadMoreButtonRow>
         ) : null}
 
         <TasksBulkArchiveModal

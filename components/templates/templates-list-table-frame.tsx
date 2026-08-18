@@ -10,6 +10,7 @@ import {
   bulkDeleteTemplates,
   loadMoreTemplates,
 } from "@/app/(app)/templates/actions";
+import { LoadMoreButton, LoadMoreButtonRow } from "@/components/ui/load-more-button";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -245,16 +246,14 @@ export function TemplatesListTableFrame({
         </div>
 
         {hasMore ? (
-          <div className="flex shrink-0 justify-center pt-3">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isPending}
+          <LoadMoreButtonRow>
+            <LoadMoreButton
+              loading={isPending}
+              label={tTemplates("loadMore")}
+              loadingLabel={tTemplates("loadingMore")}
               onClick={handleLoadMore}
-            >
-              {isPending ? tTemplates("loadingMore") : tTemplates("loadMore")}
-            </Button>
-          </div>
+            />
+          </LoadMoreButtonRow>
         ) : null}
 
         <ConfirmDialog

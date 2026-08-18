@@ -4,7 +4,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 import { loadMoreUsers } from "@/app/(app)/users/actions";
-import { Button } from "@/components/ui/button";
+import { LoadMoreButton, LoadMoreButtonRow } from "@/components/ui/load-more-button";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { UserListFilters } from "@/lib/schemas/user-list-filters";
 import { userListFilterKey } from "@/lib/users/user-list-params";
@@ -99,16 +99,14 @@ export function UsersListTableFrame({
       </div>
 
       {hasMore ? (
-        <div className="flex shrink-0 justify-center pt-3">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isPending}
+        <LoadMoreButtonRow>
+          <LoadMoreButton
+            loading={isPending}
+            label={tUsers("loadMore")}
+            loadingLabel={tUsers("loadingMore")}
             onClick={handleLoadMore}
-          >
-            {isPending ? tUsers("loadingMore") : tUsers("loadMore")}
-          </Button>
-        </div>
+          />
+        </LoadMoreButtonRow>
       ) : null}
     </div>
   );

@@ -10,6 +10,7 @@ import {
   bulkDeleteTeams,
   loadMoreTeams,
 } from "@/app/(app)/teams/actions";
+import { LoadMoreButton, LoadMoreButtonRow } from "@/components/ui/load-more-button";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -238,16 +239,14 @@ export function TeamsListTableFrame({
         </div>
 
         {hasMore ? (
-          <div className="flex shrink-0 justify-center pt-3">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isPending}
+          <LoadMoreButtonRow>
+            <LoadMoreButton
+              loading={isPending}
+              label={tTeams("loadMore")}
+              loadingLabel={tTeams("loadingMore")}
               onClick={handleLoadMore}
-            >
-              {isPending ? tTeams("loadingMore") : tTeams("loadMore")}
-            </Button>
-          </div>
+            />
+          </LoadMoreButtonRow>
         ) : null}
 
         <ConfirmDialog
