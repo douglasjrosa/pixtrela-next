@@ -60,6 +60,12 @@ export function DefaultColorsSection({
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const initialKey = JSON.stringify(initialTokens);
+  const [prevInitialKey, setPrevInitialKey] = useState(initialKey);
+  if (initialKey !== prevInitialKey) {
+    setPrevInitialKey(initialKey);
+    setDraft(initialTokens);
+  }
   const busy = isPending || isSaving;
 
   function patchToken(key: SemanticTokenKey, value: string): void {
