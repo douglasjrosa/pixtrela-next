@@ -428,7 +428,7 @@ export function MediaFilesManager({
               <li
                 key={item.id}
                 className={cn(
-                  "flex flex-col overflow-hidden rounded-lg border bg-card",
+                  "flex h-full flex-col overflow-hidden rounded-lg border bg-card",
                 )}
               >
                 <div className={MEDIA_THUMBNAIL_FRAME_CLASS}>
@@ -447,7 +447,7 @@ export function MediaFilesManager({
                     />
                   )}
                 </div>
-                <div className="space-y-2 p-2">
+                <div className="flex flex-1 flex-col gap-2 p-2">
                   <p className="truncate text-xs font-medium" title={title}>
                     {title}
                   </p>
@@ -455,7 +455,7 @@ export function MediaFilesManager({
                     {t(`mediaCategories.${item.category}`)} ·{" "}
                     {item.mimeType ?? "—"} · {formatBytes(item.byteSize)}
                   </p>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="mt-auto flex justify-between gap-1">
                     <Button
                       type="button"
                       size="sm"
