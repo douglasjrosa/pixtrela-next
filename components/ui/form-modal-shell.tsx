@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const SIZE_CLASS = {
+  xs: "max-w-[16rem]",
   md: "max-w-lg",
   lgNarrow: "max-w-xl",
   lg: "max-w-2xl",

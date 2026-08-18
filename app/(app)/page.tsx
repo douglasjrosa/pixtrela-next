@@ -11,6 +11,7 @@ import { loadColaboratorOptions } from "@/lib/dashboard/load-colaborator-options
 import { loadMonthlyRanking } from "@/lib/dashboard/load-monthly-ranking";
 import { resolveDefaultColaboratorDocumentId } from "@/lib/dashboard/resolve-default-colaborator";
 import { listCurrencies } from "@/lib/repos/awards";
+import { loadCurrencyForSubtasks } from "@/lib/settings/load-currency-for-subtasks";
 
 interface DashboardPageProps {
   searchParams: Promise<{ colaborator?: string }>;
@@ -53,12 +54,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         previousMonthsByCurrency: [],
       };
 
-  const balanceCurrencyOptions = canAdjustColaboratorBalance(role)
-    ? (await listCurrencies()).map((currency) => ({
+  const canAdjustBalance = canAdjustColaboratorBalance(role);
+  const [currencies, subtaskCurrency] = canAdjustBalance
+    ? await Promise.all([listCurrencies(), loadCurrencyForSubtasks()])
+    : [[], null];
+
+  const balanceCurrencyOptions = canAdjustBalance
+    ? currencies.map((currency) => ({
         id: currency.id,
         label: resolveCurrencyPluralTitle(currency),
       }))
     : [];
+
+  const defaultBalanceCurrencyId = subtaskCurrency?.currencyDocumentId ?? null;
 
   return (
     <section className="space-y-10 p-6">
@@ -77,6 +85,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         selectedName={selectedName}
         insights={insights}
         balanceCurrencyOptions={balanceCurrencyOptions}
+        defaultBalanceCurrencyId={defaultBalanceCurrencyId}
         onAdjustBalance={adjustColaboratorBalance}
       />
     </section>

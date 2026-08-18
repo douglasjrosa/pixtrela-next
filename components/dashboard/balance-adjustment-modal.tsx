@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -12,16 +12,28 @@ import { Label } from "@/components/ui/label";
 import { NumberInput } from "@/components/ui/number-input";
 import { NATIVE_SELECT_TALL_CLASS_NAME } from "@/lib/ui/native-select";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { cn } from "@/lib/utils";
 
 export type BalanceCurrencyOption = {
   id: string;
   label: string;
 };
 
+export function resolveDefaultCurrencyId(
+  options: BalanceCurrencyOption[],
+  preferredId?: string | null,
+): string {
+  if (preferredId && options.some((option) => option.id === preferredId)) {
+    return preferredId;
+  }
+  return options[0]?.id ?? "";
+}
+
 export interface BalanceAdjustmentModalProps {
   open: boolean;
   colaboratorDocumentId: string;
   currencyOptions: BalanceCurrencyOption[];
+  defaultCurrencyId?: string | null;
   onClose: () => void;
   onSave: (input: {
     colaboratorDocumentId: string;
@@ -43,6 +55,7 @@ export function BalanceAdjustmentModal({
   open,
   colaboratorDocumentId,
   currencyOptions,
+  defaultCurrencyId = null,
   onClose,
   onSave,
 }: BalanceAdjustmentModalProps) {
@@ -50,17 +63,29 @@ export function BalanceAdjustmentModal({
   const tCommon = useTranslations("common");
   const router = useRouter();
   const [date, setDate] = useState(todayIsoDate);
-  const [currencyId, setCurrencyId] = useState(currencyOptions[0]?.id ?? "");
+  const [currencyId, setCurrencyId] = useState(() =>
+    resolveDefaultCurrencyId(currencyOptions, defaultCurrencyId),
+  );
   const [amount, setAmount] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function resetForm(): void {
     setDate(todayIsoDate());
-    setCurrencyId(currencyOptions[0]?.id ?? "");
+    setCurrencyId(resolveDefaultCurrencyId(currencyOptions, defaultCurrencyId));
     setAmount("");
     setFieldError(null);
   }
+
+  useEffect(() => {
+    if (!open) return;
+    setDate(todayIsoDate());
+    setCurrencyId(resolveDefaultCurrencyId(currencyOptions, defaultCurrencyId));
+    setAmount("");
+    setFieldError(null);
+    // Reset only when the dialog opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open gate
+  }, [open]);
 
   function handleClose(): void {
     if (isPending) return;
@@ -108,7 +133,7 @@ export function BalanceAdjustmentModal({
       open={open}
       title={t("balanceAdjustmentTitle")}
       onClose={handleClose}
-      size="md"
+      size="xs"
       fillBody={false}
       disabled={isPending}
       footerStart={
@@ -127,12 +152,13 @@ export function BalanceAdjustmentModal({
         </Button>
       }
     >
-      <div className="space-y-4 p-1">
+      <div className="mx-auto flex w-full max-w-[12rem] flex-col gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="balance-adjustment-date">{t("balanceAdjustmentDate")}</Label>
           <Input
             id="balance-adjustment-date"
             type="date"
+            className="w-full"
             value={date}
             disabled={isPending}
             onChange={(event) => setDate(event.target.value)}
@@ -145,7 +171,7 @@ export function BalanceAdjustmentModal({
           </Label>
           <select
             id="balance-adjustment-currency"
-            className={NATIVE_SELECT_TALL_CLASS_NAME}
+            className={cn(NATIVE_SELECT_TALL_CLASS_NAME, "w-full")}
             value={currencyId}
             disabled={isPending || currencyOptions.length === 0}
             onChange={(event) => setCurrencyId(event.target.value)}
@@ -164,6 +190,7 @@ export function BalanceAdjustmentModal({
           </Label>
           <NumberInput
             id="balance-adjustment-amount"
+            className="w-full"
             value={amount}
             step="any"
             disabled={isPending}
@@ -172,7 +199,7 @@ export function BalanceAdjustmentModal({
         </div>
 
         {fieldError ? (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-center text-sm text-destructive">
             {fieldError}
           </p>
         ) : null}

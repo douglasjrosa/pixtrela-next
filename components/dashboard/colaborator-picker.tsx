@@ -21,6 +21,7 @@ export interface ColaboratorPickerProps {
   selectedDocumentId: string;
   role: Role;
   currencyOptions?: BalanceCurrencyOption[];
+  defaultCurrencyId?: string | null;
   onAdjustBalance?: (input: {
     colaboratorDocumentId: string;
     date: string;
@@ -34,6 +35,7 @@ export function ColaboratorPicker({
   selectedDocumentId,
   role,
   currencyOptions = [],
+  defaultCurrencyId = null,
   onAdjustBalance,
 }: ColaboratorPickerProps) {
   const t = useTranslations("dashboard");
@@ -87,6 +89,7 @@ export function ColaboratorPicker({
           open={adjustmentOpen}
           colaboratorDocumentId={selectedDocumentId}
           currencyOptions={currencyOptions}
+          defaultCurrencyId={defaultCurrencyId}
           onClose={() => setAdjustmentOpen(false)}
           onSave={onAdjustBalance}
         />

@@ -21,6 +21,7 @@ export interface DashboardInsightsBlockProps {
   selectedName: string;
   insights: ColaboratorInsightsData;
   balanceCurrencyOptions?: BalanceCurrencyOption[];
+  defaultBalanceCurrencyId?: string | null;
   onAdjustBalance?: (input: {
     colaboratorDocumentId: string;
     date: string;
@@ -39,6 +40,7 @@ export function DashboardInsightsBlock({
   selectedName,
   insights,
   balanceCurrencyOptions = [],
+  defaultBalanceCurrencyId = null,
   onAdjustBalance,
 }: DashboardInsightsBlockProps) {
   const currencyRankings: CurrencyRanking[] = ranking.currencies;
@@ -62,6 +64,7 @@ export function DashboardInsightsBlock({
           insights={insights}
           currencyRankings={currencyRankings}
           balanceCurrencyOptions={balanceCurrencyOptions}
+          defaultBalanceCurrencyId={defaultBalanceCurrencyId}
           onAdjustBalance={onAdjustBalance}
         />
       ) : null}

@@ -28,6 +28,7 @@ export interface ColaboratorInsightsSectionProps {
   insights: ColaboratorInsightsData;
   currencyRankings: CurrencyRanking[];
   balanceCurrencyOptions?: BalanceCurrencyOption[];
+  defaultBalanceCurrencyId?: string | null;
   onAdjustBalance?: (input: {
     colaboratorDocumentId: string;
     date: string;
@@ -45,6 +46,7 @@ export function ColaboratorInsightsSection({
   insights,
   currencyRankings,
   balanceCurrencyOptions = [],
+  defaultBalanceCurrencyId = null,
   onAdjustBalance,
 }: ColaboratorInsightsSectionProps) {
   const t = useTranslations("dashboard");
@@ -71,6 +73,7 @@ export function ColaboratorInsightsSection({
           selectedDocumentId={selectedDocumentId}
           role={role}
           currencyOptions={balanceCurrencyOptions}
+          defaultCurrencyId={defaultBalanceCurrencyId}
           onAdjustBalance={onAdjustBalance}
         />
       ) : (
