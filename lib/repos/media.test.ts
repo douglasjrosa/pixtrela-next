@@ -40,6 +40,7 @@ describe("media repo", () => {
       await updateMenuLogoMediaId(asset.id);
       const refs = await findMediaReferences(asset.id);
       expect(refs.some((ref) => ref.kind === "branding")).toBe(true);
+      expect(refs.some((ref) => ref.sectionKey === "preferences")).toBe(true);
 
       await expect(deleteMediaAsset(asset.id)).rejects.toThrow("inUse");
 

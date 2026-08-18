@@ -14,7 +14,11 @@ import {
   LoadMoreButtonRow,
 } from "@/components/ui/load-more-button";
 import { isImageMime } from "@/lib/media/media-mime";
-import type { MediaAssetRecord, MediaMimeFilter } from "@/lib/repos/media";
+import type {
+  MediaAssetRecord,
+  MediaMimeFilter,
+  MediaReferenceSummary,
+} from "@/lib/repos/media";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +37,46 @@ export interface MediaFilesManagerProps {
   onReplace: (mediaId: string, formData: FormData) => Promise<MediaAssetRecord>;
   onDelete: (
     mediaId: string,
-  ) => Promise<{ ok: true } | { ok: false; reason: string; refs: string[] }>;
+  ) => Promise<
+    | { ok: true }
+    | { ok: false; reason: string; refs: MediaReferenceSummary[] }
+  >;
+}
+
+const BRANDING_REF_LABEL_KEYS: Record<string, "mediaRefBrandingLabels.menuLogo" | "mediaRefBrandingLabels.rankingFirst" | "mediaRefBrandingLabels.rankingSecond" | "mediaRefBrandingLabels.rankingThird"> = {
+  menuLogo: "mediaRefBrandingLabels.menuLogo",
+  rankingFirst: "mediaRefBrandingLabels.rankingFirst",
+  rankingSecond: "mediaRefBrandingLabels.rankingSecond",
+  rankingThird: "mediaRefBrandingLabels.rankingThird",
+};
+
+function formatMediaReferenceLabel(
+  ref: MediaReferenceSummary,
+  t: ReturnType<typeof useTranslations<"settings">>,
+): string {
+  if (ref.sectionKey === "preferences") {
+    const brandingKey = BRANDING_REF_LABEL_KEYS[ref.label];
+    if (brandingKey) {
+      return t(brandingKey);
+    }
+  }
+  return ref.label;
+}
+
+function formatMediaInUseMessage(
+  refs: MediaReferenceSummary[],
+  t: ReturnType<typeof useTranslations<"settings">>,
+): string {
+  if (refs.length === 0) {
+    return t("mediaInUse");
+  }
+  const entries = refs.map((ref) =>
+    t("mediaRefEntry", {
+      label: formatMediaReferenceLabel(ref, t),
+      section: t(`mediaRefSections.${ref.sectionKey}`),
+    }),
+  );
+  return t("mediaInUseWithRefs", { refs: entries.join(", ") });
 }
 
 function formatBytes(size: number | null): string {
@@ -144,8 +187,8 @@ export function MediaFilesManager({
         const result = await onDelete(mediaId);
         if (!result.ok) {
           const detail =
-            result.reason === "inUse" && result.refs.length > 0
-              ? t("mediaInUseWithRefs", { refs: result.refs.join(", ") })
+            result.reason === "inUse"
+              ? formatMediaInUseMessage(result.refs, t)
               : t("mediaInUse");
           setMessage(detail);
           showErrorToast(detail);

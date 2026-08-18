@@ -23,6 +23,7 @@ import {
   replaceMediaAsset,
   type MediaAssetRecord,
   type MediaMimeFilter,
+  type MediaReferenceSummary,
 } from "@/lib/repos/media";
 
 async function assertCanManage(): Promise<void> {
@@ -107,7 +108,10 @@ export async function replaceLibraryMedia(
 
 export async function deleteLibraryMedia(
   mediaId: string,
-): Promise<{ ok: true } | { ok: false; reason: "inUse" | "notFound"; refs: string[] }> {
+): Promise<
+  | { ok: true }
+  | { ok: false; reason: "inUse" | "notFound"; refs: MediaReferenceSummary[] }
+> {
   await assertCanManage();
   const existing = await getMediaAsset(mediaId);
   if (!existing) {
@@ -118,7 +122,7 @@ export async function deleteLibraryMedia(
     return {
       ok: false,
       reason: "inUse",
-      refs: refs.map((ref) => ref.label),
+      refs: refs.map(({ label, sectionKey }) => ({ label, sectionKey })),
     };
   }
   await deleteMediaAsset(mediaId);

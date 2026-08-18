@@ -26,10 +26,38 @@ export type MediaAssetRecord = {
 
 export type MediaMimeFilter = "all" | "image" | "pdf";
 
+export type MediaReferenceSectionKey =
+  | "awards"
+  | "users"
+  | "currency"
+  | "routeThemes"
+  | "preferences";
+
 export type MediaReference = {
   kind: "userAvatar" | "userFace" | "award" | "currency" | "routeTheme" | "branding";
   label: string;
+  sectionKey: MediaReferenceSectionKey;
 };
+
+export type MediaReferenceSummary = Pick<MediaReference, "label" | "sectionKey">;
+
+function mediaReferenceSectionKey(
+  kind: MediaReference["kind"],
+): MediaReferenceSectionKey {
+  switch (kind) {
+    case "userAvatar":
+    case "userFace":
+      return "users";
+    case "award":
+      return "awards";
+    case "currency":
+      return "currency";
+    case "routeTheme":
+      return "routeThemes";
+    case "branding":
+      return "preferences";
+  }
+}
 
 export async function listMediaAssets(
   options: {
@@ -186,7 +214,11 @@ export async function findMediaReferences(
     .from(users)
     .where(eq(users.avatarMediaId, id));
   for (const user of avatarUsers) {
-    refs.push({ kind: "userAvatar", label: user.name });
+    refs.push({
+      kind: "userAvatar",
+      label: user.name,
+      sectionKey: mediaReferenceSectionKey("userAvatar"),
+    });
   }
 
   const faceUsers = await db
@@ -194,7 +226,11 @@ export async function findMediaReferences(
     .from(users)
     .where(eq(users.facePhotoMediaId, id));
   for (const user of faceUsers) {
-    refs.push({ kind: "userFace", label: user.name });
+    refs.push({
+      kind: "userFace",
+      label: user.name,
+      sectionKey: mediaReferenceSectionKey("userFace"),
+    });
   }
 
   const awardRows = await db
@@ -202,7 +238,11 @@ export async function findMediaReferences(
     .from(awards)
     .where(eq(awards.imageMediaId, id));
   for (const award of awardRows) {
-    refs.push({ kind: "award", label: award.name });
+    refs.push({
+      kind: "award",
+      label: award.name,
+      sectionKey: mediaReferenceSectionKey("award"),
+    });
   }
 
   const currencyRows = await db
@@ -210,7 +250,11 @@ export async function findMediaReferences(
     .from(currencies)
     .where(eq(currencies.iconMediaId, id));
   for (const currency of currencyRows) {
-    refs.push({ kind: "currency", label: currency.name });
+    refs.push({
+      kind: "currency",
+      label: currency.name,
+      sectionKey: mediaReferenceSectionKey("currency"),
+    });
   }
 
   const themeRows = await db
@@ -218,22 +262,39 @@ export async function findMediaReferences(
     .from(routeThemes)
     .where(eq(routeThemes.backgroundImageMediaId, id));
   for (const theme of themeRows) {
-    refs.push({ kind: "routeTheme", label: theme.label });
+    refs.push({
+      kind: "routeTheme",
+      label: theme.label,
+      sectionKey: mediaReferenceSectionKey("routeTheme"),
+    });
   }
 
   const [branding] = await db.select().from(appBrandingSettings).limit(1);
   if (branding) {
+    const brandingSectionKey = mediaReferenceSectionKey("branding");
     if (branding.menuLogoMediaId === id) {
-      refs.push({ kind: "branding", label: "menuLogo" });
+      refs.push({ kind: "branding", label: "menuLogo", sectionKey: brandingSectionKey });
     }
     if (branding.rankingFirstMediaId === id) {
-      refs.push({ kind: "branding", label: "rankingFirst" });
+      refs.push({
+        kind: "branding",
+        label: "rankingFirst",
+        sectionKey: brandingSectionKey,
+      });
     }
     if (branding.rankingSecondMediaId === id) {
-      refs.push({ kind: "branding", label: "rankingSecond" });
+      refs.push({
+        kind: "branding",
+        label: "rankingSecond",
+        sectionKey: brandingSectionKey,
+      });
     }
     if (branding.rankingThirdMediaId === id) {
-      refs.push({ kind: "branding", label: "rankingThird" });
+      refs.push({
+        kind: "branding",
+        label: "rankingThird",
+        sectionKey: brandingSectionKey,
+      });
     }
   }
 

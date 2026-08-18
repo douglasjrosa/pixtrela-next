@@ -628,7 +628,21 @@
     "mediaDelete": "Excluir",
     "mediaDeleteConfirm": "Excluir este arquivo permanentemente?",
     "mediaInUse": "Arquivo em uso e não pode ser excluído.",
-    "mediaInUseWithRefs": "Arquivo em uso ({refs}) e não pode ser excluído.",
+    "mediaInUseWithRefs": "Arquivo em uso {refs} e não pode ser excluído.",
+    "mediaRefEntry": "({label}) em \"{section}\"",
+    "mediaRefSections": {
+      "awards": "Prêmios",
+      "users": "Usuários",
+      "currency": "Moedas",
+      "routeThemes": "Temas por rota",
+      "preferences": "Preferências"
+    },
+    "mediaRefBrandingLabels": {
+      "menuLogo": "Logomarca do menu",
+      "rankingFirst": "1º lugar (ranking)",
+      "rankingSecond": "2º lugar (ranking)",
+      "rankingThird": "3º lugar (ranking)"
+    },
     "mediaDeleted": "Arquivo excluído.",
     "mediaFilterAll": "Todos",
     "mediaFilterImages": "Imagens",
