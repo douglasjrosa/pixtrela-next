@@ -8,6 +8,7 @@ import {
   isFinishedThisRun,
   planPrincipalSegmentActivities,
   resolveChainAutoAdvance,
+  statusAfterChainTimeAdvance,
   type AllocationMember,
   type ChainStopAnswer,
 } from "@/lib/business/subtask-chain-allocation";
@@ -379,7 +380,7 @@ export async function advanceChainRun(
         await tx
           .update(subTasks)
           .set({
-            status: helperOpen ? PRODUCING_STATUS : WAITING_STATUS,
+            status: statusAfterChainTimeAdvance(helperOpen),
             updatedAt: now,
           })
           .where(eq(subTasks.id, completedId));
