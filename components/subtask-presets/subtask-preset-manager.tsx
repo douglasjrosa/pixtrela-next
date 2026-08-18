@@ -16,6 +16,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { SubTaskPresetFormInput } from "@/lib/schemas/sub-task-preset";
+import { cn } from "@/lib/utils";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 import { SubTaskPresetListProvider } from "./subtask-preset-list-context";
@@ -109,7 +110,11 @@ export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
           </h2>
           <Button
             type="button"
-            size="icon"
+            size="icon-lg"
+            className={cn(
+              "size-10 font-display bg-foreground text-background",
+              "hover:bg-foreground/90 [&_svg:not([class*='size-'])]:size-5",
+            )}
             aria-label={tPresets("new")}
             onClick={() => setModal({ mode: "create" })}
           >
