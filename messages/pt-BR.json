@@ -608,6 +608,10 @@
       "categories": "Categorias",
       "flags": "Bandeiras"
     },
+    "themeTabs": {
+      "colors": "Cores padrão",
+      "routes": "Temas por rota"
+    },
     "categoriesTitle": "Categorias de subtarefa",
     "flagsTitle": "Bandeiras",
     "newCategory": "Nova categoria",
@@ -647,7 +651,12 @@
       "ocean": "Oceano",
       "forest": "Floresta",
       "charcoal": "Carvão",
-      "violet": "Violeta"
+      "violet": "Violeta",
+      "sunset": "Pôr do Sol",
+      "midnight": "Noturno",
+      "lilac": "Lavanda",
+      "slate": "Mármore",
+      "neon": "Néon"
     },
     "semanticTokenGroups": {
       "base": "Base",

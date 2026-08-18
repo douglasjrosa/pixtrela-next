@@ -10,7 +10,6 @@ vi.mock("next/navigation", () => ({
 
 import { renderWithIntl } from "@/test/test-utils";
 import type { RouteThemeView } from "@/lib/themes/match-route-theme";
-import { DEFAULT_SEMANTIC_TOKENS } from "@/lib/themes/semantic-tokens";
 
 import { ThemeSettingsManager } from "./theme-settings-manager";
 
@@ -58,19 +57,17 @@ const themes: RouteThemeView[] = [
 describe("ThemeSettingsManager", () => {
   const defaultProps = {
     themes,
-    initialSemanticTokens: DEFAULT_SEMANTIC_TOKENS,
     onSave: vi.fn(),
-    onSaveSemanticTokens: vi.fn(),
     onUploadImage: vi.fn(),
   };
 
-  it("renders default colors before route themes with section headings", () => {
+  it("renders route themes without the default colors section", () => {
     renderWithIntl(<ThemeSettingsManager {...defaultProps} />);
 
-    const headings = screen.getAllByRole("heading", { level: 2 });
-    expect(headings[0]).toHaveTextContent("Cores padrão");
-    expect(headings[1]).toHaveTextContent("Temas por rota");
-    expect(screen.getByText("Oceano")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Temas por rota" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Oceano")).not.toBeInTheDocument();
     expect(screen.getByText(/Selecione uma rota para configurar/i)).toBeInTheDocument();
   });
 
