@@ -10,6 +10,7 @@ vi.mock("next/navigation", () => ({
 
 import { renderWithIntl } from "@/test/test-utils";
 import { DEFAULT_SEMANTIC_TOKENS } from "@/lib/themes/semantic-tokens";
+import { getSemanticThemePreset } from "@/lib/themes/semantic-theme-presets";
 import { SEMANTIC_THEME_STYLE_ID } from "@/lib/themes/apply-semantic-theme-document";
 
 import { DefaultColorsSection } from "./default-colors-section";
@@ -38,6 +39,14 @@ describe("DefaultColorsSection", () => {
 
     await user.click(screen.getByRole("button", { name: "Oceano" }));
 
+    expect(screen.getByRole("button", { name: "Oceano" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Padrão" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
     expect(
       (document.getElementById("semantic-token-primary") as HTMLInputElement)
         ?.value,
@@ -82,8 +91,54 @@ describe("DefaultColorsSection", () => {
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({ primary: "#6d28d9" }),
     );
+    expect(screen.getByRole("button", { name: "Violeta" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     const style = document.getElementById(SEMANTIC_THEME_STYLE_ID);
     expect(style?.textContent).toContain("--primary: #6d28d9;");
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it("highlights the preset that matches initial tokens on load", () => {
+    const oceanTokens = getSemanticThemePreset("ocean").tokens;
+
+    renderWithIntl(
+      <DefaultColorsSection
+        initialTokens={oceanTokens}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Oceano" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Padrão" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
+  it("clears preset highlight when tokens are edited manually", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    renderWithIntl(
+      <DefaultColorsSection
+        initialTokens={DEFAULT_SEMANTIC_TOKENS}
+        onSave={onSave}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Oceano" }));
+    const primaryInput = screen.getByRole("textbox", { name: "Primária" });
+    await user.clear(primaryInput);
+    await user.type(primaryInput, "#123456");
+
+    expect(screen.getByRole("button", { name: "Oceano" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 });

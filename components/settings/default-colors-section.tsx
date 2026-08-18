@@ -11,6 +11,7 @@ import {
   semanticColorFieldId,
 } from "@/components/settings/semantic-color-field";
 import {
+  matchSemanticThemePreset,
   SEMANTIC_THEME_PRESETS,
   type SemanticThemePresetId,
 } from "@/lib/themes/semantic-theme-presets";
@@ -68,6 +69,7 @@ export function DefaultColorsSection({
     setDraft(initialTokens);
   }
   const busy = isPending || isSaving;
+  const selectedPresetId = matchSemanticThemePreset(draft);
 
   function patchToken(key: SemanticTokenKey, value: string): void {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -106,23 +108,28 @@ export function DefaultColorsSection({
       <SettingsSectionHeading title={t("defaultColorsTitle")} />
 
       <div className="flex flex-wrap gap-3">
-        {SEMANTIC_THEME_PRESETS.map((preset) => (
-          <button
-            key={preset.id}
-            type="button"
-            disabled={busy}
-            className={cn(
-              "flex min-w-[7rem] max-w-[9rem] flex-1 flex-col gap-2",
-              "rounded-xl border p-3 text-left transition-colors",
-              "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2",
-              "focus-visible:ring-ring disabled:opacity-50",
-            )}
-            onClick={() => startTransition(() => applyPreset(preset.id))}
-          >
-            <PresetSwatch tokens={preset.tokens} />
-            <span className="text-sm font-medium">{t(preset.labelKey)}</span>
-          </button>
-        ))}
+        {SEMANTIC_THEME_PRESETS.map((preset) => {
+          const isSelected = selectedPresetId === preset.id;
+          return (
+            <button
+              key={preset.id}
+              type="button"
+              disabled={busy}
+              aria-pressed={isSelected}
+              className={cn(
+                "flex w-36 shrink-0 flex-col gap-2",
+                "rounded-xl border p-3 text-left transition-colors",
+                "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2",
+                "focus-visible:ring-ring disabled:opacity-50",
+                isSelected && "border-primary bg-primary/10 ring-2 ring-primary",
+              )}
+              onClick={() => startTransition(() => applyPreset(preset.id))}
+            >
+              <PresetSwatch tokens={preset.tokens} />
+              <span className="text-sm font-medium">{t(preset.labelKey)}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="space-y-6">

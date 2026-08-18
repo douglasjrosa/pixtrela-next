@@ -4,6 +4,7 @@ import {
   SEMANTIC_THEME_PRESETS,
   SEMANTIC_THEME_PRESET_IDS,
   getSemanticThemePreset,
+  matchSemanticThemePreset,
 } from "./semantic-theme-presets";
 import { SEMANTIC_TOKEN_KEYS } from "./semantic-tokens";
 
@@ -23,5 +24,13 @@ describe("semantic-theme-presets", () => {
       "#0f172a",
     );
     expect(getSemanticThemePreset("neon").tokens.primary).toBe("#d946ef");
+  });
+
+  it("matches tokens to a preset id", () => {
+    const ocean = getSemanticThemePreset("ocean").tokens;
+    expect(matchSemanticThemePreset(ocean)).toBe("ocean");
+    expect(
+      matchSemanticThemePreset({ ...ocean, primary: "#000000" }),
+    ).toBeNull();
   });
 });
