@@ -266,33 +266,6 @@ function AwardFormDialog({
           </div>
         </div>
 
-        <div className="space-y-3 sm:col-span-2">
-          <Label>{tAwards("values")}</Label>
-          <div className="flex flex-wrap items-start gap-4">
-            {currencies.map((currency, index) => (
-              <div key={currency.documentId} className="flex flex-col gap-2">
-                <Label htmlFor={`award-value-${currency.documentId}`}>
-                  {currencyLabel(currency)}
-                </Label>
-                <input
-                  type="hidden"
-                  {...register(`values.${index}.currencyDocumentId`)}
-                />
-                <NumberInput
-                  id={`award-value-${currency.documentId}`}
-                  min={1}
-                  className="w-28"
-                  disabled={formDisabled}
-                  {...register(`values.${index}.numberOf`, { valueAsNumber: true })}
-                />
-              </div>
-            ))}
-          </div>
-          {errors.values ? (
-            <p className="text-sm text-destructive">{errors.values.message}</p>
-          ) : null}
-        </div>
-
         <div className="flex flex-wrap items-end justify-between gap-6 sm:col-span-2">
           <div className="flex flex-col gap-2">
             <Label htmlFor="stock" className="block">
@@ -318,6 +291,33 @@ function AwardFormDialog({
             />
             {tAwards("showInStore")}
           </label>
+        </div>
+
+        <div className="space-y-3 sm:col-span-2">
+          <Label>{tAwards("values")}</Label>
+          <div className="flex flex-wrap items-start gap-4">
+            {currencies.map((currency, index) => (
+              <div key={currency.documentId} className="flex flex-col gap-2">
+                <Label htmlFor={`award-value-${currency.documentId}`}>
+                  {currencyLabel(currency)}
+                </Label>
+                <input
+                  type="hidden"
+                  {...register(`values.${index}.currencyDocumentId`)}
+                />
+                <NumberInput
+                  id={`award-value-${currency.documentId}`}
+                  min={1}
+                  className="w-28"
+                  disabled={formDisabled}
+                  {...register(`values.${index}.numberOf`, { valueAsNumber: true })}
+                />
+              </div>
+            ))}
+          </div>
+          {errors.values ? (
+            <p className="text-sm text-destructive">{errors.values.message}</p>
+          ) : null}
         </div>
       </form>
     </FormModalShell>
