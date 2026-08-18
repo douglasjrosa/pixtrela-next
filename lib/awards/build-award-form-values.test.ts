@@ -15,6 +15,18 @@ describe("buildAwardValuesForCurrencies", () => {
     ]);
   });
 
+  it("preserves zero as a disabled currency price", () => {
+    expect(
+      buildAwardValuesForCurrencies(currencies, [
+        { currencyDocumentId: "c1", numberOf: 0 },
+        { currencyDocumentId: "c2", numberOf: 7 },
+      ]),
+    ).toEqual([
+      { currencyDocumentId: "c1", numberOf: 0 },
+      { currencyDocumentId: "c2", numberOf: 7 },
+    ]);
+  });
+
   it("preserves saved values and fills missing currencies", () => {
     expect(
       buildAwardValuesForCurrencies(currencies, [

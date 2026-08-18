@@ -293,8 +293,8 @@ function AwardFormDialog({
           </label>
         </div>
 
-        <div className="space-y-3 sm:col-span-2">
-          <Label>{tAwards("values")}</Label>
+        <div className="space-y-4 sm:col-span-2">
+          <h3 className="text-base font-semibold">{tAwards("values")}</h3>
           <div className="flex flex-wrap items-start gap-4">
             {currencies.map((currency, index) => (
               <div key={currency.documentId} className="flex flex-col gap-2">
@@ -307,7 +307,7 @@ function AwardFormDialog({
                 />
                 <NumberInput
                   id={`award-value-${currency.documentId}`}
-                  min={1}
+                  min={0}
                   className="w-28"
                   disabled={formDisabled}
                   {...register(`values.${index}.numberOf`, { valueAsNumber: true })}

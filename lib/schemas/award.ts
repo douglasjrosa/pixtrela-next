@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const awardValueSchema = z.object({
-  numberOf: z.number().int().min(1),
+  numberOf: z.number().int().min(0),
   currencyDocumentId: z.string().min(1),
 });
 
