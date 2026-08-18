@@ -8,10 +8,10 @@ function hrefs(role: Parameters<typeof navItemsForRole>[0]) {
 describe("navItemsForRole", () => {
   it("sends colaborator home links to private path when userId is set", () => {
     expect(navItemsForRole("colaborator", { userId: "col-1" }).map((i) => i.href))
-      .toEqual(["/col-1", "/col-1#colaborator-store", "/col-1/profile"]);
+      .toEqual(["/col-1", "/col-1/store", "/col-1/profile"]);
     expect(
       navItemsForRole("colaborator", { userId: "col-1" }).map((i) => i.labelKey),
-    ).toEqual(["myBalance", "exchange", "profile"]);
+    ).toEqual(["myBalance", "store", "profile"]);
   });
 
   it("falls back to panel root when colaborator has no userId", () => {

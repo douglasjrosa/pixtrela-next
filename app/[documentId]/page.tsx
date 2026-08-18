@@ -1,18 +1,17 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
-import { redeemAward } from "@/app/(app)/exchange/actions";
 import { StarBalanceDetails } from "@/components/colaborator/star-balance-details";
 import { StarBalanceHero } from "@/components/colaborator/star-balance-hero";
 import { DashboardInsightsBlock } from "@/components/dashboard/dashboard-insights-block";
-import { AwardCard } from "@/components/exchange/award-card";
-import { ExchangeWindowBanner } from "@/components/exchange/exchange-window-banner";
 import { buttonVariants } from "@/components/ui/button";
 import { loadColaboratorPrivateHome } from "@/lib/colaborator/private-home-data";
 import { loadColaboratorInsights } from "@/lib/dashboard/load-colaborator-insights";
 import { loadMonthlyRanking } from "@/lib/dashboard/load-monthly-ranking";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
+import { buildStorePath } from "@/lib/store/store-path";
 import { cn } from "@/lib/utils";
 
 interface PageProps {
@@ -34,7 +33,7 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
     redirect(`/${session.user.id}`);
   }
 
-  const { balance, awards, windowOpen, spendableBalance, team, history } =
+  const { balance, windowOpen, history } =
     await loadColaboratorPrivateHome(documentId);
   const ranking = await loadMonthlyRanking();
   const insights = await loadColaboratorInsights(documentId);
@@ -56,17 +55,18 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
         />
       </div>
 
-      {windowOpen ? (
-        <a
-          href="#colaborator-store"
-          className={cn(
-            buttonVariants({ variant: "default", size: "lg" }),
-            "min-h-12 w-full rounded-2xl px-4 text-base font-bold active:scale-[0.98]",
-          )}
-        >
-          {tExchange("scrollToStore")}
-        </a>
-      ) : null}
+      <Link
+        href={buildStorePath(documentId)}
+        className={cn(
+          buttonVariants({ variant: "default", size: "lg" }),
+          "min-h-12 w-full rounded-2xl px-4 text-base font-bold active:scale-[0.98]",
+          windowOpen
+            ? "bg-star-gold text-star-gold-foreground hover:bg-star-gold/90"
+            : "",
+        )}
+      >
+        {windowOpen ? tExchange("goToStore") : tExchange("scrollToStore")}
+      </Link>
 
       <DashboardInsightsBlock
         ranking={ranking}
@@ -77,32 +77,6 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
         selectedName={colaboratorName}
         insights={insights}
       />
-
-      <div id="colaborator-store" className="scroll-mt-4 space-y-4">
-        <h2 className="text-xl font-semibold">{tExchange("title")}</h2>
-        {team ? (
-          <ExchangeWindowBanner
-            windowOpen={windowOpen}
-            firstDay={team.exchangesFirstDay}
-            lastDay={team.exchangesLastDay}
-          />
-        ) : null}
-        {awards.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{tExchange("emptyAwards")}</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {awards.map((award) => (
-              <AwardCard
-                key={award.id}
-                award={award}
-                windowOpen={windowOpen}
-                balance={spendableBalance}
-                onRedeem={redeemAward}
-              />
-            ))}
-          </div>
-        )}
-      </div>
 
       <section className="space-y-4">
         <h2 className="text-xl font-semibold">{tHistory("title")}</h2>

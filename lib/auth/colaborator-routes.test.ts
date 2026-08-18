@@ -4,6 +4,7 @@ import {
   isColaboratorPrivatePath,
   isKioskPanelPath,
   isUserProfilePath,
+  isUserStorePath,
   KIOSK_HOME_PATH,
   LOGIN_PATH,
   resolveRouteAccess,
@@ -253,6 +254,63 @@ describe("resolveRouteAccess profile", () => {
     ).toEqual({
       action: "redirect",
       destination: `${LOGIN_PATH}?callbackUrl=%2Fcol-1%2Fprofile`,
+    });
+  });
+});
+
+describe("isUserStorePath", () => {
+  it("matches store nested under document id", () => {
+    expect(isUserStorePath("/col-1/store")).toBe(true);
+    expect(isUserStorePath("/board/store")).toBe(false);
+    expect(isUserStorePath("/store")).toBe(false);
+  });
+});
+
+describe("resolveRouteAccess store", () => {
+  it("allows colaborator on own store", () => {
+    expect(
+      resolveRouteAccess("/col-1/store", {
+        isAuthenticated: true,
+        role: "colaborator",
+        userId: "col-1",
+      }),
+    ).toEqual({ action: "allow" });
+  });
+
+  it("redirects colaborator to own store when visiting another id", () => {
+    expect(
+      resolveRouteAccess("/other/store", {
+        isAuthenticated: true,
+        role: "colaborator",
+        userId: "col-1",
+      }),
+    ).toEqual({ action: "redirect", destination: "/col-1/store" });
+  });
+
+  it("redirects staff and kiosk away from store", () => {
+    expect(
+      resolveRouteAccess("/mgr-1/store", {
+        isAuthenticated: true,
+        role: "manager",
+        userId: "mgr-1",
+      }),
+    ).toEqual({ action: "redirect", destination: "/" });
+
+    expect(
+      resolveRouteAccess("/kiosk-1/store", {
+        isAuthenticated: true,
+        role: "kiosk",
+        userId: "kiosk-1",
+      }),
+    ).toEqual({ action: "redirect", destination: KIOSK_HOME_PATH });
+  });
+
+  it("redirects unlogged store visits to login with callback", () => {
+    expect(
+      resolveRouteAccess("/col-1/store", { isAuthenticated: false }),
+    ).toEqual({
+      action: "redirect",
+      destination: `${LOGIN_PATH}?callbackUrl=%2Fcol-1%2Fstore`,
     });
   });
 });

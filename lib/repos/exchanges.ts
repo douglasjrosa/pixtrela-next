@@ -46,14 +46,16 @@ export async function loadAwardPrices(
   const rows = await db
     .select({
       currencyId: awardPrices.currencyId,
+      currencyName: currencies.name,
       numberOf: awardPrices.numberOf,
     })
     .from(awardPrices)
+    .innerJoin(currencies, eq(awardPrices.currencyId, currencies.id))
     .where(eq(awardPrices.awardId, awardId));
 
   return rows.map((row) => ({
     currencyId: row.currencyId,
-    currencyName: row.currencyId,
+    currencyName: row.currencyName,
     qty: row.numberOf,
   }));
 }
@@ -92,11 +94,13 @@ export async function redeemAward(
         showInStore: awards.showInStore,
         name: awards.name,
         title: awards.title,
+        stock: awards.stock,
       })
       .from(awards)
       .where(eq(awards.id, input.awardId))
       .limit(1);
     if (!award?.active || !award.showInStore) throw new Error("awardUnavailable");
+    if (award.stock < qty) throw new Error("awardOutOfStock");
 
     const [currency] = await tx
       .select({
@@ -139,6 +143,11 @@ export async function redeemAward(
       { balanceId: balance.id, amount: cost },
       tx as unknown as Db,
     );
+
+    await tx
+      .update(awards)
+      .set({ stock: award.stock - qty, updatedAt: new Date() })
+      .where(eq(awards.id, award.id));
 
     const [exchange] = await tx
       .insert(exchanges)
