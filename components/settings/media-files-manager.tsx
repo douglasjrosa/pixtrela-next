@@ -25,6 +25,10 @@ import type {
   MediaReferenceSummary,
 } from "@/lib/repos/media";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import {
+  MEDIA_THUMBNAIL_FRAME_CLASS,
+  MEDIA_THUMBNAIL_IMAGE_CLASS,
+} from "@/lib/media/media-thumbnail-styles";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 24;
@@ -427,14 +431,14 @@ export function MediaFilesManager({
                   "flex flex-col overflow-hidden rounded-lg border bg-card",
                 )}
               >
-                <div className="flex aspect-square items-center justify-center bg-muted">
+                <div className={MEDIA_THUMBNAIL_FRAME_CLASS}>
                   {image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={item.browserUrl!}
                       alt={item.altText?.trim() || title}
                       title={item.title?.trim() || undefined}
-                      className="size-full object-cover"
+                      className={MEDIA_THUMBNAIL_IMAGE_CLASS}
                     />
                   ) : (
                     <FileText

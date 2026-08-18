@@ -6,6 +6,10 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import type { MediaAssetRecord } from "@/lib/repos/media";
+import {
+  MEDIA_THUMBNAIL_FRAME_CLASS,
+  MEDIA_THUMBNAIL_IMAGE_CLASS,
+} from "@/lib/media/media-thumbnail-styles";
 import { cn } from "@/lib/utils";
 
 export interface MediaPickerModalProps {
@@ -145,19 +149,19 @@ export function MediaPickerModal({
                   disabled={isPending}
                   onClick={() => setPendingId(item.id)}
                   className={cn(
-                    "w-full overflow-hidden rounded-md border bg-muted",
+                    "w-full overflow-hidden rounded-md border",
                     "focus-visible:outline-none focus-visible:ring-2",
                     "focus-visible:ring-ring",
                     active && "ring-2 ring-ring",
                   )}
                 >
-                  <span className="flex aspect-square items-center justify-center">
+                  <span className={MEDIA_THUMBNAIL_FRAME_CLASS}>
                     {item.browserUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={item.browserUrl}
                         alt={title}
-                        className="size-full object-cover"
+                        className={MEDIA_THUMBNAIL_IMAGE_CLASS}
                       />
                     ) : null}
                   </span>
