@@ -263,23 +263,13 @@ export function normalizeForegroundColor(
 }
 
 /**
- * Overrides text tokens on a content surface for the matched route theme.
+ * Route themes no longer override text tokens — semantic theme presets own
+ * foreground colors site-wide.
  */
 export function routeThemeForegroundStyle(
-  theme: Pick<RouteThemeView, "foregroundColor"> | null,
-): {
-  color: string;
-  ["--foreground"]: string;
-  ["--card-foreground"]: string;
-  ["--popover-foreground"]: string;
-} {
-  const color = normalizeForegroundColor(theme?.foregroundColor);
-  return {
-    color,
-    "--foreground": color,
-    "--card-foreground": color,
-    "--popover-foreground": color,
-  };
+  _theme: Pick<RouteThemeView, "foregroundColor"> | null,
+): Record<string, never> {
+  return {};
 }
 
 export function normalizeSurfaceColor(
@@ -303,20 +293,11 @@ export function routeThemeSurfaceBackgroundStyle(
   };
 }
 
-/** Foreground + surface fill for the rounded page container. */
+/** Surface fill for the rounded page container (text uses semantic tokens). */
 export function routeThemeSurfacePanelStyle(
   theme: RouteThemeView | null,
-): {
-  color: string;
-  backgroundColor: string;
-  ["--foreground"]: string;
-  ["--card-foreground"]: string;
-  ["--popover-foreground"]: string;
-} {
-  return {
-    ...routeThemeForegroundStyle(theme),
-    ...routeThemeSurfaceBackgroundStyle(theme),
-  };
+): { backgroundColor: string } {
+  return routeThemeSurfaceBackgroundStyle(theme);
 }
 
 export function normalizeOpacity(value: number | null | undefined): number {

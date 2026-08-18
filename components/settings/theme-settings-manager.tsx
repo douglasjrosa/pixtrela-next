@@ -29,7 +29,6 @@ import {
   DEFAULT_PAGE_MARGIN_MOBILE,
   DEFAULT_PARALLAX_DIRECTION,
   DEFAULT_PARALLAX_INTENSITY,
-  DEFAULT_FOREGROUND_COLOR,
   DEFAULT_SURFACE_COLOR,
   DEFAULT_SURFACE_COLOR_OPACITY,
   FULLY_TRANSPARENT_OPACITY,
@@ -68,7 +67,6 @@ interface ThemeDraft {
   parallaxDirection: ParallaxDirection;
   contentMarginMobile: PageMargin;
   contentMarginDesktop: PageMargin;
-  foregroundColor: string;
   surfaceColor: string;
   surfaceOpacity: number;
   message: string | null;
@@ -91,7 +89,6 @@ function draftFromTheme(theme: RouteThemeView): ThemeDraft {
       theme.contentMarginMobile || DEFAULT_PAGE_MARGIN_MOBILE,
     contentMarginDesktop:
       theme.contentMarginDesktop || DEFAULT_PAGE_MARGIN_DESKTOP,
-    foregroundColor: theme.foregroundColor || DEFAULT_FOREGROUND_COLOR,
     surfaceColor: theme.surfaceColor || DEFAULT_SURFACE_COLOR,
     surfaceOpacity: theme.surfaceColorOpacity ?? DEFAULT_SURFACE_COLOR_OPACITY,
     message: null,
@@ -235,7 +232,6 @@ export function ThemeSettingsManager({
         parallaxDirection: values.parallaxDirection,
         contentMarginMobile: values.contentMarginMobile,
         contentMarginDesktop: values.contentMarginDesktop,
-        foregroundColor: values.foregroundColor,
         surfaceColor: values.surfaceColor,
         surfaceColorOpacity: values.surfaceOpacity,
       });
@@ -403,53 +399,6 @@ export function ThemeSettingsManager({
             }}
           >
             <p className="text-sm text-muted-foreground">{editingTheme.routeKey}</p>
-
-            <div className="space-y-2">
-              <Label htmlFor="theme-foreground">{t("themesForegroundColor")}</Label>
-              <div className="flex flex-wrap gap-2">
-                <Input
-                  id="theme-foreground"
-                  type="color"
-                  className="h-12 w-16 cursor-pointer p-1"
-                  value={
-                    /^#([0-9A-Fa-f]{6})$/.test(draft.foregroundColor)
-                      ? draft.foregroundColor
-                      : DEFAULT_FOREGROUND_COLOR
-                  }
-                  disabled={busy}
-                  onChange={(event) =>
-                    patchDraft({
-                      foregroundColor: event.target.value,
-                      message: null,
-                    })
-                  }
-                />
-                <Input
-                  value={draft.foregroundColor}
-                  placeholder={DEFAULT_FOREGROUND_COLOR}
-                  disabled={busy}
-                  onChange={(event) =>
-                    patchDraft({
-                      foregroundColor: event.target.value,
-                      message: null,
-                    })
-                  }
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() =>
-                    patchDraft({
-                      foregroundColor: DEFAULT_FOREGROUND_COLOR,
-                      message: null,
-                    })
-                  }
-                >
-                  {t("themesForegroundReset")}
-                </Button>
-              </div>
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="theme-surface">{t("themesSurfaceColor")}</Label>
