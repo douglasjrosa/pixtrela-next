@@ -14,6 +14,9 @@ import {
   startSubTask as startSubTaskRepo,
   stopSubTask as stopSubTaskRepo,
 } from "@/lib/repos/kiosk-subtasks";
+import { releaseFlagsForSubTask as releaseFlagsForSubTaskRepo } from "@/lib/repos/material-flags";
+import { getSubTaskById } from "@/lib/repos/tasks";
+import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import { activityFormSchema } from "@/lib/schemas/activity";
 import { parseChainStopAnswers } from "@/lib/schemas/kiosk-chain-stop";
 import {
@@ -117,5 +120,17 @@ export async function confirmChainStop(
   await assertKioskSession();
   const answers = parseChainStopAnswers(rawAnswers);
   await confirmChainStopRepo(colaboratorId, chainRunId, answers);
+  invalidateActivityData();
+}
+
+export async function releaseSubTaskFlags(
+  subTaskDocumentId: string,
+): Promise<void> {
+  await assertKioskSession();
+  await releaseFlagsForSubTaskRepo(subTaskDocumentId);
+  const subtask = await getSubTaskById(subTaskDocumentId);
+  if (subtask) {
+    await runTaskSubTaskSyncRoutine(subtask.taskId);
+  }
   invalidateActivityData();
 }

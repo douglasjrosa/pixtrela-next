@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SubTaskCategorySelect } from "@/components/subtasks/subtask-category-select";
 import { SHARING_TYPES } from "@/lib/schemas/sub-task";
 import {
   subTaskPresetFormSchema,
@@ -31,6 +32,8 @@ export function SubTaskPresetForm({
   const {
     register,
     control,
+    watch,
+    setValue,
     handleSubmit,
     formState: { errors },
   } = useForm<SubTaskPresetFormInput>({
@@ -107,6 +110,20 @@ export function SubTaskPresetForm({
               ))}
             </select>
           )}
+        />
+      </div>
+
+      <div className="sm:col-span-2">
+        <SubTaskCategorySelect
+          id={`${formId}-category`}
+          value={watch("subTaskCategoryId")}
+          disabled={disabled}
+          onChange={(next) =>
+            setValue("subTaskCategoryId", next, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
         />
       </div>
     </form>

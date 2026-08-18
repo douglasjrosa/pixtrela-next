@@ -59,6 +59,7 @@ async function loadTemplate(
         dependencies:
           row.dependencyIndexes.length > 0 ? row.dependencyIndexes : null,
         linkedToPrevious: row.linkedToPrevious,
+        subTaskCategoryId: row.subTaskCategoryId,
       })),
     };
   } catch (error) {

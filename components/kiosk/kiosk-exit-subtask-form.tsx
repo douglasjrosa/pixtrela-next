@@ -4,10 +4,12 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Label } from "@/components/ui/label";
+import type { MaterialFlagOption } from "@/lib/business/subtask-queue";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
 import { KioskActionButton } from "./kiosk-action-button";
+import { KioskMaterialFlagPicker } from "./kiosk-material-flag-picker";
 import { KioskQtyStepper } from "./kiosk-qty-stepper";
 
 export interface KioskExitSubtaskFormProps {
@@ -17,6 +19,7 @@ export interface KioskExitSubtaskFormProps {
   allowComplete?: boolean;
   disabled?: boolean;
   busy?: boolean;
+  availableFlags?: MaterialFlagOption[];
   onCancel: () => void;
   onConfirm: (input: KioskExitInput) => void;
 }
@@ -27,6 +30,7 @@ export function KioskExitSubtaskForm({
   allowComplete = true,
   disabled = false,
   busy = false,
+  availableFlags = [],
   onCancel,
   onConfirm,
 }: KioskExitSubtaskFormProps) {
@@ -34,20 +38,38 @@ export function KioskExitSubtaskForm({
   const safeMaxQty = Math.max(0, maxQty);
   const [qtyCompleted, setQtyCompleted] = useState(safeMaxQty);
   const [qtyError, setQtyError] = useState<string | null>(null);
+  const [flagIds, setFlagIds] = useState<string[]>([]);
   const actionsDisabled = disabled || busy;
   const confirmLabel = busy ? t("actionLoading") : t("exitConfirm");
+
+  function withFlags<T extends object>(base: T): T | (T & { flagIds: string[] }) {
+    if (flagIds.length === 0) return base;
+    return { ...base, flagIds };
+  }
+
+  const flagPicker = (
+    <KioskMaterialFlagPicker
+      flags={availableFlags}
+      selectedIds={flagIds}
+      disabled={actionsDisabled}
+      onChange={setFlagIds}
+    />
+  );
 
   if (sharingType === "duration") {
     if (!allowComplete) {
       return (
         <div className="space-y-3 rounded-2xl border bg-muted p-3">
           <p className="text-base font-medium">{t("exitWithoutCompleteHint")}</p>
+          {flagPicker}
           <div className="flex flex-col gap-2">
             <KioskActionButton
               actionVariant="produce"
               disabled={actionsDisabled}
               onClick={() =>
-                onConfirm({ sharingType: "duration", isCompleted: false })
+                onConfirm(
+                  withFlags({ sharingType: "duration", isCompleted: false }),
+                )
               }
             >
               {confirmLabel}
@@ -67,12 +89,15 @@ export function KioskExitSubtaskForm({
     return (
       <div className="space-y-3 rounded-2xl border bg-muted p-3">
         <p className="text-base font-medium">{t("exitConfirmDuration")}</p>
+        {flagPicker}
         <div className="flex flex-col gap-2">
           <KioskActionButton
             actionVariant="produce"
             disabled={actionsDisabled}
             onClick={() =>
-              onConfirm({ sharingType: "duration", isCompleted: true })
+              onConfirm(
+                withFlags({ sharingType: "duration", isCompleted: true }),
+              )
             }
           >
             {busy ? t("actionLoading") : t("exitCompletedYes")}
@@ -81,7 +106,9 @@ export function KioskExitSubtaskForm({
             actionVariant="outline"
             disabled={actionsDisabled}
             onClick={() =>
-              onConfirm({ sharingType: "duration", isCompleted: false })
+              onConfirm(
+                withFlags({ sharingType: "duration", isCompleted: false }),
+              )
             }
           >
             {t("exitCompletedNo")}
@@ -128,6 +155,7 @@ export function KioskExitSubtaskForm({
           </p>
         ) : null}
       </div>
+      {flagPicker}
       <div className="flex flex-col gap-2">
         <KioskActionButton
           actionVariant="produce"
@@ -141,7 +169,7 @@ export function KioskExitSubtaskForm({
               setQtyError(t("exitQtyExceeds"));
               return;
             }
-            onConfirm({ sharingType: "qty", qtyCompleted });
+            onConfirm(withFlags({ sharingType: "qty", qtyCompleted }));
           }}
         >
           {confirmLabel}

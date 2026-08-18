@@ -2,6 +2,16 @@ export type SubTaskStatus = "waiting" | "producing" | "paused" | "finished";
 
 export type ActivationStatus = "locked" | "unlocked" | "disabled";
 
+export type MaterialFlagOption = {
+  id: string;
+  code: string;
+};
+
+export type DependencyFlagHint = {
+  predecessorName: string;
+  codes: string[];
+};
+
 const DEFAULT_ACTIVATION_STATUS: ActivationStatus = "locked";
 
 export interface QueuedSubTask {
@@ -37,6 +47,10 @@ export interface KioskSubTask extends QueuedSubTask {
   maxSameTimeWorkers?: number;
   assignedToIds?: string[];
   dependencyIds?: string[];
+  subTaskCategoryId?: string | null;
+  assignedFlagCodes?: string[];
+  availableFlags?: MaterialFlagOption[];
+  dependencyFlags?: DependencyFlagHint[];
 }
 
 export interface KioskQueueSections {

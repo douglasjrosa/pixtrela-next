@@ -6,8 +6,10 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
+  unique,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -279,12 +281,52 @@ export const taskAutomationSettings = pgTable("task_automation_settings", {
     .notNull(),
 });
 
+export const subTaskCategories = pgTable("sub_task_categories", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(),
+  description: text("description"),
+  ref: varchar("ref", { length: 16 }).notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const flags = pgTable(
+  "flags",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    subTaskCategoryId: uuid("sub_task_category_id")
+      .references(() => subTaskCategories.id, { onDelete: "restrict" })
+      .notNull(),
+    index: integer("index").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("flags_category_index_unique").on(
+      table.subTaskCategoryId,
+      table.index,
+    ),
+  ],
+);
+
 export const subTaskPresets = pgTable("sub_task_presets", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 128 }).notNull(),
   expectedTime: integer("expected_time").default(0).notNull(),
   sharingType: sharingTypeEnum("sharing_type").default("duration").notNull(),
   maxSameTimeWorkers: integer("max_same_time_workers").default(1).notNull(),
+  subTaskCategoryId: uuid("sub_task_category_id").references(
+    () => subTaskCategories.id,
+    { onDelete: "set null" },
+  ),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -348,6 +390,10 @@ export const templateSubTasks = pgTable("template_sub_tasks", {
     .default([])
     .notNull(),
   linkedToPrevious: boolean("linked_to_previous").default(false).notNull(),
+  subTaskCategoryId: uuid("sub_task_category_id").references(
+    () => subTaskCategories.id,
+    { onDelete: "set null" },
+  ),
 });
 
 export const tasks = pgTable("tasks", {
@@ -393,7 +439,10 @@ export const subTasks = pgTable("sub_tasks", {
   timeSpent: integer("time_spent").default(0).notNull(),
   linkedToPrevious: boolean("linked_to_previous").default(false).notNull(),
   active: boolean("active").default(true).notNull(),
-  reasonForDeactivation: text("reason_for_deactivation"),
+  subTaskCategoryId: uuid("sub_task_category_id").references(
+    () => subTaskCategories.id,
+    { onDelete: "set null" },
+  ),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -410,6 +459,28 @@ export const subTaskDependencies = pgTable("sub_task_dependencies", {
     .references(() => subTasks.id, { onDelete: "cascade" })
     .notNull(),
 });
+
+export const subTaskFlags = pgTable(
+  "sub_task_flags",
+  {
+    subTaskId: uuid("sub_task_id")
+      .references(() => subTasks.id, { onDelete: "cascade" })
+      .notNull(),
+    flagId: uuid("flag_id")
+      .references(() => flags.id, { onDelete: "restrict" })
+      .notNull(),
+    assignedAt: timestamp("assigned_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "sub_task_flags_pk",
+      columns: [table.subTaskId, table.flagId],
+    }),
+    unique("sub_task_flags_flag_id_unique").on(table.flagId),
+  ],
+);
 
 export const subTaskAssignees = pgTable("sub_task_assignees", {
   subTaskId: uuid("sub_task_id")

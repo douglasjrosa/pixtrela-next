@@ -9,6 +9,10 @@ vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
   searchSubTaskPresets: vi.fn(async () => []),
 }));
 
+vi.mock("@/app/(app)/settings/subtasks/actions", () => ({
+  listCategoryOptions: vi.fn(async () => []),
+}));
+
 import {
   resolveTemplateSubTaskReorder,
   TemplateSubTaskManager,

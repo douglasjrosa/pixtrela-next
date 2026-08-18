@@ -39,6 +39,7 @@ describe("applySubTaskPreset", () => {
       status: "waiting" as const,
       dependencyIds: ["st1"],
       assignedToIds: ["u1"],
+      subTaskCategoryId: null,
     };
 
     expect(applySubTaskPreset(current, preset)).toEqual({
@@ -47,6 +48,7 @@ describe("applySubTaskPreset", () => {
       sharingType: preset.sharingType,
       maxSameTimeWorkers: preset.maxSameTimeWorkers,
       expectedTime: preset.expectedTime,
+      subTaskCategoryId: preset.subTaskCategoryId ?? null,
     });
   });
 });

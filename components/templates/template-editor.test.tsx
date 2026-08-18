@@ -22,6 +22,10 @@ vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
   searchSubTaskPresets: vi.fn(async () => []),
 }));
 
+vi.mock("@/app/(app)/settings/subtasks/actions", () => ({
+  listCategoryOptions: vi.fn(async () => []),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh, push }),
 }));
@@ -105,6 +109,7 @@ describe("TemplateEditor", () => {
           expectedTime: 60,
           dependencies: null,
           linkedToPrevious: false,
+          subTaskCategoryId: null,
         },
       ],
     });

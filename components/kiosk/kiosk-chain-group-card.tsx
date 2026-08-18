@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainAdvanceTimer } from "./kiosk-chain-advance-timer";
 import { KioskChainMemberFields } from "./kiosk-chain-member-fields";
+import { MaterialFlagHintList } from "./material-flag-hint-list";
 import { KioskSubtaskEarnedCredits } from "./kiosk-subtask-earned-credits";
 import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
 import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
@@ -32,6 +33,7 @@ export interface KioskChainGroupCardProps {
     answers: ChainStopAnswer[],
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
+  onReleaseFlags?: (documentId: string) => void | Promise<void>;
 }
 
 export function KioskChainGroupCard({
@@ -45,6 +47,7 @@ export function KioskChainGroupCard({
   onStartChain,
   onConfirmChainStop,
   onAdvanceChain,
+  onReleaseFlags,
 }: KioskChainGroupCardProps) {
   const t = useTranslations("kiosk");
   const [collecting, setCollecting] = useState(false);
@@ -108,6 +111,16 @@ export function KioskChainGroupCard({
                 className="min-w-0 space-y-3 rounded-xl border bg-background p-3"
               >
                 <p className="text-lg font-bold leading-snug">{member.name}</p>
+                <MaterialFlagHintList
+                  dependencyFlags={member.dependencyFlags}
+                  assignedFlagCodes={member.assignedFlagCodes}
+                  onRelease={
+                    !readOnly && (member.assignedFlagCodes?.length ?? 0) > 0
+                      ? () => onReleaseFlags?.(member.documentId)
+                      : undefined
+                  }
+                  releaseDisabled={blockingUi}
+                />
                 {!compactFinishedCards ? (
                   <KioskSubtaskStatusBadge status={member.status} />
                 ) : null}
@@ -142,6 +155,7 @@ export function KioskChainGroupCard({
                         ? getRemainingSubTaskQty(member.targetQty, member.completedQty)
                         : undefined
                     }
+                    availableFlags={member.availableFlags}
                     value={answers[member.documentId]}
                     disabled={blockingUi}
                     onChange={(answer) =>

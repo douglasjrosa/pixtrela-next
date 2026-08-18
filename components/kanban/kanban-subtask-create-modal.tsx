@@ -24,9 +24,9 @@ const EMPTY_FORM: SubTaskFormInput = {
   maxSameTimeWorkers: 1,
   status: "waiting",
   activationStatus: "unlocked",
-  reasonForDisabling: "",
   dependencyIds: [],
   assignedToIds: [],
+  subTaskCategoryId: null,
 };
 
 export interface KanbanSubtaskCreateModalProps {

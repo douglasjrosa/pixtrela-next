@@ -6,6 +6,7 @@ export const chainStopAnswerSchema = z.object({
   documentId: z.string().min(1),
   completed: z.boolean().optional(),
   qty: z.number().int().min(0).optional(),
+  flagIds: z.array(z.string().min(1)).optional(),
 });
 
 export const chainStopAnswersSchema = z.array(chainStopAnswerSchema).min(1);

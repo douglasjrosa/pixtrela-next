@@ -18,6 +18,7 @@ export interface TemplateSubTaskRow {
   dependencyIndexes: number[];
   linkedToPrevious?: boolean;
   isDraft?: boolean;
+  subTaskCategoryId?: string | null;
 }
 
 export function templateRowToFormValues(
@@ -30,6 +31,7 @@ export function templateRowToFormValues(
     sharingType: row.sharingType,
     maxSameTimeWorkers: row.maxSameTimeWorkers,
     dependencyIds: row.dependencyIndexes.map(String),
+    subTaskCategoryId: row.subTaskCategoryId ?? null,
   };
 }
 
@@ -46,6 +48,7 @@ export function mapTemplateComponentsToRows(
     maxSameTimeWorkers: component.maxSameTimeWorkers,
     dependencyIndexes: parseTemplateDependencyIndexes(component.dependencies),
     linkedToPrevious: component.linkedToPrevious ?? false,
+    subTaskCategoryId: component.subTaskCategoryId ?? null,
   }));
 }
 
@@ -61,6 +64,7 @@ export function mapTemplateRowsToComponents(
     expectedTime: row.expectedTime,
     dependencies: row.dependencyIndexes.length > 0 ? row.dependencyIndexes : null,
     linkedToPrevious: row.linkedToPrevious ?? false,
+    subTaskCategoryId: row.subTaskCategoryId ?? null,
   }));
 }
 

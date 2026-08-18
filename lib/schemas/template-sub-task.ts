@@ -9,6 +9,7 @@ export const templateSubTaskFormSchema = z.object({
   sharingType: z.enum(SHARING_TYPES),
   maxSameTimeWorkers: z.number().int().min(1),
   dependencyIds: z.array(z.string()).default([]),
+  subTaskCategoryId: z.string().uuid().optional().nullable(),
 });
 
 export type TemplateSubTaskFormInput = z.infer<typeof templateSubTaskFormSchema>;

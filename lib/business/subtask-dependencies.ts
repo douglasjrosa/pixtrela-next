@@ -6,6 +6,7 @@ export type SubTaskDependencyRow = {
   status: string;
   activationStatus?: string | null;
   dependencies?: unknown;
+  hasAssignedFlags?: boolean;
 };
 
 export function parseSubTaskDependencyIds(value: unknown): string[] {
@@ -17,15 +18,29 @@ export function parseSubTaskDependencyIds(value: unknown): string[] {
   return [];
 }
 
+export function isPredecessorSatisfied(
+  predecessor:
+    | Pick<SubTaskDependencyRow, "status" | "hasAssignedFlags">
+    | undefined,
+): boolean {
+  if (!predecessor) return false;
+  return (
+    predecessor.status === FINISHED_STATUS ||
+    predecessor.hasAssignedFlags === true
+  );
+}
+
 export function areSubTaskDependenciesSatisfied(
   dependencyIds: string[],
-  siblingsById: Map<string, Pick<SubTaskDependencyRow, "status">>,
+  siblingsById: Map<
+    string,
+    Pick<SubTaskDependencyRow, "status" | "hasAssignedFlags">
+  >,
 ): boolean {
   if (dependencyIds.length === 0) return false;
-  return dependencyIds.every((id) => {
-    const sibling = siblingsById.get(id);
-    return sibling?.status === FINISHED_STATUS;
-  });
+  return dependencyIds.every((id) =>
+    isPredecessorSatisfied(siblingsById.get(id)),
+  );
 }
 
 function isLockedForDependencyUnlock(

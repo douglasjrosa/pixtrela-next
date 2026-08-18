@@ -22,6 +22,18 @@ vi.mock("@/lib/repos/kiosk-subtasks", () => ({
   stopSubTask: (...args: unknown[]) => stopSubTaskRepo(...args),
 }));
 
+vi.mock("@/lib/repos/material-flags", () => ({
+  releaseFlagsForSubTask: vi.fn(),
+}));
+
+vi.mock("@/lib/repos/tasks", () => ({
+  getSubTaskById: vi.fn(),
+}));
+
+vi.mock("@/lib/repos/subtask-lifecycle", () => ({
+  runTaskSubTaskSyncRoutine: vi.fn(),
+}));
+
 vi.mock("@/lib/repos/kiosk-chains", () => ({
   startChain: (...args: unknown[]) => startChainRepo(...args),
   advanceChainRun: (...args: unknown[]) => advanceChainRunRepo(...args),

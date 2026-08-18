@@ -12,6 +12,20 @@ describe("parseKioskExitInput", () => {
     ).toEqual({ sharingType: "duration", isCompleted: true });
   });
 
+  it("parses optional flagIds on duration exit", () => {
+    expect(
+      parseKioskExitInput("duration", {
+        sharingType: "duration",
+        isCompleted: true,
+        flagIds: ["flag-1"],
+      }),
+    ).toEqual({
+      sharingType: "duration",
+      isCompleted: true,
+      flagIds: ["flag-1"],
+    });
+  });
+
   it("parses qty exit with completed pieces within max", () => {
     expect(
       parseKioskExitInput(
@@ -54,5 +68,15 @@ describe("toActivityStopPayload", () => {
     expect(
       toActivityStopPayload({ sharingType: "qty", qtyCompleted: 5 }),
     ).toEqual({ qty: 5 });
+  });
+
+  it("includes flagIds in the stop payload when present", () => {
+    expect(
+      toActivityStopPayload({
+        sharingType: "duration",
+        isCompleted: true,
+        flagIds: ["flag-1"],
+      }),
+    ).toEqual({ completed: true, flagIds: ["flag-1"] });
   });
 });

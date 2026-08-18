@@ -50,7 +50,6 @@ describe("tasks/[documentId]/actions drizzle subtasks", () => {
     status: "waiting" as const,
     dependencyIds: [],
     activationStatus: "unlocked" as const,
-    reasonForDisabling: "",
     assignedToIds: ["user-1"],
   };
 

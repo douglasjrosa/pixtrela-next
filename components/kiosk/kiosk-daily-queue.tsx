@@ -32,6 +32,7 @@ export interface KioskDailyQueueProps {
     answers: ChainStopAnswer[],
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
+  onReleaseFlags?: (documentId: string) => void | Promise<void>;
 }
 
 export function KioskDailyQueue({
@@ -50,6 +51,7 @@ export function KioskDailyQueue({
   onStartChain,
   onConfirmChainStop,
   onAdvanceChain,
+  onReleaseFlags,
 }: KioskDailyQueueProps) {
   const t = useTranslations("kiosk");
   const units = buildKioskQueueUnits({
@@ -92,6 +94,7 @@ export function KioskDailyQueue({
             onStartChain={onStartChain}
             onConfirmChainStop={onConfirmChainStop}
             onAdvanceChain={onAdvanceChain}
+            onReleaseFlags={onReleaseFlags}
           />
         </section>
       ) : null}
@@ -114,6 +117,7 @@ export function KioskDailyQueue({
             onStartChain={onStartChain}
             onConfirmChainStop={onConfirmChainStop}
             onAdvanceChain={onAdvanceChain}
+            onReleaseFlags={onReleaseFlags}
           />
         </section>
       ) : null}
@@ -138,6 +142,7 @@ export function KioskDailyQueue({
             onStartChain={onStartChain}
             onConfirmChainStop={onConfirmChainStop}
             onAdvanceChain={onAdvanceChain}
+            onReleaseFlags={onReleaseFlags}
           />
         </section>
       ) : null}

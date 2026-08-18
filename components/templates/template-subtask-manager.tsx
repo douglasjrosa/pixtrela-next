@@ -59,6 +59,7 @@ const EMPTY_FORM: TemplateSubTaskFormInput = {
   sharingType: "duration",
   maxSameTimeWorkers: 1,
   dependencyIds: [],
+  subTaskCategoryId: null,
 };
 
 const NEW_SUBTASK_KEY = "new";
@@ -119,6 +120,7 @@ function formValuesToDraftRow(
     sharingType: values.sharingType,
     maxSameTimeWorkers: values.maxSameTimeWorkers,
     dependencyIndexes: values.dependencyIds.map(Number),
+    subTaskCategoryId: values.subTaskCategoryId ?? null,
   };
 }
 
@@ -134,6 +136,7 @@ function applyFormValuesToRow(
     sharingType: values.sharingType,
     maxSameTimeWorkers: values.maxSameTimeWorkers,
     dependencyIndexes: values.dependencyIds.map(Number),
+    subTaskCategoryId: values.subTaskCategoryId ?? null,
   };
 }
 
