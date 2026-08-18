@@ -7,7 +7,7 @@ import {
   type ChangeEvent,
   type ReactNode,
 } from "react";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -19,8 +19,8 @@ import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
-import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 import { cn } from "@/lib/utils";
+import { buildAwardValuesForCurrencies } from "@/lib/awards/build-award-form-values";
 import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
 
 import { AwardListProvider } from "./award-list-context";
@@ -48,7 +48,6 @@ export interface AwardManagerProps {
 }
 
 function defaultValues(currencies: CurrencyOption[]): AwardFormInput {
-  const defaultCurrencyId = currencies[0]?.documentId ?? "";
   return {
     name: "",
     title: "",
@@ -57,7 +56,7 @@ function defaultValues(currencies: CurrencyOption[]): AwardFormInput {
     imageId: null,
     showInStore: true,
     stock: 0,
-    values: [{ numberOf: 1, currencyDocumentId: defaultCurrencyId }],
+    values: buildAwardValuesForCurrencies(currencies),
   };
 }
 
@@ -73,10 +72,7 @@ function toFormValues(
     imageId: award.imageId ?? null,
     showInStore: award.showInStore,
     stock: award.stock,
-    values:
-      award.values.length > 0
-        ? award.values
-        : [{ numberOf: 1, currencyDocumentId: currencies[0]?.documentId ?? "" }],
+    values: buildAwardValuesForCurrencies(currencies, award.values),
   };
 }
 
@@ -125,11 +121,6 @@ function AwardFormDialog({
     defaultValues: isEditing
       ? toFormValues(editingAward, currencies)
       : defaultValues(currencies),
-  });
-
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: "values",
   });
 
   const imageId = useWatch({ control, name: "imageId" });
@@ -275,55 +266,31 @@ function AwardFormDialog({
           </div>
         </div>
 
-        <div className="space-y-4 sm:col-span-2">
+        <div className="space-y-3 sm:col-span-2">
           <Label>{tAwards("values")}</Label>
-          {fields.map((field, index) => (
-            <div key={field.id} className="flex flex-wrap gap-2">
+          {currencies.map((currency, index) => (
+            <div key={currency.documentId} className="flex flex-wrap items-center gap-3">
+              <Label
+                htmlFor={`award-value-${currency.documentId}`}
+                className="w-32 shrink-0 text-sm font-normal"
+              >
+                {currencyLabel(currency)}
+              </Label>
+              <input
+                type="hidden"
+                {...register(`values.${index}.currencyDocumentId`)}
+              />
               <NumberInput
+                id={`award-value-${currency.documentId}`}
                 min={1}
                 className="w-28"
                 disabled={formDisabled}
-                aria-label={tAwards("numberOf")}
                 {...register(`values.${index}.numberOf`, { valueAsNumber: true })}
               />
-              <select
-                className={cn(NATIVE_SELECT_CLASS_NAME, "min-w-40 flex-1")}
-                disabled={formDisabled}
-                aria-label={tAwards("currency")}
-                {...register(`values.${index}.currencyDocumentId`)}
-              >
-                {currencies.map((currency) => (
-                  <option key={currency.documentId} value={currency.documentId}>
-                    {currencyLabel(currency)}
-                  </option>
-                ))}
-              </select>
-              {fields.length > 1 && !readOnly ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => remove(index)}
-                >
-                  {tCommon("delete")}
-                </Button>
-              ) : null}
             </div>
           ))}
-          {!readOnly ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                append({
-                  numberOf: 1,
-                  currencyDocumentId: currencies[0]?.documentId ?? "",
-                })
-              }
-            >
-              {tAwards("addValue")}
-            </Button>
+          {errors.values ? (
+            <p className="text-sm text-destructive">{errors.values.message}</p>
           ) : null}
         </div>
 

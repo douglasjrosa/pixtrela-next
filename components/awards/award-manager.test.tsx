@@ -54,6 +54,8 @@ function renderManager(overrides: Partial<Parameters<typeof AwardManager>[0]> = 
             variant="table"
             labels={{
               cost: "50 Estrela",
+              stock: "10",
+              showInStore: "Sim",
               inactive: "Inativo",
               selectRow: "Selecionar Arroz",
             }}
@@ -113,7 +115,8 @@ describe("AwardManager", () => {
       screen.getByRole("heading", { name: "Novo prêmio" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Valores")).toBeInTheDocument();
-    expect(screen.getByLabelText("Moeda")).toBeInTheDocument();
+    expect(screen.getByText("Estrela")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Adicionar valor" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Avisos")).toBeInTheDocument();
     expect(screen.getByLabelText("Imagem")).toBeInTheDocument();
     expect(screen.getByText("Mostrar na loja")).toBeInTheDocument();
@@ -156,6 +159,8 @@ describe("AwardManager", () => {
               variant="table"
               labels={{
                 cost: "50 Estrela",
+                stock: "10",
+                showInStore: "Sim",
                 inactive: "Inativo",
                 selectRow: "Selecionar Arroz",
               }}
