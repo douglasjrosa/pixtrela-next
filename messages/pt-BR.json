@@ -804,6 +804,7 @@
     "sectionProducing": "Em execução",
     "sectionPending": "A fazer",
     "sectionFinishedToday": "Concluídas hoje",
+    "earnedCredits": "{count} créditos ganhos",
     "staffTitle": "Totem — gestão",
     "usersPage": "Usuários",
     "exitSession": "Sair",

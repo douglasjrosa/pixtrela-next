@@ -22,6 +22,7 @@ import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainGroupCard } from "./kiosk-chain-group-card";
 import { KioskExitSubtaskForm } from "./kiosk-exit-subtask-form";
+import { KioskSubtaskEarnedCredits } from "./kiosk-subtask-earned-credits";
 import { KioskSubtaskRemainingQtyBadge } from "./kiosk-subtask-remaining-qty-badge";
 import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
 import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
@@ -163,6 +164,11 @@ export function KioskSubtaskPanel({
                       <Duration seconds={subTask.timeSpent} />
                     </span>
                   </p>
+                ) : null}
+                {finished && compactFinishedCards ? (
+                  <KioskSubtaskEarnedCredits
+                    amount={subTask.viewerCurrencyAwarded ?? 0}
+                  />
                 ) : null}
               </div>
               {!finished && !isExiting ? (

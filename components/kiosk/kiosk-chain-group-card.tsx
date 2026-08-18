@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainAdvanceTimer } from "./kiosk-chain-advance-timer";
 import { KioskChainMemberFields } from "./kiosk-chain-member-fields";
+import { KioskSubtaskEarnedCredits } from "./kiosk-subtask-earned-credits";
 import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
 import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
 
@@ -125,6 +126,11 @@ export function KioskChainGroupCard({
                       <Duration seconds={member.timeSpent} />
                     </span>
                   </p>
+                ) : null}
+                {member.status === "finished" && compactFinishedCards ? (
+                  <KioskSubtaskEarnedCredits
+                    amount={member.viewerCurrencyAwarded ?? 0}
+                  />
                 ) : null}
                 {collecting ? (
                   <KioskChainMemberFields

@@ -21,6 +21,7 @@ import {
 import {
   buildFinishedAtBySubTaskId,
   buildOpenStartedAtBySubTaskId,
+  buildViewerStopStatsBySubTaskId,
   filterKioskVisibleSubTasks,
   mapSubTaskDbRow,
   sumStoppedQtyBySubTaskId,
@@ -241,6 +242,8 @@ async function loadActivityEnrichment(
       completedQtyBySubTaskId: new Map<string, number>(),
       finishedAtBySubTaskId: new Map<string, string>(),
       activeColaboratorIdsBySubTaskId: new Map<string, string[]>(),
+      viewerParticipatedIds: new Set<string>(),
+      viewerCurrencyBySubTaskId: new Map<string, number>(),
     };
   }
 
@@ -251,6 +254,7 @@ async function loadActivityEnrichment(
       action: activities.action,
       timestamp: activities.timestamp,
       qty: activities.qty,
+      currencyAwarded: activities.currencyAwarded,
     })
     .from(activities)
     .where(
@@ -262,6 +266,11 @@ async function loadActivityEnrichment(
     .orderBy(asc(activities.timestamp));
 
   const viewerActivities: SessionActivityRef[] = [];
+  const viewerStopActivities: Array<{
+    subTaskId: string;
+    action: string;
+    currencyAwarded: number;
+  }> = [];
   const stoppedActivities: Array<{
     subTaskId: string;
     action: string;
@@ -276,6 +285,11 @@ async function loadActivityEnrichment(
         subTaskId: row.subTaskId,
         action: row.action,
         timestamp: row.timestamp.toISOString(),
+      });
+      viewerStopActivities.push({
+        subTaskId: row.subTaskId,
+        action: row.action,
+        currencyAwarded: row.currencyAwarded,
       });
     }
     if (row.action === "stoped") {
@@ -296,6 +310,7 @@ async function loadActivityEnrichment(
   }
 
   const openStartedAt = buildOpenStartedAtBySubTaskId(viewerActivities);
+  const viewerStopStats = buildViewerStopStatsBySubTaskId(viewerStopActivities);
   const activeColaboratorIdsBySubTaskId = new Map<string, string[]>();
   for (const subTaskId of subTaskIds) {
     const activeIds = listActiveColaboratorIdsFromActivities(
@@ -309,6 +324,8 @@ async function loadActivityEnrichment(
     completedQtyBySubTaskId: sumStoppedQtyBySubTaskId(stoppedActivities),
     finishedAtBySubTaskId: buildFinishedAtBySubTaskId(stoppedActivities),
     activeColaboratorIdsBySubTaskId,
+    viewerParticipatedIds: viewerStopStats.participatedIds,
+    viewerCurrencyBySubTaskId: viewerStopStats.currencyBySubTaskId,
   };
 }
 
@@ -405,6 +422,9 @@ export async function listAssignedSubTasks(
           ...kioskRow,
           assignedToIds: relationMaps.assignedToIdsBySubTaskId.get(row.id) ?? [],
           dependencyIds: relationMaps.dependencyIdsBySubTaskId.get(row.id) ?? [],
+          viewerParticipated: enrichment.viewerParticipatedIds.has(row.id),
+          viewerCurrencyAwarded:
+            enrichment.viewerCurrencyBySubTaskId.get(row.id) ?? 0,
         };
       })
       .filter((row) => row.documentId.length > 0),
@@ -429,6 +449,8 @@ export async function listAssignedSubTasks(
     taskName: row.taskName,
     taskIndex: row.taskIndex,
     finishedAt: row.finishedAt,
+    viewerParticipated: row.viewerParticipated,
+    viewerCurrencyAwarded: row.viewerCurrencyAwarded,
     activeWorkerCount: row.activeWorkerCount,
     linkedToPrevious: row.linkedToPrevious,
     maxSameTimeWorkers: row.maxSameTimeWorkers,

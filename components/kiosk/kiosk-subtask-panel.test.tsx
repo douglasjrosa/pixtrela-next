@@ -97,6 +97,7 @@ describe("KioskSubtaskPanel", () => {
             name: "Montar",
             status: "finished",
             timeSpent: 120,
+            viewerCurrencyAwarded: 7,
           }),
         ]}
         onStart={vi.fn()}
@@ -106,6 +107,9 @@ describe("KioskSubtaskPanel", () => {
 
     expect(screen.queryByText("Finalizada")).not.toBeInTheDocument();
     expect(screen.queryByText(/Tempo gasto:/)).not.toBeInTheDocument();
+    const credits = screen.getByTestId("kiosk-earned-credits");
+    expect(credits).toHaveClass("justify-end");
+    expect(credits).toHaveTextContent("7");
   });
 
   it("shows lock overlay and muted background for locked queued subtasks", () => {
