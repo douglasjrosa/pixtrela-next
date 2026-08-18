@@ -9,6 +9,7 @@ import { canManageSettings } from "@/lib/auth/permissions";
 import { getDb } from "@/lib/db/client";
 import { storeMedia } from "@/lib/media/store-media";
 import {
+  syncRouteThemeColorsFromSemanticTokens,
   updateRouteTheme as updateRouteThemeRepo,
   upsertSemanticThemeSettings,
 } from "@/lib/repos/settings";
@@ -161,5 +162,7 @@ export async function updateSemanticTheme(
   await assertCanManage();
   const tokens = parseSemanticTokens(raw);
   await upsertSemanticThemeSettings(tokens);
+  await syncRouteThemeColorsFromSemanticTokens(tokens);
   invalidateSemanticTheme();
+  invalidateThemes();
 }
