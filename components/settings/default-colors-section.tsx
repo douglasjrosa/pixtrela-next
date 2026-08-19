@@ -77,8 +77,10 @@ export function DefaultColorsSection({
   if (initialKey !== prevInitialKey) {
     setPrevInitialKey(initialKey);
     setDraft(initialTokens);
-    savedBaselineRef.current = initialTokens;
   }
+  useLayoutEffect(() => {
+    savedBaselineRef.current = initialTokens;
+  }, [initialKey, initialTokens]);
   const busy = isPending || isSaving;
   const selectedPresetId = matchSemanticThemePreset(draft);
   const allGroupsExpanded =

@@ -11,7 +11,6 @@ import {
 import { AddNewButton } from "@/components/ui/add-new-button";
 import { Button } from "@/components/ui/button";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
-import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";

@@ -119,9 +119,11 @@ export async function removeCartItemAction(
 }
 
 export async function checkoutCartAction(
-  _prev: CartActionState,
-  _formData: FormData,
+  prev: CartActionState,
+  formData: FormData,
 ): Promise<CartActionState> {
+  void prev;
+  void formData;
   try {
     const userId = await requireColaboratorId();
     const result = await checkoutCartRepo({ userId });

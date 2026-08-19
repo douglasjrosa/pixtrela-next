@@ -50,8 +50,7 @@ function setNativeInputValue(input: HTMLInputElement, nextValue: string): void {
   descriptor?.set?.call(input, nextValue);
 }
 
-export interface NumberInputProps
-  extends Omit<React.ComponentProps<"input">, "type"> {}
+export type NumberInputProps = Omit<React.ComponentProps<"input">, "type">;
 
 const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
   (

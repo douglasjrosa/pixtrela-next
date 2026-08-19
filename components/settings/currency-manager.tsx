@@ -128,8 +128,6 @@ export function CurrencyManager({
       ? `currency-edit-${modal.currency.documentId}`
       : "currency-create";
 
-  const primaryCurrencyDocumentId = currencies[0]?.documentId ?? null;
-
   const defaultValues: CurrencyFormInput =
     modal.mode === "edit" ? toFormValues(modal.currency) : EMPTY_FORM;
 

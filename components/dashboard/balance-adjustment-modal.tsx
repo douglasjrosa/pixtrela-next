@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -52,8 +52,12 @@ function todayIsoDate(): string {
   return formatIsoDateLocal(new Date());
 }
 
-export function BalanceAdjustmentModal({
-  open,
+export function BalanceAdjustmentModal(props: BalanceAdjustmentModalProps) {
+  if (!props.open) return null;
+  return <BalanceAdjustmentForm {...props} />;
+}
+
+function BalanceAdjustmentForm({
   colaboratorDocumentId,
   currencyOptions,
   defaultCurrencyId = null,
@@ -78,16 +82,6 @@ export function BalanceAdjustmentModal({
     setAmount("");
     setFieldError(null);
   }
-
-  useEffect(() => {
-    if (!open) return;
-    setDate(todayIsoDate());
-    setCurrencyId(resolveDefaultCurrencyId(currencyOptions, defaultCurrencyId));
-    setAmount("");
-    setFieldError(null);
-    // Reset only when the dialog opens.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- open gate
-  }, [open]);
 
   function handleClose(): void {
     if (isPending) return;
@@ -136,7 +130,7 @@ export function BalanceAdjustmentModal({
 
   return (
     <FormModalShell
-      open={open}
+      open
       title={t("balanceAdjustmentTitle")}
       onClose={handleClose}
       size="sm"

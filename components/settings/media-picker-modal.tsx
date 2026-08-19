@@ -38,12 +38,7 @@ export function MediaPickerModal({
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    if (!open) {
-      setItems([]);
-      setPendingId(selectedId);
-      setError(null);
-      return;
-    }
+    if (!open) return;
 
     let cancelled = false;
     startTransition(async () => {

@@ -1,8 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
-
 import { eq } from "drizzle-orm";
 
-import { mediaAssets, users } from "@/drizzle/schema";
+import { users } from "@/drizzle/schema";
 import { getDb } from "@/lib/db/client";
 import { storeMedia } from "@/lib/media/store-media";
 import {

@@ -291,8 +291,9 @@ function parseHexRgb(hex: string): RgbColor | null {
  * foreground colors site-wide.
  */
 export function routeThemeForegroundStyle(
-  _theme: Pick<RouteThemeView, "foregroundColor"> | null,
+  theme?: Pick<RouteThemeView, "foregroundColor"> | null,
 ): Record<string, never> {
+  void theme;
   return {};
 }
 
