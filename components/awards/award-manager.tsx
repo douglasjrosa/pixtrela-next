@@ -2,9 +2,9 @@
 
 import {
   Suspense,
+  useCallback,
   useState,
   useTransition,
-  type ChangeEvent,
   type ReactNode,
 } from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -12,6 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
+import { MediaPickerModal } from "@/components/settings/media-picker-modal";
 import { Button } from "@/components/ui/button";
 import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -22,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { buildAwardValuesForCurrencies } from "@/lib/awards/build-award-form-values";
+import type { MediaAssetRecord } from "@/lib/repos/media";
 import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
 
 import { AwardListProvider } from "./award-list-context";
@@ -41,7 +43,8 @@ export interface AwardManagerProps {
   onUpdate: (documentId: string, values: AwardFormInput) => void | Promise<void>;
   onArchive: (documentId: string) => void | Promise<void>;
   onHardDelete: (documentId: string) => void | Promise<void>;
-  onUploadImage: (formData: FormData) => Promise<number | string>;
+  onListImages: () => Promise<MediaAssetRecord[]>;
+  onUploadImage: (formData: FormData) => Promise<MediaAssetRecord>;
   /** When false, catalog is read-only (manager view). */
   canManage?: boolean;
   canDeactivate?: boolean;
@@ -86,7 +89,8 @@ interface AwardFormDialogProps {
   onClose: () => void;
   onSubmit: (values: AwardFormInput) => void;
   onDestructiveAction?: () => void;
-  onUploadImage: (formData: FormData) => Promise<number | string>;
+  onListImages: () => Promise<MediaAssetRecord[]>;
+  onUploadImage: (formData: FormData) => Promise<MediaAssetRecord>;
 }
 
 function AwardFormDialog({
@@ -98,6 +102,7 @@ function AwardFormDialog({
   onClose,
   onSubmit,
   onDestructiveAction,
+  onListImages,
   onUploadImage,
 }: AwardFormDialogProps) {
   const tCommon = useTranslations("common");
@@ -105,11 +110,11 @@ function AwardFormDialog({
   const isEditing = editingAward !== null;
   const formDisabled = isPending || readOnly;
   const formTitleId = "award-form-title";
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     editingAward?.imageUrl ?? null,
   );
-  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
-  const [, startUploadTransition] = useTransition();
+  const listImages = useCallback(() => onListImages(), [onListImages]);
 
   const {
     register,
@@ -126,30 +131,22 @@ function AwardFormDialog({
 
   const imageId = useWatch({ control, name: "imageId" });
 
-  function handleImageChange(event: ChangeEvent<HTMLInputElement>): void {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  function handleImageConfirm(asset: MediaAssetRecord): void {
+    setPickerOpen(false);
+    setValue("imageId", asset.id);
+    setPreviewUrl(asset.browserUrl);
+  }
 
-    setPreviewUrl(URL.createObjectURL(file));
-    startUploadTransition(async () => {
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const id = await onUploadImage(formData);
-        setValue("imageId", id);
-        setUploadMessage(tAwards("imageSelected"));
-      } catch {
-        setPreviewUrl(editingAward?.imageUrl ?? null);
-        setValue("imageId", editingAward?.imageId ?? null);
-        setUploadMessage(tAwards("imageUploadFailed"));
-      }
-    });
+  function handleImageRemove(): void {
+    setValue("imageId", null);
+    setPreviewUrl(null);
   }
 
   const formId = "award-form";
 
   return (
-    <FormModalShell
+    <>
+      <FormModalShell
       open
       size="lgNarrow"
       title={isEditing ? tAwards("editAward") : tAwards("newAward")}
@@ -187,15 +184,6 @@ function AwardFormDialog({
         onSubmit={handleSubmit(onSubmit)}
         className="grid gap-4 sm:grid-cols-2"
       >
-        {uploadMessage ? (
-          <p
-            role="status"
-            className="sm:col-span-2 text-sm text-muted-foreground"
-          >
-            {uploadMessage}
-          </p>
-        ) : null}
-
         <div className="space-y-2">
           <Label htmlFor="name">{tAwards("name")}</Label>
           <Input id="name" disabled={formDisabled} {...register("name")} />
@@ -228,16 +216,35 @@ function AwardFormDialog({
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="image">{tAwards("image")}</Label>
+          <Label>{tAwards("image")}</Label>
           <div className="flex flex-wrap items-start gap-4">
-            <div className="min-w-0 flex-1 space-y-2">
-              <Input
-                id="image"
-                type="file"
-                accept="image/*"
-                disabled={formDisabled}
-                onChange={handleImageChange}
+            {previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={previewUrl}
+                alt=""
+                role="presentation"
+                className="h-24 w-24 shrink-0 rounded-md border object-cover"
               />
+            ) : null}
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  disabled={formDisabled}
+                  onClick={() => setPickerOpen(true)}
+                >
+                  {tAwards("imageChoose")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={formDisabled || !imageId}
+                  onClick={handleImageRemove}
+                >
+                  {tAwards("imageRemove")}
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
                 {tAwards("imageHint")}
               </p>
@@ -247,15 +254,6 @@ function AwardFormDialog({
                 </p>
               ) : null}
             </div>
-            {previewUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- blob preview URL
-              <img
-                src={previewUrl}
-                alt=""
-                role="presentation"
-                className="h-24 w-24 shrink-0 rounded-md border object-cover"
-              />
-            ) : null}
           </div>
         </div>
 
@@ -314,6 +312,16 @@ function AwardFormDialog({
         </div>
       </form>
     </FormModalShell>
+
+      <MediaPickerModal
+        open={pickerOpen}
+        selectedId={imageId}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={handleImageConfirm}
+        onListImages={listImages}
+        onUploadImage={onUploadImage}
+      />
+    </>
   );
 }
 
@@ -324,6 +332,7 @@ export function AwardManager({
   onUpdate,
   onArchive,
   onHardDelete,
+  onListImages,
   onUploadImage,
   canManage = true,
   canDeactivate = false,
@@ -435,6 +444,7 @@ export function AwardManager({
             onDestructiveAction={
               destructiveAction ? () => setConfirmOpen(true) : undefined
             }
+            onListImages={onListImages}
             onUploadImage={onUploadImage}
           />
         ) : null}

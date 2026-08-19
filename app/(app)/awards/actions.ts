@@ -21,7 +21,7 @@ import {
   hardDeleteAward,
   replaceAwardPrices,
 } from "@/lib/repos/awards";
-import { insertMediaAsset } from "@/lib/repos/media";
+import { insertMediaAsset, listMediaAssets, type MediaAssetRecord } from "@/lib/repos/media";
 import {
   awardFormSchema,
   bulkAwardIdsSchema,
@@ -74,9 +74,21 @@ export async function loadMoreAwards(
   return loadAwardListPage(filters, page);
 }
 
+export async function listAwardImages(): Promise<MediaAssetRecord[]> {
+  await assertCanManage();
+  const result = await listMediaAssets({
+    mimeFilter: "image",
+    category: "award",
+    includeBiometric: false,
+    page: 1,
+    pageSize: 100,
+  });
+  return result.items;
+}
+
 export async function uploadAwardImage(
   formData: FormData,
-): Promise<number | string> {
+): Promise<MediaAssetRecord> {
   await assertCanManage();
   const entry = formData.get("file");
   if (!(entry instanceof Blob) || entry.size === 0) {
@@ -95,7 +107,7 @@ export async function uploadAwardImage(
     category: "award",
     sensitivity: "public",
   });
-  return media.id;
+  return media;
 }
 
 export async function createAward(raw: AwardFormInput): Promise<void> {

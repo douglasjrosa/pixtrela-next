@@ -32,7 +32,24 @@ const archivedAward: AwardRow = {
   active: false,
 };
 
-const noopUpload = vi.fn().mockResolvedValue(1);
+const noopUpload = vi.fn().mockResolvedValue({
+  id: "media-1",
+  storageKey: "media-1.png",
+  url: "/api/media/media-1.png",
+  browserUrl: "/api/media/media-1.png",
+  mimeType: "image/png",
+  byteSize: 12,
+  originalFilename: "award.png",
+  displayName: null,
+  description: null,
+  altText: null,
+  title: null,
+  category: "award",
+  sensitivity: "public",
+  createdAt: new Date("2026-01-01T00:00:00Z"),
+  updatedAt: new Date("2026-01-01T00:00:00Z"),
+});
+const noopListImages = vi.fn().mockResolvedValue([]);
 
 function renderManager(overrides: Partial<Parameters<typeof AwardManager>[0]> = {}) {
   return renderWithIntl(
@@ -42,6 +59,7 @@ function renderManager(overrides: Partial<Parameters<typeof AwardManager>[0]> = 
       onUpdate={vi.fn()}
       onArchive={vi.fn()}
       onHardDelete={vi.fn()}
+      onListImages={noopListImages}
       onUploadImage={noopUpload}
       canDeactivate
       canDelete={false}
@@ -85,6 +103,7 @@ describe("AwardManager", () => {
         onUpdate={vi.fn()}
         onArchive={vi.fn()}
         onHardDelete={vi.fn()}
+        onListImages={noopListImages}
         onUploadImage={noopUpload}
         canDelete={false}
       >
@@ -103,6 +122,7 @@ describe("AwardManager", () => {
         onUpdate={vi.fn()}
         onArchive={vi.fn()}
         onHardDelete={vi.fn()}
+        onListImages={noopListImages}
         onUploadImage={noopUpload}
         canDelete={false}
       >
@@ -118,7 +138,8 @@ describe("AwardManager", () => {
     expect(screen.getByText("Estrela")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Adicionar valor" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Avisos")).toBeInTheDocument();
-    expect(screen.getByLabelText("Imagem")).toBeInTheDocument();
+    expect(screen.getByText("Imagem")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Escolher imagem" })).toBeInTheDocument();
     expect(screen.getByText("Mostrar na loja")).toBeInTheDocument();
     expect(screen.getByLabelText("Quantidade em estoque")).toBeInTheDocument();
   });
@@ -148,6 +169,7 @@ describe("AwardManager", () => {
         onUpdate={vi.fn()}
         onArchive={vi.fn()}
         onHardDelete={vi.fn()}
+        onListImages={noopListImages}
         onUploadImage={noopUpload}
         canDeactivate={false}
         canDelete
@@ -192,6 +214,7 @@ describe("AwardManager", () => {
         onUpdate={vi.fn()}
         onArchive={vi.fn()}
         onHardDelete={vi.fn()}
+        onListImages={noopListImages}
         onUploadImage={noopUpload}
         canDelete={false}
       >

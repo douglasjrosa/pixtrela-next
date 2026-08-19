@@ -8,6 +8,8 @@ const findAwardById = vi.fn();
 const hardDeleteAward = vi.fn();
 const getDb = vi.fn();
 const storeMedia = vi.fn();
+const insertMediaAsset = vi.fn();
+const listMediaAssets = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "" })),
@@ -39,6 +41,11 @@ vi.mock("@/lib/media/store-media", () => ({
   storeMedia: (...args: unknown[]) => storeMedia(...args),
 }));
 
+vi.mock("@/lib/repos/media", () => ({
+  insertMediaAsset: (...args: unknown[]) => insertMediaAsset(...args),
+  listMediaAssets: (...args: unknown[]) => listMediaAssets(...args),
+}));
+
 describe("awards/actions drizzle CRUD", () => {
   const update = vi.fn().mockReturnValue({
     set: vi.fn().mockReturnValue({
@@ -55,6 +62,8 @@ describe("awards/actions drizzle CRUD", () => {
     findAwardById.mockReset();
     hardDeleteAward.mockReset();
     storeMedia.mockReset();
+    insertMediaAsset.mockReset();
+    listMediaAssets.mockReset();
     loadAwardListPageMock.mockReset();
     getDb.mockReturnValue({ update });
     update.mockClear();
@@ -185,17 +194,30 @@ describe("awards/actions drizzle CRUD", () => {
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
   });
 
-  it("uploadAwardImage stores media and returns drizzle id", async () => {
+  it("uploadAwardImage stores media and returns the asset record", async () => {
     storeMedia.mockResolvedValue({
       storageKey: "k",
       url: "/media/x.jpg",
       mimeType: "image/jpeg",
       byteSize: 10,
     });
-    const returning = vi.fn().mockResolvedValue([{ id: "media-new" }]);
-    const values = vi.fn().mockReturnValue({ returning });
-    const insert = vi.fn().mockReturnValue({ values });
-    getDb.mockReturnValue({ update, insert });
+    insertMediaAsset.mockResolvedValue({
+      id: "media-new",
+      storageKey: "k",
+      url: "/media/x.jpg",
+      browserUrl: "/media/x.jpg",
+      mimeType: "image/jpeg",
+      byteSize: 10,
+      originalFilename: "a.jpg",
+      displayName: null,
+      description: null,
+      altText: null,
+      title: null,
+      category: "award",
+      sensitivity: "public",
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-01T00:00:00Z"),
+    });
 
     const formData = new FormData();
     formData.append(
@@ -204,9 +226,28 @@ describe("awards/actions drizzle CRUD", () => {
     );
 
     const { uploadAwardImage } = await import("./actions");
-    const id = await uploadAwardImage(formData);
+    const asset = await uploadAwardImage(formData);
 
     expect(storeMedia).toHaveBeenCalled();
-    expect(id).toBe("media-new");
+    expect(asset.id).toBe("media-new");
+  });
+
+  it("listAwardImages returns award-category images", async () => {
+    listMediaAssets.mockResolvedValue({
+      items: [{ id: "media-1" }],
+      total: 1,
+    });
+
+    const { listAwardImages } = await import("./actions");
+    const items = await listAwardImages();
+
+    expect(listMediaAssets).toHaveBeenCalledWith({
+      mimeFilter: "image",
+      category: "award",
+      includeBiometric: false,
+      page: 1,
+      pageSize: 100,
+    });
+    expect(items).toEqual([{ id: "media-1" }]);
   });
 });
