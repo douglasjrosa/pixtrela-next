@@ -44,6 +44,21 @@ describe("CurrencyForm", () => {
     expect(select).toHaveValue("cur-star");
     expect(screen.getByRole("option", { name: "Estrela" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Gema" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Nenhuma" })).toBeNull();
+  });
+
+  it("defaults to the first currency when none is active", () => {
+    renderWithIntl(
+      <CurrencyForm
+        currencies={currencies}
+        activeCurrencyDocumentId=""
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Ativo para Subtarefas:")).toHaveValue(
+      "cur-star",
+    );
   });
 
   it("shows empty state when there are no currencies", () => {
@@ -88,7 +103,7 @@ describe("CurrencyForm", () => {
     renderWithIntl(
       <CurrencyForm
         currencies={currencies}
-        activeCurrencyDocumentId=""
+        activeCurrencyDocumentId="cur-star"
         onSave={onSave}
       />,
     );

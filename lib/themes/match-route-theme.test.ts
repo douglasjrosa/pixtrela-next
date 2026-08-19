@@ -14,8 +14,10 @@ import {
   routeThemeColorOverlayRgba,
   routeThemeContentFrameClass,
   routeThemeContentSurfaceRadiusClass,
+  pickContrastingForeground,
   routeThemeForegroundStyle,
   routeThemeSurfaceBackgroundStyle,
+  routeThemeSurfacePanelStyle,
   normalizeForegroundColor,
   normalizeSurfaceColor,
   pageMarginFromStoredIndex,
@@ -86,6 +88,7 @@ describe("resolveRouteThemeKey", () => {
     expect(resolveRouteThemeKey("/settings/themes")).toBe("settings");
     expect(resolveRouteThemeKey("/settings/themes/colors")).toBe("settings");
     expect(resolveRouteThemeKey("/settings/themes/routes")).toBe("settings");
+    expect(resolveRouteThemeKey("/settings/files")).toBe("settings");
   });
 
   it("maps colaborator documentId paths", () => {
@@ -317,15 +320,20 @@ describe("foreground color", () => {
     expect(normalizeForegroundColor("#112233")).toBe("#112233");
   });
 
-  it("exposes CSS variables for the content surface", () => {
+  it("does not override semantic foreground tokens", () => {
     expect(
       routeThemeForegroundStyle({ foregroundColor: "#334455" }),
-    ).toEqual({
-      color: "#334455",
-      "--foreground": "#334455",
-      "--card-foreground": "#334455",
-      "--popover-foreground": "#334455",
-    });
+    ).toEqual({});
+  });
+
+  it("replaces unreadable ink when the surface is dark", () => {
+    expect(
+      pickContrastingForeground("#0b1220", "#002555"),
+    ).toBe("#f8fafc");
+  });
+
+  it("keeps brand ink on a light surface", () => {
+    expect(pickContrastingForeground("#ffffff", "#002555")).toBe("#002555");
   });
 });
 
@@ -342,5 +350,15 @@ describe("surface color", () => {
         surfaceColorOpacity: 40,
       }),
     ).toEqual({ backgroundColor: "rgba(255, 255, 255, 0.4)" });
+  });
+
+  it("surface panel style only sets background, not text tokens", () => {
+    expect(
+      routeThemeSurfacePanelStyle({
+        foregroundColor: "#002555",
+        surfaceColor: "#ffffff",
+        surfaceColorOpacity: 50,
+      } as RouteThemeView),
+    ).toEqual({ backgroundColor: "rgba(255, 255, 255, 0.5)" });
   });
 });

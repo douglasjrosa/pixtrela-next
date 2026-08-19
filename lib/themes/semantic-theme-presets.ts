@@ -1,5 +1,6 @@
 import {
   DEFAULT_SEMANTIC_TOKENS,
+  SEMANTIC_TOKEN_KEYS,
   type SemanticTokens,
 } from "./semantic-tokens";
 
@@ -390,4 +391,25 @@ export function getSemanticThemePreset(
   const preset = SEMANTIC_THEME_PRESETS.find((item) => item.id === id);
   if (!preset) throw new Error(`unknown preset: ${id}`);
   return preset;
+}
+
+export function semanticTokensEqual(
+  left: SemanticTokens,
+  right: SemanticTokens,
+): boolean {
+  for (const key of SEMANTIC_TOKEN_KEYS) {
+    if (left[key] !== right[key]) return false;
+  }
+  return true;
+}
+
+export function matchSemanticThemePreset(
+  tokens: SemanticTokens,
+): SemanticThemePresetId | null {
+  for (const preset of SEMANTIC_THEME_PRESETS) {
+    if (semanticTokensEqual(tokens, preset.tokens)) {
+      return preset.id;
+    }
+  }
+  return null;
 }

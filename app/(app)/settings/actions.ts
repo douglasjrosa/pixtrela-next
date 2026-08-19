@@ -12,6 +12,7 @@ import {
   upsertTaskAutomationSettings,
 } from "@/lib/repos/settings";
 import type { CurrencyForSubtasksInput } from "@/lib/schemas/currency-for-subtasks";
+import { currencyForSubtasksSchema } from "@/lib/schemas/currency-for-subtasks";
 import { entryAccessSettingsSchema } from "@/lib/schemas/entry-access";
 import type { TaskAutomationFormInput } from "@/lib/schemas/task-automation";
 
@@ -26,7 +27,8 @@ export async function updateCurrencyForSubtasks(
   values: CurrencyForSubtasksInput,
 ): Promise<void> {
   await assertCanManage();
-  await upsertCurrencyForSubtasks(values.currencyDocumentId || null);
+  const data = currencyForSubtasksSchema.parse(values);
+  await upsertCurrencyForSubtasks(data.currencyDocumentId);
   revalidateTag("drizzle:currency-for-subtasks", "default");
 }
 

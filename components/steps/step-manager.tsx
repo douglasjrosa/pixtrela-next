@@ -23,7 +23,7 @@ import { GripVertical } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { StepFormModal } from "@/components/steps/step-form-modal";
-import { Button } from "@/components/ui/button";
+import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { reorderStepsByDrag } from "@/lib/business/step-order";
 import type { StepNameFormInput } from "@/lib/schemas/step";
@@ -243,17 +243,14 @@ export function StepManager({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">{tSteps("title")}</h2>
-        <Button
-          type="button"
-          variant="outline"
+        <AddNewButton
+          label={tSteps("newStep")}
           disabled={isPending}
           onClick={() => {
             setMessage(null);
             setModal({ mode: "create" });
           }}
-        >
-          {tSteps("newStep")}
-        </Button>
+        />
       </div>
 
       {message ? (

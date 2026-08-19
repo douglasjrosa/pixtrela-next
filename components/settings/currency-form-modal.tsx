@@ -16,6 +16,7 @@ import { useTranslations } from "next-intl";
 import { CurrencyMediaIcon } from "@/components/currency/currency-media-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import {
   currencyFormSchema,
@@ -232,9 +233,8 @@ function CurrencyFormModalContent({
               <Label htmlFor="currency-per-second">
                 {tSettings("currencyPerSecond")}
               </Label>
-              <Input
+              <NumberInput
                 id="currency-per-second"
-                type="number"
                 min={0}
                 step="0.01"
                 disabled={saving}

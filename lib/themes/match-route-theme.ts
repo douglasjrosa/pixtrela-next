@@ -109,6 +109,9 @@ export const DEFAULT_PAGE_MARGIN_DESKTOP: PageMargin = "lg";
 
 /** Default app ink / font color. */
 export const DEFAULT_FOREGROUND_COLOR = "#002555";
+/** High-contrast ink for dark surfaces that fail WCAG against brand navy. */
+export const LIGHT_FOREGROUND_COLOR = "#f8fafc";
+const MIN_TEXT_CONTRAST_RATIO = 4.5;
 /** Default rounded page container fill. */
 export const DEFAULT_SURFACE_COLOR = "#ffffff";
 export const DEFAULT_SURFACE_COLOR_OPACITY = 100;
@@ -262,24 +265,86 @@ export function normalizeForegroundColor(
   return DEFAULT_FOREGROUND_COLOR;
 }
 
+type RgbColor = { r: number; g: number; b: number };
+
+function parseHexRgb(hex: string): RgbColor | null {
+  const raw = hex.trim();
+  const short = /^#([0-9A-Fa-f]{3})$/.exec(raw);
+  const long = /^#([0-9A-Fa-f]{6})$/.exec(raw);
+  if (short) {
+    const [rs, gs, bs] = short[1].split("");
+    return {
+      r: Number.parseInt(`${rs}${rs}`, 16),
+      g: Number.parseInt(`${gs}${gs}`, 16),
+      b: Number.parseInt(`${bs}${bs}`, 16),
+    };
+  }
+  if (long) {
+    return {
+      r: Number.parseInt(long[1].slice(0, 2), 16),
+      g: Number.parseInt(long[1].slice(2, 4), 16),
+      b: Number.parseInt(long[1].slice(4, 6), 16),
+    };
+  }
+  return null;
+}
+
+function srgbChannelToLinear(channel: number): number {
+  const value = channel / 255;
+  if (value <= 0.03928) return value / 12.92;
+  return ((value + 0.055) / 1.055) ** 2.4;
+}
+
+function relativeLuminance(rgb: RgbColor): number {
+  return (
+    0.2126 * srgbChannelToLinear(rgb.r) +
+    0.7152 * srgbChannelToLinear(rgb.g) +
+    0.0722 * srgbChannelToLinear(rgb.b)
+  );
+}
+
+function contrastRatio(left: RgbColor, right: RgbColor): number {
+  const first = relativeLuminance(left);
+  const second = relativeLuminance(right);
+  const lighter = Math.max(first, second);
+  const darker = Math.min(first, second);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 /**
- * Overrides text tokens on a content surface for the matched route theme.
+ * Keeps the theme ink when it is readable on the surface; otherwise picks
+ * light or dark ink from surface luminance.
+ */
+export function pickContrastingForeground(
+  surfaceHex: string,
+  preferredHex: string,
+): string {
+  const surface = parseHexRgb(surfaceHex);
+  if (!surface) return preferredHex;
+  const preferred = parseHexRgb(preferredHex);
+  if (
+    preferred &&
+    contrastRatio(surface, preferred) >= MIN_TEXT_CONTRAST_RATIO
+  ) {
+    return preferredHex;
+  }
+  const light = parseHexRgb(LIGHT_FOREGROUND_COLOR);
+  const dark = parseHexRgb(DEFAULT_FOREGROUND_COLOR);
+  if (!light || !dark) return preferredHex;
+  if (contrastRatio(surface, light) >= contrastRatio(surface, dark)) {
+    return LIGHT_FOREGROUND_COLOR;
+  }
+  return DEFAULT_FOREGROUND_COLOR;
+}
+
+/**
+ * Route themes no longer override text tokens — semantic theme presets own
+ * foreground colors site-wide.
  */
 export function routeThemeForegroundStyle(
-  theme: Pick<RouteThemeView, "foregroundColor"> | null,
-): {
-  color: string;
-  ["--foreground"]: string;
-  ["--card-foreground"]: string;
-  ["--popover-foreground"]: string;
-} {
-  const color = normalizeForegroundColor(theme?.foregroundColor);
-  return {
-    color,
-    "--foreground": color,
-    "--card-foreground": color,
-    "--popover-foreground": color,
-  };
+  _theme: Pick<RouteThemeView, "foregroundColor"> | null,
+): Record<string, never> {
+  return {};
 }
 
 export function normalizeSurfaceColor(
@@ -303,20 +368,11 @@ export function routeThemeSurfaceBackgroundStyle(
   };
 }
 
-/** Foreground + surface fill for the rounded page container. */
+/** Surface fill for the rounded page container (text uses semantic tokens). */
 export function routeThemeSurfacePanelStyle(
   theme: RouteThemeView | null,
-): {
-  color: string;
-  backgroundColor: string;
-  ["--foreground"]: string;
-  ["--card-foreground"]: string;
-  ["--popover-foreground"]: string;
-} {
-  return {
-    ...routeThemeForegroundStyle(theme),
-    ...routeThemeSurfaceBackgroundStyle(theme),
-  };
+): { backgroundColor: string } {
+  return routeThemeSurfaceBackgroundStyle(theme);
 }
 
 export function normalizeOpacity(value: number | null | undefined): number {
@@ -405,26 +461,10 @@ export function hasVisibleColorOverlay(theme: RouteThemeView): boolean {
 
 /** Parses #RGB / #RRGGBB into rgba() with the given opacity percent. */
 export function hexToRgba(hex: string, opacityPercent: number): string | null {
-  const raw = hex.trim();
-  const short = /^#([0-9A-Fa-f]{3})$/.exec(raw);
-  const long = /^#([0-9A-Fa-f]{6})$/.exec(raw);
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  if (short) {
-    const [rs, gs, bs] = short[1].split("");
-    r = Number.parseInt(`${rs}${rs}`, 16);
-    g = Number.parseInt(`${gs}${gs}`, 16);
-    b = Number.parseInt(`${bs}${bs}`, 16);
-  } else if (long) {
-    r = Number.parseInt(long[1].slice(0, 2), 16);
-    g = Number.parseInt(long[1].slice(2, 4), 16);
-    b = Number.parseInt(long[1].slice(4, 6), 16);
-  } else {
-    return null;
-  }
+  const rgb = parseHexRgb(hex);
+  if (!rgb) return null;
   const alpha = normalizeOpacity(opacityPercent) / 100;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
 }
 
 function backgroundCssUrl(raw: string): string {

@@ -49,6 +49,8 @@ export async function AwardsListTableHeader({
           filters={filters}
           align="center"
         />
+        <th className="w-24 py-2 text-center">{tAwards("listStock")}</th>
+        <th className="w-28 py-2 text-center">{tAwards("listShowInStore")}</th>
       </tr>
     </thead>
   );

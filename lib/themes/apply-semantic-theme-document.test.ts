@@ -24,6 +24,18 @@ describe("applySemanticThemeToDocument", () => {
     });
 
     expect(style.textContent).toContain("--primary: #6d28d9;");
+    expect(style.textContent).toContain("color-scheme: light;");
+  });
+
+  it("sets color-scheme from background luminance when style tag is missing", () => {
+    applySemanticThemeToDocument({
+      ...DEFAULT_SEMANTIC_TOKENS,
+      background: "#0f172a",
+    });
+
+    expect(
+      document.documentElement.style.getPropertyValue("color-scheme").trim(),
+    ).toBe("dark");
   });
 
   it("falls back to inline root variables when the style tag is missing", () => {

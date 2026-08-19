@@ -1,4 +1,4 @@
-import { eq, getTableColumns } from "drizzle-orm";
+import { eq, getTableColumns, isNotNull } from "drizzle-orm";
 
 import {
   currencies,
@@ -23,6 +23,7 @@ import {
   pageMarginToStoredIndex,
   type RouteThemeKey,
 } from "@/lib/themes/match-route-theme";
+import { semanticTokensToRouteThemeColors } from "@/lib/themes/semantic-route-theme-colors";
 import {
   DEFAULT_SEMANTIC_TOKENS,
   mergeSemanticTokens,
@@ -316,6 +317,23 @@ export async function upsertSemanticThemeSettings(
     .where(eq(semanticThemeSettings.id, existing.id))
     .returning();
   return updated;
+}
+
+export async function syncRouteThemeColorsFromSemanticTokens(
+  tokens: SemanticTokens,
+  db: Db = getDb(),
+): Promise<void> {
+  const colors = semanticTokensToRouteThemeColors(tokens);
+  await db
+    .update(routeThemes)
+    .set({
+      backgroundColor: colors.backgroundColor,
+      backgroundColorOpacity: colors.backgroundColorOpacity,
+      surfaceColor: colors.surfaceColor,
+      surfaceColorOpacity: colors.surfaceColorOpacity,
+      updatedAt: new Date(),
+    })
+    .where(isNotNull(routeThemes.id));
 }
 
 export async function loadSemanticThemeTokens(

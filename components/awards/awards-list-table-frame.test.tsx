@@ -52,6 +52,8 @@ const initialAwards: AwardRow[] = [
 
 const rowLabels = {
   cost: "10 Estrela",
+  stock: "0",
+  showInStore: "Sim",
   inactive: "Inativo",
   selectRow: "Selecionar Primeiro",
 };

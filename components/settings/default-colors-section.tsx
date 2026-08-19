@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useLayoutEffect, useRef, useState, useTransition } from "react";
+import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -11,9 +12,14 @@ import {
   semanticColorFieldId,
 } from "@/components/settings/semantic-color-field";
 import {
+  matchSemanticThemePreset,
   SEMANTIC_THEME_PRESETS,
   type SemanticThemePresetId,
 } from "@/lib/themes/semantic-theme-presets";
+import {
+  clearSemanticThemePreview,
+  applySemanticThemePreview,
+} from "@/lib/themes/semantic-theme-preview";
 import {
   DEFAULT_SEMANTIC_TOKENS,
   SEMANTIC_TOKEN_GROUPS,
@@ -21,12 +27,15 @@ import {
   type SemanticTokenKey,
   type SemanticTokens,
 } from "@/lib/themes/semantic-tokens";
-import { applySemanticThemeToDocument } from "@/lib/themes/apply-semantic-theme-document";
 import { cn } from "@/lib/utils";
 
 export interface DefaultColorsSectionProps {
   initialTokens: SemanticTokens;
   onSave: (tokens: SemanticTokens) => Promise<void>;
+}
+
+function createExpandedGroupSet(): Set<string> {
+  return new Set(SEMANTIC_TOKEN_GROUPS.map((group) => group.id));
 }
 
 function PresetSwatch({ tokens }: { tokens: SemanticTokens }) {
@@ -58,16 +67,48 @@ export function DefaultColorsSection({
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   const [draft, setDraft] = useState<SemanticTokens>(initialTokens);
+  const [expandedGroups, setExpandedGroups] = useState(createExpandedGroupSet);
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const savedBaselineRef = useRef(initialTokens);
   const initialKey = JSON.stringify(initialTokens);
   const [prevInitialKey, setPrevInitialKey] = useState(initialKey);
   if (initialKey !== prevInitialKey) {
     setPrevInitialKey(initialKey);
     setDraft(initialTokens);
+    savedBaselineRef.current = initialTokens;
   }
   const busy = isPending || isSaving;
+  const selectedPresetId = matchSemanticThemePreset(draft);
+  const allGroupsExpanded =
+    expandedGroups.size === SEMANTIC_TOKEN_GROUPS.length;
+
+  function toggleGroup(groupId: string): void {
+    setExpandedGroups((current) => {
+      const next = new Set(current);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  }
+
+  function toggleAllGroups(): void {
+    setExpandedGroups(allGroupsExpanded ? new Set() : createExpandedGroupSet());
+  }
+
+  useLayoutEffect(() => {
+    applySemanticThemePreview(draft);
+  }, [draft]);
+
+  useLayoutEffect(() => {
+    return () => {
+      clearSemanticThemePreview(savedBaselineRef.current);
+    };
+  }, []);
 
   function patchToken(key: SemanticTokenKey, value: string): void {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -91,7 +132,8 @@ export function DefaultColorsSection({
     setIsSaving(true);
     try {
       await onSave(draft);
-      applySemanticThemeToDocument(draft);
+      savedBaselineRef.current = draft;
+      applySemanticThemePreview(draft);
       setMessage(t("defaultColorsSaved"));
       router.refresh();
     } catch {
@@ -105,60 +147,113 @@ export function DefaultColorsSection({
     <section className="space-y-4">
       <SettingsSectionHeading title={t("defaultColorsTitle")} />
 
-      <div className="flex flex-wrap gap-3">
-        {SEMANTIC_THEME_PRESETS.map((preset) => (
-          <button
-            key={preset.id}
+      <div className="flex flex-wrap justify-center gap-3">
+        {SEMANTIC_THEME_PRESETS.map((preset) => {
+          const isSelected = selectedPresetId === preset.id;
+          return (
+            <button
+              key={preset.id}
+              type="button"
+              disabled={busy}
+              aria-pressed={isSelected}
+              className={cn(
+                "flex w-36 shrink-0 flex-col gap-2",
+                "rounded-xl border p-3 text-left transition-colors",
+                "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2",
+                "focus-visible:ring-ring disabled:opacity-50",
+                isSelected && "border-primary bg-primary/10 ring-2 ring-primary",
+              )}
+              onClick={() => startTransition(() => applyPreset(preset.id))}
+            >
+              <PresetSwatch tokens={preset.tokens} />
+              <span className="text-sm font-medium">{t(preset.labelKey)}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             disabled={busy}
-            className={cn(
-              "flex min-w-[7rem] max-w-[9rem] flex-1 flex-col gap-2",
-              "rounded-xl border p-3 text-left transition-colors",
-              "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2",
-              "focus-visible:ring-ring disabled:opacity-50",
-            )}
-            onClick={() => startTransition(() => applyPreset(preset.id))}
+            onClick={toggleAllGroups}
           >
-            <PresetSwatch tokens={preset.tokens} />
-            <span className="text-sm font-medium">{t(preset.labelKey)}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="space-y-6">
-        {SEMANTIC_TOKEN_GROUPS.map((group) => (
-          <div key={group.id} className="space-y-3">
-            <h3 className="text-sm font-semibold text-muted-foreground">
-              {t(group.labelKey)}
-            </h3>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {group.keys.map((key) => (
-                <SemanticColorField
-                  key={key}
-                  id={semanticColorFieldId(key)}
-                  label={t(semanticTokenLabelKey(key))}
-                  value={draft[key]}
-                  disabled={busy}
-                  onChange={(value) => patchToken(key, value)}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
+            {allGroupsExpanded
+              ? t("defaultColorsCollapseAll")
+              : t("defaultColorsExpandAll")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={restoreDefaults}
+          >
+            {t("defaultColorsRestore")}
+          </Button>
+        </div>
         <Button type="button" disabled={busy} onClick={handleSave}>
           {tCommon("save")}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={busy}
-          onClick={restoreDefaults}
-        >
-          {t("defaultColorsRestore")}
-        </Button>
+      </div>
+
+      <div className="space-y-3">
+        {SEMANTIC_TOKEN_GROUPS.map((group) => {
+          const expanded = expandedGroups.has(group.id);
+          return (
+            <div
+              key={group.id}
+              className="overflow-hidden rounded-xl border bg-card"
+            >
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full items-center justify-between gap-3 px-4 py-3",
+                  "text-left outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "hover:bg-muted/50",
+                )}
+                aria-expanded={expanded}
+                onClick={() => toggleGroup(group.id)}
+              >
+                <span className="text-sm font-semibold text-muted-foreground">
+                  {t(group.labelKey)}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "size-4 shrink-0 text-muted-foreground transition-transform",
+                    expanded && "rotate-180",
+                  )}
+                  aria-hidden
+                />
+              </button>
+              <div
+                className={cn(
+                  "grid transition-[grid-template-rows] duration-300 ease-out",
+                  expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                )}
+                aria-hidden={!expanded}
+              >
+                <div className="overflow-hidden">
+                  <div className="grid gap-4 border-t px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {group.keys.map((key) => (
+                      <SemanticColorField
+                        key={key}
+                        id={semanticColorFieldId(key)}
+                        label={t(semanticTokenLabelKey(key))}
+                        value={draft[key]}
+                        disabled={busy || !expanded}
+                        onChange={(value) => patchToken(key, value)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {message ? (

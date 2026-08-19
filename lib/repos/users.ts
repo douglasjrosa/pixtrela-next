@@ -6,6 +6,7 @@ import { mediaAssets, users } from "@/drizzle/schema";
 import { canEstablishAppSession } from "@/lib/domain/auth-session";
 import { getDb, type Db } from "@/lib/db/client";
 import { normalizeEmail } from "@/lib/mail/deliverable-email";
+import { deleteMediaAsset } from "@/lib/repos/media";
 import type { UserFormOwner } from "@/lib/schemas/user";
 import type { UserListSort } from "@/lib/schemas/user-list-sort";
 
@@ -579,15 +580,39 @@ export async function deactivateUser(
   reasonForDeactivation: string,
   db: Db = getDb(),
 ): Promise<void> {
+  const [row] = await db
+    .select({
+      active: users.active,
+      facePhotoMediaId: users.facePhotoMediaId,
+    })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+  if (!row || !row.active) return;
+
+  const facePhotoMediaId = row.facePhotoMediaId;
+
   await db
     .update(users)
     .set({
       active: false,
       blocked: true,
       reasonForDeactivation,
+      facePhotoMediaId: null,
+      faceVector: null,
       updatedAt: new Date(),
     })
     .where(and(eq(users.id, id), eq(users.active, true)));
+
+  if (!facePhotoMediaId) return;
+
+  try {
+    await deleteMediaAsset(facePhotoMediaId, db);
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "inUse") {
+      throw error;
+    }
+  }
 }
 
 export async function setUserTag(

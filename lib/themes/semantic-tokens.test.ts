@@ -7,6 +7,7 @@ import {
   buildSemanticThemeCss,
   mergeSemanticTokens,
   normalizeSemanticHexColor,
+  resolveSelectOptionCssVars,
 } from "./semantic-tokens";
 import { parseSemanticTokens } from "@/lib/schemas/semantic-theme";
 
@@ -25,6 +26,52 @@ describe("semantic-tokens", () => {
     expect(css).toContain(":root {");
     expect(css).toContain("--primary: #4a7fd4;");
     expect(css).toContain("--foreground: #002555;");
+    expect(css).toContain("color-scheme: light;");
+  });
+
+  it("uses dark color-scheme for dark backgrounds", () => {
+    const css = buildSemanticThemeCss({
+      ...DEFAULT_SEMANTIC_TOKENS,
+      background: "#0f172a",
+    });
+    expect(css).toContain("color-scheme: dark;");
+    expect(css).toContain("--select-option-background: #0f172a;");
+  });
+
+  it("falls back to background when card stays light on a dark palette", () => {
+    expect(
+      resolveSelectOptionCssVars({
+        ...DEFAULT_SEMANTIC_TOKENS,
+        background: "#0f172a",
+        foreground: "#e2e8f0",
+        card: "#ffffff",
+        primary: "#22d3ee",
+        "primary-foreground": "#0f172a",
+      }),
+    ).toEqual({
+      "select-option-background": "#0f172a",
+      "select-option-foreground": "#e2e8f0",
+      "select-option-highlight-background": "#22d3ee",
+      "select-option-highlight-foreground": "#0f172a",
+    });
+  });
+
+  it("uses card background for select options when card is also dark", () => {
+    expect(
+      resolveSelectOptionCssVars({
+        ...DEFAULT_SEMANTIC_TOKENS,
+        background: "#0f172a",
+        foreground: "#e2e8f0",
+        card: "#1e293b",
+        primary: "#22d3ee",
+        "primary-foreground": "#0f172a",
+      }),
+    ).toEqual({
+      "select-option-background": "#1e293b",
+      "select-option-foreground": "#e2e8f0",
+      "select-option-highlight-background": "#22d3ee",
+      "select-option-highlight-foreground": "#0f172a",
+    });
   });
 
   it("merges partial tokens with defaults", () => {
