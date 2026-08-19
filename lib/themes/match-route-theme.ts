@@ -109,9 +109,6 @@ export const DEFAULT_PAGE_MARGIN_DESKTOP: PageMargin = "lg";
 
 /** Default app ink / font color. */
 export const DEFAULT_FOREGROUND_COLOR = "#002555";
-/** High-contrast ink for dark surfaces that fail WCAG against brand navy. */
-export const LIGHT_FOREGROUND_COLOR = "#f8fafc";
-const MIN_TEXT_CONTRAST_RATIO = 4.5;
 /** Default rounded page container fill. */
 export const DEFAULT_SURFACE_COLOR = "#ffffff";
 export const DEFAULT_SURFACE_COLOR_OPACITY = 100;
@@ -287,54 +284,6 @@ function parseHexRgb(hex: string): RgbColor | null {
     };
   }
   return null;
-}
-
-function srgbChannelToLinear(channel: number): number {
-  const value = channel / 255;
-  if (value <= 0.03928) return value / 12.92;
-  return ((value + 0.055) / 1.055) ** 2.4;
-}
-
-function relativeLuminance(rgb: RgbColor): number {
-  return (
-    0.2126 * srgbChannelToLinear(rgb.r) +
-    0.7152 * srgbChannelToLinear(rgb.g) +
-    0.0722 * srgbChannelToLinear(rgb.b)
-  );
-}
-
-function contrastRatio(left: RgbColor, right: RgbColor): number {
-  const first = relativeLuminance(left);
-  const second = relativeLuminance(right);
-  const lighter = Math.max(first, second);
-  const darker = Math.min(first, second);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
-/**
- * Keeps the theme ink when it is readable on the surface; otherwise picks
- * light or dark ink from surface luminance.
- */
-export function pickContrastingForeground(
-  surfaceHex: string,
-  preferredHex: string,
-): string {
-  const surface = parseHexRgb(surfaceHex);
-  if (!surface) return preferredHex;
-  const preferred = parseHexRgb(preferredHex);
-  if (
-    preferred &&
-    contrastRatio(surface, preferred) >= MIN_TEXT_CONTRAST_RATIO
-  ) {
-    return preferredHex;
-  }
-  const light = parseHexRgb(LIGHT_FOREGROUND_COLOR);
-  const dark = parseHexRgb(DEFAULT_FOREGROUND_COLOR);
-  if (!light || !dark) return preferredHex;
-  if (contrastRatio(surface, light) >= contrastRatio(surface, dark)) {
-    return LIGHT_FOREGROUND_COLOR;
-  }
-  return DEFAULT_FOREGROUND_COLOR;
 }
 
 /**
