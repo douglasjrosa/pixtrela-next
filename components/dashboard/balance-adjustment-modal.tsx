@@ -160,16 +160,13 @@ export function BalanceAdjustmentModal({
     >
       <div className="flex flex-col gap-4 px-1">
         <div className="mx-auto w-full max-w-[14rem] space-y-1.5">
-          <Label
-            htmlFor="balance-adjustment-date"
-            className="block text-center"
-          >
+          <Label htmlFor="balance-adjustment-date">
             {t("balanceAdjustmentDate")}
           </Label>
           <Input
             id="balance-adjustment-date"
             type="date"
-            className="w-full"
+            className="w-full text-center"
             value={date}
             min={minDate}
             max={maxDate}
