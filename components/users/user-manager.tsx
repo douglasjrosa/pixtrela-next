@@ -20,6 +20,7 @@ import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { buildDefaultLogin } from "@/lib/business/default-login";
 import { buildKioskColaboratorPath } from "@/lib/kiosk/kiosk-link";
@@ -44,6 +45,7 @@ import {
 } from "@/lib/schemas/user";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 
 import type { UserRow } from "./types";
 import {
@@ -409,9 +411,8 @@ function UserFormDialog({
 
         <div className="space-y-2">
           <Label htmlFor="code">{tUsers("code")}</Label>
-          <Input
+          <NumberInput
             id="code"
-            type="number"
             min={0}
             {...register("code", {
               setValueAs: (value) => {
@@ -435,7 +436,7 @@ function UserFormDialog({
           <Label htmlFor="roleType">{tUsers("role")}</Label>
           <select
             id="roleType"
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className={NATIVE_SELECT_CLASS_NAME}
             {...register("roleType")}
           >
             {roleOptions.map((role) => (
@@ -450,7 +451,7 @@ function UserFormDialog({
           <Label htmlFor="greetingGender">{tUsers("greetingGender")}</Label>
           <select
             id="greetingGender"
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className={NATIVE_SELECT_CLASS_NAME}
             {...register("greetingGender")}
           >
             <option value="masculine">{tUsers("greetingGenderMasculine")}</option>

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const SIZE_CLASS = {
+  xs: "max-w-[16rem]",
+  sm: "max-w-[20rem]",
   md: "max-w-lg",
   lgNarrow: "max-w-xl",
   lg: "max-w-2xl",
@@ -82,14 +84,17 @@ export function FormModalShell({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
   const disabledRef = useRef(disabled);
-  onCloseRef.current = onClose;
-  disabledRef.current = disabled;
   const showFooter = footerStart != null || footerEnd != null;
   const isViewport = layout === "viewport";
   const overlayZ =
     layer === "nested"
       ? FORM_MODAL_NESTED_OVERLAY_Z_CLASS
       : FORM_MODAL_OVERLAY_Z_CLASS;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    disabledRef.current = disabled;
+  });
 
   useEffect(() => {
     if (!open) return;

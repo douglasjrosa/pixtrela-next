@@ -6,6 +6,7 @@ import type { ComponentProps } from "react";
 const refresh = vi.fn();
 const showSuccessToast = vi.fn();
 const showErrorToast = vi.fn();
+const showLoadingToast = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
@@ -18,6 +19,7 @@ vi.mock("@/app/(app)/settings/subtasks/actions", () => ({
 vi.mock("@/lib/ui/app-toast", () => ({
   showSuccessToast: (...args: unknown[]) => showSuccessToast(...args),
   showErrorToast: (...args: unknown[]) => showErrorToast(...args),
+  showLoadingToast: (...args: unknown[]) => showLoadingToast(...args),
 }));
 
 import { renderWithIntl } from "@/test/test-utils";
@@ -97,6 +99,8 @@ describe("BoardActions", () => {
   beforeEach(() => {
     showSuccessToast.mockReset();
     showErrorToast.mockReset();
+    showLoadingToast.mockReset();
+    showLoadingToast.mockReturnValue("save-toast-id");
   });
 
   it("renders kanban board with steps", () => {
@@ -179,8 +183,12 @@ describe("BoardActions", () => {
     await vi.waitFor(() => {
       expect(updateSubtaskAssignees).toHaveBeenCalledWith("st-1", "task-10", ["u-1"]);
     });
+    expect(showLoadingToast).toHaveBeenCalledWith(
+      "Atualizando a tarefa 1 - Tarefa A…",
+    );
     expect(showSuccessToast).toHaveBeenCalledWith(
       "A tarefa 1 - Tarefa A foi atualizada com sucesso.",
+      { toastId: "save-toast-id" },
     );
   });
 
@@ -212,6 +220,9 @@ describe("BoardActions", () => {
     expect(
       screen.queryByRole("heading", { name: "Subtarefas" }),
     ).not.toBeInTheDocument();
+    expect(showLoadingToast).toHaveBeenCalledWith(
+      "Atualizando a tarefa 1 - Tarefa A…",
+    );
     expect(updateSubtaskAssignees).toHaveBeenCalledWith("st-1", "task-10", ["u-1"]);
     expect(showSuccessToast).not.toHaveBeenCalled();
     expect(screen.getByText("1 - Tarefa A")).toBeInTheDocument();
@@ -226,6 +237,7 @@ describe("BoardActions", () => {
     await vi.waitFor(() => {
       expect(showSuccessToast).toHaveBeenCalledWith(
         "A tarefa 1 - Tarefa A foi atualizada com sucesso.",
+        { toastId: "save-toast-id" },
       );
     });
   });
@@ -255,6 +267,7 @@ describe("BoardActions", () => {
     await vi.waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(
         "Não foi possível atualizar a tarefa 1 - Tarefa A.",
+        { toastId: "save-toast-id" },
       );
     });
     expect(showSuccessToast).not.toHaveBeenCalled();

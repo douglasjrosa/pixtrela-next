@@ -18,7 +18,7 @@ function publicFile(urlPath: string): string {
 }
 
 describe("branding assets", () => {
-  it("points to existing public files", () => {
+  it("points to existing PWA and favicon public files", () => {
     for (const asset of [
       APP_FAVICON_PNG,
       APP_FAVICON_JPG,

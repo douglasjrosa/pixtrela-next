@@ -27,6 +27,25 @@ describe("awardFormSchema", () => {
     ).toMatchObject({ warnings: "Validade limitada.", imageId: 3 });
   });
 
+  it("accepts zero currency value to disable a price", () => {
+    expect(
+      awardFormSchema.parse({
+        name: "Arroz",
+        showInStore: true,
+        stock: 0,
+        values: [
+          { numberOf: 0, currencyDocumentId: "c1" },
+          { numberOf: 50, currencyDocumentId: "c2" },
+        ],
+      }),
+    ).toMatchObject({
+      values: [
+        { numberOf: 0, currencyDocumentId: "c1" },
+        { numberOf: 50, currencyDocumentId: "c2" },
+      ],
+    });
+  });
+
   it("accepts uuid imageId for drizzle media", () => {
     expect(
       awardFormSchema.parse({

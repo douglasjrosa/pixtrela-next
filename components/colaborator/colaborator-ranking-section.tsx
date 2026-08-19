@@ -1,6 +1,6 @@
 import { useTranslations } from "next-intl";
 
-import { RankingPodium } from "@/components/colaborator/ranking-podium";
+import { RankingPodium, type RankingPodiumImageUrls } from "@/components/colaborator/ranking-podium";
 import {
   primaryCurrencyRanking,
   resolveRankingPosition,
@@ -11,11 +11,13 @@ import { formatDatePtBr } from "@/lib/format/datetime";
 export interface ColaboratorRankingSectionProps {
   ranking: MonthlyRankingData;
   userDocumentId: string;
+  podiumImageUrls?: RankingPodiumImageUrls;
 }
 
 export function ColaboratorRankingSection({
   ranking,
   userDocumentId,
+  podiumImageUrls,
 }: ColaboratorRankingSectionProps) {
   const t = useTranslations("dashboard");
   const currency = primaryCurrencyRanking(ranking.currencies);
@@ -43,6 +45,7 @@ export function ColaboratorRankingSection({
       <RankingPodium
         topRows={position.topRows}
         currentUserDocumentId={userDocumentId}
+        podiumImageUrls={podiumImageUrls}
       />
 
       {position.row ? (
@@ -53,7 +56,7 @@ export function ColaboratorRankingSection({
             {position.row.totalIncome} {currency.pluralTitle || currency.title}
           </p>
           {position.starsToNext !== null && position.starsToNext > 0 ? (
-            <p className="mt-2 text-sm text-[var(--star-gold-foreground)]">
+            <p className="mt-2 text-sm text-muted-foreground">
               {t("starsToNext", { count: position.starsToNext })}
             </p>
           ) : null}

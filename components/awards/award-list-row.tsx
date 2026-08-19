@@ -28,6 +28,10 @@ export async function AwardListRowView({
       variant={variant}
       labels={{
         cost,
+        stock: String(award.stock),
+        showInStore: award.showInStore
+          ? tCommon("yes")
+          : tCommon("no"),
         inactive: tAwards("inactive"),
         selectRow: tCommon("selectRow", { name: awardDisplayTitle(award) }),
       }}

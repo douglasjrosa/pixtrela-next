@@ -1,3 +1,5 @@
+import type { BalanceAdjustmentResult } from "@/app/(app)/balance-adjustment-actions";
+import type { BalanceCurrencyOption } from "@/components/dashboard/balance-adjustment-modal";
 import type { Role } from "@/lib/auth/nav";
 import type {
   ColaboratorInsightsData,
@@ -18,6 +20,14 @@ export interface DashboardInsightsBlockProps {
   selectedDocumentId: string;
   selectedName: string;
   insights: ColaboratorInsightsData;
+  balanceCurrencyOptions?: BalanceCurrencyOption[];
+  defaultBalanceCurrencyId?: string | null;
+  onAdjustBalance?: (input: {
+    colaboratorDocumentId: string;
+    date: string;
+    currencyId: string;
+    amount: number;
+  }) => Promise<BalanceAdjustmentResult>;
 }
 
 export function DashboardInsightsBlock({
@@ -29,6 +39,9 @@ export function DashboardInsightsBlock({
   selectedDocumentId,
   selectedName,
   insights,
+  balanceCurrencyOptions = [],
+  defaultBalanceCurrencyId = null,
+  onAdjustBalance,
 }: DashboardInsightsBlockProps) {
   const currencyRankings: CurrencyRanking[] = ranking.currencies;
 
@@ -50,6 +63,9 @@ export function DashboardInsightsBlock({
           selectedName={selectedName}
           insights={insights}
           currencyRankings={currencyRankings}
+          balanceCurrencyOptions={balanceCurrencyOptions}
+          defaultBalanceCurrencyId={defaultBalanceCurrencyId}
+          onAdjustBalance={onAdjustBalance}
         />
       ) : null}
     </div>

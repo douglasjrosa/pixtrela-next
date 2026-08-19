@@ -35,13 +35,21 @@ const NAV_RULES: NavRule[] = [
   { item: { href: "/awards", labelKey: "awards" }, show: (r) => RANK[r] >= RANK.manager },
   { item: { href: "/users", labelKey: "users" }, show: (r) => RANK[r] >= RANK.leader },
   {
-    item: { href: "/settings/steps", labelKey: "settings" },
+    item: { href: "/settings/files", labelKey: "settings" },
     show: (r) => r === "admin",
   },
 ];
 
 export interface NavItemsOptions {
   userId?: string;
+}
+
+/** Primary colaborator header links (dashboard + store). */
+export function colaboratorMenuItems(userId: string): NavItem[] {
+  return [
+    { href: `/${userId}`, labelKey: "dashboard" },
+    { href: `/${userId}/store`, labelKey: "store" },
+  ];
 }
 
 /** Brand / home destination after login for the role. */
@@ -66,8 +74,8 @@ export function navItemsForRole(
       return [{ href: "/", labelKey: "panel" }];
     }
     return [
-      { href: `/${userId}`, labelKey: "myBalance" },
-      { href: `/${userId}#colaborator-store`, labelKey: "exchange" },
+      { href: `/${userId}`, labelKey: "dashboard" },
+      { href: `/${userId}/store`, labelKey: "store" },
       { href: `/${userId}/profile`, labelKey: "profile" },
     ];
   }

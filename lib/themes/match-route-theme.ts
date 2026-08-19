@@ -262,24 +262,39 @@ export function normalizeForegroundColor(
   return DEFAULT_FOREGROUND_COLOR;
 }
 
+type RgbColor = { r: number; g: number; b: number };
+
+function parseHexRgb(hex: string): RgbColor | null {
+  const raw = hex.trim();
+  const short = /^#([0-9A-Fa-f]{3})$/.exec(raw);
+  const long = /^#([0-9A-Fa-f]{6})$/.exec(raw);
+  if (short) {
+    const [rs, gs, bs] = short[1].split("");
+    return {
+      r: Number.parseInt(`${rs}${rs}`, 16),
+      g: Number.parseInt(`${gs}${gs}`, 16),
+      b: Number.parseInt(`${bs}${bs}`, 16),
+    };
+  }
+  if (long) {
+    return {
+      r: Number.parseInt(long[1].slice(0, 2), 16),
+      g: Number.parseInt(long[1].slice(2, 4), 16),
+      b: Number.parseInt(long[1].slice(4, 6), 16),
+    };
+  }
+  return null;
+}
+
 /**
- * Overrides text tokens on a content surface for the matched route theme.
+ * Route themes no longer override text tokens — semantic theme presets own
+ * foreground colors site-wide.
  */
 export function routeThemeForegroundStyle(
-  theme: Pick<RouteThemeView, "foregroundColor"> | null,
-): {
-  color: string;
-  ["--foreground"]: string;
-  ["--card-foreground"]: string;
-  ["--popover-foreground"]: string;
-} {
-  const color = normalizeForegroundColor(theme?.foregroundColor);
-  return {
-    color,
-    "--foreground": color,
-    "--card-foreground": color,
-    "--popover-foreground": color,
-  };
+  theme?: Pick<RouteThemeView, "foregroundColor"> | null,
+): Record<string, never> {
+  void theme;
+  return {};
 }
 
 export function normalizeSurfaceColor(
@@ -303,20 +318,11 @@ export function routeThemeSurfaceBackgroundStyle(
   };
 }
 
-/** Foreground + surface fill for the rounded page container. */
+/** Surface fill for the rounded page container (text uses semantic tokens). */
 export function routeThemeSurfacePanelStyle(
   theme: RouteThemeView | null,
-): {
-  color: string;
-  backgroundColor: string;
-  ["--foreground"]: string;
-  ["--card-foreground"]: string;
-  ["--popover-foreground"]: string;
-} {
-  return {
-    ...routeThemeForegroundStyle(theme),
-    ...routeThemeSurfaceBackgroundStyle(theme),
-  };
+): { backgroundColor: string } {
+  return routeThemeSurfaceBackgroundStyle(theme);
 }
 
 export function normalizeOpacity(value: number | null | undefined): number {
@@ -405,26 +411,10 @@ export function hasVisibleColorOverlay(theme: RouteThemeView): boolean {
 
 /** Parses #RGB / #RRGGBB into rgba() with the given opacity percent. */
 export function hexToRgba(hex: string, opacityPercent: number): string | null {
-  const raw = hex.trim();
-  const short = /^#([0-9A-Fa-f]{3})$/.exec(raw);
-  const long = /^#([0-9A-Fa-f]{6})$/.exec(raw);
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  if (short) {
-    const [rs, gs, bs] = short[1].split("");
-    r = Number.parseInt(`${rs}${rs}`, 16);
-    g = Number.parseInt(`${gs}${gs}`, 16);
-    b = Number.parseInt(`${bs}${bs}`, 16);
-  } else if (long) {
-    r = Number.parseInt(long[1].slice(0, 2), 16);
-    g = Number.parseInt(long[1].slice(2, 4), 16);
-    b = Number.parseInt(long[1].slice(4, 6), 16);
-  } else {
-    return null;
-  }
+  const rgb = parseHexRgb(hex);
+  if (!rgb) return null;
   const alpha = normalizeOpacity(opacityPercent) / 100;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
 }
 
 function backgroundCssUrl(raw: string): string {

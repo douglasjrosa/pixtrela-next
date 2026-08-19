@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
-import { awards, mediaAssets } from "@/drizzle/schema";
+import { awards } from "@/drizzle/schema";
 import type { Role } from "@/lib/auth/nav";
 import {
   canDeactivateAwards,
@@ -21,6 +21,7 @@ import {
   hardDeleteAward,
   replaceAwardPrices,
 } from "@/lib/repos/awards";
+import { insertMediaAsset, listMediaAssets, type MediaAssetRecord } from "@/lib/repos/media";
 import {
   awardFormSchema,
   bulkAwardIdsSchema,
@@ -73,9 +74,21 @@ export async function loadMoreAwards(
   return loadAwardListPage(filters, page);
 }
 
+export async function listAwardImages(): Promise<MediaAssetRecord[]> {
+  await assertCanManage();
+  const result = await listMediaAssets({
+    mimeFilter: "image",
+    category: "award",
+    includeBiometric: false,
+    page: 1,
+    pageSize: 100,
+  });
+  return result.items;
+}
+
 export async function uploadAwardImage(
   formData: FormData,
-): Promise<number | string> {
+): Promise<MediaAssetRecord> {
   await assertCanManage();
   const entry = formData.get("file");
   if (!(entry instanceof Blob) || entry.size === 0) {
@@ -85,17 +98,16 @@ export async function uploadAwardImage(
   const buffer = Buffer.from(await entry.arrayBuffer());
   const extension = mimeType.includes("png") ? "png" : "jpg";
   const stored = await storeMedia({ bytes: buffer, mimeType, extension });
-  const db = getDb();
-  const [media] = await db
-    .insert(mediaAssets)
-    .values({
-      storageKey: stored.storageKey,
-      url: stored.url,
-      mimeType: stored.mimeType,
-      byteSize: stored.byteSize,
-    })
-    .returning({ id: mediaAssets.id });
-  return media.id;
+  const originalFilename =
+    "name" in entry && typeof entry.name === "string" && entry.name.trim()
+      ? entry.name.trim()
+      : null;
+  const media = await insertMediaAsset(stored, {
+    originalFilename,
+    category: "award",
+    sensitivity: "public",
+  });
+  return media;
 }
 
 export async function createAward(raw: AwardFormInput): Promise<void> {

@@ -8,7 +8,7 @@ describe("smokeShellHrefsForRole", () => {
     expect(hrefs).toContain("/");
     expect(hrefs).toContain("/board");
     expect(hrefs).toContain("/tasks");
-    expect(hrefs).not.toContain("/settings/steps");
+    expect(hrefs).not.toContain("/settings/files");
   });
 
   it("returns panel root for colaborator without userId", () => {
@@ -18,6 +18,7 @@ describe("smokeShellHrefsForRole", () => {
   it("returns private home routes for colaborator with userId", () => {
     expect(smokeShellHrefsForRole("colaborator", "col-1")).toEqual([
       "/col-1",
+      "/col-1/store",
       "/col-1/profile",
     ]);
   });

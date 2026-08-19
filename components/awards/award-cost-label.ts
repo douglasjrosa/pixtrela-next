@@ -6,8 +6,9 @@ export function awardCostLabel(
   currencies: CurrencyOption[],
   emptyLabel: string,
 ): string {
-  if (award.values.length === 0) return emptyLabel;
-  return award.values
+  const activeValues = award.values.filter((entry) => entry.numberOf > 0);
+  if (activeValues.length === 0) return emptyLabel;
+  return activeValues
     .map((entry) => formatAwardValueRow(entry, currencies))
     .join(", ");
 }

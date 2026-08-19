@@ -18,6 +18,14 @@ vi.mock("@/lib/repos/exchanges", () => ({
   redeemAward: (...args: unknown[]) => redeemAwardRepo(...args),
 }));
 
+function formData(fields: Record<string, string>): FormData {
+  const data = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    data.set(key, value);
+  }
+  return data;
+}
+
 describe("exchange/actions drizzle", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -28,7 +36,15 @@ describe("exchange/actions drizzle", () => {
 
   it("redeemAward uses drizzle repo and revalidateTag", async () => {
     const { redeemAward } = await import("./actions");
-    await redeemAward("award-1", "currency-star", 2);
+    const state = await redeemAward(
+      { ok: false },
+      formData({
+        awardId: "award-1",
+        currencyId: "currency-star",
+        qty: "2",
+        awardTitle: "Gift",
+      }),
+    );
 
     expect(redeemAwardRepo).toHaveBeenCalledWith({
       userId: "col-1",
@@ -38,5 +54,11 @@ describe("exchange/actions drizzle", () => {
     });
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:exchanges", "default");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:balances", "default");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
+    expect(state).toEqual({
+      ok: true,
+      messageKey: "success",
+      awardTitle: "Gift",
+    });
   });
 });

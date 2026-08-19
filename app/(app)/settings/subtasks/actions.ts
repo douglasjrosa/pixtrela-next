@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth/permissions";
 import {
   createMaterialFlag,
+  createMaterialFlagsInRange,
   deleteMaterialFlag,
   listMaterialFlags,
   nextFlagIndexForCategory,
@@ -24,6 +25,7 @@ import {
   updateSubTaskCategory,
 } from "@/lib/repos/sub-task-categories";
 import {
+  materialFlagBulkCreateSchema,
   materialFlagFormSchema,
   type MaterialFlagListFilters,
 } from "@/lib/schemas/material-flag";
@@ -93,6 +95,14 @@ export async function saveFlag(
     await createMaterialFlag(data);
   }
   invalidate();
+}
+
+export async function createFlags(raw: unknown): Promise<number> {
+  await assertCanManage();
+  const data = materialFlagBulkCreateSchema.parse(raw);
+  const created = await createMaterialFlagsInRange(data);
+  invalidate();
+  return created.length;
 }
 
 export async function removeFlag(documentId: string): Promise<void> {

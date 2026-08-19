@@ -28,7 +28,7 @@ export default async function SettingsSubtaskCategoriesPage({
 
   return (
     <div className={APP_LIST_PAGE_STACK_CLASS}>
-      <div className="flex shrink-0 flex-col gap-2 max-[500px]:flex-row max-[500px]:items-center">
+      <div className="flex shrink-0 flex-row items-center gap-2">
         <div className="min-w-0 flex-1">
           <Suspense fallback={null}>
             <CategoryNameSearch />

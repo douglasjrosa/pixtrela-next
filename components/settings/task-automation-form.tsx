@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import {
@@ -18,10 +18,10 @@ import {
   taskAutomationFormSchema,
   type TaskAutomationFormInput,
 } from "@/lib/schemas/task-automation";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
-const SELECT_CLASS_NAME =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm";
+const SELECT_CLASS_NAME = NATIVE_SELECT_CLASS_NAME;
 
 export interface StepOption {
   documentId: string;
@@ -118,10 +118,9 @@ export function TaskAutomationForm({
             <Label htmlFor="assignWarnMax" className="shrink-0">
               {tSettings("assignWarnMax")}
             </Label>
-            <Input
+            <NumberInput
               id="assignWarnMax"
               className="flex-1"
-              type="number"
               min={MIN_ASSIGN_WARN_MAX}
               max={MAX_ASSIGN_WARN_MAX}
               step={1}

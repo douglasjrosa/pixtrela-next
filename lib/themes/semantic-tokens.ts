@@ -166,6 +166,7 @@ export const DEFAULT_SEMANTIC_TOKENS: SemanticTokens = {
   "sidebar-border": "#ebebeb",
   "sidebar-ring": "#a3a3a3",
   "star-gold": "#d4b84a",
+  /** Ink on solid `--star-gold` fills (buttons), not muted/card surfaces. */
   "star-gold-foreground": "#3d3520",
   "star-gold-muted": "#f5f0e0",
   "surface-warm": "#fcfcf8",
@@ -188,17 +189,97 @@ export function normalizeSemanticHexColor(value: string): string | null {
   return trimmed.toLowerCase();
 }
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const normalized = normalizeSemanticHexColor(hex);
+  if (!normalized) return null;
+  return {
+    r: Number.parseInt(normalized.slice(1, 3), 16),
+    g: Number.parseInt(normalized.slice(3, 5), 16),
+    b: Number.parseInt(normalized.slice(5, 7), 16),
+  };
+}
+
+function relativeLuminanceFromHex(hex: string): number {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 1;
+
+  const channels = [rgb.r, rgb.g, rgb.b].map((channel) => {
+    const normalized = channel / 255;
+    return normalized <= 0.03928
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+  });
+
+  return (
+    0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+  );
+}
+
+const DARK_BACKGROUND_LUMINANCE_THRESHOLD = 0.45;
+
+export const SELECT_OPTION_CSS_VAR_KEYS = [
+  "select-option-background",
+  "select-option-foreground",
+  "select-option-highlight-background",
+  "select-option-highlight-foreground",
+] as const;
+
+export type SelectOptionCssVarKey =
+  (typeof SELECT_OPTION_CSS_VAR_KEYS)[number];
+
+export function resolveSelectOptionCssVars(
+  tokens: SemanticTokens,
+): Record<SelectOptionCssVarKey, string> {
+  const isDark = resolveSemanticColorScheme(tokens.background) === "dark";
+
+  if (isDark) {
+    const optionBackground =
+      relativeLuminanceFromHex(tokens.card) < DARK_BACKGROUND_LUMINANCE_THRESHOLD
+        ? tokens.card
+        : tokens.background;
+
+    return {
+      "select-option-background": optionBackground,
+      "select-option-foreground": tokens.foreground,
+      "select-option-highlight-background": tokens.primary,
+      "select-option-highlight-foreground": tokens["primary-foreground"],
+    };
+  }
+
+  return {
+    "select-option-background": tokens.popover,
+    "select-option-foreground": tokens["popover-foreground"],
+    "select-option-highlight-background": tokens.accent,
+    "select-option-highlight-foreground": tokens["accent-foreground"],
+  };
+}
+
+export function resolveSemanticColorScheme(
+  background: string,
+): "light" | "dark" {
+  return relativeLuminanceFromHex(background) < DARK_BACKGROUND_LUMINANCE_THRESHOLD
+    ? "dark"
+    : "light";
+}
+
+export function buildSemanticThemeCss(tokens: SemanticTokens): string {
+  const colorScheme = resolveSemanticColorScheme(tokens.background);
+  const selectOptionVars = resolveSelectOptionCssVars(tokens);
+  const lines = [
+    ...SEMANTIC_TOKEN_KEYS.map((key) => `  --${key}: ${tokens[key]};`),
+    ...SELECT_OPTION_CSS_VAR_KEYS.map(
+      (key) => `  --${key}: ${selectOptionVars[key]};`,
+    ),
+    `  color-scheme: ${colorScheme};`,
+  ];
+
+  return `:root {\n${lines.join("\n")}\n}\n\nselect,\nselect option {\n  color-scheme: ${colorScheme};\n}`;
+}
+
 export function mergeSemanticTokens(
   partial: Partial<SemanticTokens> | null | undefined,
 ): SemanticTokens {
   return { ...DEFAULT_SEMANTIC_TOKENS, ...partial };
-}
-
-export function buildSemanticThemeCss(tokens: SemanticTokens): string {
-  const lines = SEMANTIC_TOKEN_KEYS.map(
-    (key) => `  --${key}: ${tokens[key]};`,
-  );
-  return `:root {\n${lines.join("\n")}\n}`;
 }
 
 export function semanticTokenLabelKey(key: SemanticTokenKey): string {

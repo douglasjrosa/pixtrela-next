@@ -1,4 +1,4 @@
-/** Brand assets served from `public/`. */
+/** Brand assets served from `public/` (PWA / favicon only). */
 export const APP_FAVICON_PNG = "/images/favicon.png";
 export const APP_FAVICON_JPG = "/images/favicon.jpg";
 export const APP_ICON_192 = "/icons/icon-192.png";

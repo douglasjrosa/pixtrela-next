@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithIntl } from "@/test/test-utils";
 
 const signOut = vi.fn();
+const LOGO_URL = "https://media.example/logo.png";
 
 vi.mock("next-auth/react", () => ({
   useSession: () => ({
@@ -22,6 +23,12 @@ vi.mock("next-auth/react", () => ({
 
 import { AppNav } from "./app-nav";
 
+function findBrandLink() {
+  return screen.getAllByRole("link").find((link) =>
+    link.querySelector(`img[src="${LOGO_URL}"]`),
+  );
+}
+
 describe("AppNav", () => {
   beforeEach(() => {
     signOut.mockReset();
@@ -37,15 +44,16 @@ describe("AppNav", () => {
   });
 
   it("renders fixed header with brand, desktop links, and user menu", () => {
-    renderWithIntl(<AppNav />);
+    renderWithIntl(<AppNav logoUrl={LOGO_URL} />);
 
     const header = screen.getByRole("banner");
     expect(header.className).toContain("fixed");
-    expect(
-      screen.getAllByRole("link").some((link) => link.className.includes("font-bold")),
-    ).toBe(true);
+    expect(findBrandLink()).toBeDefined();
     expect(screen.getByRole("link", { name: "Painel" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Configurações" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Configurações" })).toHaveAttribute(
+      "href",
+      "/settings/files",
+    );
     expect(
       screen.getByRole("button", { name: "Admin, Abrir menu da conta" }),
     ).toBeInTheDocument();
@@ -62,12 +70,10 @@ describe("AppNav", () => {
       value: 500,
     });
 
-    renderWithIntl(<AppNav />);
+    renderWithIntl(<AppNav logoUrl={LOGO_URL} />);
 
     const menuButton = screen.getByRole("button", { name: "Abrir menu" });
-    const brandLink = screen.getAllByRole("link").find((link) =>
-      link.className.includes("font-bold"),
-    );
+    const brandLink = findBrandLink();
     expect(brandLink).toBeDefined();
     expect(menuButton.compareDocumentPosition(brandLink!)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
@@ -86,7 +92,7 @@ describe("AppNav", () => {
       value: 500,
     });
 
-    renderWithIntl(<AppNav />);
+    renderWithIntl(<AppNav logoUrl={LOGO_URL} />);
 
     await user.click(screen.getByRole("button", { name: "Abrir menu" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();

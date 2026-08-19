@@ -62,7 +62,7 @@ import {
 } from "@/lib/board/subtask-prefetch-queue";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import type { SubtaskPaymentCurrency } from "@/lib/settings/currency-for-subtasks-types";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { showErrorToast, showLoadingToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 const FINISHED_STATUS = "finished";
 const PREFETCH_DEBOUNCE_MS = 200;
@@ -790,6 +790,10 @@ export function BoardActions({
     );
     handleCloseSubtasksModal({ keepDraftCache: true });
 
+    const saveToastId = showLoadingToast(
+      tKanban("taskUpdating", { title: taskTitle }),
+    );
+
     void (async () => {
       try {
         for (const update of ranked) {
@@ -826,7 +830,9 @@ export function BoardActions({
             update.assignedToIds,
           );
         }
-        showSuccessToast(tKanban("taskUpdated", { title: taskTitle }));
+        showSuccessToast(tKanban("taskUpdated", { title: taskTitle }), {
+          toastId: saveToastId,
+        });
       } catch {
         invalidateSubtaskCache(taskDocumentId);
         setOrderedTasks((current) =>
@@ -836,7 +842,9 @@ export function BoardActions({
               : task,
           ),
         );
-        showErrorToast(tKanban("taskUpdateFailed", { title: taskTitle }));
+        showErrorToast(tKanban("taskUpdateFailed", { title: taskTitle }), {
+          toastId: saveToastId,
+        });
       }
     })();
   }

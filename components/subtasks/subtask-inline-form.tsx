@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { normalizeSubTaskDependencyIds } from "@/lib/business/subtask-dependencies";
@@ -22,6 +23,7 @@ import {
   subTaskFormSchema,
   type SubTaskFormInput,
 } from "@/lib/schemas/sub-task";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 
 import { SubTaskAssigneePicker } from "./subtask-assignee-picker";
 import { SubTaskCategorySelect } from "./subtask-category-select";
@@ -178,9 +180,8 @@ export function SubTaskInlineForm({
 
       <div className="space-y-2">
         <Label htmlFor={fieldId("qty")}>{tSubtasks("qty")}</Label>
-        <Input
+        <NumberInput
           id={fieldId("qty")}
-          type="number"
           min={1}
           disabled={disabled}
           {...register("qty", { valueAsNumber: true })}
@@ -189,9 +190,8 @@ export function SubTaskInlineForm({
 
       <div className="space-y-2">
         <Label htmlFor={fieldId("expectedTime")}>{tSubtasks("expectedTime")}</Label>
-        <Input
+        <NumberInput
           id={fieldId("expectedTime")}
-          type="number"
           min={0}
           disabled={disabled}
           {...register("expectedTime", { valueAsNumber: true })}
@@ -202,9 +202,8 @@ export function SubTaskInlineForm({
         <Label htmlFor={fieldId("maxSameTimeWorkers")}>
           {tSubtasks("maxSameTimeWorkers")}
         </Label>
-        <Input
+        <NumberInput
           id={fieldId("maxSameTimeWorkers")}
-          type="number"
           min={1}
           disabled={disabled}
           {...register("maxSameTimeWorkers", { valueAsNumber: true })}
@@ -215,7 +214,7 @@ export function SubTaskInlineForm({
         <Label htmlFor={fieldId("sharingType")}>{tSubtasks("sharingTypeLabel")}</Label>
         <select
           id={fieldId("sharingType")}
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          className={NATIVE_SELECT_CLASS_NAME}
           disabled={disabled}
           {...register("sharingType")}
         >
@@ -246,7 +245,7 @@ export function SubTaskInlineForm({
           <Label htmlFor={fieldId("status")}>{tTasks("manage.status")}</Label>
           <select
             id={fieldId("status")}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className={NATIVE_SELECT_CLASS_NAME}
             disabled={disabled}
             {...register("status")}
           >
@@ -268,7 +267,7 @@ export function SubTaskInlineForm({
           </Label>
           <select
             id={fieldId("activationStatus")}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className={NATIVE_SELECT_CLASS_NAME}
             disabled={disabled}
             {...register("activationStatus")}
           >

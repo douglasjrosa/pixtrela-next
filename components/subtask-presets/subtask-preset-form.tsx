@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { SubTaskCategorySelect } from "@/components/subtasks/subtask-category-select";
 import { SHARING_TYPES } from "@/lib/schemas/sub-task";
@@ -61,9 +62,8 @@ export function SubTaskPresetForm({
         <Label htmlFor={`${formId}-expectedTime`}>
           {tSubtasks("expectedTime")}
         </Label>
-        <Input
+        <NumberInput
           id={`${formId}-expectedTime`}
-          type="number"
           min={0}
           disabled={disabled}
           {...register("expectedTime", { valueAsNumber: true })}
@@ -74,9 +74,8 @@ export function SubTaskPresetForm({
         <Label htmlFor={`${formId}-maxSameTimeWorkers`}>
           {tSubtasks("maxSameTimeWorkers")}
         </Label>
-        <Input
+        <NumberInput
           id={`${formId}-maxSameTimeWorkers`}
-          type="number"
           min={1}
           disabled={disabled}
           {...register("maxSameTimeWorkers", { valueAsNumber: true })}
@@ -95,7 +94,7 @@ export function SubTaskPresetForm({
               id={`${formId}-sharingType`}
               className={
                 "flex h-9 w-full rounded-md border border-input " +
-                "bg-transparent px-3 text-sm"
+                "bg-transparent px-3 text-sm text-foreground"
               }
               disabled={disabled}
               value={field.value}

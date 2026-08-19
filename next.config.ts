@@ -17,6 +17,11 @@ const nextConfig: NextConfig = {
         destination: "/settings/themes/colors",
         permanent: false,
       },
+      {
+        source: "/settings/themes/files",
+        destination: "/settings/files",
+        permanent: false,
+      },
     ];
   },
 };

@@ -3,12 +3,12 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
-import { mediaAssets } from "@/drizzle/schema";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
-import { getDb } from "@/lib/db/client";
 import { storeMedia } from "@/lib/media/store-media";
+import { insertMediaAsset } from "@/lib/repos/media";
 import {
+  syncRouteThemeColorsFromSemanticTokens,
   updateRouteTheme as updateRouteThemeRepo,
   upsertSemanticThemeSettings,
 } from "@/lib/repos/settings";
@@ -110,16 +110,15 @@ export async function uploadRouteThemeImage(
   const buffer = Buffer.from(await entry.arrayBuffer());
   const extension = mimeType.includes("png") ? "png" : "jpg";
   const stored = await storeMedia({ bytes: buffer, mimeType, extension });
-  const db = getDb();
-  const [media] = await db
-    .insert(mediaAssets)
-    .values({
-      storageKey: stored.storageKey,
-      url: stored.url,
-      mimeType: stored.mimeType,
-      byteSize: stored.byteSize,
-    })
-    .returning({ id: mediaAssets.id });
+  const originalFilename =
+    "name" in entry && typeof entry.name === "string" && entry.name.trim()
+      ? entry.name.trim()
+      : null;
+  const media = await insertMediaAsset(stored, {
+    originalFilename,
+    category: "route_theme",
+    sensitivity: "public",
+  });
   return media.id;
 }
 
@@ -161,5 +160,7 @@ export async function updateSemanticTheme(
   await assertCanManage();
   const tokens = parseSemanticTokens(raw);
   await upsertSemanticThemeSettings(tokens);
+  await syncRouteThemeColorsFromSemanticTokens(tokens);
   invalidateSemanticTheme();
+  invalidateThemes();
 }

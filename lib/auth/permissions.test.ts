@@ -10,6 +10,7 @@ import {
   canDeactivateTasks,
   canDeleteTasks,
   canExchange,
+  canAdjustColaboratorBalance,
   canDeactivateAwards,
   canDeleteAwards,
   canManageAwards,
@@ -128,6 +129,15 @@ describe("canViewAwards", () => {
   });
 });
 
+describe("canAdjustColaboratorBalance", () => {
+  it("allows manager and admin only", () => {
+    expect(canAdjustColaboratorBalance("admin")).toBe(true);
+    expect(canAdjustColaboratorBalance("manager")).toBe(true);
+    expect(canAdjustColaboratorBalance("leader")).toBe(false);
+    expect(canAdjustColaboratorBalance("colaborator")).toBe(false);
+  });
+});
+
 describe("canDeactivateAwards", () => {
   it("allows manager and admin", () => {
     expect(canDeactivateAwards("admin")).toBe(true);
@@ -207,8 +217,13 @@ describe("canAccessRoute", () => {
     expect(canAccessRoute("colaborator", "/balance", "col-1")).toBe(false);
     expect(canAccessRoute("colaborator", "/col-1", "col-1")).toBe(true);
     expect(canAccessRoute("colaborator", "/col-1/profile", "col-1")).toBe(true);
+    expect(canAccessRoute("colaborator", "/col-1/store", "col-1")).toBe(true);
+    expect(canAccessRoute("colaborator", "/col-1/store/cart", "col-1")).toBe(
+      true,
+    );
     expect(canAccessRoute("colaborator", "/kiosk", "col-1")).toBe(false);
     expect(canAccessRoute("manager", "/balance")).toBe(false);
+    expect(canAccessRoute("manager", "/col-1/store", "mgr-1")).toBe(false);
   });
 
   it("allows kiosk only on kiosk paths", () => {

@@ -6,6 +6,7 @@ import { Menu } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
 
+import { AppBrandLink } from "@/components/app-brand-link";
 import { AppNavMobileMenu } from "@/components/app-nav-mobile-menu";
 import { AppNavUserMenu } from "@/components/app-nav-user-menu";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,17 @@ import { buildProfilePath } from "@/lib/profile/profile-path";
 
 export const APP_NAV_HEIGHT_CLASS = "h-14";
 
-export function AppNav() {
+export interface AppNavProps {
+  logoUrl?: string | null;
+  menuLogoBackgroundColor?: string | null;
+  menuLogoBackgroundColorOpacity?: number | null;
+}
+
+export function AppNav({
+  logoUrl = null,
+  menuLogoBackgroundColor = null,
+  menuLogoBackgroundColorOpacity = null,
+}: AppNavProps) {
   const t = useTranslations();
   const { data: session } = useSession();
   const role = (session?.user?.role ?? "colaborator") as Role;
@@ -112,9 +123,12 @@ export function AppNav() {
             </Button>
           ) : null}
 
-          <Link href={homeHref} className="shrink-0 font-bold">
-            {t("app.name")}
-          </Link>
+          <AppBrandLink
+            href={homeHref}
+            logoUrl={logoUrl}
+            menuLogoBackgroundColor={menuLogoBackgroundColor}
+            menuLogoBackgroundColorOpacity={menuLogoBackgroundColorOpacity}
+          />
 
           <div ref={slotRef} className="relative min-w-0 flex-1">
             <ul
@@ -122,7 +136,7 @@ export function AppNav() {
               aria-hidden
               className={
                 "pointer-events-none invisible absolute left-0 top-0 flex " +
-                "gap-3 whitespace-nowrap text-sm"
+                "gap-3 whitespace-nowrap pl-4 text-sm"
               }
             >
               {items.map((item) => (
@@ -135,7 +149,7 @@ export function AppNav() {
             </ul>
 
             {showDesktopLinks ? (
-              <ul className="flex gap-3 overflow-hidden text-sm">
+              <ul className="flex gap-3 overflow-hidden pl-4 text-sm">
                 {items.map((item) => (
                   <li key={item.href} className="shrink-0">
                     <Link

@@ -156,7 +156,22 @@ describe("CurrencyManager", () => {
     });
   });
 
-  it("deletes a currency after confirmation", async () => {
+  it("does not show delete for the primary currency", () => {
+    renderWithIntl(
+      <CurrencyManager
+        currencies={currencies}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onUploadIcon={onUploadIcon}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Abrir Estrela" })[0]!);
+    expect(screen.queryByRole("button", { name: "Excluir" })).toBeNull();
+  });
+
+  it("deletes a non-primary currency after confirmation", async () => {
     const onDelete = vi.fn().mockResolvedValue(undefined);
     renderWithIntl(
       <CurrencyManager
@@ -168,14 +183,14 @@ describe("CurrencyManager", () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Abrir Estrela" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Abrir Gema" })[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
 
     const confirm = screen.getByRole("dialog", { name: "Excluir moeda" });
     fireEvent.click(within(confirm).getByRole("button", { name: "Excluir" }));
 
     await waitFor(() => {
-      expect(onDelete).toHaveBeenCalledWith("cur-star");
+      expect(onDelete).toHaveBeenCalledWith("cur-gem");
     });
     expect(showSuccessToast).toHaveBeenCalledWith("Moeda excluída.");
   });

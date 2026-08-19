@@ -1,17 +1,16 @@
 "use server";
 
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db/client";
 import { storeMedia } from "@/lib/media/store-media";
 import {
   assertStaffCanManageColaborator,
 } from "@/lib/repos/kiosk";
+import { insertMediaAsset } from "@/lib/repos/media";
 import {
   setColaboratorPasswordByStaff,
   setUserAvatarMedia,
   setUserFacePhotoMedia,
 } from "@/lib/repos/users";
-import { mediaAssets } from "@/drizzle/schema";
 import { kioskColaboratorPasswordSchema } from "@/lib/schemas/kiosk-colaborator-password";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 
@@ -68,16 +67,11 @@ async function storeAvatarForColaborator(
     mimeType: file.type,
     extension,
   });
-  const db = getDb();
-  const [media] = await db
-    .insert(mediaAssets)
-    .values({
-      storageKey: stored.storageKey,
-      url: stored.url,
-      mimeType: stored.mimeType,
-      byteSize: stored.byteSize,
-    })
-    .returning({ id: mediaAssets.id, url: mediaAssets.url });
+  const media = await insertMediaAsset(stored, {
+    originalFilename: file.name?.trim() || null,
+    category: "avatar",
+    sensitivity: "internal",
+  });
   await setUserAvatarMedia(colaboratorDocumentId, media.id);
   return media.url;
 }
@@ -94,16 +88,11 @@ async function storeFacePhotoForColaborator(
     mimeType: file.type,
     extension,
   });
-  const db = getDb();
-  const [media] = await db
-    .insert(mediaAssets)
-    .values({
-      storageKey: stored.storageKey,
-      url: stored.url,
-      mimeType: stored.mimeType,
-      byteSize: stored.byteSize,
-    })
-    .returning({ id: mediaAssets.id, url: mediaAssets.url });
+  const media = await insertMediaAsset(stored, {
+    originalFilename: file.name?.trim() || null,
+    category: "face",
+    sensitivity: "biometric",
+  });
   await setUserFacePhotoMedia(
     colaboratorDocumentId,
     media.id,
