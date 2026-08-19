@@ -108,7 +108,9 @@ const PATHS = [
   "/other",
   "/other/profile",
   "/users",
+  "/settings/files",
   "/settings/steps",
+  "/settings/themes/files",
 ];
 
 describe("resolveRouteAccess redirect stability", () => {

@@ -87,6 +87,7 @@ describe("resolveRouteThemeKey", () => {
     expect(resolveRouteThemeKey("/settings/themes")).toBe("settings");
     expect(resolveRouteThemeKey("/settings/themes/colors")).toBe("settings");
     expect(resolveRouteThemeKey("/settings/themes/routes")).toBe("settings");
+    expect(resolveRouteThemeKey("/settings/files")).toBe("settings");
   });
 
   it("maps colaborator documentId paths", () => {

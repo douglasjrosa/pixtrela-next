@@ -35,7 +35,7 @@ const NAV_RULES: NavRule[] = [
   { item: { href: "/awards", labelKey: "awards" }, show: (r) => RANK[r] >= RANK.manager },
   { item: { href: "/users", labelKey: "users" }, show: (r) => RANK[r] >= RANK.leader },
   {
-    item: { href: "/settings/steps", labelKey: "settings" },
+    item: { href: "/settings/files", labelKey: "settings" },
     show: (r) => r === "admin",
   },
 ];

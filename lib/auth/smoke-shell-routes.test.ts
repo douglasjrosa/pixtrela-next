@@ -8,7 +8,7 @@ describe("smokeShellHrefsForRole", () => {
     expect(hrefs).toContain("/");
     expect(hrefs).toContain("/board");
     expect(hrefs).toContain("/tasks");
-    expect(hrefs).not.toContain("/settings/steps");
+    expect(hrefs).not.toContain("/settings/files");
   });
 
   it("returns panel root for colaborator without userId", () => {

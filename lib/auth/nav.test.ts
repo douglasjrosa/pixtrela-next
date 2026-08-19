@@ -62,7 +62,7 @@ describe("navItemsForRole", () => {
         "/teams",
         "/awards",
         "/users",
-        "/settings/steps",
+        "/settings/files",
       ]),
     );
   });
