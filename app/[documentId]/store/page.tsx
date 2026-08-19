@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
@@ -7,6 +8,7 @@ import { StoreFeaturedRow } from "@/components/store/store-featured-row";
 import { StoreFilterChips } from "@/components/store/store-filter-chips";
 import { StoreProductGrid } from "@/components/store/store-product-grid";
 import { StoreWalletBar } from "@/components/store/store-wallet-bar";
+import { buttonVariants } from "@/components/ui/button";
 import {
   filterAndSortStoreAwards,
   loadStorePage,
@@ -14,7 +16,13 @@ import {
   parseStoreSort,
   pickFeaturedAwards,
 } from "@/lib/store/load-store-page";
-import { buildStorePath } from "@/lib/store/store-path";
+import { loadOpenCartItemCount } from "@/lib/store/load-cart-page";
+import {
+  buildStoreCartPath,
+  buildStoreOrdersPath,
+  buildStorePath,
+} from "@/lib/store/store-path";
+import { cn } from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{ documentId: string }>;
@@ -49,8 +57,11 @@ export default async function ColaboratorStorePage({
   const sort = parseStoreSort(firstParam(query.sort));
   const storePath = buildStorePath(documentId);
 
-  const { balance, spendableBalance, awards, windowOpen, team } =
-    await loadStorePage(documentId);
+  const [{ balance, spendableBalance, awards, windowOpen, team }, cartCount] =
+    await Promise.all([
+      loadStorePage(documentId),
+      loadOpenCartItemCount(documentId),
+    ]);
 
   const featured = pickFeaturedAwards(awards);
   const catalog = filterAndSortStoreAwards(
@@ -62,11 +73,21 @@ export default async function ColaboratorStorePage({
 
   return (
     <section className="space-y-6">
-      <h1 className="font-heading text-2xl font-bold">{tStore("title")}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-heading text-2xl font-bold">{tStore("title")}</h1>
+        <Link
+          href={buildStoreOrdersPath(documentId)}
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+        >
+          {tStore("viewOrders")}
+        </Link>
+      </div>
 
       <StoreWalletBar
         balance={balance.balance}
         currencyLabel={balance.currencyLabel ?? ""}
+        cartHref={buildStoreCartPath(documentId)}
+        cartItemCount={cartCount}
       />
 
       {team ? (
@@ -77,11 +98,7 @@ export default async function ColaboratorStorePage({
         />
       ) : null}
 
-      <StoreFeaturedRow
-        awards={featured}
-        balance={spendableBalance}
-        windowOpen={windowOpen}
-      />
+      <StoreFeaturedRow awards={featured} balance={spendableBalance} />
 
       <div className="space-y-4">
         <h2 className="font-heading text-lg font-semibold">
@@ -97,11 +114,7 @@ export default async function ColaboratorStorePage({
             {tExchange("emptyAwards")}
           </p>
         ) : (
-          <StoreProductGrid
-            awards={catalog}
-            balance={spendableBalance}
-            windowOpen={windowOpen}
-          />
+          <StoreProductGrid awards={catalog} balance={spendableBalance} />
         )}
       </div>
     </section>

@@ -1,7 +1,7 @@
 import { Package, Star } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
-import { StoreRedeemForm } from "@/components/store/store-redeem-form";
+import { StoreAddToCartForm } from "@/components/store/store-add-to-cart-form";
 import type { StoreAwardView } from "@/lib/store/load-store-page";
 import { STORE_LOW_STOCK_THRESHOLD } from "@/lib/store/load-store-page";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
@@ -10,37 +10,30 @@ import { cn } from "@/lib/utils";
 export interface StoreProductCardProps {
   award: StoreAwardView;
   balance: number;
-  windowOpen: boolean;
   compact?: boolean;
 }
 
 export async function StoreProductCard({
   award,
   balance,
-  windowOpen,
   compact = false,
 }: StoreProductCardProps) {
   const tExchange = await getTranslations("exchange");
   const tStore = await getTranslations("store");
 
   const inStock = award.stock > 0;
-  const affordable = inStock && award.cost > 0 && balance >= award.cost;
+  const hasCost = award.cost > 0;
+  const affordable = inStock && hasCost && balance >= award.cost;
   const remaining = Math.max(0, award.cost - balance);
   const progress = award.cost > 0 ? Math.min(1, balance / award.cost) : 0;
-  const almost =
-    inStock &&
-    award.cost > 0 &&
-    progress >= 0.7 &&
-    progress < 1;
-  const lowStock =
-    inStock && award.stock <= STORE_LOW_STOCK_THRESHOLD;
+  const almost = inStock && hasCost && progress >= 0.7 && progress < 1;
+  const lowStock = inStock && award.stock <= STORE_LOW_STOCK_THRESHOLD;
   const imageSrc = toBrowserMediaUrl(award.imageUrl);
 
   return (
     <article
       className={cn(
         "overflow-hidden rounded-2xl border bg-card shadow-sm",
-        !windowOpen && "opacity-60",
         compact && "min-w-[11rem] max-w-[14rem] shrink-0",
       )}
     >
@@ -103,7 +96,7 @@ export async function StoreProductCard({
           </span>
         </p>
 
-        {!affordable && inStock && award.cost > 0 ? (
+        {!affordable && inStock && hasCost ? (
           <div className="space-y-1">
             <div
               className="h-1.5 overflow-hidden rounded-full bg-muted"
@@ -142,16 +135,12 @@ export async function StoreProductCard({
           </details>
         ) : null}
 
-        {!compact ? (
-          <StoreRedeemForm
-            awardId={award.id}
-            awardTitle={award.title}
-            currencyId={award.currencyId}
-            windowOpen={windowOpen}
-            affordable={affordable}
-            inStock={inStock}
-          />
-        ) : null}
+        <StoreAddToCartForm
+          awardId={award.id}
+          inStock={inStock}
+          hasCost={hasCost}
+          compact={compact}
+        />
       </div>
     </article>
   );

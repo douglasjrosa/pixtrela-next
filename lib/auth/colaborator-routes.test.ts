@@ -261,6 +261,9 @@ describe("resolveRouteAccess profile", () => {
 describe("isUserStorePath", () => {
   it("matches store nested under document id", () => {
     expect(isUserStorePath("/col-1/store")).toBe(true);
+    expect(isUserStorePath("/col-1/store/cart")).toBe(true);
+    expect(isUserStorePath("/col-1/store/orders")).toBe(true);
+    expect(isUserStorePath("/col-1/store/orders/ord-1")).toBe(true);
     expect(isUserStorePath("/board/store")).toBe(false);
     expect(isUserStorePath("/store")).toBe(false);
   });
@@ -270,6 +273,22 @@ describe("resolveRouteAccess store", () => {
   it("allows colaborator on own store", () => {
     expect(
       resolveRouteAccess("/col-1/store", {
+        isAuthenticated: true,
+        role: "colaborator",
+        userId: "col-1",
+      }),
+    ).toEqual({ action: "allow" });
+
+    expect(
+      resolveRouteAccess("/col-1/store/cart", {
+        isAuthenticated: true,
+        role: "colaborator",
+        userId: "col-1",
+      }),
+    ).toEqual({ action: "allow" });
+
+    expect(
+      resolveRouteAccess("/col-1/store/orders/ord-1", {
         isAuthenticated: true,
         role: "colaborator",
         userId: "col-1",

@@ -6,13 +6,11 @@ import type { StoreAwardView } from "@/lib/store/load-store-page";
 export interface StoreFeaturedRowProps {
   awards: StoreAwardView[];
   balance: number;
-  windowOpen: boolean;
 }
 
 export async function StoreFeaturedRow({
   awards,
   balance,
-  windowOpen,
 }: StoreFeaturedRowProps) {
   const t = await getTranslations("store");
   if (awards.length === 0) return null;
@@ -26,7 +24,6 @@ export async function StoreFeaturedRow({
             key={award.id}
             award={award}
             balance={balance}
-            windowOpen={windowOpen}
             compact
           />
         ))}

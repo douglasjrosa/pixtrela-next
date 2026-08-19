@@ -79,10 +79,11 @@ export function canColaboratorAccessPath(
   pathname: string,
   documentId: string,
 ): boolean {
+  if (pathname === `/${documentId}`) return true;
+  if (pathname === buildProfilePath(documentId)) return true;
   return (
-    pathname === `/${documentId}` ||
-    pathname === buildProfilePath(documentId) ||
-    pathname === buildStorePath(documentId)
+    pathname === buildStorePath(documentId) ||
+    pathname.startsWith(`${buildStorePath(documentId)}/`)
   );
 }
 
@@ -158,8 +159,13 @@ export function resolveRouteAccess(
     if (!isColaborator) {
       return redirectTo("/", pathname);
     }
-    if (userId && pathname !== buildStorePath(userId)) {
-      return redirectTo(buildStorePath(userId), pathname);
+    const ownStorePrefix = buildStorePath(userId ?? "");
+    if (
+      userId &&
+      pathname !== ownStorePrefix &&
+      !pathname.startsWith(`${ownStorePrefix}/`)
+    ) {
+      return redirectTo(ownStorePrefix, pathname);
     }
     return { action: "allow" };
   }

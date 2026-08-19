@@ -11,7 +11,11 @@ import { loadColaboratorPrivateHome } from "@/lib/colaborator/private-home-data"
 import { loadColaboratorInsights } from "@/lib/dashboard/load-colaborator-insights";
 import { loadMonthlyRanking } from "@/lib/dashboard/load-monthly-ranking";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
-import { buildStorePath } from "@/lib/store/store-path";
+import {
+  buildStoreOrderPath,
+  buildStoreOrdersPath,
+  buildStorePath,
+} from "@/lib/store/store-path";
 import { cn } from "@/lib/utils";
 
 interface PageProps {
@@ -21,7 +25,7 @@ interface PageProps {
 export default async function ColaboratorPrivatePage({ params }: PageProps) {
   const tBalance = await getTranslations("balance");
   const tExchange = await getTranslations("exchange");
-  const tHistory = await getTranslations("exchangeHistory");
+  const tOrders = await getTranslations("orders");
   const session = await auth();
   const { documentId } = await params;
 
@@ -33,7 +37,7 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
     redirect(`/${session.user.id}`);
   }
 
-  const { balance, windowOpen, history } =
+  const { balance, windowOpen, orders } =
     await loadColaboratorPrivateHome(documentId);
   const ranking = await loadMonthlyRanking();
   const insights = await loadColaboratorInsights(documentId);
@@ -79,23 +83,42 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
       />
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold">{tHistory("title")}</h2>
-        {history.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{tHistory("empty")}</p>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold">{tOrders("title")}</h2>
+          <Link
+            href={buildStoreOrdersPath(documentId)}
+            className="text-sm font-medium text-primary"
+          >
+            {tOrders("viewAll")}
+          </Link>
+        </div>
+        {orders.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{tOrders("empty")}</p>
         ) : (
           <ul className="space-y-2">
-            {history.map((entry) => (
-              <li
-                key={entry.documentId}
-                className="flex items-center justify-between rounded-2xl border bg-card px-4 py-3 text-sm"
-              >
-                <div>
-                  <p className="font-medium">{entry.awardTitle}</p>
-                  <p className="text-muted-foreground">
-                    {formatDateTimePtBr(entry.timestamp)}
-                  </p>
-                </div>
-                <span className="tabular-nums">×{entry.qty}</span>
+            {orders.map((order) => (
+              <li key={order.id}>
+                <Link
+                  href={buildStoreOrderPath(documentId, order.id)}
+                  className={
+                    "flex items-center justify-between rounded-2xl border " +
+                    "bg-card px-4 py-3 text-sm transition-colors hover:bg-muted/40"
+                  }
+                >
+                  <div>
+                    <p className="font-medium">
+                      {order.itemCount === 1
+                        ? tOrders("itemSingular", { count: order.itemCount })
+                        : tOrders("items", { count: order.itemCount })}
+                    </p>
+                    <p className="text-muted-foreground">
+                      {formatDateTimePtBr(order.checkedOutAt)}
+                    </p>
+                  </div>
+                  <span className="tabular-nums font-semibold">
+                    {order.totalNumberOf} {order.currencyPluralTitle}
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>

@@ -25,5 +25,9 @@ export {
   subTaskAssignees,
   activities,
   balances,
+  carts,
+  cartItems,
+  exchangeOrders,
+  exchangeOrderItems,
   exchanges,
 } from "./schema";

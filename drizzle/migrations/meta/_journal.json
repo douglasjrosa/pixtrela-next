@@ -127,6 +127,13 @@
       "when": 1787550000000,
       "tag": "0017_menu_logo_background",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1787600000000,
+      "tag": "0018_exchange_cart_orders",
+      "breakpoints": true
     }
   ]
 }

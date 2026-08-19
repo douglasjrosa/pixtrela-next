@@ -3,15 +3,41 @@ export function buildStorePath(documentId: string): string {
   return `/${documentId}/store`;
 }
 
-/** True for `/{documentId}/store` (documentId not a reserved app segment). */
+export function buildStoreCartPath(documentId: string): string {
+  return `/${documentId}/store/cart`;
+}
+
+export function buildStoreOrdersPath(documentId: string): string {
+  return `/${documentId}/store/orders`;
+}
+
+export function buildStoreOrderPath(
+  documentId: string,
+  orderId: string,
+): string {
+  return `/${documentId}/store/orders/${orderId}`;
+}
+
+/**
+ * True for `/{documentId}/store` and nested store paths
+ * (`/cart`, `/orders`, `/orders/{orderId}`).
+ */
 export function isUserStorePath(
   pathname: string,
   reservedSegments: ReadonlySet<string>,
 ): boolean {
   if (!pathname.startsWith("/")) return false;
-  const parts = pathname.slice(1).split("/");
-  if (parts.length !== 2 || parts[1] !== "store") return false;
+  const parts = pathname.slice(1).split("/").filter(Boolean);
+  if (parts.length < 2 || parts[1] !== "store") return false;
   const documentId = parts[0];
-  if (!documentId) return false;
-  return !reservedSegments.has(documentId);
+  if (!documentId || reservedSegments.has(documentId)) return false;
+
+  if (parts.length === 2) return true;
+  if (parts.length === 3 && (parts[2] === "cart" || parts[2] === "orders")) {
+    return true;
+  }
+  if (parts.length === 4 && parts[2] === "orders" && Boolean(parts[3])) {
+    return true;
+  }
+  return false;
 }

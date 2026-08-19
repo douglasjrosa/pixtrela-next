@@ -9,6 +9,11 @@ import {
   getOrCreateMonthlyBalance,
 } from "@/lib/repos/balances";
 import { redeemAward } from "@/lib/repos/exchanges";
+import { addCartItem } from "@/lib/repos/carts";
+import {
+  checkoutCart,
+  getOrderForUser,
+} from "@/lib/repos/exchange-orders";
 import { identifyColaboratorByCode } from "@/lib/repos/kiosk";
 import {
   listAssignedSubTasks,
@@ -96,6 +101,87 @@ describeWithDb("drizzle repos integration", () => {
       expect(result.exchangeId).toBeTruthy();
       const stockAfter = await findAwardById(award.id);
       expect(stockAfter?.stock).toBe(8);
+    },
+    45_000,
+  );
+
+  it(
+    "checks out cart atomically with order items and stock debit",
+    async () => {
+      const suffix = String(Date.now());
+      const db = getDb();
+      const currency = await createCurrency({
+        name: `CartCur-${suffix}`,
+        currencyPerSecond: 1,
+      });
+      await db.delete(currencyForSubtasks);
+      await db.insert(currencyForSubtasks).values({ currencyId: currency.id });
+
+      const colaborator = await createUser({
+        username: `cart-colab-${suffix}`,
+        password: "Secret123!",
+        name: "Cart Colab",
+        role: "colaborator",
+        code: Number(String(suffix).slice(-6)),
+      });
+      await createTeam({
+        name: `Cart Team ${suffix}`,
+        memberIds: [colaborator.id],
+        exchangesFirstDay: 1,
+        exchangesLastDay: 31,
+      });
+      const awardA = await createAward({
+        name: `Cart Award A ${suffix}`,
+        stock: 5,
+        prices: [{ currencyId: currency.id, numberOf: 4 }],
+      });
+      const awardB = await createAward({
+        name: `Cart Award B ${suffix}`,
+        stock: 3,
+        prices: [{ currencyId: currency.id, numberOf: 6 }],
+      });
+
+      const balance = await getOrCreateMonthlyBalance({
+        userId: colaborator.id,
+        currencyPluralTitle: resolveCurrencyPluralTitle(currency),
+        now: new Date("2026-08-09T12:00:00Z"),
+      });
+      await creditBalanceIncome({ balanceId: balance.id, amount: 50 });
+
+      await addCartItem({
+        userId: colaborator.id,
+        awardId: awardA.id,
+        qty: 2,
+      });
+      await addCartItem({
+        userId: colaborator.id,
+        awardId: awardB.id,
+        qty: 1,
+      });
+
+      const result = await checkoutCart({
+        userId: colaborator.id,
+        now: new Date("2026-08-09T12:00:00Z"),
+      });
+
+      expect(result.total).toBe(14);
+      const order = await getOrderForUser(colaborator.id, result.orderId);
+      expect(order?.itemCount).toBe(3);
+      expect(order?.items).toHaveLength(2);
+      expect((await findAwardById(awardA.id))?.stock).toBe(3);
+      expect((await findAwardById(awardB.id))?.stock).toBe(2);
+
+      await addCartItem({
+        userId: colaborator.id,
+        awardId: awardA.id,
+        qty: 1,
+      });
+      const second = await checkoutCart({
+        userId: colaborator.id,
+        now: new Date("2026-08-09T13:00:00Z"),
+      });
+      expect(second.orderId).not.toBe(result.orderId);
+      expect((await findAwardById(awardA.id))?.stock).toBe(2);
     },
     45_000,
   );

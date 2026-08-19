@@ -6,13 +6,11 @@ import type { StoreAwardView } from "@/lib/store/load-store-page";
 export interface StoreProductGridProps {
   awards: StoreAwardView[];
   balance: number;
-  windowOpen: boolean;
 }
 
 export async function StoreProductGrid({
   awards,
   balance,
-  windowOpen,
 }: StoreProductGridProps) {
   const tExchange = await getTranslations("exchange");
   const tStore = await getTranslations("store");
@@ -34,7 +32,6 @@ export async function StoreProductGrid({
             key={award.id}
             award={award}
             balance={balance}
-            windowOpen={windowOpen}
           />
         ))}
       </div>

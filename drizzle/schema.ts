@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -11,6 +12,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -64,6 +66,17 @@ export const activationStatusEnum = pgEnum("activation_status", [
 export const activityActionEnum = pgEnum("activity_action", [
   "started",
   "stoped",
+]);
+
+export const cartStatusEnum = pgEnum("cart_status", [
+  "open",
+  "checked_out",
+  "abandoned",
+]);
+
+export const exchangeOrderStatusEnum = pgEnum("exchange_order_status", [
+  "completed",
+  "cancelled",
 ]);
 
 export const mediaCategoryEnum = pgEnum("media_category", [
@@ -588,16 +601,116 @@ export const balances = pgTable("balances", {
     .notNull(),
 });
 
-export const exchanges = pgTable("exchanges", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id")
-    .references(() => users.id)
-    .notNull(),
-  awardTitle: text("award_title").notNull(),
-  currencyPluralTitle: text("currency_plural_title").notNull(),
-  qty: integer("qty").default(1).notNull(),
-  numberOf: doublePrecision("number_of").notNull(),
-  timestamp: timestamp("timestamp", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
+export const carts = pgTable(
+  "carts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .references(() => users.id)
+      .notNull(),
+    status: cartStatusEnum("status").default("open").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("carts_one_open_per_user")
+      .on(table.userId)
+      .where(sql`${table.status} = 'open'`),
+  ],
+);
+
+export const cartItems = pgTable(
+  "cart_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    cartId: uuid("cart_id")
+      .references(() => carts.id, { onDelete: "cascade" })
+      .notNull(),
+    awardId: uuid("award_id")
+      .references(() => awards.id)
+      .notNull(),
+    qty: integer("qty").default(1).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("cart_items_cart_award_unique").on(table.cartId, table.awardId),
+    index("cart_items_cart_id_idx").on(table.cartId),
+  ],
+);
+
+export const exchangeOrders = pgTable(
+  "exchange_orders",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .references(() => users.id)
+      .notNull(),
+    status: exchangeOrderStatusEnum("status").default("completed").notNull(),
+    currencyPluralTitle: text("currency_plural_title").notNull(),
+    totalNumberOf: doublePrecision("total_number_of").notNull(),
+    itemCount: integer("item_count").default(0).notNull(),
+    checkedOutAt: timestamp("checked_out_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("exchange_orders_user_checked_out_idx").on(
+      table.userId,
+      table.checkedOutAt,
+    ),
+  ],
+);
+
+export const exchangeOrderItems = pgTable(
+  "exchange_order_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderId: uuid("order_id")
+      .references(() => exchangeOrders.id, { onDelete: "cascade" })
+      .notNull(),
+    awardId: uuid("award_id").references(() => awards.id, {
+      onDelete: "set null",
+    }),
+    awardTitle: text("award_title").notNull(),
+    qty: integer("qty").default(1).notNull(),
+    unitNumberOf: doublePrecision("unit_number_of").notNull(),
+    lineNumberOf: doublePrecision("line_number_of").notNull(),
+  },
+  (table) => [index("exchange_order_items_order_id_idx").on(table.orderId)],
+);
+
+export const exchanges = pgTable(
+  "exchanges",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .references(() => users.id)
+      .notNull(),
+    orderId: uuid("order_id").references(() => exchangeOrders.id, {
+      onDelete: "set null",
+    }),
+    awardTitle: text("award_title").notNull(),
+    currencyPluralTitle: text("currency_plural_title").notNull(),
+    qty: integer("qty").default(1).notNull(),
+    numberOf: doublePrecision("number_of").notNull(),
+    timestamp: timestamp("timestamp", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index("exchanges_order_id_idx").on(table.orderId)],
+);
