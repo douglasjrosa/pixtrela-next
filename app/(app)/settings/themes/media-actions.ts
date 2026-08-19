@@ -51,7 +51,7 @@ async function assertCanManage(): Promise<void> {
 
 function invalidateMediaLibrary(): void {
   revalidateTag("drizzle:media-assets", "default");
-  revalidatePath("/settings/themes/files");
+  revalidatePath("/settings/files");
   revalidatePath("/settings/themes/preferences");
 }
 

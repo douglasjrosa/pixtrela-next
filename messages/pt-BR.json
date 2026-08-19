@@ -683,6 +683,7 @@
   "settings": {
     "title": "Configurações",
     "tabs": {
+      "files": "Arquivos",
       "steps": "Etapas",
       "currency": "Moedas",
       "automations": "Automações",
@@ -698,7 +699,6 @@
     "themeTabs": {
       "colors": "Cores padrão",
       "routes": "Temas por rota",
-      "files": "Arquivos",
       "preferences": "Preferências"
     },
     "mediaFilesTitle": "Arquivos",

@@ -7,9 +7,9 @@ import {
   replaceLibraryMedia,
   updateLibraryMediaMetadata,
   uploadLibraryMedia,
-} from "../media-actions";
+} from "../themes/media-actions";
 
-export default async function SettingsThemeFilesPage() {
+export default async function SettingsFilesPage() {
   const { items, total } = await listMediaAssets({ page: 1, pageSize: 24 });
 
   return (

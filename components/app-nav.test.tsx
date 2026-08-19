@@ -50,7 +50,10 @@ describe("AppNav", () => {
     expect(header.className).toContain("fixed");
     expect(findBrandLink()).toBeDefined();
     expect(screen.getByRole("link", { name: "Painel" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Configurações" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Configurações" })).toHaveAttribute(
+      "href",
+      "/settings/files",
+    );
     expect(
       screen.getByRole("button", { name: "Admin, Abrir menu da conta" }),
     ).toBeInTheDocument();
