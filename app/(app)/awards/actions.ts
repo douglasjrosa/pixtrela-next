@@ -118,8 +118,7 @@ export async function createAward(raw: AwardFormInput): Promise<void> {
     title: data.title || null,
     description: data.description || null,
     warnings: data.warnings || null,
-    imageMediaId:
-      typeof data.imageId === "string" ? data.imageId : null,
+    imageMediaId: data.imageId ?? null,
     active: true,
     showInStore: data.showInStore,
     stock: data.stock,
@@ -145,8 +144,7 @@ export async function updateAward(
       title: data.title || null,
       description: data.description || null,
       warnings: data.warnings || null,
-      imageMediaId:
-        typeof data.imageId === "string" ? data.imageId : undefined,
+      imageMediaId: data.imageId ?? undefined,
       showInStore: data.showInStore,
       stock: data.stock,
       updatedAt: new Date(),

@@ -10,10 +10,7 @@ export const awardFormSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
   warnings: z.string().optional(),
-  imageId: z
-    .union([z.number().int().positive(), z.string().uuid()])
-    .nullable()
-    .optional(),
+  imageId: z.string().uuid().nullable().optional(),
   showInStore: z.boolean(),
   stock: z.number().int().min(0),
   values: z.array(awardValueSchema).min(1),
