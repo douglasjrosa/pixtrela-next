@@ -86,6 +86,11 @@ export function canViewAwards(role: Role | undefined): boolean {
   return isAtLeast(role, "manager");
 }
 
+/** Staff fulfillment / exchange batches: leader and above. */
+export function canViewExchanges(role: Role | undefined): boolean {
+  return isAtLeast(role, "leader");
+}
+
 /** Manual colaborator balance adjustment: manager and admin. */
 export function canAdjustColaboratorBalance(role: Role | undefined): boolean {
   return isAtLeast(role, "manager");
@@ -143,7 +148,7 @@ export function canMoveBoardTasks(role: Role | undefined): boolean {
 
 const ROUTE_GUARDS: { prefix: string; check: (role: Role | undefined) => boolean }[] = [
   { prefix: "/balance", check: canViewBalance },
-  { prefix: "/exchange", check: canExchange },
+  { prefix: "/exchanges", check: canViewExchanges },
   { prefix: "/tasks", check: canManageTasks },
   { prefix: "/templates", check: canManageTemplates },
   { prefix: "/teams", check: canManageTeams },

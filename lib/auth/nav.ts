@@ -33,6 +33,10 @@ const NAV_RULES: NavRule[] = [
   },
   { item: { href: "/teams", labelKey: "teams" }, show: (r) => RANK[r] >= RANK.manager },
   { item: { href: "/awards", labelKey: "awards" }, show: (r) => RANK[r] >= RANK.manager },
+  {
+    item: { href: "/exchanges", labelKey: "exchange" },
+    show: (r) => RANK[r] >= RANK.leader,
+  },
   { item: { href: "/users", labelKey: "users" }, show: (r) => RANK[r] >= RANK.leader },
   {
     item: { href: "/settings/files", labelKey: "settings" },

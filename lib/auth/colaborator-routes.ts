@@ -34,6 +34,7 @@ const RESERVED_ROOT_SEGMENTS = new Set([
   "settings",
   "profile",
   "store",
+  "exchanges",
   "api",
   "serwist",
 ]);

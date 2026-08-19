@@ -10,10 +10,8 @@ import {
 } from "@/lib/repos/balances";
 import { redeemAward } from "@/lib/repos/exchanges";
 import { addCartItem } from "@/lib/repos/carts";
-import {
-  checkoutCart,
-  getOrderForUser,
-} from "@/lib/repos/exchange-orders";
+import { finalizeOpenCartForCycle } from "@/lib/repos/exchange-close";
+import { getOrderForUser } from "@/lib/repos/exchange-orders";
 import { identifyColaboratorByCode } from "@/lib/repos/kiosk";
 import {
   listAssignedSubTasks,
@@ -106,7 +104,7 @@ describeWithDb("drizzle repos integration", () => {
   );
 
   it(
-    "checks out cart atomically with order items and stock debit",
+    "finalizes open cart into one monthly order with stock debit",
     async () => {
       const suffix = String(Date.now());
       const db = getDb();
@@ -159,13 +157,16 @@ describeWithDb("drizzle repos integration", () => {
         qty: 1,
       });
 
-      const result = await checkoutCart({
+      const result = await finalizeOpenCartForCycle({
         userId: colaborator.id,
+        year: 2026,
+        month: 8,
         now: new Date("2026-08-09T12:00:00Z"),
       });
 
-      expect(result.total).toBe(14);
-      const order = await getOrderForUser(colaborator.id, result.orderId);
+      expect(result?.total).toBe(14);
+      expect(result?.orderId).toBeTruthy();
+      const order = await getOrderForUser(colaborator.id, result!.orderId);
       expect(order?.itemCount).toBe(3);
       expect(order?.items).toHaveLength(2);
       expect((await findAwardById(awardA.id))?.stock).toBe(3);
@@ -176,12 +177,14 @@ describeWithDb("drizzle repos integration", () => {
         awardId: awardA.id,
         qty: 1,
       });
-      const second = await checkoutCart({
+      const second = await finalizeOpenCartForCycle({
         userId: colaborator.id,
+        year: 2026,
+        month: 8,
         now: new Date("2026-08-09T13:00:00Z"),
       });
-      expect(second.orderId).not.toBe(result.orderId);
-      expect((await findAwardById(awardA.id))?.stock).toBe(2);
+      expect(second).toBeNull();
+      expect((await findAwardById(awardA.id))?.stock).toBe(3);
     },
     45_000,
   );
@@ -715,6 +718,158 @@ describeWithDb("drizzle repos integration", () => {
       expect(cut?.status).toBe("finished");
       const ship = afterConfirm.find((row) => row.id === subs[2]!.id);
       expect(ship?.status).not.toBe("finished");
+    },
+    60_000,
+  );
+
+  it(
+    "closes carts after team last day and scopes batches for leaders",
+    async () => {
+      const suffix = String(Date.now());
+      const db = getDb();
+      const currency = await createCurrency({
+        name: `CloseCur-${suffix}`,
+        currencyPerSecond: 1,
+      });
+      await db.delete(currencyForSubtasks);
+      await db.insert(currencyForSubtasks).values({ currencyId: currency.id });
+
+      const leader = await createUser({
+        username: `close-lead-${suffix}`,
+        password: "Secret123!",
+        name: "Close Lead",
+        role: "leader",
+        code: Number(String(suffix).slice(-5) + "1"),
+      });
+      const member = await createUser({
+        username: `close-mem-${suffix}`,
+        password: "Secret123!",
+        name: "Close Mem",
+        role: "colaborator",
+        code: Number(String(suffix).slice(-5) + "2"),
+      });
+      const outsider = await createUser({
+        username: `close-out-${suffix}`,
+        password: "Secret123!",
+        name: "Close Out",
+        role: "colaborator",
+        code: Number(String(suffix).slice(-5) + "3"),
+      });
+      const otherLeader = await createUser({
+        username: `close-olead-${suffix}`,
+        password: "Secret123!",
+        name: "Other Lead",
+        role: "leader",
+        code: Number(String(suffix).slice(-5) + "4"),
+      });
+
+      await createTeam({
+        name: `Close Team ${suffix}`,
+        leaderId: leader.id,
+        memberIds: [member.id],
+        exchangesFirstDay: 1,
+        exchangesLastDay: 10,
+      });
+      await createTeam({
+        name: `Other Team ${suffix}`,
+        leaderId: otherLeader.id,
+        memberIds: [outsider.id],
+        exchangesFirstDay: 1,
+        exchangesLastDay: 10,
+      });
+
+      const award = await createAward({
+        name: `Close Award ${suffix}`,
+        stock: 10,
+        prices: [{ currencyId: currency.id, numberOf: 2 }],
+      });
+
+      for (const userId of [member.id, outsider.id]) {
+        const balance = await getOrCreateMonthlyBalance({
+          userId,
+          currencyPluralTitle: resolveCurrencyPluralTitle(currency),
+          now: new Date("2026-08-05T12:00:00Z"),
+        });
+        await creditBalanceIncome({ balanceId: balance.id, amount: 20 });
+        await addCartItem({ userId, awardId: award.id, qty: 1 });
+      }
+
+      const { closeOpenCartsForCycle } = await import(
+        "@/lib/repos/exchange-close"
+      );
+      const {
+        ensureBatchesReady,
+        listBatchesForStaff,
+        getBatchDetailForStaff,
+      } = await import("@/lib/repos/exchange-batches");
+      const { listOrdersForUser } = await import("@/lib/repos/exchange-orders");
+
+      expect(
+        (await listOrdersForUser(member.id, 5)).filter(
+          (order) =>
+            order.checkedOutAt.getUTCFullYear() === 2026 &&
+            order.checkedOutAt.getUTCMonth() === 7,
+        ),
+      ).toHaveLength(0);
+
+      await closeOpenCartsForCycle(new Date("2026-08-10T12:00:00Z"));
+      expect(
+        (await listOrdersForUser(member.id, 5)).filter(
+          (order) =>
+            order.checkedOutAt.getUTCFullYear() === 2026 &&
+            order.checkedOutAt.getUTCMonth() === 7,
+        ),
+      ).toHaveLength(0);
+
+      await closeOpenCartsForCycle(new Date("2026-08-11T12:00:00Z"));
+      const memberOrders = (await listOrdersForUser(member.id, 5)).filter(
+        (order) =>
+          order.checkedOutAt.getUTCFullYear() === 2026 &&
+          order.checkedOutAt.getUTCMonth() === 7,
+      );
+      const outsiderOrders = (await listOrdersForUser(outsider.id, 5)).filter(
+        (order) =>
+          order.checkedOutAt.getUTCFullYear() === 2026 &&
+          order.checkedOutAt.getUTCMonth() === 7,
+      );
+      expect(memberOrders).toHaveLength(1);
+      expect(outsiderOrders).toHaveLength(1);
+
+      await closeOpenCartsForCycle(new Date("2026-08-11T13:00:00Z"));
+      expect(
+        (await listOrdersForUser(member.id, 5)).filter(
+          (order) =>
+            order.checkedOutAt.getUTCFullYear() === 2026 &&
+            order.checkedOutAt.getUTCMonth() === 7,
+        ),
+      ).toHaveLength(1);
+
+      await ensureBatchesReady(new Date("2026-09-01T12:00:00Z"));
+      const forLeader = await listBatchesForStaff({
+        role: "leader",
+        userId: leader.id,
+      });
+      const batch = forLeader.batches.find(
+        (row) => row.year === 2026 && row.month === 8,
+      );
+      expect(batch).toBeTruthy();
+      expect(batch?.orderCount).toBe(1);
+
+      const detail = await getBatchDetailForStaff({
+        batchId: batch!.id,
+        role: "leader",
+        userId: leader.id,
+      });
+      expect(detail?.deliveries).toHaveLength(1);
+      expect(detail?.deliveries[0]?.userId).toBe(member.id);
+
+      const otherDetail = await getBatchDetailForStaff({
+        batchId: batch!.id,
+        role: "leader",
+        userId: otherLeader.id,
+      });
+      expect(otherDetail?.deliveries).toHaveLength(1);
+      expect(otherDetail?.deliveries[0]?.userId).toBe(outsider.id);
     },
     60_000,
   );

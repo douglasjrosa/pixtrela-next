@@ -1,0 +1,66 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+
+import { auth } from "@/auth";
+import { ForbiddenMessage } from "@/components/auth/forbidden-message";
+import { DeliverySheetsPrint } from "@/components/exchanges/delivery-sheets-print";
+import { ShoppingListPrint } from "@/components/exchanges/shopping-list-print";
+import {
+  APP_LIST_PAGE_HEADER_ROW_CLASS,
+  APP_LIST_PAGE_SHELL_CLASS,
+  APP_LIST_PAGE_TITLE_CLASS,
+} from "@/components/layout/app-page-layout";
+import { buttonVariants } from "@/components/ui/button";
+import type { Role } from "@/lib/auth/nav";
+import { canViewExchanges } from "@/lib/auth/permissions";
+import { getBatchDetailForStaff } from "@/lib/repos/exchange-batches";
+import { cn } from "@/lib/utils";
+
+interface PageProps {
+  params: Promise<{ batchId: string }>;
+}
+
+export default async function ExchangeBatchDetailPage({ params }: PageProps) {
+  const session = await auth();
+  const role = session?.user?.role as Role | undefined;
+  const userId = session?.user?.id;
+
+  if (!canViewExchanges(role) || !userId || !role) {
+    return <ForbiddenMessage />;
+  }
+
+  const { batchId } = await params;
+  const detail = await getBatchDetailForStaff({
+    batchId,
+    role,
+    userId,
+  });
+  if (!detail) notFound();
+
+  const t = await getTranslations("exchanges");
+
+  return (
+    <section className={cn(APP_LIST_PAGE_SHELL_CLASS, "gap-8")}>
+      <div className={APP_LIST_PAGE_HEADER_ROW_CLASS}>
+        <div className="space-y-2">
+          <Link
+            href="/exchanges"
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "sm" }),
+              "no-print -ml-2 w-fit",
+            )}
+          >
+            {t("backToList")}
+          </Link>
+          <h1 className={APP_LIST_PAGE_TITLE_CLASS}>
+            {t("batchTitle", { month: detail.month, year: detail.year })}
+          </h1>
+        </div>
+      </div>
+
+      <ShoppingListPrint lines={detail.shoppingList} />
+      <DeliverySheetsPrint deliveries={detail.deliveries} />
+    </section>
+  );
+}

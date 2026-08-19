@@ -4,13 +4,11 @@ import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 
 import {
-  checkoutCartAction,
   removeCartItemAction,
   updateCartItemQty,
   type CartActionState,
 } from "@/app/[documentId]/store/actions";
 import {
-  CartCheckoutSubmitButton,
   CartQtySubmitButton,
   CartRemoveSubmitButton,
 } from "@/components/store/cart-form-buttons";
@@ -60,36 +58,6 @@ export function CartRemoveForm({ itemId }: { itemId: string }) {
     <form action={formAction}>
       <input type="hidden" name="itemId" value={itemId} />
       <CartRemoveSubmitButton />
-    </form>
-  );
-}
-
-export function CartCheckoutForm({
-  disabled,
-  errorKey,
-}: {
-  disabled: boolean;
-  errorKey?: CartActionState["messageKey"];
-}) {
-  const t = useTranslations("cart");
-  const [state, formAction] = useActionState(checkoutCartAction, INITIAL);
-  const key = state.messageKey ?? errorKey;
-
-  let message: string | null = null;
-  if (key === "insufficient") message = t("insufficient");
-  else if (key === "outOfStock") message = t("outOfStock");
-  else if (key === "windowClosed") message = t("windowClosed");
-  else if (key === "emptyCart") message = t("emptyCart");
-  else if (key === "checkoutFailed") message = t("checkoutFailed");
-
-  return (
-    <form action={formAction} className="space-y-2">
-      <CartCheckoutSubmitButton disabled={disabled} />
-      {message ? (
-        <p role="status" className="text-sm font-medium text-destructive">
-          {message}
-        </p>
-      ) : null}
     </form>
   );
 }

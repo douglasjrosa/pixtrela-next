@@ -1,0 +1,25 @@
+@media print {
+  nav,
+  header,
+  .no-print {
+    display: none !important;
+  }
+
+  body[data-exchanges-print="shopping"] .exchanges-print-deliveries {
+    display: none !important;
+  }
+
+  body[data-exchanges-print="deliveries"] .exchanges-print-shopping {
+    display: none !important;
+  }
+
+  .exchanges-print-break {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .exchanges-print-break:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}
