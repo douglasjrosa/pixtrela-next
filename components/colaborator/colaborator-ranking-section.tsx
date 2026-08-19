@@ -56,7 +56,7 @@ export function ColaboratorRankingSection({
             {position.row.totalIncome} {currency.pluralTitle || currency.title}
           </p>
           {position.starsToNext !== null && position.starsToNext > 0 ? (
-            <p className="mt-2 text-sm text-[var(--star-gold-foreground)]">
+            <p className="mt-2 text-sm text-muted-foreground">
               {t("starsToNext", { count: position.starsToNext })}
             </p>
           ) : null}

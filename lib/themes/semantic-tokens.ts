@@ -166,6 +166,7 @@ export const DEFAULT_SEMANTIC_TOKENS: SemanticTokens = {
   "sidebar-border": "#ebebeb",
   "sidebar-ring": "#a3a3a3",
   "star-gold": "#d4b84a",
+  /** Ink on solid `--star-gold` fills (buttons), not muted/card surfaces. */
   "star-gold-foreground": "#3d3520",
   "star-gold-muted": "#f5f0e0",
   "surface-warm": "#fcfcf8",

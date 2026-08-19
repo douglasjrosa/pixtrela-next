@@ -11,7 +11,10 @@ describe("StarBalanceHero", () => {
       <StarBalanceHero balance={120} currencyLabel="Estrelas" />,
     );
 
-    expect(screen.getByTestId("star-balance-hero")).toHaveTextContent("120");
+    const hero = screen.getByTestId("star-balance-hero");
+    expect(hero).toHaveTextContent("120");
+    expect(hero).toHaveClass("text-foreground");
+    expect(hero.className).not.toContain("star-gold-foreground");
     expect(screen.getByText("Estrelas")).toBeInTheDocument();
   });
 

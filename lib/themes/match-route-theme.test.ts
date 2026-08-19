@@ -14,6 +14,7 @@ import {
   routeThemeColorOverlayRgba,
   routeThemeContentFrameClass,
   routeThemeContentSurfaceRadiusClass,
+  pickContrastingForeground,
   routeThemeForegroundStyle,
   routeThemeSurfaceBackgroundStyle,
   routeThemeSurfacePanelStyle,
@@ -323,6 +324,16 @@ describe("foreground color", () => {
     expect(
       routeThemeForegroundStyle({ foregroundColor: "#334455" }),
     ).toEqual({});
+  });
+
+  it("replaces unreadable ink when the surface is dark", () => {
+    expect(
+      pickContrastingForeground("#0b1220", "#002555"),
+    ).toBe("#f8fafc");
+  });
+
+  it("keeps brand ink on a light surface", () => {
+    expect(pickContrastingForeground("#ffffff", "#002555")).toBe("#002555");
   });
 });
 
