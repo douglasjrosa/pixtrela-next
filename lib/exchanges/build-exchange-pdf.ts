@@ -23,6 +23,7 @@ async function buildShoppingLabels(
     logoPath: join(process.cwd(), "public", APP_PDF_LOGO_PNG.replace(/^\//, "")),
     itemColumn: t("shoppingList"),
     qtyColumn: t("qty"),
+    unitValueColumn: t("unitValue"),
   };
 }
 

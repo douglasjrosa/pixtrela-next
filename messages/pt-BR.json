@@ -380,6 +380,7 @@
     "printDocument": "Imprimir",
     "qty": "Qtd.",
     "unit": "Unitário",
+    "unitValue": "Valor unitário",
     "lineTotal": "Subtotal",
     "signature": "Assinatura",
     "dateLine": "Data",

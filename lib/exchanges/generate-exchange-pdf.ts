@@ -38,6 +38,7 @@ export type ShoppingListPdfLabels = {
   logoPath: string;
   itemColumn: string;
   qtyColumn: string;
+  unitValueColumn: string;
 };
 
 export type DeliveryPdfLabels = {
@@ -131,6 +132,31 @@ function drawShoppingListHeader(
   return y + SHOPPING_HEADER_HEIGHT + SHOPPING_HEADER_GAP;
 }
 
+function shoppingColumnWidths(): {
+  item: number;
+  qty: number;
+  unitValue: number;
+} {
+  return {
+    item: CONTENT_WIDTH * 0.58,
+    qty: CONTENT_WIDTH * 0.14,
+    unitValue: CONTENT_WIDTH * 0.28,
+  };
+}
+
+function shoppingTableColumns(labels: ShoppingListPdfLabels) {
+  const widths = shoppingColumnWidths();
+  return [
+    { label: labels.itemColumn, width: widths.item },
+    { label: labels.qtyColumn, width: widths.qty, align: "right" as const },
+    {
+      label: labels.unitValueColumn,
+      width: widths.unitValue,
+      align: "right" as const,
+    },
+  ];
+}
+
 export function generateShoppingListPdf(
   lines: BatchShoppingLine[],
   labels: ShoppingListPdfLabels,
@@ -143,36 +169,21 @@ export function generateShoppingListPdf(
   doc.fillColor(BLACK);
   let y = drawShoppingListHeader(doc, labels, MARGIN);
 
-  const itemWidth = CONTENT_WIDTH * 0.78;
-  const qtyWidth = CONTENT_WIDTH * 0.22;
-  y = drawTableHeader(
-    doc,
-    [
-      { label: labels.itemColumn, width: itemWidth },
-      { label: labels.qtyColumn, width: qtyWidth, align: "right" },
-    ],
-    y,
-  );
+  const widths = shoppingColumnWidths();
+  y = drawTableHeader(doc, shoppingTableColumns(labels), y);
 
   doc.font("Helvetica").fontSize(10);
   for (const line of lines) {
     if (y > A4_HEIGHT - MARGIN - 24) {
       doc.addPage();
-      y = drawTableHeader(
-        doc,
-        [
-          { label: labels.itemColumn, width: itemWidth },
-          { label: labels.qtyColumn, width: qtyWidth, align: "right" },
-        ],
-        MARGIN,
-      );
+      y = drawTableHeader(doc, shoppingTableColumns(labels), MARGIN);
       doc.font("Helvetica").fontSize(10);
     }
 
     const rowTop = y;
-    doc.text(line.awardTitle, MARGIN, rowTop, { width: itemWidth });
-    doc.text(String(line.qty), MARGIN + itemWidth, rowTop, {
-      width: qtyWidth,
+    doc.text(line.awardTitle, MARGIN, rowTop, { width: widths.item });
+    doc.text(String(line.qty), MARGIN + widths.item, rowTop, {
+      width: widths.qty,
       align: "right",
     });
     y = Math.max(doc.y, rowTop + 14) + 4;

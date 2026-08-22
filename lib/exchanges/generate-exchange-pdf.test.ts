@@ -13,6 +13,7 @@ const shoppingLabels = {
   logoPath: join(process.cwd(), "public", APP_PDF_LOGO_PNG.replace(/^\//, "")),
   itemColumn: "Item",
   qtyColumn: "Qty",
+  unitValueColumn: "Unit value",
 };
 
 const deliveryLabels = {
