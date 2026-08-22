@@ -91,6 +91,7 @@ describe("settings/currency/actions drizzle CRUD", () => {
       expect.objectContaining({
         name: "Estrela",
         currencyPerSecond: 1,
+        exchangeRate: 0,
       }),
     );
   });
@@ -171,6 +172,7 @@ describe("settings/currency/actions drizzle CRUD", () => {
         name: "Estrela",
         iconMediaId: "00000000-0000-4000-8000-000000000002",
         currencyPerSecond: 2,
+        exchangeRate: 0,
       }),
     );
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:currencies", "default");

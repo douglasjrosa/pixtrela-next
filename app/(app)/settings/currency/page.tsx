@@ -33,6 +33,7 @@ async function loadCurrencies(): Promise<CurrencyRow[]> {
     iconMediaId: currency.iconMediaId,
     iconMediaUrl: toBrowserMediaUrl(currency.iconMediaUrl),
     currencyPerSecond: Number(currency.currencyPerSecond ?? 0),
+    exchangeRate: Number(currency.exchangeRate ?? 0),
     active: currency.active,
   }));
 }

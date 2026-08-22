@@ -37,6 +37,7 @@ export interface CurrencyRow {
   iconMediaId: number | string | null;
   iconMediaUrl: string | null;
   currencyPerSecond: number;
+  exchangeRate: number;
   active: boolean;
 }
 
@@ -61,6 +62,7 @@ const EMPTY_FORM: CurrencyFormInput = {
   pluralTitle: "",
   iconMediaId: null,
   currencyPerSecond: 0,
+  exchangeRate: 0,
 };
 
 type ModalState =
@@ -75,6 +77,7 @@ function toFormValues(currency: CurrencyRow): CurrencyFormInput {
     pluralTitle: currency.pluralTitle,
     iconMediaId: currency.iconMediaId,
     currencyPerSecond: currency.currencyPerSecond,
+    exchangeRate: currency.exchangeRate,
   };
 }
 

@@ -282,6 +282,7 @@ export async function listCurrencies(
       title: currencies.title,
       pluralTitle: currencies.pluralTitle,
       currencyPerSecond: currencies.currencyPerSecond,
+      exchangeRate: currencies.exchangeRate,
       iconMediaId: currencies.iconMediaId,
       iconMediaUrl: mediaAssets.url,
       active: currencies.active,
@@ -322,6 +323,7 @@ export async function createCurrency(
     title?: string;
     pluralTitle?: string;
     currencyPerSecond: number;
+    exchangeRate?: number;
     iconMediaId?: string | null;
   },
   db: Db = getDb(),
@@ -333,6 +335,7 @@ export async function createCurrency(
       title: input.title ?? null,
       pluralTitle: input.pluralTitle ?? null,
       currencyPerSecond: input.currencyPerSecond,
+      exchangeRate: input.exchangeRate ?? 0,
       iconMediaId:
         typeof input.iconMediaId === "string" ? input.iconMediaId : null,
     })

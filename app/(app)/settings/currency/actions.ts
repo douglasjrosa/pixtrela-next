@@ -100,6 +100,7 @@ export async function createCurrency(raw: CurrencyFormInput): Promise<void> {
     title: data.title,
     pluralTitle: data.pluralTitle,
     currencyPerSecond: data.currencyPerSecond,
+    exchangeRate: data.exchangeRate,
     iconMediaId:
       typeof data.iconMediaId === "string" ? data.iconMediaId : null,
   });
@@ -121,6 +122,7 @@ export async function updateCurrency(
     title: data.title,
     pluralTitle: data.pluralTitle,
     currencyPerSecond: data.currencyPerSecond,
+    exchangeRate: data.exchangeRate,
     updatedAt: new Date(),
   };
   if (typeof data.iconMediaId === "string") {

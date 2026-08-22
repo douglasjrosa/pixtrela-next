@@ -9,6 +9,7 @@ export const currencyFormSchema = z.object({
     .nullable()
     .optional(),
   currencyPerSecond: z.number().min(0),
+  exchangeRate: z.number().finite().default(0),
 });
 
 export type CurrencyFormInput = z.infer<typeof currencyFormSchema>;

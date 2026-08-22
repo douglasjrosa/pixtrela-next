@@ -200,7 +200,7 @@ function CurrencyFormModalContent({
               ) : null}
             </div>
 
-            <div className="space-y-2 sm:col-span-2">
+            <div className="space-y-2">
               <Label htmlFor="currency-per-second">
                 {tSettings("currencyPerSecond")}
               </Label>
@@ -214,6 +214,23 @@ function CurrencyFormModalContent({
               {errors.currencyPerSecond ? (
                 <p className="text-sm text-destructive">
                   {errors.currencyPerSecond.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="currency-exchange-rate">
+                {tSettings("currencyExchangeRate")}
+              </Label>
+              <NumberInput
+                id="currency-exchange-rate"
+                step="0.01"
+                disabled={saving}
+                {...register("exchangeRate", { valueAsNumber: true })}
+              />
+              {errors.exchangeRate ? (
+                <p className="text-sm text-destructive">
+                  {errors.exchangeRate.message}
                 </p>
               ) : null}
             </div>

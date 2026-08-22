@@ -12,6 +12,27 @@ describe("currencyFormSchema", () => {
         iconMediaId: 3,
         currencyPerSecond: 1,
       }),
-    ).toMatchObject({ iconMediaId: 3 });
+    ).toMatchObject({ iconMediaId: 3, exchangeRate: 0 });
+  });
+
+  it("accepts zero, float, and negative exchange rates", () => {
+    expect(
+      currencyFormSchema.parse({
+        name: "star",
+        title: "Estrela",
+        pluralTitle: "Estrelas",
+        currencyPerSecond: 1,
+        exchangeRate: 0,
+      }).exchangeRate,
+    ).toBe(0);
+    expect(
+      currencyFormSchema.parse({
+        name: "star",
+        title: "Estrela",
+        pluralTitle: "Estrelas",
+        currencyPerSecond: 1,
+        exchangeRate: -1.25,
+      }).exchangeRate,
+    ).toBe(-1.25);
   });
 });

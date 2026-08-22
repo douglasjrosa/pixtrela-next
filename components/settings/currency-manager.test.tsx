@@ -28,6 +28,7 @@ const currencies = [
     iconMediaId: 11,
     iconMediaUrl: "https://cdn.example/star.png",
     currencyPerSecond: 2,
+    exchangeRate: 1.5,
     active: true,
   },
   {
@@ -38,6 +39,7 @@ const currencies = [
     iconMediaId: null,
     iconMediaUrl: null,
     currencyPerSecond: 0.5,
+    exchangeRate: 0,
     active: true,
   },
 ];
@@ -119,6 +121,7 @@ describe("CurrencyManager", () => {
     fireEvent.click(screen.getByRole("button", { name: "Nova moeda" }));
 
     const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByLabelText("Taxa de câmbio")).toHaveValue(0);
     fireEvent.change(within(dialog).getByLabelText("Nome"), {
       target: { value: "coin" },
     });
@@ -140,6 +143,7 @@ describe("CurrencyManager", () => {
         pluralTitle: "Moedas",
         iconMediaId: null,
         currencyPerSecond: 1.5,
+        exchangeRate: 0,
       });
     });
     expect(showSuccessToast).toHaveBeenCalledWith("Moeda salva.");
@@ -192,6 +196,9 @@ describe("CurrencyManager", () => {
     fireEvent.change(within(dialog).getByLabelText("Unidades por segundo"), {
       target: { value: "3" },
     });
+    fireEvent.change(within(dialog).getByLabelText("Taxa de câmbio"), {
+      target: { value: "-0.25" },
+    });
     fireEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => {
@@ -201,6 +208,7 @@ describe("CurrencyManager", () => {
         pluralTitle: "Estrelas",
         iconMediaId: 11,
         currencyPerSecond: 3,
+        exchangeRate: -0.25,
       });
     });
   });
