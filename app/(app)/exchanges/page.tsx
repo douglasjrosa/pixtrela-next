@@ -9,12 +9,10 @@ import {
   APP_LIST_PAGE_TITLE_CLASS,
 } from "@/components/layout/app-page-layout";
 import { ListEmptyMessage } from "@/components/ui/list-empty-message";
-import { buttonVariants } from "@/components/ui/button";
 import type { Role } from "@/lib/auth/nav";
 import { canViewExchanges } from "@/lib/auth/permissions";
 import { listBatchesForStaff } from "@/lib/repos/exchange-batches";
 import { closeOpenCartsForCycle } from "@/lib/repos/exchange-close";
-import { cn } from "@/lib/utils";
 
 export default async function ExchangesPage() {
   const session = await auth();
@@ -52,28 +50,29 @@ export default async function ExchangesPage() {
       ) : (
         <ul className="divide-y rounded-xl border">
           {batches.map((batch) => (
-            <li
-              key={batch.id}
-              className="flex flex-wrap items-center justify-between gap-3 p-4"
-            >
-              <div className="space-y-1">
-                <p className="font-heading text-lg font-semibold">
-                  {t("monthLabel", { month: batch.month, year: batch.year })}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {t("orderCount", { count: batch.orderCount })} ·{" "}
-                  {t("itemCount", { count: batch.totalItemCount })} ·{" "}
-                  {t("total")}:{" "}
-                  <span className="tabular-nums font-medium text-foreground">
-                    {batch.totalNumberOf}
-                  </span>
-                </p>
-              </div>
+            <li key={batch.id}>
               <Link
                 href={`/exchanges/${batch.id}`}
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                className={
+                  "flex flex-wrap items-center justify-between gap-3 p-4 " +
+                  "transition-colors hover:bg-muted/40 " +
+                  "focus-visible:outline-none focus-visible:ring-2 " +
+                  "focus-visible:ring-ring"
+                }
               >
-                {t("viewBatch")}
+                <div className="space-y-1">
+                  <p className="font-heading text-lg font-semibold">
+                    {t("monthLabel", { month: batch.month, year: batch.year })}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("orderCount", { count: batch.orderCount })} ·{" "}
+                    {t("itemCount", { count: batch.totalItemCount })} ·{" "}
+                    {t("total")}:{" "}
+                    <span className="tabular-nums font-medium text-foreground">
+                      {batch.totalNumberOf}
+                    </span>
+                  </p>
+                </div>
               </Link>
             </li>
           ))}
