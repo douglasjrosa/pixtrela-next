@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
-import { Button } from "@/components/ui/button";
+import { PrintButton } from "@/components/ui/print-button";
 import type { ExchangePrintKind } from "@/lib/exchanges/print-pdf-filename";
 import { buildExchangePrintPdfFilename } from "@/lib/exchanges/print-pdf-filename";
 
@@ -23,11 +23,8 @@ export function ExchangesPrintButton({
   const pdfFilename = buildExchangePrintPdfFilename(mode, month, year);
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className="no-print"
+    <PrintButton
+      title={pdfFilename}
       onClick={() => {
         const previewUrl = `/exchanges/${batchId}/print/${mode}`;
         const previewWindow = window.open(
@@ -40,9 +37,8 @@ export function ExchangesPrintButton({
         }
         previewWindow?.focus();
       }}
-      title={pdfFilename}
     >
       {t(labelKey)}
-    </Button>
+    </PrintButton>
   );
 }

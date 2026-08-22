@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 
-import { Button } from "@/components/ui/button";
+import { PrintButton } from "@/components/ui/print-button";
 import type { ExchangePrintKind } from "@/lib/exchanges/print-pdf-filename";
 
 import "./exchanges-print.css";
@@ -40,9 +40,9 @@ export function ExchangePrintPreview({
     <div className="exchange-print-preview mx-auto max-w-4xl p-6">
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">{pdfFilename}</p>
-        <Button type="button" variant="outline" onClick={() => window.print()}>
+        <PrintButton onClick={() => window.print()}>
           {t("printDocument")}
-        </Button>
+        </PrintButton>
       </div>
       {children}
     </div>
