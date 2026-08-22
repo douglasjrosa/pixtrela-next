@@ -98,7 +98,7 @@ describe("CurrencyManager", () => {
       screen.getByRole("button", { name: "Nova moeda" }),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Estrela").length).toBeGreaterThan(0);
-    const icon = screen.getByRole("img", { name: "Estrela" });
+    const icon = screen.getAllByRole("img", { name: "Estrela" })[0]!;
     expect(icon).toHaveAttribute("src", "https://cdn.example/star.png");
     expect(icon.className).toMatch(/rounded-full/);
     expect(screen.getAllByText("Gema").length).toBeGreaterThan(0);
