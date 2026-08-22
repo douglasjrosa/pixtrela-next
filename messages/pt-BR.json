@@ -686,6 +686,7 @@
     "imageSelected": "Imagem enviada com sucesso.",
     "imageUploadFailed": "Não foi possível enviar a imagem. Tente novamente.",
     "starCost": "Custo",
+    "listActualPrice": "Custo",
     "values": "Valores",
     "numberOf": "Quantidade",
     "currency": "Moeda",

@@ -32,6 +32,7 @@ describe("AwardListRowPresentational", () => {
               variant="table"
               labels={{
                 cost: "2100 Estrelas",
+                actualPrice: "R$ 0,00",
                 stock: "0",
                 showInStore: "Sim",
                 inactive: "Inativo",
@@ -62,6 +63,7 @@ describe("AwardListRowPresentational", () => {
               variant="table"
               labels={{
                 cost: "2100 Estrelas",
+                actualPrice: "R$ 0,00",
                 stock: "0",
                 showInStore: "Sim",
                 inactive: "Inativo",

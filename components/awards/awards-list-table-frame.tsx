@@ -25,7 +25,7 @@ import type { AwardListFilters } from "@/lib/schemas/award-list-filters";
 import { awardListFilterKey } from "@/lib/awards/award-list-params";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
-import { awardCostLabel } from "./award-cost-label";
+import { awardCostLabel, formatAwardActualPrice } from "./award-cost-label";
 import { AwardListRowPresentational } from "./award-list-row-presentational";
 import type { AwardRow, CurrencyOption } from "./types";
 import { awardDisplayTitle } from "./types";
@@ -95,6 +95,7 @@ export function AwardsListTableFrame({
   function labelsFor(award: AwardRow) {
     return {
       cost: awardCostLabel(award, currencies, tAwards("noCost")),
+      actualPrice: formatAwardActualPrice(award.actualPrice),
       stock: String(award.stock),
       showInStore: award.showInStore ? tCommon("yes") : tCommon("no"),
       inactive: tAwards("inactive"),

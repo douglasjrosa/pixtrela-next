@@ -74,6 +74,7 @@ function renderManager(overrides: Partial<Parameters<typeof AwardManager>[0]> = 
             variant="table"
             labels={{
               cost: "50 Estrela",
+              actualPrice: "R$ 0,00",
               stock: "10",
               showInStore: "Sim",
               inactive: "Inativo",
@@ -185,6 +186,7 @@ describe("AwardManager", () => {
               variant="table"
               labels={{
                 cost: "50 Estrela",
+                actualPrice: "R$ 0,00",
                 stock: "10",
                 showInStore: "Sim",
                 inactive: "Inativo",

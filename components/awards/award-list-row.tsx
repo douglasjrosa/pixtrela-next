@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
 import { AwardListRowPresentational } from "./award-list-row-presentational";
-import { awardCostLabel } from "./award-cost-label";
+import { awardCostLabel, formatAwardActualPrice } from "./award-cost-label";
 import type { AwardRow, CurrencyOption } from "./types";
 import { awardDisplayTitle } from "./types";
 
@@ -28,6 +28,7 @@ export async function AwardListRowView({
       variant={variant}
       labels={{
         cost,
+        actualPrice: formatAwardActualPrice(award.actualPrice),
         stock: String(award.stock),
         showInStore: award.showInStore
           ? tCommon("yes")
