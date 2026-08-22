@@ -109,7 +109,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
     }
 
     return (
-      <div className={cn("relative inline-flex min-w-0", className)}>
+      <div className={cn("relative flex w-full min-w-0", className)}>
         <input
           type="number"
           ref={assignRef}
