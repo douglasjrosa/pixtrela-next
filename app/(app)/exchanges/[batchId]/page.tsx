@@ -14,6 +14,7 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import type { Role } from "@/lib/auth/nav";
 import { canViewExchanges } from "@/lib/auth/permissions";
+import { formatMonthYearPtBr } from "@/lib/format/datetime";
 import { getBatchDetailForStaff } from "@/lib/repos/exchange-batches";
 import { cn } from "@/lib/utils";
 
@@ -54,7 +55,9 @@ export default async function ExchangeBatchDetailPage({ params }: PageProps) {
             {t("backToList")}
           </Link>
           <h1 className={APP_LIST_PAGE_TITLE_CLASS}>
-            {t("batchTitle", { month: detail.month, year: detail.year })}
+            {t("batchTitle", {
+              monthYear: formatMonthYearPtBr(detail.month, detail.year),
+            })}
           </h1>
         </div>
       </div>

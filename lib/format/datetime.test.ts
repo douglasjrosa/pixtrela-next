@@ -5,10 +5,18 @@ import {
   formatDatePtBr,
   formatDateTimePtBr,
   formatIsoDateToPtBrInput,
+  formatMonthYearPtBr,
   formatTimePtBr,
   parsePtBrInputToIsoDate,
   splitDateTimePtBr,
 } from "./datetime";
+
+describe("formatMonthYearPtBr", () => {
+  it("formats month and year with a Portuguese month name", () => {
+    expect(formatMonthYearPtBr(8, 2026)).toBe("Agosto de 2026");
+    expect(formatMonthYearPtBr(1, 2026)).toBe("Janeiro de 2026");
+  });
+});
 
 describe("formatDatePtBr", () => {
   it("formats date-only values as dd/mm/yyyy", () => {
