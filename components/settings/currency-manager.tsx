@@ -411,7 +411,7 @@ export function CurrencyManager({
                       ariaLabel={tCommon("selectRow", { name: title })}
                     />
                     {currencyIcon(currency)}
-                    <button>
+                    <button
                       type="button"
                       className="w-full text-left no-underline"
                       aria-label={tSettings("openCurrency", { name: title })}
