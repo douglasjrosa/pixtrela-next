@@ -16,4 +16,13 @@ describe("primary-currency", () => {
     expect(isPrimaryCurrencyDocument("cur-star", currencies)).toBe(true);
     expect(isPrimaryCurrencyDocument("cur-gem", currencies)).toBe(false);
   });
+
+  it("skips archived currencies when choosing the primary", () => {
+    expect(
+      primaryCurrencyDocumentId([
+        { documentId: "cur-star", active: false },
+        { documentId: "cur-gem", active: true },
+      ]),
+    ).toBe("cur-gem");
+  });
 });

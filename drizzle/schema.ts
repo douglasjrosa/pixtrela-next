@@ -189,6 +189,7 @@ export const currencies = pgTable("currencies", {
   currencyPerSecond: doublePrecision("currency_per_second")
     .default(0)
     .notNull(),
+  active: boolean("active").default(true).notNull(),
   iconMediaId: uuid("icon_media_id").references(() => mediaAssets.id),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

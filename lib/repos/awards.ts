@@ -267,7 +267,14 @@ export async function createAward(
   };
 }
 
-export async function listCurrencies(db: Db = getDb()) {
+export async function listCurrencies(
+  options: { includeInactive?: boolean } = {},
+  db: Db = getDb(),
+) {
+  const where = options.includeInactive
+    ? undefined
+    : eq(currencies.active, true);
+
   return db
     .select({
       id: currencies.id,
@@ -277,9 +284,11 @@ export async function listCurrencies(db: Db = getDb()) {
       currencyPerSecond: currencies.currencyPerSecond,
       iconMediaId: currencies.iconMediaId,
       iconMediaUrl: mediaAssets.url,
+      active: currencies.active,
     })
     .from(currencies)
     .leftJoin(mediaAssets, eq(currencies.iconMediaId, mediaAssets.id))
+    .where(where)
     .orderBy(currencies.name);
 }
 
@@ -291,6 +300,7 @@ export async function findCurrencyById(
   name: string;
   title: string | null;
   pluralTitle: string | null;
+  active: boolean;
 } | null> {
   const [row] = await db
     .select({
@@ -298,6 +308,7 @@ export async function findCurrencyById(
       name: currencies.name,
       title: currencies.title,
       pluralTitle: currencies.pluralTitle,
+      active: currencies.active,
     })
     .from(currencies)
     .where(eq(currencies.id, id))
@@ -327,6 +338,24 @@ export async function createCurrency(
     })
     .returning();
   return row;
+}
+
+export async function archiveCurrency(
+  id: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await db
+    .update(currencies)
+    .set({ active: false, updatedAt: new Date() })
+    .where(eq(currencies.id, id));
+}
+
+export async function hardDeleteCurrency(
+  id: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await db.delete(awardPrices).where(eq(awardPrices.currencyId, id));
+  await db.delete(currencies).where(eq(currencies.id, id));
 }
 
 export async function replaceAwardPrices(

@@ -12,6 +12,8 @@ import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 
 import { updateCurrencyForSubtasks } from "../actions";
 import {
+  bulkArchiveCurrencies,
+  bulkDeleteCurrencies,
   createCurrency,
   deleteCurrency,
   updateCurrency,
@@ -19,7 +21,7 @@ import {
 } from "./actions";
 
 async function loadCurrencies(): Promise<CurrencyRow[]> {
-  const rows = await listCurrenciesRepo();
+  const rows = await listCurrenciesRepo({ includeInactive: true });
   return rows.map((currency) => ({
     documentId: currency.id,
     name: currency.name,
@@ -28,6 +30,7 @@ async function loadCurrencies(): Promise<CurrencyRow[]> {
     iconMediaId: currency.iconMediaId,
     iconMediaUrl: toBrowserMediaUrl(currency.iconMediaUrl),
     currencyPerSecond: Number(currency.currencyPerSecond ?? 0),
+    active: currency.active,
   }));
 }
 
@@ -49,10 +52,12 @@ export default async function SettingsCurrencyPage() {
         onCreate={createCurrency}
         onUpdate={updateCurrency}
         onDelete={deleteCurrency}
+        onBulkArchive={bulkArchiveCurrencies}
+        onBulkDelete={bulkDeleteCurrencies}
         onUploadIcon={uploadCurrencyIcon}
       />
       <CurrencyForm
-        currencies={currencies}
+        currencies={currencies.filter((currency) => currency.active)}
         activeCurrencyDocumentId={
           activeCurrencyDocumentId || primaryCurrencyDocumentId(currencies) || ""
         }

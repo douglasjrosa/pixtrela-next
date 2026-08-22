@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const revalidateTag = vi.fn();
 const createCurrencyRepo = vi.fn();
 const listCurrenciesRepo = vi.fn();
+const archiveCurrencyRepo = vi.fn();
+const hardDeleteCurrencyRepo = vi.fn();
+const findCurrencyById = vi.fn();
 const getCurrencyForSubtasks = vi.fn();
 const upsertCurrencyForSubtasks = vi.fn();
 const getDb = vi.fn();
@@ -19,6 +22,9 @@ vi.mock("next/cache", () => ({
 vi.mock("@/lib/repos/awards", () => ({
   createCurrency: (...args: unknown[]) => createCurrencyRepo(...args),
   listCurrencies: (...args: unknown[]) => listCurrenciesRepo(...args),
+  archiveCurrency: (...args: unknown[]) => archiveCurrencyRepo(...args),
+  hardDeleteCurrency: (...args: unknown[]) => hardDeleteCurrencyRepo(...args),
+  findCurrencyById: (...args: unknown[]) => findCurrencyById(...args),
 }));
 
 vi.mock("@/lib/repos/settings", () => ({
@@ -46,6 +52,9 @@ describe("settings/currency/actions drizzle CRUD", () => {
     revalidateTag.mockReset();
     createCurrencyRepo.mockReset();
     listCurrenciesRepo.mockReset();
+    archiveCurrencyRepo.mockReset();
+    hardDeleteCurrencyRepo.mockReset();
+    findCurrencyById.mockReset();
     getCurrencyForSubtasks.mockReset();
     upsertCurrencyForSubtasks.mockReset();
     storeMedia.mockReset();
@@ -83,19 +92,56 @@ describe("settings/currency/actions drizzle CRUD", () => {
     await expect(deleteCurrency("cur-star")).rejects.toThrow(
       "primaryCurrencyProtected",
     );
-    expect(deleteFn).not.toHaveBeenCalled();
+    expect(hardDeleteCurrencyRepo).not.toHaveBeenCalled();
   });
 
   it("deleteCurrency reassigns active payment to the primary currency", async () => {
     listCurrenciesRepo.mockResolvedValue([
-      { id: "cur-star" },
-      { id: "cur-gem" },
+      { id: "cur-star", active: true },
+      { id: "cur-gem", active: true },
     ]);
     getCurrencyForSubtasks.mockResolvedValue({ currencyId: "cur-gem" });
     const { deleteCurrency } = await import("./actions");
     await deleteCurrency("cur-gem");
     expect(upsertCurrencyForSubtasks).toHaveBeenCalledWith("cur-star");
-    expect(deleteFn).toHaveBeenCalled();
+    expect(hardDeleteCurrencyRepo).toHaveBeenCalledWith("cur-gem");
+  });
+
+  it("bulkArchiveCurrencies archives non-primary currencies", async () => {
+    listCurrenciesRepo.mockResolvedValue([
+      { id: "cur-star", active: true },
+      { id: "cur-gem", active: true },
+    ]);
+    getCurrencyForSubtasks.mockResolvedValue({ currencyId: "cur-star" });
+    const { bulkArchiveCurrencies } = await import("./actions");
+    await bulkArchiveCurrencies(["cur-star", "cur-gem"]);
+    expect(archiveCurrencyRepo).toHaveBeenCalledWith("cur-gem");
+    expect(archiveCurrencyRepo).not.toHaveBeenCalledWith("cur-star");
+  });
+
+  it("bulkDeleteCurrencies rejects an active currency", async () => {
+    listCurrenciesRepo.mockResolvedValue([
+      { id: "cur-star", active: true },
+      { id: "cur-gem", active: true },
+    ]);
+    findCurrencyById.mockResolvedValue({ id: "cur-gem", active: true });
+    const { bulkDeleteCurrencies } = await import("./actions");
+    await expect(bulkDeleteCurrencies(["cur-gem"])).rejects.toThrow(
+      "activeCurrency",
+    );
+    expect(hardDeleteCurrencyRepo).not.toHaveBeenCalled();
+  });
+
+  it("bulkDeleteCurrencies hard-deletes archived currencies", async () => {
+    listCurrenciesRepo.mockResolvedValue([
+      { id: "cur-star", active: true },
+      { id: "cur-gem", active: false },
+    ]);
+    findCurrencyById.mockResolvedValue({ id: "cur-gem", active: false });
+    getCurrencyForSubtasks.mockResolvedValue({ currencyId: "cur-star" });
+    const { bulkDeleteCurrencies } = await import("./actions");
+    await bulkDeleteCurrencies(["cur-gem"]);
+    expect(hardDeleteCurrencyRepo).toHaveBeenCalledWith("cur-gem");
   });
 
   it("updateCurrency patches row including icon uuid", async () => {

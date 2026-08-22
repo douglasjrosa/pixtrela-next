@@ -6,9 +6,20 @@ import { useTranslations } from "next-intl";
 
 import { CurrencyFormModal } from "@/components/settings/currency-form-modal";
 import { AddNewButton } from "@/components/ui/add-new-button";
+import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
+import { CardBadge } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
+import { ListSelectionProvider } from "@/components/ui/list-selection-context";
+import {
+  areAllRowsSelected,
+  areAllSelectedRowsInactive,
+  selectedRowsFromList,
+  toggleIdInSet,
+  toggleSelectAllRows,
+} from "@/lib/business/list-selection";
 import { isPrimaryCurrencyDocument } from "@/lib/business/primary-currency";
+import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { CurrencyFormInput } from "@/lib/schemas/currency";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
@@ -20,6 +31,7 @@ export interface CurrencyRow {
   iconMediaId: number | string | null;
   iconMediaUrl: string | null;
   currencyPerSecond: number;
+  active: boolean;
 }
 
 export interface CurrencyManagerProps {
@@ -30,6 +42,8 @@ export interface CurrencyManagerProps {
     values: CurrencyFormInput,
   ) => void | Promise<void>;
   onDelete: (documentId: string) => void | Promise<void>;
+  onBulkArchive: (documentIds: string[]) => void | Promise<void>;
+  onBulkDelete: (documentIds: string[]) => void | Promise<void>;
   onUploadIcon: (formData: FormData) => Promise<number | string>;
 }
 
@@ -66,11 +80,24 @@ function formatRate(value: number): string {
   return Number.isInteger(value) ? String(value) : String(value);
 }
 
+function actionErrorMessage(
+  error: unknown,
+  fallback: string,
+  primaryProtected: string,
+): string {
+  if (error instanceof Error && error.message === "primaryCurrencyProtected") {
+    return primaryProtected;
+  }
+  return fallback;
+}
+
 export function CurrencyManager({
   currencies,
   onCreate,
   onUpdate,
   onDelete,
+  onBulkArchive,
+  onBulkDelete,
   onUploadIcon,
 }: CurrencyManagerProps) {
   const tCommon = useTranslations("common");
@@ -78,7 +105,26 @@ export function CurrencyManager({
   const router = useRouter();
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
+
+  const listResetKey = currencies.map((row) => row.documentId).join(",");
+  const [prevListResetKey, setPrevListResetKey] = useState(listResetKey);
+  if (listResetKey !== prevListResetKey) {
+    setPrevListResetKey(listResetKey);
+    setSelectedIds([]);
+  }
+
+  const selectedCurrencies = selectedRowsFromList(currencies, selectedIds);
+  const hasSelection = selectedCurrencies.length > 0;
+  const allSelectedArchived = areAllSelectedRowsInactive(
+    selectedCurrencies,
+    (row) => !row.active,
+  );
+  const showArchiveAction = hasSelection && !allSelectedArchived;
+  const showDeleteAction = hasSelection && allSelectedArchived;
 
   function closeModal(): void {
     setModal({ mode: "closed" });
@@ -87,6 +133,18 @@ export function CurrencyManager({
 
   function openEdit(currency: CurrencyRow): void {
     setModal({ mode: "edit", currency });
+  }
+
+  function handleToggleSelect(documentId: string): void {
+    setSelectedIds((current) => toggleIdInSet(current, documentId));
+  }
+
+  function handleToggleSelectAll(): void {
+    setSelectedIds((current) => toggleSelectAllRows(currencies, current));
+  }
+
+  function clearSelection(): void {
+    setSelectedIds([]);
   }
 
   function handleSave(values: CurrencyFormInput): void {
@@ -118,7 +176,55 @@ export function CurrencyManager({
         router.refresh();
       } catch (error) {
         rethrowIfNavigationError(error);
-        showErrorToast(tSettings("currencyDeleteError"));
+        showErrorToast(
+          actionErrorMessage(
+            error,
+            tSettings("currencyDeleteError"),
+            tSettings("currencyPrimaryProtected"),
+          ),
+        );
+      }
+    });
+  }
+
+  function handleBulkArchiveConfirm(): void {
+    startTransition(async () => {
+      try {
+        await onBulkArchive(selectedIds);
+        showSuccessToast(tSettings("bulkArchived"));
+        setBulkArchiveOpen(false);
+        clearSelection();
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(
+          actionErrorMessage(
+            error,
+            tSettings("currencyDeleteError"),
+            tSettings("currencyPrimaryProtected"),
+          ),
+        );
+      }
+    });
+  }
+
+  function handleBulkDeleteConfirm(): void {
+    startTransition(async () => {
+      try {
+        await onBulkDelete(selectedIds);
+        showSuccessToast(tSettings("bulkDeleted"));
+        setBulkDeleteOpen(false);
+        clearSelection();
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(
+          actionErrorMessage(
+            error,
+            tSettings("currencyDeleteError"),
+            tSettings("currencyPrimaryProtected"),
+          ),
+        );
       }
     });
   }
@@ -134,114 +240,193 @@ export function CurrencyManager({
   const initialIconUrl =
     modal.mode === "edit" ? modal.currency.iconMediaUrl : null;
 
-  return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">{tSettings("currency")}</h2>
-        <AddNewButton
-          label={tSettings("newCurrency")}
-          disabled={isPending}
-          onClick={() => setModal({ mode: "create" })}
-        />
-      </div>
+  const selectionValue = {
+    selectedIds,
+    allSelected: areAllRowsSelected(currencies, selectedIds),
+    onToggleSelect: handleToggleSelect,
+    onToggleSelectAll: handleToggleSelectAll,
+  };
 
-      {currencies.length === 0 ? (
-        <p className="text-muted-foreground py-6 text-sm">
-          {tSettings("noCurrencies")}
-        </p>
-      ) : (
-        <>
-          <table className="hidden w-full text-sm md:table">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="py-2">{tSettings("currencyTitle")}</th>
-                <th>{tSettings("currencyName")}</th>
-                <th>{tSettings("currencyPerSecond")}</th>
-              </tr>
-            </thead>
-            <tbody>
+  function titleCell(currency: CurrencyRow) {
+    const title = displayTitle(currency);
+    return (
+      <>
+        <span className="font-medium">{title}</span>
+        {currency.active ? null : (
+          <CardBadge className="ml-2">{tSettings("currencyInactive")}</CardBadge>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <ListSelectionProvider value={selectionValue}>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold">{tSettings("currency")}</h2>
+          <div className="flex items-center gap-2">
+            <BulkListToolbar
+              showArchive={showArchiveAction}
+              showDelete={showDeleteAction}
+              archiveLabel={tSettings("archiveSelected")}
+              deleteLabel={tSettings("deleteSelected")}
+              disabled={isPending}
+              onArchive={() => setBulkArchiveOpen(true)}
+              onDelete={() => setBulkDeleteOpen(true)}
+            />
+            <AddNewButton
+              label={tSettings("newCurrency")}
+              disabled={isPending}
+              onClick={() => setModal({ mode: "create" })}
+            />
+          </div>
+        </div>
+
+        {currencies.length === 0 ? (
+          <p className="text-muted-foreground py-6 text-sm">
+            {tSettings("noCurrencies")}
+          </p>
+        ) : (
+          <>
+            <table className="hidden w-full text-sm md:table">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="w-10 py-2 text-center">
+                    <ListRowCheckbox
+                      documentId=""
+                      variant="table-header"
+                      selectAll
+                      ariaLabel={tCommon("selectAll")}
+                    />
+                  </th>
+                  <th className="py-2">{tSettings("currencyTitle")}</th>
+                  <th>{tSettings("currencyName")}</th>
+                  <th>{tSettings("currencyPerSecond")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currencies.map((currency) => {
+                  const title = displayTitle(currency);
+                  return (
+                    <tr
+                      key={currency.documentId}
+                      className="cursor-pointer border-b hover:bg-muted/40"
+                      onClick={() => openEdit(currency)}
+                    >
+                      <ListRowCheckbox
+                        documentId={currency.documentId}
+                        variant="table"
+                        ariaLabel={tCommon("selectRow", { name: title })}
+                      />
+                      <td className="py-2">
+                        <button
+                          type="button"
+                          className="text-left hover:underline"
+                          aria-label={tSettings("openCurrency", { name: title })}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openEdit(currency);
+                          }}
+                        >
+                          {titleCell(currency)}
+                        </button>
+                      </td>
+                      <td className="text-muted-foreground">{currency.name}</td>
+                      <td>{formatRate(currency.currencyPerSecond)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            <ul className="md:hidden">
               {currencies.map((currency) => {
                 const title = displayTitle(currency);
                 return (
-                  <tr
+                  <li
                     key={currency.documentId}
-                    className="cursor-pointer border-b hover:bg-muted/40"
-                    onClick={() => openEdit(currency)}
+                    className="flex items-start gap-3 border-b py-3"
                   >
-                    <td className="py-2">
-                      <button
-                        type="button"
-                        className="text-left font-medium hover:underline"
-                        aria-label={tSettings("openCurrency", { name: title })}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          openEdit(currency);
-                        }}
-                      >
-                        {title}
-                      </button>
-                    </td>
-                    <td className="text-muted-foreground">{currency.name}</td>
-                    <td>{formatRate(currency.currencyPerSecond)}</td>
-                  </tr>
+                    <ListRowCheckbox
+                      documentId={currency.documentId}
+                      variant="mobile"
+                      ariaLabel={tCommon("selectRow", { name: title })}
+                    />
+                    <button
+                      type="button"
+                      className="w-full text-left"
+                      aria-label={tSettings("openCurrency", { name: title })}
+                      onClick={() => openEdit(currency)}
+                    >
+                      <span className="text-base">{titleCell(currency)}</span>
+                      <span className="mt-1 block text-sm text-muted-foreground">
+                        {currency.name} ·{" "}
+                        {formatRate(currency.currencyPerSecond)}
+                      </span>
+                    </button>
+                  </li>
                 );
               })}
-            </tbody>
-          </table>
+            </ul>
+          </>
+        )}
 
-          <ul className="md:hidden">
-            {currencies.map((currency) => {
-              const title = displayTitle(currency);
-              return (
-                <li key={currency.documentId} className="border-b py-3">
-                  <button
-                    type="button"
-                    className="w-full text-left"
-                    aria-label={tSettings("openCurrency", { name: title })}
-                    onClick={() => openEdit(currency)}
-                  >
-                    <span className="text-base font-medium">{title}</span>
-                    <span className="mt-1 block text-sm text-muted-foreground">
-                      {currency.name} · {formatRate(currency.currencyPerSecond)}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
+        <CurrencyFormModal
+          open={modal.mode !== "closed"}
+          title={
+            modal.mode === "edit"
+              ? tSettings("editCurrency")
+              : tSettings("newCurrency")
+          }
+          formKey={formKey}
+          defaultValues={defaultValues}
+          initialIconUrl={initialIconUrl}
+          saving={isPending}
+          showDelete={
+            modal.mode === "edit" &&
+            !isPrimaryCurrencyDocument(modal.currency.documentId, currencies)
+          }
+          onClose={closeModal}
+          onSave={handleSave}
+          onDelete={() => setDeleteOpen(true)}
+          onUploadIcon={onUploadIcon}
+        />
 
-      <CurrencyFormModal
-        open={modal.mode !== "closed"}
-        title={
-          modal.mode === "edit"
-            ? tSettings("editCurrency")
-            : tSettings("newCurrency")
-        }
-        formKey={formKey}
-        defaultValues={defaultValues}
-        initialIconUrl={initialIconUrl}
-        saving={isPending}
-        showDelete={
-          modal.mode === "edit" &&
-          !isPrimaryCurrencyDocument(modal.currency.documentId, currencies)
-        }
-        onClose={closeModal}
-        onSave={handleSave}
-        onDelete={() => setDeleteOpen(true)}
-        onUploadIcon={onUploadIcon}
-      />
+        <ConfirmDialog
+          open={deleteOpen}
+          title={tSettings("currencyDeleteTitle")}
+          description={tSettings("currencyDeleteConfirm")}
+          confirmLabel={tCommon("delete")}
+          disabled={isPending}
+          onConfirm={handleConfirmDelete}
+          onClose={() => setDeleteOpen(false)}
+        />
 
-      <ConfirmDialog
-        open={deleteOpen}
-        title={tSettings("currencyDeleteTitle")}
-        description={tSettings("currencyDeleteConfirm")}
-        confirmLabel={tCommon("delete")}
-        disabled={isPending}
-        onConfirm={handleConfirmDelete}
-        onClose={() => setDeleteOpen(false)}
-      />
-    </section>
+        <ConfirmDialog
+          open={bulkArchiveOpen}
+          title={tSettings("bulkArchiveTitle")}
+          description={tSettings.rich("bulkArchiveConfirm", {
+            count: selectedCurrencies.length,
+            b: (chunks) => <b>{chunks}</b>,
+          })}
+          confirmLabel={tCommon("yes")}
+          cancelLabel={tCommon("cancel")}
+          confirmVariant="default"
+          disabled={isPending}
+          onConfirm={handleBulkArchiveConfirm}
+          onClose={() => setBulkArchiveOpen(false)}
+        />
+
+        <ConfirmDialog
+          open={bulkDeleteOpen}
+          title={tSettings("bulkDeleteTitle")}
+          description={tSettings("bulkDeleteConfirm")}
+          confirmLabel={tCommon("delete")}
+          disabled={isPending}
+          onConfirm={handleBulkDeleteConfirm}
+          onClose={() => setBulkDeleteOpen(false)}
+        />
+      </section>
+    </ListSelectionProvider>
   );
 }

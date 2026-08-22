@@ -12,3 +12,5 @@ export const currencyFormSchema = z.object({
 });
 
 export type CurrencyFormInput = z.infer<typeof currencyFormSchema>;
+
+export { bulkDocumentIdsSchema as bulkCurrencyIdsSchema } from "./bulk-ids";

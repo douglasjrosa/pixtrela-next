@@ -26,6 +26,7 @@ const currencies = [
     iconMediaId: 11,
     iconMediaUrl: "https://cdn.example/star.png",
     currencyPerSecond: 2,
+    active: true,
   },
   {
     documentId: "cur-gem",
@@ -35,6 +36,7 @@ const currencies = [
     iconMediaId: null,
     iconMediaUrl: null,
     currencyPerSecond: 0.5,
+    active: true,
   },
 ];
 
@@ -55,6 +57,8 @@ describe("CurrencyManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onDelete={vi.fn()}
+        onBulkArchive={vi.fn()}
+        onBulkDelete={vi.fn()}
         onUploadIcon={onUploadIcon}
       />,
     );
@@ -76,6 +80,8 @@ describe("CurrencyManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onDelete={vi.fn()}
+        onBulkArchive={vi.fn()}
+        onBulkDelete={vi.fn()}
         onUploadIcon={onUploadIcon}
       />,
     );
@@ -91,6 +97,8 @@ describe("CurrencyManager", () => {
         onCreate={onCreate}
         onUpdate={vi.fn()}
         onDelete={vi.fn()}
+        onBulkArchive={vi.fn()}
+        onBulkDelete={vi.fn()}
         onUploadIcon={onUploadIcon}
       />,
     );
@@ -133,6 +141,8 @@ describe("CurrencyManager", () => {
         onCreate={vi.fn()}
         onUpdate={onUpdate}
         onDelete={vi.fn()}
+        onBulkArchive={vi.fn()}
+        onBulkDelete={vi.fn()}
         onUploadIcon={onUploadIcon}
       />,
     );
@@ -163,6 +173,8 @@ describe("CurrencyManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onDelete={vi.fn()}
+        onBulkArchive={vi.fn()}
+        onBulkDelete={vi.fn()}
         onUploadIcon={onUploadIcon}
       />,
     );
@@ -179,6 +191,8 @@ describe("CurrencyManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onDelete={onDelete}
+        onBulkArchive={vi.fn()}
+        onBulkDelete={vi.fn()}
         onUploadIcon={onUploadIcon}
       />,
     );
@@ -193,5 +207,66 @@ describe("CurrencyManager", () => {
       expect(onDelete).toHaveBeenCalledWith("cur-gem");
     });
     expect(showSuccessToast).toHaveBeenCalledWith("Moeda excluída.");
+  });
+
+  it("archives selected currencies after confirmation", async () => {
+    const onBulkArchive = vi.fn().mockResolvedValue(undefined);
+    renderWithIntl(
+      <CurrencyManager
+        currencies={currencies}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onBulkArchive={onBulkArchive}
+        onBulkDelete={vi.fn()}
+        onUploadIcon={onUploadIcon}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getAllByRole("checkbox", { name: "Selecionar Gema" })[0]!,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Arquivar selecionadas" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Sim" }));
+
+    await waitFor(() => {
+      expect(onBulkArchive).toHaveBeenCalledWith(["cur-gem"]);
+    });
+    expect(showSuccessToast).toHaveBeenCalledWith("Moedas arquivadas.");
+  });
+
+  it("hard-deletes when every selected currency is archived", async () => {
+    const onBulkDelete = vi.fn().mockResolvedValue(undefined);
+    renderWithIntl(
+      <CurrencyManager
+        currencies={[
+          currencies[0]!,
+          { ...currencies[1]!, active: false },
+        ]}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onBulkArchive={vi.fn()}
+        onBulkDelete={onBulkDelete}
+        onUploadIcon={onUploadIcon}
+      />,
+    );
+
+    expect(screen.getAllByText("Inativa").length).toBeGreaterThan(0);
+    fireEvent.click(
+      screen.getAllByRole("checkbox", { name: "Selecionar Gema" })[0]!,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Excluir selecionadas" }),
+    );
+    const confirm = screen.getByRole("dialog", { name: "Excluir moedas" });
+    fireEvent.click(within(confirm).getByRole("button", { name: "Excluir" }));
+
+    await waitFor(() => {
+      expect(onBulkDelete).toHaveBeenCalledWith(["cur-gem"]);
+    });
+    expect(showSuccessToast).toHaveBeenCalledWith("Moedas excluídas.");
   });
 });
