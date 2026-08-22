@@ -363,6 +363,7 @@ export function CurrencyManager({
                   <th className="py-2">{tSettings("currencyTitle")}</th>
                   <th>{tSettings("currencyName")}</th>
                   <th>{tSettings("currencyPerSecond")}</th>
+                  <th>{tSettings("currencyExchangeRate")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -394,6 +395,7 @@ export function CurrencyManager({
                       <td className="py-2">{titleCell(currency)}</td>
                       <td className="text-muted-foreground">{currency.name}</td>
                       <td>{formatRate(currency.currencyPerSecond)}</td>
+                      <td>{formatRate(currency.exchangeRate)}</td>
                     </tr>
                   );
                 })}
@@ -425,7 +427,8 @@ export function CurrencyManager({
                       </span>
                       <span className="mt-1 block text-sm text-muted-foreground">
                         {currency.name} ·{" "}
-                        {formatRate(currency.currencyPerSecond)}
+                        {formatRate(currency.currencyPerSecond)} ·{" "}
+                        {formatRate(currency.exchangeRate)}
                       </span>
                     </button>
                   </li>

@@ -106,6 +106,9 @@ describe("CurrencyManager", () => {
     expect(screen.getAllByText("Gema").length).toBeGreaterThan(0);
     expect(screen.getAllByText("2").length).toBeGreaterThan(0);
     expect(screen.getAllByText("0.5").length).toBeGreaterThan(0);
+    expect(screen.getByRole("columnheader", { name: "Unidades por centavo" }))
+      .toBeInTheDocument();
+    expect(screen.getAllByText("1.5").length).toBeGreaterThan(0);
   });
 
   it("shows empty state when there are no currencies", () => {
