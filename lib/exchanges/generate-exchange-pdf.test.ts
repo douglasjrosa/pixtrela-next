@@ -1,9 +1,19 @@
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { APP_PDF_LOGO_PNG } from "@/lib/assets/branding";
 import {
   generateDeliverySheetsPdf,
   generateShoppingListPdf,
 } from "./generate-exchange-pdf";
+
+const shoppingLabels = {
+  title: "Shopping list",
+  monthYearLabel: "August 2026",
+  logoPath: join(process.cwd(), "public", APP_PDF_LOGO_PNG.replace(/^\//, "")),
+  itemColumn: "Item",
+  qtyColumn: "Qty",
+};
 
 const deliveryLabels = {
   monthYearLabel: "August 2026",
@@ -46,11 +56,7 @@ describe("generateShoppingListPdf", () => {
   it("returns a valid PDF buffer", async () => {
     const buffer = await generateShoppingListPdf(
       [{ awardId: "a1", awardTitle: "Award A", qty: 2 }],
-      {
-        title: "Shopping list",
-        itemColumn: "Item",
-        qtyColumn: "Qty",
-      },
+      shoppingLabels,
     );
 
     expect(buffer.subarray(0, 4).toString("utf8")).toBe("%PDF");

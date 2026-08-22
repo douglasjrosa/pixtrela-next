@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 
 import type {
@@ -24,11 +25,17 @@ const ROW_MIN_HEIGHT = 14;
 const FOOTER_BLOCK_HEIGHT = 24;
 const FOOTER_TOP_GAP = 10;
 const PAGE_BOTTOM = A4_HEIGHT - MARGIN;
+const SHOPPING_LOGO_SIZE = 28;
+const SHOPPING_HEADER_SIDE_WIDTH = 120;
+const SHOPPING_HEADER_HEIGHT = 36;
+const SHOPPING_HEADER_GAP = 16;
 
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
 export type ShoppingListPdfLabels = {
   title: string;
+  monthYearLabel: string;
+  logoPath: string;
   itemColumn: string;
   qtyColumn: string;
 };
@@ -93,6 +100,37 @@ function drawTableHeader(
   return ruleY + 8;
 }
 
+function drawShoppingListHeader(
+  doc: PdfDoc,
+  labels: ShoppingListPdfLabels,
+  y: number,
+): number {
+  if (existsSync(labels.logoPath)) {
+    doc.image(labels.logoPath, MARGIN, y, {
+      fit: [SHOPPING_LOGO_SIZE, SHOPPING_LOGO_SIZE],
+    });
+  }
+
+  const textY = y + 6;
+  doc
+    .fillColor(BLACK)
+    .font("Helvetica-Bold")
+    .fontSize(16)
+    .text(labels.title, MARGIN + SHOPPING_HEADER_SIDE_WIDTH, textY, {
+      width: CONTENT_WIDTH - SHOPPING_HEADER_SIDE_WIDTH * 2,
+      align: "center",
+    });
+  doc
+    .font("Helvetica")
+    .fontSize(11)
+    .text(labels.monthYearLabel, MARGIN, textY + 2, {
+      width: CONTENT_WIDTH,
+      align: "right",
+    });
+
+  return y + SHOPPING_HEADER_HEIGHT + SHOPPING_HEADER_GAP;
+}
+
 export function generateShoppingListPdf(
   lines: BatchShoppingLine[],
   labels: ShoppingListPdfLabels,
@@ -102,20 +140,18 @@ export function generateShoppingListPdf(
     margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
   });
 
-  doc.fillColor(BLACK).font("Helvetica-Bold").fontSize(16).text(labels.title, {
-    align: "center",
-  });
-  doc.moveDown(1.5);
+  doc.fillColor(BLACK);
+  let y = drawShoppingListHeader(doc, labels, MARGIN);
 
   const itemWidth = CONTENT_WIDTH * 0.78;
   const qtyWidth = CONTENT_WIDTH * 0.22;
-  let y = drawTableHeader(
+  y = drawTableHeader(
     doc,
     [
       { label: labels.itemColumn, width: itemWidth },
       { label: labels.qtyColumn, width: qtyWidth, align: "right" },
     ],
-    doc.y,
+    y,
   );
 
   doc.font("Helvetica").fontSize(10);
