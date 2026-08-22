@@ -1,9 +1,12 @@
-import PDFDocument from "pdfkit";
+import { createRequire } from "node:module";
 
 import type {
   BatchDeliveryOrder,
   BatchShoppingLine,
 } from "@/lib/repos/exchange-batches";
+
+const require = createRequire(import.meta.url);
+const PDFDocument = require("pdfkit") as typeof import("pdfkit");
 
 const A4_WIDTH = 595.28;
 const A4_HEIGHT = 841.89;
