@@ -73,7 +73,7 @@ export async function DeliverySheetsPrint({
                   ))}
                 </tbody>
               </table>
-              <footer className="grid gap-6 pt-8 sm:grid-cols-2">
+              <footer className="print-only grid gap-6 pt-8 sm:grid-cols-2">
                 <p className="border-b border-foreground/40 pb-1 text-sm">
                   {t("signature")}: ________________________
                 </p>

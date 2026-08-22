@@ -1,8 +1,16 @@
+.print-only {
+  display: none !important;
+}
+
 @media print {
   nav,
   header,
   .no-print {
     display: none !important;
+  }
+
+  footer.print-only {
+    display: grid !important;
   }
 
   body[data-exchanges-print="shopping"] .exchanges-print-deliveries {
