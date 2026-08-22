@@ -166,10 +166,11 @@ describe("CurrencyManager", () => {
     });
   });
 
-  it("does not show delete for the primary currency", () => {
+  it("does not show delete for the assigned subtasks currency", () => {
     renderWithIntl(
       <CurrencyManager
         currencies={currencies}
+        protectedCurrencyId="cur-star"
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onDelete={vi.fn()}
@@ -207,6 +208,34 @@ describe("CurrencyManager", () => {
       expect(onDelete).toHaveBeenCalledWith("cur-gem");
     });
     expect(showSuccessToast).toHaveBeenCalledWith("Moeda excluída.");
+  });
+
+  it("archives the first-listed currency when another is assigned", async () => {
+    const onBulkArchive = vi.fn().mockResolvedValue(undefined);
+    renderWithIntl(
+      <CurrencyManager
+        currencies={currencies}
+        protectedCurrencyId="cur-gem"
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onBulkArchive={onBulkArchive}
+        onBulkDelete={vi.fn()}
+        onUploadIcon={onUploadIcon}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getAllByRole("checkbox", { name: "Selecionar Estrela" })[0]!,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Arquivar selecionadas" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Sim" }));
+
+    await waitFor(() => {
+      expect(onBulkArchive).toHaveBeenCalledWith(["cur-star"]);
+    });
   });
 
   it("archives selected currencies after confirmation", async () => {

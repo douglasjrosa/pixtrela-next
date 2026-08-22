@@ -7,9 +7,15 @@ import { CurrencyForm } from "./currency-form";
 const showSuccessToast = vi.fn();
 const showErrorToast = vi.fn();
 
+const refresh = vi.fn();
+
 vi.mock("@/lib/ui/app-toast", () => ({
   showSuccessToast: (...args: unknown[]) => showSuccessToast(...args),
   showErrorToast: (...args: unknown[]) => showErrorToast(...args),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
 }));
 
 const currencies = [
@@ -29,6 +35,7 @@ describe("CurrencyForm", () => {
   beforeEach(() => {
     showSuccessToast.mockReset();
     showErrorToast.mockReset();
+    refresh.mockReset();
   });
 
   it("renders active-for-subtasks select with currency titles", () => {
@@ -95,6 +102,7 @@ describe("CurrencyForm", () => {
       });
     });
     expect(showSuccessToast).toHaveBeenCalledWith("Configurações salvas.");
+    expect(refresh).toHaveBeenCalled();
     expect(showErrorToast).not.toHaveBeenCalled();
   });
 

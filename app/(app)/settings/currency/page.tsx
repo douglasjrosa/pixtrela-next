@@ -20,6 +20,8 @@ import {
   uploadCurrencyIcon,
 } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 async function loadCurrencies(): Promise<CurrencyRow[]> {
   const rows = await listCurrenciesRepo({ includeInactive: true });
   return rows.map((currency) => ({
@@ -49,6 +51,9 @@ export default async function SettingsCurrencyPage() {
     <div className="space-y-10">
       <CurrencyManager
         currencies={currencies}
+        protectedCurrencyId={
+          activeCurrencyDocumentId || primaryCurrencyDocumentId(currencies)
+        }
         onCreate={createCurrency}
         onUpdate={updateCurrency}
         onDelete={deleteCurrency}
@@ -57,6 +62,7 @@ export default async function SettingsCurrencyPage() {
         onUploadIcon={uploadCurrencyIcon}
       />
       <CurrencyForm
+        key={activeCurrencyDocumentId}
         currencies={currencies.filter((currency) => currency.active)}
         activeCurrencyDocumentId={
           activeCurrencyDocumentId || primaryCurrencyDocumentId(currencies) || ""

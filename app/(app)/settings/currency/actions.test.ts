@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTag = vi.fn();
+const revalidatePath = vi.fn();
 const createCurrencyRepo = vi.fn();
 const listCurrenciesRepo = vi.fn();
 const archiveCurrencyRepo = vi.fn();
@@ -17,6 +18,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
+  revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
 vi.mock("@/lib/repos/awards", () => ({
@@ -50,6 +52,7 @@ describe("settings/currency/actions drizzle CRUD", () => {
   beforeEach(() => {
     vi.resetModules();
     revalidateTag.mockReset();
+    revalidatePath.mockReset();
     createCurrencyRepo.mockReset();
     listCurrenciesRepo.mockReset();
     archiveCurrencyRepo.mockReset();
@@ -83,11 +86,12 @@ describe("settings/currency/actions drizzle CRUD", () => {
     );
   });
 
-  it("deleteCurrency rejects the primary currency", async () => {
+  it("deleteCurrency rejects the assigned subtasks currency", async () => {
     listCurrenciesRepo.mockResolvedValue([
-      { id: "cur-star" },
-      { id: "cur-gem" },
+      { id: "cur-star", active: true },
+      { id: "cur-gem", active: true },
     ]);
+    getCurrencyForSubtasks.mockResolvedValue({ currencyId: "cur-star" });
     const { deleteCurrency } = await import("./actions");
     await expect(deleteCurrency("cur-star")).rejects.toThrow(
       "primaryCurrencyProtected",
@@ -95,16 +99,16 @@ describe("settings/currency/actions drizzle CRUD", () => {
     expect(hardDeleteCurrencyRepo).not.toHaveBeenCalled();
   });
 
-  it("deleteCurrency reassigns active payment to the primary currency", async () => {
+  it("deleteCurrency allows the first-listed currency after another is assigned", async () => {
     listCurrenciesRepo.mockResolvedValue([
       { id: "cur-star", active: true },
       { id: "cur-gem", active: true },
     ]);
     getCurrencyForSubtasks.mockResolvedValue({ currencyId: "cur-gem" });
     const { deleteCurrency } = await import("./actions");
-    await deleteCurrency("cur-gem");
-    expect(upsertCurrencyForSubtasks).toHaveBeenCalledWith("cur-star");
-    expect(hardDeleteCurrencyRepo).toHaveBeenCalledWith("cur-gem");
+    await deleteCurrency("cur-star");
+    expect(hardDeleteCurrencyRepo).toHaveBeenCalledWith("cur-star");
+    expect(upsertCurrencyForSubtasks).not.toHaveBeenCalled();
   });
 
   it("bulkArchiveCurrencies archives non-primary currencies", async () => {

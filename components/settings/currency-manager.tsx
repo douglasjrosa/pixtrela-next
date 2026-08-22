@@ -21,7 +21,7 @@ import {
   toggleIdInSet,
   toggleSelectAllRows,
 } from "@/lib/business/list-selection";
-import { isPrimaryCurrencyDocument } from "@/lib/business/primary-currency";
+import { isProtectedCurrencyDocument } from "@/lib/business/primary-currency";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { CurrencyFormInput } from "@/lib/schemas/currency";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
@@ -39,6 +39,7 @@ export interface CurrencyRow {
 
 export interface CurrencyManagerProps {
   currencies: CurrencyRow[];
+  protectedCurrencyId?: string | null;
   onCreate: (values: CurrencyFormInput) => void | Promise<void>;
   onUpdate: (
     documentId: string,
@@ -96,6 +97,7 @@ function actionErrorMessage(
 
 export function CurrencyManager({
   currencies,
+  protectedCurrencyId = null,
   onCreate,
   onUpdate,
   onDelete,
@@ -115,7 +117,9 @@ export function CurrencyManager({
   const [showArchived, setShowArchived] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const listResetKey = currencies.map((row) => row.documentId).join(",");
+  const listResetKey = currencies
+    .map((row) => `${row.documentId}:${row.active ? "1" : "0"}`)
+    .join(",");
   const [prevListResetKey, setPrevListResetKey] = useState(listResetKey);
   if (listResetKey !== prevListResetKey) {
     setPrevListResetKey(listResetKey);
@@ -345,27 +349,24 @@ export function CurrencyManager({
                   return (
                     <tr
                       key={currency.documentId}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={tSettings("openCurrency", { name: title })}
                       className="cursor-pointer border-b hover:bg-muted/40"
                       onClick={() => openEdit(currency)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openEdit(currency);
+                        }
+                      }}
                     >
                       <ListRowCheckbox
                         documentId={currency.documentId}
                         variant="table"
                         ariaLabel={tCommon("selectRow", { name: title })}
                       />
-                      <td className="py-2">
-                        <button
-                          type="button"
-                          className="text-left hover:underline"
-                          aria-label={tSettings("openCurrency", { name: title })}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            openEdit(currency);
-                          }}
-                        >
-                          {titleCell(currency)}
-                        </button>
-                      </td>
+                      <td className="py-2">{titleCell(currency)}</td>
                       <td className="text-muted-foreground">{currency.name}</td>
                       <td>{formatRate(currency.currencyPerSecond)}</td>
                     </tr>
@@ -389,11 +390,13 @@ export function CurrencyManager({
                     />
                     <button
                       type="button"
-                      className="w-full text-left"
+                      className="w-full text-left no-underline"
                       aria-label={tSettings("openCurrency", { name: title })}
                       onClick={() => openEdit(currency)}
                     >
-                      <span className="text-base">{titleCell(currency)}</span>
+                      <span className="text-base font-medium no-underline">
+                        {titleCell(currency)}
+                      </span>
                       <span className="mt-1 block text-sm text-muted-foreground">
                         {currency.name} ·{" "}
                         {formatRate(currency.currencyPerSecond)}
@@ -419,7 +422,11 @@ export function CurrencyManager({
           saving={isPending}
           showDelete={
             modal.mode === "edit" &&
-            !isPrimaryCurrencyDocument(modal.currency.documentId, currencies)
+            !isProtectedCurrencyDocument(
+              modal.currency.documentId,
+              currencies,
+              protectedCurrencyId,
+            )
           }
           onClose={closeModal}
           onSave={handleSave}

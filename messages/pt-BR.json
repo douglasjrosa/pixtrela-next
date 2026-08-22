@@ -1021,7 +1021,8 @@
       "Tem certeza de que deseja arquivar <b>{count}</b> moedas?",
     "bulkDeleteTitle": "Excluir moedas",
     "bulkDeleteConfirm": "Excluir permanentemente as moedas selecionadas?",
-    "currencyPrimaryProtected": "A moeda primária não pode ser arquivada nem excluída.",
+    "currencyPrimaryProtected":
+      "A moeda ativa para subtarefas não pode ser arquivada nem excluída.",
     "automations": "Automações",
     "automationsHeading": "Etapas",
     "automationsDescription": "Quando o status da tarefa mudar, ela será movida automaticamente para a coluna configurada.",

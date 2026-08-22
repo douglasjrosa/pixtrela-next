@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
@@ -30,6 +30,8 @@ export async function updateCurrencyForSubtasks(
   const data = currencyForSubtasksSchema.parse(values);
   await upsertCurrencyForSubtasks(data.currencyDocumentId);
   revalidateTag("drizzle:currency-for-subtasks", "default");
+  revalidateTag("drizzle:currencies", "default");
+  revalidatePath("/settings/currency");
 }
 
 export async function updateKioskSessionIdleSeconds(values: {

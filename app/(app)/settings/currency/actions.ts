@@ -1,15 +1,15 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import { currencies } from "@/drizzle/schema";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
 import {
-  isPrimaryCurrencyId,
-  primaryCurrencyId,
+  assignedActiveCurrencyId,
+  isProtectedCurrencyId,
 } from "@/lib/business/primary-currency";
 import { getDb } from "@/lib/db/client";
 import { storeMedia } from "@/lib/media/store-media";
@@ -31,6 +31,8 @@ import {
   type CurrencyFormInput,
 } from "@/lib/schemas/currency";
 
+const CURRENCY_SETTINGS_PATH = "/settings/currency";
+
 async function assertCanManage(): Promise<void> {
   const session = await auth();
   if (!canManageSettings(session?.user?.role as Role | undefined)) {
@@ -40,29 +42,36 @@ async function assertCanManage(): Promise<void> {
 
 function invalidateCurrencies(): void {
   revalidateTag("drizzle:currencies", "default");
+  revalidateTag("drizzle:currency-for-subtasks", "default");
+  revalidatePath(CURRENCY_SETTINGS_PATH);
 }
 
 async function listAllCurrencies() {
   return listCurrenciesRepo({ includeInactive: true });
 }
 
+async function assignedCurrencyId(): Promise<string | null> {
+  const assigned = await getCurrencyForSubtasks();
+  return assigned?.currencyId ?? null;
+}
+
 async function reassignSubtasksCurrencyIfNeeded(
   documentId: string,
 ): Promise<void> {
   const all = await listAllCurrencies();
-  const primaryId = primaryCurrencyId(all);
+  const fallbackId = assignedActiveCurrencyId(all, null);
   const active = await getCurrencyForSubtasks();
-  if (active?.currencyId === documentId && primaryId) {
-    await upsertCurrencyForSubtasks(primaryId);
-    revalidateTag("drizzle:currency-for-subtasks", "default");
+  if (active?.currencyId === documentId && fallbackId) {
+    await upsertCurrencyForSubtasks(fallbackId);
   }
 }
 
-function assertNotPrimary(
+function assertNotProtected(
   documentId: string,
   all: Awaited<ReturnType<typeof listAllCurrencies>>,
+  assignedId: string | null,
 ): void {
-  if (isPrimaryCurrencyId(documentId, all)) {
+  if (isProtectedCurrencyId(documentId, all, assignedId)) {
     throw new Error("primaryCurrencyProtected");
   }
 }
@@ -134,7 +143,8 @@ export async function updateCurrency(
 export async function archiveCurrency(documentId: string): Promise<void> {
   await assertCanManage();
   const all = await listAllCurrencies();
-  assertNotPrimary(documentId, all);
+  const assignedId = await assignedCurrencyId();
+  assertNotProtected(documentId, all, assignedId);
   await reassignSubtasksCurrencyIfNeeded(documentId);
   await archiveCurrencyRepo(documentId);
   invalidateCurrencies();
@@ -144,7 +154,8 @@ export async function deleteCurrency(documentId: string): Promise<void> {
   await assertCanManage();
 
   const all = await listAllCurrencies();
-  assertNotPrimary(documentId, all);
+  const assignedId = await assignedCurrencyId();
+  assertNotProtected(documentId, all, assignedId);
   await reassignSubtasksCurrencyIfNeeded(documentId);
   await hardDeleteCurrencyRepo(documentId);
   invalidateCurrencies();
@@ -156,7 +167,10 @@ export async function bulkArchiveCurrencies(
   await assertCanManage();
   const ids = bulkCurrencyIdsSchema.parse(documentIds);
   const all = await listAllCurrencies();
-  const archivable = ids.filter((id) => !isPrimaryCurrencyId(id, all));
+  const assignedId = await assignedCurrencyId();
+  const archivable = ids.filter(
+    (id) => !isProtectedCurrencyId(id, all, assignedId),
+  );
   if (archivable.length === 0) {
     throw new Error("primaryCurrencyProtected");
   }
@@ -174,7 +188,10 @@ export async function bulkDeleteCurrencies(
   await assertCanManage();
   const ids = bulkCurrencyIdsSchema.parse(documentIds);
   const all = await listAllCurrencies();
-  const removable = ids.filter((id) => !isPrimaryCurrencyId(id, all));
+  const assignedId = await assignedCurrencyId();
+  const removable = ids.filter(
+    (id) => !isProtectedCurrencyId(id, all, assignedId),
+  );
   if (removable.length === 0) {
     throw new Error("primaryCurrencyProtected");
   }

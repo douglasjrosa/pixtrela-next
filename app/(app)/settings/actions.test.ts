@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTag = vi.fn();
+const revalidatePath = vi.fn();
 const upsertCurrencyForSubtasks = vi.fn();
 const upsertKioskSettings = vi.fn();
 const upsertTaskAutomationSettings = vi.fn();
@@ -11,6 +12,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
+  revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
 vi.mock("@/lib/repos/settings", () => ({
@@ -32,6 +34,7 @@ describe("settings/actions drizzle paths", () => {
   beforeEach(() => {
     vi.resetModules();
     revalidateTag.mockReset();
+    revalidatePath.mockReset();
     upsertCurrencyForSubtasks.mockReset();
     upsertKioskSettings.mockReset();
     upsertTaskAutomationSettings.mockReset();
@@ -43,6 +46,7 @@ describe("settings/actions drizzle paths", () => {
     await updateCurrencyForSubtasks({ currencyDocumentId: "cur-1" });
     expect(upsertCurrencyForSubtasks).toHaveBeenCalledWith("cur-1");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:currency-for-subtasks", "default");
+    expect(revalidatePath).toHaveBeenCalledWith("/settings/currency");
   });
 
   it("updateKioskSessionIdleSeconds upserts kiosk settings", async () => {

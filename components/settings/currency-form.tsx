@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
@@ -44,6 +45,7 @@ export function CurrencyForm({
 }: CurrencyFormProps) {
   const tCommon = useTranslations("common");
   const tSettings = useTranslations("settings");
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const defaultCurrencyDocumentId =
     activeCurrencyDocumentId || primaryCurrencyDocumentId(currencies) || "";
@@ -60,6 +62,7 @@ export function CurrencyForm({
       try {
         await onSave(values);
         showSuccessToast(tSettings("saved"));
+        router.refresh();
       } catch (error) {
         rethrowIfNavigationError(error);
         showErrorToast(tSettings("error"));
