@@ -43,7 +43,7 @@ export default async function ExchangeBatchDetailPage({ params }: PageProps) {
 
   return (
     <section className={cn(APP_LIST_PAGE_SHELL_CLASS, "gap-8")}>
-      <div className={APP_LIST_PAGE_HEADER_ROW_CLASS}>
+      <div className={cn(APP_LIST_PAGE_HEADER_ROW_CLASS, "no-print")}>
         <div className="space-y-2">
           <Link
             href="/exchanges"

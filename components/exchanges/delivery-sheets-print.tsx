@@ -14,18 +14,18 @@ export async function DeliverySheetsPrint({
 
   return (
     <section className="exchanges-print-deliveries space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-bold">{t("deliveries")}</h2>
         <ExchangesPrintButton labelKey="printDeliveries" mode="deliveries" />
       </div>
       {deliveries.length === 0 ? (
         <p className="text-muted-foreground">{t("deliveriesEmpty")}</p>
       ) : (
-        <div className="space-y-8">
+        <div className="exchanges-print-delivery-cards space-y-8">
           {deliveries.map((order) => (
             <article
               key={order.orderId}
-              className="exchanges-print-break space-y-4 rounded-xl border p-4"
+              className="exchanges-print-delivery-card space-y-4 rounded-xl border p-4"
             >
               <header className="space-y-1">
                 <h3 className="text-lg font-bold">{order.userName}</h3>
