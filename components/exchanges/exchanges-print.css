@@ -33,6 +33,34 @@ body[data-exchange-print-preview] footer.print-only {
     display: none !important;
   }
 
+  body[data-exchanges-print] {
+    background: #fff !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body[data-exchanges-print] .exchange-print-preview,
+  body[data-exchanges-print] .exchanges-print-shopping,
+  body[data-exchanges-print] .exchanges-print-deliveries,
+  body[data-exchanges-print] .exchanges-print-delivery-card {
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+  }
+
+  body[data-exchanges-print] .exchange-print-preview *,
+  body[data-exchanges-print] .exchanges-print-shopping *,
+  body[data-exchanges-print] .exchanges-print-deliveries *,
+  body[data-exchanges-print] .exchanges-print-delivery-card * {
+    color: #000 !important;
+    border-color: #000 !important;
+    outline-color: #000 !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   footer.print-only {
     display: grid !important;
   }
