@@ -121,7 +121,9 @@ describe("CurrencyManager", () => {
     fireEvent.click(screen.getByRole("button", { name: "Nova moeda" }));
 
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByLabelText("Taxa de câmbio")).toHaveValue(0);
+    expect(
+      within(dialog).getByLabelText("Taxa de câmbio (segundos por centavo)"),
+    ).toHaveValue(0);
     fireEvent.change(within(dialog).getByLabelText("Nome"), {
       target: { value: "coin" },
     });
@@ -196,9 +198,12 @@ describe("CurrencyManager", () => {
     fireEvent.change(within(dialog).getByLabelText("Unidades por segundo"), {
       target: { value: "3" },
     });
-    fireEvent.change(within(dialog).getByLabelText("Taxa de câmbio"), {
-      target: { value: "-0.25" },
-    });
+    fireEvent.change(
+      within(dialog).getByLabelText("Taxa de câmbio (segundos por centavo)"),
+      {
+        target: { value: "-0.25" },
+      },
+    );
     fireEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => {
