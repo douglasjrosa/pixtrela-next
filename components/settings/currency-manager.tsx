@@ -28,6 +28,11 @@ import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { MediaAssetRecord } from "@/lib/repos/media";
 import type { CurrencyFormInput } from "@/lib/schemas/currency";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { cn } from "@/lib/utils";
+
+const TABLE_HEAD_CELL_CLASS = "py-2 text-center";
+const TABLE_BODY_CELL_CLASS = "py-2 text-center";
+const TABLE_NUMERIC_CELL_CLASS = "text-center tabular-nums";
 
 export interface CurrencyRow {
   documentId: string;
@@ -350,7 +355,7 @@ export function CurrencyManager({
           <>
             <table className="hidden w-full text-sm md:table">
               <thead>
-                <tr className="border-b text-left">
+                <tr className="border-b">
                   <th className="w-10 py-2 text-center">
                     <ListRowCheckbox
                       documentId=""
@@ -359,11 +364,19 @@ export function CurrencyManager({
                       ariaLabel={tCommon("selectAll")}
                     />
                   </th>
-                  <th className="w-12 py-2 pr-3" aria-hidden />
-                  <th className="py-2">{tSettings("currencyTitle")}</th>
-                  <th>{tSettings("currencyName")}</th>
-                  <th>{tSettings("currencyPerSecond")}</th>
-                  <th>{tSettings("currencyExchangeRate")}</th>
+                  <th className="w-12 py-2 text-center" aria-hidden />
+                  <th className={TABLE_HEAD_CELL_CLASS}>
+                    {tSettings("currencyTitle")}
+                  </th>
+                  <th className={TABLE_HEAD_CELL_CLASS}>
+                    {tSettings("currencyName")}
+                  </th>
+                  <th className={TABLE_HEAD_CELL_CLASS}>
+                    {tSettings("currencyPerSecond")}
+                  </th>
+                  <th className={TABLE_HEAD_CELL_CLASS}>
+                    {tSettings("currencyExchangeRate")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -389,13 +402,26 @@ export function CurrencyManager({
                         variant="table"
                         ariaLabel={tCommon("selectRow", { name: title })}
                       />
-                      <td className="w-12 py-2 pr-3">
-                        {currencyIcon(currency)}
+                      <td className="w-12 py-2">
+                        <div className="flex justify-center">
+                          {currencyIcon(currency)}
+                        </div>
                       </td>
-                      <td className="py-2">{titleCell(currency)}</td>
-                      <td className="text-muted-foreground">{currency.name}</td>
-                      <td>{formatRate(currency.currencyPerSecond)}</td>
-                      <td>{formatRate(currency.exchangeRate)}</td>
+                      <td className={TABLE_BODY_CELL_CLASS}>{titleCell(currency)}</td>
+                      <td
+                        className={cn(
+                          TABLE_BODY_CELL_CLASS,
+                          "text-muted-foreground",
+                        )}
+                      >
+                        {currency.name}
+                      </td>
+                      <td className={TABLE_NUMERIC_CELL_CLASS}>
+                        {formatRate(currency.currencyPerSecond)}
+                      </td>
+                      <td className={TABLE_NUMERIC_CELL_CLASS}>
+                        {formatRate(currency.exchangeRate)}
+                      </td>
                     </tr>
                   );
                 })}
