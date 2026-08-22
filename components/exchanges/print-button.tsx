@@ -26,16 +26,12 @@ export function ExchangesPrintButton({
     <PrintButton
       title={pdfFilename}
       onClick={() => {
-        const previewUrl = `/exchanges/${batchId}/print/${mode}`;
-        const previewWindow = window.open(
-          previewUrl,
-          "_blank",
-          "noopener,noreferrer",
-        );
-        if (!previewWindow) {
-          window.location.assign(previewUrl);
+        const pdfUrl = `/exchanges/${batchId}/pdf?kind=${mode}`;
+        const pdfWindow = window.open(pdfUrl, "_blank", "noopener,noreferrer");
+        if (!pdfWindow) {
+          window.location.assign(pdfUrl);
         }
-        previewWindow?.focus();
+        pdfWindow?.focus();
       }}
     >
       {t(labelKey)}

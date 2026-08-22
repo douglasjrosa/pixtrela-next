@@ -1,0 +1,14 @@
+body[data-exchange-pdf-viewer] nav,
+body[data-exchange-pdf-viewer] header {
+  display: none !important;
+}
+
+body[data-exchange-pdf-viewer] main {
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+
+body[data-exchange-pdf-viewer] main > div {
+  border: none !important;
+  box-shadow: none !important;
+}

@@ -3,49 +3,39 @@ import { getTranslations } from "next-intl/server";
 import { ExchangesPrintButton } from "@/components/exchanges/print-button";
 import type { BatchDeliveryOrder } from "@/lib/repos/exchange-batches";
 
-import "./exchanges-print.css";
-
 export async function DeliverySheetsPrint({
   deliveries,
   batchId,
   month,
   year,
-  preview = false,
 }: {
   deliveries: BatchDeliveryOrder[];
-  batchId?: string;
-  month?: number;
-  year?: number;
-  preview?: boolean;
+  batchId: string;
+  month: number;
+  year: number;
 }) {
   const t = await getTranslations("exchanges");
 
   return (
     <section className="exchanges-print-deliveries space-y-4">
-      {preview ? (
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-bold">{t("deliveries")}</h2>
-      ) : (
-        <div className="no-print flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-bold">{t("deliveries")}</h2>
-          {batchId != null && month != null && year != null ? (
-            <ExchangesPrintButton
-              batchId={batchId}
-              month={month}
-              year={year}
-              labelKey="printDeliveries"
-              mode="deliveries"
-            />
-          ) : null}
-        </div>
-      )}
+        <ExchangesPrintButton
+          batchId={batchId}
+          month={month}
+          year={year}
+          labelKey="printDeliveries"
+          mode="deliveries"
+        />
+      </div>
       {deliveries.length === 0 ? (
         <p className="text-muted-foreground">{t("deliveriesEmpty")}</p>
       ) : (
-        <div className="exchanges-print-delivery-cards space-y-8">
+        <div className="space-y-8">
           {deliveries.map((order) => (
             <article
               key={order.orderId}
-              className="exchanges-print-delivery-card space-y-4 rounded-xl border p-4"
+              className="space-y-4 rounded-xl border p-4"
             >
               <header className="space-y-1">
                 <h3 className="text-lg font-bold">{order.userName}</h3>
@@ -93,14 +83,6 @@ export async function DeliverySheetsPrint({
                   ))}
                 </tbody>
               </table>
-              <footer className="print-only grid gap-6 pt-8 sm:grid-cols-2">
-                <p className="border-b border-foreground/40 pb-1 text-sm">
-                  {t("signature")}: ________________________
-                </p>
-                <p className="border-b border-foreground/40 pb-1 text-sm">
-                  {t("dateLine")}: ____ / ____ / ________
-                </p>
-              </footer>
             </article>
           ))}
         </div>
