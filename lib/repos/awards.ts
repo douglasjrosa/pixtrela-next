@@ -23,6 +23,8 @@ export type AwardRecord = {
   active: boolean;
   showInStore: boolean;
   stock: number;
+  actualPrice: number;
+  autoRecalculate: boolean;
   imageUrl: string | null;
 };
 
@@ -34,6 +36,8 @@ export type CreateAwardInput = {
   active?: boolean;
   showInStore?: boolean;
   stock?: number;
+  actualPrice?: number;
+  autoRecalculate?: boolean;
   imageMediaId?: string | null;
   prices?: Array<{ currencyId: string; numberOf: number }>;
 };
@@ -49,12 +53,17 @@ export async function listAwards(db: Db = getDb()): Promise<AwardRecord[]> {
       active: awards.active,
       showInStore: awards.showInStore,
       stock: awards.stock,
+      actualPrice: awards.actualPrice,
+      autoRecalculate: awards.autoRecalculate,
       imageUrl: mediaAssets.url,
     })
     .from(awards)
     .leftJoin(mediaAssets, eq(awards.imageMediaId, mediaAssets.id))
     .orderBy(awards.name);
-  return rows;
+  return rows.map((row) => ({
+    ...row,
+    actualPrice: Number(row.actualPrice ?? 0),
+  }));
 }
 
 export type AwardPriceRef = {
@@ -157,6 +166,8 @@ export async function listAwardsPage(
       active: awards.active,
       showInStore: awards.showInStore,
       stock: awards.stock,
+      actualPrice: awards.actualPrice,
+      autoRecalculate: awards.autoRecalculate,
       imageMediaId: awards.imageMediaId,
       imageUrl: mediaAssets.url,
     })
@@ -173,6 +184,8 @@ export async function listAwardsPage(
       awards.active,
       awards.showInStore,
       awards.stock,
+      awards.actualPrice,
+      awards.autoRecalculate,
       awards.imageMediaId,
       mediaAssets.url,
     )
@@ -195,6 +208,8 @@ export async function listAwardsPage(
       active: row.active,
       showInStore: row.showInStore,
       stock: row.stock,
+      actualPrice: Number(row.actualPrice ?? 0),
+      autoRecalculate: row.autoRecalculate,
       imageMediaId: row.imageMediaId,
       imageUrl: row.imageUrl,
       prices: pricesByAward.get(row.id) ?? [],
@@ -220,6 +235,8 @@ export async function createAward(
       active: input.active ?? true,
       showInStore: input.showInStore ?? true,
       stock: input.stock ?? 0,
+      actualPrice: String(input.actualPrice ?? 0),
+      autoRecalculate: input.autoRecalculate ?? true,
       imageMediaId: input.imageMediaId ?? null,
     })
     .returning({
@@ -231,6 +248,8 @@ export async function createAward(
       active: awards.active,
       showInStore: awards.showInStore,
       stock: awards.stock,
+      actualPrice: awards.actualPrice,
+      autoRecalculate: awards.autoRecalculate,
       imageMediaId: awards.imageMediaId,
     });
 
@@ -263,6 +282,8 @@ export async function createAward(
     active: row.active,
     showInStore: row.showInStore,
     stock: row.stock,
+    actualPrice: Number(row.actualPrice ?? 0),
+    autoRecalculate: row.autoRecalculate,
     imageUrl,
   };
 }
@@ -391,13 +412,19 @@ export async function findAwardById(
       active: awards.active,
       showInStore: awards.showInStore,
       stock: awards.stock,
+      actualPrice: awards.actualPrice,
+      autoRecalculate: awards.autoRecalculate,
       imageUrl: mediaAssets.url,
     })
     .from(awards)
     .leftJoin(mediaAssets, eq(awards.imageMediaId, mediaAssets.id))
     .where(eq(awards.id, id))
     .limit(1);
-  return row ?? null;
+  if (!row) return null;
+  return {
+    ...row,
+    actualPrice: Number(row.actualPrice ?? 0),
+  };
 }
 
 export async function deleteAward(id: string, db: Db = getDb()): Promise<void> {

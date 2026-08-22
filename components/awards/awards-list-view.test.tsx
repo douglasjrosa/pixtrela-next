@@ -14,6 +14,8 @@ const awards: AwardRow[] = [
     active: true,
     showInStore: true,
     stock: 0,
+    actualPrice: 0,
+    autoRecalculate: true,
     imageUrl: "/api/media/arroz.jpg",
     values: [{ numberOf: 2100, currencyDocumentId: "c1" }],
   },

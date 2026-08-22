@@ -24,6 +24,8 @@ const activeAward: AwardRow = {
   active: true,
   showInStore: true,
   stock: 10,
+  actualPrice: 0,
+  autoRecalculate: true,
   values: [{ numberOf: 50, currencyDocumentId: "c1" }],
 };
 
@@ -141,6 +143,8 @@ describe("AwardManager", () => {
     expect(screen.getByText("Imagem")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Escolher imagem" })).toBeInTheDocument();
     expect(screen.getByText("Mostrar na loja")).toBeInTheDocument();
+    expect(screen.getByText("Recalcular automaticamente")).toBeInTheDocument();
+    expect(screen.getByLabelText("Custo (R$)")).toBeInTheDocument();
     expect(screen.getByLabelText("Quantidade em estoque")).toBeInTheDocument();
   });
 
@@ -232,6 +236,8 @@ describe("AwardManager", () => {
           name: "Feijão",
           showInStore: true,
           stock: 0,
+          actualPrice: 0,
+          autoRecalculate: true,
           values: [{ numberOf: 1, currencyDocumentId: "c1" }],
         }),
       );

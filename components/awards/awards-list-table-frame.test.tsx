@@ -46,6 +46,8 @@ const initialAwards: AwardRow[] = [
     active: true,
     showInStore: true,
     stock: 0,
+    actualPrice: 0,
+    autoRecalculate: true,
     values: [{ numberOf: 10, currencyDocumentId: "c1" }],
   },
 ];
@@ -90,6 +92,8 @@ describe("AwardsListTableFrame", () => {
           active: true,
           showInStore: true,
           stock: 0,
+          actualPrice: 0,
+          autoRecalculate: true,
           values: [{ numberOf: 20, currencyDocumentId: "c1" }],
         },
       ],

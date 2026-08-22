@@ -101,6 +101,8 @@ export async function createAward(raw: AwardFormInput): Promise<void> {
     active: true,
     showInStore: data.showInStore,
     stock: data.stock,
+    actualPrice: data.actualPrice,
+    autoRecalculate: data.autoRecalculate,
     prices: data.values.map((entry) => ({
       currencyId: entry.currencyDocumentId,
       numberOf: entry.numberOf,
@@ -126,6 +128,8 @@ export async function updateAward(
       imageMediaId: data.imageId ?? undefined,
       showInStore: data.showInStore,
       stock: data.stock,
+      actualPrice: String(data.actualPrice),
+      autoRecalculate: data.autoRecalculate,
       updatedAt: new Date(),
     })
     .where(eq(awards.id, documentId));

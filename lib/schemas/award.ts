@@ -13,6 +13,8 @@ export const awardFormSchema = z.object({
   imageId: z.string().uuid().nullable().optional(),
   showInStore: z.boolean(),
   stock: z.number().int().min(0),
+  actualPrice: z.coerce.number().finite().default(0),
+  autoRecalculate: z.boolean().default(true),
   values: z.array(awardValueSchema).min(1),
 });
 

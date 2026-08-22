@@ -6,7 +6,7 @@ import {
   useTransition,
   type ReactNode,
 } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -19,8 +19,8 @@ import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
+import { SwitchField } from "@/components/ui/switch-field";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import { buildAwardValuesForCurrencies } from "@/lib/awards/build-award-form-values";
 import type { MediaAssetRecord } from "@/lib/repos/media";
 import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
@@ -59,6 +59,8 @@ function defaultValues(currencies: CurrencyOption[]): AwardFormInput {
     imageId: null,
     showInStore: true,
     stock: 0,
+    actualPrice: 0,
+    autoRecalculate: true,
     values: buildAwardValuesForCurrencies(currencies),
   };
 }
@@ -75,6 +77,8 @@ function toFormValues(
     imageId: award.imageId ?? null,
     showInStore: award.showInStore,
     stock: award.stock,
+    actualPrice: award.actualPrice,
+    autoRecalculate: award.autoRecalculate,
     values: buildAwardValuesForCurrencies(currencies, award.values),
   };
 }
@@ -224,7 +228,7 @@ function AwardFormDialog({
           />
         </div>
 
-        <div className="flex flex-wrap items-end justify-between gap-6 sm:col-span-2">
+        <div className="flex flex-wrap items-end gap-6 sm:col-span-2">
           <div className="flex flex-col gap-2">
             <Label htmlFor="stock" className="block">
               {tAwards("stock")}
@@ -240,15 +244,52 @@ function AwardFormDialog({
               <p className="text-sm text-destructive">{errors.stock.message}</p>
             ) : null}
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className={cn("size-4 rounded border accent-primary")}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="actual-price" className="block">
+              {tAwards("actualPrice")}
+            </Label>
+            <NumberInput
+              id="actual-price"
+              step="0.01"
+              className="w-32"
               disabled={formDisabled}
-              {...register("showInStore")}
+              {...register("actualPrice", { valueAsNumber: true })}
             />
-            {tAwards("showInStore")}
-          </label>
+            {errors.actualPrice ? (
+              <p className="text-sm text-destructive">
+                {errors.actualPrice.message}
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 sm:col-span-2">
+          <Controller
+            name="showInStore"
+            control={control}
+            render={({ field }) => (
+              <SwitchField
+                id="show-in-store"
+                label={tAwards("showInStore")}
+                checked={field.value}
+                disabled={formDisabled}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            name="autoRecalculate"
+            control={control}
+            render={({ field }) => (
+              <SwitchField
+                id="auto-recalculate"
+                label={tAwards("autoRecalculate")}
+                checked={field.value}
+                disabled={formDisabled}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
         </div>
 
         <div className="space-y-4 sm:col-span-2">

@@ -6,6 +6,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -220,6 +221,10 @@ export const awards = pgTable("awards", {
   active: boolean("active").default(true).notNull(),
   showInStore: boolean("show_in_store").default(true).notNull(),
   stock: integer("stock").default(0).notNull(),
+  actualPrice: numeric("actual_price", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
+  autoRecalculate: boolean("auto_recalculate").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

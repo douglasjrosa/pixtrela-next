@@ -691,6 +691,8 @@
     "currency": "Moeda",
     "addValue": "Adicionar valor",
     "showInStore": "Mostrar na loja",
+    "actualPrice": "Custo (R$)",
+    "autoRecalculate": "Recalcular automaticamente",
     "stock": "Quantidade em estoque",
     "listStock": "Estoque",
     "listShowInStore": "Na loja",

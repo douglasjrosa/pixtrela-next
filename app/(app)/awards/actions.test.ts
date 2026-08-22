@@ -97,6 +97,8 @@ describe("awards/actions drizzle CRUD", () => {
       imageId: null,
       showInStore: true,
       stock: 5,
+      actualPrice: 12.5,
+      autoRecalculate: true,
       values: [{ currencyDocumentId: "cur-1", numberOf: 10 }],
     });
     expect(createAwardRepo).toHaveBeenCalledWith(
@@ -105,6 +107,8 @@ describe("awards/actions drizzle CRUD", () => {
         active: true,
         showInStore: true,
         stock: 5,
+        actualPrice: 12.5,
+        autoRecalculate: true,
         prices: [{ currencyId: "cur-1", numberOf: 10 }],
       }),
     );
@@ -172,6 +176,8 @@ describe("awards/actions drizzle CRUD", () => {
       imageId: "00000000-0000-4000-8000-000000000001",
       showInStore: false,
       stock: 3,
+      actualPrice: 9.99,
+      autoRecalculate: false,
       values: [{ currencyDocumentId: "cur-1", numberOf: 5 }],
     });
 
@@ -181,6 +187,8 @@ describe("awards/actions drizzle CRUD", () => {
         imageMediaId: "00000000-0000-4000-8000-000000000001",
         showInStore: false,
         stock: 3,
+        actualPrice: "9.99",
+        autoRecalculate: false,
       }),
     );
     expect(set).toHaveBeenCalledWith(
