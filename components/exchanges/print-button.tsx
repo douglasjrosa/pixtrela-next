@@ -27,11 +27,7 @@ export function ExchangesPrintButton({
       title={pdfFilename}
       onClick={() => {
         const pdfUrl = `/exchanges/${batchId}/pdf?kind=${mode}`;
-        const pdfWindow = window.open(pdfUrl, "_blank", "noopener,noreferrer");
-        if (!pdfWindow) {
-          window.location.assign(pdfUrl);
-        }
-        pdfWindow?.focus();
+        window.open(pdfUrl, "_blank", "noopener,noreferrer");
       }}
     >
       {t(labelKey)}
