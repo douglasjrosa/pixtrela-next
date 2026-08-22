@@ -1008,6 +1008,8 @@
     "openCurrency": "Abrir {name}",
     "currencySaveError": "Não foi possível salvar a moeda.",
     "currencyDeleteError": "Não foi possível excluir a moeda.",
+    "searchCurrencies": "Buscar por nome",
+    "showArchivedCurrencies": "Exibir moedas arquivadas",
     "currencyInactive": "Inativa",
     "archiveSelected": "Arquivar selecionadas",
     "deleteSelected": "Excluir selecionadas",

@@ -254,6 +254,9 @@ describe("CurrencyManager", () => {
       />,
     );
 
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Exibir moedas arquivadas" }),
+    );
     expect(screen.getAllByText("Inativa").length).toBeGreaterThan(0);
     fireEvent.click(
       screen.getAllByRole("checkbox", { name: "Selecionar Gema" })[0]!,

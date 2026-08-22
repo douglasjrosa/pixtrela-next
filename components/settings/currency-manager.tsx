@@ -7,6 +7,9 @@ import { useTranslations } from "next-intl";
 import { CurrencyFormModal } from "@/components/settings/currency-form-modal";
 import { AddNewButton } from "@/components/ui/add-new-button";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
+import { ListArchivedToggle } from "@/components/ui/list-archived-toggle";
+import { ListFiltersBar } from "@/components/ui/list-filters-bar";
+import { ListNameSearch } from "@/components/ui/list-name-search";
 import { CardBadge } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
@@ -108,6 +111,8 @@ export function CurrencyManager({
   const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const listResetKey = currencies.map((row) => row.documentId).join(",");
@@ -117,7 +122,20 @@ export function CurrencyManager({
     setSelectedIds([]);
   }
 
-  const selectedCurrencies = selectedRowsFromList(currencies, selectedIds);
+  const visibleCurrencies = currencies.filter((currency) => {
+    if (!showArchived && !currency.active) return false;
+    const needle = searchQuery.trim().toLowerCase();
+    if (needle.length === 0) return true;
+    const title = displayTitle(currency).toLowerCase();
+    return (
+      title.includes(needle) || currency.name.toLowerCase().includes(needle)
+    );
+  });
+
+  const selectedCurrencies = selectedRowsFromList(
+    visibleCurrencies,
+    selectedIds,
+  );
   const hasSelection = selectedCurrencies.length > 0;
   const allSelectedArchived = areAllSelectedRowsInactive(
     selectedCurrencies,
@@ -140,7 +158,9 @@ export function CurrencyManager({
   }
 
   function handleToggleSelectAll(): void {
-    setSelectedIds((current) => toggleSelectAllRows(currencies, current));
+    setSelectedIds((current) =>
+      toggleSelectAllRows(visibleCurrencies, current),
+    );
   }
 
   function clearSelection(): void {
@@ -242,7 +262,7 @@ export function CurrencyManager({
 
   const selectionValue = {
     selectedIds,
-    allSelected: areAllRowsSelected(currencies, selectedIds),
+    allSelected: areAllRowsSelected(visibleCurrencies, selectedIds),
     onToggleSelect: handleToggleSelect,
     onToggleSelectAll: handleToggleSelectAll,
   };
@@ -282,7 +302,22 @@ export function CurrencyManager({
           </div>
         </div>
 
-        {currencies.length === 0 ? (
+        {currencies.length > 0 ? (
+          <ListFiltersBar>
+            <ListNameSearch
+              label={tSettings("searchCurrencies")}
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
+            <ListArchivedToggle
+              label={tSettings("showArchivedCurrencies")}
+              checked={showArchived}
+              onChange={setShowArchived}
+            />
+          </ListFiltersBar>
+        ) : null}
+
+        {visibleCurrencies.length === 0 ? (
           <p className="text-muted-foreground py-6 text-sm">
             {tSettings("noCurrencies")}
           </p>
@@ -305,7 +340,7 @@ export function CurrencyManager({
                 </tr>
               </thead>
               <tbody>
-                {currencies.map((currency) => {
+                {visibleCurrencies.map((currency) => {
                   const title = displayTitle(currency);
                   return (
                     <tr
@@ -340,7 +375,7 @@ export function CurrencyManager({
             </table>
 
             <ul className="md:hidden">
-              {currencies.map((currency) => {
+              {visibleCurrencies.map((currency) => {
                 const title = displayTitle(currency);
                 return (
                   <li
