@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { CardBadge } from "@/components/ui/card";
 
-import { TemplateListRowCheckbox } from "./template-list-row-checkbox";
+import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import type { TemplateListRow } from "./types";
 
 const CENTER_CELL_CLASS = "text-center";
@@ -43,7 +43,7 @@ export function TemplateListRowPresentational({
     return (
       <tr className="relative cursor-pointer border-b hover:bg-muted/40">
         {showCheckboxColumn ? (
-          <TemplateListRowCheckbox
+          <ListRowCheckbox
             documentId={template.documentId}
             variant="table"
             ariaLabel={labels.selectRow}
@@ -68,7 +68,7 @@ export function TemplateListRowPresentational({
     <li className="list-none border-b hover:bg-muted/40">
       <div className="flex items-start gap-3">
         {showCheckboxColumn ? (
-          <TemplateListRowCheckbox
+          <ListRowCheckbox
             documentId={template.documentId}
             variant="mobile"
             ariaLabel={labels.selectRow}

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import type { AwardListSort } from "@/lib/schemas/award-list-sort";
 import type { AwardListFilters } from "@/lib/schemas/award-list-filters";
 
-import { AwardListRowCheckbox } from "./award-list-row-checkbox";
+import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import { AwardListSortHeaderLink } from "./award-list-sort-header-link";
 
 export interface AwardsListTableHeaderProps {
@@ -26,7 +26,7 @@ export async function AwardsListTableHeader({
       <tr className="border-b text-left">
         {showCheckboxColumn ? (
           <th className={cn("w-10 py-2", "text-center")}>
-            <AwardListRowCheckbox
+            <ListRowCheckbox
               documentId=""
               variant="table-header"
               selectAll

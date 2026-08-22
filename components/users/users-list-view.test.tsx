@@ -41,7 +41,10 @@ describe("UserListRowPresentational", () => {
                 key={user.documentId}
                 user={user}
                 variant="table"
-                labels={{ role: user.roleType }}
+                labels={{
+                  role: user.roleType,
+                  selectRow: `Selecionar ${user.name}`,
+                }}
               />
             ))}
           </tbody>
@@ -63,7 +66,10 @@ describe("UserListRowPresentational", () => {
             <UserListRowPresentational
               user={users[0]!}
               variant="table"
-              labels={{ role: "colaborator" }}
+              labels={{
+                role: "colaborator",
+                selectRow: "Selecionar Maria",
+              }}
             />
           </tbody>
         </table>

@@ -90,7 +90,7 @@ function TestUserManager({
               key={user.documentId}
               user={user}
               variant="table"
-              labels={{ role: user.roleType }}
+              labels={{ role: user.roleType, selectRow: `Selecionar ${user.name}` }}
             />
           ))}
         </tbody>

@@ -89,3 +89,5 @@ export function createUserFormSchema(
 }
 
 export type UserFormInput = z.infer<typeof userFormSchema>;
+
+export { bulkDocumentIdsSchema as bulkUserIdsSchema } from "./bulk-ids";

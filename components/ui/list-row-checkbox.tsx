@@ -2,24 +2,24 @@
 
 import { cn } from "@/lib/utils";
 
-import { useTemplateListSelection } from "./template-list-selection-context";
+import { useListSelection } from "./list-selection-context";
 
 const CHECKBOX_CLASS = cn("size-4 rounded border border-input accent-primary");
 
-export interface TemplateListRowCheckboxProps {
+export interface ListRowCheckboxProps {
   documentId: string;
   variant: "table" | "table-header" | "mobile";
   selectAll?: boolean;
   ariaLabel: string;
 }
 
-export function TemplateListRowCheckbox({
+export function ListRowCheckbox({
   documentId,
   variant,
   selectAll = false,
   ariaLabel,
-}: TemplateListRowCheckboxProps) {
-  const ctx = useTemplateListSelection();
+}: ListRowCheckboxProps) {
+  const ctx = useListSelection();
 
   const checked = ctx
     ? selectAll

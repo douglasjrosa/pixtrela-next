@@ -2,7 +2,6 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -11,8 +10,9 @@ import {
   loadMoreAwards,
 } from "@/app/(app)/awards/actions";
 import { LoadMoreButton, LoadMoreButtonRow } from "@/components/ui/load-more-button";
-import { Button } from "@/components/ui/button";
+import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ListSelectionProvider } from "@/components/ui/list-selection-context";
 import {
   areAllAwardsSelected,
   areAllSelectedAwardsArchived,
@@ -27,7 +27,6 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 import { awardCostLabel } from "./award-cost-label";
 import { AwardListRowPresentational } from "./award-list-row-presentational";
-import { AwardListSelectionProvider } from "./award-list-selection-context";
 import type { AwardRow, CurrencyOption } from "./types";
 import { awardDisplayTitle } from "./types";
 
@@ -182,35 +181,18 @@ export function AwardsListTableFrame({
   }
 
   return (
-    <AwardListSelectionProvider value={selectionValue}>
+    <ListSelectionProvider value={selectionValue}>
       <div className="flex min-h-0 flex-1 flex-col">
         {bulkEnabled ? (
-          <div className="flex h-10 shrink-0 items-center justify-end gap-2">
-            {showArchiveAction ? (
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                aria-label={tAwards("archiveSelected")}
-                disabled={isPending}
-                onClick={() => setArchiveOpen(true)}
-              >
-                <Archive aria-hidden />
-              </Button>
-            ) : null}
-            {showDeleteAction ? (
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                aria-label={tAwards("deleteSelected")}
-                disabled={isPending}
-                onClick={() => setDeleteOpen(true)}
-              >
-                <Trash2 aria-hidden />
-              </Button>
-            ) : null}
-          </div>
+          <BulkListToolbar
+            showArchive={showArchiveAction}
+            showDelete={showDeleteAction}
+            archiveLabel={tAwards("archiveSelected")}
+            deleteLabel={tAwards("deleteSelected")}
+            disabled={isPending}
+            onArchive={() => setArchiveOpen(true)}
+            onDelete={() => setDeleteOpen(true)}
+          />
         ) : null}
 
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -267,6 +249,6 @@ export function AwardsListTableFrame({
           onClose={() => setDeleteOpen(false)}
         />
       </div>
-    </AwardListSelectionProvider>
+    </ListSelectionProvider>
   );
 }

@@ -24,7 +24,11 @@ import {
   updateUserAccount,
   type UserRole,
 } from "@/lib/repos/users";
-import { buildUserFormSchema, type UserFormInput } from "@/lib/schemas/user";
+import {
+  buildUserFormSchema,
+  bulkUserIdsSchema,
+  type UserFormInput,
+} from "@/lib/schemas/user";
 import { userListFiltersSchema } from "@/lib/schemas/user-list-filters";
 import {
   loadUserListPage,
@@ -217,6 +221,32 @@ export async function deleteUser(userId: UserId): Promise<void> {
   }
 
   await deactivateUserRepo(toUserIdString(userId), USER_DEACTIVATION_REASON);
+  invalidateUsers();
+}
+
+export async function bulkDeactivateUsers(userIds: string[]): Promise<void> {
+  const actorRole = await assertCanView();
+  const ids = bulkUserIdsSchema.parse(userIds);
+  for (const userId of ids) {
+    const currentRole = await loadUserRole(userId);
+    if (!canManageRole(actorRole, currentRole)) {
+      throw new Error("forbidden");
+    }
+    await deactivateUserRepo(userId, USER_DEACTIVATION_REASON);
+  }
+  invalidateUsers();
+}
+
+export async function bulkDeleteUsers(userIds: string[]): Promise<void> {
+  const session = await auth();
+  const actorRole = session?.user?.role as Role | undefined;
+  if (!actorRole || !canDeleteUsers(actorRole)) {
+    throw new Error("forbidden");
+  }
+  const ids = bulkUserIdsSchema.parse(userIds);
+  for (const userId of ids) {
+    await deactivateUserRepo(userId, USER_DEACTIVATION_REASON);
+  }
   invalidateUsers();
 }
 

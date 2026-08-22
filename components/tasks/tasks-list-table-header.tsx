@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import type { TaskListSort } from "@/lib/schemas/task-list-sort";
 import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
 
-import { TaskListRowCheckbox } from "./task-list-row-checkbox";
+import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import { TaskListSortHeaderLink } from "./task-list-sort-header-link";
 
 export interface TasksListTableHeaderProps {
@@ -26,7 +26,7 @@ export async function TasksListTableHeader({
       <tr className="border-b text-left">
         {showCheckboxColumn ? (
           <th className={cn("w-10 py-2", "text-center")}>
-            <TaskListRowCheckbox
+            <ListRowCheckbox
               documentId=""
               variant="table-header"
               selectAll

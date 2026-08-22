@@ -179,6 +179,20 @@ describe("users/actions drizzle CRUD", () => {
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 
+  it("bulkDeactivateUsers deactivates each id", async () => {
+    const { bulkDeactivateUsers } = await import("./actions");
+    await bulkDeactivateUsers(["u1", "u2"]);
+    expect(deactivateUserRepo).toHaveBeenCalledTimes(2);
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
+  });
+
+  it("bulkDeleteUsers deactivates each id for admin", async () => {
+    const { bulkDeleteUsers } = await import("./actions");
+    await bulkDeleteUsers(["u1"]);
+    expect(deactivateUserRepo).toHaveBeenCalledWith("u1", expect.any(String));
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
+  });
+
   it("pairUserTag sets tag when no conflict", async () => {
     findUserIdByTag.mockResolvedValue(null);
     setUserTag.mockResolvedValue(undefined);

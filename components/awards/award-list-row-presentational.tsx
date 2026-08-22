@@ -6,7 +6,7 @@ import { CardBadge } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 import { AwardListImage } from "./award-list-image";
-import { AwardListRowCheckbox } from "./award-list-row-checkbox";
+import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import { useAwardList } from "./award-list-context";
 import { awardDisplayTitle, type AwardRow } from "./types";
 
@@ -74,7 +74,7 @@ export function AwardListRowPresentational({
         {...rowProps}
       >
         {showCheckboxColumn ? (
-          <AwardListRowCheckbox
+          <ListRowCheckbox
             documentId={award.documentId}
             variant="table"
             ariaLabel={labels.selectRow}
@@ -118,7 +118,7 @@ export function AwardListRowPresentational({
     >
       <div className="flex items-center gap-3">
         {showCheckboxColumn ? (
-          <AwardListRowCheckbox
+          <ListRowCheckbox
             documentId={award.documentId}
             variant="mobile"
             ariaLabel={labels.selectRow}
