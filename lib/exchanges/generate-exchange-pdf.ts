@@ -76,22 +76,60 @@ function strokeHorizontalRule(doc: PdfDoc, y: number, dashed = false): void {
   }
 }
 
+type CellTextAlign = "left" | "right" | "center";
+
+function measureRowHeight(
+  doc: PdfDoc,
+  cells: Array<{ text: string; width: number }>,
+): number {
+  let height = ROW_MIN_HEIGHT;
+  for (const cell of cells) {
+    if (!cell.text) continue;
+    height = Math.max(
+      height,
+      doc.heightOfString(cell.text, { width: cell.width }),
+    );
+  }
+  return height;
+}
+
+function drawCellText(
+  doc: PdfDoc,
+  text: string,
+  x: number,
+  rowTop: number,
+  width: number,
+  rowHeight: number,
+  align: CellTextAlign = "left",
+): void {
+  if (!text) return;
+  const textHeight = doc.heightOfString(text, { width });
+  const y = rowTop + (rowHeight - textHeight) / 2;
+  doc.text(text, x, y, { width, align });
+}
+
 function drawTableHeader(
   doc: PdfDoc,
-  columns: Array<{ label: string; width: number; align?: "left" | "right" }>,
+  columns: Array<{ label: string; width: number; align?: CellTextAlign }>,
   y: number,
   x = MARGIN,
 ): number {
   doc.fillColor(BLACK).font("Helvetica-Bold").fontSize(10);
+  const headerRowHeight = 14;
   let columnX = x;
   for (const column of columns) {
-    doc.text(column.label, columnX, y, {
-      width: column.width,
-      align: column.align ?? "left",
-    });
+    drawCellText(
+      doc,
+      column.label,
+      columnX,
+      y,
+      column.width,
+      headerRowHeight,
+      column.align ?? "left",
+    );
     columnX += column.width;
   }
-  const ruleY = y + 14;
+  const ruleY = y + headerRowHeight;
   const ruleWidth = columns.reduce((sum, column) => sum + column.width, 0);
   doc
     .strokeColor(BLACK)
@@ -181,12 +219,22 @@ export function generateShoppingListPdf(
     }
 
     const rowTop = y;
-    doc.text(line.awardTitle, MARGIN, rowTop, { width: widths.item });
-    doc.text(String(line.qty), MARGIN + widths.item, rowTop, {
-      width: widths.qty,
-      align: "right",
-    });
-    y = Math.max(doc.y, rowTop + 14) + 4;
+    const rowCells = [
+      { text: line.awardTitle, width: widths.item },
+      { text: String(line.qty), width: widths.qty },
+    ];
+    const rowHeight = measureRowHeight(doc, rowCells);
+    drawCellText(doc, line.awardTitle, MARGIN, rowTop, widths.item, rowHeight);
+    drawCellText(
+      doc,
+      String(line.qty),
+      MARGIN + widths.item,
+      rowTop,
+      widths.qty,
+      rowHeight,
+      "right",
+    );
+    y = rowTop + rowHeight + 4;
     strokeHorizontalRule(doc, y - 2);
   }
 
@@ -210,17 +258,6 @@ function deliveryColumnWidths(innerWidth: number): number[] {
   ];
 }
 
-function measureItemRowHeight(
-  doc: PdfDoc,
-  awardTitle: string,
-  itemColumnWidth: number,
-): number {
-  return Math.max(
-    ROW_MIN_HEIGHT,
-    doc.heightOfString(awardTitle, { width: itemColumnWidth }),
-  );
-}
-
 function measureDeliveryCardHeight(
   doc: PdfDoc,
   order: BatchDeliveryOrder,
@@ -233,7 +270,13 @@ function measureDeliveryCardHeight(
 
   doc.font("Helvetica").fontSize(9);
   for (const item of order.items) {
-    height += measureItemRowHeight(doc, item.awardTitle, colWidths[0]!) + 2;
+    height +=
+      measureRowHeight(doc, [
+        { text: item.awardTitle, width: colWidths[0]! },
+        { text: String(item.qty), width: colWidths[1]! },
+        { text: String(item.unitNumberOf), width: colWidths[2]! },
+        { text: String(item.lineNumberOf), width: colWidths[3]! },
+      ]) + 2;
   }
 
   height += FOOTER_TOP_GAP + FOOTER_BLOCK_HEIGHT + CARD_PADDING_BOTTOM;
@@ -291,8 +334,6 @@ function drawDeliveryCard(
 
   for (const item of order.items) {
     const rowTop = y;
-    const rowHeight = measureItemRowHeight(doc, item.awardTitle, colWidths[0]!);
-    let columnX = innerX;
     const cells = [
       { text: item.awardTitle, width: colWidths[0]!, align: "left" as const },
       { text: String(item.qty), width: colWidths[1]!, align: "right" as const },
@@ -307,11 +348,18 @@ function drawDeliveryCard(
         align: "right" as const,
       },
     ];
+    const rowHeight = measureRowHeight(doc, cells);
+    let columnX = innerX;
     for (const cell of cells) {
-      doc.text(cell.text, columnX, rowTop, {
-        width: cell.width,
-        align: cell.align,
-      });
+      drawCellText(
+        doc,
+        cell.text,
+        columnX,
+        rowTop,
+        cell.width,
+        rowHeight,
+        cell.align,
+      );
       columnX += cell.width;
     }
     y = rowTop + rowHeight;
