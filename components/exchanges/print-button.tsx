@@ -3,17 +3,24 @@
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
-
-const PRINT_MODE_ATTR = "data-exchanges-print";
+import type { ExchangePrintKind } from "@/lib/exchanges/print-pdf-filename";
+import { buildExchangePrintPdfFilename } from "@/lib/exchanges/print-pdf-filename";
 
 export function ExchangesPrintButton({
+  batchId,
+  month,
+  year,
   labelKey,
   mode,
 }: {
+  batchId: string;
+  month: number;
+  year: number;
   labelKey: "printShopping" | "printDeliveries";
-  mode: "shopping" | "deliveries";
+  mode: ExchangePrintKind;
 }) {
   const t = useTranslations("exchanges");
+  const pdfFilename = buildExchangePrintPdfFilename(mode, month, year);
 
   return (
     <Button
@@ -22,14 +29,18 @@ export function ExchangesPrintButton({
       size="sm"
       className="no-print"
       onClick={() => {
-        document.body.setAttribute(PRINT_MODE_ATTR, mode);
-        const cleanup = () => {
-          document.body.removeAttribute(PRINT_MODE_ATTR);
-          window.removeEventListener("afterprint", cleanup);
-        };
-        window.addEventListener("afterprint", cleanup);
-        window.print();
+        const previewUrl = `/exchanges/${batchId}/print/${mode}`;
+        const previewWindow = window.open(
+          previewUrl,
+          "_blank",
+          "noopener,noreferrer",
+        );
+        if (!previewWindow) {
+          window.location.assign(previewUrl);
+        }
+        previewWindow?.focus();
       }}
+      title={pdfFilename}
     >
       {t(labelKey)}
     </Button>

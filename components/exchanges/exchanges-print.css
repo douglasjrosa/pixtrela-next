@@ -2,6 +2,24 @@
   display: none !important;
 }
 
+body[data-exchange-print-preview] nav,
+body[data-exchange-print-preview] header {
+  display: none !important;
+}
+
+body[data-exchange-print-preview] main {
+  padding: 0 !important;
+}
+
+body[data-exchange-print-preview] main > div {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+body[data-exchange-print-preview] footer.print-only {
+  display: grid !important;
+}
+
 /* Half-page delivery cards: two per sheet for tear-off (A4, 10mm margins). */
 @page {
   size: A4 portrait;

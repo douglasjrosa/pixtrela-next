@@ -376,6 +376,7 @@
     "deliveriesEmpty": "Nenhum pedido neste lote.",
     "printShopping": "Imprimir lista de compras",
     "printDeliveries": "Imprimir fichas de entrega",
+    "printDocument": "Imprimir",
     "qty": "Qtd.",
     "unit": "Unitário",
     "lineTotal": "Subtotal",

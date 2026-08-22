@@ -7,17 +7,37 @@ import "./exchanges-print.css";
 
 export async function ShoppingListPrint({
   lines,
+  batchId,
+  month,
+  year,
+  preview = false,
 }: {
   lines: BatchShoppingLine[];
+  batchId?: string;
+  month?: number;
+  year?: number;
+  preview?: boolean;
 }) {
   const t = await getTranslations("exchanges");
 
   return (
     <section className="exchanges-print-shopping space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {preview ? (
         <h2 className="text-xl font-bold">{t("shoppingList")}</h2>
-        <ExchangesPrintButton labelKey="printShopping" mode="shopping" />
-      </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-bold">{t("shoppingList")}</h2>
+          {batchId != null && month != null && year != null ? (
+            <ExchangesPrintButton
+              batchId={batchId}
+              month={month}
+              year={year}
+              labelKey="printShopping"
+              mode="shopping"
+            />
+          ) : null}
+        </div>
+      )}
       {lines.length === 0 ? (
         <p className="text-muted-foreground">{t("shoppingEmpty")}</p>
       ) : (

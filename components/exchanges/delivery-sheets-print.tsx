@@ -7,17 +7,37 @@ import "./exchanges-print.css";
 
 export async function DeliverySheetsPrint({
   deliveries,
+  batchId,
+  month,
+  year,
+  preview = false,
 }: {
   deliveries: BatchDeliveryOrder[];
+  batchId?: string;
+  month?: number;
+  year?: number;
+  preview?: boolean;
 }) {
   const t = await getTranslations("exchanges");
 
   return (
     <section className="exchanges-print-deliveries space-y-4">
-      <div className="no-print flex flex-wrap items-center justify-between gap-3">
+      {preview ? (
         <h2 className="text-xl font-bold">{t("deliveries")}</h2>
-        <ExchangesPrintButton labelKey="printDeliveries" mode="deliveries" />
-      </div>
+      ) : (
+        <div className="no-print flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-bold">{t("deliveries")}</h2>
+          {batchId != null && month != null && year != null ? (
+            <ExchangesPrintButton
+              batchId={batchId}
+              month={month}
+              year={year}
+              labelKey="printDeliveries"
+              mode="deliveries"
+            />
+          ) : null}
+        </div>
+      )}
       {deliveries.length === 0 ? (
         <p className="text-muted-foreground">{t("deliveriesEmpty")}</p>
       ) : (

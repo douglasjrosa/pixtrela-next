@@ -62,8 +62,18 @@ export default async function ExchangeBatchDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      <ShoppingListPrint lines={detail.shoppingList} />
-      <DeliverySheetsPrint deliveries={detail.deliveries} />
+      <ShoppingListPrint
+        lines={detail.shoppingList}
+        batchId={detail.id}
+        month={detail.month}
+        year={detail.year}
+      />
+      <DeliverySheetsPrint
+        deliveries={detail.deliveries}
+        batchId={detail.id}
+        month={detail.month}
+        year={detail.year}
+      />
     </section>
   );
 }
