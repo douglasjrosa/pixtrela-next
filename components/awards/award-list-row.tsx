@@ -33,6 +33,9 @@ export async function AwardListRowView({
         showInStore: award.showInStore
           ? tCommon("yes")
           : tCommon("no"),
+        autoRecalculate: award.autoRecalculate
+          ? tCommon("yes")
+          : tCommon("no"),
         inactive: tAwards("inactive"),
         selectRow: tCommon("selectRow", { name: awardDisplayTitle(award) }),
       }}

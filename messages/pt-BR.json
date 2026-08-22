@@ -687,6 +687,7 @@
     "imageUploadFailed": "Não foi possível enviar a imagem. Tente novamente.",
     "starCost": "Custo",
     "listActualPrice": "Custo",
+    "listAutoRecalculate": "Auto recálculo",
     "values": "Valores",
     "numberOf": "Quantidade",
     "currency": "Moeda",

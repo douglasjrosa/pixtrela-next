@@ -98,6 +98,9 @@ export function AwardsListTableFrame({
       actualPrice: formatAwardActualPrice(award.actualPrice),
       stock: String(award.stock),
       showInStore: award.showInStore ? tCommon("yes") : tCommon("no"),
+      autoRecalculate: award.autoRecalculate
+        ? tCommon("yes")
+        : tCommon("no"),
       inactive: tAwards("inactive"),
       selectRow: tCommon("selectRow", { name: awardDisplayTitle(award) }),
     };

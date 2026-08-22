@@ -55,6 +55,7 @@ const initialAwards: AwardRow[] = [
 const rowLabels = {
   cost: "10 Estrela",
   actualPrice: "R$ 0,00",
+  autoRecalculate: "Sim",
   stock: "0",
   showInStore: "Sim",
   inactive: "Inativo",
