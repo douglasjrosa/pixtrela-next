@@ -1000,7 +1000,7 @@
     "currencyIconSelected": "Ícone enviado com sucesso.",
     "currencyIconUploadFailed": "Não foi possível enviar o ícone. Tente novamente.",
     "currencyPerSecond": "Unidades por segundo",
-    "currencyExchangeRate": "Taxa de câmbio (segundos por centavo)",
+    "currencyExchangeRate": "Unidades por centavo",
     "currencyPerSecondFor": "{currency} por segundo:",
     "currencyActiveForSubtasks": "Ativo para Subtarefas:",
     "currencyActiveNone": "Nenhuma",

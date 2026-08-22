@@ -122,7 +122,7 @@ describe("CurrencyManager", () => {
 
     const dialog = screen.getByRole("dialog");
     expect(
-      within(dialog).getByLabelText("Taxa de câmbio (segundos por centavo)"),
+      within(dialog).getByLabelText("Unidades por centavo"),
     ).toHaveValue(0);
     fireEvent.change(within(dialog).getByLabelText("Nome"), {
       target: { value: "coin" },
@@ -199,7 +199,7 @@ describe("CurrencyManager", () => {
       target: { value: "3" },
     });
     fireEvent.change(
-      within(dialog).getByLabelText("Taxa de câmbio (segundos por centavo)"),
+      within(dialog).getByLabelText("Unidades por centavo"),
       {
         target: { value: "-0.25" },
       },
