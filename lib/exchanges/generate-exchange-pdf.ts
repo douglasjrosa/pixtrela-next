@@ -13,7 +13,17 @@ const A4_HEIGHT = 841.89;
 const MARGIN = 28.35;
 const CONTENT_WIDTH = A4_WIDTH - MARGIN * 2;
 const BLACK = "#000000";
-const CARD_HEIGHT = (A4_HEIGHT - MARGIN * 2) / 2;
+const CARD_INNER_PADDING = 12;
+const CARD_PADDING_TOP = 14;
+const CARD_PADDING_BOTTOM = 14;
+const CARD_GAP = 10;
+const HEADER_LINE_HEIGHT = 18;
+const SUMMARY_LINE_HEIGHT = 18;
+const TABLE_HEADER_HEIGHT = 22;
+const ROW_MIN_HEIGHT = 14;
+const FOOTER_BLOCK_HEIGHT = 24;
+const FOOTER_TOP_GAP = 10;
+const PAGE_BOTTOM = A4_HEIGHT - MARGIN;
 
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
@@ -140,21 +150,55 @@ function orderTotalQty(order: BatchDeliveryOrder): number {
   return order.items.reduce((sum, item) => sum + item.qty, 0);
 }
 
+function deliveryColumnWidths(innerWidth: number): number[] {
+  return [
+    innerWidth * 0.46,
+    innerWidth * 0.14,
+    innerWidth * 0.2,
+    innerWidth * 0.2,
+  ];
+}
+
+function measureItemRowHeight(
+  doc: PdfDoc,
+  awardTitle: string,
+  itemColumnWidth: number,
+): number {
+  return Math.max(
+    ROW_MIN_HEIGHT,
+    doc.heightOfString(awardTitle, { width: itemColumnWidth }),
+  );
+}
+
+function measureDeliveryCardHeight(
+  doc: PdfDoc,
+  order: BatchDeliveryOrder,
+): number {
+  const innerWidth = CONTENT_WIDTH - CARD_INNER_PADDING * 2;
+  const colWidths = deliveryColumnWidths(innerWidth);
+
+  let height = CARD_PADDING_TOP + HEADER_LINE_HEIGHT + SUMMARY_LINE_HEIGHT;
+  height += TABLE_HEADER_HEIGHT;
+
+  doc.font("Helvetica").fontSize(9);
+  for (const item of order.items) {
+    height += measureItemRowHeight(doc, item.awardTitle, colWidths[0]!) + 2;
+  }
+
+  height += FOOTER_TOP_GAP + FOOTER_BLOCK_HEIGHT + CARD_PADDING_BOTTOM;
+  return height;
+}
+
 function drawDeliveryCard(
   doc: PdfDoc,
   order: BatchDeliveryOrder,
   labels: DeliveryPdfLabels,
   yTop: number,
-  cardHeight: number,
-): void {
-  doc
-    .strokeColor(BLACK)
-    .rect(MARGIN, yTop, CONTENT_WIDTH, cardHeight)
-    .stroke();
-
-  const innerX = MARGIN + 12;
-  const innerWidth = CONTENT_WIDTH - 24;
-  let y = yTop + 14;
+): number {
+  const innerX = MARGIN + CARD_INNER_PADDING;
+  const innerWidth = CONTENT_WIDTH - CARD_INNER_PADDING * 2;
+  const colWidths = deliveryColumnWidths(innerWidth);
+  let y = yTop + CARD_PADDING_TOP;
 
   doc
     .fillColor(BLACK)
@@ -165,7 +209,7 @@ function drawDeliveryCard(
     width: innerWidth,
     align: "right",
   });
-  y += 18;
+  y += HEADER_LINE_HEIGHT;
 
   doc
     .font("Helvetica")
@@ -176,14 +220,8 @@ function drawDeliveryCard(
       y,
       { width: innerWidth },
     );
-  y += 18;
+  y += SUMMARY_LINE_HEIGHT;
 
-  const colWidths = [
-    innerWidth * 0.46,
-    innerWidth * 0.14,
-    innerWidth * 0.2,
-    innerWidth * 0.2,
-  ];
   y = drawTableHeader(
     doc,
     [
@@ -198,8 +236,8 @@ function drawDeliveryCard(
   doc.font("Helvetica").fontSize(9);
 
   for (const item of order.items) {
-    if (y > yTop + cardHeight - 72) break;
     const rowTop = y;
+    const rowHeight = measureItemRowHeight(doc, item.awardTitle, colWidths[0]!);
     let columnX = innerX;
     const cells = [
       { text: item.awardTitle, width: colWidths[0]!, align: "left" as const },
@@ -222,15 +260,17 @@ function drawDeliveryCard(
       });
       columnX += cell.width;
     }
-    y = rowTop + 14;
+    y = rowTop + rowHeight;
     doc
       .strokeColor(BLACK)
-      .moveTo(innerX, y - 2)
-      .lineTo(innerX + innerWidth, y - 2)
+      .moveTo(innerX, y)
+      .lineTo(innerX + innerWidth, y)
       .stroke();
+    y += 2;
   }
 
-  const footerY = yTop + cardHeight - 30;
+  y += FOOTER_TOP_GAP;
+  const footerY = y;
   const signatureWidth = innerWidth * 0.55;
   const dateWidth = innerWidth * 0.4;
   const dateX = innerX + signatureWidth + innerWidth * 0.05;
@@ -248,6 +288,14 @@ function drawDeliveryCard(
     .moveTo(dateX + 28, lineY)
     .lineTo(dateX + dateWidth, lineY)
     .stroke();
+
+  const yBottom = footerY + FOOTER_BLOCK_HEIGHT + CARD_PADDING_BOTTOM;
+  doc
+    .strokeColor(BLACK)
+    .rect(MARGIN, yTop, CONTENT_WIDTH, yBottom - yTop)
+    .stroke();
+
+  return yBottom;
 }
 
 export function generateDeliverySheetsPdf(
@@ -263,25 +311,24 @@ export function generateDeliverySheetsPdf(
     return collectPdfBuffer(doc);
   }
 
-  deliveries.forEach((order, index) => {
-    const slot = index % 2;
-    if (index > 0 && slot === 0) {
+  let y = MARGIN;
+
+  for (let index = 0; index < deliveries.length; index++) {
+    const order = deliveries[index]!;
+    const cardHeight = measureDeliveryCardHeight(doc, order);
+    const needsGap = index > 0 && y > MARGIN;
+    const requiredHeight = (needsGap ? CARD_GAP : 0) + cardHeight;
+
+    if (y + requiredHeight > PAGE_BOTTOM) {
       doc.addPage();
+      y = MARGIN;
+    } else if (needsGap) {
+      strokeHorizontalRule(doc, y, true);
+      y += CARD_GAP;
     }
 
-    const yTop = slot === 0 ? MARGIN : MARGIN + CARD_HEIGHT;
-    const cardHeight = CARD_HEIGHT;
-
-    if (slot === 1) {
-      strokeHorizontalRule(doc, yTop, true);
-    }
-
-    drawDeliveryCard(doc, order, labels, yTop, cardHeight);
-
-    if (slot === 0 && index + 1 < deliveries.length) {
-      strokeHorizontalRule(doc, yTop + cardHeight, true);
-    }
-  });
+    y = drawDeliveryCard(doc, order, labels, y);
+  }
 
   return collectPdfBuffer(doc);
 }
