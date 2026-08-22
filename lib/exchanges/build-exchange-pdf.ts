@@ -40,8 +40,8 @@ async function buildDeliveryLabels(
     lineTotalColumn: t("lineTotal"),
     signature: t("signature"),
     dateLine: t("dateLine"),
-    formatOrderSummary: (itemCount: number, totalQty: number) =>
-      `${t("itemCount", { count: itemCount })}, ${t("totalUnits", { count: totalQty })}`,
+    formatOrderSummary: (itemCount: number, totalUnits: number) =>
+      `${t("itemCount", { count: itemCount })}, ${t("totalUnits", { count: totalUnits })}`,
   };
 }
 

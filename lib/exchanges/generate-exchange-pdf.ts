@@ -49,7 +49,7 @@ export type DeliveryPdfLabels = {
   lineTotalColumn: string;
   signature: string;
   dateLine: string;
-  formatOrderSummary: (itemCount: number, totalQty: number) => string;
+  formatOrderSummary: (itemCount: number, totalUnits: number) => string;
 };
 
 function collectPdfBuffer(doc: PdfDoc): Promise<Buffer> {
@@ -193,8 +193,12 @@ export function generateShoppingListPdf(
   return collectPdfBuffer(doc);
 }
 
-function orderTotalQty(order: BatchDeliveryOrder): number {
-  return order.items.reduce((sum, item) => sum + item.qty, 0);
+function orderRowCount(order: BatchDeliveryOrder): number {
+  return order.items.length;
+}
+
+function orderTotalUnits(order: BatchDeliveryOrder): number {
+  return order.items.reduce((sum, item) => sum + item.lineNumberOf, 0);
 }
 
 function deliveryColumnWidths(innerWidth: number): number[] {
@@ -262,7 +266,10 @@ function drawDeliveryCard(
     .font("Helvetica")
     .fontSize(9)
     .text(
-      labels.formatOrderSummary(order.itemCount, orderTotalQty(order)),
+      labels.formatOrderSummary(
+        orderRowCount(order),
+        orderTotalUnits(order),
+      ),
       innerX,
       y,
       { width: innerWidth },
@@ -326,14 +333,12 @@ function drawDeliveryCard(
   doc.fontSize(9).text(`${labels.signature}:`, innerX, footerY, {
     width: signatureWidth,
   });
-  doc.text(`${labels.dateLine}:`, dateX, footerY, { width: dateWidth });
+  doc.text(`${labels.dateLine}: _____/______/_________`, dateX, footerY, {
+    width: dateWidth,
+  });
   doc
     .moveTo(innerX + 42, lineY)
     .lineTo(innerX + signatureWidth, lineY)
-    .stroke();
-  doc
-    .moveTo(dateX + 28, lineY)
-    .lineTo(dateX + dateWidth, lineY)
     .stroke();
 
   const yBottom = footerY + FOOTER_BLOCK_HEIGHT + CARD_PADDING_BOTTOM;

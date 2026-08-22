@@ -24,8 +24,8 @@ const deliveryLabels = {
   lineTotalColumn: "Subtotal",
   signature: "Signature",
   dateLine: "Date",
-  formatOrderSummary: (itemCount: number, totalQty: number) =>
-    `${itemCount} items, ${totalQty} units in total`,
+  formatOrderSummary: (itemCount: number, totalUnits: number) =>
+    `${itemCount} items, ${totalUnits} units in total`,
 };
 
 function countPdfPages(buffer: Buffer): number {
@@ -83,6 +83,47 @@ describe("generateDeliverySheetsPdf", () => {
     );
 
     expect(countPdfPages(buffer)).toBe(1);
+  });
+
+  it("summarizes table rows and subtotal sum", async () => {
+    let summary: [number, number] | null = null;
+    const labels = {
+      ...deliveryLabels,
+      formatOrderSummary: (itemCount: number, totalUnits: number) => {
+        summary = [itemCount, totalUnits];
+        return `${itemCount} items, ${totalUnits} units in total`;
+      },
+    };
+
+    await generateDeliverySheetsPdf(
+      [
+        {
+          orderId: "o1",
+          userId: "u1",
+          userName: "Cart Colab",
+          currencyPluralTitle: "Stars",
+          totalNumberOf: 14,
+          itemCount: 3,
+          items: [
+            {
+              awardTitle: "Award A",
+              qty: 2,
+              unitNumberOf: 4,
+              lineNumberOf: 8,
+            },
+            {
+              awardTitle: "Award B",
+              qty: 1,
+              unitNumberOf: 6,
+              lineNumberOf: 6,
+            },
+          ],
+        },
+      ],
+      labels,
+    );
+
+    expect(summary).toEqual([2, 14]);
   });
 
   it("starts a list on the next page when it would break across pages", async () => {
