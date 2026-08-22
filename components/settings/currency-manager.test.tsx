@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
+import type { MediaAssetRecord } from "@/lib/repos/media";
 import { renderWithIntl } from "@/test/test-utils";
 import { CurrencyManager } from "./currency-manager";
 
@@ -40,28 +42,56 @@ const currencies = [
   },
 ];
 
-const onUploadIcon = vi.fn().mockResolvedValue(99);
+const sampleIcon: MediaAssetRecord = {
+  id: "00000000-0000-4000-8000-000000000099",
+  storageKey: "icon.png",
+  url: "/api/media/icon.png",
+  browserUrl: "/api/media/icon.png",
+  mimeType: "image/png",
+  byteSize: 12,
+  originalFilename: "star.png",
+  displayName: "star",
+  description: null,
+  altText: null,
+  title: null,
+  category: "currency",
+  sensitivity: "public",
+  createdAt: new Date("2026-01-01T00:00:00Z"),
+  updatedAt: new Date("2026-01-01T00:00:00Z"),
+};
+
+const onListImages = vi.fn().mockResolvedValue([sampleIcon]);
+const onUploadImage = vi.fn().mockResolvedValue(sampleIcon);
+
+function renderManager(
+  overrides: Partial<Parameters<typeof CurrencyManager>[0]> = {},
+) {
+  return renderWithIntl(
+    <CurrencyManager
+      currencies={currencies}
+      onCreate={vi.fn()}
+      onUpdate={vi.fn()}
+      onDelete={vi.fn()}
+      onBulkArchive={vi.fn()}
+      onBulkDelete={vi.fn()}
+      onListImages={onListImages}
+      onUploadImage={onUploadImage}
+      {...overrides}
+    />,
+  );
+}
 
 describe("CurrencyManager", () => {
   beforeEach(() => {
     showSuccessToast.mockReset();
     showErrorToast.mockReset();
     refresh.mockReset();
-    onUploadIcon.mockClear();
+    onListImages.mockClear();
+    onUploadImage.mockClear();
   });
 
   it("renders currencies in a tasks-like table", () => {
-    renderWithIntl(
-      <CurrencyManager
-        currencies={currencies}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-        onBulkArchive={vi.fn()}
-        onBulkDelete={vi.fn()}
-        onUploadIcon={onUploadIcon}
-      />,
-    );
+    renderManager();
 
     expect(screen.getByRole("heading", { name: "Moedas" })).toBeInTheDocument();
     expect(
@@ -74,34 +104,14 @@ describe("CurrencyManager", () => {
   });
 
   it("shows empty state when there are no currencies", () => {
-    renderWithIntl(
-      <CurrencyManager
-        currencies={[]}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-        onBulkArchive={vi.fn()}
-        onBulkDelete={vi.fn()}
-        onUploadIcon={onUploadIcon}
-      />,
-    );
+    renderManager({ currencies: [] });
 
     expect(screen.getByText("Nenhuma moeda cadastrada.")).toBeInTheDocument();
   });
 
   it("creates a currency from the modal form", async () => {
     const onCreate = vi.fn().mockResolvedValue(undefined);
-    renderWithIntl(
-      <CurrencyManager
-        currencies={[]}
-        onCreate={onCreate}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-        onBulkArchive={vi.fn()}
-        onBulkDelete={vi.fn()}
-        onUploadIcon={onUploadIcon}
-      />,
-    );
+    renderManager({ currencies: [], onCreate });
 
     fireEvent.click(screen.getByRole("button", { name: "Nova moeda" }));
 
@@ -133,19 +143,45 @@ describe("CurrencyManager", () => {
     expect(refresh).toHaveBeenCalled();
   });
 
+  it("picks a library icon from the awards image picker", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn().mockResolvedValue(undefined);
+    renderManager({ currencies: [], onCreate });
+
+    await user.click(screen.getByRole("button", { name: "Nova moeda" }));
+    const formDialog = screen.getByRole("dialog", { name: "Nova moeda" });
+    await user.click(
+      within(formDialog).getByRole("button", { name: "Escolher imagem" }),
+    );
+    await waitFor(() => {
+      expect(screen.getByRole("img", { name: "star.png" })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: "star.png" }));
+    await user.click(screen.getByRole("button", { name: "Usar selecionada" }));
+
+    fireEvent.change(within(formDialog).getByLabelText("Nome"), {
+      target: { value: "coin" },
+    });
+    fireEvent.change(within(formDialog).getByLabelText("Título"), {
+      target: { value: "Moeda" },
+    });
+    fireEvent.change(within(formDialog).getByLabelText("Título no plural"), {
+      target: { value: "Moedas" },
+    });
+    fireEvent.click(within(formDialog).getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => {
+      expect(onCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          iconMediaId: sampleIcon.id,
+        }),
+      );
+    });
+  });
+
   it("updates a currency when editing a row", async () => {
     const onUpdate = vi.fn().mockResolvedValue(undefined);
-    renderWithIntl(
-      <CurrencyManager
-        currencies={currencies}
-        onCreate={vi.fn()}
-        onUpdate={onUpdate}
-        onDelete={vi.fn()}
-        onBulkArchive={vi.fn()}
-        onBulkDelete={vi.fn()}
-        onUploadIcon={onUploadIcon}
-      />,
-    );
+    renderManager({ onUpdate });
 
     fireEvent.click(screen.getAllByRole("button", { name: "Abrir Estrela" })[0]!);
 
@@ -167,18 +203,7 @@ describe("CurrencyManager", () => {
   });
 
   it("does not show delete for the assigned subtasks currency", () => {
-    renderWithIntl(
-      <CurrencyManager
-        currencies={currencies}
-        protectedCurrencyId="cur-star"
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-        onBulkArchive={vi.fn()}
-        onBulkDelete={vi.fn()}
-        onUploadIcon={onUploadIcon}
-      />,
-    );
+    renderManager({ protectedCurrencyId: "cur-star" });
 
     fireEvent.click(screen.getAllByRole("button", { name: "Abrir Estrela" })[0]!);
     expect(screen.queryByRole("button", { name: "Excluir" })).toBeNull();
@@ -186,17 +211,7 @@ describe("CurrencyManager", () => {
 
   it("deletes a non-primary currency after confirmation", async () => {
     const onDelete = vi.fn().mockResolvedValue(undefined);
-    renderWithIntl(
-      <CurrencyManager
-        currencies={currencies}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDelete={onDelete}
-        onBulkArchive={vi.fn()}
-        onBulkDelete={vi.fn()}
-        onUploadIcon={onUploadIcon}
-      />,
-    );
+    renderManager({ onDelete });
 
     fireEvent.click(screen.getAllByRole("button", { name: "Abrir Gema" })[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
@@ -212,18 +227,10 @@ describe("CurrencyManager", () => {
 
   it("archives the first-listed currency when another is assigned", async () => {
     const onBulkArchive = vi.fn().mockResolvedValue(undefined);
-    renderWithIntl(
-      <CurrencyManager
-        currencies={currencies}
-        protectedCurrencyId="cur-gem"
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-        onBulkArchive={onBulkArchive}
-        onBulkDelete={vi.fn()}
-        onUploadIcon={onUploadIcon}
-      />,
-    );
+    renderManager({
+      protectedCurrencyId: "cur-gem",
+      onBulkArchive,
+    });
 
     fireEvent.click(
       screen.getAllByRole("checkbox", { name: "Selecionar Estrela" })[0]!,
@@ -240,17 +247,7 @@ describe("CurrencyManager", () => {
 
   it("archives selected currencies after confirmation", async () => {
     const onBulkArchive = vi.fn().mockResolvedValue(undefined);
-    renderWithIntl(
-      <CurrencyManager
-        currencies={currencies}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-        onBulkArchive={onBulkArchive}
-        onBulkDelete={vi.fn()}
-        onUploadIcon={onUploadIcon}
-      />,
-    );
+    renderManager({ onBulkArchive });
 
     fireEvent.click(
       screen.getAllByRole("checkbox", { name: "Selecionar Gema" })[0]!,
@@ -268,20 +265,10 @@ describe("CurrencyManager", () => {
 
   it("hard-deletes when every selected currency is archived", async () => {
     const onBulkDelete = vi.fn().mockResolvedValue(undefined);
-    renderWithIntl(
-      <CurrencyManager
-        currencies={[
-          currencies[0]!,
-          { ...currencies[1]!, active: false },
-        ]}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-        onBulkArchive={vi.fn()}
-        onBulkDelete={onBulkDelete}
-        onUploadIcon={onUploadIcon}
-      />,
-    );
+    renderManager({
+      currencies: [currencies[0]!, { ...currencies[1]!, active: false }],
+      onBulkDelete,
+    });
 
     fireEvent.click(
       screen.getByRole("checkbox", { name: "Exibir moedas arquivadas" }),

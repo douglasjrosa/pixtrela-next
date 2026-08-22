@@ -2,7 +2,6 @@
 
 import {
   Suspense,
-  useCallback,
   useState,
   useTransition,
   type ReactNode,
@@ -12,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { MediaPickerModal } from "@/components/settings/media-picker-modal";
+import { MediaImageField } from "@/components/media/media-image-field";
 import { Button } from "@/components/ui/button";
 import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -110,11 +109,9 @@ function AwardFormDialog({
   const isEditing = editingAward !== null;
   const formDisabled = isPending || readOnly;
   const formTitleId = "award-form-title";
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     editingAward?.imageUrl ?? null,
   );
-  const listImages = useCallback(() => onListImages(), [onListImages]);
 
   const {
     register,
@@ -132,7 +129,6 @@ function AwardFormDialog({
   const imageId = useWatch({ control, name: "imageId" });
 
   function handleImageConfirm(asset: MediaAssetRecord): void {
-    setPickerOpen(false);
     setValue("imageId", asset.id);
     setPreviewUrl(asset.browserUrl);
   }
@@ -145,8 +141,7 @@ function AwardFormDialog({
   const formId = "award-form";
 
   return (
-    <>
-      <FormModalShell
+    <FormModalShell
       open
       size="lgNarrow"
       title={isEditing ? tAwards("editAward") : tAwards("newAward")}
@@ -217,44 +212,16 @@ function AwardFormDialog({
 
         <div className="space-y-2 sm:col-span-2">
           <Label>{tAwards("image")}</Label>
-          <div className="flex flex-wrap items-start gap-4">
-            {previewUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={previewUrl}
-                alt=""
-                role="presentation"
-                className="h-24 w-24 shrink-0 rounded-md border object-cover"
-              />
-            ) : null}
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  disabled={formDisabled}
-                  onClick={() => setPickerOpen(true)}
-                >
-                  {tAwards("imageChoose")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={formDisabled || !imageId}
-                  onClick={handleImageRemove}
-                >
-                  {tAwards("imageRemove")}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {tAwards("imageHint")}
-              </p>
-              {imageId ? (
-                <p className="text-xs text-muted-foreground">
-                  {tAwards("imageAttached")}
-                </p>
-              ) : null}
-            </div>
-          </div>
+          <MediaImageField
+            selectedId={imageId}
+            previewUrl={previewUrl}
+            disabled={formDisabled}
+            attachedLabel={tAwards("imageAttached")}
+            onSelect={handleImageConfirm}
+            onRemove={handleImageRemove}
+            onListImages={onListImages}
+            onUploadImage={onUploadImage}
+          />
         </div>
 
         <div className="flex flex-wrap items-end justify-between gap-6 sm:col-span-2">
@@ -312,16 +279,6 @@ function AwardFormDialog({
         </div>
       </form>
     </FormModalShell>
-
-      <MediaPickerModal
-        open={pickerOpen}
-        selectedId={imageId}
-        onClose={() => setPickerOpen(false)}
-        onConfirm={handleImageConfirm}
-        onListImages={listImages}
-        onUploadImage={onUploadImage}
-      />
-    </>
   );
 }
 

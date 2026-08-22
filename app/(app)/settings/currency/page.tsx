@@ -16,6 +16,7 @@ import {
   bulkDeleteCurrencies,
   createCurrency,
   deleteCurrency,
+  listCurrencyImages,
   updateCurrency,
   uploadCurrencyIcon,
 } from "./actions";
@@ -59,7 +60,8 @@ export default async function SettingsCurrencyPage() {
         onDelete={deleteCurrency}
         onBulkArchive={bulkArchiveCurrencies}
         onBulkDelete={bulkDeleteCurrencies}
-        onUploadIcon={uploadCurrencyIcon}
+        onListImages={listCurrencyImages}
+        onUploadImage={uploadCurrencyIcon}
       />
       <CurrencyForm
         currencies={currencies.filter((currency) => currency.active)}

@@ -12,7 +12,10 @@ import {
   isProtectedCurrencyId,
 } from "@/lib/business/primary-currency";
 import { getDb } from "@/lib/db/client";
-import { storeMedia } from "@/lib/media/store-media";
+import {
+  listCategoryImageAssets,
+  uploadCategoryImageAsset,
+} from "@/lib/media/category-image-assets";
 import {
   archiveCurrency as archiveCurrencyRepo,
   createCurrency as createCurrencyRepo,
@@ -20,7 +23,7 @@ import {
   hardDeleteCurrency as hardDeleteCurrencyRepo,
   listCurrencies as listCurrenciesRepo,
 } from "@/lib/repos/awards";
-import { insertMediaAsset } from "@/lib/repos/media";
+import type { MediaAssetRecord } from "@/lib/repos/media";
 import {
   getCurrencyForSubtasks,
   upsertCurrencyForSubtasks,
@@ -76,29 +79,16 @@ function assertNotProtected(
   }
 }
 
+export async function listCurrencyImages(): Promise<MediaAssetRecord[]> {
+  await assertCanManage();
+  return listCategoryImageAssets("currency");
+}
+
 export async function uploadCurrencyIcon(
   formData: FormData,
-): Promise<number | string> {
+): Promise<MediaAssetRecord> {
   await assertCanManage();
-  const entry = formData.get("file");
-  if (!(entry instanceof Blob) || entry.size === 0) {
-    throw new Error("invalid");
-  }
-  const mimeType = entry.type || "image/png";
-
-  const buffer = Buffer.from(await entry.arrayBuffer());
-  const extension = mimeType.includes("png") ? "png" : "jpg";
-  const stored = await storeMedia({ bytes: buffer, mimeType, extension });
-  const originalFilename =
-    "name" in entry && typeof entry.name === "string" && entry.name.trim()
-      ? entry.name.trim()
-      : null;
-  const media = await insertMediaAsset(stored, {
-    originalFilename,
-    category: "currency",
-    sensitivity: "public",
-  });
-  return media.id;
+  return uploadCategoryImageAsset(formData, "currency");
 }
 
 export async function createCurrency(raw: CurrencyFormInput): Promise<void> {

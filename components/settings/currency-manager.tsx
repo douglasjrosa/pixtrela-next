@@ -23,6 +23,7 @@ import {
 } from "@/lib/business/list-selection";
 import { isProtectedCurrencyDocument } from "@/lib/business/primary-currency";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import type { MediaAssetRecord } from "@/lib/repos/media";
 import type { CurrencyFormInput } from "@/lib/schemas/currency";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
@@ -48,7 +49,8 @@ export interface CurrencyManagerProps {
   onDelete: (documentId: string) => void | Promise<void>;
   onBulkArchive: (documentIds: string[]) => void | Promise<void>;
   onBulkDelete: (documentIds: string[]) => void | Promise<void>;
-  onUploadIcon: (formData: FormData) => Promise<number | string>;
+  onListImages: () => Promise<MediaAssetRecord[]>;
+  onUploadImage: (formData: FormData) => Promise<MediaAssetRecord>;
 }
 
 const EMPTY_FORM: CurrencyFormInput = {
@@ -103,7 +105,8 @@ export function CurrencyManager({
   onDelete,
   onBulkArchive,
   onBulkDelete,
-  onUploadIcon,
+  onListImages,
+  onUploadImage,
 }: CurrencyManagerProps) {
   const tCommon = useTranslations("common");
   const tSettings = useTranslations("settings");
@@ -431,7 +434,8 @@ export function CurrencyManager({
           onClose={closeModal}
           onSave={handleSave}
           onDelete={() => setDeleteOpen(true)}
-          onUploadIcon={onUploadIcon}
+          onListImages={onListImages}
+          onUploadImage={onUploadImage}
         />
 
         <ConfirmDialog

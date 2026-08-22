@@ -35,7 +35,11 @@
     "increaseValue": "Aumentar valor",
     "decreaseValue": "Diminuir valor",
     "errorGeneric": "Algo deu errado. Tente novamente.",
-    "loadMore": "Carregar mais"
+    "loadMore": "Carregar mais",
+    "imageChoose": "Escolher imagem",
+    "imageRemove": "Remover imagem",
+    "imageHint": "Escolha uma imagem da biblioteca de mídia.",
+    "imageAttached": "Imagem anexada."
   },
   "auth": {
     "loginTitle": "Entrar no Pixtrela",

@@ -13,7 +13,10 @@ import {
   canViewAwards,
 } from "@/lib/auth/permissions";
 import { getDb } from "@/lib/db/client";
-import { storeMedia } from "@/lib/media/store-media";
+import {
+  listCategoryImageAssets,
+  uploadCategoryImageAsset,
+} from "@/lib/media/category-image-assets";
 import {
   createAward as createAwardRepo,
   deleteAward as deleteAwardRepo,
@@ -21,7 +24,7 @@ import {
   hardDeleteAward,
   replaceAwardPrices,
 } from "@/lib/repos/awards";
-import { insertMediaAsset, listMediaAssets, type MediaAssetRecord } from "@/lib/repos/media";
+import type { MediaAssetRecord } from "@/lib/repos/media";
 import {
   awardFormSchema,
   bulkAwardIdsSchema,
@@ -76,38 +79,14 @@ export async function loadMoreAwards(
 
 export async function listAwardImages(): Promise<MediaAssetRecord[]> {
   await assertCanManage();
-  const result = await listMediaAssets({
-    mimeFilter: "image",
-    category: "award",
-    includeBiometric: false,
-    page: 1,
-    pageSize: 100,
-  });
-  return result.items;
+  return listCategoryImageAssets("award");
 }
 
 export async function uploadAwardImage(
   formData: FormData,
 ): Promise<MediaAssetRecord> {
   await assertCanManage();
-  const entry = formData.get("file");
-  if (!(entry instanceof Blob) || entry.size === 0) {
-    throw new Error("invalid");
-  }
-  const mimeType = entry.type || "image/jpeg";
-  const buffer = Buffer.from(await entry.arrayBuffer());
-  const extension = mimeType.includes("png") ? "png" : "jpg";
-  const stored = await storeMedia({ bytes: buffer, mimeType, extension });
-  const originalFilename =
-    "name" in entry && typeof entry.name === "string" && entry.name.trim()
-      ? entry.name.trim()
-      : null;
-  const media = await insertMediaAsset(stored, {
-    originalFilename,
-    category: "award",
-    sensitivity: "public",
-  });
-  return media;
+  return uploadCategoryImageAsset(formData, "award");
 }
 
 export async function createAward(raw: AwardFormInput): Promise<void> {
