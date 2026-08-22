@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
@@ -11,7 +10,7 @@ import {
   APP_LIST_PAGE_SHELL_CLASS,
   APP_LIST_PAGE_TITLE_CLASS,
 } from "@/components/layout/app-page-layout";
-import { buttonVariants } from "@/components/ui/button";
+import { BackLink } from "@/components/navigation/back-link";
 import type { Role } from "@/lib/auth/nav";
 import { canViewExchanges } from "@/lib/auth/permissions";
 import { formatMonthYearPtBr } from "@/lib/format/datetime";
@@ -45,15 +44,9 @@ export default async function ExchangeBatchDetailPage({ params }: PageProps) {
     <section className={cn(APP_LIST_PAGE_SHELL_CLASS, "gap-8")}>
       <div className={cn(APP_LIST_PAGE_HEADER_ROW_CLASS, "no-print")}>
         <div className="space-y-2">
-          <Link
-            href="/exchanges"
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "no-print -ml-2 w-fit",
-            )}
-          >
+          <BackLink href="/exchanges" className="no-print -ml-2">
             {t("backToList")}
-          </Link>
+          </BackLink>
           <h1 className={APP_LIST_PAGE_TITLE_CLASS}>
             {t("batchTitle", {
               monthYear: formatMonthYearPtBr(detail.month, detail.year),
