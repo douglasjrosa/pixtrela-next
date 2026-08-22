@@ -21,7 +21,6 @@ async function buildShoppingLabels(): Promise<ShoppingListPdfLabels> {
 async function buildDeliveryLabels(): Promise<DeliveryPdfLabels> {
   const t = await getTranslations("exchanges");
   return {
-    sectionTitle: t("deliveries"),
     itemColumn: t("exchangeList"),
     qtyColumn: t("qty"),
     unitColumn: t("unit"),

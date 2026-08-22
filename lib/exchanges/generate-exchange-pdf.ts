@@ -24,7 +24,6 @@ export type ShoppingListPdfLabels = {
 };
 
 export type DeliveryPdfLabels = {
-  sectionTitle: string;
   itemColumn: string;
   qtyColumn: string;
   unitColumn: string;
@@ -252,14 +251,6 @@ export function generateDeliverySheetsPdf(
   });
 
   if (deliveries.length === 0) {
-    doc
-      .fillColor(BLACK)
-      .font("Helvetica")
-      .fontSize(11)
-      .text(labels.sectionTitle, MARGIN, MARGIN + 40, {
-        width: CONTENT_WIDTH,
-        align: "center",
-      });
     return collectPdfBuffer(doc);
   }
 
@@ -269,26 +260,8 @@ export function generateDeliverySheetsPdf(
       doc.addPage();
     }
 
-    const firstPageTitleOffset = 28;
-    const yTop =
-      index === 0
-        ? MARGIN + firstPageTitleOffset
-        : slot === 0
-          ? MARGIN
-          : MARGIN + CARD_HEIGHT;
-    const cardHeight =
-      index === 0 ? CARD_HEIGHT - firstPageTitleOffset : CARD_HEIGHT;
-
-    if (index === 0) {
-      doc
-        .fillColor(BLACK)
-        .font("Helvetica-Bold")
-        .fontSize(16)
-        .text(labels.sectionTitle, MARGIN, MARGIN, {
-          width: CONTENT_WIDTH,
-          align: "center",
-        });
-    }
+    const yTop = slot === 0 ? MARGIN : MARGIN + CARD_HEIGHT;
+    const cardHeight = CARD_HEIGHT;
 
     if (slot === 1) {
       strokeHorizontalRule(doc, yTop, true);

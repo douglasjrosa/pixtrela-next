@@ -43,7 +43,6 @@ describe("generateDeliverySheetsPdf", () => {
         },
       ],
       {
-        sectionTitle: "Deliveries",
         itemColumn: "Exchange list",
         qtyColumn: "Qty",
         unitColumn: "Unit",

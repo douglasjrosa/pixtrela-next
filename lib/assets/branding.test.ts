@@ -33,5 +33,6 @@ describe("branding assets", () => {
   it("includes Next.js app icon files derived from favicon.png", () => {
     expect(existsSync(join(APP_DIR, "icon.png"))).toBe(true);
     expect(existsSync(join(APP_DIR, "apple-icon.png"))).toBe(true);
+    expect(existsSync(join(APP_DIR, "favicon.ico"))).toBe(true);
   });
 });

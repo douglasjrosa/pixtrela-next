@@ -45,6 +45,7 @@ export async function GET(request: Request, context: RouteContext) {
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="${filename}"`,
       "Cache-Control": "private, no-store",
+      Link: "</images/favicon.png>; rel=icon",
     },
   });
 }
