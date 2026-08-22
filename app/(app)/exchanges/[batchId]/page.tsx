@@ -6,7 +6,7 @@ import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { DeliverySheetsPrint } from "@/components/exchanges/delivery-sheets-print";
 import { ShoppingListPrint } from "@/components/exchanges/shopping-list-print";
 import {
-  APP_LIST_PAGE_HEADER_ROW_CLASS,
+  APP_LIST_PAGE_CHROME_CLASS,
   APP_LIST_PAGE_SHELL_CLASS,
   APP_LIST_PAGE_TITLE_CLASS,
 } from "@/components/layout/app-page-layout";
@@ -42,17 +42,13 @@ export default async function ExchangeBatchDetailPage({ params }: PageProps) {
 
   return (
     <section className={cn(APP_LIST_PAGE_SHELL_CLASS, "gap-8")}>
-      <div className={cn(APP_LIST_PAGE_HEADER_ROW_CLASS, "no-print")}>
-        <div className="space-y-2">
-          <BackLink href="/exchanges" className="no-print -ml-2">
-            {t("backToList")}
-          </BackLink>
-          <h1 className={APP_LIST_PAGE_TITLE_CLASS}>
-            {t("batchTitle", {
-              monthYear: formatMonthYearPtBr(detail.month, detail.year),
-            })}
-          </h1>
-        </div>
+      <div className={cn(APP_LIST_PAGE_CHROME_CLASS, "no-print")}>
+        <BackLink href="/exchanges">{t("backToList")}</BackLink>
+        <h1 className={APP_LIST_PAGE_TITLE_CLASS}>
+          {t("batchTitle", {
+            monthYear: formatMonthYearPtBr(detail.month, detail.year),
+          })}
+        </h1>
       </div>
 
       <ShoppingListPrint
