@@ -60,7 +60,7 @@ export async function DeliverySheetsPrint({
                 <thead>
                   <tr className="border-b text-left">
                     <th className="py-2 pr-3 font-semibold">
-                      {t("shoppingList")}
+                      {t("exchangeList")}
                     </th>
                     <th className="py-2 pr-3 text-right font-semibold">
                       {t("qty")}
