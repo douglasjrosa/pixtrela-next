@@ -5,11 +5,23 @@ import {
   formatDatePtBr,
   formatDateTimePtBr,
   formatIsoDateToPtBrInput,
+  formatMonthYear,
   formatMonthYearPtBr,
   formatTimePtBr,
   parsePtBrInputToIsoDate,
   splitDateTimePtBr,
 } from "./datetime";
+
+describe("formatMonthYear", () => {
+  it("formats month and year for pt-BR", () => {
+    expect(formatMonthYear(8, 2026, "pt-BR")).toBe("Agosto de 2026");
+    expect(formatMonthYear(1, 2026, "pt-BR")).toBe("Janeiro de 2026");
+  });
+
+  it("formats month and year for en-US", () => {
+    expect(formatMonthYear(8, 2026, "en-US")).toBe("August 2026");
+  });
+});
 
 describe("formatMonthYearPtBr", () => {
   it("formats month and year with a Portuguese month name", () => {

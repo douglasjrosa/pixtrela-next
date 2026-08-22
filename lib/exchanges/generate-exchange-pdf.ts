@@ -24,13 +24,14 @@ export type ShoppingListPdfLabels = {
 };
 
 export type DeliveryPdfLabels = {
+  monthYearLabel: string;
   itemColumn: string;
   qtyColumn: string;
   unitColumn: string;
   lineTotalColumn: string;
   signature: string;
   dateLine: string;
-  formatItemCount: (count: number) => string;
+  formatOrderSummary: (itemCount: number, totalQty: number) => string;
 };
 
 function collectPdfBuffer(doc: PdfDoc): Promise<Buffer> {
@@ -135,6 +136,10 @@ export function generateShoppingListPdf(
   return collectPdfBuffer(doc);
 }
 
+function orderTotalQty(order: BatchDeliveryOrder): number {
+  return order.items.reduce((sum, item) => sum + item.qty, 0);
+}
+
 function drawDeliveryCard(
   doc: PdfDoc,
   order: BatchDeliveryOrder,
@@ -155,14 +160,18 @@ function drawDeliveryCard(
     .fillColor(BLACK)
     .font("Helvetica-Bold")
     .fontSize(12)
-    .text(order.userName, innerX, y, { width: innerWidth });
+    .text(order.userName, innerX, y, { width: innerWidth * 0.62 });
+  doc.text(labels.monthYearLabel, innerX, y, {
+    width: innerWidth,
+    align: "right",
+  });
   y += 18;
 
   doc
     .font("Helvetica")
     .fontSize(9)
     .text(
-      `${labels.formatItemCount(order.itemCount)} · ${order.totalNumberOf} ${order.currencyPluralTitle}`,
+      labels.formatOrderSummary(order.itemCount, orderTotalQty(order)),
       innerX,
       y,
       { width: innerWidth },

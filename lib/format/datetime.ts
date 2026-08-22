@@ -36,16 +36,25 @@ function parseDateValue(value: string): Date | null {
   return date;
 }
 
-/** Formats a calendar month and year for pt-BR UI (e.g. Agosto de 2026). */
-export function formatMonthYearPtBr(month: number, year: number): string {
+/** Formats a calendar month and year for UI (e.g. Agosto de 2026). */
+export function formatMonthYear(
+  month: number,
+  year: number,
+  locale: string,
+): string {
   const date = new Date(Date.UTC(year, month - 1, 1, 12, 0, 0));
   if (Number.isNaN(date.getTime())) return "—";
-  const label = date.toLocaleDateString("pt-BR", {
+  const label = date.toLocaleDateString(locale, {
     month: "long",
     year: "numeric",
     timeZone: "UTC",
   });
   return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+/** Formats a calendar month and year for pt-BR UI (e.g. Agosto de 2026). */
+export function formatMonthYearPtBr(month: number, year: number): string {
+  return formatMonthYear(month, year, "pt-BR");
 }
 
 /** Formats dates as dd/mm/yyyy for pt-BR UI. */

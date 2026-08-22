@@ -43,13 +43,15 @@ describe("generateDeliverySheetsPdf", () => {
         },
       ],
       {
+        monthYearLabel: "August 2026",
         itemColumn: "Exchange list",
         qtyColumn: "Qty",
         unitColumn: "Unit",
         lineTotalColumn: "Subtotal",
         signature: "Signature",
         dateLine: "Date",
-        formatItemCount: (count) => `${count} items`,
+        formatOrderSummary: (itemCount, totalQty) =>
+          `${itemCount} items, ${totalQty} units in total`,
       },
     );
 

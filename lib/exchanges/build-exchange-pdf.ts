@@ -1,7 +1,8 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import type { ExchangeBatchDetail } from "@/lib/repos/exchange-batches";
 import type { ExchangePrintKind } from "@/lib/exchanges/print-pdf-filename";
+import { formatMonthYear } from "@/lib/format/datetime";
 import {
   generateDeliverySheetsPdf,
   generateShoppingListPdf,
@@ -18,16 +19,21 @@ async function buildShoppingLabels(): Promise<ShoppingListPdfLabels> {
   };
 }
 
-async function buildDeliveryLabels(): Promise<DeliveryPdfLabels> {
+async function buildDeliveryLabels(
+  detail: ExchangeBatchDetail,
+): Promise<DeliveryPdfLabels> {
   const t = await getTranslations("exchanges");
+  const locale = await getLocale();
   return {
+    monthYearLabel: formatMonthYear(detail.month, detail.year, locale),
     itemColumn: t("exchangeList"),
     qtyColumn: t("qty"),
     unitColumn: t("unit"),
     lineTotalColumn: t("lineTotal"),
     signature: t("signature"),
     dateLine: t("dateLine"),
-    formatItemCount: (count: number) => t("itemCount", { count }),
+    formatOrderSummary: (itemCount: number, totalQty: number) =>
+      `${t("itemCount", { count: itemCount })}, ${t("totalUnits", { count: totalQty })}`,
   };
 }
 
@@ -44,6 +50,6 @@ export async function buildExchangePdfBuffer(
 
   return generateDeliverySheetsPdf(
     detail.deliveries,
-    await buildDeliveryLabels(),
+    await buildDeliveryLabels(detail),
   );
 }
