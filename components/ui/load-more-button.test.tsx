@@ -4,7 +4,11 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
 
-import { LoadMoreButton, LoadMoreButtonRow } from "./load-more-button";
+import {
+  ListLoadMore,
+  LoadMoreButton,
+  LoadMoreButtonRow,
+} from "./load-more-button";
 
 describe("LoadMoreButton", () => {
   it("renders with primary inverted styling", () => {
@@ -53,5 +57,20 @@ describe("LoadMoreButton", () => {
 
     await user.click(screen.getByRole("button", { name: "Carregar mais" }));
     expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it("ListLoadMore hides when there is no next page", () => {
+    renderWithIntl(
+      <ListLoadMore visible={false} onClick={vi.fn()} />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Carregar mais" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("ListLoadMore uses shared labels and centers the button", () => {
+    renderWithIntl(<ListLoadMore visible onClick={vi.fn()} />);
+    const button = screen.getByRole("button", { name: "Carregar mais" });
+    expect(button.parentElement).toHaveClass("justify-center");
   });
 });

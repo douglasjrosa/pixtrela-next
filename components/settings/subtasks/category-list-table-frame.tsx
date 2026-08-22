@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { loadMoreCategories } from "@/app/(app)/settings/subtasks/actions";
-import { LoadMoreButton, LoadMoreButtonRow } from "@/components/ui/load-more-button";
+import { ListLoadMore } from "@/components/ui/load-more-button";
 import type { SubTaskCategoryListFilters } from "@/lib/schemas/sub-task-category";
 import { SETTINGS_ENTITY_LIST_PAGE_SIZE } from "@/lib/schemas/sub-task-category";
 import { categoryListFilterKey } from "@/lib/settings/category-list-params";
@@ -105,16 +105,11 @@ export function CategoryListTableFrame({
           </li>
         ))}
       </ul>
-      {hasMore ? (
-        <LoadMoreButtonRow>
-          <LoadMoreButton
-            loading={loading}
-            label={t("loadMore")}
-            loadingLabel={t("loadingMore")}
-            onClick={handleLoadMore}
-          />
-        </LoadMoreButtonRow>
-      ) : null}
+      <ListLoadMore
+        visible={hasMore}
+        loading={loading}
+        onClick={handleLoadMore}
+      />
     </div>
   );
 }

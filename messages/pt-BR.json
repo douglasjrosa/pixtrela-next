@@ -34,7 +34,8 @@
     "selectRow": "Selecionar {name}",
     "increaseValue": "Aumentar valor",
     "decreaseValue": "Diminuir valor",
-    "errorGeneric": "Algo deu errado. Tente novamente."
+    "errorGeneric": "Algo deu errado. Tente novamente.",
+    "loadMore": "Carregar mais"
   },
   "auth": {
     "loginTitle": "Entrar no Pixtrela",

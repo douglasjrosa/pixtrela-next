@@ -9,7 +9,7 @@ import {
   bulkDeleteTemplates,
   loadMoreTemplates,
 } from "@/app/(app)/templates/actions";
-import { LoadMoreButton, LoadMoreButtonRow } from "@/components/ui/load-more-button";
+import { ListLoadMore } from "@/components/ui/load-more-button";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
@@ -227,16 +227,11 @@ export function TemplatesListTableFrame({
           ) : null}
         </div>
 
-        {hasMore ? (
-          <LoadMoreButtonRow>
-            <LoadMoreButton
-              loading={isPending}
-              label={tTemplates("loadMore")}
-              loadingLabel={tTemplates("loadingMore")}
-              onClick={handleLoadMore}
-            />
-          </LoadMoreButtonRow>
-        ) : null}
+        <ListLoadMore
+          visible={hasMore}
+          loading={isPending}
+          onClick={handleLoadMore}
+        />
 
         <ConfirmDialog
           open={archiveOpen}

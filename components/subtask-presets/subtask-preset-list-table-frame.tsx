@@ -4,7 +4,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 import { loadMoreSubTaskPresets } from "@/app/(app)/sub-task-presets/actions";
-import { LoadMoreButton, LoadMoreButtonRow } from "@/components/ui/load-more-button";
+import { ListLoadMore } from "@/components/ui/load-more-button";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 import { formatDurationMinutes } from "@/lib/format/duration";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
@@ -115,16 +115,11 @@ export function SubtaskPresetListTableFrame({
         ) : null}
       </div>
 
-      {hasMore ? (
-        <LoadMoreButtonRow>
-          <LoadMoreButton
-            loading={isPending}
-            label={tPresets("loadMore")}
-            loadingLabel={tPresets("loadingMore")}
-            onClick={handleLoadMore}
-          />
-        </LoadMoreButtonRow>
-      ) : null}
+      <ListLoadMore
+        visible={hasMore}
+        loading={isPending}
+        onClick={handleLoadMore}
+      />
     </div>
   );
 }
