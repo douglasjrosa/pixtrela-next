@@ -118,6 +118,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
         canSetPassword={canSetUserPassword(actorRole)}
         canEditUserLogin={canEditUserLogin(actorRole)}
         canManageImages={actorRole === "admin"}
+        canEditActive={actorRole === "admin"}
         onPairUserTag={pairUserTag}
       >
         {listContent}

@@ -2,6 +2,7 @@
 
 import type { KeyboardEvent } from "react";
 
+import { CardBadge } from "@/components/ui/card";
 import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ const CENTER_CELL_CLASS = "text-center";
 export type UserListRowLabels = {
   role: string;
   selectRow: string;
+  inactive: string;
 };
 
 export interface UserListRowPresentationalProps {
@@ -31,6 +33,7 @@ export function UserListRowPresentational({
 }: UserListRowPresentationalProps) {
   const { openEdit, canEdit } = useUserList();
   const editable = canEdit(user);
+  const inactive = user.active === false || Boolean(user.blocked);
   const activate = () => openEdit(user);
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -54,6 +57,7 @@ export function UserListRowPresentational({
         className={cn(
           "border-b",
           editable && "cursor-pointer hover:bg-muted/40",
+          inactive && "text-muted-foreground",
         )}
         {...rowProps}
       >
@@ -69,6 +73,9 @@ export function UserListRowPresentational({
         </td>
         <td className="py-2">
           <span className="font-medium">{user.name}</span>
+          {inactive ? (
+            <CardBadge className="ml-2">{labels.inactive}</CardBadge>
+          ) : null}
         </td>
         <td className={CENTER_CELL_CLASS}>{user.code ?? "—"}</td>
         <td className={CENTER_CELL_CLASS}>{labels.role}</td>
@@ -81,6 +88,7 @@ export function UserListRowPresentational({
       className={cn(
         "list-none border-b py-3",
         editable && "cursor-pointer hover:bg-muted/40",
+        inactive && "text-muted-foreground",
       )}
       {...rowProps}
     >
@@ -94,7 +102,12 @@ export function UserListRowPresentational({
         ) : null}
         <UserListAvatar name={user.name} avatarUrl={user.avatarUrl} />
         <div className="min-w-0 flex-1">
-          <div className="text-base font-medium">{user.name}</div>
+          <div className="text-base font-medium">
+            {user.name}
+            {inactive ? (
+              <CardBadge className="ml-2">{labels.inactive}</CardBadge>
+            ) : null}
+          </div>
           <div className="text-muted-foreground text-sm">
             {user.code ?? "—"}
           </div>

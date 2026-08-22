@@ -34,6 +34,7 @@ vi.mock("next/navigation", () => ({
 const filters = {
   column: "name" as const,
   direction: "asc" as const,
+  showArchived: false,
 };
 
 const initialUsers: UserRow[] = [
@@ -56,6 +57,7 @@ function selectableBody(user = initialUsers[0]!) {
         labels={{
           role: user.roleType,
           selectRow: `Selecionar ${user.name}`,
+          inactive: "Inativo",
         }}
         showCheckboxColumn
       />

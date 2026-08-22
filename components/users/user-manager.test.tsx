@@ -90,7 +90,11 @@ function TestUserManager({
               key={user.documentId}
               user={user}
               variant="table"
-              labels={{ role: user.roleType, selectRow: `Selecionar ${user.name}` }}
+              labels={{
+                role: user.roleType,
+                selectRow: `Selecionar ${user.name}`,
+                inactive: "Inativo",
+              }}
             />
           ))}
         </tbody>
@@ -214,6 +218,36 @@ describe("UserManager", () => {
     expect(screen.queryByRole("button", { name: "Excluir" })).toBeNull();
     fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
+  });
+
+  it("shows the active status field in edit modal for admin", () => {
+    renderWithIntl(
+      <TestUserManager
+        users={[users[0]!]}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        canDelete
+        canEditActive
+        manageableRoles={["colaborator"]}
+      />,
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
+    const activeField = screen.getByLabelText("Ativo");
+    expect(activeField).toBeChecked();
+  });
+
+  it("hides the active status field when canEditActive is false", () => {
+    renderWithIntl(
+      <TestUserManager
+        users={[users[0]!]}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        canDelete={false}
+        manageableRoles={["colaborator"]}
+      />,
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
+    expect(screen.queryByLabelText("Ativo")).toBeNull();
   });
 
   it("shows deactivate action for manageable users when canDeactivate", () => {

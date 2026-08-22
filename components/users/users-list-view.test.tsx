@@ -44,6 +44,7 @@ describe("UserListRowPresentational", () => {
                 labels={{
                   role: user.roleType,
                   selectRow: `Selecionar ${user.name}`,
+                  inactive: "Inativo",
                 }}
               />
             ))}
@@ -69,6 +70,7 @@ describe("UserListRowPresentational", () => {
               labels={{
                 role: "colaborator",
                 selectRow: "Selecionar Maria",
+                inactive: "Inativo",
               }}
             />
           </tbody>
@@ -79,5 +81,27 @@ describe("UserListRowPresentational", () => {
     const avatar = screen.getAllByRole("img", { name: "Maria" })[0]!;
     expect(avatar).toHaveAttribute("src", "/api/media/maria.jpg");
     expect(avatar.className).toMatch(/rounded-full/);
+  });
+
+  it("shows the inactive badge for deactivated users", () => {
+    renderWithIntl(
+      <UserListProvider openEdit={vi.fn()} canEdit={() => true}>
+        <table>
+          <tbody>
+            <UserListRowPresentational
+              user={{ ...users[0]!, active: false, blocked: true }}
+              variant="table"
+              labels={{
+                role: "colaborator",
+                selectRow: "Selecionar Maria",
+                inactive: "Inativo",
+              }}
+            />
+          </tbody>
+        </table>
+      </UserListProvider>,
+    );
+
+    expect(screen.getByText("Inativo")).toBeInTheDocument();
   });
 });

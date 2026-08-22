@@ -164,6 +164,7 @@ export function UsersListTableFrame({
         labels={{
           role: tUsers(`roles.${user.roleType}`),
           selectRow: tCommon("selectRow", { name: user.name }),
+          inactive: tUsers("inactive"),
         }}
         showCheckboxColumn={showCheckboxColumn}
       />

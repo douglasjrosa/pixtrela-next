@@ -13,6 +13,12 @@ describe("parseUserListSearchParams", () => {
     expect(filters.q).toBeUndefined();
     expect(filters.column).toBe("name");
     expect(filters.direction).toBe("asc");
+    expect(filters.showArchived).toBe(false);
+  });
+
+  it("parses archived=1 as showArchived", () => {
+    const filters = parseUserListSearchParams({ archived: "1" });
+    expect(filters.showArchived).toBe(true);
   });
 
   it("parses q from a single character", () => {
@@ -53,6 +59,14 @@ describe("serializeUserListSearchParams", () => {
     expect(params.get("sort")).toBe("role");
     expect(params.get("dir")).toBe("asc");
   });
+
+  it("includes archived when showing deactivated users", () => {
+    const params = serializeUserListSearchParams({
+      ...defaultUserListFilters(),
+      showArchived: true,
+    });
+    expect(params.get("archived")).toBe("1");
+  });
 });
 
 describe("userListFilterKey", () => {
@@ -64,5 +78,8 @@ describe("userListFilterKey", () => {
     expect(
       userListFilterKey({ ...base, column: "code", direction: "asc" }),
     ).not.toBe(userListFilterKey(base));
+    expect(userListFilterKey({ ...base, showArchived: true })).not.toBe(
+      userListFilterKey(base),
+    );
   });
 });

@@ -4,6 +4,9 @@ const revalidateTag = vi.fn();
 const createUserRepo = vi.fn();
 const updateUserAccount = vi.fn();
 const deactivateUserRepo = vi.fn();
+const hardDeleteUser = vi.fn();
+const reactivateUser = vi.fn();
+const findUserById = vi.fn();
 const setUserTag = vi.fn();
 const findUserIdByTag = vi.fn();
 const setUserAvatarMedia = vi.fn();
@@ -29,24 +32,14 @@ vi.mock("@/lib/repos/users", async () => {
     createUser: (...args: unknown[]) => createUserRepo(...args),
     updateUserAccount: (...args: unknown[]) => updateUserAccount(...args),
     deactivateUser: (...args: unknown[]) => deactivateUserRepo(...args),
+    hardDeleteUser: (...args: unknown[]) => hardDeleteUser(...args),
+    reactivateUser: (...args: unknown[]) => reactivateUser(...args),
     setUserTag: (...args: unknown[]) => setUserTag(...args),
     findUserIdByTag: (...args: unknown[]) => findUserIdByTag(...args),
     setUserAvatarMedia: (...args: unknown[]) => setUserAvatarMedia(...args),
     setUserFacePhotoMedia: (...args: unknown[]) => setUserFacePhotoMedia(...args),
     listUsers: (...args: unknown[]) => listUsers(...args),
-    findUserById: vi.fn(async () => ({
-      id: "u1",
-      username: "maria.1",
-      name: "Maria",
-      role: "colaborator",
-      code: 1,
-      email: null,
-      lastName: null,
-      phone: null,
-      blocked: false,
-      active: true,
-      greetingGender: "feminine",
-    })),
+    findUserById: (...args: unknown[]) => findUserById(...args),
   };
 });
 
@@ -71,6 +64,22 @@ describe("users/actions drizzle CRUD", () => {
     createUserRepo.mockReset();
     updateUserAccount.mockReset();
     deactivateUserRepo.mockReset();
+    hardDeleteUser.mockReset();
+    reactivateUser.mockReset();
+    findUserById.mockReset();
+    findUserById.mockResolvedValue({
+      id: "u1",
+      username: "maria.1",
+      name: "Maria",
+      role: "colaborator",
+      code: 1,
+      email: null,
+      lastName: null,
+      phone: null,
+      blocked: false,
+      active: true,
+      greetingGender: "feminine",
+    });
     setUserTag.mockReset();
     findUserIdByTag.mockReset();
     setUserAvatarMedia.mockReset();
@@ -91,7 +100,7 @@ describe("users/actions drizzle CRUD", () => {
     const { loadMoreUsers } = await import("./actions");
     await loadMoreUsers({ column: "name", direction: "asc" }, 2);
     expect(loadUserListPageMock).toHaveBeenCalledWith(
-      { q: undefined, column: "name", direction: "asc" },
+      { q: undefined, column: "name", direction: "asc", showArchived: false },
       2,
     );
   });
@@ -172,10 +181,10 @@ describe("users/actions drizzle CRUD", () => {
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 
-  it("deleteUser deactivates via repo for admin", async () => {
+  it("deleteUser hard-deletes via repo for admin", async () => {
     const { deleteUser } = await import("./actions");
     await deleteUser("u1");
-    expect(deactivateUserRepo).toHaveBeenCalledWith("u1", expect.any(String));
+    expect(hardDeleteUser).toHaveBeenCalledWith("u1");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 
@@ -186,10 +195,23 @@ describe("users/actions drizzle CRUD", () => {
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 
-  it("bulkDeleteUsers deactivates each id for admin", async () => {
+  it("bulkDeleteUsers hard-deletes inactive users for admin", async () => {
+    findUserById.mockResolvedValue({
+      id: "u1",
+      username: "maria.1",
+      name: "Maria",
+      role: "colaborator",
+      code: 1,
+      email: null,
+      lastName: null,
+      phone: null,
+      blocked: true,
+      active: false,
+      greetingGender: "feminine",
+    });
     const { bulkDeleteUsers } = await import("./actions");
     await bulkDeleteUsers(["u1"]);
-    expect(deactivateUserRepo).toHaveBeenCalledWith("u1", expect.any(String));
+    expect(hardDeleteUser).toHaveBeenCalledWith("u1");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 

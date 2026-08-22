@@ -46,6 +46,7 @@ export function buildUserFormSchema(options?: { requirePassword?: boolean }) {
     code: optionalUserCodeSchema,
     roleType: z.enum(USER_ROLES),
     greetingGender: z.enum(GREETING_GENDERS).optional().nullable(),
+    active: z.boolean().optional(),
   });
 }
 

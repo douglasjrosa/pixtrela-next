@@ -16,6 +16,8 @@ import { insertMediaAsset } from "@/lib/repos/media";
 import {
   createUser as createUserRepo,
   deactivateUser as deactivateUserRepo,
+  hardDeleteUser,
+  reactivateUser,
   findUserById,
   findUserIdByTag,
   setUserAvatarMedia,
@@ -162,6 +164,21 @@ export async function updateUser(
     role: data.roleType as UserRole | undefined,
     greetingGender: data.greetingGender,
   });
+
+  if (canDeleteUsers(actorRole) && data.active !== undefined) {
+    const current = await findUserById(toUserIdString(userId));
+    if (current) {
+      if (data.active && !current.active) {
+        await reactivateUser(toUserIdString(userId));
+      } else if (!data.active && current.active) {
+        await deactivateUserRepo(
+          toUserIdString(userId),
+          USER_DEACTIVATION_REASON,
+        );
+      }
+    }
+  }
+
   invalidateUsers();
 }
 
@@ -220,7 +237,7 @@ export async function deleteUser(userId: UserId): Promise<void> {
     throw new Error("forbidden");
   }
 
-  await deactivateUserRepo(toUserIdString(userId), USER_DEACTIVATION_REASON);
+  await hardDeleteUser(toUserIdString(userId));
   invalidateUsers();
 }
 
@@ -245,7 +262,10 @@ export async function bulkDeleteUsers(userIds: string[]): Promise<void> {
   }
   const ids = bulkUserIdsSchema.parse(userIds);
   for (const userId of ids) {
-    await deactivateUserRepo(userId, USER_DEACTIVATION_REASON);
+    const user = await findUserById(userId);
+    if (!user) throw new Error("notFound");
+    if (user.active) throw new Error("activeUser");
+    await hardDeleteUser(userId);
   }
   invalidateUsers();
 }

@@ -14,6 +14,7 @@ export function mapUserRecordToRow(user: UserRecord): UserRow {
     greetingGender:
       user.greetingGender === "neutral" ? null : user.greetingGender,
     blocked: user.blocked || !user.active,
+    active: user.active && !user.blocked,
     avatarUrl: toBrowserMediaUrl(user.avatarUrl),
     facePhotoUrl: toBrowserMediaUrl(user.facePhotoUrl),
   };
