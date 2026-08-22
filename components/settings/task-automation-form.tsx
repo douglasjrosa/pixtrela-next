@@ -33,8 +33,13 @@ export async function TaskAutomationForm({
   const tSettings = await getTranslations("settings");
   const tStatus = await getTranslations("tasks.status");
 
+  const formKey = [
+    ...TASK_AUTOMATION_STATUS_FIELDS.map(({ field }) => defaultValues[field]),
+    defaultValues.assignWarnMax,
+  ].join(":");
+
   return (
-    <form action={action} className="max-w-sm space-y-6">
+    <form key={formKey} action={action} className="max-w-sm space-y-6">
       <div className="space-y-4">
         <div className="space-y-1">
           <h2 className="text-lg font-semibold">
@@ -56,6 +61,7 @@ export async function TaskAutomationForm({
             <select
               id={`automation-${status}`}
               name={field}
+              key={`${field}-${defaultValues[field]}`}
               defaultValue={defaultValues[field]}
               className={`${NATIVE_SELECT_CLASS_NAME} flex-1`}
             >
@@ -92,6 +98,7 @@ export async function TaskAutomationForm({
             min={MIN_ASSIGN_WARN_MAX}
             max={MAX_ASSIGN_WARN_MAX}
             step={1}
+            key={`assignWarnMax-${defaultValues.assignWarnMax}`}
             defaultValue={defaultValues.assignWarnMax}
             required
           />

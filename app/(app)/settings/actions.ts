@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
@@ -43,6 +44,7 @@ export async function updateCurrencyForSubtasks(
   revalidateTag("drizzle:currency-for-subtasks", "default");
   revalidateTag("drizzle:currencies", "default");
   revalidatePath("/settings/currency");
+  redirect("/settings/currency");
 }
 
 export async function updateKioskSessionIdleSeconds(
@@ -59,6 +61,7 @@ export async function updateKioskSessionIdleSeconds(
   await upsertKioskSettings(values);
   revalidateTag("drizzle:kiosk-setting", "default");
   revalidatePath("/settings/kiosk");
+  redirect("/settings/kiosk");
 }
 
 export async function updateTaskAutomationSetting(
@@ -77,6 +80,7 @@ export async function updateTaskAutomationSetting(
   await upsertTaskAutomationSettings(values);
   revalidateTag("drizzle:task-automation-setting", "default");
   revalidatePath("/settings/automations");
+  redirect("/settings/automations");
 }
 
 export async function updateEntryAccessSettings(

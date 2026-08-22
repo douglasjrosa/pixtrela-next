@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTag = vi.fn();
 const revalidatePath = vi.fn();
+const redirect = vi.fn();
 const upsertCurrencyForSubtasks = vi.fn();
 const upsertKioskSettings = vi.fn();
 const upsertTaskAutomationSettings = vi.fn();
@@ -13,6 +14,10 @@ vi.mock("@/auth", () => ({
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
   revalidatePath: (...args: unknown[]) => revalidatePath(...args),
+}));
+
+vi.mock("next/navigation", () => ({
+  redirect: (...args: unknown[]) => redirect(...args),
 }));
 
 vi.mock("@/lib/repos/settings", () => ({
@@ -35,6 +40,7 @@ describe("settings/actions drizzle paths", () => {
     vi.resetModules();
     revalidateTag.mockReset();
     revalidatePath.mockReset();
+    redirect.mockReset();
     upsertCurrencyForSubtasks.mockReset();
     upsertKioskSettings.mockReset();
     upsertTaskAutomationSettings.mockReset();
@@ -49,6 +55,7 @@ describe("settings/actions drizzle paths", () => {
     expect(upsertCurrencyForSubtasks).toHaveBeenCalledWith("cur-1");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:currency-for-subtasks", "default");
     expect(revalidatePath).toHaveBeenCalledWith("/settings/currency");
+    expect(redirect).toHaveBeenCalledWith("/settings/currency");
   });
 
   it("updateKioskSessionIdleSeconds upserts kiosk settings", async () => {
@@ -63,6 +70,7 @@ describe("settings/actions drizzle paths", () => {
     });
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:kiosk-setting", "default");
     expect(revalidatePath).toHaveBeenCalledWith("/settings/kiosk");
+    expect(redirect).toHaveBeenCalledWith("/settings/kiosk");
   });
 
   it("updateTaskAutomationSetting upserts and revalidates on drizzle backend", async () => {
@@ -91,6 +99,7 @@ describe("settings/actions drizzle paths", () => {
       "default",
     );
     expect(revalidatePath).toHaveBeenCalledWith("/settings/automations");
+    expect(redirect).toHaveBeenCalledWith("/settings/automations");
   });
 
   it("updateEntryAccessSettings upserts login and kiosk access", async () => {

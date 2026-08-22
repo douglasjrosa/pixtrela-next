@@ -26,8 +26,13 @@ export async function KioskSessionIdleForm({
   const tCommon = await getTranslations("common");
   const tSettings = await getTranslations("settings");
 
+  const formKey = [
+    sessionIdleSeconds,
+    maxSimultaneousSubtaskIntervalSeconds,
+  ].join(":");
+
   return (
-    <form action={action} className="max-w-sm space-y-4">
+    <form key={formKey} action={action} className="max-w-sm space-y-4">
       <h2 className="text-lg font-semibold">{tSettings("kioskSession")}</h2>
 
       <div className="flex items-center gap-3">
@@ -42,6 +47,7 @@ export async function KioskSessionIdleForm({
           min={MIN_KIOSK_SESSION_IDLE_SECONDS}
           max={MAX_KIOSK_SESSION_IDLE_SECONDS}
           step={1}
+          key={`idle-${sessionIdleSeconds}`}
           defaultValue={sessionIdleSeconds}
           required
         />
@@ -58,6 +64,7 @@ export async function KioskSessionIdleForm({
           min={MIN_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS}
           max={MAX_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS}
           step={1}
+          key={`interval-${maxSimultaneousSubtaskIntervalSeconds}`}
           defaultValue={maxSimultaneousSubtaskIntervalSeconds}
           required
         />

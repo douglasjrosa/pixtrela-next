@@ -60,7 +60,7 @@ export async function CurrencyForm({
           {tSettings("noCurrencies")}
         </p>
       ) : (
-        <form action={action} className="space-y-4">
+        <form key={selectedId} action={action} className="space-y-4">
           <div className="flex items-center gap-3">
             <Label htmlFor="currency-active-for-subtasks" className="shrink-0">
               {tSettings("currencyActiveForSubtasks")}
@@ -68,6 +68,7 @@ export async function CurrencyForm({
             <select
               id="currency-active-for-subtasks"
               name="currencyDocumentId"
+              key={selectedId}
               defaultValue={selectedId}
               required
               className={`${NATIVE_SELECT_CLASS_NAME} flex-1`}
