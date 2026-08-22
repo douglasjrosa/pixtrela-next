@@ -1,22 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
 
+import { createGetTranslationsMock } from "@/test/mock-next-intl-server";
 import { renderWithIntl } from "@/test/test-utils";
+
+vi.mock("next-intl/server", () => ({
+  getTranslations: createGetTranslationsMock(),
+}));
+
 import { CurrencyForm } from "./currency-form";
-
-const showSuccessToast = vi.fn();
-const showErrorToast = vi.fn();
-
-const refresh = vi.fn();
-
-vi.mock("@/lib/ui/app-toast", () => ({
-  showSuccessToast: (...args: unknown[]) => showSuccessToast(...args),
-  showErrorToast: (...args: unknown[]) => showErrorToast(...args),
-}));
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh }),
-}));
 
 const currencies = [
   {
@@ -32,19 +24,13 @@ const currencies = [
 ];
 
 describe("CurrencyForm", () => {
-  beforeEach(() => {
-    showSuccessToast.mockReset();
-    showErrorToast.mockReset();
-    refresh.mockReset();
-  });
-
-  it("renders active-for-subtasks select with currency titles", () => {
+  it("renders active-for-subtasks select with currency titles", async () => {
     renderWithIntl(
-      <CurrencyForm
-        currencies={currencies}
-        activeCurrencyDocumentId="cur-star"
-        onSave={vi.fn()}
-      />,
+      await CurrencyForm({
+        currencies,
+        activeCurrencyDocumentId: "cur-star",
+        action: vi.fn(),
+      }),
     );
 
     const select = screen.getByLabelText("Ativo para Subtarefas:");
@@ -54,75 +40,35 @@ describe("CurrencyForm", () => {
     expect(screen.queryByRole("option", { name: "Nenhuma" })).toBeNull();
   });
 
-  it("defaults to the first currency when none is active", () => {
+  it("defaults to the first currency when the assigned id is missing", async () => {
     renderWithIntl(
-      <CurrencyForm
-        currencies={currencies}
-        activeCurrencyDocumentId=""
-        onSave={vi.fn()}
-      />,
+      await CurrencyForm({
+        currencies,
+        activeCurrencyDocumentId: "1d09980f-cb32-4cce-8bbb-99a6d2640651",
+        action: vi.fn(),
+      }),
     );
 
     expect(screen.getByLabelText("Ativo para Subtarefas:")).toHaveValue(
       "cur-star",
     );
+    expect(
+      screen.queryByRole("option", {
+        name: "1d09980f-cb32-4cce-8bbb-99a6d2640651",
+      }),
+    ).toBeNull();
   });
 
-  it("shows empty state when there are no currencies", () => {
+  it("shows empty state when there are no currencies", async () => {
     renderWithIntl(
-      <CurrencyForm
-        currencies={[]}
-        activeCurrencyDocumentId=""
-        onSave={vi.fn()}
-      />,
+      await CurrencyForm({
+        currencies: [],
+        activeCurrencyDocumentId: "",
+        action: vi.fn(),
+      }),
     );
 
     expect(screen.getByText("Nenhuma moeda cadastrada.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Salvar" })).toBeNull();
-  });
-
-  it("calls onSave with the selected active currency", async () => {
-    const onSave = vi.fn().mockResolvedValue(undefined);
-    renderWithIntl(
-      <CurrencyForm
-        currencies={currencies}
-        activeCurrencyDocumentId="cur-star"
-        onSave={onSave}
-      />,
-    );
-
-    fireEvent.change(screen.getByLabelText("Ativo para Subtarefas:"), {
-      target: { value: "cur-gem" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
-
-    await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith({
-        currencyDocumentId: "cur-gem",
-      });
-    });
-    expect(showSuccessToast).toHaveBeenCalledWith("Configurações salvas.");
-    expect(refresh).toHaveBeenCalled();
-    expect(showErrorToast).not.toHaveBeenCalled();
-  });
-
-  it("shows error toast when onSave fails", async () => {
-    const onSave = vi.fn().mockRejectedValue(new Error("forbidden"));
-    renderWithIntl(
-      <CurrencyForm
-        currencies={currencies}
-        activeCurrencyDocumentId="cur-star"
-        onSave={onSave}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
-
-    await waitFor(() => {
-      expect(showErrorToast).toHaveBeenCalledWith(
-        "Não foi possível salvar as configurações.",
-      );
-    });
-    expect(showSuccessToast).not.toHaveBeenCalled();
   });
 });

@@ -3,7 +3,6 @@ import { KioskSessionIdleForm } from "@/components/settings/kiosk-session-idle-f
 import { loadEntryAccessSettings } from "@/lib/entry-access/load-entry-access";
 import { loadKioskSettings } from "@/lib/kiosk/load-session-idle";
 import type { EntryAccessByDevice } from "@/lib/business/entry-access";
-import type { KioskSessionIdleInput } from "@/lib/schemas/kiosk-setting";
 
 import {
   updateEntryAccessSettings,
@@ -15,13 +14,6 @@ export default async function SettingsKioskPage() {
     loadKioskSettings(),
     loadEntryAccessSettings("kiosk"),
   ]);
-
-  async function handleSaveKioskSession(
-    values: KioskSessionIdleInput,
-  ): Promise<void> {
-    "use server";
-    await updateKioskSessionIdleSeconds(values);
-  }
 
   async function handleSaveAccess(
     value: EntryAccessByDevice,
@@ -41,7 +33,7 @@ export default async function SettingsKioskPage() {
         maxSimultaneousSubtaskIntervalSeconds={
           settings.maxSimultaneousSubtaskIntervalSeconds
         }
-        onSave={handleSaveKioskSession}
+        action={updateKioskSessionIdleSeconds}
       />
       <EntryAccessForm value={access} onSave={handleSaveAccess} />
     </div>

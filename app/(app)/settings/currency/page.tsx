@@ -62,12 +62,9 @@ export default async function SettingsCurrencyPage() {
         onUploadIcon={uploadCurrencyIcon}
       />
       <CurrencyForm
-        key={activeCurrencyDocumentId}
         currencies={currencies.filter((currency) => currency.active)}
-        activeCurrencyDocumentId={
-          activeCurrencyDocumentId || primaryCurrencyDocumentId(currencies) || ""
-        }
-        onSave={updateCurrencyForSubtasks}
+        activeCurrencyDocumentId={activeCurrencyDocumentId}
+        action={updateCurrencyForSubtasks}
       />
     </div>
   );
