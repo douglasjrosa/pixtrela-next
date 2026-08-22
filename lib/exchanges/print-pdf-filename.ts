@@ -7,7 +7,7 @@ export function buildExchangePrintPdfFilename(
 ): string {
   const monthPart = String(month).padStart(2, "0");
   const prefix =
-    kind === "shopping" ? "lista-de-compras" : "lista-de-trocas";
+    kind === "shopping" ? "lista-de-compras" : "fichas-de-entrega";
   return `${prefix}-${monthPart}-${year}.pdf`;
 }
 

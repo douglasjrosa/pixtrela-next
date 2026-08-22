@@ -11,7 +11,7 @@ describe("buildExchangePrintPdfFilename", () => {
       "lista-de-compras-08-2026.pdf",
     );
     expect(buildExchangePrintPdfFilename("deliveries", 8, 2026)).toBe(
-      "lista-de-trocas-08-2026.pdf",
+      "fichas-de-entrega-08-2026.pdf",
     );
   });
 });
