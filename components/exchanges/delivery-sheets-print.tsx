@@ -30,7 +30,7 @@ export async function DeliverySheetsPrint({
               <header className="space-y-1">
                 <h3 className="text-lg font-bold">{order.userName}</h3>
                 <p className="text-sm text-muted-foreground">
-                  {t("itemCount", { count: order.itemCount })} · {t("total")}:{" "}
+                  {t("itemCount", { count: order.itemCount })} ·{" "}
                   <span className="tabular-nums font-semibold text-foreground">
                     {order.totalNumberOf} {order.currencyPluralTitle}
                   </span>
