@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Currency } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { CurrencyFormModal } from "@/components/settings/currency-form-modal";
 import { AddNewButton } from "@/components/ui/add-new-button";
+import { ListCircleThumb } from "@/components/ui/list-circle-thumb";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
 import { ListArchivedToggle } from "@/components/ui/list-archived-toggle";
 import { ListFiltersBar } from "@/components/ui/list-filters-bar";
@@ -274,6 +276,19 @@ export function CurrencyManager({
     onToggleSelectAll: handleToggleSelectAll,
   };
 
+  function currencyIcon(currency: CurrencyRow) {
+    const title = displayTitle(currency);
+    return (
+      <ListCircleThumb
+        label={title}
+        imageUrl={currency.iconMediaUrl}
+        fallback={
+          <Currency className="size-4 text-muted-foreground" aria-hidden />
+        }
+      />
+    );
+  }
+
   function titleCell(currency: CurrencyRow) {
     const title = displayTitle(currency);
     return (
@@ -341,6 +356,7 @@ export function CurrencyManager({
                       ariaLabel={tCommon("selectAll")}
                     />
                   </th>
+                  <th className="w-12 py-2 pr-3" aria-hidden />
                   <th className="py-2">{tSettings("currencyTitle")}</th>
                   <th>{tSettings("currencyName")}</th>
                   <th>{tSettings("currencyPerSecond")}</th>
@@ -369,6 +385,9 @@ export function CurrencyManager({
                         variant="table"
                         ariaLabel={tCommon("selectRow", { name: title })}
                       />
+                      <td className="w-12 py-2 pr-3">
+                        {currencyIcon(currency)}
+                      </td>
                       <td className="py-2">{titleCell(currency)}</td>
                       <td className="text-muted-foreground">{currency.name}</td>
                       <td>{formatRate(currency.currencyPerSecond)}</td>
@@ -391,7 +410,8 @@ export function CurrencyManager({
                       variant="mobile"
                       ariaLabel={tCommon("selectRow", { name: title })}
                     />
-                    <button
+                    {currencyIcon(currency)}
+                    <button>
                       type="button"
                       className="w-full text-left no-underline"
                       aria-label={tSettings("openCurrency", { name: title })}
