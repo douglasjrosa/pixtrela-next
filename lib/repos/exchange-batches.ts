@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import {
+  awards,
   exchangeBatches,
   exchangeOrderItems,
   exchangeOrders,
@@ -30,6 +31,7 @@ export type BatchShoppingLine = {
   awardId: string | null;
   awardTitle: string;
   qty: number;
+  actualPrice: number;
 };
 
 export type BatchDeliveryOrder = {
@@ -300,9 +302,33 @@ export async function getBatchDetailForStaff(input: {
     itemsByOrder.set(item.orderId, list);
   }
 
+  const awardIds = [
+    ...new Set(
+      itemRows
+        .map((item) => item.awardId)
+        .filter((awardId): awardId is string => awardId !== null),
+    ),
+  ];
+  const awardPriceRows =
+    awardIds.length === 0
+      ? []
+      : await db
+          .select({
+            id: awards.id,
+            actualPrice: awards.actualPrice,
+          })
+          .from(awards)
+          .where(inArray(awards.id, awardIds));
+  const actualPriceByAwardId = new Map(
+    awardPriceRows.map((row) => [row.id, Number(row.actualPrice ?? 0)]),
+  );
+
   const shoppingMap = new Map<string, BatchShoppingLine>();
   for (const item of itemRows) {
     const key = item.awardId ?? item.awardTitle;
+    const actualPrice = item.awardId
+      ? (actualPriceByAwardId.get(item.awardId) ?? 0)
+      : 0;
     const existing = shoppingMap.get(key);
     if (existing) {
       existing.qty += item.qty;
@@ -311,6 +337,7 @@ export async function getBatchDetailForStaff(input: {
         awardId: item.awardId,
         awardTitle: item.awardTitle,
         qty: item.qty,
+        actualPrice,
       });
     }
   }

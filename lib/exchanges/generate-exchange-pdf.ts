@@ -31,6 +31,9 @@ const SHOPPING_LOGO_SIZE = 28;
 const SHOPPING_HEADER_SIDE_WIDTH = 120;
 const SHOPPING_HEADER_HEIGHT = 36;
 const SHOPPING_HEADER_GAP = 16;
+const SHOPPING_ROW_VERTICAL_PADDING = 4;
+const BRL_PREFIX = "R$";
+const DELIVERY_DATE_PLACEHOLDER = "      /      /            ";
 
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
@@ -184,15 +187,43 @@ function shoppingColumnWidths(): {
   };
 }
 
+function formatShoppingPriceAmount(value: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function drawShoppingUnitValueCell(
+  doc: PdfDoc,
+  value: number,
+  x: number,
+  rowTop: number,
+  width: number,
+  rowHeight: number,
+): void {
+  const prefixWidth = doc.widthOfString(BRL_PREFIX) + 4;
+  drawCellText(doc, BRL_PREFIX, x, rowTop, prefixWidth, rowHeight, "left");
+  drawCellText(
+    doc,
+    formatShoppingPriceAmount(value),
+    x,
+    rowTop,
+    width,
+    rowHeight,
+    "center",
+  );
+}
+
 function shoppingTableColumns(labels: ShoppingListPdfLabels) {
   const widths = shoppingColumnWidths();
   return [
     { label: labels.itemColumn, width: widths.item },
-    { label: labels.qtyColumn, width: widths.qty, align: "right" as const },
+    { label: labels.qtyColumn, width: widths.qty, align: "center" as const },
     {
       label: labels.unitValueColumn,
       width: widths.unitValue,
-      align: "right" as const,
+      align: "center" as const,
     },
   ];
 }
@@ -224,8 +255,13 @@ export function generateShoppingListPdf(
     const rowCells = [
       { text: line.awardTitle, width: widths.item },
       { text: String(line.qty), width: widths.qty },
+      {
+        text: formatShoppingPriceAmount(line.actualPrice),
+        width: widths.unitValue,
+      },
     ];
-    const rowHeight = measureRowHeight(doc, rowCells);
+    const rowHeight =
+      measureRowHeight(doc, rowCells) + SHOPPING_ROW_VERTICAL_PADDING * 2;
     drawCellText(doc, line.awardTitle, MARGIN, rowTop, widths.item, rowHeight);
     drawCellText(
       doc,
@@ -234,7 +270,15 @@ export function generateShoppingListPdf(
       rowTop,
       widths.qty,
       rowHeight,
-      "right",
+      "center",
+    );
+    drawShoppingUnitValueCell(
+      doc,
+      line.actualPrice,
+      MARGIN + widths.item + widths.qty,
+      rowTop,
+      widths.unitValue,
+      rowHeight,
     );
     y = rowTop + rowHeight + 4;
     strokeHorizontalRule(doc, y - 2);
@@ -389,12 +433,21 @@ function drawDeliveryCard(
   doc.fontSize(9).text(`${labels.signature}:`, innerX, footerY, {
     width: signatureWidth,
   });
-  doc.text(`${labels.dateLine}: _____/______/_________`, dateX, footerY, {
-    width: dateWidth,
-  });
+  doc.text(
+    `${labels.dateLine}: ${DELIVERY_DATE_PLACEHOLDER}`,
+    dateX,
+    footerY,
+    {
+      width: dateWidth,
+    },
+  );
   doc
     .moveTo(innerX + 42, lineY)
     .lineTo(innerX + signatureWidth, lineY)
+    .stroke();
+  doc
+    .moveTo(dateX, lineY)
+    .lineTo(dateX + dateWidth, lineY)
     .stroke();
 
   const yBottom =

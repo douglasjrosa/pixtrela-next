@@ -56,7 +56,7 @@ function buildDeliveryOrder(
 describe("generateShoppingListPdf", () => {
   it("returns a valid PDF buffer", async () => {
     const buffer = await generateShoppingListPdf(
-      [{ awardId: "a1", awardTitle: "Award A", qty: 2 }],
+      [{ awardId: "a1", awardTitle: "Award A", qty: 2, actualPrice: 12.5 }],
       shoppingLabels,
     );
 
