@@ -71,6 +71,7 @@ export async function redeemAwardAction(input: {
   const result = await redeemAward(input);
   revalidateTag("drizzle:exchanges", "default");
   revalidateTag("drizzle:balances", "default");
+  revalidateTag("drizzle:awards", "default");
   return result;
 }
 

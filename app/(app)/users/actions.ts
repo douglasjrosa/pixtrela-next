@@ -3,7 +3,6 @@
 import { revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
-import { mediaAssets } from "@/drizzle/schema";
 import type { Role } from "@/lib/auth/nav";
 import {
   canViewUsers,
@@ -11,9 +10,9 @@ import {
   canPairUserTag,
 } from "@/lib/auth/permissions";
 import { canDeleteUsers, canManageRole } from "@/lib/business/roles";
-import { getDb } from "@/lib/db/client";
 import { normalizeUserTag } from "@/lib/kiosk/user-tag";
 import { storeMedia } from "@/lib/media/store-media";
+import { insertMediaAsset } from "@/lib/repos/media";
 import {
   createUser as createUserRepo,
   deactivateUser as deactivateUserRepo,
@@ -250,25 +249,24 @@ export async function updateUserImage(
   const buffer = Buffer.from(await entry.arrayBuffer());
   const extension = mimeType.includes("png") ? "png" : "jpg";
   const stored = await storeMedia({ bytes: buffer, mimeType, extension });
-  const db = getDb();
-  const [media] = await db
-    .insert(mediaAssets)
-    .values({
-      storageKey: stored.storageKey,
-      url: stored.url,
-      mimeType: stored.mimeType,
-      byteSize: stored.byteSize,
-    })
-    .returning({ id: mediaAssets.id });
+  const originalFilename =
+    "name" in entry && typeof entry.name === "string" && entry.name.trim()
+      ? entry.name.trim()
+      : null;
+  const media = await insertMediaAsset(stored, {
+    originalFilename,
+    category: imageType === "avatar" ? "avatar" : "face",
+    sensitivity: imageType === "avatar" ? "internal" : "biometric",
+  });
   const userIdStr = toUserIdString(userId);
   if (imageType === "avatar") {
-    await setUserAvatarMedia(userIdStr, media.id, db);
+    await setUserAvatarMedia(userIdStr, media.id);
   } else {
     const faceVector = parseFaceVectorFromFormData(formData);
     if (formData.has("faceVector") && !faceVector) {
       throw new Error("invalid");
     }
-    await setUserFacePhotoMedia(userIdStr, media.id, faceVector, db);
+    await setUserFacePhotoMedia(userIdStr, media.id, faceVector);
   }
   invalidateUsers();
 }

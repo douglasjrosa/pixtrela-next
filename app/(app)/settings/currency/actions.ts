@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
-import { currencies, mediaAssets } from "@/drizzle/schema";
+import { currencies } from "@/drizzle/schema";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
 import { getDb } from "@/lib/db/client";
@@ -13,10 +13,12 @@ import {
   createCurrency as createCurrencyRepo,
   listCurrencies as listCurrenciesRepo,
 } from "@/lib/repos/awards";
+import { insertMediaAsset } from "@/lib/repos/media";
 import {
   getCurrencyForSubtasks,
   upsertCurrencyForSubtasks,
 } from "@/lib/repos/settings";
+import { isPrimaryCurrencyId, primaryCurrencyId } from "@/lib/business/primary-currency";
 import {
   currencyFormSchema,
   type CurrencyFormInput,
@@ -46,16 +48,15 @@ export async function uploadCurrencyIcon(
   const buffer = Buffer.from(await entry.arrayBuffer());
   const extension = mimeType.includes("png") ? "png" : "jpg";
   const stored = await storeMedia({ bytes: buffer, mimeType, extension });
-  const db = getDb();
-  const [media] = await db
-    .insert(mediaAssets)
-    .values({
-      storageKey: stored.storageKey,
-      url: stored.url,
-      mimeType: stored.mimeType,
-      byteSize: stored.byteSize,
-    })
-    .returning({ id: mediaAssets.id });
+  const originalFilename =
+    "name" in entry && typeof entry.name === "string" && entry.name.trim()
+      ? entry.name.trim()
+      : null;
+  const media = await insertMediaAsset(stored, {
+    originalFilename,
+    category: "currency",
+    sensitivity: "public",
+  });
   return media.id;
 }
 
@@ -101,9 +102,15 @@ export async function updateCurrency(
 export async function deleteCurrency(documentId: string): Promise<void> {
   await assertCanManage();
 
+  const all = await listCurrenciesRepo();
+  const primaryId = primaryCurrencyId(all);
+  if (isPrimaryCurrencyId(documentId, all)) {
+    throw new Error("primaryCurrencyProtected");
+  }
+
   const active = await getCurrencyForSubtasks();
-  if (active?.currencyId === documentId) {
-    await upsertCurrencyForSubtasks(null);
+  if (active?.currencyId === documentId && primaryId) {
+    await upsertCurrencyForSubtasks(primaryId);
     revalidateTag("drizzle:currency-for-subtasks", "default");
   }
   const db = getDb();

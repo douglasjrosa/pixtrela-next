@@ -106,6 +106,34 @@
       "when": 1787400000000,
       "tag": "0014_sub_task_categories_and_flags",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1787450000000,
+      "tag": "0015_media_library_branding",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1787500000000,
+      "tag": "0016_media_metadata_lgpd",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1787550000000,
+      "tag": "0017_menu_logo_background",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1787600000000,
+      "tag": "0018_exchange_cart_orders",
+      "breakpoints": true
     }
   ]
 }

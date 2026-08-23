@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const toastFn = vi.fn();
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
+const toastLoading = vi.fn();
 
 vi.mock("sonner", () => ({
   toast: Object.assign(
@@ -10,6 +11,7 @@ vi.mock("sonner", () => ({
     {
       success: (...args: unknown[]) => toastSuccess(...args),
       error: (...args: unknown[]) => toastError(...args),
+      loading: (...args: unknown[]) => toastLoading(...args),
     },
   ),
 }));
@@ -19,18 +21,53 @@ describe("app-toast", () => {
     toastFn.mockReset();
     toastSuccess.mockReset();
     toastError.mockReset();
+    toastLoading.mockReset();
+    toastLoading.mockReturnValue("toast-1");
+  });
+
+  it("shows loading toast at the bottom by default", async () => {
+    const { showLoadingToast } = await import("./app-toast");
+    const toastId = showLoadingToast("Salvando…");
+    expect(toastLoading).toHaveBeenCalledWith("Salvando…", {
+      position: "bottom-center",
+    });
+    expect(toastId).toBe("toast-1");
   });
 
   it("shows success toast", async () => {
     const { showSuccessToast } = await import("./app-toast");
     showSuccessToast("Salvo");
-    expect(toastSuccess).toHaveBeenCalledWith("Salvo");
+    expect(toastSuccess).toHaveBeenCalledWith("Salvo", {
+      id: undefined,
+      position: undefined,
+    });
+  });
+
+  it("replaces a loading toast with success at the bottom", async () => {
+    const { showSuccessToast } = await import("./app-toast");
+    showSuccessToast("Salvo", { toastId: "toast-1" });
+    expect(toastSuccess).toHaveBeenCalledWith("Salvo", {
+      id: "toast-1",
+      position: "bottom-center",
+    });
   });
 
   it("shows error toast", async () => {
     const { showErrorToast } = await import("./app-toast");
     showErrorToast("Erro");
-    expect(toastError).toHaveBeenCalledWith("Erro");
+    expect(toastError).toHaveBeenCalledWith("Erro", {
+      id: undefined,
+      position: undefined,
+    });
+  });
+
+  it("replaces a loading toast with error at the bottom", async () => {
+    const { showErrorToast } = await import("./app-toast");
+    showErrorToast("Erro", { toastId: "toast-1" });
+    expect(toastError).toHaveBeenCalledWith("Erro", {
+      id: "toast-1",
+      position: "bottom-center",
+    });
   });
 
   it("shows hint toast that auto-dismisses in 2 seconds", async () => {

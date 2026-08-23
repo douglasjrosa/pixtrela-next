@@ -78,7 +78,7 @@ export function AwardCard({ award, windowOpen, balance, onRedeem }: AwardCardPro
         ) : null}
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-2xl font-bold tabular-nums text-[var(--star-gold-foreground)]">
+        <p className="text-2xl font-bold tabular-nums text-foreground">
           {award.cost}
           <span className="ml-1 text-sm font-medium text-muted-foreground">
             {t("cost")}
@@ -109,7 +109,7 @@ export function AwardCard({ award, windowOpen, balance, onRedeem }: AwardCardPro
           onRedeem={handleRedeem}
         />
         {message ? (
-          <p role="status" className="text-sm font-medium text-[var(--star-gold-foreground)]">
+          <p role="status" className="text-sm font-medium text-foreground">
             {message}
           </p>
         ) : null}

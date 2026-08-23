@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -180,5 +181,35 @@ describe("FormModalShell", () => {
 
     await user.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("focuses close once on open and keeps field focus while typing", async () => {
+    const user = userEvent.setup();
+
+    function Harness() {
+      const [value, setValue] = useState("");
+      return (
+        <FormModalShell open title="Título" onClose={() => undefined}>
+          <label>
+            Nome
+            <input
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+            />
+          </label>
+        </FormModalShell>
+      );
+    }
+
+    renderWithIntl(<Harness />);
+
+    expect(screen.getByRole("button", { name: "Fechar" })).toHaveFocus();
+
+    const input = screen.getByLabelText("Nome");
+    await user.click(input);
+    await user.type(input, "abc");
+
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue("abc");
   });
 });

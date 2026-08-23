@@ -7,10 +7,11 @@ import { useTranslations } from "next-intl";
 import { removeFlag, saveFlag } from "@/app/(app)/settings/subtasks/actions";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 
 export function FlagEditForm({
   documentId,
@@ -81,7 +82,7 @@ export function FlagEditForm({
         <Label htmlFor="edit-flag-cat">{t("flagCategory")}</Label>
         <select
           id="edit-flag-cat"
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          className={NATIVE_SELECT_CLASS_NAME}
           value={categoryId}
           required
           onChange={(event) => setCategoryId(event.target.value)}
@@ -95,9 +96,8 @@ export function FlagEditForm({
       </div>
       <div className="space-y-1">
         <Label htmlFor="edit-flag-index">{t("flagIndex")}</Label>
-        <Input
+        <NumberInput
           id="edit-flag-index"
-          type="number"
           min={1}
           value={index}
           required

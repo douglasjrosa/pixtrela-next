@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { currencyForSubtasksSchema } from "@/lib/schemas/currency-for-subtasks";
+import { primaryCurrencyDocumentId } from "@/lib/business/primary-currency";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
-const SELECT_CLASS_NAME =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm";
+const SELECT_CLASS_NAME = NATIVE_SELECT_CLASS_NAME;
 
 type ActiveCurrencyFormInput = z.infer<typeof currencyForSubtasksSchema>;
 
@@ -44,11 +45,13 @@ export function CurrencyForm({
   const tCommon = useTranslations("common");
   const tSettings = useTranslations("settings");
   const [isPending, startTransition] = useTransition();
+  const defaultCurrencyDocumentId =
+    activeCurrencyDocumentId || primaryCurrencyDocumentId(currencies) || "";
 
   const { register, handleSubmit } = useForm<ActiveCurrencyFormInput>({
     resolver: zodResolver(currencyForSubtasksSchema),
     defaultValues: {
-      currencyDocumentId: activeCurrencyDocumentId,
+      currencyDocumentId: defaultCurrencyDocumentId,
     },
   });
 
@@ -87,8 +90,8 @@ export function CurrencyForm({
               id="currency-active-for-subtasks"
               className={`${SELECT_CLASS_NAME} flex-1`}
               {...register("currencyDocumentId")}
+              required
             >
-              <option value="">{tSettings("currencyActiveNone")}</option>
               {currencies.map((currency) => (
                 <option key={currency.documentId} value={currency.documentId}>
                   {resolveCurrencyTitle(currency)}

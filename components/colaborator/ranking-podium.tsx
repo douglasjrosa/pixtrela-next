@@ -1,23 +1,32 @@
-import Image from "next/image";
+"use client";
+
 import { useTranslations } from "next-intl";
 
 import type { RankingRow } from "@/lib/dashboard/types";
 import { cn } from "@/lib/utils";
 
-const PODIUM_ASSETS: Record<number, { src: string; altKey: string }> = {
-  1: { src: "/images/ranking-antares-1st.svg", altKey: "podiumFirst" },
-  2: { src: "/images/ranking-sirius-2nd.svg", altKey: "podiumSecond" },
-  3: { src: "/images/ranking-vega-3rd.svg", altKey: "podiumThird" },
+export type RankingPodiumImageUrls = {
+  1?: string | null;
+  2?: string | null;
+  3?: string | null;
+};
+
+const PODIUM_ALT_KEYS: Record<number, string> = {
+  1: "podiumFirst",
+  2: "podiumSecond",
+  3: "podiumThird",
 };
 
 export interface RankingPodiumProps {
   topRows: RankingRow[];
   currentUserDocumentId: string;
+  podiumImageUrls?: RankingPodiumImageUrls;
 }
 
 export function RankingPodium({
   topRows,
   currentUserDocumentId,
+  podiumImageUrls = {},
 }: RankingPodiumProps) {
   const t = useTranslations("dashboard");
 
@@ -28,7 +37,8 @@ export function RankingPodium({
   return (
     <ol className="grid grid-cols-3 gap-2">
       {topRows.map((row) => {
-        const asset = PODIUM_ASSETS[row.rank];
+        const imageUrl = podiumImageUrls[row.rank as 1 | 2 | 3] ?? null;
+        const altKey = PODIUM_ALT_KEYS[row.rank];
         const isSelf = row.userDocumentId === currentUserDocumentId;
         return (
           <li
@@ -38,13 +48,14 @@ export function RankingPodium({
               isSelf && "ring-2 ring-star-gold",
             )}
           >
-            {asset ? (
-              <Image
-                src={asset.src}
-                alt={t(asset.altKey)}
+            {imageUrl && altKey ? (
+              // eslint-disable-next-line @next/next/no-img-element -- R2 media URLs
+              <img
+                src={imageUrl}
+                alt={t(altKey)}
                 width={64}
                 height={64}
-                className="mb-2 size-14"
+                className="mb-2 size-14 object-contain"
               />
             ) : (
               <span className="mb-2 text-2xl font-bold">{row.rank}</span>

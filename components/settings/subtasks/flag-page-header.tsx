@@ -5,16 +5,17 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import {
+  createFlags,
   nextIndexForCategory,
-  saveFlag,
 } from "@/app/(app)/settings/subtasks/actions";
 import { AddNewButton } from "@/components/ui/add-new-button";
 import { Button } from "@/components/ui/button";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
-import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 
 const FORM_ID = "create-flag-form";
 
@@ -29,12 +30,14 @@ export function FlagPageHeader({
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [categoryId, setCategoryId] = useState("");
-  const [index, setIndex] = useState(1);
+  const [indexFrom, setIndexFrom] = useState(1);
+  const [indexTo, setIndexTo] = useState(1);
 
   function close(): void {
     setOpen(false);
     setCategoryId("");
-    setIndex(1);
+    setIndexFrom(1);
+    setIndexTo(1);
   }
 
   function handleCategoryChange(nextId: string): void {
@@ -43,7 +46,8 @@ export function FlagPageHeader({
     startTransition(async () => {
       try {
         const nextIndex = await nextIndexForCategory(nextId);
-        setIndex(nextIndex);
+        setIndexFrom(nextIndex);
+        setIndexTo(nextIndex);
       } catch (error) {
         rethrowIfNavigationError(error);
       }
@@ -51,28 +55,45 @@ export function FlagPageHeader({
   }
 
   function handleSubmit(): void {
+    if (indexTo < indexFrom) {
+      showErrorToast(t("flagIndexRangeInvalid"));
+      return;
+    }
+
     startTransition(async () => {
       try {
-        await saveFlag({ subTaskCategoryId: categoryId, index });
-        showSuccessToast(t("flagSaved"));
+        const count = await createFlags({
+          subTaskCategoryId: categoryId,
+          indexFrom,
+          indexTo,
+        });
+        showSuccessToast(
+          count === 1 ? t("flagSaved") : t("flagsSaved", { count }),
+        );
         close();
         router.refresh();
       } catch (error) {
         rethrowIfNavigationError(error);
-        showErrorToast(t("error"));
+        const message =
+          error instanceof Error && error.message === "flagIndexExists"
+            ? t("flagIndexExists")
+            : t("error");
+        showErrorToast(message);
       }
     });
   }
 
   return (
     <>
-      <AddNewButton onClick={() => setOpen(true)}>{t("newFlag")}</AddNewButton>
+      <AddNewButton label={t("newFlag")} onClick={() => setOpen(true)} />
       {open ? (
         <FormModalShell
           open
           title={t("newFlag")}
           onClose={close}
           disabled={isPending}
+          size="md"
+          fillBody={false}
           footerEnd={
             <Button type="submit" form={FORM_ID} disabled={isPending}>
               {tCommon("save")}
@@ -91,7 +112,7 @@ export function FlagPageHeader({
               <Label htmlFor="flag-cat">{t("flagCategory")}</Label>
               <select
                 id="flag-cat"
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                className={NATIVE_SELECT_CLASS_NAME}
                 value={categoryId}
                 required
                 onChange={(event) => handleCategoryChange(event.target.value)}
@@ -104,19 +125,35 @@ export function FlagPageHeader({
                 ))}
               </select>
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="flag-index">{t("flagIndex")}</Label>
-              <Input
-                id="flag-index"
-                type="number"
-                min={1}
-                value={index}
-                required
-                onChange={(event) =>
-                  setIndex(Number.parseInt(event.target.value, 10) || 1)
-                }
-              />
-            </div>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">{t("flagIndices")}</legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="flag-index-from">{t("flagIndexFrom")}</Label>
+                  <NumberInput
+                    id="flag-index-from"
+                    min={1}
+                    value={indexFrom}
+                    required
+                    onChange={(event) =>
+                      setIndexFrom(Number.parseInt(event.target.value, 10) || 1)
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="flag-index-to">{t("flagIndexTo")}</Label>
+                  <NumberInput
+                    id="flag-index-to"
+                    min={1}
+                    value={indexTo}
+                    required
+                    onChange={(event) =>
+                      setIndexTo(Number.parseInt(event.target.value, 10) || 1)
+                    }
+                  />
+                </div>
+              </div>
+            </fieldset>
           </form>
         </FormModalShell>
       ) : null}

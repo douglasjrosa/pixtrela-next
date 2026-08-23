@@ -10,6 +10,9 @@ import type { SubTaskCategoryListFilters } from "@/lib/schemas/sub-task-category
 import { SETTINGS_ENTITY_LIST_PAGE_SIZE } from "@/lib/schemas/sub-task-category";
 import { categoryListFilterKey } from "@/lib/settings/category-list-params";
 
+const ROW_LINK_CLASS =
+  "text-inherit after:absolute after:inset-0 after:content-['']";
+
 export type CategoryListRow = {
   id: string;
   name: string;
@@ -68,11 +71,15 @@ export function CategoryListTableFrame({
         </thead>
         <tbody>
           {items.map((row) => (
-            <tr key={row.id} className="border-b hover:bg-muted/40">
+            <tr
+              key={row.id}
+              className="relative cursor-pointer border-b hover:bg-muted/40"
+            >
               <td className="py-3">
                 <Link
                   href={`/settings/subtasks/categories/${row.id}`}
-                  className="font-medium hover:underline"
+                  className={`font-medium ${ROW_LINK_CLASS}`}
+                  aria-label={row.name}
                 >
                   {row.name}
                 </Link>
@@ -100,7 +107,12 @@ export function CategoryListTableFrame({
       </ul>
       {hasMore ? (
         <LoadMoreButtonRow>
-          <LoadMoreButton disabled={loading} onClick={handleLoadMore} />
+          <LoadMoreButton
+            loading={loading}
+            label={t("loadMore")}
+            loadingLabel={t("loadingMore")}
+            onClick={handleLoadMore}
+          />
         </LoadMoreButtonRow>
       ) : null}
     </div>

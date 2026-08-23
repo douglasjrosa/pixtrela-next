@@ -1,6 +1,8 @@
 import { useTranslations } from "next-intl";
 
 import { ColaboratorDailyGain } from "@/components/colaborator/colaborator-daily-gain";
+import type { BalanceCurrencyOption } from "@/components/dashboard/balance-adjustment-modal";
+import type { BalanceAdjustmentResult } from "@/app/(app)/balance-adjustment-actions";
 import type { Role } from "@/lib/auth/nav";
 import type {
   ColaboratorInsightsData,
@@ -25,6 +27,14 @@ export interface ColaboratorInsightsSectionProps {
   selectedName: string;
   insights: ColaboratorInsightsData;
   currencyRankings: CurrencyRanking[];
+  balanceCurrencyOptions?: BalanceCurrencyOption[];
+  defaultBalanceCurrencyId?: string | null;
+  onAdjustBalance?: (input: {
+    colaboratorDocumentId: string;
+    date: string;
+    currencyId: string;
+    amount: number;
+  }) => Promise<BalanceAdjustmentResult>;
 }
 
 export function ColaboratorInsightsSection({
@@ -35,6 +45,9 @@ export function ColaboratorInsightsSection({
   selectedName,
   insights,
   currencyRankings,
+  balanceCurrencyOptions = [],
+  defaultBalanceCurrencyId = null,
+  onAdjustBalance,
 }: ColaboratorInsightsSectionProps) {
   const t = useTranslations("dashboard");
 
@@ -58,6 +71,10 @@ export function ColaboratorInsightsSection({
         <ColaboratorPicker
           options={colaboratorOptions}
           selectedDocumentId={selectedDocumentId}
+          role={role}
+          currencyOptions={balanceCurrencyOptions}
+          defaultCurrencyId={defaultBalanceCurrencyId}
+          onAdjustBalance={onAdjustBalance}
         />
       ) : (
         <ColaboratorLabel name={selectedName} />

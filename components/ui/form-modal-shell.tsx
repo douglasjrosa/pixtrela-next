@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const SIZE_CLASS = {
+  xs: "max-w-[16rem]",
+  sm: "max-w-[20rem]",
   md: "max-w-lg",
   lgNarrow: "max-w-xl",
   lg: "max-w-2xl",
@@ -80,12 +82,19 @@ export function FormModalShell({
   const generatedTitleId = useId();
   const titleId = titleIdProp ?? generatedTitleId;
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  const disabledRef = useRef(disabled);
   const showFooter = footerStart != null || footerEnd != null;
   const isViewport = layout === "viewport";
   const overlayZ =
     layer === "nested"
       ? FORM_MODAL_NESTED_OVERLAY_Z_CLASS
       : FORM_MODAL_OVERLAY_Z_CLASS;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    disabledRef.current = disabled;
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -95,7 +104,9 @@ export function FormModalShell({
     closeButtonRef.current?.focus();
 
     function handleKeyDown(event: KeyboardEvent): void {
-      if (event.key === "Escape" && !disabled) onClose();
+      if (event.key === "Escape" && !disabledRef.current) {
+        onCloseRef.current();
+      }
     }
 
     window.addEventListener("keydown", handleKeyDown);
@@ -103,7 +114,7 @@ export function FormModalShell({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, onClose, disabled]);
+  }, [open]);
 
   if (!open) return null;
 

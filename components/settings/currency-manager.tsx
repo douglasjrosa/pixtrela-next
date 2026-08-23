@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { CurrencyFormModal } from "@/components/settings/currency-form-modal";
-import { Button } from "@/components/ui/button";
+import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import { isPrimaryCurrencyDocument } from "@/lib/business/primary-currency";
 import type { CurrencyFormInput } from "@/lib/schemas/currency";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
@@ -137,14 +138,11 @@ export function CurrencyManager({
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">{tSettings("currency")}</h2>
-        <Button
-          type="button"
-          variant="outline"
+        <AddNewButton
+          label={tSettings("newCurrency")}
           disabled={isPending}
           onClick={() => setModal({ mode: "create" })}
-        >
-          {tSettings("newCurrency")}
-        </Button>
+        />
       </div>
 
       {currencies.length === 0 ? (
@@ -225,7 +223,10 @@ export function CurrencyManager({
         defaultValues={defaultValues}
         initialIconUrl={initialIconUrl}
         saving={isPending}
-        showDelete={modal.mode === "edit"}
+        showDelete={
+          modal.mode === "edit" &&
+          !isPrimaryCurrencyDocument(modal.currency.documentId, currencies)
+        }
         onClose={closeModal}
         onSave={handleSave}
         onDelete={() => setDeleteOpen(true)}

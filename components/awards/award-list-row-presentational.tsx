@@ -14,6 +14,8 @@ const CENTER_CELL_CLASS = "text-center";
 
 export type AwardListRowLabels = {
   cost: string;
+  stock: string;
+  showInStore: string;
   inactive: string;
   selectRow: string;
 };
@@ -90,6 +92,17 @@ export function AwardListRowPresentational({
         >
           {labels.cost}
         </td>
+        <td
+          className={cn(
+            CENTER_CELL_CLASS,
+            "tabular-nums text-muted-foreground",
+          )}
+        >
+          {labels.stock}
+        </td>
+        <td className={cn(CENTER_CELL_CLASS, "text-muted-foreground")}>
+          {labels.showInStore}
+        </td>
       </tr>
     );
   }
@@ -116,6 +129,9 @@ export function AwardListRowPresentational({
           <p className="truncate font-medium">{titleCell}</p>
           <p className="text-sm text-muted-foreground tabular-nums">
             {labels.cost}
+          </p>
+          <p className="text-sm text-muted-foreground tabular-nums">
+            {labels.stock} · {labels.showInStore}
           </p>
         </div>
       </div>

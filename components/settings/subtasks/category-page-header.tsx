@@ -48,13 +48,15 @@ export function CategoryPageHeader() {
 
   return (
     <>
-      <AddNewButton onClick={() => setOpen(true)}>{t("newCategory")}</AddNewButton>
+      <AddNewButton label={t("newCategory")} onClick={() => setOpen(true)} />
       {open ? (
         <FormModalShell
           open
           title={t("newCategory")}
           onClose={close}
           disabled={isPending}
+          size="md"
+          fillBody={false}
           footerEnd={
             <Button type="submit" form={FORM_ID} disabled={isPending}>
               {tCommon("save")}

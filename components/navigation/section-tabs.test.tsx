@@ -56,4 +56,30 @@ describe("SectionTabs", () => {
       "page",
     );
   });
+
+  it("uses activePrefix when the tab href is a nested child route", () => {
+    mockPathname.value = "/settings/subtasks/flags";
+
+    renderWithIntl(
+      <SectionTabs
+        ariaLabel="Configurações"
+        items={[
+          {
+            href: "/settings/subtasks/categories",
+            activePrefix: "/settings/subtasks",
+            label: "Subtarefas",
+          },
+          { href: "/settings/steps", label: "Etapas" },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Subtarefas" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByRole("link", { name: "Etapas" })).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
 });

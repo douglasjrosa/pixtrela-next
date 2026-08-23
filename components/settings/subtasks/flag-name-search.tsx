@@ -6,7 +6,9 @@ import { useTranslations } from "next-intl";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 import { SETTINGS_ENTITY_LIST_SEARCH_MIN_CHARS } from "@/lib/schemas/sub-task-category";
+import { cn } from "@/lib/utils";
 import {
   parseFlagListSearchParams,
   serializeFlagListSearchParams,
@@ -85,7 +87,7 @@ export function FlagNameSearch({
         </Label>
         <select
           id="flag-filter-category"
-          className="flex h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+          className={cn(NATIVE_SELECT_CLASS_NAME, "h-9 w-auto")}
           value={filters.categoryId ?? ""}
           onChange={(event) => handleCategoryChange(event.target.value)}
         >

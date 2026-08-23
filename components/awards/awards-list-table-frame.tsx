@@ -96,6 +96,8 @@ export function AwardsListTableFrame({
   function labelsFor(award: AwardRow) {
     return {
       cost: awardCostLabel(award, currencies, tAwards("noCost")),
+      stock: String(award.stock),
+      showInStore: award.showInStore ? tCommon("yes") : tCommon("no"),
       inactive: tAwards("inactive"),
       selectRow: tCommon("selectRow", { name: awardDisplayTitle(award) }),
     };

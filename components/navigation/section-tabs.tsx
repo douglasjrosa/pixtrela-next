@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 export interface SectionTabItem {
   href: string;
   label: string;
+  activePrefix?: string;
 }
 
 export interface SectionTabsProps {
@@ -25,8 +26,9 @@ export function SectionTabs({ items, className, ariaLabel }: SectionTabsProps) {
       aria-label={ariaLabel}
     >
       {items.map((item) => {
+        const activePath = item.activePrefix ?? item.href;
         const isActive =
-          pathname === item.href || pathname.startsWith(`${item.href}/`);
+          pathname === activePath || pathname.startsWith(`${activePath}/`);
 
         return (
           <Link

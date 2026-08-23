@@ -1,6 +1,8 @@
 import { getRequestConfig } from "next-intl/server";
 
-export const LOCALE = "pt-BR";
+import { APP_LOCALE } from "@/lib/i18n/locale";
+
+export const LOCALE = APP_LOCALE;
 
 export default getRequestConfig(async () => ({
   locale: LOCALE,

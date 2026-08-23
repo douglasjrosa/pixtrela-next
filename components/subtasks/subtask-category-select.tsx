@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { listCategoryOptions } from "@/app/(app)/settings/subtasks/actions";
 import { Label } from "@/components/ui/label";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 
 export type SubTaskCategoryOption = {
   id: string;
@@ -40,7 +41,7 @@ export function SubTaskCategorySelect({
       <Label htmlFor={id}>{t("subTaskCategory")}</Label>
       <select
         id={id}
-        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+        className={NATIVE_SELECT_CLASS_NAME}
         disabled={disabled}
         value={value ?? ""}
         onChange={(event) => onChange(event.target.value || null)}

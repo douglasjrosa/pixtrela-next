@@ -1,7 +1,9 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
   doublePrecision,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -10,6 +12,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -65,16 +68,61 @@ export const activityActionEnum = pgEnum("activity_action", [
   "stoped",
 ]);
 
-export const mediaAssets = pgTable("media_assets", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  storageKey: text("storage_key").notNull(),
-  url: text("url").notNull(),
-  mimeType: varchar("mime_type", { length: 128 }),
-  byteSize: integer("byte_size"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
+export const cartStatusEnum = pgEnum("cart_status", [
+  "open",
+  "checked_out",
+  "abandoned",
+]);
+
+export const exchangeOrderStatusEnum = pgEnum("exchange_order_status", [
+  "completed",
+  "cancelled",
+]);
+
+export const mediaCategoryEnum = pgEnum("media_category", [
+  "avatar",
+  "face",
+  "award",
+  "currency",
+  "branding",
+  "route_theme",
+  "document",
+  "other",
+]);
+
+export const mediaSensitivityEnum = pgEnum("media_sensitivity", [
+  "public",
+  "internal",
+  "biometric",
+]);
+
+export const mediaAssets = pgTable(
+  "media_assets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    storageKey: text("storage_key").notNull(),
+    url: text("url").notNull(),
+    mimeType: varchar("mime_type", { length: 128 }),
+    byteSize: integer("byte_size"),
+    originalFilename: varchar("original_filename", { length: 255 }),
+    displayName: varchar("display_name", { length: 255 }),
+    description: text("description"),
+    altText: varchar("alt_text", { length: 512 }),
+    title: varchar("title", { length: 255 }),
+    category: mediaCategoryEnum("category").default("other").notNull(),
+    sensitivity: mediaSensitivityEnum("sensitivity").default("public").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("media_assets_category_idx").on(table.category),
+    index("media_assets_sensitivity_idx").on(table.sensitivity),
+  ],
+);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -216,6 +264,32 @@ export const routeThemes = pgTable("route_themes", {
 export const semanticThemeSettings = pgTable("semantic_theme_settings", {
   id: uuid("id").defaultRandom().primaryKey(),
   tokens: jsonb("tokens").$type<Record<string, string>>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const appBrandingSettings = pgTable("app_branding_settings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  menuLogoMediaId: uuid("menu_logo_media_id").references(() => mediaAssets.id, {
+    onDelete: "set null",
+  }),
+  menuLogoBackgroundColor: varchar("menu_logo_background_color", { length: 32 }),
+  menuLogoBackgroundColorOpacity: doublePrecision(
+    "menu_logo_background_color_opacity",
+  ).default(0),
+  rankingFirstMediaId: uuid("ranking_first_media_id").references(
+    () => mediaAssets.id,
+    { onDelete: "set null" },
+  ),
+  rankingSecondMediaId: uuid("ranking_second_media_id").references(
+    () => mediaAssets.id,
+    { onDelete: "set null" },
+  ),
+  rankingThirdMediaId: uuid("ranking_third_media_id").references(
+    () => mediaAssets.id,
+    { onDelete: "set null" },
+  ),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -527,16 +601,116 @@ export const balances = pgTable("balances", {
     .notNull(),
 });
 
-export const exchanges = pgTable("exchanges", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id")
-    .references(() => users.id)
-    .notNull(),
-  awardTitle: text("award_title").notNull(),
-  currencyPluralTitle: text("currency_plural_title").notNull(),
-  qty: integer("qty").default(1).notNull(),
-  numberOf: doublePrecision("number_of").notNull(),
-  timestamp: timestamp("timestamp", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
+export const carts = pgTable(
+  "carts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .references(() => users.id)
+      .notNull(),
+    status: cartStatusEnum("status").default("open").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("carts_one_open_per_user")
+      .on(table.userId)
+      .where(sql`${table.status} = 'open'`),
+  ],
+);
+
+export const cartItems = pgTable(
+  "cart_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    cartId: uuid("cart_id")
+      .references(() => carts.id, { onDelete: "cascade" })
+      .notNull(),
+    awardId: uuid("award_id")
+      .references(() => awards.id)
+      .notNull(),
+    qty: integer("qty").default(1).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("cart_items_cart_award_unique").on(table.cartId, table.awardId),
+    index("cart_items_cart_id_idx").on(table.cartId),
+  ],
+);
+
+export const exchangeOrders = pgTable(
+  "exchange_orders",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .references(() => users.id)
+      .notNull(),
+    status: exchangeOrderStatusEnum("status").default("completed").notNull(),
+    currencyPluralTitle: text("currency_plural_title").notNull(),
+    totalNumberOf: doublePrecision("total_number_of").notNull(),
+    itemCount: integer("item_count").default(0).notNull(),
+    checkedOutAt: timestamp("checked_out_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("exchange_orders_user_checked_out_idx").on(
+      table.userId,
+      table.checkedOutAt,
+    ),
+  ],
+);
+
+export const exchangeOrderItems = pgTable(
+  "exchange_order_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderId: uuid("order_id")
+      .references(() => exchangeOrders.id, { onDelete: "cascade" })
+      .notNull(),
+    awardId: uuid("award_id").references(() => awards.id, {
+      onDelete: "set null",
+    }),
+    awardTitle: text("award_title").notNull(),
+    qty: integer("qty").default(1).notNull(),
+    unitNumberOf: doublePrecision("unit_number_of").notNull(),
+    lineNumberOf: doublePrecision("line_number_of").notNull(),
+  },
+  (table) => [index("exchange_order_items_order_id_idx").on(table.orderId)],
+);
+
+export const exchanges = pgTable(
+  "exchanges",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .references(() => users.id)
+      .notNull(),
+    orderId: uuid("order_id").references(() => exchangeOrders.id, {
+      onDelete: "set null",
+    }),
+    awardTitle: text("award_title").notNull(),
+    currencyPluralTitle: text("currency_plural_title").notNull(),
+    qty: integer("qty").default(1).notNull(),
+    numberOf: doublePrecision("number_of").notNull(),
+    timestamp: timestamp("timestamp", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index("exchanges_order_id_idx").on(table.orderId)],
+);

@@ -9,7 +9,7 @@ const findUserIdByTag = vi.fn();
 const setUserAvatarMedia = vi.fn();
 const setUserFacePhotoMedia = vi.fn();
 const storeMedia = vi.fn();
-const getDb = vi.fn();
+const insertMediaAsset = vi.fn();
 const listUsers = vi.fn();
 
 vi.mock("@/auth", () => ({
@@ -54,14 +54,14 @@ vi.mock("@/lib/media/store-media", () => ({
   storeMedia: (...args: unknown[]) => storeMedia(...args),
 }));
 
+vi.mock("@/lib/repos/media", () => ({
+  insertMediaAsset: (...args: unknown[]) => insertMediaAsset(...args),
+}));
+
 const loadUserListPageMock = vi.fn();
 
 vi.mock("@/lib/users/load-user-list-page", () => ({
   loadUserListPage: (...args: unknown[]) => loadUserListPageMock(...args),
-}));
-
-vi.mock("@/lib/db/client", () => ({
-  getDb: () => getDb(),
 }));
 
 describe("users/actions drizzle CRUD", () => {
@@ -76,6 +76,7 @@ describe("users/actions drizzle CRUD", () => {
     setUserAvatarMedia.mockReset();
     setUserFacePhotoMedia.mockReset();
     storeMedia.mockReset();
+    insertMediaAsset.mockReset();
     loadUserListPageMock.mockReset();
     listUsers.mockResolvedValue([]);
   });
@@ -201,10 +202,7 @@ describe("users/actions drizzle CRUD", () => {
       mimeType: "image/jpeg",
       byteSize: 4,
     });
-    const returning = vi.fn().mockResolvedValue([{ id: "media-1" }]);
-    const values = vi.fn().mockReturnValue({ returning });
-    const insert = vi.fn().mockReturnValue({ values });
-    getDb.mockReturnValue({ insert });
+    insertMediaAsset.mockResolvedValue({ id: "media-1" });
 
     const formData = new FormData();
     formData.append(
@@ -215,7 +213,14 @@ describe("users/actions drizzle CRUD", () => {
     const { updateUserImage } = await import("./actions");
     await updateUserImage("u1", "avatar", formData);
 
-    expect(setUserAvatarMedia).toHaveBeenCalledWith("u1", "media-1", expect.anything());
+    expect(insertMediaAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ storageKey: "k" }),
+      expect.objectContaining({
+        category: "avatar",
+        sensitivity: "internal",
+      }),
+    );
+    expect(setUserAvatarMedia).toHaveBeenCalledWith("u1", "media-1");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 });

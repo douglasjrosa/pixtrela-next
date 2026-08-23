@@ -5,6 +5,7 @@ import {
   CurrencyManager,
   type CurrencyRow,
 } from "@/components/settings/currency-manager";
+import { primaryCurrencyDocumentId } from "@/lib/business/primary-currency";
 import { listCurrencies as listCurrenciesRepo } from "@/lib/repos/awards";
 import { loadCurrencyForSubtasks } from "@/lib/settings/load-currency-for-subtasks";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
@@ -52,7 +53,9 @@ export default async function SettingsCurrencyPage() {
       />
       <CurrencyForm
         currencies={currencies}
-        activeCurrencyDocumentId={activeCurrencyDocumentId}
+        activeCurrencyDocumentId={
+          activeCurrencyDocumentId || primaryCurrencyDocumentId(currencies) || ""
+        }
         onSave={updateCurrencyForSubtasks}
       />
     </div>

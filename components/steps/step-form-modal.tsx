@@ -134,7 +134,7 @@ export function StepFormModal({
                 disabled={saving}
                 className={cn(
                   "flex h-9 w-full rounded-md border border-input",
-                  "bg-transparent px-3 text-sm",
+                  "bg-transparent px-3 text-sm text-foreground",
                 )}
                 {...register("orderBy")}
               >

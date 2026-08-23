@@ -2,23 +2,28 @@
 
 import {
   Suspense,
+  useCallback,
   useState,
   useTransition,
-  type ChangeEvent,
   type ReactNode,
 } from "react";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
+import { MediaPickerModal } from "@/components/settings/media-picker-modal";
 import { Button } from "@/components/ui/button";
 import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { buildAwardValuesForCurrencies } from "@/lib/awards/build-award-form-values";
+import type { MediaAssetRecord } from "@/lib/repos/media";
 import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
 
 import { AwardListProvider } from "./award-list-context";
@@ -38,7 +43,8 @@ export interface AwardManagerProps {
   onUpdate: (documentId: string, values: AwardFormInput) => void | Promise<void>;
   onArchive: (documentId: string) => void | Promise<void>;
   onHardDelete: (documentId: string) => void | Promise<void>;
-  onUploadImage: (formData: FormData) => Promise<number | string>;
+  onListImages: () => Promise<MediaAssetRecord[]>;
+  onUploadImage: (formData: FormData) => Promise<MediaAssetRecord>;
   /** When false, catalog is read-only (manager view). */
   canManage?: boolean;
   canDeactivate?: boolean;
@@ -46,7 +52,6 @@ export interface AwardManagerProps {
 }
 
 function defaultValues(currencies: CurrencyOption[]): AwardFormInput {
-  const defaultCurrencyId = currencies[0]?.documentId ?? "";
   return {
     name: "",
     title: "",
@@ -55,7 +60,7 @@ function defaultValues(currencies: CurrencyOption[]): AwardFormInput {
     imageId: null,
     showInStore: true,
     stock: 0,
-    values: [{ numberOf: 1, currencyDocumentId: defaultCurrencyId }],
+    values: buildAwardValuesForCurrencies(currencies),
   };
 }
 
@@ -71,10 +76,7 @@ function toFormValues(
     imageId: award.imageId ?? null,
     showInStore: award.showInStore,
     stock: award.stock,
-    values:
-      award.values.length > 0
-        ? award.values
-        : [{ numberOf: 1, currencyDocumentId: currencies[0]?.documentId ?? "" }],
+    values: buildAwardValuesForCurrencies(currencies, award.values),
   };
 }
 
@@ -87,7 +89,8 @@ interface AwardFormDialogProps {
   onClose: () => void;
   onSubmit: (values: AwardFormInput) => void;
   onDestructiveAction?: () => void;
-  onUploadImage: (formData: FormData) => Promise<number | string>;
+  onListImages: () => Promise<MediaAssetRecord[]>;
+  onUploadImage: (formData: FormData) => Promise<MediaAssetRecord>;
 }
 
 function AwardFormDialog({
@@ -99,6 +102,7 @@ function AwardFormDialog({
   onClose,
   onSubmit,
   onDestructiveAction,
+  onListImages,
   onUploadImage,
 }: AwardFormDialogProps) {
   const tCommon = useTranslations("common");
@@ -106,11 +110,11 @@ function AwardFormDialog({
   const isEditing = editingAward !== null;
   const formDisabled = isPending || readOnly;
   const formTitleId = "award-form-title";
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     editingAward?.imageUrl ?? null,
   );
-  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
-  const [, startUploadTransition] = useTransition();
+  const listImages = useCallback(() => onListImages(), [onListImages]);
 
   const {
     register,
@@ -125,43 +129,24 @@ function AwardFormDialog({
       : defaultValues(currencies),
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: "values",
-  });
-
   const imageId = useWatch({ control, name: "imageId" });
 
-  function handleImageChange(event: ChangeEvent<HTMLInputElement>): void {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setPreviewUrl(URL.createObjectURL(file));
-    startUploadTransition(async () => {
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const id = await onUploadImage(formData);
-        setValue("imageId", id);
-        setUploadMessage(tAwards("imageSelected"));
-      } catch {
-        setPreviewUrl(editingAward?.imageUrl ?? null);
-        setValue("imageId", editingAward?.imageId ?? null);
-        setUploadMessage(tAwards("imageUploadFailed"));
-      }
-    });
+  function handleImageConfirm(asset: MediaAssetRecord): void {
+    setPickerOpen(false);
+    setValue("imageId", asset.id);
+    setPreviewUrl(asset.browserUrl);
   }
 
-  const textareaClass = cn(
-    "flex min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2",
-    "text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none",
-    "focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
-    "disabled:opacity-50",
-  );
+  function handleImageRemove(): void {
+    setValue("imageId", null);
+    setPreviewUrl(null);
+  }
+
   const formId = "award-form";
 
   return (
-    <FormModalShell
+    <>
+      <FormModalShell
       open
       size="lgNarrow"
       title={isEditing ? tAwards("editAward") : tAwards("newAward")}
@@ -199,15 +184,6 @@ function AwardFormDialog({
         onSubmit={handleSubmit(onSubmit)}
         className="grid gap-4 sm:grid-cols-2"
       >
-        {uploadMessage ? (
-          <p
-            role="status"
-            className="sm:col-span-2 text-sm text-muted-foreground"
-          >
-            {uploadMessage}
-          </p>
-        ) : null}
-
         <div className="space-y-2">
           <Label htmlFor="name">{tAwards("name")}</Label>
           <Input id="name" disabled={formDisabled} {...register("name")} />
@@ -223,9 +199,8 @@ function AwardFormDialog({
 
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="description">{tAwards("description")}</Label>
-          <textarea
+          <Textarea
             id="description"
-            className={textareaClass}
             disabled={formDisabled}
             {...register("description")}
           />
@@ -233,25 +208,43 @@ function AwardFormDialog({
 
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="warnings">{tAwards("warnings")}</Label>
-          <textarea
+          <Textarea
             id="warnings"
-            className={textareaClass}
             disabled={formDisabled}
             {...register("warnings")}
           />
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="image">{tAwards("image")}</Label>
+          <Label>{tAwards("image")}</Label>
           <div className="flex flex-wrap items-start gap-4">
-            <div className="min-w-0 flex-1 space-y-2">
-              <Input
-                id="image"
-                type="file"
-                accept="image/*"
-                disabled={formDisabled}
-                onChange={handleImageChange}
+            {previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={previewUrl}
+                alt=""
+                role="presentation"
+                className="h-24 w-24 shrink-0 rounded-md border object-cover"
               />
+            ) : null}
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  disabled={formDisabled}
+                  onClick={() => setPickerOpen(true)}
+                >
+                  {tAwards("imageChoose")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={formDisabled || !imageId}
+                  onClick={handleImageRemove}
+                >
+                  {tAwards("imageRemove")}
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
                 {tAwards("imageHint")}
               </p>
@@ -261,89 +254,16 @@ function AwardFormDialog({
                 </p>
               ) : null}
             </div>
-            {previewUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- blob preview URL
-              <img
-                src={previewUrl}
-                alt=""
-                role="presentation"
-                className="h-24 w-24 shrink-0 rounded-md border object-cover"
-              />
-            ) : null}
           </div>
         </div>
 
-        <div className="space-y-4 sm:col-span-2">
-          <Label>{tAwards("values")}</Label>
-          {fields.map((field, index) => (
-            <div key={field.id} className="flex flex-wrap gap-2">
-              <Input
-                type="number"
-                min={1}
-                className="w-28"
-                disabled={formDisabled}
-                aria-label={tAwards("numberOf")}
-                {...register(`values.${index}.numberOf`, { valueAsNumber: true })}
-              />
-              <select
-                className={
-                  "flex h-9 min-w-40 flex-1 rounded-md border border-input " +
-                  "bg-transparent px-3 text-sm"
-                }
-                disabled={formDisabled}
-                aria-label={tAwards("currency")}
-                {...register(`values.${index}.currencyDocumentId`)}
-              >
-                {currencies.map((currency) => (
-                  <option key={currency.documentId} value={currency.documentId}>
-                    {currencyLabel(currency)}
-                  </option>
-                ))}
-              </select>
-              {fields.length > 1 && !readOnly ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => remove(index)}
-                >
-                  {tCommon("delete")}
-                </Button>
-              ) : null}
-            </div>
-          ))}
-          {!readOnly ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                append({
-                  numberOf: 1,
-                  currencyDocumentId: currencies[0]?.documentId ?? "",
-                })
-              }
-            >
-              {tAwards("addValue")}
-            </Button>
-          ) : null}
-        </div>
-
-        <div className="flex flex-wrap items-end gap-6 sm:col-span-2">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className={cn("size-4 rounded border accent-primary")}
-              disabled={formDisabled}
-              {...register("showInStore")}
-            />
-            {tAwards("showInStore")}
-          </label>
-          <div className="space-y-2">
-            <Label htmlFor="stock">{tAwards("stock")}</Label>
-            <Input
+        <div className="flex flex-wrap items-end justify-between gap-6 sm:col-span-2">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="stock" className="block">
+              {tAwards("stock")}
+            </Label>
+            <NumberInput
               id="stock"
-              type="number"
               min={0}
               className="w-32"
               disabled={formDisabled}
@@ -353,9 +273,55 @@ function AwardFormDialog({
               <p className="text-sm text-destructive">{errors.stock.message}</p>
             ) : null}
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className={cn("size-4 rounded border accent-primary")}
+              disabled={formDisabled}
+              {...register("showInStore")}
+            />
+            {tAwards("showInStore")}
+          </label>
+        </div>
+
+        <div className="space-y-4 sm:col-span-2">
+          <h3 className="text-base font-semibold">{tAwards("values")}</h3>
+          <div className="flex flex-wrap items-start gap-4">
+            {currencies.map((currency, index) => (
+              <div key={currency.documentId} className="flex flex-col gap-2">
+                <Label htmlFor={`award-value-${currency.documentId}`}>
+                  {currencyLabel(currency)}
+                </Label>
+                <input
+                  type="hidden"
+                  {...register(`values.${index}.currencyDocumentId`)}
+                />
+                <NumberInput
+                  id={`award-value-${currency.documentId}`}
+                  min={0}
+                  className="w-28"
+                  disabled={formDisabled}
+                  {...register(`values.${index}.numberOf`, { valueAsNumber: true })}
+                />
+              </div>
+            ))}
+          </div>
+          {errors.values ? (
+            <p className="text-sm text-destructive">{errors.values.message}</p>
+          ) : null}
         </div>
       </form>
     </FormModalShell>
+
+      <MediaPickerModal
+        open={pickerOpen}
+        selectedId={imageId}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={handleImageConfirm}
+        onListImages={listImages}
+        onUploadImage={onUploadImage}
+      />
+    </>
   );
 }
 
@@ -366,6 +332,7 @@ export function AwardManager({
   onUpdate,
   onArchive,
   onHardDelete,
+  onListImages,
   onUploadImage,
   canManage = true,
   canDeactivate = false,
@@ -477,6 +444,7 @@ export function AwardManager({
             onDestructiveAction={
               destructiveAction ? () => setConfirmOpen(true) : undefined
             }
+            onListImages={onListImages}
             onUploadImage={onUploadImage}
           />
         ) : null}

@@ -46,7 +46,7 @@ export function ColaboratorDailyGain({
       <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         {t("todayGainTitle")}
       </h2>
-      <p className="text-4xl font-bold tabular-nums text-[var(--star-gold-foreground)]">
+      <p className="text-4xl font-bold tabular-nums text-foreground">
         {todayGain}
       </p>
       <p className="text-sm text-muted-foreground">{currencyLabel}</p>

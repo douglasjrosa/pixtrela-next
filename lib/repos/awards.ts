@@ -105,7 +105,7 @@ async function loadPricesByAwardIds(
   for (const row of rows) {
     const list = pricesByAward.get(row.awardId) ?? [];
     list.push({
-      numberOf: Math.max(1, Math.floor(row.numberOf)),
+      numberOf: Math.max(0, Math.floor(row.numberOf)),
       currencyId: row.currencyId,
     });
     pricesByAward.set(row.awardId, list);

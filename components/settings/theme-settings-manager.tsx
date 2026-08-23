@@ -10,11 +10,11 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
-import { DefaultColorsSection } from "@/components/settings/default-colors-section";
 import { SettingsSectionHeading } from "@/components/settings/settings-section-heading";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NATIVE_SELECT_TALL_CLASS_NAME } from "@/lib/ui/native-select";
 import type { RouteThemeFormInput } from "@/lib/schemas/route-theme";
 import {
   BACKGROUND_MOTIONS,
@@ -30,7 +30,6 @@ import {
   DEFAULT_PAGE_MARGIN_MOBILE,
   DEFAULT_PARALLAX_DIRECTION,
   DEFAULT_PARALLAX_INTENSITY,
-  DEFAULT_FOREGROUND_COLOR,
   DEFAULT_SURFACE_COLOR,
   DEFAULT_SURFACE_COLOR_OPACITY,
   FULLY_TRANSPARENT_OPACITY,
@@ -51,11 +50,7 @@ import { cn } from "@/lib/utils";
 
 export interface ThemeSettingsManagerProps {
   themes: RouteThemeView[];
-  initialSemanticTokens: import("@/lib/themes/semantic-tokens").SemanticTokens;
   onSave: (documentId: string, values: RouteThemeFormInput) => Promise<void>;
-  onSaveSemanticTokens: (
-    tokens: import("@/lib/themes/semantic-tokens").SemanticTokens,
-  ) => Promise<void>;
   onUploadImage: (formData: FormData) => Promise<number | string>;
 }
 
@@ -73,7 +68,6 @@ interface ThemeDraft {
   parallaxDirection: ParallaxDirection;
   contentMarginMobile: PageMargin;
   contentMarginDesktop: PageMargin;
-  foregroundColor: string;
   surfaceColor: string;
   surfaceOpacity: number;
   message: string | null;
@@ -96,15 +90,13 @@ function draftFromTheme(theme: RouteThemeView): ThemeDraft {
       theme.contentMarginMobile || DEFAULT_PAGE_MARGIN_MOBILE,
     contentMarginDesktop:
       theme.contentMarginDesktop || DEFAULT_PAGE_MARGIN_DESKTOP,
-    foregroundColor: theme.foregroundColor || DEFAULT_FOREGROUND_COLOR,
     surfaceColor: theme.surfaceColor || DEFAULT_SURFACE_COLOR,
     surfaceOpacity: theme.surfaceColorOpacity ?? DEFAULT_SURFACE_COLOR_OPACITY,
     message: null,
   };
 }
 
-const selectClassName =
-  "flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm";
+const selectClassName = NATIVE_SELECT_TALL_CLASS_NAME;
 
 const CHECKERBOARD =
   "repeating-conic-gradient(#d4d4d4 0% 25%, #fafafa 0% 50%) 50% / 10px 10px";
@@ -158,9 +150,7 @@ function ImagePreviewRect({
 
 export function ThemeSettingsManager({
   themes,
-  initialSemanticTokens,
   onSave,
-  onSaveSemanticTokens,
   onUploadImage,
 }: ThemeSettingsManagerProps) {
   const router = useRouter();
@@ -242,7 +232,6 @@ export function ThemeSettingsManager({
         parallaxDirection: values.parallaxDirection,
         contentMarginMobile: values.contentMarginMobile,
         contentMarginDesktop: values.contentMarginDesktop,
-        foregroundColor: values.foregroundColor,
         surfaceColor: values.surfaceColor,
         surfaceColorOpacity: values.surfaceOpacity,
       });
@@ -286,11 +275,6 @@ export function ThemeSettingsManager({
 
   return (
     <div className="space-y-10">
-      <DefaultColorsSection
-        initialTokens={initialSemanticTokens}
-        onSave={onSaveSemanticTokens}
-      />
-
       <section className="space-y-4">
         <SettingsSectionHeading title={t("routeThemesTitle")} />
         <p className="text-sm text-muted-foreground">{t("themesHelp")}</p>
@@ -415,53 +399,6 @@ export function ThemeSettingsManager({
             }}
           >
             <p className="text-sm text-muted-foreground">{editingTheme.routeKey}</p>
-
-            <div className="space-y-2">
-              <Label htmlFor="theme-foreground">{t("themesForegroundColor")}</Label>
-              <div className="flex flex-wrap gap-2">
-                <Input
-                  id="theme-foreground"
-                  type="color"
-                  className="h-12 w-16 cursor-pointer p-1"
-                  value={
-                    /^#([0-9A-Fa-f]{6})$/.test(draft.foregroundColor)
-                      ? draft.foregroundColor
-                      : DEFAULT_FOREGROUND_COLOR
-                  }
-                  disabled={busy}
-                  onChange={(event) =>
-                    patchDraft({
-                      foregroundColor: event.target.value,
-                      message: null,
-                    })
-                  }
-                />
-                <Input
-                  value={draft.foregroundColor}
-                  placeholder={DEFAULT_FOREGROUND_COLOR}
-                  disabled={busy}
-                  onChange={(event) =>
-                    patchDraft({
-                      foregroundColor: event.target.value,
-                      message: null,
-                    })
-                  }
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() =>
-                    patchDraft({
-                      foregroundColor: DEFAULT_FOREGROUND_COLOR,
-                      message: null,
-                    })
-                  }
-                >
-                  {t("themesForegroundReset")}
-                </Button>
-              </div>
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="theme-surface">{t("themesSurfaceColor")}</Label>
