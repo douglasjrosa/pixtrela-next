@@ -54,12 +54,13 @@ export async function DeliverySheetsPrint({
       ) : (
         <div className="space-y-6">
           {deliveries.map((order) => {
+            const lineItemCount = order.items.length;
             const totalPrizes = order.items.reduce(
               (sum, item) => sum + item.qty,
               0,
             );
             const summaryParts = buildOrderSummaryParts(order, {
-              itemCount: t("itemCount", { count: order.itemCount }),
+              itemCount: t("itemCount", { count: lineItemCount }),
               prizeCount: t("prizeCount", { count: totalPrizes }),
             });
 
