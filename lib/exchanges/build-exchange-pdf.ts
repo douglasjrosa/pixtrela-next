@@ -41,7 +41,7 @@ async function buildDeliveryLabels(
     signature: t("signature"),
     dateLine: t("dateLine"),
     formatOrderSummary: (itemCount: number, totalPrizes: number) =>
-      `${t("itemCount", { count: itemCount })}, ${t("totalPrizes", { count: totalPrizes })}`,
+      `${t("itemCount", { count: itemCount })}, ${t("prizeCount", { count: totalPrizes })}`,
   };
 }
 
