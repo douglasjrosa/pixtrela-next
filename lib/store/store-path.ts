@@ -3,6 +3,9 @@ export function buildStorePath(documentId: string): string {
   return `/${documentId}/store`;
 }
 
+/** Next.js dynamic path for revalidating every colaborator store page. */
+export const COLABORATOR_STORE_PAGE_PATH = "/[documentId]/store";
+
 export function buildStoreCartPath(documentId: string): string {
   return `/${documentId}/store/cart`;
 }

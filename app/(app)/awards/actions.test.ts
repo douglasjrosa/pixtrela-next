@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTag = vi.fn();
+const revalidatePath = vi.fn();
 const createAwardRepo = vi.fn();
 const replaceAwardPrices = vi.fn();
 const deleteAwardRepo = vi.fn();
@@ -17,6 +18,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
+  revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
 vi.mock("@/lib/repos/awards", () => ({
@@ -63,6 +65,7 @@ describe("awards/actions drizzle CRUD", () => {
   beforeEach(() => {
     vi.resetModules();
     revalidateTag.mockReset();
+    revalidatePath.mockReset();
     createAwardRepo.mockReset();
     replaceAwardPrices.mockReset();
     deleteAwardRepo.mockReset();
@@ -132,6 +135,10 @@ describe("awards/actions drizzle CRUD", () => {
       expect.anything(),
     );
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
+    expect(revalidatePath).toHaveBeenCalledWith(
+      "/[documentId]/store",
+      "layout",
+    );
   });
 
   it("deleteAward archives through repo for manager+", async () => {
@@ -147,6 +154,10 @@ describe("awards/actions drizzle CRUD", () => {
     await permanentlyDeleteAward("award-1");
     expect(hardDeleteAward).toHaveBeenCalledWith("award-1");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
+    expect(revalidatePath).toHaveBeenCalledWith(
+      "/[documentId]/store",
+      "layout",
+    );
   });
 
   it("permanentlyDeleteAward rejects active awards", async () => {
@@ -227,6 +238,10 @@ describe("awards/actions drizzle CRUD", () => {
       expect.anything(),
     );
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
+    expect(revalidatePath).toHaveBeenCalledWith(
+      "/[documentId]/store",
+      "layout",
+    );
   });
 
   it("uploadAwardImage stores media and returns the asset record", async () => {

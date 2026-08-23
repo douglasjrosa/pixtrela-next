@@ -5,6 +5,7 @@ import {
   buildStoreOrderPath,
   buildStoreOrdersPath,
   buildStorePath,
+  COLABORATOR_STORE_PAGE_PATH,
   isUserStorePath,
 } from "./store-path";
 
@@ -18,6 +19,10 @@ describe("store-path helpers", () => {
     expect(buildStoreOrderPath("col-1", "ord-1")).toBe(
       "/col-1/store/orders/ord-1",
     );
+  });
+
+  it("exposes the dynamic store path for cache revalidation", () => {
+    expect(COLABORATOR_STORE_PAGE_PATH).toBe("/[documentId]/store");
   });
 
   it("detects nested store paths", () => {
