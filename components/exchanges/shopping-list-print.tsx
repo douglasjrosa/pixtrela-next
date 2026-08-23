@@ -43,7 +43,7 @@ export async function ShoppingListPrint({
           <thead>
             <tr className="border-b text-left">
               <th className="py-2 pr-3 font-semibold">{t("shoppingList")}</th>
-              <th className="py-2 text-right font-semibold">{t("qty")}</th>
+              <th className="py-2 text-center font-semibold">{t("qty")}</th>
             </tr>
           </thead>
           <tbody>
