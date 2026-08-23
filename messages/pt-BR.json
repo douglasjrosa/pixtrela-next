@@ -335,6 +335,7 @@
     "remove": "Remover",
     "total": "Total",
     "balance": "Seu saldo",
+    "balanceAfterExchanges": "Saldo depois das trocas",
     "starsRemaining": "Faltam {count} para concluir",
     "autoCloseBanner": "O carrinho fecha automaticamente no dia {lastDay}. Não é necessário confirmar a troca.",
     "readOnlyClosed": "A janela de trocas encerrou. Seu carrinho será processado automaticamente.",

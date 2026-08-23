@@ -42,6 +42,7 @@ describe("CartEditor", () => {
 
     const saveButton = screen.getByRole("button", { name: "Salvar" });
     expect(saveButton).toBeDisabled();
+    expect(screen.getByText("Saldo depois das trocas")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "−" })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "+" }));

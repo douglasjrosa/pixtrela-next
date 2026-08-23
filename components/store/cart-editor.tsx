@@ -58,6 +58,7 @@ export function CartEditor({
   const dirty = isCartDraftDirty(baseline, draft);
   const affordable = canAffordCart(spendableBalance, total);
   const remaining = Math.max(0, total - spendableBalance);
+  const balanceAfterExchanges = Math.max(0, spendableBalance - total);
 
   const updateQty = (itemId: string, nextQty: number) => {
     setDraft((current) =>
@@ -157,6 +158,12 @@ export function CartEditor({
           <span>{t("total")}</span>
           <span className="tabular-nums">
             {total} {currencyLabel}
+          </span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span>{t("balanceAfterExchanges")}</span>
+          <span className="tabular-nums font-semibold">
+            {balanceAfterExchanges} {currencyLabel}
           </span>
         </div>
         {!affordable && total > 0 ? (
