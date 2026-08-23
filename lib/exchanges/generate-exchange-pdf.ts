@@ -539,10 +539,12 @@ function drawDeliveryCard(
       .moveTo(leftX, y)
       .lineTo(leftX + halfWidth, y)
       .stroke();
-    doc
-      .moveTo(rightX, y)
-      .lineTo(rightX + halfWidth, y)
-      .stroke();
+    if (redemption) {
+      doc
+        .moveTo(rightX, y)
+        .lineTo(rightX + halfWidth, y)
+        .stroke();
+    }
     y += 2;
   }
 
