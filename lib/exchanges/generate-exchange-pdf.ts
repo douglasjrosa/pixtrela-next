@@ -188,38 +188,20 @@ function shoppingColumnWidths(): {
   unitValue: number;
 } {
   return {
-    item: CONTENT_WIDTH * 0.58,
+    item: CONTENT_WIDTH * 0.72,
     qty: CONTENT_WIDTH * 0.14,
-    unitValue: CONTENT_WIDTH * 0.28,
+    unitValue: CONTENT_WIDTH * 0.14,
   };
-}
-
-function formatShoppingPriceAmount(value: number): string {
-  return new Intl.NumberFormat("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
 }
 
 function drawShoppingUnitValueCell(
   doc: PdfDoc,
-  value: number,
   x: number,
   rowTop: number,
   width: number,
   rowHeight: number,
 ): void {
-  const prefixWidth = doc.widthOfString(BRL_PREFIX) + 4;
-  drawCellText(doc, BRL_PREFIX, x, rowTop, prefixWidth, rowHeight, "left");
-  drawCellText(
-    doc,
-    formatShoppingPriceAmount(value),
-    x,
-    rowTop,
-    width,
-    rowHeight,
-    "center",
-  );
+  drawCellText(doc, BRL_PREFIX, x, rowTop, width, rowHeight, "left");
 }
 
 function shoppingTableColumns(labels: ShoppingListPdfLabels) {
@@ -262,10 +244,7 @@ export function generateShoppingListPdf(
     const rowCells = [
       { text: line.awardTitle, width: widths.item },
       { text: String(line.qty), width: widths.qty },
-      {
-        text: formatShoppingPriceAmount(line.actualPrice),
-        width: widths.unitValue,
-      },
+      { text: BRL_PREFIX, width: widths.unitValue },
     ];
     const rowHeight =
       measureRowHeight(doc, rowCells) + SHOPPING_ROW_VERTICAL_PADDING * 2;
@@ -281,7 +260,6 @@ export function generateShoppingListPdf(
     );
     drawShoppingUnitValueCell(
       doc,
-      line.actualPrice,
       MARGIN + widths.item + widths.qty,
       rowTop,
       widths.unitValue,
