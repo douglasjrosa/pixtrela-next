@@ -3,9 +3,23 @@ import { describe, expect, it } from "vitest";
 import {
   resolveAwardHistoryTitle,
   resolveCurrencyPluralTitle,
+  resolveCurrencyTitle,
 } from "./currency-display";
 
 describe("currency-display", () => {
+  it("uses singular title for amount labels", () => {
+    expect(
+      resolveCurrencyTitle({
+        name: "star",
+        title: "Estrela",
+        pluralTitle: "Estrelas",
+      }),
+    ).toBe("Estrela");
+    expect(resolveCurrencyTitle({ name: "CloseCur-1787113106259" })).toBe(
+      "CloseCur-1787113106259",
+    );
+  });
+
   it("prefers plural title for balance and exchange labels", () => {
     expect(
       resolveCurrencyPluralTitle({
