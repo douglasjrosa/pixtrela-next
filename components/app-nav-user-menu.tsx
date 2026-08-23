@@ -28,7 +28,7 @@ export function AppNavUserMenu({
   useEffect(() => {
     if (!open) return;
 
-    function handlePointerDown(event: MouseEvent): void {
+    function handleClick(event: MouseEvent): void {
       const root = rootRef.current;
       if (!root?.contains(event.target as Node)) {
         setOpen(false);
@@ -39,10 +39,10 @@ export function AppNavUserMenu({
       if (event.key === "Escape") setOpen(false);
     }
 
-    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("click", handleClick);
     window.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("click", handleClick);
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
