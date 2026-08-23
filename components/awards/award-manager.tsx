@@ -273,14 +273,13 @@ function AwardFormDialog({
           </p>
         ) : null}
 
-        <div className="flex flex-wrap items-center justify-between gap-6 sm:col-span-2">
+        <div className="flex flex-wrap items-center gap-6 sm:col-span-2">
           <Controller
             name="showInStore"
             control={control}
             render={({ field }) => (
               <SwitchField
                 id="show-in-store"
-                className="min-w-[12rem] flex-1"
                 label={tAwards("showInStore")}
                 checked={field.value}
                 disabled={formDisabled}
@@ -294,7 +293,6 @@ function AwardFormDialog({
             render={({ field }) => (
               <SwitchField
                 id="auto-recalculate"
-                className="min-w-[12rem] flex-1"
                 label={tAwards("autoRecalculate")}
                 checked={field.value}
                 disabled={formDisabled}

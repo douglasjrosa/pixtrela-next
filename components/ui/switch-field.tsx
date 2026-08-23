@@ -14,7 +14,7 @@ export interface SwitchFieldProps {
   onCheckedChange: (checked: boolean) => void;
 }
 
-/** Switch left of label, spread with justify-between. */
+/** Switch immediately left of its label, aligned to the start. */
 export function SwitchField({
   id,
   label,
@@ -25,7 +25,7 @@ export function SwitchField({
   onCheckedChange,
 }: SwitchFieldProps) {
   return (
-    <div className={cn("flex items-center justify-between gap-3", className)}>
+    <div className={cn("flex items-center justify-start gap-2", className)}>
       <Switch
         id={id}
         checked={checked}
