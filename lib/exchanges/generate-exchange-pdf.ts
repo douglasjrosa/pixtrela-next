@@ -22,13 +22,25 @@ const HEADER_LINE_HEIGHT = 18;
 const SUMMARY_LINE_HEIGHT = 18;
 const TABLE_HEADER_HEIGHT = 22;
 const ROW_MIN_HEIGHT = 14;
-const FOOTER_BLOCK_HEIGHT = 24;
-const FOOTER_TOP_GAP = 10;
+const DELIVERY_ROW_VERTICAL_PADDING = 4;
+const DELIVERY_FOOTER_TOP_GAP = 18;
+const DELIVERY_FOOTER_BLOCK_HEIGHT = 16;
+const DELIVERY_CARD_PADDING_BOTTOM = 8;
 const PAGE_BOTTOM = A4_HEIGHT - MARGIN;
 const SHOPPING_LOGO_SIZE = 28;
 const SHOPPING_HEADER_SIDE_WIDTH = 120;
 const SHOPPING_HEADER_HEIGHT = 36;
 const SHOPPING_HEADER_GAP = 16;
+const SHOPPING_ROW_VERTICAL_PADDING = 4;
+const BRL_PREFIX = "R$";
+const DELIVERY_COLUMN_GAP = 24;
+const DELIVERY_HALF_ITEM_RATIO = 0.78;
+const DELIVERY_HALF_QTY_RATIO = 0.22;
+const DELIVERY_FOOTER_LABEL_GAP = 4;
+const DELIVERY_DATE_SLASH_SLOT_WIDTH = 18;
+const DELIVERY_DATE_SLASH_FONT_SIZE = 14;
+const DELIVERY_DATE_DAY_RATIO = 0.2;
+const DELIVERY_DATE_MONTH_RATIO = 0.2;
 
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
@@ -45,11 +57,11 @@ export type DeliveryPdfLabels = {
   monthYearLabel: string;
   itemColumn: string;
   qtyColumn: string;
-  unitColumn: string;
-  lineTotalColumn: string;
+  currencyColumn: string;
+  redemptionsColumn: string;
   signature: string;
   dateLine: string;
-  formatOrderSummary: (itemCount: number, totalUnits: number) => string;
+  formatOrderSummary: (itemCount: number, totalPrizes: number) => string;
 };
 
 function collectPdfBuffer(doc: PdfDoc): Promise<Buffer> {
@@ -176,21 +188,31 @@ function shoppingColumnWidths(): {
   unitValue: number;
 } {
   return {
-    item: CONTENT_WIDTH * 0.58,
-    qty: CONTENT_WIDTH * 0.14,
-    unitValue: CONTENT_WIDTH * 0.28,
+    item: CONTENT_WIDTH * 0.37,
+    qty: CONTENT_WIDTH * 0.42,
+    unitValue: CONTENT_WIDTH * 0.21,
   };
+}
+
+function drawShoppingUnitValueCell(
+  doc: PdfDoc,
+  x: number,
+  rowTop: number,
+  width: number,
+  rowHeight: number,
+): void {
+  drawCellText(doc, BRL_PREFIX, x, rowTop, width, rowHeight, "left");
 }
 
 function shoppingTableColumns(labels: ShoppingListPdfLabels) {
   const widths = shoppingColumnWidths();
   return [
     { label: labels.itemColumn, width: widths.item },
-    { label: labels.qtyColumn, width: widths.qty, align: "right" as const },
+    { label: labels.qtyColumn, width: widths.qty, align: "center" as const },
     {
       label: labels.unitValueColumn,
       width: widths.unitValue,
-      align: "right" as const,
+      align: "center" as const,
     },
   ];
 }
@@ -222,8 +244,10 @@ export function generateShoppingListPdf(
     const rowCells = [
       { text: line.awardTitle, width: widths.item },
       { text: String(line.qty), width: widths.qty },
+      { text: BRL_PREFIX, width: widths.unitValue },
     ];
-    const rowHeight = measureRowHeight(doc, rowCells);
+    const rowHeight =
+      measureRowHeight(doc, rowCells) + SHOPPING_ROW_VERTICAL_PADDING * 2;
     drawCellText(doc, line.awardTitle, MARGIN, rowTop, widths.item, rowHeight);
     drawCellText(
       doc,
@@ -232,7 +256,14 @@ export function generateShoppingListPdf(
       rowTop,
       widths.qty,
       rowHeight,
-      "right",
+      "center",
+    );
+    drawShoppingUnitValueCell(
+      doc,
+      MARGIN + widths.item + widths.qty,
+      rowTop,
+      widths.unitValue,
+      rowHeight,
     );
     y = rowTop + rowHeight + 4;
     strokeHorizontalRule(doc, y - 2);
@@ -245,17 +276,57 @@ function orderRowCount(order: BatchDeliveryOrder): number {
   return order.items.length;
 }
 
-function orderTotalUnits(order: BatchDeliveryOrder): number {
-  return order.items.reduce((sum, item) => sum + item.lineNumberOf, 0);
+function orderTotalPrizes(order: BatchDeliveryOrder): number {
+  return order.items.reduce((sum, item) => sum + item.qty, 0);
 }
 
-function deliveryColumnWidths(innerWidth: number): number[] {
-  return [
-    innerWidth * 0.46,
-    innerWidth * 0.14,
-    innerWidth * 0.2,
-    innerWidth * 0.2,
-  ];
+function deliveryHalfWidths(innerWidth: number): {
+  halfWidth: number;
+  itemWidth: number;
+  qtyWidth: number;
+} {
+  const halfWidth = (innerWidth - DELIVERY_COLUMN_GAP) / 2;
+  return {
+    halfWidth,
+    itemWidth: halfWidth * DELIVERY_HALF_ITEM_RATIO,
+    qtyWidth: halfWidth * DELIVERY_HALF_QTY_RATIO,
+  };
+}
+
+function deliveryTableRowCount(order: BatchDeliveryOrder): number {
+  return Math.max(order.items.length, order.currencyRedemptions.length);
+}
+
+function measureDeliveryTableHeight(
+  doc: PdfDoc,
+  order: BatchDeliveryOrder,
+  innerWidth: number,
+): number {
+  const { halfWidth, itemWidth, qtyWidth } = deliveryHalfWidths(innerWidth);
+  const rowCount = deliveryTableRowCount(order);
+  let height = TABLE_HEADER_HEIGHT;
+
+  doc.font("Helvetica").fontSize(9);
+  for (let index = 0; index < rowCount; index++) {
+    const item = order.items[index];
+    const redemption = order.currencyRedemptions[index];
+    const cells = [
+      { text: item?.awardTitle ?? "", width: itemWidth },
+      { text: item ? String(item.qty) : "", width: qtyWidth },
+      {
+        text: redemption?.currencyPluralTitle ?? "",
+        width: itemWidth,
+      },
+      {
+        text: redemption ? String(redemption.amount) : "",
+        width: qtyWidth,
+      },
+    ];
+    height +=
+      measureRowHeight(doc, cells) + DELIVERY_ROW_VERTICAL_PADDING * 2 + 2;
+  }
+
+  return height;
 }
 
 function measureDeliveryCardHeight(
@@ -263,24 +334,121 @@ function measureDeliveryCardHeight(
   order: BatchDeliveryOrder,
 ): number {
   const innerWidth = CONTENT_WIDTH - CARD_INNER_PADDING * 2;
-  const colWidths = deliveryColumnWidths(innerWidth);
 
   let height = CARD_PADDING_TOP + HEADER_LINE_HEIGHT + SUMMARY_LINE_HEIGHT;
-  height += TABLE_HEADER_HEIGHT;
-
-  doc.font("Helvetica").fontSize(9);
-  for (const item of order.items) {
-    height +=
-      measureRowHeight(doc, [
-        { text: item.awardTitle, width: colWidths[0]! },
-        { text: String(item.qty), width: colWidths[1]! },
-        { text: String(item.unitNumberOf), width: colWidths[2]! },
-        { text: String(item.lineNumberOf), width: colWidths[3]! },
-      ]) + 2;
-  }
-
-  height += FOOTER_TOP_GAP + FOOTER_BLOCK_HEIGHT + CARD_PADDING_BOTTOM;
+  height += measureDeliveryTableHeight(doc, order, innerWidth);
+  height +=
+    DELIVERY_FOOTER_TOP_GAP +
+    DELIVERY_FOOTER_BLOCK_HEIGHT +
+    DELIVERY_CARD_PADDING_BOTTOM;
   return height;
+}
+
+function drawDeliveryTableRow(
+  doc: PdfDoc,
+  cells: Array<{
+    text: string;
+    x: number;
+    width: number;
+    align: CellTextAlign;
+  }>,
+  rowTop: number,
+  rowHeight: number,
+): void {
+  for (const cell of cells) {
+    drawCellText(
+      doc,
+      cell.text,
+      cell.x,
+      rowTop,
+      cell.width,
+      rowHeight,
+      cell.align,
+    );
+  }
+}
+
+function deliveryFooterLineStartX(
+  doc: PdfDoc,
+  columnX: number,
+  label: string,
+): number {
+  doc.font("Helvetica").fontSize(9);
+  return columnX + doc.widthOfString(`${label}:`) + DELIVERY_FOOTER_LABEL_GAP;
+}
+
+function drawDeliveryFooterField(
+  doc: PdfDoc,
+  label: string,
+  value: string | null,
+  columnX: number,
+  columnWidth: number,
+  footerY: number,
+  lineY: number,
+): void {
+  doc.font("Helvetica").fontSize(9);
+  doc.text(`${label}:`, columnX, footerY, { lineBreak: false });
+  const lineStartX = deliveryFooterLineStartX(doc, columnX, label);
+  if (value) {
+    doc.text(value, lineStartX, footerY, {
+      width: columnX + columnWidth - lineStartX,
+      lineBreak: false,
+    });
+  }
+  doc
+    .strokeColor(BLACK)
+    .moveTo(lineStartX, lineY)
+    .lineTo(columnX + columnWidth, lineY)
+    .stroke();
+}
+
+function drawDeliveryDateFooterField(
+  doc: PdfDoc,
+  label: string,
+  columnX: number,
+  columnWidth: number,
+  footerY: number,
+  lineY: number,
+): void {
+  doc.font("Helvetica").fontSize(9);
+  doc.text(`${label}:`, columnX, footerY, { lineBreak: false });
+
+  const valueStartX = deliveryFooterLineStartX(doc, columnX, label);
+  const valueEndX = columnX + columnWidth;
+  const valueWidth = valueEndX - valueStartX;
+  const segmentAreaWidth =
+    valueWidth - DELIVERY_DATE_SLASH_SLOT_WIDTH * 2;
+  const dayWidth = segmentAreaWidth * DELIVERY_DATE_DAY_RATIO;
+  const monthWidth = segmentAreaWidth * DELIVERY_DATE_MONTH_RATIO;
+  const yearWidth = segmentAreaWidth - dayWidth - monthWidth;
+
+  const dayLineEnd = valueStartX + dayWidth;
+  const monthLineStart = dayLineEnd + DELIVERY_DATE_SLASH_SLOT_WIDTH;
+  const monthLineEnd = monthLineStart + monthWidth;
+  const yearLineStart = monthLineEnd + DELIVERY_DATE_SLASH_SLOT_WIDTH;
+
+  doc
+    .strokeColor(BLACK)
+    .moveTo(valueStartX, lineY)
+    .lineTo(dayLineEnd, lineY)
+    .stroke()
+    .moveTo(monthLineStart, lineY)
+    .lineTo(monthLineEnd, lineY)
+    .stroke()
+    .moveTo(yearLineStart, lineY)
+    .lineTo(valueEndX, lineY)
+    .stroke();
+
+  doc.font("Helvetica-Bold").fontSize(DELIVERY_DATE_SLASH_FONT_SIZE);
+  const slashY = footerY - 1;
+  const slash1X =
+    dayLineEnd +
+    (DELIVERY_DATE_SLASH_SLOT_WIDTH - doc.widthOfString("/")) / 2;
+  const slash2X =
+    monthLineEnd +
+    (DELIVERY_DATE_SLASH_SLOT_WIDTH - doc.widthOfString("/")) / 2;
+  doc.text("/", slash1X, slashY, { lineBreak: false });
+  doc.text("/", slash2X, slashY, { lineBreak: false });
 }
 
 function drawDeliveryCard(
@@ -291,7 +459,9 @@ function drawDeliveryCard(
 ): number {
   const innerX = MARGIN + CARD_INNER_PADDING;
   const innerWidth = CONTENT_WIDTH - CARD_INNER_PADDING * 2;
-  const colWidths = deliveryColumnWidths(innerWidth);
+  const { halfWidth, itemWidth, qtyWidth } = deliveryHalfWidths(innerWidth);
+  const leftX = innerX;
+  const rightX = innerX + halfWidth + DELIVERY_COLUMN_GAP;
   let y = yTop + CARD_PADDING_TOP;
 
   doc
@@ -311,7 +481,7 @@ function drawDeliveryCard(
     .text(
       labels.formatOrderSummary(
         orderRowCount(order),
-        orderTotalUnits(order),
+        orderTotalPrizes(order),
       ),
       innerX,
       y,
@@ -319,77 +489,119 @@ function drawDeliveryCard(
     );
   y += SUMMARY_LINE_HEIGHT;
 
-  y = drawTableHeader(
+  const tableTop = y;
+  const leftHeaderBottom = drawTableHeader(
     doc,
     [
-      { label: labels.itemColumn, width: colWidths[0]! },
-      { label: labels.qtyColumn, width: colWidths[1]!, align: "right" },
-      { label: labels.unitColumn, width: colWidths[2]!, align: "right" },
-      { label: labels.lineTotalColumn, width: colWidths[3]!, align: "right" },
+      { label: labels.itemColumn, width: itemWidth },
+      { label: labels.qtyColumn, width: qtyWidth, align: "center" },
     ],
-    y,
-    innerX,
+    tableTop,
+    leftX,
   );
+  const rightHeaderBottom = drawTableHeader(
+    doc,
+    [
+      { label: labels.currencyColumn, width: itemWidth },
+      { label: labels.redemptionsColumn, width: qtyWidth, align: "center" },
+    ],
+    tableTop,
+    rightX,
+  );
+  y = Math.max(leftHeaderBottom, rightHeaderBottom);
   doc.font("Helvetica").fontSize(9);
 
-  for (const item of order.items) {
+  const rowCount = deliveryTableRowCount(order);
+  for (let index = 0; index < rowCount; index++) {
+    const item = order.items[index];
+    const redemption = order.currencyRedemptions[index];
     const rowTop = y;
     const cells = [
-      { text: item.awardTitle, width: colWidths[0]!, align: "left" as const },
-      { text: String(item.qty), width: colWidths[1]!, align: "right" as const },
+      { text: item?.awardTitle ?? "", width: itemWidth },
+      { text: item ? String(item.qty) : "", width: qtyWidth },
       {
-        text: String(item.unitNumberOf),
-        width: colWidths[2]!,
-        align: "right" as const,
+        text: redemption?.currencyPluralTitle ?? "",
+        width: itemWidth,
       },
       {
-        text: String(item.lineNumberOf),
-        width: colWidths[3]!,
-        align: "right" as const,
+        text: redemption ? String(redemption.amount) : "",
+        width: qtyWidth,
       },
     ];
-    const rowHeight = measureRowHeight(doc, cells);
-    let columnX = innerX;
-    for (const cell of cells) {
-      drawCellText(
-        doc,
-        cell.text,
-        columnX,
-        rowTop,
-        cell.width,
-        rowHeight,
-        cell.align,
-      );
-      columnX += cell.width;
-    }
+    const rowHeight =
+      measureRowHeight(doc, cells) + DELIVERY_ROW_VERTICAL_PADDING * 2;
+
+    drawDeliveryTableRow(
+      doc,
+      [
+        {
+          text: item?.awardTitle ?? "",
+          x: leftX,
+          width: itemWidth,
+          align: "left",
+        },
+        {
+          text: item ? String(item.qty) : "",
+          x: leftX + itemWidth,
+          width: qtyWidth,
+          align: "center",
+        },
+        {
+          text: redemption?.currencyPluralTitle ?? "",
+          x: rightX,
+          width: itemWidth,
+          align: "left",
+        },
+        {
+          text: redemption ? String(redemption.amount) : "",
+          x: rightX + itemWidth,
+          width: qtyWidth,
+          align: "center",
+        },
+      ],
+      rowTop,
+      rowHeight,
+    );
+
     y = rowTop + rowHeight;
     doc
       .strokeColor(BLACK)
-      .moveTo(innerX, y)
-      .lineTo(innerX + innerWidth, y)
+      .moveTo(leftX, y)
+      .lineTo(leftX + halfWidth, y)
       .stroke();
+    if (redemption) {
+      doc
+        .moveTo(rightX, y)
+        .lineTo(rightX + halfWidth, y)
+        .stroke();
+    }
     y += 2;
   }
 
-  y += FOOTER_TOP_GAP;
+  y += DELIVERY_FOOTER_TOP_GAP;
   const footerY = y;
-  const signatureWidth = innerWidth * 0.55;
-  const dateWidth = innerWidth * 0.4;
-  const dateX = innerX + signatureWidth + innerWidth * 0.05;
   const lineY = footerY + 12;
 
-  doc.fontSize(9).text(`${labels.signature}:`, innerX, footerY, {
-    width: signatureWidth,
-  });
-  doc.text(`${labels.dateLine}: _____/______/_________`, dateX, footerY, {
-    width: dateWidth,
-  });
-  doc
-    .moveTo(innerX + 42, lineY)
-    .lineTo(innerX + signatureWidth, lineY)
-    .stroke();
+  drawDeliveryDateFooterField(
+    doc,
+    labels.dateLine,
+    leftX,
+    halfWidth,
+    footerY,
+    lineY,
+  );
+  drawDeliveryFooterField(
+    doc,
+    labels.signature,
+    null,
+    rightX,
+    halfWidth,
+    footerY,
+    lineY,
+  );
 
-  const yBottom = footerY + FOOTER_BLOCK_HEIGHT + CARD_PADDING_BOTTOM;
+  const yBottom =
+    footerY + DELIVERY_FOOTER_BLOCK_HEIGHT + DELIVERY_CARD_PADDING_BOTTOM;
   doc
     .strokeColor(BLACK)
     .rect(MARGIN, yTop, CONTENT_WIDTH, yBottom - yTop)

@@ -11,10 +11,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  LoadMoreButton,
-  LoadMoreButtonRow,
-} from "@/components/ui/load-more-button";
+import { ListLoadMore } from "@/components/ui/load-more-button";
 import { Textarea } from "@/components/ui/textarea";
 import { isImageMime } from "@/lib/media/media-mime";
 import type {
@@ -500,17 +497,11 @@ export function MediaFilesManager({
         </ul>
       )}
 
-      {hasMore ? (
-        <LoadMoreButtonRow>
-          <LoadMoreButton
-            label={t("mediaLoadMore")}
-            loadingLabel={tCommon("loading")}
-            loading={isPending}
-            disabled={isPending}
-            onClick={handleLoadMore}
-          />
-        </LoadMoreButtonRow>
-      ) : null}
+      <ListLoadMore
+        visible={hasMore}
+        loading={isPending}
+        onClick={handleLoadMore}
+      />
 
       <ConfirmDialog
         open={Boolean(deleteId)}

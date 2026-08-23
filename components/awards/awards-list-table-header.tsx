@@ -44,13 +44,17 @@ export async function AwardsListTableHeader({
         />
         <AwardListSortHeaderLink
           column="starCost"
-          label={tAwards("starCost")}
+          label={tAwards("values")}
           sort={sort}
           filters={filters}
           align="center"
         />
         <th className="w-24 py-2 text-center">{tAwards("listStock")}</th>
         <th className="w-28 py-2 text-center">{tAwards("listShowInStore")}</th>
+        <th className="w-28 py-2 text-center">{tAwards("listActualPrice")}</th>
+        <th className="w-28 py-2 text-center">
+          {tAwards("listAutoRecalculate")}
+        </th>
       </tr>
     </thead>
   );

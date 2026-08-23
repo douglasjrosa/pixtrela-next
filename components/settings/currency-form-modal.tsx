@@ -1,23 +1,17 @@
 "use client";
 
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  useTransition,
-  type ChangeEvent,
-} from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { CurrencyMediaIcon } from "@/components/currency/currency-media-icon";
+import { MediaImageField } from "@/components/media/media-image-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
+import type { MediaAssetRecord } from "@/lib/repos/media";
 import {
   currencyFormSchema,
   type CurrencyFormInput,
@@ -34,7 +28,8 @@ export interface CurrencyFormModalProps {
   onClose: () => void;
   onSave: (values: CurrencyFormInput) => void;
   onDelete?: () => void;
-  onUploadIcon: (formData: FormData) => Promise<number | string>;
+  onListImages: () => Promise<MediaAssetRecord[]>;
+  onUploadImage: (formData: FormData) => Promise<MediaAssetRecord>;
 }
 
 export function CurrencyFormModal({
@@ -54,7 +49,8 @@ function CurrencyFormModalContent({
   onClose,
   onSave,
   onDelete,
-  onUploadIcon,
+  onListImages,
+  onUploadImage,
 }: Omit<CurrencyFormModalProps, "open"> & { open: true }) {
   const tCommon = useTranslations("common");
   const tSettings = useTranslations("settings");
@@ -62,8 +58,6 @@ function CurrencyFormModalContent({
   const formId = useId();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(initialIconUrl);
-  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
-  const [, startUploadTransition] = useTransition();
 
   const {
     register,
@@ -99,24 +93,14 @@ function CurrencyFormModalContent({
     };
   }, [onClose, saving]);
 
-  function handleIconChange(event: ChangeEvent<HTMLInputElement>): void {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  function handleIconSelect(asset: MediaAssetRecord): void {
+    setValue("iconMediaId", asset.id);
+    setPreviewUrl(asset.browserUrl);
+  }
 
-    setPreviewUrl(URL.createObjectURL(file));
-    startUploadTransition(async () => {
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const id = await onUploadIcon(formData);
-        setValue("iconMediaId", id);
-        setUploadMessage(tSettings("currencyIconSelected"));
-      } catch {
-        setPreviewUrl(initialIconUrl);
-        setValue("iconMediaId", defaultValues.iconMediaId ?? null);
-        setUploadMessage(tSettings("currencyIconUploadFailed"));
-      }
-    });
+  function handleIconRemove(): void {
+    setValue("iconMediaId", null);
+    setPreviewUrl(null);
   }
 
   return (
@@ -170,31 +154,18 @@ function CurrencyFormModalContent({
               ) : null}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="currency-icon">{tSettings("currencyIcon")}</Label>
-              <Input
-                id="currency-icon"
-                type="file"
-                accept="image/*"
+            <div className="space-y-2 sm:col-span-2">
+              <Label>{tSettings("currencyIcon")}</Label>
+              <MediaImageField
+                selectedId={iconMediaId}
+                previewUrl={previewUrl}
                 disabled={saving}
-                onChange={handleIconChange}
+                attachedLabel={tSettings("currencyIconAttached")}
+                onSelect={handleIconSelect}
+                onRemove={handleIconRemove}
+                onListImages={onListImages}
+                onUploadImage={onUploadImage}
               />
-              <p className="text-xs text-muted-foreground">
-                {tSettings("currencyIconHint")}
-              </p>
-              {previewUrl ? (
-                <CurrencyMediaIcon url={previewUrl} className="size-10" />
-              ) : null}
-              {iconMediaId ? (
-                <p className="text-xs text-muted-foreground">
-                  {tSettings("currencyIconAttached")}
-                </p>
-              ) : null}
-              {uploadMessage ? (
-                <p className="text-xs text-muted-foreground" role="status">
-                  {uploadMessage}
-                </p>
-              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -229,7 +200,7 @@ function CurrencyFormModalContent({
               ) : null}
             </div>
 
-            <div className="space-y-2 sm:col-span-2">
+            <div className="space-y-2">
               <Label htmlFor="currency-per-second">
                 {tSettings("currencyPerSecond")}
               </Label>
@@ -243,6 +214,23 @@ function CurrencyFormModalContent({
               {errors.currencyPerSecond ? (
                 <p className="text-sm text-destructive">
                   {errors.currencyPerSecond.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="currency-exchange-rate">
+                {tSettings("currencyExchangeRate")}
+              </Label>
+              <NumberInput
+                id="currency-exchange-rate"
+                step="0.01"
+                disabled={saving}
+                {...register("exchangeRate", { valueAsNumber: true })}
+              />
+              {errors.exchangeRate ? (
+                <p className="text-sm text-destructive">
+                  {errors.exchangeRate.message}
                 </p>
               ) : null}
             </div>

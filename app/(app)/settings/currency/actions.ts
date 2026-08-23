@@ -1,28 +1,41 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import { currencies } from "@/drizzle/schema";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
-import { getDb } from "@/lib/db/client";
-import { storeMedia } from "@/lib/media/store-media";
 import {
+  assignedActiveCurrencyId,
+  isProtectedCurrencyId,
+} from "@/lib/business/primary-currency";
+import { getDb } from "@/lib/db/client";
+import { roundCurrencyRate } from "@/lib/format/currency-rate";
+import {
+  listCategoryImageAssets,
+  uploadCategoryImageAsset,
+} from "@/lib/media/category-image-assets";
+import {
+  archiveCurrency as archiveCurrencyRepo,
   createCurrency as createCurrencyRepo,
+  findCurrencyById,
+  hardDeleteCurrency as hardDeleteCurrencyRepo,
   listCurrencies as listCurrenciesRepo,
 } from "@/lib/repos/awards";
-import { insertMediaAsset } from "@/lib/repos/media";
+import type { MediaAssetRecord } from "@/lib/repos/media";
 import {
   getCurrencyForSubtasks,
   upsertCurrencyForSubtasks,
 } from "@/lib/repos/settings";
-import { isPrimaryCurrencyId, primaryCurrencyId } from "@/lib/business/primary-currency";
 import {
+  bulkCurrencyIdsSchema,
   currencyFormSchema,
   type CurrencyFormInput,
 } from "@/lib/schemas/currency";
+
+const CURRENCY_SETTINGS_PATH = "/settings/currency";
 
 async function assertCanManage(): Promise<void> {
   const session = await auth();
@@ -33,31 +46,50 @@ async function assertCanManage(): Promise<void> {
 
 function invalidateCurrencies(): void {
   revalidateTag("drizzle:currencies", "default");
+  revalidateTag("drizzle:currency-for-subtasks", "default");
+  revalidatePath(CURRENCY_SETTINGS_PATH);
+}
+
+async function listAllCurrencies() {
+  return listCurrenciesRepo({ includeInactive: true });
+}
+
+async function assignedCurrencyId(): Promise<string | null> {
+  const assigned = await getCurrencyForSubtasks();
+  return assigned?.currencyId ?? null;
+}
+
+async function reassignSubtasksCurrencyIfNeeded(
+  documentId: string,
+): Promise<void> {
+  const all = await listAllCurrencies();
+  const fallbackId = assignedActiveCurrencyId(all, null);
+  const active = await getCurrencyForSubtasks();
+  if (active?.currencyId === documentId && fallbackId) {
+    await upsertCurrencyForSubtasks(fallbackId);
+  }
+}
+
+function assertNotProtected(
+  documentId: string,
+  all: Awaited<ReturnType<typeof listAllCurrencies>>,
+  assignedId: string | null,
+): void {
+  if (isProtectedCurrencyId(documentId, all, assignedId)) {
+    throw new Error("primaryCurrencyProtected");
+  }
+}
+
+export async function listCurrencyImages(): Promise<MediaAssetRecord[]> {
+  await assertCanManage();
+  return listCategoryImageAssets("currency");
 }
 
 export async function uploadCurrencyIcon(
   formData: FormData,
-): Promise<number | string> {
+): Promise<MediaAssetRecord> {
   await assertCanManage();
-  const entry = formData.get("file");
-  if (!(entry instanceof Blob) || entry.size === 0) {
-    throw new Error("invalid");
-  }
-  const mimeType = entry.type || "image/png";
-
-  const buffer = Buffer.from(await entry.arrayBuffer());
-  const extension = mimeType.includes("png") ? "png" : "jpg";
-  const stored = await storeMedia({ bytes: buffer, mimeType, extension });
-  const originalFilename =
-    "name" in entry && typeof entry.name === "string" && entry.name.trim()
-      ? entry.name.trim()
-      : null;
-  const media = await insertMediaAsset(stored, {
-    originalFilename,
-    category: "currency",
-    sensitivity: "public",
-  });
-  return media.id;
+  return uploadCategoryImageAsset(formData, "currency");
 }
 
 export async function createCurrency(raw: CurrencyFormInput): Promise<void> {
@@ -69,6 +101,7 @@ export async function createCurrency(raw: CurrencyFormInput): Promise<void> {
     title: data.title,
     pluralTitle: data.pluralTitle,
     currencyPerSecond: data.currencyPerSecond,
+    exchangeRate: data.exchangeRate,
     iconMediaId:
       typeof data.iconMediaId === "string" ? data.iconMediaId : null,
   });
@@ -89,7 +122,8 @@ export async function updateCurrency(
     name: data.name,
     title: data.title,
     pluralTitle: data.pluralTitle,
-    currencyPerSecond: data.currencyPerSecond,
+    currencyPerSecond: String(data.currencyPerSecond),
+    exchangeRate: data.exchangeRate,
     updatedAt: new Date(),
   };
   if (typeof data.iconMediaId === "string") {
@@ -99,26 +133,73 @@ export async function updateCurrency(
   invalidateCurrencies();
 }
 
+export async function archiveCurrency(documentId: string): Promise<void> {
+  await assertCanManage();
+  const all = await listAllCurrencies();
+  const assignedId = await assignedCurrencyId();
+  assertNotProtected(documentId, all, assignedId);
+  await reassignSubtasksCurrencyIfNeeded(documentId);
+  await archiveCurrencyRepo(documentId);
+  invalidateCurrencies();
+}
+
 export async function deleteCurrency(documentId: string): Promise<void> {
   await assertCanManage();
 
-  const all = await listCurrenciesRepo();
-  const primaryId = primaryCurrencyId(all);
-  if (isPrimaryCurrencyId(documentId, all)) {
+  const all = await listAllCurrencies();
+  const assignedId = await assignedCurrencyId();
+  assertNotProtected(documentId, all, assignedId);
+  await reassignSubtasksCurrencyIfNeeded(documentId);
+  await hardDeleteCurrencyRepo(documentId);
+  invalidateCurrencies();
+}
+
+export async function bulkArchiveCurrencies(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanManage();
+  const ids = bulkCurrencyIdsSchema.parse(documentIds);
+  const all = await listAllCurrencies();
+  const assignedId = await assignedCurrencyId();
+  const archivable = ids.filter(
+    (id) => !isProtectedCurrencyId(id, all, assignedId),
+  );
+  if (archivable.length === 0) {
     throw new Error("primaryCurrencyProtected");
   }
 
-  const active = await getCurrencyForSubtasks();
-  if (active?.currencyId === documentId && primaryId) {
-    await upsertCurrencyForSubtasks(primaryId);
-    revalidateTag("drizzle:currency-for-subtasks", "default");
+  for (const documentId of archivable) {
+    await reassignSubtasksCurrencyIfNeeded(documentId);
+    await archiveCurrencyRepo(documentId);
   }
-  const db = getDb();
-  await db.delete(currencies).where(eq(currencies.id, documentId));
+  invalidateCurrencies();
+}
+
+export async function bulkDeleteCurrencies(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanManage();
+  const ids = bulkCurrencyIdsSchema.parse(documentIds);
+  const all = await listAllCurrencies();
+  const assignedId = await assignedCurrencyId();
+  const removable = ids.filter(
+    (id) => !isProtectedCurrencyId(id, all, assignedId),
+  );
+  if (removable.length === 0) {
+    throw new Error("primaryCurrencyProtected");
+  }
+
+  for (const documentId of removable) {
+    const currency = await findCurrencyById(documentId);
+    if (!currency) throw new Error("notFound");
+    if (currency.active) throw new Error("activeCurrency");
+    await reassignSubtasksCurrencyIfNeeded(documentId);
+    await hardDeleteCurrencyRepo(documentId);
+  }
   invalidateCurrencies();
 }
 
 export async function listCurrenciesAction() {
   await assertCanManage();
-  return listCurrenciesRepo();
+  return listCurrenciesRepo({ includeInactive: true });
 }

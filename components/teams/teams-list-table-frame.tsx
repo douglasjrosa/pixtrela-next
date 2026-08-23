@@ -9,7 +9,7 @@ import {
   bulkDeleteTeams,
   loadMoreTeams,
 } from "@/app/(app)/teams/actions";
-import { LoadMoreButton, LoadMoreButtonRow } from "@/components/ui/load-more-button";
+import { ListLoadMore } from "@/components/ui/load-more-button";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
@@ -220,16 +220,11 @@ export function TeamsListTableFrame({
           ) : null}
         </div>
 
-        {hasMore ? (
-          <LoadMoreButtonRow>
-            <LoadMoreButton
-              loading={isPending}
-              label={tTeams("loadMore")}
-              loadingLabel={tTeams("loadingMore")}
-              onClick={handleLoadMore}
-            />
-          </LoadMoreButtonRow>
-        ) : null}
+        <ListLoadMore
+          visible={hasMore}
+          loading={isPending}
+          onClick={handleLoadMore}
+        />
 
         <ConfirmDialog
           open={archiveOpen}

@@ -33,6 +33,13 @@ vi.mock("@/lib/awards/load-award-list-page", () => ({
   loadAwardListPage: (...args: unknown[]) => loadAwardListPageMock(...args),
 }));
 
+const resolveAwardPricesOnSave = vi.fn();
+
+vi.mock("@/lib/awards/resolve-award-prices", () => ({
+  resolveAwardPricesOnSave: (...args: unknown[]) =>
+    resolveAwardPricesOnSave(...args),
+}));
+
 vi.mock("@/lib/db/client", () => ({
   getDb: () => getDb(),
 }));
@@ -66,6 +73,10 @@ describe("awards/actions drizzle CRUD", () => {
     listMediaAssets.mockReset();
     loadAwardListPageMock.mockReset();
     getDb.mockReturnValue({ update });
+    resolveAwardPricesOnSave.mockReset();
+    resolveAwardPricesOnSave.mockImplementation(
+      async ({ manualPrices }: { manualPrices: unknown[] }) => manualPrices,
+    );
     update.mockClear();
   });
 
@@ -97,6 +108,8 @@ describe("awards/actions drizzle CRUD", () => {
       imageId: null,
       showInStore: true,
       stock: 5,
+      actualPrice: 12.5,
+      autoRecalculate: true,
       values: [{ currencyDocumentId: "cur-1", numberOf: 10 }],
     });
     expect(createAwardRepo).toHaveBeenCalledWith(
@@ -105,8 +118,18 @@ describe("awards/actions drizzle CRUD", () => {
         active: true,
         showInStore: true,
         stock: 5,
+        actualPrice: 12.5,
+        autoRecalculate: true,
         prices: [{ currencyId: "cur-1", numberOf: 10 }],
       }),
+    );
+    expect(resolveAwardPricesOnSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        autoRecalculate: true,
+        actualPrice: 12.5,
+        manualPrices: [{ currencyId: "cur-1", numberOf: 10 }],
+      }),
+      expect.anything(),
     );
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
   });
@@ -172,6 +195,8 @@ describe("awards/actions drizzle CRUD", () => {
       imageId: "00000000-0000-4000-8000-000000000001",
       showInStore: false,
       stock: 3,
+      actualPrice: 9.99,
+      autoRecalculate: false,
       values: [{ currencyDocumentId: "cur-1", numberOf: 5 }],
     });
 
@@ -181,6 +206,8 @@ describe("awards/actions drizzle CRUD", () => {
         imageMediaId: "00000000-0000-4000-8000-000000000001",
         showInStore: false,
         stock: 3,
+        actualPrice: "9.99",
+        autoRecalculate: false,
       }),
     );
     expect(set).toHaveBeenCalledWith(
@@ -189,6 +216,14 @@ describe("awards/actions drizzle CRUD", () => {
     expect(replaceAwardPrices).toHaveBeenCalledWith(
       "award-1",
       [{ currencyId: "cur-1", numberOf: 5 }],
+      expect.anything(),
+    );
+    expect(resolveAwardPricesOnSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        autoRecalculate: false,
+        actualPrice: 9.99,
+        manualPrices: [{ currencyId: "cur-1", numberOf: 5 }],
+      }),
       expect.anything(),
     );
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");

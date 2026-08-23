@@ -6,6 +6,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -186,9 +187,11 @@ export const currencies = pgTable("currencies", {
   name: varchar("name", { length: 64 }).notNull().unique(),
   title: varchar("title", { length: 128 }),
   pluralTitle: varchar("plural_title", { length: 128 }),
-  currencyPerSecond: doublePrecision("currency_per_second")
-    .default(0)
+  currencyPerSecond: numeric("currency_per_second", { precision: 12, scale: 2 })
+    .default("0")
     .notNull(),
+  exchangeRate: doublePrecision("exchange_rate").default(0).notNull(),
+  active: boolean("active").default(true).notNull(),
   iconMediaId: uuid("icon_media_id").references(() => mediaAssets.id),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -218,6 +221,10 @@ export const awards = pgTable("awards", {
   active: boolean("active").default(true).notNull(),
   showInStore: boolean("show_in_store").default(true).notNull(),
   stock: integer("stock").default(0).notNull(),
+  actualPrice: numeric("actual_price", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
+  autoRecalculate: boolean("auto_recalculate").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -725,6 +732,10 @@ export const exchangeOrderItems = pgTable(
     qty: integer("qty").default(1).notNull(),
     unitNumberOf: doublePrecision("unit_number_of").notNull(),
     lineNumberOf: doublePrecision("line_number_of").notNull(),
+    currencyId: uuid("currency_id").references(() => currencies.id, {
+      onDelete: "set null",
+    }),
+    currencyPluralTitle: text("currency_plural_title"),
   },
   (table) => [index("exchange_order_items_order_id_idx").on(table.orderId)],
 );

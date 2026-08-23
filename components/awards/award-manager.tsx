@@ -2,17 +2,16 @@
 
 import {
   Suspense,
-  useCallback,
   useState,
   useTransition,
   type ReactNode,
 } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { MediaPickerModal } from "@/components/settings/media-picker-modal";
+import { MediaImageField } from "@/components/media/media-image-field";
 import { Button } from "@/components/ui/button";
 import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -20,8 +19,8 @@ import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
+import { SwitchField } from "@/components/ui/switch-field";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import { buildAwardValuesForCurrencies } from "@/lib/awards/build-award-form-values";
 import type { MediaAssetRecord } from "@/lib/repos/media";
 import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
@@ -60,6 +59,8 @@ function defaultValues(currencies: CurrencyOption[]): AwardFormInput {
     imageId: null,
     showInStore: true,
     stock: 0,
+    actualPrice: 0,
+    autoRecalculate: true,
     values: buildAwardValuesForCurrencies(currencies),
   };
 }
@@ -76,6 +77,8 @@ function toFormValues(
     imageId: award.imageId ?? null,
     showInStore: award.showInStore,
     stock: award.stock,
+    actualPrice: award.actualPrice,
+    autoRecalculate: award.autoRecalculate,
     values: buildAwardValuesForCurrencies(currencies, award.values),
   };
 }
@@ -110,11 +113,9 @@ function AwardFormDialog({
   const isEditing = editingAward !== null;
   const formDisabled = isPending || readOnly;
   const formTitleId = "award-form-title";
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     editingAward?.imageUrl ?? null,
   );
-  const listImages = useCallback(() => onListImages(), [onListImages]);
 
   const {
     register,
@@ -130,9 +131,9 @@ function AwardFormDialog({
   });
 
   const imageId = useWatch({ control, name: "imageId" });
+  const autoRecalculate = useWatch({ control, name: "autoRecalculate" });
 
   function handleImageConfirm(asset: MediaAssetRecord): void {
-    setPickerOpen(false);
     setValue("imageId", asset.id);
     setPreviewUrl(asset.browserUrl);
   }
@@ -145,10 +146,11 @@ function AwardFormDialog({
   const formId = "award-form";
 
   return (
-    <>
-      <FormModalShell
+    <FormModalShell
       open
       size="lgNarrow"
+      bodyClassName="p-6"
+      footerClassName="px-6 py-4"
       title={isEditing ? tAwards("editAward") : tAwards("newAward")}
       titleId={formTitleId}
       onClose={onClose}
@@ -182,22 +184,24 @@ function AwardFormDialog({
       <form
         id={formId}
         onSubmit={handleSubmit(onSubmit)}
-        className="grid gap-4 sm:grid-cols-2"
+        className="flex flex-col gap-8"
       >
-        <div className="space-y-2">
-          <Label htmlFor="name">{tAwards("name")}</Label>
-          <Input id="name" disabled={formDisabled} {...register("name")} />
-          {errors.name ? (
-            <p className="text-sm text-destructive">{errors.name.message}</p>
-          ) : null}
+        <div className="grid gap-6 gap-x-10 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="name">{tAwards("name")}</Label>
+            <Input id="name" disabled={formDisabled} {...register("name")} />
+            {errors.name ? (
+              <p className="text-sm text-destructive">{errors.name.message}</p>
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="title">{tAwards("titleField")}</Label>
+            <Input id="title" disabled={formDisabled} {...register("title")} />
+          </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="title">{tAwards("titleField")}</Label>
-          <Input id="title" disabled={formDisabled} {...register("title")} />
-        </div>
-
-        <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="description">{tAwards("description")}</Label>
           <Textarea
             id="description"
@@ -206,7 +210,7 @@ function AwardFormDialog({
           />
         </div>
 
-        <div className="space-y-2 sm:col-span-2">
+        <div className="space-y-2">
           <Label htmlFor="warnings">{tAwards("warnings")}</Label>
           <Textarea
             id="warnings"
@@ -215,57 +219,26 @@ function AwardFormDialog({
           />
         </div>
 
-        <div className="space-y-2 sm:col-span-2">
+        <div className="space-y-2">
           <Label>{tAwards("image")}</Label>
-          <div className="flex flex-wrap items-start gap-4">
-            {previewUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={previewUrl}
-                alt=""
-                role="presentation"
-                className="h-24 w-24 shrink-0 rounded-md border object-cover"
-              />
-            ) : null}
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  disabled={formDisabled}
-                  onClick={() => setPickerOpen(true)}
-                >
-                  {tAwards("imageChoose")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={formDisabled || !imageId}
-                  onClick={handleImageRemove}
-                >
-                  {tAwards("imageRemove")}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {tAwards("imageHint")}
-              </p>
-              {imageId ? (
-                <p className="text-xs text-muted-foreground">
-                  {tAwards("imageAttached")}
-                </p>
-              ) : null}
-            </div>
-          </div>
+          <MediaImageField
+            selectedId={imageId}
+            previewUrl={previewUrl}
+            disabled={formDisabled}
+            attachedLabel={tAwards("imageAttached")}
+            onSelect={handleImageConfirm}
+            onRemove={handleImageRemove}
+            onListImages={onListImages}
+            onUploadImage={onUploadImage}
+          />
         </div>
 
-        <div className="flex flex-wrap items-end justify-between gap-6 sm:col-span-2">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="stock" className="block">
-              {tAwards("stock")}
-            </Label>
+        <div className="grid gap-6 gap-x-10 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="stock">{tAwards("stock")}</Label>
             <NumberInput
               id="stock"
               min={0}
-              className="w-32"
               disabled={formDisabled}
               {...register("stock", { valueAsNumber: true })}
             />
@@ -273,22 +246,57 @@ function AwardFormDialog({
               <p className="text-sm text-destructive">{errors.stock.message}</p>
             ) : null}
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className={cn("size-4 rounded border accent-primary")}
+
+          <div className="space-y-2">
+            <Label htmlFor="actual-price">{tAwards("actualPrice")}</Label>
+            <NumberInput
+              id="actual-price"
+              step="0.01"
               disabled={formDisabled}
-              {...register("showInStore")}
+              {...register("actualPrice", { valueAsNumber: true })}
             />
-            {tAwards("showInStore")}
-          </label>
+            {errors.actualPrice ? (
+              <p className="text-sm text-destructive">
+                {errors.actualPrice.message}
+              </p>
+            ) : null}
+          </div>
         </div>
 
-        <div className="space-y-4 sm:col-span-2">
+        <div className="flex flex-col gap-4">
+          <Controller
+            name="showInStore"
+            control={control}
+            render={({ field }) => (
+              <SwitchField
+                id="show-in-store"
+                label={tAwards("showInStore")}
+                checked={field.value}
+                disabled={formDisabled}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            name="autoRecalculate"
+            control={control}
+            render={({ field }) => (
+              <SwitchField
+                id="auto-recalculate"
+                label={tAwards("autoRecalculate")}
+                checked={field.value}
+                disabled={formDisabled}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
+        </div>
+
+        <div className="space-y-4">
           <h3 className="text-base font-semibold">{tAwards("values")}</h3>
-          <div className="flex flex-wrap items-start gap-4">
+          <div className="grid gap-6 gap-x-10 sm:grid-cols-2">
             {currencies.map((currency, index) => (
-              <div key={currency.documentId} className="flex flex-col gap-2">
+              <div key={currency.documentId} className="space-y-2">
                 <Label htmlFor={`award-value-${currency.documentId}`}>
                   {currencyLabel(currency)}
                 </Label>
@@ -299,9 +307,10 @@ function AwardFormDialog({
                 <NumberInput
                   id={`award-value-${currency.documentId}`}
                   min={0}
-                  className="w-28"
-                  disabled={formDisabled}
-                  {...register(`values.${index}.numberOf`, { valueAsNumber: true })}
+                  disabled={formDisabled || autoRecalculate}
+                  {...register(`values.${index}.numberOf`, {
+                    valueAsNumber: true,
+                  })}
                 />
               </div>
             ))}
@@ -312,16 +321,6 @@ function AwardFormDialog({
         </div>
       </form>
     </FormModalShell>
-
-      <MediaPickerModal
-        open={pickerOpen}
-        selectedId={imageId}
-        onClose={() => setPickerOpen(false)}
-        onConfirm={handleImageConfirm}
-        onListImages={listImages}
-        onUploadImage={onUploadImage}
-      />
-    </>
   );
 }
 

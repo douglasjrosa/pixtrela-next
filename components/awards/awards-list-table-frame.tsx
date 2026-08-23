@@ -9,7 +9,7 @@ import {
   bulkDeleteAwards,
   loadMoreAwards,
 } from "@/app/(app)/awards/actions";
-import { LoadMoreButton, LoadMoreButtonRow } from "@/components/ui/load-more-button";
+import { ListLoadMore } from "@/components/ui/load-more-button";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
@@ -25,7 +25,7 @@ import type { AwardListFilters } from "@/lib/schemas/award-list-filters";
 import { awardListFilterKey } from "@/lib/awards/award-list-params";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
-import { awardCostLabel } from "./award-cost-label";
+import { awardCostLabel, formatAwardActualPrice } from "./award-cost-label";
 import { AwardListRowPresentational } from "./award-list-row-presentational";
 import type { AwardRow, CurrencyOption } from "./types";
 import { awardDisplayTitle } from "./types";
@@ -95,8 +95,12 @@ export function AwardsListTableFrame({
   function labelsFor(award: AwardRow) {
     return {
       cost: awardCostLabel(award, currencies, tAwards("noCost")),
+      actualPrice: formatAwardActualPrice(award.actualPrice),
       stock: String(award.stock),
       showInStore: award.showInStore ? tCommon("yes") : tCommon("no"),
+      autoRecalculate: award.autoRecalculate
+        ? tCommon("yes")
+        : tCommon("no"),
       inactive: tAwards("inactive"),
       selectRow: tCommon("selectRow", { name: awardDisplayTitle(award) }),
     };
@@ -213,16 +217,11 @@ export function AwardsListTableFrame({
           ) : null}
         </div>
 
-        {hasMore ? (
-          <LoadMoreButtonRow>
-            <LoadMoreButton
-              loading={isPending}
-              label={tAwards("loadMore")}
-              loadingLabel={tAwards("loadingMore")}
-              onClick={handleLoadMore}
-            />
-          </LoadMoreButtonRow>
-        ) : null}
+        <ListLoadMore
+          visible={hasMore}
+          loading={isPending}
+          onClick={handleLoadMore}
+        />
 
         <ConfirmDialog
           open={archiveOpen}

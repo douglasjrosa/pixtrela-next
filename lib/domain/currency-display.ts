@@ -9,6 +9,15 @@ export type AwardLabelSource = {
   name: string;
 };
 
+/** Stable singular label for display when the amount is exactly one. */
+export function resolveCurrencyTitle(
+  currency: CurrencyLabelSource,
+): string {
+  const title = currency.title?.trim();
+  if (title) return title;
+  return currency.name.trim();
+}
+
 /** Stable plural label stored on balance and exchange history rows. */
 export function resolveCurrencyPluralTitle(
   currency: CurrencyLabelSource,

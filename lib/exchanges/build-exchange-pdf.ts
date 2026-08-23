@@ -36,12 +36,12 @@ async function buildDeliveryLabels(
     monthYearLabel: formatMonthYear(detail.month, detail.year, locale),
     itemColumn: t("exchangeList"),
     qtyColumn: t("qty"),
-    unitColumn: t("unit"),
-    lineTotalColumn: t("lineTotal"),
+    currencyColumn: t("conqueredUnits"),
+    redemptionsColumn: t("redemptions"),
     signature: t("signature"),
     dateLine: t("dateLine"),
-    formatOrderSummary: (itemCount: number, totalUnits: number) =>
-      `${t("itemCount", { count: itemCount })}, ${t("totalUnits", { count: totalUnits })}`,
+    formatOrderSummary: (itemCount: number, totalPrizes: number) =>
+      `${t("itemCount", { count: itemCount })}, ${t("prizeCount", { count: totalPrizes })}`,
   };
 }
 

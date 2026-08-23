@@ -20,12 +20,12 @@ const deliveryLabels = {
   monthYearLabel: "August 2026",
   itemColumn: "Exchange list",
   qtyColumn: "Qty",
-  unitColumn: "Unit",
-  lineTotalColumn: "Subtotal",
+  currencyColumn: "Conquered units",
+  redemptionsColumn: "Redemptions",
   signature: "Signature",
   dateLine: "Date",
-  formatOrderSummary: (itemCount: number, totalUnits: number) =>
-    `${itemCount} items, ${totalUnits} units in total`,
+  formatOrderSummary: (itemCount: number, totalPrizes: number) =>
+    `${itemCount} items, ${totalPrizes} prizes in total`,
 };
 
 function countPdfPages(buffer: Buffer): number {
@@ -37,6 +37,14 @@ function buildDeliveryOrder(
   id: string,
   itemCount: number,
 ): Parameters<typeof generateDeliverySheetsPdf>[0][number] {
+  const items = Array.from({ length: itemCount }, (_, index) => ({
+    awardTitle: `Award ${index + 1}`,
+    qty: 1,
+    unitNumberOf: 10,
+    lineNumberOf: 10,
+    currencyTitle: "Star",
+    currencyPluralTitle: "Stars",
+  }));
   return {
     orderId: id,
     userId: `u-${id}`,
@@ -44,19 +52,21 @@ function buildDeliveryOrder(
     currencyPluralTitle: "Stars",
     totalNumberOf: itemCount * 10,
     itemCount,
-    items: Array.from({ length: itemCount }, (_, index) => ({
-      awardTitle: `Award ${index + 1}`,
-      qty: 1,
-      unitNumberOf: 10,
-      lineNumberOf: 10,
-    })),
+    currencyRedemptions: [
+      {
+        currencyTitle: "Star",
+        currencyPluralTitle: "Stars",
+        amount: itemCount * 10,
+      },
+    ],
+    items,
   };
 }
 
 describe("generateShoppingListPdf", () => {
   it("returns a valid PDF buffer", async () => {
     const buffer = await generateShoppingListPdf(
-      [{ awardId: "a1", awardTitle: "Award A", qty: 2 }],
+      [{ awardId: "a1", awardTitle: "Award A", qty: 2, actualPrice: 12.5 }],
       shoppingLabels,
     );
 
@@ -78,20 +88,24 @@ describe("generateDeliverySheetsPdf", () => {
 
   it("packs multiple compact lists on one page", async () => {
     const buffer = await generateDeliverySheetsPdf(
-      [buildDeliveryOrder("o1", 1), buildDeliveryOrder("o2", 1), buildDeliveryOrder("o3", 1)],
+      [
+        buildDeliveryOrder("o1", 1),
+        buildDeliveryOrder("o2", 1),
+        buildDeliveryOrder("o3", 1),
+      ],
       deliveryLabels,
     );
 
     expect(countPdfPages(buffer)).toBe(1);
   });
 
-  it("summarizes table rows and subtotal sum", async () => {
+  it("summarizes item rows and prize qty sum", async () => {
     let summary: [number, number] | null = null;
     const labels = {
       ...deliveryLabels,
-      formatOrderSummary: (itemCount: number, totalUnits: number) => {
-        summary = [itemCount, totalUnits];
-        return `${itemCount} items, ${totalUnits} units in total`;
+      formatOrderSummary: (itemCount: number, totalPrizes: number) => {
+        summary = [itemCount, totalPrizes];
+        return `${itemCount} items, ${totalPrizes} prizes in total`;
       },
     };
 
@@ -103,19 +117,35 @@ describe("generateDeliverySheetsPdf", () => {
           userName: "Cart Colab",
           currencyPluralTitle: "Stars",
           totalNumberOf: 14,
-          itemCount: 3,
+          itemCount: 2,
+          currencyRedemptions: [
+            {
+              currencyTitle: "Star",
+              currencyPluralTitle: "Stars",
+              amount: 8,
+            },
+            {
+              currencyTitle: "Heart",
+              currencyPluralTitle: "Hearts",
+              amount: 6,
+            },
+          ],
           items: [
             {
               awardTitle: "Award A",
               qty: 2,
               unitNumberOf: 4,
               lineNumberOf: 8,
+              currencyTitle: "Star",
+              currencyPluralTitle: "Stars",
             },
             {
               awardTitle: "Award B",
               qty: 1,
               unitNumberOf: 6,
               lineNumberOf: 6,
+              currencyTitle: "Heart",
+              currencyPluralTitle: "Hearts",
             },
           ],
         },
@@ -123,7 +153,7 @@ describe("generateDeliverySheetsPdf", () => {
       labels,
     );
 
-    expect(summary).toEqual([2, 14]);
+    expect(summary).toEqual([2, 3]);
   });
 
   it("starts a list on the next page when it would break across pages", async () => {

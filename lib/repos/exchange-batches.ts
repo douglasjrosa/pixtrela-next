@@ -1,6 +1,8 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import {
+  awards,
+  currencies,
   exchangeBatches,
   exchangeOrderItems,
   exchangeOrders,
@@ -13,6 +15,10 @@ import {
   isBatchVisible,
   maxActiveTeamLastDay,
 } from "@/lib/domain/exchange-batch";
+import {
+  resolveCurrencyPluralTitle,
+  resolveCurrencyTitle,
+} from "@/lib/domain/currency-display";
 import type { Role } from "@/lib/auth/nav";
 import { getDb, type Db } from "@/lib/db/client";
 
@@ -30,6 +36,7 @@ export type BatchShoppingLine = {
   awardId: string | null;
   awardTitle: string;
   qty: number;
+  actualPrice: number;
 };
 
 export type BatchDeliveryOrder = {
@@ -39,11 +46,18 @@ export type BatchDeliveryOrder = {
   currencyPluralTitle: string;
   totalNumberOf: number;
   itemCount: number;
+  currencyRedemptions: Array<{
+    currencyTitle: string;
+    currencyPluralTitle: string;
+    amount: number;
+  }>;
   items: Array<{
     awardTitle: string;
     qty: number;
     unitNumberOf: number;
     lineNumberOf: number;
+    currencyTitle: string;
+    currencyPluralTitle: string;
   }>;
 };
 
@@ -55,6 +69,79 @@ export type ExchangeBatchDetail = {
   shoppingList: BatchShoppingLine[];
   deliveries: BatchDeliveryOrder[];
 };
+
+function aggregateCurrencyRedemptions(
+  items: Array<{
+    currencyId: string | null;
+    currencyTitle: string;
+    currencyPluralTitle: string;
+    lineNumberOf: number;
+  }>,
+  fallback: {
+    currencyTitle: string;
+    currencyPluralTitle: string;
+    totalNumberOf: number;
+  },
+): BatchDeliveryOrder["currencyRedemptions"] {
+  const totals = new Map<
+    string,
+    { currencyTitle: string; currencyPluralTitle: string; amount: number }
+  >();
+  for (const item of items) {
+    const key = item.currencyId ?? item.currencyPluralTitle;
+    const currencyPluralTitle =
+      item.currencyPluralTitle || fallback.currencyPluralTitle;
+    const currencyTitle = item.currencyTitle || fallback.currencyTitle;
+    const existing = totals.get(key);
+    if (existing) {
+      existing.amount += item.lineNumberOf;
+    } else {
+      totals.set(key, {
+        currencyTitle,
+        currencyPluralTitle,
+        amount: item.lineNumberOf,
+      });
+    }
+  }
+
+  if (totals.size === 0) {
+    return [
+      {
+        currencyTitle: fallback.currencyTitle,
+        currencyPluralTitle: fallback.currencyPluralTitle,
+        amount: fallback.totalNumberOf,
+      },
+    ];
+  }
+
+  return [...totals.values()].sort((a, b) =>
+    a.currencyPluralTitle.localeCompare(b.currencyPluralTitle),
+  );
+}
+
+function resolveItemCurrencyLabels(
+  item: {
+    currencyId: string | null;
+    currencyPluralTitle: string | null;
+    currencyTitle: string | null;
+    currencyPluralTitleFromCurrency: string | null;
+    currencyName: string | null;
+  },
+  orderCurrencyPluralTitle: string,
+): { currencyTitle: string; currencyPluralTitle: string } {
+  const source = {
+    name: item.currencyName?.trim() || orderCurrencyPluralTitle,
+    title: item.currencyTitle,
+    pluralTitle: item.currencyPluralTitleFromCurrency ?? item.currencyPluralTitle,
+  };
+  return {
+    currencyTitle: resolveCurrencyTitle(source),
+    currencyPluralTitle:
+      item.currencyPluralTitle?.trim() ||
+      resolveCurrencyPluralTitle(source) ||
+      orderCurrencyPluralTitle,
+  };
+}
 
 async function listActiveTeamLastDays(
   db: Db,
@@ -289,8 +376,17 @@ export async function getBatchDetailForStaff(input: {
             qty: exchangeOrderItems.qty,
             unitNumberOf: exchangeOrderItems.unitNumberOf,
             lineNumberOf: exchangeOrderItems.lineNumberOf,
+            currencyId: exchangeOrderItems.currencyId,
+            currencyPluralTitle: exchangeOrderItems.currencyPluralTitle,
+            currencyTitle: currencies.title,
+            currencyPluralTitleFromCurrency: currencies.pluralTitle,
+            currencyName: currencies.name,
           })
           .from(exchangeOrderItems)
+          .leftJoin(
+            currencies,
+            eq(exchangeOrderItems.currencyId, currencies.id),
+          )
           .where(inArray(exchangeOrderItems.orderId, orderIds));
 
   const itemsByOrder = new Map<string, typeof itemRows>();
@@ -300,9 +396,33 @@ export async function getBatchDetailForStaff(input: {
     itemsByOrder.set(item.orderId, list);
   }
 
+  const awardIds = [
+    ...new Set(
+      itemRows
+        .map((item) => item.awardId)
+        .filter((awardId): awardId is string => awardId !== null),
+    ),
+  ];
+  const awardPriceRows =
+    awardIds.length === 0
+      ? []
+      : await db
+          .select({
+            id: awards.id,
+            actualPrice: awards.actualPrice,
+          })
+          .from(awards)
+          .where(inArray(awards.id, awardIds));
+  const actualPriceByAwardId = new Map(
+    awardPriceRows.map((row) => [row.id, Number(row.actualPrice ?? 0)]),
+  );
+
   const shoppingMap = new Map<string, BatchShoppingLine>();
   for (const item of itemRows) {
     const key = item.awardId ?? item.awardTitle;
+    const actualPrice = item.awardId
+      ? (actualPriceByAwardId.get(item.awardId) ?? 0)
+      : 0;
     const existing = shoppingMap.get(key);
     if (existing) {
       existing.qty += item.qty;
@@ -311,6 +431,7 @@ export async function getBatchDetailForStaff(input: {
         awardId: item.awardId,
         awardTitle: item.awardTitle,
         qty: item.qty,
+        actualPrice,
       });
     }
   }
@@ -323,19 +444,41 @@ export async function getBatchDetailForStaff(input: {
     shoppingList: [...shoppingMap.values()].sort((a, b) =>
       a.awardTitle.localeCompare(b.awardTitle),
     ),
-    deliveries: orderRows.map((row) => ({
-      orderId: row.orderId,
-      userId: row.userId,
-      userName: [row.userName, row.userLastName].filter(Boolean).join(" "),
-      currencyPluralTitle: row.currencyPluralTitle,
-      totalNumberOf: row.totalNumberOf,
-      itemCount: row.itemCount,
-      items: (itemsByOrder.get(row.orderId) ?? []).map((item) => ({
-        awardTitle: item.awardTitle,
-        qty: item.qty,
-        unitNumberOf: item.unitNumberOf,
-        lineNumberOf: item.lineNumberOf,
-      })),
-    })),
+    deliveries: orderRows.map((row) => {
+      const orderItems = (itemsByOrder.get(row.orderId) ?? []).map((item) => {
+        const labels = resolveItemCurrencyLabels(item, row.currencyPluralTitle);
+        return {
+          awardTitle: item.awardTitle,
+          qty: item.qty,
+          unitNumberOf: item.unitNumberOf,
+          lineNumberOf: item.lineNumberOf,
+          currencyTitle: labels.currencyTitle,
+          currencyPluralTitle: labels.currencyPluralTitle,
+          currencyId: item.currencyId,
+        };
+      });
+      const fallbackCurrency = orderItems[0] ?? {
+        currencyTitle: resolveCurrencyTitle({
+          name: row.currencyPluralTitle,
+          title: null,
+          pluralTitle: row.currencyPluralTitle,
+        }),
+        currencyPluralTitle: row.currencyPluralTitle,
+      };
+      return {
+        orderId: row.orderId,
+        userId: row.userId,
+        userName: [row.userName, row.userLastName].filter(Boolean).join(" "),
+        currencyPluralTitle: row.currencyPluralTitle,
+        totalNumberOf: row.totalNumberOf,
+        itemCount: row.itemCount,
+        currencyRedemptions: aggregateCurrencyRedemptions(orderItems, {
+          currencyTitle: fallbackCurrency.currencyTitle,
+          currencyPluralTitle: fallbackCurrency.currencyPluralTitle,
+          totalNumberOf: row.totalNumberOf,
+        }),
+        items: orderItems.map(({ currencyId: _currencyId, ...item }) => item),
+      };
+    }),
   };
 }

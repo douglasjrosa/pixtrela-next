@@ -24,6 +24,8 @@ const activeAward: AwardRow = {
   active: true,
   showInStore: true,
   stock: 10,
+  actualPrice: 0,
+  autoRecalculate: true,
   values: [{ numberOf: 50, currencyDocumentId: "c1" }],
 };
 
@@ -72,6 +74,8 @@ function renderManager(overrides: Partial<Parameters<typeof AwardManager>[0]> = 
             variant="table"
             labels={{
               cost: "50 Estrela",
+              actualPrice: "R$ 0,00",
+              autoRecalculate: "Sim",
               stock: "10",
               showInStore: "Sim",
               inactive: "Inativo",
@@ -141,6 +145,8 @@ describe("AwardManager", () => {
     expect(screen.getByText("Imagem")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Escolher imagem" })).toBeInTheDocument();
     expect(screen.getByText("Mostrar na loja")).toBeInTheDocument();
+    expect(screen.getByText("Recalcular automaticamente")).toBeInTheDocument();
+    expect(screen.getByLabelText("Custo (R$)")).toBeInTheDocument();
     expect(screen.getByLabelText("Quantidade em estoque")).toBeInTheDocument();
   });
 
@@ -181,6 +187,7 @@ describe("AwardManager", () => {
               variant="table"
               labels={{
                 cost: "50 Estrela",
+                actualPrice: "R$ 0,00",
                 stock: "10",
                 showInStore: "Sim",
                 inactive: "Inativo",
@@ -232,6 +239,8 @@ describe("AwardManager", () => {
           name: "Feijão",
           showInStore: true,
           stock: 0,
+          actualPrice: 0,
+          autoRecalculate: true,
           values: [{ numberOf: 1, currencyDocumentId: "c1" }],
         }),
       );
