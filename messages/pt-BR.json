@@ -372,6 +372,7 @@
     "availableFrom": "Os lotes ficam visíveis a partir do dia {day}.",
     "orderCount": "{count} pedidos",
     "itemCount": "{count} itens",
+    "prizeCount": "{count} prêmios",
     "totalUnits": "{count} unidades no total",
     "totalPrizes": "{count} prêmios no total",
     "batchTitle": "Lote {monthYear}",
