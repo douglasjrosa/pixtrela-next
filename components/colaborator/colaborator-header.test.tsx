@@ -28,7 +28,7 @@ describe("ColaboratorHeader", () => {
   it("renders dashboard and store links plus the account menu", () => {
     renderWithIntl(<ColaboratorHeader homeHref="/colab-1" />);
 
-    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Painel" })).toHaveAttribute(
       "href",
       "/colab-1",
     );
