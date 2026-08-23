@@ -34,9 +34,10 @@ const SHOPPING_HEADER_GAP = 16;
 const SHOPPING_ROW_VERTICAL_PADDING = 4;
 const BRL_PREFIX = "R$";
 const DELIVERY_DATE_PLACEHOLDER = "      /      /            ";
-const DELIVERY_COLUMN_GAP = 12;
+const DELIVERY_COLUMN_GAP = 24;
 const DELIVERY_HALF_ITEM_RATIO = 0.78;
 const DELIVERY_HALF_QTY_RATIO = 0.22;
+const DELIVERY_FOOTER_LABEL_GAP = 4;
 
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
@@ -386,6 +387,40 @@ function drawDeliveryTableRow(
   }
 }
 
+function deliveryFooterLineStartX(
+  doc: PdfDoc,
+  columnX: number,
+  label: string,
+): number {
+  doc.font("Helvetica").fontSize(9);
+  return columnX + doc.widthOfString(`${label}:`) + DELIVERY_FOOTER_LABEL_GAP;
+}
+
+function drawDeliveryFooterField(
+  doc: PdfDoc,
+  label: string,
+  value: string | null,
+  columnX: number,
+  columnWidth: number,
+  footerY: number,
+  lineY: number,
+): void {
+  doc.font("Helvetica").fontSize(9);
+  doc.text(`${label}:`, columnX, footerY, { lineBreak: false });
+  const lineStartX = deliveryFooterLineStartX(doc, columnX, label);
+  if (value) {
+    doc.text(value, lineStartX, footerY, {
+      width: columnX + columnWidth - lineStartX,
+      lineBreak: false,
+    });
+  }
+  doc
+    .strokeColor(BLACK)
+    .moveTo(lineStartX, lineY)
+    .lineTo(columnX + columnWidth, lineY)
+    .stroke();
+}
+
 function drawDeliveryCard(
   doc: PdfDoc,
   order: BatchDeliveryOrder,
@@ -513,29 +548,26 @@ function drawDeliveryCard(
 
   y += DELIVERY_FOOTER_TOP_GAP;
   const footerY = y;
-  const dateWidth = halfWidth;
-  const signatureWidth = halfWidth;
   const lineY = footerY + 12;
 
-  doc.fontSize(9).text(
-    `${labels.dateLine}: ${DELIVERY_DATE_PLACEHOLDER}`,
+  drawDeliveryFooterField(
+    doc,
+    labels.dateLine,
+    DELIVERY_DATE_PLACEHOLDER,
     leftX,
+    halfWidth,
     footerY,
-    {
-      width: dateWidth,
-    },
+    lineY,
   );
-  doc.text(`${labels.signature}:`, rightX, footerY, {
-    width: signatureWidth,
-  });
-  doc
-    .moveTo(leftX, lineY)
-    .lineTo(leftX + dateWidth, lineY)
-    .stroke();
-  doc
-    .moveTo(rightX + 42, lineY)
-    .lineTo(rightX + signatureWidth, lineY)
-    .stroke();
+  drawDeliveryFooterField(
+    doc,
+    labels.signature,
+    null,
+    rightX,
+    halfWidth,
+    footerY,
+    lineY,
+  );
 
   const yBottom =
     footerY + DELIVERY_FOOTER_BLOCK_HEIGHT + DELIVERY_CARD_PADDING_BOTTOM;
