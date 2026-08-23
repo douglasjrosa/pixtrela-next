@@ -75,6 +75,7 @@ function renderManager(overrides: Partial<Parameters<typeof AwardManager>[0]> = 
             labels={{
               cost: "50 Estrela",
               actualPrice: "R$ 0,00",
+              autoRecalculate: "Sim",
               stock: "10",
               showInStore: "Sim",
               inactive: "Inativo",

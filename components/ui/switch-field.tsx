@@ -14,7 +14,7 @@ export interface SwitchFieldProps {
   onCheckedChange: (checked: boolean) => void;
 }
 
-/** Label + switch row for boolean form fields. */
+/** Switch left of label, spread with justify-between. */
 export function SwitchField({
   id,
   label,
@@ -26,9 +26,6 @@ export function SwitchField({
 }: SwitchFieldProps) {
   return (
     <div className={cn("flex items-center justify-between gap-3", className)}>
-      <Label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </Label>
       <Switch
         id={id}
         checked={checked}
@@ -36,6 +33,9 @@ export function SwitchField({
         aria-label={ariaLabel ?? label}
         onCheckedChange={onCheckedChange}
       />
+      <Label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </Label>
     </div>
   );
 }
