@@ -162,6 +162,13 @@
       "when": 1787800000000,
       "tag": "0022_awards_actual_price",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1787850000000,
+      "tag": "0023_exchange_order_item_currency",
+      "breakpoints": true
     }
   ]
 }
