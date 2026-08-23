@@ -181,7 +181,7 @@ function AwardFormDialog({
       <form
         id={formId}
         onSubmit={handleSubmit(onSubmit)}
-        className="grid gap-4 sm:grid-cols-2"
+        className="grid gap-6 sm:grid-cols-2"
       >
         <div className="flex items-center justify-between gap-3">
           <Label htmlFor="name">{tAwards("name")}</Label>
@@ -306,7 +306,7 @@ function AwardFormDialog({
 
         <div className="space-y-4 sm:col-span-2">
           <h3 className="text-base font-semibold">{tAwards("values")}</h3>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {currencies.map((currency, index) => (
               <div
                 key={currency.documentId}
