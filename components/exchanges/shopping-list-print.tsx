@@ -53,7 +53,7 @@ export async function ShoppingListPrint({
                 className="border-b border-border/60"
               >
                 <td className="py-2 pr-3">{line.awardTitle}</td>
-                <td className="py-2 text-right tabular-nums">{line.qty}</td>
+                <td className="py-2 text-center tabular-nums">{line.qty}</td>
               </tr>
             ))}
           </tbody>
