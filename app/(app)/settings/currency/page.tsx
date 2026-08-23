@@ -6,6 +6,7 @@ import {
   type CurrencyRow,
 } from "@/components/settings/currency-manager";
 import { primaryCurrencyDocumentId } from "@/lib/business/primary-currency";
+import { roundCurrencyRate } from "@/lib/format/currency-rate";
 import { listCurrencies as listCurrenciesRepo } from "@/lib/repos/awards";
 import { loadCurrencyForSubtasks } from "@/lib/settings/load-currency-for-subtasks";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
@@ -32,7 +33,7 @@ async function loadCurrencies(): Promise<CurrencyRow[]> {
     pluralTitle: currency.pluralTitle ?? "",
     iconMediaId: currency.iconMediaId,
     iconMediaUrl: toBrowserMediaUrl(currency.iconMediaUrl),
-    currencyPerSecond: Number(currency.currencyPerSecond ?? 0),
+    currencyPerSecond: roundCurrencyRate(Number(currency.currencyPerSecond ?? 0)),
     exchangeRate: Number(currency.exchangeRate ?? 0),
     active: currency.active,
   }));

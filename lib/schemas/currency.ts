@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { roundCurrencyRate } from "@/lib/format/currency-rate";
+
 export const currencyFormSchema = z.object({
   name: z.string().min(1),
   title: z.string().min(1),
@@ -8,7 +10,10 @@ export const currencyFormSchema = z.object({
     .union([z.number().int().positive(), z.string().uuid()])
     .nullable()
     .optional(),
-  currencyPerSecond: z.number().min(0),
+  currencyPerSecond: z
+    .number()
+    .min(0)
+    .transform((value) => roundCurrencyRate(value)),
   exchangeRate: z.number().finite().default(0),
 });
 

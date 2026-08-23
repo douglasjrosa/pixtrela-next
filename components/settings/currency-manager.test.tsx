@@ -104,8 +104,8 @@ describe("CurrencyManager", () => {
     expect(icon).toHaveAttribute("src", "https://cdn.example/star.png");
     expect(icon.className).toMatch(/rounded-full/);
     expect(screen.getAllByText("Gema").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("0.5").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("2,00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("0,50").length).toBeGreaterThan(0);
     expect(screen.getByRole("columnheader", { name: "Unidades por centavo" }))
       .toBeInTheDocument();
     expect(screen.getAllByText("1.5").length).toBeGreaterThan(0);

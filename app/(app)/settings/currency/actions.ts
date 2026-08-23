@@ -12,6 +12,7 @@ import {
   isProtectedCurrencyId,
 } from "@/lib/business/primary-currency";
 import { getDb } from "@/lib/db/client";
+import { roundCurrencyRate } from "@/lib/format/currency-rate";
 import {
   listCategoryImageAssets,
   uploadCategoryImageAsset,
@@ -121,7 +122,7 @@ export async function updateCurrency(
     name: data.name,
     title: data.title,
     pluralTitle: data.pluralTitle,
-    currencyPerSecond: data.currencyPerSecond,
+    currencyPerSecond: String(data.currencyPerSecond),
     exchangeRate: data.exchangeRate,
     updatedAt: new Date(),
   };

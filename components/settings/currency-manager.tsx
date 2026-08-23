@@ -24,6 +24,7 @@ import {
   toggleSelectAllRows,
 } from "@/lib/business/list-selection";
 import { isProtectedCurrencyDocument } from "@/lib/business/primary-currency";
+import { formatCurrencyPerSecond } from "@/lib/format/currency-rate";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { MediaAssetRecord } from "@/lib/repos/media";
 import type { CurrencyFormInput } from "@/lib/schemas/currency";
@@ -92,7 +93,7 @@ function displayTitle(currency: CurrencyRow): string {
   return currency.name;
 }
 
-function formatRate(value: number): string {
+function formatExchangeRate(value: number): string {
   return Number.isInteger(value) ? String(value) : String(value);
 }
 
@@ -417,10 +418,10 @@ export function CurrencyManager({
                         {currency.name}
                       </td>
                       <td className={TABLE_NUMERIC_CELL_CLASS}>
-                        {formatRate(currency.currencyPerSecond)}
+                        {formatCurrencyPerSecond(currency.currencyPerSecond)}
                       </td>
                       <td className={TABLE_NUMERIC_CELL_CLASS}>
-                        {formatRate(currency.exchangeRate)}
+                        {formatExchangeRate(currency.exchangeRate)}
                       </td>
                     </tr>
                   );
@@ -453,8 +454,8 @@ export function CurrencyManager({
                       </span>
                       <span className="mt-1 block text-sm text-muted-foreground">
                         {currency.name} ·{" "}
-                        {formatRate(currency.currencyPerSecond)} ·{" "}
-                        {formatRate(currency.exchangeRate)}
+                        {formatCurrencyPerSecond(currency.currencyPerSecond)} ·{" "}
+                        {formatExchangeRate(currency.exchangeRate)}
                       </span>
                     </button>
                   </li>

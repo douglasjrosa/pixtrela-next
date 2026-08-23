@@ -15,6 +15,17 @@ describe("currencyFormSchema", () => {
     ).toMatchObject({ iconMediaId: 3, exchangeRate: 0 });
   });
 
+  it("rounds currencyPerSecond to two decimals", () => {
+    expect(
+      currencyFormSchema.parse({
+        name: "star",
+        title: "Estrela",
+        pluralTitle: "Estrelas",
+        currencyPerSecond: 1.234,
+      }).currencyPerSecond,
+    ).toBe(1.23);
+  });
+
   it("accepts zero, float, and negative exchange rates", () => {
     expect(
       currencyFormSchema.parse({

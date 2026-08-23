@@ -187,8 +187,8 @@ export const currencies = pgTable("currencies", {
   name: varchar("name", { length: 64 }).notNull().unique(),
   title: varchar("title", { length: 128 }),
   pluralTitle: varchar("plural_title", { length: 128 }),
-  currencyPerSecond: doublePrecision("currency_per_second")
-    .default(0)
+  currencyPerSecond: numeric("currency_per_second", { precision: 12, scale: 2 })
+    .default("0")
     .notNull(),
   exchangeRate: doublePrecision("exchange_rate").default(0).notNull(),
   active: boolean("active").default(true).notNull(),

@@ -12,6 +12,7 @@ import {
 
 import { awardPrices, awards, currencies, mediaAssets } from "@/drizzle/schema";
 import { getDb, type Db } from "@/lib/db/client";
+import { roundCurrencyRate } from "@/lib/format/currency-rate";
 import type { AwardListSort } from "@/lib/schemas/award-list-sort";
 
 export type AwardRecord = {
@@ -355,7 +356,7 @@ export async function createCurrency(
       name: input.name.trim(),
       title: input.title ?? null,
       pluralTitle: input.pluralTitle ?? null,
-      currencyPerSecond: input.currencyPerSecond,
+      currencyPerSecond: String(roundCurrencyRate(input.currencyPerSecond)),
       exchangeRate: input.exchangeRate ?? 0,
       iconMediaId:
         typeof input.iconMediaId === "string" ? input.iconMediaId : null,
