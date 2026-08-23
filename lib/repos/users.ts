@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import bcrypt from "bcryptjs";
 
@@ -239,11 +239,11 @@ export async function listUsersPage(
   const offset = (page - 1) * pageSize;
   const q = options.q?.trim();
   const sort = options.sort ?? { column: "name", direction: "asc" };
-  const activeClause = options.showArchived
-    ? undefined
-    : eq(users.active, true);
+  const visibilityClause = options.showArchived
+    ? or(eq(users.active, false), eq(users.blocked, true))
+    : and(eq(users.active, true), eq(users.blocked, false));
   const searchClause = q ? ilike(users.name, `%${q}%`) : undefined;
-  const where = and(activeClause, searchClause);
+  const where = and(visibilityClause, searchClause);
 
   const [totalRow] = await db
     .select({ total: count() })

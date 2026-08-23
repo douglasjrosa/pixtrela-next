@@ -215,6 +215,28 @@ describe("users/actions drizzle CRUD", () => {
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 
+  it("bulkDeleteUsers allows blocked users still marked active", async () => {
+    findUserById.mockResolvedValue({
+      id: "u1",
+      active: true,
+      blocked: true,
+    });
+    const { bulkDeleteUsers } = await import("./actions");
+    await bulkDeleteUsers(["u1"]);
+    expect(hardDeleteUser).toHaveBeenCalledWith("u1");
+  });
+
+  it("bulkDeleteUsers rejects active users that are not blocked", async () => {
+    findUserById.mockResolvedValue({
+      id: "u1",
+      active: true,
+      blocked: false,
+    });
+    const { bulkDeleteUsers } = await import("./actions");
+    await expect(bulkDeleteUsers(["u1"])).rejects.toThrow("activeUser");
+    expect(hardDeleteUser).not.toHaveBeenCalled();
+  });
+
   it("pairUserTag sets tag when no conflict", async () => {
     findUserIdByTag.mockResolvedValue(null);
     setUserTag.mockResolvedValue(undefined);
