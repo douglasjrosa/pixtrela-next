@@ -16,10 +16,10 @@ function buildOrderSummaryParts(
     labels.itemCount,
     labels.prizeCount,
     ...order.currencyRedemptions.map((redemption) =>
-      formatExchangeCurrencyLabel(
-        redemption.amount,
-        redemption.currencyPluralTitle,
-      ),
+      formatExchangeCurrencyLabel(redemption.amount, {
+        title: redemption.currencyTitle,
+        pluralTitle: redemption.currencyPluralTitle,
+      }),
     ),
   ];
 }
@@ -101,20 +101,20 @@ export async function DeliverySheetsPrint({
                         <td className="py-2 pr-3 align-middle">
                           {item.awardTitle}
                         </td>
-                        <td className="py-2 pr-3 text-right align-middle tabular-nums">
+                        <td className="py-2 px-3 text-center align-middle tabular-nums">
                           {item.qty}
                         </td>
-                        <td className="py-2 pr-3 text-right align-middle tabular-nums">
-                          {formatExchangeCurrencyLabel(
-                            item.unitNumberOf,
-                            item.currencyPluralTitle,
-                          )}
+                        <td className="py-2 px-3 text-center align-middle tabular-nums">
+                          {formatExchangeCurrencyLabel(item.unitNumberOf, {
+                            title: item.currencyTitle,
+                            pluralTitle: item.currencyPluralTitle,
+                          })}
                         </td>
-                        <td className="py-2 text-right align-middle tabular-nums">
-                          {formatExchangeCurrencyLabel(
-                            item.lineNumberOf,
-                            item.currencyPluralTitle,
-                          )}
+                        <td className="py-2 text-center align-middle tabular-nums">
+                          {formatExchangeCurrencyLabel(item.lineNumberOf, {
+                            title: item.currencyTitle,
+                            pluralTitle: item.currencyPluralTitle,
+                          })}
                         </td>
                       </tr>
                     ))}

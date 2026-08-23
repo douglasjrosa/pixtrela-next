@@ -5,9 +5,21 @@ export function formatExchangeCurrencyAmount(amount: number): string {
   }).format(amount);
 }
 
+export type ExchangeCurrencyLabels = {
+  title: string;
+  pluralTitle: string;
+};
+
+export function exchangeCurrencyLabelForAmount(
+  amount: number,
+  labels: ExchangeCurrencyLabels,
+): string {
+  return amount === 1 ? labels.title : labels.pluralTitle;
+}
+
 export function formatExchangeCurrencyLabel(
   amount: number,
-  currencyPluralTitle: string,
+  labels: ExchangeCurrencyLabels,
 ): string {
-  return `${formatExchangeCurrencyAmount(amount)} ${currencyPluralTitle}`;
+  return `${formatExchangeCurrencyAmount(amount)} ${exchangeCurrencyLabelForAmount(amount, labels)}`;
 }

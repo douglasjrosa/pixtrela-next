@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import {
   awards,
+  currencies,
   exchangeBatches,
   exchangeOrderItems,
   exchangeOrders,
@@ -14,6 +15,10 @@ import {
   isBatchVisible,
   maxActiveTeamLastDay,
 } from "@/lib/domain/exchange-batch";
+import {
+  resolveCurrencyPluralTitle,
+  resolveCurrencyTitle,
+} from "@/lib/domain/currency-display";
 import type { Role } from "@/lib/auth/nav";
 import { getDb, type Db } from "@/lib/db/client";
 
@@ -42,6 +47,7 @@ export type BatchDeliveryOrder = {
   totalNumberOf: number;
   itemCount: number;
   currencyRedemptions: Array<{
+    currencyTitle: string;
     currencyPluralTitle: string;
     amount: number;
   }>;
@@ -50,6 +56,7 @@ export type BatchDeliveryOrder = {
     qty: number;
     unitNumberOf: number;
     lineNumberOf: number;
+    currencyTitle: string;
     currencyPluralTitle: string;
   }>;
 };
@@ -64,29 +71,76 @@ export type ExchangeBatchDetail = {
 };
 
 function aggregateCurrencyRedemptions(
-  items: Array<{ currencyPluralTitle: string; lineNumberOf: number }>,
-  fallback: { currencyPluralTitle: string; totalNumberOf: number },
+  items: Array<{
+    currencyId: string | null;
+    currencyTitle: string;
+    currencyPluralTitle: string;
+    lineNumberOf: number;
+  }>,
+  fallback: {
+    currencyTitle: string;
+    currencyPluralTitle: string;
+    totalNumberOf: number;
+  },
 ): BatchDeliveryOrder["currencyRedemptions"] {
-  const totals = new Map<string, number>();
+  const totals = new Map<
+    string,
+    { currencyTitle: string; currencyPluralTitle: string; amount: number }
+  >();
   for (const item of items) {
-    const title = item.currencyPluralTitle || fallback.currencyPluralTitle;
-    totals.set(title, (totals.get(title) ?? 0) + item.lineNumberOf);
+    const key = item.currencyId ?? item.currencyPluralTitle;
+    const currencyPluralTitle =
+      item.currencyPluralTitle || fallback.currencyPluralTitle;
+    const currencyTitle = item.currencyTitle || fallback.currencyTitle;
+    const existing = totals.get(key);
+    if (existing) {
+      existing.amount += item.lineNumberOf;
+    } else {
+      totals.set(key, {
+        currencyTitle,
+        currencyPluralTitle,
+        amount: item.lineNumberOf,
+      });
+    }
   }
 
   if (totals.size === 0) {
     return [
       {
+        currencyTitle: fallback.currencyTitle,
         currencyPluralTitle: fallback.currencyPluralTitle,
         amount: fallback.totalNumberOf,
       },
     ];
   }
 
-  return [...totals.entries()]
-    .map(([currencyPluralTitle, amount]) => ({ currencyPluralTitle, amount }))
-    .sort((a, b) =>
-      a.currencyPluralTitle.localeCompare(b.currencyPluralTitle),
-    );
+  return [...totals.values()].sort((a, b) =>
+    a.currencyPluralTitle.localeCompare(b.currencyPluralTitle),
+  );
+}
+
+function resolveItemCurrencyLabels(
+  item: {
+    currencyId: string | null;
+    currencyPluralTitle: string | null;
+    currencyTitle: string | null;
+    currencyPluralTitleFromCurrency: string | null;
+    currencyName: string | null;
+  },
+  orderCurrencyPluralTitle: string,
+): { currencyTitle: string; currencyPluralTitle: string } {
+  const source = {
+    name: item.currencyName?.trim() || orderCurrencyPluralTitle,
+    title: item.currencyTitle,
+    pluralTitle: item.currencyPluralTitleFromCurrency ?? item.currencyPluralTitle,
+  };
+  return {
+    currencyTitle: resolveCurrencyTitle(source),
+    currencyPluralTitle:
+      item.currencyPluralTitle?.trim() ||
+      resolveCurrencyPluralTitle(source) ||
+      orderCurrencyPluralTitle,
+  };
 }
 
 async function listActiveTeamLastDays(
@@ -322,9 +376,17 @@ export async function getBatchDetailForStaff(input: {
             qty: exchangeOrderItems.qty,
             unitNumberOf: exchangeOrderItems.unitNumberOf,
             lineNumberOf: exchangeOrderItems.lineNumberOf,
+            currencyId: exchangeOrderItems.currencyId,
             currencyPluralTitle: exchangeOrderItems.currencyPluralTitle,
+            currencyTitle: currencies.title,
+            currencyPluralTitleFromCurrency: currencies.pluralTitle,
+            currencyName: currencies.name,
           })
           .from(exchangeOrderItems)
+          .leftJoin(
+            currencies,
+            eq(exchangeOrderItems.currencyId, currencies.id),
+          )
           .where(inArray(exchangeOrderItems.orderId, orderIds));
 
   const itemsByOrder = new Map<string, typeof itemRows>();
@@ -383,14 +445,26 @@ export async function getBatchDetailForStaff(input: {
       a.awardTitle.localeCompare(b.awardTitle),
     ),
     deliveries: orderRows.map((row) => {
-      const orderItems = (itemsByOrder.get(row.orderId) ?? []).map((item) => ({
-        awardTitle: item.awardTitle,
-        qty: item.qty,
-        unitNumberOf: item.unitNumberOf,
-        lineNumberOf: item.lineNumberOf,
-        currencyPluralTitle:
-          item.currencyPluralTitle ?? row.currencyPluralTitle,
-      }));
+      const orderItems = (itemsByOrder.get(row.orderId) ?? []).map((item) => {
+        const labels = resolveItemCurrencyLabels(item, row.currencyPluralTitle);
+        return {
+          awardTitle: item.awardTitle,
+          qty: item.qty,
+          unitNumberOf: item.unitNumberOf,
+          lineNumberOf: item.lineNumberOf,
+          currencyTitle: labels.currencyTitle,
+          currencyPluralTitle: labels.currencyPluralTitle,
+          currencyId: item.currencyId,
+        };
+      });
+      const fallbackCurrency = orderItems[0] ?? {
+        currencyTitle: resolveCurrencyTitle({
+          name: row.currencyPluralTitle,
+          title: null,
+          pluralTitle: row.currencyPluralTitle,
+        }),
+        currencyPluralTitle: row.currencyPluralTitle,
+      };
       return {
         orderId: row.orderId,
         userId: row.userId,
@@ -399,10 +473,11 @@ export async function getBatchDetailForStaff(input: {
         totalNumberOf: row.totalNumberOf,
         itemCount: row.itemCount,
         currencyRedemptions: aggregateCurrencyRedemptions(orderItems, {
-          currencyPluralTitle: row.currencyPluralTitle,
+          currencyTitle: fallbackCurrency.currencyTitle,
+          currencyPluralTitle: fallbackCurrency.currencyPluralTitle,
           totalNumberOf: row.totalNumberOf,
         }),
-        items: orderItems,
+        items: orderItems.map(({ currencyId: _currencyId, ...item }) => item),
       };
     }),
   };

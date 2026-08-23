@@ -42,6 +42,7 @@ function buildDeliveryOrder(
     qty: 1,
     unitNumberOf: 10,
     lineNumberOf: 10,
+    currencyTitle: "Star",
     currencyPluralTitle: "Stars",
   }));
   return {
@@ -53,6 +54,7 @@ function buildDeliveryOrder(
     itemCount,
     currencyRedemptions: [
       {
+        currencyTitle: "Star",
         currencyPluralTitle: "Stars",
         amount: itemCount * 10,
       },
@@ -117,8 +119,16 @@ describe("generateDeliverySheetsPdf", () => {
           totalNumberOf: 14,
           itemCount: 2,
           currencyRedemptions: [
-            { currencyPluralTitle: "Stars", amount: 8 },
-            { currencyPluralTitle: "Hearts", amount: 6 },
+            {
+              currencyTitle: "Star",
+              currencyPluralTitle: "Stars",
+              amount: 8,
+            },
+            {
+              currencyTitle: "Heart",
+              currencyPluralTitle: "Hearts",
+              amount: 6,
+            },
           ],
           items: [
             {
@@ -126,6 +136,7 @@ describe("generateDeliverySheetsPdf", () => {
               qty: 2,
               unitNumberOf: 4,
               lineNumberOf: 8,
+              currencyTitle: "Star",
               currencyPluralTitle: "Stars",
             },
             {
@@ -133,6 +144,7 @@ describe("generateDeliverySheetsPdf", () => {
               qty: 1,
               unitNumberOf: 6,
               lineNumberOf: 6,
+              currencyTitle: "Heart",
               currencyPluralTitle: "Hearts",
             },
           ],
