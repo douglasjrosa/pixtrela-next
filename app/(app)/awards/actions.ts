@@ -35,6 +35,7 @@ import {
   loadAwardListPage,
   type AwardListPageResult,
 } from "@/lib/awards/load-award-list-page";
+import { resolveAwardPricesOnSave } from "@/lib/awards/resolve-award-prices";
 
 async function assertCanView(): Promise<void> {
   const session = await auth();
@@ -92,6 +93,18 @@ export async function uploadAwardImage(
 export async function createAward(raw: AwardFormInput): Promise<void> {
   await assertCanManage();
   const data = awardFormSchema.parse(raw);
+  const db = getDb();
+  const prices = await resolveAwardPricesOnSave(
+    {
+      autoRecalculate: data.autoRecalculate,
+      actualPrice: data.actualPrice,
+      manualPrices: data.values.map((entry) => ({
+        currencyId: entry.currencyDocumentId,
+        numberOf: entry.numberOf,
+      })),
+    },
+    db,
+  );
   await createAwardRepo({
     name: data.name,
     title: data.title || null,
@@ -103,10 +116,7 @@ export async function createAward(raw: AwardFormInput): Promise<void> {
     stock: data.stock,
     actualPrice: data.actualPrice,
     autoRecalculate: data.autoRecalculate,
-    prices: data.values.map((entry) => ({
-      currencyId: entry.currencyDocumentId,
-      numberOf: entry.numberOf,
-    })),
+    prices,
   });
   invalidateAwards();
 }
@@ -118,6 +128,17 @@ export async function updateAward(
   await assertCanManage();
   const data = awardFormSchema.parse(raw);
   const db = getDb();
+  const prices = await resolveAwardPricesOnSave(
+    {
+      autoRecalculate: data.autoRecalculate,
+      actualPrice: data.actualPrice,
+      manualPrices: data.values.map((entry) => ({
+        currencyId: entry.currencyDocumentId,
+        numberOf: entry.numberOf,
+      })),
+    },
+    db,
+  );
   await db
     .update(awards)
     .set({
@@ -133,14 +154,7 @@ export async function updateAward(
       updatedAt: new Date(),
     })
     .where(eq(awards.id, documentId));
-  await replaceAwardPrices(
-    documentId,
-    data.values.map((entry) => ({
-      currencyId: entry.currencyDocumentId,
-      numberOf: entry.numberOf,
-    })),
-    db,
-  );
+  await replaceAwardPrices(documentId, prices, db);
   invalidateAwards();
 }
 

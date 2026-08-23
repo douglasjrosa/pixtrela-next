@@ -131,6 +131,7 @@ function AwardFormDialog({
   });
 
   const imageId = useWatch({ control, name: "imageId" });
+  const autoRecalculate = useWatch({ control, name: "autoRecalculate" });
 
   function handleImageConfirm(asset: MediaAssetRecord): void {
     setValue("imageId", asset.id);
@@ -306,7 +307,7 @@ function AwardFormDialog({
                 <NumberInput
                   id={`award-value-${currency.documentId}`}
                   min={0}
-                  disabled={formDisabled}
+                  disabled={formDisabled || autoRecalculate}
                   {...register(`values.${index}.numberOf`, {
                     valueAsNumber: true,
                   })}

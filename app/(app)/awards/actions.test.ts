@@ -33,6 +33,13 @@ vi.mock("@/lib/awards/load-award-list-page", () => ({
   loadAwardListPage: (...args: unknown[]) => loadAwardListPageMock(...args),
 }));
 
+const resolveAwardPricesOnSave = vi.fn();
+
+vi.mock("@/lib/awards/resolve-award-prices", () => ({
+  resolveAwardPricesOnSave: (...args: unknown[]) =>
+    resolveAwardPricesOnSave(...args),
+}));
+
 vi.mock("@/lib/db/client", () => ({
   getDb: () => getDb(),
 }));
@@ -66,6 +73,10 @@ describe("awards/actions drizzle CRUD", () => {
     listMediaAssets.mockReset();
     loadAwardListPageMock.mockReset();
     getDb.mockReturnValue({ update });
+    resolveAwardPricesOnSave.mockReset();
+    resolveAwardPricesOnSave.mockImplementation(
+      async ({ manualPrices }: { manualPrices: unknown[] }) => manualPrices,
+    );
     update.mockClear();
   });
 
@@ -111,6 +122,14 @@ describe("awards/actions drizzle CRUD", () => {
         autoRecalculate: true,
         prices: [{ currencyId: "cur-1", numberOf: 10 }],
       }),
+    );
+    expect(resolveAwardPricesOnSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        autoRecalculate: true,
+        actualPrice: 12.5,
+        manualPrices: [{ currencyId: "cur-1", numberOf: 10 }],
+      }),
+      expect.anything(),
     );
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
   });
@@ -197,6 +216,14 @@ describe("awards/actions drizzle CRUD", () => {
     expect(replaceAwardPrices).toHaveBeenCalledWith(
       "award-1",
       [{ currencyId: "cur-1", numberOf: 5 }],
+      expect.anything(),
+    );
+    expect(resolveAwardPricesOnSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        autoRecalculate: false,
+        actualPrice: 9.99,
+        manualPrices: [{ currencyId: "cur-1", numberOf: 5 }],
+      }),
       expect.anything(),
     );
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
