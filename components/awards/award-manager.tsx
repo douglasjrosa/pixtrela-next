@@ -148,6 +148,8 @@ function AwardFormDialog({
     <FormModalShell
       open
       size="lgNarrow"
+      bodyClassName="p-6"
+      footerClassName="px-6 py-4"
       title={isEditing ? tAwards("editAward") : tAwards("newAward")}
       titleId={formTitleId}
       onClose={onClose}
@@ -181,34 +183,24 @@ function AwardFormDialog({
       <form
         id={formId}
         onSubmit={handleSubmit(onSubmit)}
-        className="grid gap-6 sm:grid-cols-2"
+        className="flex flex-col gap-8"
       >
-        <div className="flex items-center justify-between gap-3">
-          <Label htmlFor="name">{tAwards("name")}</Label>
-          <Input
-            id="name"
-            className="w-full max-w-48"
-            disabled={formDisabled}
-            {...register("name")}
-          />
-        </div>
-        {errors.name ? (
-          <p className="text-sm text-destructive sm:col-span-2">
-            {errors.name.message}
-          </p>
-        ) : null}
+        <div className="grid gap-6 gap-x-10 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="name">{tAwards("name")}</Label>
+            <Input id="name" disabled={formDisabled} {...register("name")} />
+            {errors.name ? (
+              <p className="text-sm text-destructive">{errors.name.message}</p>
+            ) : null}
+          </div>
 
-        <div className="flex items-center justify-between gap-3">
-          <Label htmlFor="title">{tAwards("titleField")}</Label>
-          <Input
-            id="title"
-            className="w-full max-w-48"
-            disabled={formDisabled}
-            {...register("title")}
-          />
+          <div className="space-y-2">
+            <Label htmlFor="title">{tAwards("titleField")}</Label>
+            <Input id="title" disabled={formDisabled} {...register("title")} />
+          </div>
         </div>
 
-        <div className="space-y-2 sm:col-span-2">
+        <div className="space-y-2">
           <Label htmlFor="description">{tAwards("description")}</Label>
           <Textarea
             id="description"
@@ -217,7 +209,7 @@ function AwardFormDialog({
           />
         </div>
 
-        <div className="space-y-2 sm:col-span-2">
+        <div className="space-y-2">
           <Label htmlFor="warnings">{tAwards("warnings")}</Label>
           <Textarea
             id="warnings"
@@ -226,7 +218,7 @@ function AwardFormDialog({
           />
         </div>
 
-        <div className="space-y-2 sm:col-span-2">
+        <div className="space-y-2">
           <Label>{tAwards("image")}</Label>
           <MediaImageField
             selectedId={imageId}
@@ -240,40 +232,37 @@ function AwardFormDialog({
           />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-6 sm:col-span-2">
-          <div className="flex min-w-[12rem] flex-1 items-center justify-between gap-3">
+        <div className="grid gap-6 gap-x-10 sm:grid-cols-2">
+          <div className="space-y-2">
             <Label htmlFor="stock">{tAwards("stock")}</Label>
             <NumberInput
               id="stock"
               min={0}
-              className="w-32"
               disabled={formDisabled}
               {...register("stock", { valueAsNumber: true })}
             />
+            {errors.stock ? (
+              <p className="text-sm text-destructive">{errors.stock.message}</p>
+            ) : null}
           </div>
-          <div className="flex min-w-[12rem] flex-1 items-center justify-between gap-3">
+
+          <div className="space-y-2">
             <Label htmlFor="actual-price">{tAwards("actualPrice")}</Label>
             <NumberInput
               id="actual-price"
               step="0.01"
-              className="w-32"
               disabled={formDisabled}
               {...register("actualPrice", { valueAsNumber: true })}
             />
+            {errors.actualPrice ? (
+              <p className="text-sm text-destructive">
+                {errors.actualPrice.message}
+              </p>
+            ) : null}
           </div>
         </div>
-        {errors.stock ? (
-          <p className="text-sm text-destructive sm:col-span-2">
-            {errors.stock.message}
-          </p>
-        ) : null}
-        {errors.actualPrice ? (
-          <p className="text-sm text-destructive sm:col-span-2">
-            {errors.actualPrice.message}
-          </p>
-        ) : null}
 
-        <div className="flex flex-wrap items-center gap-6 sm:col-span-2">
+        <div className="flex flex-col gap-4">
           <Controller
             name="showInStore"
             control={control}
@@ -302,14 +291,11 @@ function AwardFormDialog({
           />
         </div>
 
-        <div className="space-y-4 sm:col-span-2">
+        <div className="space-y-4">
           <h3 className="text-base font-semibold">{tAwards("values")}</h3>
-          <div className="space-y-4">
+          <div className="grid gap-6 gap-x-10 sm:grid-cols-2">
             {currencies.map((currency, index) => (
-              <div
-                key={currency.documentId}
-                className="flex items-center justify-between gap-3"
-              >
+              <div key={currency.documentId} className="space-y-2">
                 <Label htmlFor={`award-value-${currency.documentId}`}>
                   {currencyLabel(currency)}
                 </Label>
@@ -320,7 +306,6 @@ function AwardFormDialog({
                 <NumberInput
                   id={`award-value-${currency.documentId}`}
                   min={0}
-                  className="w-28"
                   disabled={formDisabled}
                   {...register(`values.${index}.numberOf`, {
                     valueAsNumber: true,
