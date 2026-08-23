@@ -26,6 +26,7 @@ describe("AppNavUserMenu", () => {
     expect(
       screen.getByRole("menuitem", { name: "Meu perfil" }),
     ).toHaveAttribute("href", "/u1/profile");
+    expect(screen.getByText("Ana")).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Sair" })).toBeInTheDocument();
   });
 
