@@ -398,6 +398,23 @@ export async function replaceAwardPrices(
   );
 }
 
+export async function updateAwardActualPrices(
+  updates: Array<{ awardId: string; actualPrice: number }>,
+  db: Db = getDb(),
+): Promise<void> {
+  if (updates.length === 0) return;
+  const now = new Date();
+  for (const update of updates) {
+    await db
+      .update(awards)
+      .set({
+        actualPrice: String(update.actualPrice),
+        updatedAt: now,
+      })
+      .where(eq(awards.id, update.awardId));
+  }
+}
+
 export async function findAwardById(
   id: string,
   db: Db = getDb(),
