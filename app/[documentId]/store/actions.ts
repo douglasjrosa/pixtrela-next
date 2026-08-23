@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
@@ -10,6 +10,7 @@ import {
   removeCartItem,
   setCartItemQty,
 } from "@/lib/repos/carts";
+import { COLABORATOR_STORE_PAGE_PATH } from "@/lib/store/store-path";
 
 export type CartActionState = {
   ok: boolean;
@@ -46,6 +47,7 @@ async function requireColaboratorId(): Promise<string> {
 function revalidateCartTags(): void {
   revalidateTag("drizzle:carts", "default");
   revalidateTag("drizzle:awards", "default");
+  revalidatePath(COLABORATOR_STORE_PAGE_PATH, "layout");
 }
 
 export async function addToCart(
