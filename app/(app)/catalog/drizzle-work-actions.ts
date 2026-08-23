@@ -5,7 +5,6 @@ import { revalidateTag } from "next/cache";
 import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
 import { getOrCreateMonthlyBalance } from "@/lib/repos/balances";
 import { findCurrencyById } from "@/lib/repos/awards";
-import { redeemAward } from "@/lib/repos/exchanges";
 import {
   identifyColaboratorByCode,
   identifyColaboratorByFace,
@@ -60,18 +59,6 @@ export async function getMyBalanceAction(input: {
     userId: input.userId,
     currencyPluralTitle: resolveCurrencyPluralTitle(currency),
   });
-}
-
-export async function redeemAwardAction(input: {
-  userId: string;
-  awardId: string;
-  currencyId: string;
-  qty: number;
-}) {
-  const result = await redeemAward(input);
-  revalidateTag("drizzle:exchanges", "default");
-  revalidateTag("drizzle:balances", "default");
-  return result;
 }
 
 export async function kioskIdentifyByCodeAction(input: {

@@ -15,7 +15,9 @@ export interface AwardRow {
   active: boolean;
   showInStore: boolean;
   stock: number;
-  imageId?: number | string | null;
+  actualPrice: number;
+  autoRecalculate: boolean;
+  imageId?: string | null;
   imageUrl?: string | null;
   values: AwardFormInput["values"];
 }

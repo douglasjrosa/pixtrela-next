@@ -1,6 +1,7 @@
 "use client";
 
 import type { ComponentProps, ReactNode } from "react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -37,5 +38,31 @@ export function LoadMoreButton({
     >
       {loading ? loadingLabel : label}
     </Button>
+  );
+}
+
+export interface ListLoadMoreProps {
+  visible: boolean;
+  loading?: boolean;
+  onClick: () => void;
+}
+
+export function ListLoadMore({
+  visible,
+  loading = false,
+  onClick,
+}: ListLoadMoreProps) {
+  const tCommon = useTranslations("common");
+  if (!visible) return null;
+
+  return (
+    <LoadMoreButtonRow>
+      <LoadMoreButton
+        label={tCommon("loadMore")}
+        loadingLabel={tCommon("loading")}
+        loading={loading}
+        onClick={onClick}
+      />
+    </LoadMoreButtonRow>
   );
 }

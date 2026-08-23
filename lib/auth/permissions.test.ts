@@ -10,10 +10,13 @@ import {
   canDeactivateTasks,
   canDeleteTasks,
   canExchange,
+  canAdjustColaboratorBalance,
   canDeactivateAwards,
   canDeleteAwards,
   canManageAwards,
   canViewAwards,
+  canViewExchanges,
+  canUpdateExchangeShoppingPrices,
   canManageTasks,
   canDeactivateTemplates,
   canDeleteTemplates,
@@ -128,6 +131,15 @@ describe("canViewAwards", () => {
   });
 });
 
+describe("canAdjustColaboratorBalance", () => {
+  it("allows manager and admin only", () => {
+    expect(canAdjustColaboratorBalance("admin")).toBe(true);
+    expect(canAdjustColaboratorBalance("manager")).toBe(true);
+    expect(canAdjustColaboratorBalance("leader")).toBe(false);
+    expect(canAdjustColaboratorBalance("colaborator")).toBe(false);
+  });
+});
+
 describe("canDeactivateAwards", () => {
   it("allows manager and admin", () => {
     expect(canDeactivateAwards("admin")).toBe(true);
@@ -140,6 +152,25 @@ describe("canDeleteAwards", () => {
   it("allows admin only", () => {
     expect(canDeleteAwards("admin")).toBe(true);
     expect(canDeleteAwards("manager")).toBe(false);
+  });
+});
+
+describe("canViewExchanges", () => {
+  it("allows leader and above", () => {
+    expect(canViewExchanges("leader")).toBe(true);
+    expect(canViewExchanges("manager")).toBe(true);
+    expect(canViewExchanges("admin")).toBe(true);
+    expect(canViewExchanges("colaborator")).toBe(false);
+    expect(canViewExchanges("kiosk")).toBe(false);
+  });
+});
+
+describe("canUpdateExchangeShoppingPrices", () => {
+  it("allows manager and admin only", () => {
+    expect(canUpdateExchangeShoppingPrices("admin")).toBe(true);
+    expect(canUpdateExchangeShoppingPrices("manager")).toBe(true);
+    expect(canUpdateExchangeShoppingPrices("leader")).toBe(false);
+    expect(canUpdateExchangeShoppingPrices("colaborator")).toBe(false);
   });
 });
 
@@ -207,8 +238,13 @@ describe("canAccessRoute", () => {
     expect(canAccessRoute("colaborator", "/balance", "col-1")).toBe(false);
     expect(canAccessRoute("colaborator", "/col-1", "col-1")).toBe(true);
     expect(canAccessRoute("colaborator", "/col-1/profile", "col-1")).toBe(true);
+    expect(canAccessRoute("colaborator", "/col-1/store", "col-1")).toBe(true);
+    expect(canAccessRoute("colaborator", "/col-1/store/cart", "col-1")).toBe(
+      true,
+    );
     expect(canAccessRoute("colaborator", "/kiosk", "col-1")).toBe(false);
     expect(canAccessRoute("manager", "/balance")).toBe(false);
+    expect(canAccessRoute("manager", "/col-1/store", "mgr-1")).toBe(false);
   });
 
   it("allows kiosk only on kiosk paths", () => {
@@ -220,6 +256,12 @@ describe("canAccessRoute", () => {
 
   it("allows board for staff roles", () => {
     expect(canAccessRoute("leader", "/board")).toBe(true);
+  });
+
+  it("allows exchanges for leader and above", () => {
+    expect(canAccessRoute("leader", "/exchanges")).toBe(true);
+    expect(canAccessRoute("manager", "/exchanges/batch-1")).toBe(true);
+    expect(canAccessRoute("colaborator", "/exchanges", "col-1")).toBe(false);
   });
 
   it("allows own profile for manager and leader", () => {

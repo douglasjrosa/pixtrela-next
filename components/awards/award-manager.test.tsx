@@ -24,6 +24,8 @@ const activeAward: AwardRow = {
   active: true,
   showInStore: true,
   stock: 10,
+  actualPrice: 0,
+  autoRecalculate: true,
   values: [{ numberOf: 50, currencyDocumentId: "c1" }],
 };
 
@@ -32,7 +34,24 @@ const archivedAward: AwardRow = {
   active: false,
 };
 
-const noopUpload = vi.fn().mockResolvedValue(1);
+const noopUpload = vi.fn().mockResolvedValue({
+  id: "media-1",
+  storageKey: "media-1.png",
+  url: "/api/media/media-1.png",
+  browserUrl: "/api/media/media-1.png",
+  mimeType: "image/png",
+  byteSize: 12,
+  originalFilename: "award.png",
+  displayName: null,
+  description: null,
+  altText: null,
+  title: null,
+  category: "award",
+  sensitivity: "public",
+  createdAt: new Date("2026-01-01T00:00:00Z"),
+  updatedAt: new Date("2026-01-01T00:00:00Z"),
+});
+const noopListImages = vi.fn().mockResolvedValue([]);
 
 function renderManager(overrides: Partial<Parameters<typeof AwardManager>[0]> = {}) {
   return renderWithIntl(
@@ -42,6 +61,7 @@ function renderManager(overrides: Partial<Parameters<typeof AwardManager>[0]> = 
       onUpdate={vi.fn()}
       onArchive={vi.fn()}
       onHardDelete={vi.fn()}
+      onListImages={noopListImages}
       onUploadImage={noopUpload}
       canDeactivate
       canDelete={false}
@@ -54,6 +74,10 @@ function renderManager(overrides: Partial<Parameters<typeof AwardManager>[0]> = 
             variant="table"
             labels={{
               cost: "50 Estrela",
+              actualPrice: "R$ 0,00",
+              autoRecalculate: "Sim",
+              stock: "10",
+              showInStore: "Sim",
               inactive: "Inativo",
               selectRow: "Selecionar Arroz",
             }}
@@ -83,6 +107,7 @@ describe("AwardManager", () => {
         onUpdate={vi.fn()}
         onArchive={vi.fn()}
         onHardDelete={vi.fn()}
+        onListImages={noopListImages}
         onUploadImage={noopUpload}
         canDelete={false}
       >
@@ -101,6 +126,7 @@ describe("AwardManager", () => {
         onUpdate={vi.fn()}
         onArchive={vi.fn()}
         onHardDelete={vi.fn()}
+        onListImages={noopListImages}
         onUploadImage={noopUpload}
         canDelete={false}
       >
@@ -113,10 +139,14 @@ describe("AwardManager", () => {
       screen.getByRole("heading", { name: "Novo prêmio" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Valores")).toBeInTheDocument();
-    expect(screen.getByLabelText("Moeda")).toBeInTheDocument();
+    expect(screen.getByText("Estrela")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Adicionar valor" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Avisos")).toBeInTheDocument();
-    expect(screen.getByLabelText("Imagem")).toBeInTheDocument();
+    expect(screen.getByText("Imagem")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Escolher imagem" })).toBeInTheDocument();
     expect(screen.getByText("Mostrar na loja")).toBeInTheDocument();
+    expect(screen.getByText("Recalcular automaticamente")).toBeInTheDocument();
+    expect(screen.getByLabelText("Custo (R$)")).toBeInTheDocument();
     expect(screen.getByLabelText("Quantidade em estoque")).toBeInTheDocument();
   });
 
@@ -145,6 +175,7 @@ describe("AwardManager", () => {
         onUpdate={vi.fn()}
         onArchive={vi.fn()}
         onHardDelete={vi.fn()}
+        onListImages={noopListImages}
         onUploadImage={noopUpload}
         canDeactivate={false}
         canDelete
@@ -156,6 +187,9 @@ describe("AwardManager", () => {
               variant="table"
               labels={{
                 cost: "50 Estrela",
+                actualPrice: "R$ 0,00",
+                stock: "10",
+                showInStore: "Sim",
                 inactive: "Inativo",
                 selectRow: "Selecionar Arroz",
               }}
@@ -187,6 +221,7 @@ describe("AwardManager", () => {
         onUpdate={vi.fn()}
         onArchive={vi.fn()}
         onHardDelete={vi.fn()}
+        onListImages={noopListImages}
         onUploadImage={noopUpload}
         canDelete={false}
       >
@@ -204,6 +239,8 @@ describe("AwardManager", () => {
           name: "Feijão",
           showInStore: true,
           stock: 0,
+          actualPrice: 0,
+          autoRecalculate: true,
           values: [{ numberOf: 1, currencyDocumentId: "c1" }],
         }),
       );

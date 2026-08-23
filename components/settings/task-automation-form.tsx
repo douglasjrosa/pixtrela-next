@@ -1,27 +1,17 @@
-"use client";
+import { getTranslations } from "next-intl/server";
 
-import { useTransition } from "react";
-import { useForm, type Resolver } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslations } from "next-intl";
-
-import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import {
   MAX_ASSIGN_WARN_MAX,
   MIN_ASSIGN_WARN_MAX,
 } from "@/lib/business/assign-warn-max";
 import {
   TASK_AUTOMATION_STATUS_FIELDS,
-  taskAutomationFormSchema,
   type TaskAutomationFormInput,
 } from "@/lib/schemas/task-automation";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
-
-const SELECT_CLASS_NAME =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 
 export interface StepOption {
   documentId: string;
@@ -31,44 +21,25 @@ export interface StepOption {
 export interface TaskAutomationFormProps {
   steps: StepOption[];
   defaultValues: TaskAutomationFormInput;
-  onSave: (values: TaskAutomationFormInput) => void | Promise<void>;
+  action: (formData: FormData) => void | Promise<void>;
 }
 
-export function TaskAutomationForm({
+export async function TaskAutomationForm({
   steps,
   defaultValues,
-  onSave,
+  action,
 }: TaskAutomationFormProps) {
-  const tCommon = useTranslations("common");
-  const tSettings = useTranslations("settings");
-  const tStatus = useTranslations("tasks.status");
-  const [isPending, startTransition] = useTransition();
+  const tCommon = await getTranslations("common");
+  const tSettings = await getTranslations("settings");
+  const tStatus = await getTranslations("tasks.status");
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<TaskAutomationFormInput>({
-    resolver: zodResolver(
-      taskAutomationFormSchema,
-    ) as Resolver<TaskAutomationFormInput>,
-    defaultValues,
-  });
-
-  function onSubmit(values: TaskAutomationFormInput): void {
-    startTransition(async () => {
-      try {
-        await onSave(values);
-        showSuccessToast(tSettings("saved"));
-      } catch (error) {
-        rethrowIfNavigationError(error);
-        showErrorToast(tSettings("error"));
-      }
-    });
-  }
+  const formKey = [
+    ...TASK_AUTOMATION_STATUS_FIELDS.map(({ field }) => defaultValues[field]),
+    defaultValues.assignWarnMax,
+  ].join(":");
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-sm space-y-6">
+    <form key={formKey} action={action} className="max-w-sm space-y-6">
       <div className="space-y-4">
         <div className="space-y-1">
           <h2 className="text-lg font-semibold">
@@ -89,8 +60,10 @@ export function TaskAutomationForm({
             </Label>
             <select
               id={`automation-${status}`}
-              className={`${SELECT_CLASS_NAME} flex-1`}
-              {...register(field)}
+              name={field}
+              key={`${field}-${defaultValues[field]}`}
+              defaultValue={defaultValues[field]}
+              className={`${NATIVE_SELECT_CLASS_NAME} flex-1`}
             >
               <option value="">{tSettings("automationNoStep")}</option>
               {steps.map((step) => (
@@ -113,32 +86,26 @@ export function TaskAutomationForm({
           </p>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <Label htmlFor="assignWarnMax" className="shrink-0">
-              {tSettings("assignWarnMax")}
-            </Label>
-            <Input
-              id="assignWarnMax"
-              className="flex-1"
-              type="number"
-              min={MIN_ASSIGN_WARN_MAX}
-              max={MAX_ASSIGN_WARN_MAX}
-              step={1}
-              {...register("assignWarnMax", { valueAsNumber: true })}
-            />
-          </div>
-          {errors.assignWarnMax ? (
-            <p className="text-sm text-destructive">
-              {errors.assignWarnMax.message}
-            </p>
-          ) : null}
+        <div className="flex items-center gap-3">
+          <Label htmlFor="assignWarnMax" className="shrink-0">
+            {tSettings("assignWarnMax")}
+          </Label>
+          <Input
+            id="assignWarnMax"
+            name="assignWarnMax"
+            type="number"
+            className="flex-1"
+            min={MIN_ASSIGN_WARN_MAX}
+            max={MAX_ASSIGN_WARN_MAX}
+            step={1}
+            key={`assignWarnMax-${defaultValues.assignWarnMax}`}
+            defaultValue={defaultValues.assignWarnMax}
+            required
+          />
         </div>
       </div>
 
-      <Button type="submit" disabled={isPending || steps.length === 0}>
-        {tCommon("save")}
-      </Button>
+      <FormSubmitButton label={tCommon("save")} />
     </form>
   );
 }

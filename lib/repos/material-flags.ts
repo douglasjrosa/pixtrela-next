@@ -147,6 +147,39 @@ export async function createMaterialFlag(
   return created;
 }
 
+export async function createMaterialFlagsInRange(
+  input: { subTaskCategoryId: string; indexFrom: number; indexTo: number },
+  db: Db = getDb(),
+) {
+  const indices: number[] = [];
+  for (let index = input.indexFrom; index <= input.indexTo; index += 1) {
+    indices.push(index);
+  }
+
+  const existing = await db
+    .select({ index: flags.index })
+    .from(flags)
+    .where(
+      and(
+        eq(flags.subTaskCategoryId, input.subTaskCategoryId),
+        inArray(flags.index, indices),
+      ),
+    );
+  if (existing.length > 0) {
+    throw new Error("flagIndexExists");
+  }
+
+  return db
+    .insert(flags)
+    .values(
+      indices.map((index) => ({
+        subTaskCategoryId: input.subTaskCategoryId,
+        index,
+      })),
+    )
+    .returning();
+}
+
 export async function updateMaterialFlag(
   id: string,
   input: MaterialFlagFormInput,

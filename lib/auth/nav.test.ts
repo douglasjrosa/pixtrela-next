@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { homeHrefForRole, navItemsForRole } from "./nav";
+import { colaboratorMenuItems, homeHrefForRole, navItemsForRole } from "./nav";
 
 function hrefs(role: Parameters<typeof navItemsForRole>[0]) {
   return navItemsForRole(role).map((item) => item.href);
@@ -8,10 +8,17 @@ function hrefs(role: Parameters<typeof navItemsForRole>[0]) {
 describe("navItemsForRole", () => {
   it("sends colaborator home links to private path when userId is set", () => {
     expect(navItemsForRole("colaborator", { userId: "col-1" }).map((i) => i.href))
-      .toEqual(["/col-1", "/col-1#colaborator-store", "/col-1/profile"]);
+      .toEqual(["/col-1", "/col-1/store", "/col-1/profile"]);
     expect(
       navItemsForRole("colaborator", { userId: "col-1" }).map((i) => i.labelKey),
-    ).toEqual(["myBalance", "exchange", "profile"]);
+    ).toEqual(["dashboard", "store", "profile"]);
+  });
+
+  it("exposes dashboard and store for the colaborator header menu", () => {
+    expect(colaboratorMenuItems("col-1")).toEqual([
+      { href: "/col-1", labelKey: "dashboard" },
+      { href: "/col-1/store", labelKey: "store" },
+    ]);
   });
 
   it("falls back to panel root when colaborator has no userId", () => {
@@ -25,11 +32,12 @@ describe("navItemsForRole", () => {
       .not.toContain("/admin-1/profile");
   });
 
-  it("shows users and tasks to leader but not templates", () => {
+  it("shows users, tasks and exchanges to leader but not templates", () => {
     const result = hrefs("leader");
     expect(result).toContain("/");
     expect(result).toContain("/users");
     expect(result).toContain("/tasks");
+    expect(result).toContain("/exchanges");
     expect(result).not.toContain("/templates");
     expect(result).not.toContain("/templates/tasks");
     expect(result).not.toContain("/teams");
@@ -40,6 +48,7 @@ describe("navItemsForRole", () => {
     const result = hrefs("manager");
     expect(result).toContain("/teams");
     expect(result).toContain("/awards");
+    expect(result).toContain("/exchanges");
     expect(result).toContain("/tasks");
     expect(result).toContain("/templates/tasks");
   });
@@ -54,8 +63,9 @@ describe("navItemsForRole", () => {
         "/templates/tasks",
         "/teams",
         "/awards",
+        "/exchanges",
         "/users",
-        "/settings/steps",
+        "/settings/files",
       ]),
     );
   });

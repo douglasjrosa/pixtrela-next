@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
@@ -11,9 +12,10 @@ import {
   upsertKioskSettings,
   upsertTaskAutomationSettings,
 } from "@/lib/repos/settings";
-import type { CurrencyForSubtasksInput } from "@/lib/schemas/currency-for-subtasks";
+import { currencyForSubtasksSchema } from "@/lib/schemas/currency-for-subtasks";
 import { entryAccessSettingsSchema } from "@/lib/schemas/entry-access";
-import type { TaskAutomationFormInput } from "@/lib/schemas/task-automation";
+import { kioskSessionIdleSchema } from "@/lib/schemas/kiosk-setting";
+import { taskAutomationFormSchema } from "@/lib/schemas/task-automation";
 
 async function assertCanManage(): Promise<void> {
   const session = await auth();
@@ -22,29 +24,63 @@ async function assertCanManage(): Promise<void> {
   }
 }
 
-export async function updateCurrencyForSubtasks(
-  values: CurrencyForSubtasksInput,
-): Promise<void> {
-  await assertCanManage();
-  await upsertCurrencyForSubtasks(values.currencyDocumentId || null);
-  revalidateTag("drizzle:currency-for-subtasks", "default");
+function formString(formData: FormData, name: string): string {
+  const value = formData.get(name);
+  return typeof value === "string" ? value : "";
 }
 
-export async function updateKioskSessionIdleSeconds(values: {
-  sessionIdleSeconds: number;
-  maxSimultaneousSubtaskIntervalSeconds: number;
-}): Promise<void> {
+function formNumber(formData: FormData, name: string): number {
+  return Number(formString(formData, name));
+}
+
+export async function updateCurrencyForSubtasks(
+  formData: FormData,
+): Promise<void> {
   await assertCanManage();
+  const data = currencyForSubtasksSchema.parse({
+    currencyDocumentId: formString(formData, "currencyDocumentId"),
+  });
+  await upsertCurrencyForSubtasks(data.currencyDocumentId);
+  revalidateTag("drizzle:currency-for-subtasks", "default");
+  revalidateTag("drizzle:currencies", "default");
+  revalidatePath("/settings/currency");
+  redirect("/settings/currency");
+}
+
+export async function updateKioskSessionIdleSeconds(
+  formData: FormData,
+): Promise<void> {
+  await assertCanManage();
+  const values = kioskSessionIdleSchema.parse({
+    sessionIdleSeconds: formNumber(formData, "sessionIdleSeconds"),
+    maxSimultaneousSubtaskIntervalSeconds: formNumber(
+      formData,
+      "maxSimultaneousSubtaskIntervalSeconds",
+    ),
+  });
   await upsertKioskSettings(values);
   revalidateTag("drizzle:kiosk-setting", "default");
+  revalidatePath("/settings/kiosk");
+  redirect("/settings/kiosk");
 }
 
 export async function updateTaskAutomationSetting(
-  values: TaskAutomationFormInput,
+  formData: FormData,
 ): Promise<void> {
   await assertCanManage();
+  const values = taskAutomationFormSchema.parse({
+    waitingStepDocumentId: formString(formData, "waitingStepDocumentId"),
+    producingStepDocumentId: formString(formData, "producingStepDocumentId"),
+    pausedStepDocumentId: formString(formData, "pausedStepDocumentId"),
+    finishedStepDocumentId: formString(formData, "finishedStepDocumentId"),
+    reviewedStepDocumentId: formString(formData, "reviewedStepDocumentId"),
+    deliveredStepDocumentId: formString(formData, "deliveredStepDocumentId"),
+    assignWarnMax: formNumber(formData, "assignWarnMax"),
+  });
   await upsertTaskAutomationSettings(values);
   revalidateTag("drizzle:task-automation-setting", "default");
+  revalidatePath("/settings/automations");
+  redirect("/settings/automations");
 }
 
 export async function updateEntryAccessSettings(

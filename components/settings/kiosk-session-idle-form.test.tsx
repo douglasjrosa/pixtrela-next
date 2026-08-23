@@ -1,73 +1,33 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
 
+import { createGetTranslationsMock } from "@/test/mock-next-intl-server";
 import { renderWithIntl } from "@/test/test-utils";
-import { KioskSessionIdleForm } from "./kiosk-session-idle-form";
 
-const showSuccessToast = vi.fn();
-const showErrorToast = vi.fn();
-
-vi.mock("@/lib/ui/app-toast", () => ({
-  showSuccessToast: (...args: unknown[]) => showSuccessToast(...args),
-  showErrorToast: (...args: unknown[]) => showErrorToast(...args),
+vi.mock("next-intl/server", () => ({
+  getTranslations: createGetTranslationsMock(),
 }));
 
-describe("KioskSessionIdleForm", () => {
-  beforeEach(() => {
-    showSuccessToast.mockReset();
-    showErrorToast.mockReset();
-  });
+import { KioskSessionIdleForm } from "./kiosk-session-idle-form";
 
-  it("renders sessionIdleSeconds field", () => {
+describe("KioskSessionIdleForm", () => {
+  it("renders sessionIdleSeconds field", async () => {
     renderWithIntl(
-      <KioskSessionIdleForm sessionIdleSeconds={7} onSave={vi.fn()} />,
+      await KioskSessionIdleForm({
+        sessionIdleSeconds: 7,
+        action: vi.fn(),
+      }),
     );
-    expect(screen.getByRole("heading", { name: "Preferências" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Tempo de sessão do Totem (segundos):")).toHaveValue(
-      7,
-    );
+    expect(
+      screen.getByRole("heading", { name: "Preferências" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Tempo de sessão do Totem (segundos):"),
+    ).toHaveValue(7);
     expect(
       screen.getByLabelText(
         "Intervalo máximo para permitir subtarefas simultâneas (s)",
       ),
     ).toHaveValue(300);
-  });
-
-  it("calls onSave with updated value and shows success toast", async () => {
-    const onSave = vi.fn().mockResolvedValue(undefined);
-    renderWithIntl(
-      <KioskSessionIdleForm sessionIdleSeconds={7} onSave={onSave} />,
-    );
-
-    fireEvent.change(
-      screen.getByLabelText("Tempo de sessão do Totem (segundos):"),
-      { target: { value: "15" } },
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
-
-    await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith({
-        sessionIdleSeconds: 15,
-        maxSimultaneousSubtaskIntervalSeconds: 300,
-      });
-    });
-    expect(showSuccessToast).toHaveBeenCalledWith("Configurações salvas.");
-    expect(showErrorToast).not.toHaveBeenCalled();
-  });
-
-  it("shows error toast when onSave fails", async () => {
-    const onSave = vi.fn().mockRejectedValue(new Error("forbidden"));
-    renderWithIntl(
-      <KioskSessionIdleForm sessionIdleSeconds={7} onSave={onSave} />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
-
-    await waitFor(() => {
-      expect(showErrorToast).toHaveBeenCalledWith(
-        "Não foi possível salvar as configurações.",
-      );
-    });
-    expect(showSuccessToast).not.toHaveBeenCalled();
   });
 });

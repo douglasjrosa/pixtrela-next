@@ -2,7 +2,6 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -10,9 +9,10 @@ import {
   bulkDeleteTasks,
   loadMoreTasks,
 } from "@/app/(app)/tasks/actions";
-import { LoadMoreButton, LoadMoreButtonRow } from "@/components/ui/load-more-button";
-import { Button } from "@/components/ui/button";
+import { ListLoadMore } from "@/components/ui/load-more-button";
+import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ListSelectionProvider } from "@/components/ui/list-selection-context";
 import {
   areAllSelectedTasksArchived,
   areAllTasksSelected,
@@ -30,7 +30,6 @@ import {
   TaskListRowPresentational,
   type TaskListRowLabels,
 } from "./task-list-row-presentational";
-import { TaskListSelectionProvider } from "./task-list-selection-context";
 import { TasksBulkArchiveModal } from "./tasks-bulk-archive-modal";
 import type { TaskRow } from "./types";
 
@@ -184,35 +183,18 @@ export function TasksListTableFrame({
     : null;
 
   return (
-    <TaskListSelectionProvider value={selectionValue}>
+    <ListSelectionProvider value={selectionValue}>
       <div className="flex min-h-0 flex-1 flex-col">
         {bulkEnabled ? (
-          <div className="flex h-10 shrink-0 items-center justify-end gap-2">
-            {showArchiveAction ? (
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  aria-label={tManage("archiveSelected")}
-                  disabled={isPending}
-                  onClick={() => setArchiveOpen(true)}
-                >
-                  <Archive aria-hidden />
-                </Button>
-              ) : null}
-            {showDeleteAction ? (
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  aria-label={tManage("deleteSelected")}
-                  disabled={isPending}
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  <Trash2 aria-hidden />
-                </Button>
-              ) : null}
-          </div>
+          <BulkListToolbar
+            showArchive={showArchiveAction}
+            showDelete={showDeleteAction}
+            archiveLabel={tManage("archiveSelected")}
+            deleteLabel={tManage("deleteSelected")}
+            disabled={isPending}
+            onArchive={() => setArchiveOpen(true)}
+            onDelete={() => setDeleteOpen(true)}
+          />
         ) : null}
 
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -265,16 +247,11 @@ export function TasksListTableFrame({
           ) : null}
         </div>
 
-        {hasMore ? (
-          <LoadMoreButtonRow>
-            <LoadMoreButton
-              loading={isPending}
-              label={tManage("loadMore")}
-              loadingLabel={tManage("loadingMore")}
-              onClick={handleLoadMore}
-            />
-          </LoadMoreButtonRow>
-        ) : null}
+        <ListLoadMore
+          visible={hasMore}
+          loading={isPending}
+          onClick={handleLoadMore}
+        />
 
         <TasksBulkArchiveModal
           open={archiveOpen}
@@ -293,6 +270,6 @@ export function TasksListTableFrame({
           onClose={() => setDeleteOpen(false)}
         />
       </div>
-    </TaskListSelectionProvider>
+    </ListSelectionProvider>
   );
 }

@@ -12,6 +12,7 @@ export interface UserRow {
   greetingGender?: "masculine" | "feminine" | null;
   /** Soft-deactivated via users-permissions `blocked`. */
   blocked?: boolean;
+  active?: boolean;
   avatarUrl?: string | null;
   facePhotoUrl?: string | null;
 }

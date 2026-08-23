@@ -2,6 +2,10 @@ import {
   buildProfilePath,
   isUserProfilePath as isProfilePathShape,
 } from "@/lib/profile/profile-path";
+import {
+  buildStorePath,
+  isUserStorePath as isStorePathShape,
+} from "@/lib/store/store-path";
 
 import type { Role } from "./nav";
 import { canAccessOwnProfile } from "./profile-access";
@@ -29,6 +33,8 @@ const RESERVED_ROOT_SEGMENTS = new Set([
   "awards",
   "settings",
   "profile",
+  "store",
+  "exchanges",
   "api",
   "serwist",
 ]);
@@ -65,12 +71,20 @@ export function isUserProfilePath(pathname: string): boolean {
   return isProfilePathShape(pathname, RESERVED_ROOT_SEGMENTS);
 }
 
+/** True for `/{documentId}/store`. */
+export function isUserStorePath(pathname: string): boolean {
+  return isStorePathShape(pathname, RESERVED_ROOT_SEGMENTS);
+}
+
 export function canColaboratorAccessPath(
   pathname: string,
   documentId: string,
 ): boolean {
+  if (pathname === `/${documentId}`) return true;
+  if (pathname === buildProfilePath(documentId)) return true;
   return (
-    pathname === `/${documentId}` || pathname === buildProfilePath(documentId)
+    pathname === buildStorePath(documentId) ||
+    pathname.startsWith(`${buildStorePath(documentId)}/`)
   );
 }
 
@@ -132,6 +146,27 @@ export function resolveRouteAccess(
     }
     if (userId && pathname !== buildProfilePath(userId)) {
       return redirectTo(buildProfilePath(userId), pathname);
+    }
+    return { action: "allow" };
+  }
+
+  if (isUserStorePath(pathname)) {
+    if (!isAuthenticated) {
+      return redirectTo(buildLoginRedirect(pathname), pathname);
+    }
+    if (isKiosk) {
+      return redirectTo(KIOSK_HOME_PATH, pathname);
+    }
+    if (!isColaborator) {
+      return redirectTo("/", pathname);
+    }
+    const ownStorePrefix = buildStorePath(userId ?? "");
+    if (
+      userId &&
+      pathname !== ownStorePrefix &&
+      !pathname.startsWith(`${ownStorePrefix}/`)
+    ) {
+      return redirectTo(ownStorePrefix, pathname);
     }
     return { action: "allow" };
   }

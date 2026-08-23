@@ -104,6 +104,7 @@ export function RouteThemeBackground({
     return (
       <div
         aria-hidden
+        data-route-theme-background
         className={cn(
           "pointer-events-none fixed inset-0 z-0 overflow-hidden",
           className,
@@ -140,6 +141,7 @@ export function RouteThemeBackground({
   return (
     <div
       aria-hidden
+      data-route-theme-background
       className={cn(
         "pointer-events-none z-0",
         useFixed ? "fixed inset-0" : "absolute inset-0 min-h-full",

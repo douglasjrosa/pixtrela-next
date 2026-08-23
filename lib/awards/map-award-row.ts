@@ -11,6 +11,8 @@ export function mapAwardListItemToRow(item: AwardListItem): AwardRow {
     active: item.active,
     showInStore: item.showInStore,
     stock: item.stock,
+    actualPrice: item.actualPrice,
+    autoRecalculate: item.autoRecalculate,
     imageId: item.imageMediaId,
     imageUrl: item.imageUrl,
     values: item.prices.map((price) => ({

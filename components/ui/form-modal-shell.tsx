@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const SIZE_CLASS = {
+  xs: "max-w-[16rem]",
+  sm: "max-w-[20rem]",
   md: "max-w-lg",
   lgNarrow: "max-w-xl",
   lg: "max-w-2xl",
@@ -54,6 +56,10 @@ export interface FormModalShellProps {
    * When false, the body does not scroll; children must manage their own overflow.
    */
   bodyScroll?: boolean;
+  /** Extra classes for the padded body wrapper (e.g. larger padding). */
+  bodyClassName?: string;
+  /** Extra classes for the footer bar. */
+  footerClassName?: string;
   headerActions?: ReactNode;
   footerStart?: ReactNode;
   footerEnd?: ReactNode;
@@ -71,6 +77,8 @@ export function FormModalShell({
   layer = "base",
   fillBody = true,
   bodyScroll = true,
+  bodyClassName,
+  footerClassName,
   headerActions,
   footerStart,
   footerEnd,
@@ -82,14 +90,17 @@ export function FormModalShell({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
   const disabledRef = useRef(disabled);
-  onCloseRef.current = onClose;
-  disabledRef.current = disabled;
   const showFooter = footerStart != null || footerEnd != null;
   const isViewport = layout === "viewport";
   const overlayZ =
     layer === "nested"
       ? FORM_MODAL_NESTED_OVERLAY_Z_CLASS
       : FORM_MODAL_OVERLAY_Z_CLASS;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    disabledRef.current = disabled;
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -181,6 +192,7 @@ export function FormModalShell({
           <div
             className={cn(
               "flex flex-col p-4",
+              bodyClassName,
               bodyScroll && fillBody && FORM_MODAL_BODY_MIN_HEIGHT_CLASS,
               !bodyScroll && "h-full min-h-0",
             )}
@@ -194,6 +206,7 @@ export function FormModalShell({
             className={cn(
               "flex shrink-0 flex-wrap items-center justify-between gap-3",
               "border-t bg-background px-4 py-3",
+              footerClassName,
             )}
           >
             <div className="flex flex-wrap gap-2">

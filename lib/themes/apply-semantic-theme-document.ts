@@ -1,6 +1,9 @@
 import {
+  SELECT_OPTION_CSS_VAR_KEYS,
   SEMANTIC_TOKEN_KEYS,
   buildSemanticThemeCss,
+  resolveSelectOptionCssVars,
+  resolveSemanticColorScheme,
   type SemanticTokens,
 } from "@/lib/themes/semantic-tokens";
 
@@ -18,7 +21,15 @@ export function applySemanticThemeToDocument(tokens: SemanticTokens): void {
   }
 
   const root = document.documentElement;
+  const selectOptionVars = resolveSelectOptionCssVars(tokens);
+  root.style.setProperty(
+    "color-scheme",
+    resolveSemanticColorScheme(tokens.background),
+  );
   for (const key of SEMANTIC_TOKEN_KEYS) {
     root.style.setProperty(`--${key}`, tokens[key]);
+  }
+  for (const key of SELECT_OPTION_CSS_VAR_KEYS) {
+    root.style.setProperty(`--${key}`, selectOptionVars[key]);
   }
 }

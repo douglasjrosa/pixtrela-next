@@ -20,6 +20,7 @@ import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { buildDefaultLogin } from "@/lib/business/default-login";
 import { buildKioskColaboratorPath } from "@/lib/kiosk/kiosk-link";
@@ -44,6 +45,7 @@ import {
 } from "@/lib/schemas/user";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 
 import type { UserRow } from "./types";
 import {
@@ -84,6 +86,8 @@ export interface UserManagerProps {
   canEditUserLogin?: boolean;
   /** Admin-only avatar and face recognition image management. */
   canManageImages?: boolean;
+  /** Admin-only active status field in the edit modal. */
+  canEditActive?: boolean;
   onPairUserTag?: (
     userId: UserRow["id"],
     userTag: string,
@@ -187,6 +191,7 @@ interface UserFormDialogProps {
   ) => void | Promise<void>;
   nfcPairDisabled: boolean;
   canManageImages: boolean;
+  canEditActive: boolean;
 }
 
 function UserFormDialog({
@@ -209,6 +214,7 @@ function UserFormDialog({
   onUpdateImage,
   nfcPairDisabled,
   canManageImages,
+  canEditActive,
 }: UserFormDialogProps) {
   const tCommon = useTranslations("common");
   const tUsers = useTranslations("users");
@@ -233,6 +239,7 @@ function UserFormDialog({
         code: editingUser.code,
         roleType: editingUser.roleType,
         greetingGender: editingUser.greetingGender ?? "masculine",
+        active: editingUser.active !== false && !editingUser.blocked,
       }
     : EMPTY_FORM;
 
@@ -409,9 +416,8 @@ function UserFormDialog({
 
         <div className="space-y-2">
           <Label htmlFor="code">{tUsers("code")}</Label>
-          <Input
+          <NumberInput
             id="code"
-            type="number"
             min={0}
             {...register("code", {
               setValueAs: (value) => {
@@ -435,7 +441,7 @@ function UserFormDialog({
           <Label htmlFor="roleType">{tUsers("role")}</Label>
           <select
             id="roleType"
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className={NATIVE_SELECT_CLASS_NAME}
             {...register("roleType")}
           >
             {roleOptions.map((role) => (
@@ -450,7 +456,7 @@ function UserFormDialog({
           <Label htmlFor="greetingGender">{tUsers("greetingGender")}</Label>
           <select
             id="greetingGender"
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className={NATIVE_SELECT_CLASS_NAME}
             {...register("greetingGender")}
           >
             <option value="masculine">{tUsers("greetingGenderMasculine")}</option>
@@ -471,6 +477,17 @@ function UserFormDialog({
               onUpdateImage(editingUser.id, imageType, file, options)
             }
           />
+        ) : null}
+
+        {isEditing && canEditActive ? (
+          <label className="flex items-center gap-2 sm:col-span-2 text-sm">
+            <input
+              type="checkbox"
+              className="size-4 rounded border border-input accent-primary"
+              {...register("active")}
+            />
+            {tUsers("active")}
+          </label>
         ) : null}
       </form>
     </FormModalShell>
@@ -493,6 +510,7 @@ export function UserManager({
   canSetPassword = false,
   canEditUserLogin = false,
   canManageImages = false,
+  canEditActive = false,
   onPairUserTag,
 }: UserManagerProps) {
   const tCommon = useTranslations("common");
@@ -551,6 +569,9 @@ export function UserManager({
     const payload: UserFormInput = { ...values };
     if (!canSetPassword || !payload.password) {
       delete payload.password;
+    }
+    if (!canEditActive || editingUserId === null) {
+      delete payload.active;
     }
 
     startTransition(async () => {
@@ -725,6 +746,7 @@ export function UserManager({
             onUpdateImage={onUpdateImage ? handleUpdateImage : undefined}
             nfcPairDisabled={nfcPairDisabled}
             canManageImages={canManageImages}
+            canEditActive={canEditActive}
           />
         ) : null}
 

@@ -17,6 +17,8 @@ const awards: AwardRow[] = [
     active: true,
     showInStore: true,
     stock: 0,
+    actualPrice: 0,
+    autoRecalculate: true,
     values: [{ numberOf: 10, currencyDocumentId: "c1" }],
   },
   {
@@ -25,6 +27,8 @@ const awards: AwardRow[] = [
     active: false,
     showInStore: true,
     stock: 0,
+    actualPrice: 0,
+    autoRecalculate: true,
     values: [{ numberOf: 20, currencyDocumentId: "c1" }],
   },
 ];

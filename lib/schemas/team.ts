@@ -14,6 +14,4 @@ export const teamFormSchema = z.object({
 
 export type TeamFormInput = z.infer<typeof teamFormSchema>;
 
-export const bulkTeamIdsSchema = z
-  .array(z.string().trim().min(1))
-  .min(1, "emptySelection");
+export { bulkDocumentIdsSchema as bulkTeamIdsSchema } from "./bulk-ids";

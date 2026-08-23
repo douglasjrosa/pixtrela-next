@@ -1,13 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { FlagEditForm } from "@/components/settings/subtasks/flag-edit-form";
-import { buttonVariants } from "@/components/ui/button";
+import { BackLink } from "@/components/navigation/back-link";
 import { findMaterialFlagById } from "@/lib/repos/material-flags";
 import { listAllSubTaskCategories } from "@/lib/repos/sub-task-categories";
-import { cn } from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{ documentId: string }>;
@@ -23,13 +20,7 @@ export default async function SettingsFlagDetailPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <Link
-        href="/settings/subtasks/flags"
-        className={cn(buttonVariants({ variant: "outline" }), "w-fit")}
-      >
-        <ArrowLeft aria-hidden />
-        {tCommon("back")}
-      </Link>
+      <BackLink href="/settings/subtasks/flags">{tCommon("back")}</BackLink>
       <h2 className="font-display text-xl font-bold">{t("editFlag")}</h2>
       <FlagEditForm
         documentId={flag.id}

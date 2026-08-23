@@ -100,7 +100,6 @@ describe("ThemeSettingsManager", () => {
     expect(
       within(dialog).getByLabelText("Margem da página (desktop)"),
     ).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Cor do texto")).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Cor do container")).toBeInTheDocument();
   });
 

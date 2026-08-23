@@ -16,6 +16,7 @@ import {
   routeThemeContentSurfaceRadiusClass,
   routeThemeForegroundStyle,
   routeThemeSurfaceBackgroundStyle,
+  routeThemeSurfacePanelStyle,
   normalizeForegroundColor,
   normalizeSurfaceColor,
   pageMarginFromStoredIndex,
@@ -86,6 +87,9 @@ describe("resolveRouteThemeKey", () => {
     expect(resolveRouteThemeKey("/settings/themes")).toBe("settings");
     expect(resolveRouteThemeKey("/settings/themes/colors")).toBe("settings");
     expect(resolveRouteThemeKey("/settings/themes/routes")).toBe("settings");
+    expect(resolveRouteThemeKey("/settings/files")).toBe("settings");
+    expect(resolveRouteThemeKey("/exchanges")).toBe("exchanges");
+    expect(resolveRouteThemeKey("/exchanges/batch-1")).toBe("exchanges");
   });
 
   it("maps colaborator documentId paths", () => {
@@ -317,15 +321,10 @@ describe("foreground color", () => {
     expect(normalizeForegroundColor("#112233")).toBe("#112233");
   });
 
-  it("exposes CSS variables for the content surface", () => {
+  it("does not override semantic foreground tokens", () => {
     expect(
       routeThemeForegroundStyle({ foregroundColor: "#334455" }),
-    ).toEqual({
-      color: "#334455",
-      "--foreground": "#334455",
-      "--card-foreground": "#334455",
-      "--popover-foreground": "#334455",
-    });
+    ).toEqual({});
   });
 });
 
@@ -342,5 +341,15 @@ describe("surface color", () => {
         surfaceColorOpacity: 40,
       }),
     ).toEqual({ backgroundColor: "rgba(255, 255, 255, 0.4)" });
+  });
+
+  it("surface panel style only sets background, not text tokens", () => {
+    expect(
+      routeThemeSurfacePanelStyle({
+        foregroundColor: "#002555",
+        surfaceColor: "#ffffff",
+        surfaceColorOpacity: 50,
+      } as RouteThemeView),
+    ).toEqual({ backgroundColor: "rgba(255, 255, 255, 0.5)" });
   });
 });

@@ -14,6 +14,8 @@ const awards: AwardRow[] = [
     active: true,
     showInStore: true,
     stock: 0,
+    actualPrice: 0,
+    autoRecalculate: true,
     imageUrl: "/api/media/arroz.jpg",
     values: [{ numberOf: 2100, currencyDocumentId: "c1" }],
   },
@@ -30,6 +32,10 @@ describe("AwardListRowPresentational", () => {
               variant="table"
               labels={{
                 cost: "2100 Estrelas",
+                actualPrice: "R$ 0,00",
+                autoRecalculate: "Sim",
+                stock: "0",
+                showInStore: "Sim",
                 inactive: "Inativo",
                 selectRow: "Selecionar Arroz 5kg",
               }}
@@ -43,6 +49,8 @@ describe("AwardListRowPresentational", () => {
     expect(image).toHaveAttribute("src", "/api/media/arroz.jpg");
     expect(image.className).toMatch(/rounded-full/);
     expect(screen.getByRole("button", { name: "Arroz 5kg" })).toBeInTheDocument();
+    expect(screen.getByText("0")).toBeInTheDocument();
+    expect(screen.getAllByText("Sim")).toHaveLength(2);
   });
 
   it("opens the award when the title is clicked", () => {
@@ -56,6 +64,10 @@ describe("AwardListRowPresentational", () => {
               variant="table"
               labels={{
                 cost: "2100 Estrelas",
+                actualPrice: "R$ 0,00",
+                autoRecalculate: "Sim",
+                stock: "0",
+                showInStore: "Sim",
                 inactive: "Inativo",
                 selectRow: "Selecionar Arroz 5kg",
               }}

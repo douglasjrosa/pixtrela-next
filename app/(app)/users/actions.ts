@@ -3,7 +3,6 @@
 import { revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
-import { mediaAssets } from "@/drizzle/schema";
 import type { Role } from "@/lib/auth/nav";
 import {
   canViewUsers,
@@ -11,12 +10,14 @@ import {
   canPairUserTag,
 } from "@/lib/auth/permissions";
 import { canDeleteUsers, canManageRole } from "@/lib/business/roles";
-import { getDb } from "@/lib/db/client";
 import { normalizeUserTag } from "@/lib/kiosk/user-tag";
 import { storeMedia } from "@/lib/media/store-media";
+import { insertMediaAsset } from "@/lib/repos/media";
 import {
   createUser as createUserRepo,
   deactivateUser as deactivateUserRepo,
+  hardDeleteUser,
+  reactivateUser,
   findUserById,
   findUserIdByTag,
   setUserAvatarMedia,
@@ -25,7 +26,11 @@ import {
   updateUserAccount,
   type UserRole,
 } from "@/lib/repos/users";
-import { buildUserFormSchema, type UserFormInput } from "@/lib/schemas/user";
+import {
+  buildUserFormSchema,
+  bulkUserIdsSchema,
+  type UserFormInput,
+} from "@/lib/schemas/user";
 import { userListFiltersSchema } from "@/lib/schemas/user-list-filters";
 import {
   loadUserListPage,
@@ -159,6 +164,21 @@ export async function updateUser(
     role: data.roleType as UserRole | undefined,
     greetingGender: data.greetingGender,
   });
+
+  if (canDeleteUsers(actorRole) && data.active !== undefined) {
+    const current = await findUserById(toUserIdString(userId));
+    if (current) {
+      if (data.active && !current.active) {
+        await reactivateUser(toUserIdString(userId));
+      } else if (!data.active && current.active) {
+        await deactivateUserRepo(
+          toUserIdString(userId),
+          USER_DEACTIVATION_REASON,
+        );
+      }
+    }
+  }
+
   invalidateUsers();
 }
 
@@ -217,7 +237,36 @@ export async function deleteUser(userId: UserId): Promise<void> {
     throw new Error("forbidden");
   }
 
-  await deactivateUserRepo(toUserIdString(userId), USER_DEACTIVATION_REASON);
+  await hardDeleteUser(toUserIdString(userId));
+  invalidateUsers();
+}
+
+export async function bulkDeactivateUsers(userIds: string[]): Promise<void> {
+  const actorRole = await assertCanView();
+  const ids = bulkUserIdsSchema.parse(userIds);
+  for (const userId of ids) {
+    const currentRole = await loadUserRole(userId);
+    if (!canManageRole(actorRole, currentRole)) {
+      throw new Error("forbidden");
+    }
+    await deactivateUserRepo(userId, USER_DEACTIVATION_REASON);
+  }
+  invalidateUsers();
+}
+
+export async function bulkDeleteUsers(userIds: string[]): Promise<void> {
+  const session = await auth();
+  const actorRole = session?.user?.role as Role | undefined;
+  if (!actorRole || !canDeleteUsers(actorRole)) {
+    throw new Error("forbidden");
+  }
+  const ids = bulkUserIdsSchema.parse(userIds);
+  for (const userId of ids) {
+    const user = await findUserById(userId);
+    if (!user) throw new Error("notFound");
+    if (user.active) throw new Error("activeUser");
+    await hardDeleteUser(userId);
+  }
   invalidateUsers();
 }
 
@@ -250,25 +299,24 @@ export async function updateUserImage(
   const buffer = Buffer.from(await entry.arrayBuffer());
   const extension = mimeType.includes("png") ? "png" : "jpg";
   const stored = await storeMedia({ bytes: buffer, mimeType, extension });
-  const db = getDb();
-  const [media] = await db
-    .insert(mediaAssets)
-    .values({
-      storageKey: stored.storageKey,
-      url: stored.url,
-      mimeType: stored.mimeType,
-      byteSize: stored.byteSize,
-    })
-    .returning({ id: mediaAssets.id });
+  const originalFilename =
+    "name" in entry && typeof entry.name === "string" && entry.name.trim()
+      ? entry.name.trim()
+      : null;
+  const media = await insertMediaAsset(stored, {
+    originalFilename,
+    category: imageType === "avatar" ? "avatar" : "face",
+    sensitivity: imageType === "avatar" ? "internal" : "biometric",
+  });
   const userIdStr = toUserIdString(userId);
   if (imageType === "avatar") {
-    await setUserAvatarMedia(userIdStr, media.id, db);
+    await setUserAvatarMedia(userIdStr, media.id);
   } else {
     const faceVector = parseFaceVectorFromFormData(formData);
     if (formData.has("faceVector") && !faceVector) {
       throw new Error("invalid");
     }
-    await setUserFacePhotoMedia(userIdStr, media.id, faceVector, db);
+    await setUserFacePhotoMedia(userIdStr, media.id, faceVector);
   }
   invalidateUsers();
 }

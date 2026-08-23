@@ -16,6 +16,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx scripts/seed.ts",
+    "db:seed:branding": "tsx scripts/seed-branding-media.ts",
     "db:seed:e2e": "tsx scripts/seed-e2e.ts",
     "db:etl": "tsx scripts/etl-from-strapi.ts",
     "test:db": "vitest run lib/repos lib/domain lib/db"
@@ -38,6 +39,7 @@
     "next-auth": "^5.0.0-beta.31",
     "next-intl": "^4.13.0",
     "nodemailer": "^7.0.13",
+    "pdfkit": "^0.19.1",
     "postgres": "^3.4.9",
     "qs": "^6.15.2",
     "react": "19.2.4",
@@ -59,6 +61,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.1",
+    "@types/pdfkit": "^0.17.6",
     "@types/qs": "^6.15.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",

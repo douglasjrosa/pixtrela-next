@@ -8,6 +8,7 @@ import {
   APP_FAVICON_PNG,
   APP_ICON_192,
   APP_ICON_512,
+  APP_PDF_LOGO_PNG,
 } from "./branding";
 
 const PUBLIC_DIR = join(process.cwd(), "public");
@@ -18,13 +19,14 @@ function publicFile(urlPath: string): string {
 }
 
 describe("branding assets", () => {
-  it("points to existing public files", () => {
+  it("points to existing PWA and favicon public files", () => {
     for (const asset of [
       APP_FAVICON_PNG,
       APP_FAVICON_JPG,
       APP_ICON_192,
       APP_ICON_512,
       APP_APPLE_TOUCH_ICON,
+      APP_PDF_LOGO_PNG,
     ]) {
       expect(existsSync(publicFile(asset))).toBe(true);
     }
@@ -33,5 +35,6 @@ describe("branding assets", () => {
   it("includes Next.js app icon files derived from favicon.png", () => {
     expect(existsSync(join(APP_DIR, "icon.png"))).toBe(true);
     expect(existsSync(join(APP_DIR, "apple-icon.png"))).toBe(true);
+    expect(existsSync(join(APP_DIR, "favicon.ico"))).toBe(true);
   });
 });

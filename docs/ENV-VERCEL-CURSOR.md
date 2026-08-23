@@ -22,6 +22,7 @@ Templates:
 | `AUTH_SECRET` | Strong secret |
 | `AUTH_URL` | Canonical site URL |
 | `AUTH_TRUST_HOST` | `true` |
+| `CRON_SECRET` | Bearer token for Vercel Cron (`/api/cron/*`); required in production |
 | `MEDIA_DRIVER` / `S3_*` / `MEDIA_PUBLIC_BASE_URL` | Cloudflare R2 (`pixtrela-media`) |
 
 Push to `master` → Vercel deploys the app. GitHub Action **Deploy prod DB** runs

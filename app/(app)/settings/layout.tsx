@@ -33,6 +33,7 @@ export default async function SettingsLayout({
           ariaLabel={t("title")}
           className={APP_SECTION_TABS_COMPACT_CLASS}
           items={[
+            { href: "/settings/files", label: t("tabs.files") },
             { href: "/settings/steps", label: t("tabs.steps") },
             { href: "/settings/currency", label: t("tabs.currency") },
             { href: "/settings/automations", label: t("tabs.automations") },

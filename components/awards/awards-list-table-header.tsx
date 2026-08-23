@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import type { AwardListSort } from "@/lib/schemas/award-list-sort";
 import type { AwardListFilters } from "@/lib/schemas/award-list-filters";
 
-import { AwardListRowCheckbox } from "./award-list-row-checkbox";
+import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import { AwardListSortHeaderLink } from "./award-list-sort-header-link";
 
 export interface AwardsListTableHeaderProps {
@@ -26,7 +26,7 @@ export async function AwardsListTableHeader({
       <tr className="border-b text-left">
         {showCheckboxColumn ? (
           <th className={cn("w-10 py-2", "text-center")}>
-            <AwardListRowCheckbox
+            <ListRowCheckbox
               documentId=""
               variant="table-header"
               selectAll
@@ -44,11 +44,17 @@ export async function AwardsListTableHeader({
         />
         <AwardListSortHeaderLink
           column="starCost"
-          label={tAwards("starCost")}
+          label={tAwards("values")}
           sort={sort}
           filters={filters}
           align="center"
         />
+        <th className="w-24 py-2 text-center">{tAwards("listStock")}</th>
+        <th className="w-28 py-2 text-center">{tAwards("listShowInStore")}</th>
+        <th className="w-28 py-2 text-center">{tAwards("listActualPrice")}</th>
+        <th className="w-28 py-2 text-center">
+          {tAwards("listAutoRecalculate")}
+        </th>
       </tr>
     </thead>
   );

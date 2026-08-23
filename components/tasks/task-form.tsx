@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { DeactivationReasonField } from "@/components/ui/deactivation-reason-field";
 import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import {
@@ -193,9 +194,8 @@ export function TaskForm({
 
       <div className="space-y-2">
         <Label htmlFor="qty">{tManage("qty")}</Label>
-        <Input
+        <NumberInput
           id="qty"
-          type="number"
           min={1}
           {...register("qty", { valueAsNumber: true })}
         />
@@ -237,7 +237,7 @@ export function TaskForm({
               id="status"
               className={cn(
                 "flex h-9 min-w-0 flex-1 rounded-md border border-input",
-                "bg-transparent px-3 text-sm",
+                "bg-transparent px-3 text-sm text-foreground",
               )}
               {...register("status")}
             >

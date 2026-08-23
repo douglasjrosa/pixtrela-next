@@ -20,6 +20,8 @@ npm run db:migrate
 if [[ "${SKIP_SEED:-0}" != "1" ]]; then
   echo "==> db:seed (idempotent)"
   npm run db:seed || true
+  echo "==> db:seed:branding (idempotent)"
+  npm run db:seed:branding || true
 fi
 
 echo "==> Ready. Start the app with: npm run dev"

@@ -4,12 +4,15 @@ const revalidateTag = vi.fn();
 const createUserRepo = vi.fn();
 const updateUserAccount = vi.fn();
 const deactivateUserRepo = vi.fn();
+const hardDeleteUser = vi.fn();
+const reactivateUser = vi.fn();
+const findUserById = vi.fn();
 const setUserTag = vi.fn();
 const findUserIdByTag = vi.fn();
 const setUserAvatarMedia = vi.fn();
 const setUserFacePhotoMedia = vi.fn();
 const storeMedia = vi.fn();
-const getDb = vi.fn();
+const insertMediaAsset = vi.fn();
 const listUsers = vi.fn();
 
 vi.mock("@/auth", () => ({
@@ -29,12 +32,42 @@ vi.mock("@/lib/repos/users", async () => {
     createUser: (...args: unknown[]) => createUserRepo(...args),
     updateUserAccount: (...args: unknown[]) => updateUserAccount(...args),
     deactivateUser: (...args: unknown[]) => deactivateUserRepo(...args),
+    hardDeleteUser: (...args: unknown[]) => hardDeleteUser(...args),
+    reactivateUser: (...args: unknown[]) => reactivateUser(...args),
     setUserTag: (...args: unknown[]) => setUserTag(...args),
     findUserIdByTag: (...args: unknown[]) => findUserIdByTag(...args),
     setUserAvatarMedia: (...args: unknown[]) => setUserAvatarMedia(...args),
     setUserFacePhotoMedia: (...args: unknown[]) => setUserFacePhotoMedia(...args),
     listUsers: (...args: unknown[]) => listUsers(...args),
-    findUserById: vi.fn(async () => ({
+    findUserById: (...args: unknown[]) => findUserById(...args),
+  };
+});
+
+vi.mock("@/lib/media/store-media", () => ({
+  storeMedia: (...args: unknown[]) => storeMedia(...args),
+}));
+
+vi.mock("@/lib/repos/media", () => ({
+  insertMediaAsset: (...args: unknown[]) => insertMediaAsset(...args),
+}));
+
+const loadUserListPageMock = vi.fn();
+
+vi.mock("@/lib/users/load-user-list-page", () => ({
+  loadUserListPage: (...args: unknown[]) => loadUserListPageMock(...args),
+}));
+
+describe("users/actions drizzle CRUD", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    revalidateTag.mockReset();
+    createUserRepo.mockReset();
+    updateUserAccount.mockReset();
+    deactivateUserRepo.mockReset();
+    hardDeleteUser.mockReset();
+    reactivateUser.mockReset();
+    findUserById.mockReset();
+    findUserById.mockResolvedValue({
       id: "u1",
       username: "maria.1",
       name: "Maria",
@@ -46,36 +79,13 @@ vi.mock("@/lib/repos/users", async () => {
       blocked: false,
       active: true,
       greetingGender: "feminine",
-    })),
-  };
-});
-
-vi.mock("@/lib/media/store-media", () => ({
-  storeMedia: (...args: unknown[]) => storeMedia(...args),
-}));
-
-const loadUserListPageMock = vi.fn();
-
-vi.mock("@/lib/users/load-user-list-page", () => ({
-  loadUserListPage: (...args: unknown[]) => loadUserListPageMock(...args),
-}));
-
-vi.mock("@/lib/db/client", () => ({
-  getDb: () => getDb(),
-}));
-
-describe("users/actions drizzle CRUD", () => {
-  beforeEach(() => {
-    vi.resetModules();
-    revalidateTag.mockReset();
-    createUserRepo.mockReset();
-    updateUserAccount.mockReset();
-    deactivateUserRepo.mockReset();
+    });
     setUserTag.mockReset();
     findUserIdByTag.mockReset();
     setUserAvatarMedia.mockReset();
     setUserFacePhotoMedia.mockReset();
     storeMedia.mockReset();
+    insertMediaAsset.mockReset();
     loadUserListPageMock.mockReset();
     listUsers.mockResolvedValue([]);
   });
@@ -90,7 +100,7 @@ describe("users/actions drizzle CRUD", () => {
     const { loadMoreUsers } = await import("./actions");
     await loadMoreUsers({ column: "name", direction: "asc" }, 2);
     expect(loadUserListPageMock).toHaveBeenCalledWith(
-      { q: undefined, column: "name", direction: "asc" },
+      { q: undefined, column: "name", direction: "asc", showArchived: false },
       2,
     );
   });
@@ -171,10 +181,37 @@ describe("users/actions drizzle CRUD", () => {
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 
-  it("deleteUser deactivates via repo for admin", async () => {
+  it("deleteUser hard-deletes via repo for admin", async () => {
     const { deleteUser } = await import("./actions");
     await deleteUser("u1");
-    expect(deactivateUserRepo).toHaveBeenCalledWith("u1", expect.any(String));
+    expect(hardDeleteUser).toHaveBeenCalledWith("u1");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
+  });
+
+  it("bulkDeactivateUsers deactivates each id", async () => {
+    const { bulkDeactivateUsers } = await import("./actions");
+    await bulkDeactivateUsers(["u1", "u2"]);
+    expect(deactivateUserRepo).toHaveBeenCalledTimes(2);
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
+  });
+
+  it("bulkDeleteUsers hard-deletes inactive users for admin", async () => {
+    findUserById.mockResolvedValue({
+      id: "u1",
+      username: "maria.1",
+      name: "Maria",
+      role: "colaborator",
+      code: 1,
+      email: null,
+      lastName: null,
+      phone: null,
+      blocked: true,
+      active: false,
+      greetingGender: "feminine",
+    });
+    const { bulkDeleteUsers } = await import("./actions");
+    await bulkDeleteUsers(["u1"]);
+    expect(hardDeleteUser).toHaveBeenCalledWith("u1");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 
@@ -201,10 +238,7 @@ describe("users/actions drizzle CRUD", () => {
       mimeType: "image/jpeg",
       byteSize: 4,
     });
-    const returning = vi.fn().mockResolvedValue([{ id: "media-1" }]);
-    const values = vi.fn().mockReturnValue({ returning });
-    const insert = vi.fn().mockReturnValue({ values });
-    getDb.mockReturnValue({ insert });
+    insertMediaAsset.mockResolvedValue({ id: "media-1" });
 
     const formData = new FormData();
     formData.append(
@@ -215,7 +249,14 @@ describe("users/actions drizzle CRUD", () => {
     const { updateUserImage } = await import("./actions");
     await updateUserImage("u1", "avatar", formData);
 
-    expect(setUserAvatarMedia).toHaveBeenCalledWith("u1", "media-1", expect.anything());
+    expect(insertMediaAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ storageKey: "k" }),
+      expect.objectContaining({
+        category: "avatar",
+        sensitivity: "internal",
+      }),
+    );
+    expect(setUserAvatarMedia).toHaveBeenCalledWith("u1", "media-1");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 });

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CardBadge } from "@/components/ui/card";
 import { formatDatePtBr } from "@/lib/format/datetime";
 
-import { TaskListRowCheckbox } from "./task-list-row-checkbox";
+import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import type { TaskRow } from "./types";
 
 const CENTER_CELL_CLASS = "text-center";
@@ -47,7 +47,7 @@ export function TaskListRowPresentational({
     return (
       <tr className="relative cursor-pointer border-b hover:bg-muted/40">
         {showCheckboxColumn ? (
-          <TaskListRowCheckbox
+          <ListRowCheckbox
             documentId={task.documentId}
             variant="table"
             ariaLabel={labels.selectRow}
@@ -73,7 +73,7 @@ export function TaskListRowPresentational({
     <li className="list-none border-b hover:bg-muted/40">
       <div className="flex items-start gap-3">
         {showCheckboxColumn ? (
-          <TaskListRowCheckbox
+          <ListRowCheckbox
             documentId={task.documentId}
             variant="mobile"
             ariaLabel={labels.selectRow}

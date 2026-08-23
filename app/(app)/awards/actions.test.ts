@@ -8,6 +8,8 @@ const findAwardById = vi.fn();
 const hardDeleteAward = vi.fn();
 const getDb = vi.fn();
 const storeMedia = vi.fn();
+const insertMediaAsset = vi.fn();
+const listMediaAssets = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "" })),
@@ -31,12 +33,24 @@ vi.mock("@/lib/awards/load-award-list-page", () => ({
   loadAwardListPage: (...args: unknown[]) => loadAwardListPageMock(...args),
 }));
 
+const resolveAwardPricesOnSave = vi.fn();
+
+vi.mock("@/lib/awards/resolve-award-prices", () => ({
+  resolveAwardPricesOnSave: (...args: unknown[]) =>
+    resolveAwardPricesOnSave(...args),
+}));
+
 vi.mock("@/lib/db/client", () => ({
   getDb: () => getDb(),
 }));
 
 vi.mock("@/lib/media/store-media", () => ({
   storeMedia: (...args: unknown[]) => storeMedia(...args),
+}));
+
+vi.mock("@/lib/repos/media", () => ({
+  insertMediaAsset: (...args: unknown[]) => insertMediaAsset(...args),
+  listMediaAssets: (...args: unknown[]) => listMediaAssets(...args),
 }));
 
 describe("awards/actions drizzle CRUD", () => {
@@ -55,8 +69,14 @@ describe("awards/actions drizzle CRUD", () => {
     findAwardById.mockReset();
     hardDeleteAward.mockReset();
     storeMedia.mockReset();
+    insertMediaAsset.mockReset();
+    listMediaAssets.mockReset();
     loadAwardListPageMock.mockReset();
     getDb.mockReturnValue({ update });
+    resolveAwardPricesOnSave.mockReset();
+    resolveAwardPricesOnSave.mockImplementation(
+      async ({ manualPrices }: { manualPrices: unknown[] }) => manualPrices,
+    );
     update.mockClear();
   });
 
@@ -88,6 +108,8 @@ describe("awards/actions drizzle CRUD", () => {
       imageId: null,
       showInStore: true,
       stock: 5,
+      actualPrice: 12.5,
+      autoRecalculate: true,
       values: [{ currencyDocumentId: "cur-1", numberOf: 10 }],
     });
     expect(createAwardRepo).toHaveBeenCalledWith(
@@ -96,8 +118,18 @@ describe("awards/actions drizzle CRUD", () => {
         active: true,
         showInStore: true,
         stock: 5,
+        actualPrice: 12.5,
+        autoRecalculate: true,
         prices: [{ currencyId: "cur-1", numberOf: 10 }],
       }),
+    );
+    expect(resolveAwardPricesOnSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        autoRecalculate: true,
+        actualPrice: 12.5,
+        manualPrices: [{ currencyId: "cur-1", numberOf: 10 }],
+      }),
+      expect.anything(),
     );
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
   });
@@ -163,6 +195,8 @@ describe("awards/actions drizzle CRUD", () => {
       imageId: "00000000-0000-4000-8000-000000000001",
       showInStore: false,
       stock: 3,
+      actualPrice: 9.99,
+      autoRecalculate: false,
       values: [{ currencyDocumentId: "cur-1", numberOf: 5 }],
     });
 
@@ -172,6 +206,8 @@ describe("awards/actions drizzle CRUD", () => {
         imageMediaId: "00000000-0000-4000-8000-000000000001",
         showInStore: false,
         stock: 3,
+        actualPrice: "9.99",
+        autoRecalculate: false,
       }),
     );
     expect(set).toHaveBeenCalledWith(
@@ -182,20 +218,41 @@ describe("awards/actions drizzle CRUD", () => {
       [{ currencyId: "cur-1", numberOf: 5 }],
       expect.anything(),
     );
+    expect(resolveAwardPricesOnSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        autoRecalculate: false,
+        actualPrice: 9.99,
+        manualPrices: [{ currencyId: "cur-1", numberOf: 5 }],
+      }),
+      expect.anything(),
+    );
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
   });
 
-  it("uploadAwardImage stores media and returns drizzle id", async () => {
+  it("uploadAwardImage stores media and returns the asset record", async () => {
     storeMedia.mockResolvedValue({
       storageKey: "k",
       url: "/media/x.jpg",
       mimeType: "image/jpeg",
       byteSize: 10,
     });
-    const returning = vi.fn().mockResolvedValue([{ id: "media-new" }]);
-    const values = vi.fn().mockReturnValue({ returning });
-    const insert = vi.fn().mockReturnValue({ values });
-    getDb.mockReturnValue({ update, insert });
+    insertMediaAsset.mockResolvedValue({
+      id: "media-new",
+      storageKey: "k",
+      url: "/media/x.jpg",
+      browserUrl: "/media/x.jpg",
+      mimeType: "image/jpeg",
+      byteSize: 10,
+      originalFilename: "a.jpg",
+      displayName: null,
+      description: null,
+      altText: null,
+      title: null,
+      category: "award",
+      sensitivity: "public",
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-01T00:00:00Z"),
+    });
 
     const formData = new FormData();
     formData.append(
@@ -204,9 +261,28 @@ describe("awards/actions drizzle CRUD", () => {
     );
 
     const { uploadAwardImage } = await import("./actions");
-    const id = await uploadAwardImage(formData);
+    const asset = await uploadAwardImage(formData);
 
     expect(storeMedia).toHaveBeenCalled();
-    expect(id).toBe("media-new");
+    expect(asset.id).toBe("media-new");
+  });
+
+  it("listAwardImages returns award-category images", async () => {
+    listMediaAssets.mockResolvedValue({
+      items: [{ id: "media-1" }],
+      total: 1,
+    });
+
+    const { listAwardImages } = await import("./actions");
+    const items = await listAwardImages();
+
+    expect(listMediaAssets).toHaveBeenCalledWith({
+      mimeFilter: "image",
+      category: "award",
+      includeBiometric: false,
+      page: 1,
+      pageSize: 100,
+    });
+    expect(items).toEqual([{ id: "media-1" }]);
   });
 });

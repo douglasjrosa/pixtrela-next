@@ -4,8 +4,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { SwitchField } from "@/components/ui/switch-field";
 import type {
   EntryAccessByDevice,
   EntryAccessDevice,
@@ -37,18 +36,14 @@ function MethodSwitchRow({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <Label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </Label>
-      <Switch
-        id={id}
-        checked={checked}
-        disabled={disabled}
-        aria-label={ariaLabel}
-        onCheckedChange={onCheckedChange}
-      />
-    </div>
+    <SwitchField
+      id={id}
+      label={label}
+      ariaLabel={ariaLabel}
+      checked={checked}
+      disabled={disabled}
+      onCheckedChange={onCheckedChange}
+    />
   );
 }
 

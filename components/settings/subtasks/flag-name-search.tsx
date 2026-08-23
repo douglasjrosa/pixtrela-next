@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { Input } from "@/components/ui/input";
+import { ListNameSearch } from "@/components/ui/list-name-search";
 import { Label } from "@/components/ui/label";
 import { SETTINGS_ENTITY_LIST_SEARCH_MIN_CHARS } from "@/lib/schemas/sub-task-category";
 import {
   parseFlagListSearchParams,
   serializeFlagListSearchParams,
 } from "@/lib/settings/flag-list-params";
+import { listPathWithQuery, listSearchParamsRecord } from "@/lib/ui/list-url";
+import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
+import { cn } from "@/lib/utils";
 
 export function FlagNameSearch({
   categories,
@@ -22,62 +25,34 @@ export function FlagNameSearch({
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
   const filters = parseFlagListSearchParams(
-    Object.fromEntries(searchParams.entries()),
+    listSearchParamsRecord(searchParams),
   );
-  const [value, setValue] = useState(filters.q ?? "");
-
-  useEffect(() => {
-    const handle = window.setTimeout(() => {
-      const trimmed = value.trim();
-      const nextQ =
-        trimmed.length >= SETTINGS_ENTITY_LIST_SEARCH_MIN_CHARS
-          ? trimmed
-          : undefined;
-      const current = parseFlagListSearchParams(
-        Object.fromEntries(searchParams.entries()),
-      );
-      if ((current.q ?? undefined) === nextQ) return;
-      const params = serializeFlagListSearchParams({
-        ...current,
-        q: nextQ,
-      });
-      const query = params.toString();
-      startTransition(() => {
-        router.replace(
-          query
-            ? `/settings/subtasks/flags?${query}`
-            : "/settings/subtasks/flags",
-        );
-      });
-    }, 300);
-    return () => window.clearTimeout(handle);
-  }, [value, router, searchParams]);
 
   function handleCategoryChange(categoryId: string): void {
     const current = parseFlagListSearchParams(
-      Object.fromEntries(searchParams.entries()),
+      listSearchParamsRecord(searchParams),
     );
-    const params = serializeFlagListSearchParams({
-      ...current,
-      categoryId: categoryId || undefined,
-    });
-    const query = params.toString();
     startTransition(() => {
       router.replace(
-        query ? `/settings/subtasks/flags?${query}` : "/settings/subtasks/flags",
+        listPathWithQuery(
+          "/settings/subtasks/flags",
+          serializeFlagListSearchParams({
+            ...current,
+            categoryId: categoryId || undefined,
+          }),
+        ),
       );
     });
   }
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-      <Input
-        type="search"
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        placeholder={t("searchFlags")}
-        aria-label={t("searchFlags")}
-        className="max-w-sm flex-1"
+      <ListNameSearch
+        pathname="/settings/subtasks/flags"
+        parseFilters={parseFlagListSearchParams}
+        serializeFilters={serializeFlagListSearchParams}
+        minChars={SETTINGS_ENTITY_LIST_SEARCH_MIN_CHARS}
+        label={t("searchFlags")}
       />
       <div className="space-y-1">
         <Label htmlFor="flag-filter-category" className="sr-only">
@@ -85,7 +60,7 @@ export function FlagNameSearch({
         </Label>
         <select
           id="flag-filter-category"
-          className="flex h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+          className={cn(NATIVE_SELECT_CLASS_NAME, "h-9 w-auto")}
           value={filters.categoryId ?? ""}
           onChange={(event) => handleCategoryChange(event.target.value)}
         >
