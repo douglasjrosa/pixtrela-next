@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import type { TemplateListSort } from "@/lib/schemas/template-list-sort";
 import type { TemplateListFilters } from "@/lib/schemas/template-list-filters";
 
-import { TemplateListRowCheckbox } from "./template-list-row-checkbox";
+import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import { TemplateListSortHeaderLink } from "./template-list-sort-header-link";
 
 export interface TemplatesListTableHeaderProps {
@@ -26,7 +26,7 @@ export async function TemplatesListTableHeader({
       <tr className="border-b text-left">
         {showCheckboxColumn ? (
           <th className={cn("w-10 py-2", "text-center")}>
-            <TemplateListRowCheckbox
+            <ListRowCheckbox
               documentId=""
               variant="table-header"
               selectAll

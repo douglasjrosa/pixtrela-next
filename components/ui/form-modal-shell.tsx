@@ -56,6 +56,10 @@ export interface FormModalShellProps {
    * When false, the body does not scroll; children must manage their own overflow.
    */
   bodyScroll?: boolean;
+  /** Extra classes for the padded body wrapper (e.g. larger padding). */
+  bodyClassName?: string;
+  /** Extra classes for the footer bar. */
+  footerClassName?: string;
   headerActions?: ReactNode;
   footerStart?: ReactNode;
   footerEnd?: ReactNode;
@@ -73,6 +77,8 @@ export function FormModalShell({
   layer = "base",
   fillBody = true,
   bodyScroll = true,
+  bodyClassName,
+  footerClassName,
   headerActions,
   footerStart,
   footerEnd,
@@ -186,6 +192,7 @@ export function FormModalShell({
           <div
             className={cn(
               "flex flex-col p-4",
+              bodyClassName,
               bodyScroll && fillBody && FORM_MODAL_BODY_MIN_HEIGHT_CLASS,
               !bodyScroll && "h-full min-h-0",
             )}
@@ -199,6 +206,7 @@ export function FormModalShell({
             className={cn(
               "flex shrink-0 flex-wrap items-center justify-between gap-3",
               "border-t bg-background px-4 py-3",
+              footerClassName,
             )}
           >
             <div className="flex flex-wrap gap-2">

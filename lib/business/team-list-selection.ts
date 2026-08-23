@@ -1,41 +1,37 @@
 import type { TeamRow } from "@/components/teams/types";
 
-export { toggleIdInSet } from "./template-list-selection";
+import {
+  areAllRowsSelected,
+  areAllSelectedRowsInactive,
+  selectedRowsFromList,
+  toggleSelectAllRows,
+} from "./list-selection";
+
+export { toggleIdInSet } from "./list-selection";
 
 export function areAllTeamsSelected(
   teams: readonly TeamRow[],
   selectedIds: readonly string[],
 ): boolean {
-  if (teams.length === 0) return false;
-  return teams.every((team) => selectedIds.includes(team.documentId));
+  return areAllRowsSelected(teams, selectedIds);
 }
 
 export function toggleSelectAllTeams(
   teams: readonly TeamRow[],
   selectedIds: readonly string[],
 ): string[] {
-  if (areAllTeamsSelected(teams, selectedIds)) {
-    const visibleIds = new Set(teams.map((team) => team.documentId));
-    return selectedIds.filter((id) => !visibleIds.has(id));
-  }
-  const merged = new Set(selectedIds);
-  for (const team of teams) {
-    merged.add(team.documentId);
-  }
-  return [...merged];
+  return toggleSelectAllRows(teams, selectedIds);
 }
 
 export function selectedTeamsFromList(
   teams: readonly TeamRow[],
   selectedIds: readonly string[],
 ): TeamRow[] {
-  const idSet = new Set(selectedIds);
-  return teams.filter((team) => idSet.has(team.documentId));
+  return selectedRowsFromList(teams, selectedIds);
 }
 
 export function areAllSelectedTeamsArchived(
   selected: readonly TeamRow[],
 ): boolean {
-  if (selected.length === 0) return false;
-  return selected.every((team) => !team.active);
+  return areAllSelectedRowsInactive(selected, (team) => !team.active);
 }

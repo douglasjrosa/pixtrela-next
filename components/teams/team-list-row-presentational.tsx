@@ -5,7 +5,7 @@ import type { KeyboardEvent } from "react";
 import { CardBadge } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-import { TeamListRowCheckbox } from "./team-list-row-checkbox";
+import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import { useTeamList } from "./team-list-context";
 import { TeamExchangePeriodLabel } from "./team-exchange-period-label";
 import type { TeamRow } from "./types";
@@ -80,7 +80,7 @@ export function TeamListRowPresentational({
     return (
       <tr className={rowClassName} {...rowProps}>
         {showCheckboxColumn ? (
-          <TeamListRowCheckbox
+          <ListRowCheckbox
             documentId={team.documentId}
             variant="table"
             ariaLabel={labels.selectRow}
@@ -107,7 +107,7 @@ export function TeamListRowPresentational({
     <li className={cn("list-none py-3", rowClassName)} {...rowProps}>
       <div className="flex items-start gap-3">
         {showCheckboxColumn ? (
-          <TeamListRowCheckbox
+          <ListRowCheckbox
             documentId={team.documentId}
             variant="mobile"
             ariaLabel={labels.selectRow}

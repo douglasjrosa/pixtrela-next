@@ -36,7 +36,7 @@ describe("loadUserListPage", () => {
     });
 
     const result = await loadUserListPage(
-      { q: undefined, column: "name", direction: "asc" },
+      { q: undefined, column: "name", direction: "asc", showArchived: false },
       1,
     );
 
@@ -45,6 +45,7 @@ describe("loadUserListPage", () => {
       page: 1,
       pageSize: 10,
       sort: { column: "name", direction: "asc" },
+      showArchived: false,
     });
     expect(result.hasMore).toBe(true);
     expect(result.pageCount).toBe(2);

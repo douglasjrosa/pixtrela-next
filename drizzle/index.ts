@@ -27,6 +27,7 @@ export {
   balances,
   carts,
   cartItems,
+  exchangeBatches,
   exchangeOrders,
   exchangeOrderItems,
   exchanges,

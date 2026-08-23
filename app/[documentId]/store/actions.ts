@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidateTag } from "next/cache";
-import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
@@ -11,8 +10,6 @@ import {
   removeCartItem,
   setCartItemQty,
 } from "@/lib/repos/carts";
-import { checkoutCart as checkoutCartRepo } from "@/lib/repos/exchange-orders";
-import { buildStoreOrderPath } from "@/lib/store/store-path";
 
 export type CartActionState = {
   ok: boolean;
@@ -20,7 +17,6 @@ export type CartActionState = {
     | "addedToCart"
     | "addFailed"
     | "outOfStock"
-    | "checkoutFailed"
     | "insufficient"
     | "windowClosed"
     | "emptyCart";
@@ -36,12 +32,6 @@ function mapCartError(error: unknown): CartActionState["messageKey"] {
   }
   if (lower.includes("cartempty")) return "emptyCart";
   return "addFailed";
-}
-
-function mapCheckoutError(error: unknown): CartActionState["messageKey"] {
-  const key = mapCartError(error);
-  if (key === "addFailed") return "checkoutFailed";
-  return key;
 }
 
 async function requireColaboratorId(): Promise<string> {
@@ -115,36 +105,5 @@ export async function removeCartItemAction(
     return { ok: true };
   } catch (error) {
     return { ok: false, messageKey: mapCartError(error) };
-  }
-}
-
-export async function checkoutCartAction(
-  prev: CartActionState,
-  formData: FormData,
-): Promise<CartActionState> {
-  void prev;
-  void formData;
-  try {
-    const userId = await requireColaboratorId();
-    const result = await checkoutCartRepo({ userId });
-    revalidateTag("drizzle:carts", "default");
-    revalidateTag("drizzle:awards", "default");
-    revalidateTag("drizzle:balances", "default");
-    revalidateTag("drizzle:exchanges", "default");
-    revalidateTag("drizzle:exchange-orders", "default");
-    redirect(`${buildStoreOrderPath(userId, result.orderId)}?placed=1`);
-  } catch (error) {
-    if (
-      error &&
-      typeof error === "object" &&
-      "digest" in error &&
-      String((error as { digest?: string }).digest).startsWith("NEXT_REDIRECT")
-    ) {
-      throw error;
-    }
-    if (error instanceof Error && error.message === "forbidden") {
-      return { ok: false, messageKey: "checkoutFailed" };
-    }
-    return { ok: false, messageKey: mapCheckoutError(error) };
   }
 }

@@ -13,7 +13,10 @@ import {
   canViewAwards,
 } from "@/lib/auth/permissions";
 import { getDb } from "@/lib/db/client";
-import { storeMedia } from "@/lib/media/store-media";
+import {
+  listCategoryImageAssets,
+  uploadCategoryImageAsset,
+} from "@/lib/media/category-image-assets";
 import {
   createAward as createAwardRepo,
   deleteAward as deleteAwardRepo,
@@ -21,7 +24,7 @@ import {
   hardDeleteAward,
   replaceAwardPrices,
 } from "@/lib/repos/awards";
-import { insertMediaAsset, listMediaAssets, type MediaAssetRecord } from "@/lib/repos/media";
+import type { MediaAssetRecord } from "@/lib/repos/media";
 import {
   awardFormSchema,
   bulkAwardIdsSchema,
@@ -32,6 +35,7 @@ import {
   loadAwardListPage,
   type AwardListPageResult,
 } from "@/lib/awards/load-award-list-page";
+import { resolveAwardPricesOnSave } from "@/lib/awards/resolve-award-prices";
 
 async function assertCanView(): Promise<void> {
   const session = await auth();
@@ -76,43 +80,31 @@ export async function loadMoreAwards(
 
 export async function listAwardImages(): Promise<MediaAssetRecord[]> {
   await assertCanManage();
-  const result = await listMediaAssets({
-    mimeFilter: "image",
-    category: "award",
-    includeBiometric: false,
-    page: 1,
-    pageSize: 100,
-  });
-  return result.items;
+  return listCategoryImageAssets("award");
 }
 
 export async function uploadAwardImage(
   formData: FormData,
 ): Promise<MediaAssetRecord> {
   await assertCanManage();
-  const entry = formData.get("file");
-  if (!(entry instanceof Blob) || entry.size === 0) {
-    throw new Error("invalid");
-  }
-  const mimeType = entry.type || "image/jpeg";
-  const buffer = Buffer.from(await entry.arrayBuffer());
-  const extension = mimeType.includes("png") ? "png" : "jpg";
-  const stored = await storeMedia({ bytes: buffer, mimeType, extension });
-  const originalFilename =
-    "name" in entry && typeof entry.name === "string" && entry.name.trim()
-      ? entry.name.trim()
-      : null;
-  const media = await insertMediaAsset(stored, {
-    originalFilename,
-    category: "award",
-    sensitivity: "public",
-  });
-  return media;
+  return uploadCategoryImageAsset(formData, "award");
 }
 
 export async function createAward(raw: AwardFormInput): Promise<void> {
   await assertCanManage();
   const data = awardFormSchema.parse(raw);
+  const db = getDb();
+  const prices = await resolveAwardPricesOnSave(
+    {
+      autoRecalculate: data.autoRecalculate,
+      actualPrice: data.actualPrice,
+      manualPrices: data.values.map((entry) => ({
+        currencyId: entry.currencyDocumentId,
+        numberOf: entry.numberOf,
+      })),
+    },
+    db,
+  );
   await createAwardRepo({
     name: data.name,
     title: data.title || null,
@@ -122,10 +114,9 @@ export async function createAward(raw: AwardFormInput): Promise<void> {
     active: true,
     showInStore: data.showInStore,
     stock: data.stock,
-    prices: data.values.map((entry) => ({
-      currencyId: entry.currencyDocumentId,
-      numberOf: entry.numberOf,
-    })),
+    actualPrice: data.actualPrice,
+    autoRecalculate: data.autoRecalculate,
+    prices,
   });
   invalidateAwards();
 }
@@ -137,6 +128,17 @@ export async function updateAward(
   await assertCanManage();
   const data = awardFormSchema.parse(raw);
   const db = getDb();
+  const prices = await resolveAwardPricesOnSave(
+    {
+      autoRecalculate: data.autoRecalculate,
+      actualPrice: data.actualPrice,
+      manualPrices: data.values.map((entry) => ({
+        currencyId: entry.currencyDocumentId,
+        numberOf: entry.numberOf,
+      })),
+    },
+    db,
+  );
   await db
     .update(awards)
     .set({
@@ -147,17 +149,12 @@ export async function updateAward(
       imageMediaId: data.imageId ?? undefined,
       showInStore: data.showInStore,
       stock: data.stock,
+      actualPrice: String(data.actualPrice),
+      autoRecalculate: data.autoRecalculate,
       updatedAt: new Date(),
     })
     .where(eq(awards.id, documentId));
-  await replaceAwardPrices(
-    documentId,
-    data.values.map((entry) => ({
-      currencyId: entry.currencyDocumentId,
-      numberOf: entry.numberOf,
-    })),
-    db,
-  );
+  await replaceAwardPrices(documentId, prices, db);
   invalidateAwards();
 }
 

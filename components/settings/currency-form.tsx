@@ -1,22 +1,9 @@
-"use client";
+import { getTranslations } from "next-intl/server";
 
-import { useTransition } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslations } from "next-intl";
-import { z } from "zod";
-
-import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { Label } from "@/components/ui/label";
-import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
-import { currencyForSubtasksSchema } from "@/lib/schemas/currency-for-subtasks";
 import { primaryCurrencyDocumentId } from "@/lib/business/primary-currency";
 import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
-
-const SELECT_CLASS_NAME = NATIVE_SELECT_CLASS_NAME;
-
-type ActiveCurrencyFormInput = z.infer<typeof currencyForSubtasksSchema>;
 
 export interface ActiveCurrencyOption {
   documentId: string;
@@ -27,7 +14,7 @@ export interface ActiveCurrencyOption {
 export interface CurrencyFormProps {
   currencies: ActiveCurrencyOption[];
   activeCurrencyDocumentId: string;
-  onSave: (values: ActiveCurrencyFormInput) => void | Promise<void>;
+  action: (formData: FormData) => void | Promise<void>;
 }
 
 function resolveCurrencyTitle(currency: ActiveCurrencyOption): string {
@@ -36,36 +23,26 @@ function resolveCurrencyTitle(currency: ActiveCurrencyOption): string {
   return currency.documentId;
 }
 
+function selectedCurrencyId(
+  currencies: readonly ActiveCurrencyOption[],
+  activeCurrencyDocumentId: string,
+): string {
+  const assigned = currencies.find(
+    (currency) => currency.documentId === activeCurrencyDocumentId,
+  );
+  if (assigned) return assigned.documentId;
+  return primaryCurrencyDocumentId(currencies) ?? "";
+}
+
 /** Selects which currency credits Stars when sub-tasks finish. */
-export function CurrencyForm({
+export async function CurrencyForm({
   currencies,
   activeCurrencyDocumentId,
-  onSave,
+  action,
 }: CurrencyFormProps) {
-  const tCommon = useTranslations("common");
-  const tSettings = useTranslations("settings");
-  const [isPending, startTransition] = useTransition();
-  const defaultCurrencyDocumentId =
-    activeCurrencyDocumentId || primaryCurrencyDocumentId(currencies) || "";
-
-  const { register, handleSubmit } = useForm<ActiveCurrencyFormInput>({
-    resolver: zodResolver(currencyForSubtasksSchema),
-    defaultValues: {
-      currencyDocumentId: defaultCurrencyDocumentId,
-    },
-  });
-
-  function onSubmit(values: ActiveCurrencyFormInput): void {
-    startTransition(async () => {
-      try {
-        await onSave(values);
-        showSuccessToast(tSettings("saved"));
-      } catch (error) {
-        rethrowIfNavigationError(error);
-        showErrorToast(tSettings("error"));
-      }
-    });
-  }
+  const tCommon = await getTranslations("common");
+  const tSettings = await getTranslations("settings");
+  const selectedId = selectedCurrencyId(currencies, activeCurrencyDocumentId);
 
   return (
     <section className="max-w-sm space-y-4">
@@ -79,18 +56,22 @@ export function CurrencyForm({
       </div>
 
       {currencies.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{tSettings("noCurrencies")}</p>
+        <p className="text-sm text-muted-foreground">
+          {tSettings("noCurrencies")}
+        </p>
       ) : (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form key={selectedId} action={action} className="space-y-4">
           <div className="flex items-center gap-3">
             <Label htmlFor="currency-active-for-subtasks" className="shrink-0">
               {tSettings("currencyActiveForSubtasks")}
             </Label>
             <select
               id="currency-active-for-subtasks"
-              className={`${SELECT_CLASS_NAME} flex-1`}
-              {...register("currencyDocumentId")}
+              name="currencyDocumentId"
+              key={selectedId}
+              defaultValue={selectedId}
               required
+              className={`${NATIVE_SELECT_CLASS_NAME} flex-1`}
             >
               {currencies.map((currency) => (
                 <option key={currency.documentId} value={currency.documentId}>
@@ -100,9 +81,7 @@ export function CurrencyForm({
             </select>
           </div>
 
-          <Button type="submit" disabled={isPending}>
-            {tCommon("save")}
-          </Button>
+          <FormSubmitButton label={tCommon("save")} />
         </form>
       )}
     </section>

@@ -36,20 +36,3 @@ export function CartRemoveSubmitButton() {
     </Button>
   );
 }
-
-export function CartCheckoutSubmitButton({ disabled }: { disabled: boolean }) {
-  const t = useTranslations("cart");
-  const { pending } = useFormStatus();
-  return (
-    <Button
-      type="submit"
-      disabled={disabled || pending}
-      className={
-        "min-h-12 w-full rounded-2xl font-bold " +
-        "bg-star-gold text-star-gold-foreground hover:bg-star-gold/90"
-      }
-    >
-      {t("checkout")}
-    </Button>
-  );
-}

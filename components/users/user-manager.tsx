@@ -86,6 +86,8 @@ export interface UserManagerProps {
   canEditUserLogin?: boolean;
   /** Admin-only avatar and face recognition image management. */
   canManageImages?: boolean;
+  /** Admin-only active status field in the edit modal. */
+  canEditActive?: boolean;
   onPairUserTag?: (
     userId: UserRow["id"],
     userTag: string,
@@ -189,6 +191,7 @@ interface UserFormDialogProps {
   ) => void | Promise<void>;
   nfcPairDisabled: boolean;
   canManageImages: boolean;
+  canEditActive: boolean;
 }
 
 function UserFormDialog({
@@ -211,6 +214,7 @@ function UserFormDialog({
   onUpdateImage,
   nfcPairDisabled,
   canManageImages,
+  canEditActive,
 }: UserFormDialogProps) {
   const tCommon = useTranslations("common");
   const tUsers = useTranslations("users");
@@ -235,6 +239,7 @@ function UserFormDialog({
         code: editingUser.code,
         roleType: editingUser.roleType,
         greetingGender: editingUser.greetingGender ?? "masculine",
+        active: editingUser.active !== false && !editingUser.blocked,
       }
     : EMPTY_FORM;
 
@@ -473,6 +478,17 @@ function UserFormDialog({
             }
           />
         ) : null}
+
+        {isEditing && canEditActive ? (
+          <label className="flex items-center gap-2 sm:col-span-2 text-sm">
+            <input
+              type="checkbox"
+              className="size-4 rounded border border-input accent-primary"
+              {...register("active")}
+            />
+            {tUsers("active")}
+          </label>
+        ) : null}
       </form>
     </FormModalShell>
   );
@@ -494,6 +510,7 @@ export function UserManager({
   canSetPassword = false,
   canEditUserLogin = false,
   canManageImages = false,
+  canEditActive = false,
   onPairUserTag,
 }: UserManagerProps) {
   const tCommon = useTranslations("common");
@@ -552,6 +569,9 @@ export function UserManager({
     const payload: UserFormInput = { ...values };
     if (!canSetPassword || !payload.password) {
       delete payload.password;
+    }
+    if (!canEditActive || editingUserId === null) {
+      delete payload.active;
     }
 
     startTransition(async () => {
@@ -726,6 +746,7 @@ export function UserManager({
             onUpdateImage={onUpdateImage ? handleUpdateImage : undefined}
             nfcPairDisabled={nfcPairDisabled}
             canManageImages={canManageImages}
+            canEditActive={canEditActive}
           />
         ) : null}
 

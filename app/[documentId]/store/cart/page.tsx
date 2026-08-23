@@ -6,7 +6,6 @@ import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { ExchangeWindowBanner } from "@/components/exchange/exchange-window-banner";
 import {
-  CartCheckoutForm,
   CartQtyForms,
   CartRemoveForm,
 } from "@/components/store/cart-forms";
@@ -47,7 +46,7 @@ export default async function StoreCartPage({ params }: PageProps) {
 
   const affordable = canAffordCart(spendableBalance, total);
   const remaining = Math.max(0, total - spendableBalance);
-  const checkoutDisabled = !windowOpen || !affordable || items.length === 0;
+  const editable = windowOpen;
 
   return (
     <section className="space-y-6">
@@ -67,6 +66,18 @@ export default async function StoreCartPage({ params }: PageProps) {
           firstDay={team.exchangesFirstDay}
           lastDay={team.exchangesLastDay}
         />
+      ) : null}
+
+      {team && windowOpen ? (
+        <p className="rounded-2xl border bg-muted/40 px-4 py-3 text-sm">
+          {t("autoCloseBanner", { lastDay: team.exchangesLastDay })}
+        </p>
+      ) : null}
+
+      {!windowOpen && items.length > 0 ? (
+        <p className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          {t("readOnlyClosed")}
+        </p>
       ) : null}
 
       {items.length === 0 ? (
@@ -118,14 +129,23 @@ export default async function StoreCartPage({ params }: PageProps) {
                         </span>
                       </span>
                     </p>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <CartQtyForms
-                        itemId={item.id}
-                        qty={item.qty}
-                        stock={item.stock}
-                      />
-                      <CartRemoveForm itemId={item.id} />
-                    </div>
+                    {editable ? (
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <CartQtyForms
+                          itemId={item.id}
+                          qty={item.qty}
+                          stock={item.stock}
+                        />
+                        <CartRemoveForm itemId={item.id} />
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {t("qty")}:{" "}
+                        <span className="tabular-nums font-semibold text-foreground">
+                          {item.qty}
+                        </span>
+                      </p>
+                    )}
                   </div>
                 </li>
               );
@@ -150,12 +170,6 @@ export default async function StoreCartPage({ params }: PageProps) {
                 {t("starsRemaining", { count: remaining })}
               </p>
             ) : null}
-            {!windowOpen ? (
-              <p className="text-sm text-destructive">
-                {t("checkoutDisabledWindow")}
-              </p>
-            ) : null}
-            <CartCheckoutForm disabled={checkoutDisabled} />
           </div>
         </>
       )}

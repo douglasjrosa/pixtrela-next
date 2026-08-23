@@ -6,6 +6,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -77,6 +78,11 @@ export const cartStatusEnum = pgEnum("cart_status", [
 export const exchangeOrderStatusEnum = pgEnum("exchange_order_status", [
   "completed",
   "cancelled",
+]);
+
+export const exchangeBatchStatusEnum = pgEnum("exchange_batch_status", [
+  "pending",
+  "ready",
 ]);
 
 export const mediaCategoryEnum = pgEnum("media_category", [
@@ -181,9 +187,11 @@ export const currencies = pgTable("currencies", {
   name: varchar("name", { length: 64 }).notNull().unique(),
   title: varchar("title", { length: 128 }),
   pluralTitle: varchar("plural_title", { length: 128 }),
-  currencyPerSecond: doublePrecision("currency_per_second")
-    .default(0)
+  currencyPerSecond: numeric("currency_per_second", { precision: 12, scale: 2 })
+    .default("0")
     .notNull(),
+  exchangeRate: doublePrecision("exchange_rate").default(0).notNull(),
+  active: boolean("active").default(true).notNull(),
   iconMediaId: uuid("icon_media_id").references(() => mediaAssets.id),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -213,6 +221,10 @@ export const awards = pgTable("awards", {
   active: boolean("active").default(true).notNull(),
   showInStore: boolean("show_in_store").default(true).notNull(),
   stock: integer("stock").default(0).notNull(),
+  actualPrice: numeric("actual_price", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
+  autoRecalculate: boolean("auto_recalculate").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -647,6 +659,25 @@ export const cartItems = pgTable(
   ],
 );
 
+export const exchangeBatches = pgTable(
+  "exchange_batches",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    year: integer("year").notNull(),
+    month: integer("month").notNull(),
+    status: exchangeBatchStatusEnum("status").default("pending").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("exchange_batches_year_month_unique").on(table.year, table.month),
+  ],
+);
+
 export const exchangeOrders = pgTable(
   "exchange_orders",
   {
@@ -654,10 +685,15 @@ export const exchangeOrders = pgTable(
     userId: uuid("user_id")
       .references(() => users.id)
       .notNull(),
+    batchId: uuid("batch_id").references(() => exchangeBatches.id, {
+      onDelete: "set null",
+    }),
     status: exchangeOrderStatusEnum("status").default("completed").notNull(),
     currencyPluralTitle: text("currency_plural_title").notNull(),
     totalNumberOf: doublePrecision("total_number_of").notNull(),
     itemCount: integer("item_count").default(0).notNull(),
+    year: integer("year").notNull(),
+    month: integer("month").notNull(),
     checkedOutAt: timestamp("checked_out_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -672,6 +708,12 @@ export const exchangeOrders = pgTable(
     index("exchange_orders_user_checked_out_idx").on(
       table.userId,
       table.checkedOutAt,
+    ),
+    index("exchange_orders_batch_id_idx").on(table.batchId),
+    unique("exchange_orders_user_year_month_unique").on(
+      table.userId,
+      table.year,
+      table.month,
     ),
   ],
 );
@@ -690,6 +732,10 @@ export const exchangeOrderItems = pgTable(
     qty: integer("qty").default(1).notNull(),
     unitNumberOf: doublePrecision("unit_number_of").notNull(),
     lineNumberOf: doublePrecision("line_number_of").notNull(),
+    currencyId: uuid("currency_id").references(() => currencies.id, {
+      onDelete: "set null",
+    }),
+    currencyPluralTitle: text("currency_plural_title"),
   },
   (table) => [index("exchange_order_items_order_id_idx").on(table.orderId)],
 );

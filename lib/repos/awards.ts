@@ -12,6 +12,7 @@ import {
 
 import { awardPrices, awards, currencies, mediaAssets } from "@/drizzle/schema";
 import { getDb, type Db } from "@/lib/db/client";
+import { roundCurrencyRate } from "@/lib/format/currency-rate";
 import type { AwardListSort } from "@/lib/schemas/award-list-sort";
 
 export type AwardRecord = {
@@ -23,6 +24,8 @@ export type AwardRecord = {
   active: boolean;
   showInStore: boolean;
   stock: number;
+  actualPrice: number;
+  autoRecalculate: boolean;
   imageUrl: string | null;
 };
 
@@ -34,6 +37,8 @@ export type CreateAwardInput = {
   active?: boolean;
   showInStore?: boolean;
   stock?: number;
+  actualPrice?: number;
+  autoRecalculate?: boolean;
   imageMediaId?: string | null;
   prices?: Array<{ currencyId: string; numberOf: number }>;
 };
@@ -49,12 +54,17 @@ export async function listAwards(db: Db = getDb()): Promise<AwardRecord[]> {
       active: awards.active,
       showInStore: awards.showInStore,
       stock: awards.stock,
+      actualPrice: awards.actualPrice,
+      autoRecalculate: awards.autoRecalculate,
       imageUrl: mediaAssets.url,
     })
     .from(awards)
     .leftJoin(mediaAssets, eq(awards.imageMediaId, mediaAssets.id))
     .orderBy(awards.name);
-  return rows;
+  return rows.map((row) => ({
+    ...row,
+    actualPrice: Number(row.actualPrice ?? 0),
+  }));
 }
 
 export type AwardPriceRef = {
@@ -157,6 +167,8 @@ export async function listAwardsPage(
       active: awards.active,
       showInStore: awards.showInStore,
       stock: awards.stock,
+      actualPrice: awards.actualPrice,
+      autoRecalculate: awards.autoRecalculate,
       imageMediaId: awards.imageMediaId,
       imageUrl: mediaAssets.url,
     })
@@ -173,6 +185,8 @@ export async function listAwardsPage(
       awards.active,
       awards.showInStore,
       awards.stock,
+      awards.actualPrice,
+      awards.autoRecalculate,
       awards.imageMediaId,
       mediaAssets.url,
     )
@@ -195,6 +209,8 @@ export async function listAwardsPage(
       active: row.active,
       showInStore: row.showInStore,
       stock: row.stock,
+      actualPrice: Number(row.actualPrice ?? 0),
+      autoRecalculate: row.autoRecalculate,
       imageMediaId: row.imageMediaId,
       imageUrl: row.imageUrl,
       prices: pricesByAward.get(row.id) ?? [],
@@ -220,6 +236,8 @@ export async function createAward(
       active: input.active ?? true,
       showInStore: input.showInStore ?? true,
       stock: input.stock ?? 0,
+      actualPrice: String(input.actualPrice ?? 0),
+      autoRecalculate: input.autoRecalculate ?? true,
       imageMediaId: input.imageMediaId ?? null,
     })
     .returning({
@@ -231,6 +249,8 @@ export async function createAward(
       active: awards.active,
       showInStore: awards.showInStore,
       stock: awards.stock,
+      actualPrice: awards.actualPrice,
+      autoRecalculate: awards.autoRecalculate,
       imageMediaId: awards.imageMediaId,
     });
 
@@ -263,11 +283,20 @@ export async function createAward(
     active: row.active,
     showInStore: row.showInStore,
     stock: row.stock,
+    actualPrice: Number(row.actualPrice ?? 0),
+    autoRecalculate: row.autoRecalculate,
     imageUrl,
   };
 }
 
-export async function listCurrencies(db: Db = getDb()) {
+export async function listCurrencies(
+  options: { includeInactive?: boolean } = {},
+  db: Db = getDb(),
+) {
+  const where = options.includeInactive
+    ? undefined
+    : eq(currencies.active, true);
+
   return db
     .select({
       id: currencies.id,
@@ -275,11 +304,14 @@ export async function listCurrencies(db: Db = getDb()) {
       title: currencies.title,
       pluralTitle: currencies.pluralTitle,
       currencyPerSecond: currencies.currencyPerSecond,
+      exchangeRate: currencies.exchangeRate,
       iconMediaId: currencies.iconMediaId,
       iconMediaUrl: mediaAssets.url,
+      active: currencies.active,
     })
     .from(currencies)
     .leftJoin(mediaAssets, eq(currencies.iconMediaId, mediaAssets.id))
+    .where(where)
     .orderBy(currencies.name);
 }
 
@@ -291,6 +323,7 @@ export async function findCurrencyById(
   name: string;
   title: string | null;
   pluralTitle: string | null;
+  active: boolean;
 } | null> {
   const [row] = await db
     .select({
@@ -298,6 +331,7 @@ export async function findCurrencyById(
       name: currencies.name,
       title: currencies.title,
       pluralTitle: currencies.pluralTitle,
+      active: currencies.active,
     })
     .from(currencies)
     .where(eq(currencies.id, id))
@@ -311,6 +345,7 @@ export async function createCurrency(
     title?: string;
     pluralTitle?: string;
     currencyPerSecond: number;
+    exchangeRate?: number;
     iconMediaId?: string | null;
   },
   db: Db = getDb(),
@@ -321,12 +356,31 @@ export async function createCurrency(
       name: input.name.trim(),
       title: input.title ?? null,
       pluralTitle: input.pluralTitle ?? null,
-      currencyPerSecond: input.currencyPerSecond,
+      currencyPerSecond: String(roundCurrencyRate(input.currencyPerSecond)),
+      exchangeRate: input.exchangeRate ?? 0,
       iconMediaId:
         typeof input.iconMediaId === "string" ? input.iconMediaId : null,
     })
     .returning();
   return row;
+}
+
+export async function archiveCurrency(
+  id: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await db
+    .update(currencies)
+    .set({ active: false, updatedAt: new Date() })
+    .where(eq(currencies.id, id));
+}
+
+export async function hardDeleteCurrency(
+  id: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await db.delete(awardPrices).where(eq(awardPrices.currencyId, id));
+  await db.delete(currencies).where(eq(currencies.id, id));
 }
 
 export async function replaceAwardPrices(
@@ -345,6 +399,23 @@ export async function replaceAwardPrices(
   );
 }
 
+export async function updateAwardActualPrices(
+  updates: Array<{ awardId: string; actualPrice: number }>,
+  db: Db = getDb(),
+): Promise<void> {
+  if (updates.length === 0) return;
+  const now = new Date();
+  for (const update of updates) {
+    await db
+      .update(awards)
+      .set({
+        actualPrice: String(update.actualPrice),
+        updatedAt: now,
+      })
+      .where(eq(awards.id, update.awardId));
+  }
+}
+
 export async function findAwardById(
   id: string,
   db: Db = getDb(),
@@ -359,13 +430,19 @@ export async function findAwardById(
       active: awards.active,
       showInStore: awards.showInStore,
       stock: awards.stock,
+      actualPrice: awards.actualPrice,
+      autoRecalculate: awards.autoRecalculate,
       imageUrl: mediaAssets.url,
     })
     .from(awards)
     .leftJoin(mediaAssets, eq(awards.imageMediaId, mediaAssets.id))
     .where(eq(awards.id, id))
     .limit(1);
-  return row ?? null;
+  if (!row) return null;
+  return {
+    ...row,
+    actualPrice: Number(row.actualPrice ?? 0),
+  };
 }
 
 export async function deleteAward(id: string, db: Db = getDb()): Promise<void> {

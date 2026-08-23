@@ -32,11 +32,12 @@ describe("navItemsForRole", () => {
       .not.toContain("/admin-1/profile");
   });
 
-  it("shows users and tasks to leader but not templates", () => {
+  it("shows users, tasks and exchanges to leader but not templates", () => {
     const result = hrefs("leader");
     expect(result).toContain("/");
     expect(result).toContain("/users");
     expect(result).toContain("/tasks");
+    expect(result).toContain("/exchanges");
     expect(result).not.toContain("/templates");
     expect(result).not.toContain("/templates/tasks");
     expect(result).not.toContain("/teams");
@@ -47,6 +48,7 @@ describe("navItemsForRole", () => {
     const result = hrefs("manager");
     expect(result).toContain("/teams");
     expect(result).toContain("/awards");
+    expect(result).toContain("/exchanges");
     expect(result).toContain("/tasks");
     expect(result).toContain("/templates/tasks");
   });
@@ -61,6 +63,7 @@ describe("navItemsForRole", () => {
         "/templates/tasks",
         "/teams",
         "/awards",
+        "/exchanges",
         "/users",
         "/settings/files",
       ]),

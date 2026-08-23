@@ -46,6 +46,7 @@ export function buildUserFormSchema(options?: { requirePassword?: boolean }) {
     code: optionalUserCodeSchema,
     roleType: z.enum(USER_ROLES),
     greetingGender: z.enum(GREETING_GENDERS).optional().nullable(),
+    active: z.boolean().optional(),
   });
 }
 
@@ -89,3 +90,5 @@ export function createUserFormSchema(
 }
 
 export type UserFormInput = z.infer<typeof userFormSchema>;
+
+export { bulkDocumentIdsSchema as bulkUserIdsSchema } from "./bulk-ids";

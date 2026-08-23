@@ -1,109 +1,76 @@
-"use client";
+import { getTranslations } from "next-intl/server";
 
-import { useTransition } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslations } from "next-intl";
-
-import { Button } from "@/components/ui/button";
-import { NumberInput } from "@/components/ui/number-input";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 import {
   DEFAULT_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS,
-  kioskSessionIdleSchema,
-  type KioskSessionIdleInput,
+  MAX_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS,
+  MAX_KIOSK_SESSION_IDLE_SECONDS,
+  MIN_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS,
+  MIN_KIOSK_SESSION_IDLE_SECONDS,
 } from "@/lib/schemas/kiosk-setting";
 
 export interface KioskSessionIdleFormProps {
   sessionIdleSeconds: number;
   maxSimultaneousSubtaskIntervalSeconds?: number;
-  onSave: (values: KioskSessionIdleInput) => void | Promise<void>;
+  action: (formData: FormData) => void | Promise<void>;
 }
 
-export function KioskSessionIdleForm({
+export async function KioskSessionIdleForm({
   sessionIdleSeconds,
   maxSimultaneousSubtaskIntervalSeconds =
     DEFAULT_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS,
-  onSave,
+  action,
 }: KioskSessionIdleFormProps) {
-  const tCommon = useTranslations("common");
-  const tSettings = useTranslations("settings");
-  const [isPending, startTransition] = useTransition();
+  const tCommon = await getTranslations("common");
+  const tSettings = await getTranslations("settings");
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<KioskSessionIdleInput>({
-    resolver: zodResolver(kioskSessionIdleSchema),
-    defaultValues: {
-      sessionIdleSeconds,
-      maxSimultaneousSubtaskIntervalSeconds,
-    },
-  });
-
-  function onSubmit(values: KioskSessionIdleInput): void {
-    startTransition(async () => {
-      try {
-        await onSave(values);
-        showSuccessToast(tSettings("saved"));
-      } catch (error) {
-        rethrowIfNavigationError(error);
-        showErrorToast(tSettings("error"));
-      }
-    });
-  }
+  const formKey = [
+    sessionIdleSeconds,
+    maxSimultaneousSubtaskIntervalSeconds,
+  ].join(":");
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-sm space-y-4">
+    <form key={formKey} action={action} className="max-w-sm space-y-4">
       <h2 className="text-lg font-semibold">{tSettings("kioskSession")}</h2>
 
-      <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          <Label htmlFor="sessionIdleSeconds" className="shrink-0">
-            {tSettings("kioskSessionIdleSeconds")}
-          </Label>
-          <NumberInput
-            id="sessionIdleSeconds"
-            className="flex-1"
-            min={1}
-            max={3600}
-            step={1}
-            {...register("sessionIdleSeconds", { valueAsNumber: true })}
-          />
-        </div>
-        {errors.sessionIdleSeconds ? (
-          <p className="text-sm text-destructive">
-            {errors.sessionIdleSeconds.message}
-          </p>
-        ) : null}
+      <div className="flex items-center gap-3">
+        <Label htmlFor="sessionIdleSeconds" className="shrink-0">
+          {tSettings("kioskSessionIdleSeconds")}
+        </Label>
+        <Input
+          id="sessionIdleSeconds"
+          name="sessionIdleSeconds"
+          type="number"
+          className="flex-1"
+          min={MIN_KIOSK_SESSION_IDLE_SECONDS}
+          max={MAX_KIOSK_SESSION_IDLE_SECONDS}
+          step={1}
+          key={`idle-${sessionIdleSeconds}`}
+          defaultValue={sessionIdleSeconds}
+          required
+        />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="maxSimultaneousSubtaskIntervalSeconds">
           {tSettings("kioskLiveChainIntervalSeconds")}
         </Label>
-        <NumberInput
+        <Input
           id="maxSimultaneousSubtaskIntervalSeconds"
-          min={0}
-          max={86400}
+          name="maxSimultaneousSubtaskIntervalSeconds"
+          type="number"
+          min={MIN_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS}
+          max={MAX_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS}
           step={1}
-          {...register("maxSimultaneousSubtaskIntervalSeconds", {
-            valueAsNumber: true,
-          })}
+          key={`interval-${maxSimultaneousSubtaskIntervalSeconds}`}
+          defaultValue={maxSimultaneousSubtaskIntervalSeconds}
+          required
         />
-        {errors.maxSimultaneousSubtaskIntervalSeconds ? (
-          <p className="text-sm text-destructive">
-            {errors.maxSimultaneousSubtaskIntervalSeconds.message}
-          </p>
-        ) : null}
       </div>
 
-      <Button type="submit" disabled={isPending}>
-        {tCommon("save")}
-      </Button>
+      <FormSubmitButton label={tCommon("save")} />
     </form>
   );
 }

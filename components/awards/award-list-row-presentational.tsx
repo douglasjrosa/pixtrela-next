@@ -6,7 +6,7 @@ import { CardBadge } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 import { AwardListImage } from "./award-list-image";
-import { AwardListRowCheckbox } from "./award-list-row-checkbox";
+import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import { useAwardList } from "./award-list-context";
 import { awardDisplayTitle, type AwardRow } from "./types";
 
@@ -14,6 +14,8 @@ const CENTER_CELL_CLASS = "text-center";
 
 export type AwardListRowLabels = {
   cost: string;
+  actualPrice: string;
+  autoRecalculate: string;
   stock: string;
   showInStore: string;
   inactive: string;
@@ -74,7 +76,7 @@ export function AwardListRowPresentational({
         {...rowProps}
       >
         {showCheckboxColumn ? (
-          <AwardListRowCheckbox
+          <ListRowCheckbox
             documentId={award.documentId}
             variant="table"
             ariaLabel={labels.selectRow}
@@ -103,6 +105,17 @@ export function AwardListRowPresentational({
         <td className={cn(CENTER_CELL_CLASS, "text-muted-foreground")}>
           {labels.showInStore}
         </td>
+        <td
+          className={cn(
+            CENTER_CELL_CLASS,
+            "tabular-nums text-muted-foreground",
+          )}
+        >
+          {labels.actualPrice}
+        </td>
+        <td className={cn(CENTER_CELL_CLASS, "text-muted-foreground")}>
+          {labels.autoRecalculate}
+        </td>
       </tr>
     );
   }
@@ -118,7 +131,7 @@ export function AwardListRowPresentational({
     >
       <div className="flex items-center gap-3">
         {showCheckboxColumn ? (
-          <AwardListRowCheckbox
+          <ListRowCheckbox
             documentId={award.documentId}
             variant="mobile"
             ariaLabel={labels.selectRow}
@@ -131,7 +144,10 @@ export function AwardListRowPresentational({
             {labels.cost}
           </p>
           <p className="text-sm text-muted-foreground tabular-nums">
-            {labels.stock} · {labels.showInStore}
+            {labels.actualPrice}
+          </p>
+          <p className="text-sm text-muted-foreground tabular-nums">
+            {labels.stock} · {labels.showInStore} · {labels.autoRecalculate}
           </p>
         </div>
       </div>

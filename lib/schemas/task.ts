@@ -52,6 +52,4 @@ export const bulkTaskDeactivationSchema = z
     );
   });
 
-export const bulkTaskIdsSchema = z
-  .array(z.string().trim().min(1))
-  .min(1, "emptySelection");
+export { bulkDocumentIdsSchema as bulkTaskIdsSchema } from "./bulk-ids";

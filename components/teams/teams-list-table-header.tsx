@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import type { TeamListSort } from "@/lib/schemas/team-list-sort";
 import type { TeamListFilters } from "@/lib/schemas/team-list-filters";
 
-import { TeamListRowCheckbox } from "./team-list-row-checkbox";
+import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import { TeamListSortHeaderLink } from "./team-list-sort-header-link";
 
 export interface TeamsListTableHeaderProps {
@@ -27,7 +27,7 @@ export async function TeamsListTableHeader({
       <tr className="border-b text-left">
         {showCheckboxColumn ? (
           <th className={cn("w-10 px-2 py-2 align-middle", "text-center")}>
-            <TeamListRowCheckbox
+            <ListRowCheckbox
               documentId=""
               variant="table-header"
               selectAll

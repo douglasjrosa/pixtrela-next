@@ -1,4 +1,5 @@
 import type { CurrencyForSubtasksInput } from "@/lib/schemas/currency-for-subtasks";
+import { roundCurrencyRate } from "@/lib/format/currency-rate";
 import { getCurrencyForSubtasks } from "@/lib/repos/settings";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 
@@ -47,7 +48,7 @@ export async function loadCurrencyForSubtasks(): Promise<CurrencyForSubtasksSett
     currencyTitle: row.currencyTitle ?? "",
     currencyPluralTitle: row.currencyPluralTitle ?? "",
     currencyIconUrl: toBrowserMediaUrl(row.iconMediaUrl),
-    currencyPerSecond: Number(row.currencyPerSecond ?? 0),
+    currencyPerSecond: roundCurrencyRate(Number(row.currencyPerSecond ?? 0)),
   };
 }
 

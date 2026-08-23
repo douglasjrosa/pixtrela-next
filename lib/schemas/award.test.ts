@@ -11,7 +11,7 @@ describe("awardFormSchema", () => {
         stock: 0,
         values: [{ numberOf: 50, currencyDocumentId: "c1" }],
       }),
-    ).toMatchObject({ name: "Arroz" });
+    ).toMatchObject({ name: "Arroz", actualPrice: 0, autoRecalculate: true });
   });
 
   it("accepts optional warnings and imageId", () => {

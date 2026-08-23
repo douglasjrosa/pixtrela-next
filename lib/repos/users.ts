@@ -2,7 +2,16 @@ import { and, asc, count, desc, eq, ilike, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import bcrypt from "bcryptjs";
 
-import { mediaAssets, users } from "@/drizzle/schema";
+import {
+  activities,
+  balances,
+  carts,
+  exchangeOrders,
+  exchanges,
+  mediaAssets,
+  teams,
+  users,
+} from "@/drizzle/schema";
 import { canEstablishAppSession } from "@/lib/domain/auth-session";
 import { getDb, type Db } from "@/lib/db/client";
 import { normalizeEmail } from "@/lib/mail/deliverable-email";
@@ -110,6 +119,7 @@ export type UpdateUserAccountInput = {
   role?: UserRole;
   greetingGender?: GreetingGender;
   blocked?: boolean;
+  active?: boolean;
 };
 
 const avatarMedia = alias(mediaAssets, "avatar_media");
@@ -220,6 +230,7 @@ export async function listUsersPage(
     page?: number;
     pageSize?: number;
     sort?: UserListSort;
+    showArchived?: boolean;
   } = {},
   db: Db = getDb(),
 ): Promise<{ items: UserRecord[]; total: number }> {
@@ -228,7 +239,11 @@ export async function listUsersPage(
   const offset = (page - 1) * pageSize;
   const q = options.q?.trim();
   const sort = options.sort ?? { column: "name", direction: "asc" };
-  const where = q ? ilike(users.name, `%${q}%`) : undefined;
+  const activeClause = options.showArchived
+    ? undefined
+    : eq(users.active, true);
+  const searchClause = q ? ilike(users.name, `%${q}%`) : undefined;
+  const where = and(activeClause, searchClause);
 
   const [totalRow] = await db
     .select({ total: count() })
@@ -423,6 +438,13 @@ export async function updateUserAccount(
     patch.greetingGender = toDbGreetingGender(input.greetingGender ?? "neutral");
   }
   if (input.blocked !== undefined) patch.blocked = input.blocked;
+  if (input.active !== undefined) {
+    patch.active = input.active;
+    if (input.active) {
+      patch.blocked = false;
+      patch.reasonForDeactivation = null;
+    }
+  }
   if (input.password) {
     patch.passwordHash = await hashPassword(input.password);
   }
@@ -611,6 +633,58 @@ export async function deactivateUser(
   } catch (error) {
     if (!(error instanceof Error) || error.message !== "inUse") {
       throw error;
+    }
+  }
+}
+
+export async function reactivateUser(
+  id: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await db
+    .update(users)
+    .set({
+      active: true,
+      blocked: false,
+      reasonForDeactivation: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, id));
+}
+
+export async function hardDeleteUser(
+  id: string,
+  db: Db = getDb(),
+): Promise<void> {
+  const [row] = await db
+    .select({
+      avatarMediaId: users.avatarMediaId,
+      facePhotoMediaId: users.facePhotoMediaId,
+    })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+  if (!row) return;
+
+  await db
+    .update(teams)
+    .set({ leaderId: null, updatedAt: new Date() })
+    .where(eq(teams.leaderId, id));
+  await db.delete(activities).where(eq(activities.colaboratorId, id));
+  await db.delete(balances).where(eq(balances.userId, id));
+  await db.delete(carts).where(eq(carts.userId, id));
+  await db.delete(exchanges).where(eq(exchanges.userId, id));
+  await db.delete(exchangeOrders).where(eq(exchangeOrders.userId, id));
+  await db.delete(users).where(eq(users.id, id));
+
+  for (const mediaId of [row.avatarMediaId, row.facePhotoMediaId]) {
+    if (!mediaId) continue;
+    try {
+      await deleteMediaAsset(mediaId, db);
+    } catch (error) {
+      if (!(error instanceof Error) || error.message !== "inUse") {
+        throw error;
+      }
     }
   }
 }

@@ -13,11 +13,11 @@ export const awardFormSchema = z.object({
   imageId: z.string().uuid().nullable().optional(),
   showInStore: z.boolean(),
   stock: z.number().int().min(0),
+  actualPrice: z.coerce.number().finite().default(0),
+  autoRecalculate: z.boolean().default(true),
   values: z.array(awardValueSchema).min(1),
 });
 
 export type AwardFormInput = z.infer<typeof awardFormSchema>;
 
-export const bulkAwardIdsSchema = z
-  .array(z.string().trim().min(1))
-  .min(1, "emptySelection");
+export { bulkDocumentIdsSchema as bulkAwardIdsSchema } from "./bulk-ids";

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { loadMoreFlags } from "@/app/(app)/settings/subtasks/actions";
-import { LoadMoreButton, LoadMoreButtonRow } from "@/components/ui/load-more-button";
+import { ListLoadMore } from "@/components/ui/load-more-button";
 import type { MaterialFlagListFilters } from "@/lib/schemas/material-flag";
 import { SETTINGS_ENTITY_LIST_PAGE_SIZE } from "@/lib/schemas/sub-task-category";
 import { flagListFilterKey } from "@/lib/settings/flag-list-params";
@@ -106,16 +106,11 @@ export function FlagListTableFrame({
           </li>
         ))}
       </ul>
-      {hasMore ? (
-        <LoadMoreButtonRow>
-          <LoadMoreButton
-            loading={loading}
-            label={t("loadMore")}
-            loadingLabel={t("loadingMore")}
-            onClick={handleLoadMore}
-          />
-        </LoadMoreButtonRow>
-      ) : null}
+      <ListLoadMore
+        visible={hasMore}
+        loading={loading}
+        onClick={handleLoadMore}
+      />
     </div>
   );
 }

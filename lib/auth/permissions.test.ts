@@ -15,6 +15,8 @@ import {
   canDeleteAwards,
   canManageAwards,
   canViewAwards,
+  canViewExchanges,
+  canUpdateExchangeShoppingPrices,
   canManageTasks,
   canDeactivateTemplates,
   canDeleteTemplates,
@@ -153,6 +155,25 @@ describe("canDeleteAwards", () => {
   });
 });
 
+describe("canViewExchanges", () => {
+  it("allows leader and above", () => {
+    expect(canViewExchanges("leader")).toBe(true);
+    expect(canViewExchanges("manager")).toBe(true);
+    expect(canViewExchanges("admin")).toBe(true);
+    expect(canViewExchanges("colaborator")).toBe(false);
+    expect(canViewExchanges("kiosk")).toBe(false);
+  });
+});
+
+describe("canUpdateExchangeShoppingPrices", () => {
+  it("allows manager and admin only", () => {
+    expect(canUpdateExchangeShoppingPrices("admin")).toBe(true);
+    expect(canUpdateExchangeShoppingPrices("manager")).toBe(true);
+    expect(canUpdateExchangeShoppingPrices("leader")).toBe(false);
+    expect(canUpdateExchangeShoppingPrices("colaborator")).toBe(false);
+  });
+});
+
 describe("canAccessRoute teams", () => {
   it("allows teams only for admin and manager", () => {
     expect(canAccessRoute("admin", "/teams")).toBe(true);
@@ -235,6 +256,12 @@ describe("canAccessRoute", () => {
 
   it("allows board for staff roles", () => {
     expect(canAccessRoute("leader", "/board")).toBe(true);
+  });
+
+  it("allows exchanges for leader and above", () => {
+    expect(canAccessRoute("leader", "/exchanges")).toBe(true);
+    expect(canAccessRoute("manager", "/exchanges/batch-1")).toBe(true);
+    expect(canAccessRoute("colaborator", "/exchanges", "col-1")).toBe(false);
   });
 
   it("allows own profile for manager and leader", () => {

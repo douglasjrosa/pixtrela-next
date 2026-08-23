@@ -76,11 +76,27 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
         initialUsers={pageResult.users}
         initialPage={pageResult.page}
         initialHasMore={pageResult.hasMore}
+        canDeactivate
+        canDelete={canDeleteUsers(actorRole)}
         tableHeader={
-          <UsersListTableHeader sort={sort} filters={filters} />
+          <UsersListTableHeader
+            sort={sort}
+            filters={filters}
+            showCheckboxColumn
+          />
         }
-        tableBody={<UsersListTableBody users={pageResult.users} />}
-        mobileList={<UsersListMobileList users={pageResult.users} />}
+        tableBody={
+          <UsersListTableBody
+            users={pageResult.users}
+            showCheckboxColumn
+          />
+        }
+        mobileList={
+          <UsersListMobileList
+            users={pageResult.users}
+            showCheckboxColumn
+          />
+        }
       />
     );
   }
@@ -102,6 +118,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
         canSetPassword={canSetUserPassword(actorRole)}
         canEditUserLogin={canEditUserLogin(actorRole)}
         canManageImages={actorRole === "admin"}
+        canEditActive={actorRole === "admin"}
         onPairUserTag={pairUserTag}
       >
         {listContent}
