@@ -188,8 +188,8 @@ function shoppingColumnWidths(): {
   unitValue: number;
 } {
   return {
-    item: CONTENT_WIDTH * 0.72,
-    qty: CONTENT_WIDTH * 0.14,
+    item: CONTENT_WIDTH * 0.44,
+    qty: CONTENT_WIDTH * 0.42,
     unitValue: CONTENT_WIDTH * 0.14,
   };
 }
