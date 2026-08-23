@@ -88,7 +88,9 @@ export function AppNavUserMenu({
         )}
       >
         <div className="border-b px-3 py-2">
-          <p className="truncate text-sm font-semibold">{userName}</p>
+          <p className="font-heading truncate text-sm font-semibold">
+            {userName}
+          </p>
         </div>
         {profileHref ? (
           <Link
