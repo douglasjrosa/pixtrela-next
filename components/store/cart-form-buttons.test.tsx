@@ -1,38 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
-import { CartRemoveSubmitButton } from "./cart-form-buttons";
+import { CartQtyButton, CartRemoveButton } from "./cart-form-buttons";
 
-vi.mock("next-intl", async () => {
-  const actual = await vi.importActual<typeof import("next-intl")>("next-intl");
-  return { ...actual, useTranslations: () => (key: string) => key };
-});
+describe("cart form buttons", () => {
+  it("renders qty button and calls onClick", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    renderWithIntl(<CartQtyButton label="+" onClick={onClick} />);
 
-vi.mock("react-dom", async () => {
-  const actual = await vi.importActual<typeof import("react-dom")>("react-dom");
-  return {
-    ...actual,
-    useFormStatus: () => ({
-      pending: false,
-      data: null,
-      method: null,
-      action: null,
-    }),
-  };
-});
+    await user.click(screen.getByRole("button", { name: "+" }));
+    expect(onClick).toHaveBeenCalledOnce();
+  });
 
-describe("CartRemoveSubmitButton", () => {
-  it("renders a destructive trash icon with accessible label", () => {
-    renderWithIntl(
-      <form>
-        <CartRemoveSubmitButton />
-      </form>,
-    );
+  it("renders destructive trash icon with accessible label", () => {
+    renderWithIntl(<CartRemoveButton onClick={vi.fn()} />);
 
-    const button = screen.getByRole("button", { name: "remove" });
+    const button = screen.getByRole("button", { name: "Remover" });
     expect(button).toHaveClass("text-destructive");
     expect(button.querySelector("svg")).toBeTruthy();
-    expect(button).not.toHaveTextContent("remove");
   });
 });

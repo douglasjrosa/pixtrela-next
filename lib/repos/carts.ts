@@ -204,6 +204,71 @@ export async function removeCartItem(input: {
   });
 }
 
+export async function syncOpenCartDraft(input: {
+  userId: string;
+  items: Array<{ itemId: string; qty: number }>;
+}): Promise<void> {
+  const db = getDb();
+  const desired = new Map(
+    input.items.map((item) => [item.itemId, Math.floor(item.qty)]),
+  );
+
+  await db.transaction(async (tx) => {
+    const rows = await tx
+      .select({
+        id: cartItems.id,
+        cartId: cartItems.cartId,
+        qty: cartItems.qty,
+        cartUserId: carts.userId,
+        cartStatus: carts.status,
+        stock: awards.stock,
+      })
+      .from(cartItems)
+      .innerJoin(carts, eq(cartItems.cartId, carts.id))
+      .innerJoin(awards, eq(cartItems.awardId, awards.id))
+      .where(and(eq(carts.userId, input.userId), eq(carts.status, "open")));
+
+    if (rows.length === 0) {
+      if (desired.size > 0) throw new Error("cartItemNotFound");
+      return;
+    }
+
+    const cartId = rows[0]?.cartId;
+    if (!cartId) throw new Error("cartItemNotFound");
+
+    for (const row of rows) {
+      if (row.cartUserId !== input.userId || row.cartStatus !== "open") {
+        throw new Error("cartItemNotFound");
+      }
+
+      const nextQty = desired.get(row.id);
+      if (nextQty === undefined || nextQty <= 0) {
+        await tx.delete(cartItems).where(eq(cartItems.id, row.id));
+        continue;
+      }
+
+      const clamped = clampCartQty(nextQty, row.stock);
+      if (clamped <= 0) throw new Error("awardOutOfStock");
+
+      if (clamped !== row.qty) {
+        await tx
+          .update(cartItems)
+          .set({ qty: clamped, updatedAt: new Date() })
+          .where(eq(cartItems.id, row.id));
+      }
+
+      desired.delete(row.id);
+    }
+
+    if (desired.size > 0) throw new Error("cartItemNotFound");
+
+    await tx
+      .update(carts)
+      .set({ updatedAt: new Date() })
+      .where(eq(carts.id, cartId));
+  });
+}
+
 export async function countOpenCartItems(
   userId: string,
   db: Db = getDb(),

@@ -5,10 +5,7 @@ import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
 import { ExchangeWindowBanner } from "@/components/exchange/exchange-window-banner";
-import {
-  CartQtyForms,
-  CartRemoveForm,
-} from "@/components/store/cart-forms";
+import { CartEditor } from "@/components/store/cart-editor";
 import { buttonVariants } from "@/components/ui/button";
 import { canAffordCart } from "@/lib/domain/cart";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
@@ -47,6 +44,15 @@ export default async function StoreCartPage({ params }: PageProps) {
   const affordable = canAffordCart(spendableBalance, total);
   const remaining = Math.max(0, total - spendableBalance);
   const editable = windowOpen;
+
+  const editorItems = items.map((item) => ({
+    id: item.id,
+    title: item.title,
+    qty: item.qty,
+    stock: item.stock,
+    imageSrc: toBrowserMediaUrl(item.imageUrl),
+    unitCost: item.unitCost,
+  }));
 
   return (
     <section className="space-y-6">
@@ -93,6 +99,12 @@ export default async function StoreCartPage({ params }: PageProps) {
             {t("goToStore")}
           </Link>
         </div>
+      ) : editable ? (
+        <CartEditor
+          initialItems={editorItems}
+          spendableBalance={spendableBalance}
+          currencyLabel={balance.currencyLabel}
+        />
       ) : (
         <>
           <ul className="space-y-3">
@@ -129,23 +141,12 @@ export default async function StoreCartPage({ params }: PageProps) {
                         </span>
                       </span>
                     </p>
-                    {editable ? (
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <CartQtyForms
-                          itemId={item.id}
-                          qty={item.qty}
-                          stock={item.stock}
-                        />
-                        <CartRemoveForm itemId={item.id} />
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        {t("qty")}:{" "}
-                        <span className="tabular-nums font-semibold text-foreground">
-                          {item.qty}
-                        </span>
-                      </p>
-                    )}
+                    <p className="text-sm text-muted-foreground">
+                      {t("qty")}:{" "}
+                      <span className="tabular-nums font-semibold text-foreground">
+                        {item.qty}
+                      </span>
+                    </p>
                   </div>
                 </li>
               );

@@ -3,8 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const revalidateTag = vi.fn();
 const revalidatePath = vi.fn();
 const addCartItem = vi.fn();
-const setCartItemQty = vi.fn();
-const removeCartItem = vi.fn();
+const syncOpenCartDraft = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({
@@ -19,8 +18,7 @@ vi.mock("next/cache", () => ({
 
 vi.mock("@/lib/repos/carts", () => ({
   addCartItem: (...args: unknown[]) => addCartItem(...args),
-  setCartItemQty: (...args: unknown[]) => setCartItemQty(...args),
-  removeCartItem: (...args: unknown[]) => removeCartItem(...args),
+  syncOpenCartDraft: (...args: unknown[]) => syncOpenCartDraft(...args),
 }));
 
 function expectStoreRevalidation(): void {
@@ -35,8 +33,7 @@ describe("store/cart actions", () => {
     revalidateTag.mockReset();
     revalidatePath.mockReset();
     addCartItem.mockReset();
-    setCartItemQty.mockReset();
-    removeCartItem.mockReset();
+    syncOpenCartDraft.mockReset();
   });
 
   it("addToCart revalidates store layout and catalog tags", async () => {
@@ -57,36 +54,28 @@ describe("store/cart actions", () => {
     expectStoreRevalidation();
   });
 
-  it("updateCartItemQty revalidates store layout and catalog tags", async () => {
-    setCartItemQty.mockResolvedValueOnce(undefined);
-    const { updateCartItemQty } = await import("./actions");
+  it("saveCartDraft syncs draft and revalidates store layout", async () => {
+    syncOpenCartDraft.mockResolvedValueOnce(undefined);
+    const { saveCartDraft } = await import("./actions");
     const formData = new FormData();
-    formData.set("itemId", "item-1");
-    formData.set("qty", "3");
+    formData.set(
+      "payload",
+      JSON.stringify({
+        items: [
+          {
+            itemId: "11111111-1111-4111-8111-111111111111",
+            qty: 3,
+          },
+        ],
+      }),
+    );
 
-    const result = await updateCartItemQty({ ok: false }, formData);
+    const result = await saveCartDraft({ ok: false }, formData);
 
     expect(result).toEqual({ ok: true });
-    expect(setCartItemQty).toHaveBeenCalledWith({
+    expect(syncOpenCartDraft).toHaveBeenCalledWith({
       userId: "col-1",
-      itemId: "item-1",
-      qty: 3,
-    });
-    expectStoreRevalidation();
-  });
-
-  it("removeCartItemAction revalidates store layout and catalog tags", async () => {
-    removeCartItem.mockResolvedValueOnce(undefined);
-    const { removeCartItemAction } = await import("./actions");
-    const formData = new FormData();
-    formData.set("itemId", "item-1");
-
-    const result = await removeCartItemAction({ ok: false }, formData);
-
-    expect(result).toEqual({ ok: true });
-    expect(removeCartItem).toHaveBeenCalledWith({
-      userId: "col-1",
-      itemId: "item-1",
+      items: [{ itemId: "11111111-1111-4111-8111-111111111111", qty: 3 }],
     });
     expectStoreRevalidation();
   });
