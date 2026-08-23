@@ -477,7 +477,14 @@ export async function getBatchDetailForStaff(input: {
           currencyPluralTitle: fallbackCurrency.currencyPluralTitle,
           totalNumberOf: row.totalNumberOf,
         }),
-        items: orderItems.map(({ currencyId: _currencyId, ...item }) => item),
+        items: orderItems.map((item) => ({
+          awardTitle: item.awardTitle,
+          qty: item.qty,
+          unitNumberOf: item.unitNumberOf,
+          lineNumberOf: item.lineNumberOf,
+          currencyTitle: item.currencyTitle,
+          currencyPluralTitle: item.currencyPluralTitle,
+        })),
       };
     }),
   };

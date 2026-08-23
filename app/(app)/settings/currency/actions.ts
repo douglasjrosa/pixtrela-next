@@ -12,7 +12,6 @@ import {
   isProtectedCurrencyId,
 } from "@/lib/business/primary-currency";
 import { getDb } from "@/lib/db/client";
-import { roundCurrencyRate } from "@/lib/format/currency-rate";
 import {
   listCategoryImageAssets,
   uploadCategoryImageAsset,

@@ -16,7 +16,6 @@ const CONTENT_WIDTH = A4_WIDTH - MARGIN * 2;
 const BLACK = "#000000";
 const CARD_INNER_PADDING = 12;
 const CARD_PADDING_TOP = 14;
-const CARD_PADDING_BOTTOM = 14;
 const CARD_GAP = 10;
 const HEADER_LINE_HEIGHT = 18;
 const SUMMARY_LINE_HEIGHT = 18;
@@ -302,7 +301,7 @@ function measureDeliveryTableHeight(
   order: BatchDeliveryOrder,
   innerWidth: number,
 ): number {
-  const { halfWidth, itemWidth, qtyWidth } = deliveryHalfWidths(innerWidth);
+  const { itemWidth, qtyWidth } = deliveryHalfWidths(innerWidth);
   const rowCount = deliveryTableRowCount(order);
   let height = TABLE_HEADER_HEIGHT;
 
@@ -420,7 +419,6 @@ function drawDeliveryDateFooterField(
     valueWidth - DELIVERY_DATE_SLASH_SLOT_WIDTH * 2;
   const dayWidth = segmentAreaWidth * DELIVERY_DATE_DAY_RATIO;
   const monthWidth = segmentAreaWidth * DELIVERY_DATE_MONTH_RATIO;
-  const yearWidth = segmentAreaWidth - dayWidth - monthWidth;
 
   const dayLineEnd = valueStartX + dayWidth;
   const monthLineStart = dayLineEnd + DELIVERY_DATE_SLASH_SLOT_WIDTH;

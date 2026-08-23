@@ -11,7 +11,6 @@ function buildOrderSummaryParts(
     prizeCount: string;
   },
 ): string[] {
-  const totalPrizes = order.items.reduce((sum, item) => sum + item.qty, 0);
   return [
     labels.itemCount,
     labels.prizeCount,

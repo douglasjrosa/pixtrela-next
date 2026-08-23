@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { CircleDollarSign } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -51,11 +51,10 @@ export function ShoppingUpdatePricesButton({
   const [rows, setRows] = useState<ShoppingPriceRow[]>(priceRows);
   const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (open) {
-      setRows(toPriceRows(lines));
-    }
-  }, [open, lines]);
+  function openModal(): void {
+    setRows(toPriceRows(lines));
+    setOpen(true);
+  }
 
   if (priceRows.length === 0) {
     return null;
@@ -94,7 +93,7 @@ export function ShoppingUpdatePricesButton({
         type="button"
         variant="outline"
         className="no-print gap-2 text-sm"
-        onClick={() => setOpen(true)}
+        onClick={openModal}
       >
         <CircleDollarSign className="size-4 shrink-0" aria-hidden />
         {tExchanges("updatePrices")}
