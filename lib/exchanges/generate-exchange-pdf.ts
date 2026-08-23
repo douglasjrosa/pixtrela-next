@@ -33,11 +33,14 @@ const SHOPPING_HEADER_HEIGHT = 36;
 const SHOPPING_HEADER_GAP = 16;
 const SHOPPING_ROW_VERTICAL_PADDING = 4;
 const BRL_PREFIX = "R$";
-const DELIVERY_DATE_PLACEHOLDER = "      /      /            ";
 const DELIVERY_COLUMN_GAP = 24;
 const DELIVERY_HALF_ITEM_RATIO = 0.78;
 const DELIVERY_HALF_QTY_RATIO = 0.22;
 const DELIVERY_FOOTER_LABEL_GAP = 4;
+const DELIVERY_DATE_SLASH_SLOT_WIDTH = 18;
+const DELIVERY_DATE_SLASH_FONT_SIZE = 14;
+const DELIVERY_DATE_DAY_RATIO = 0.2;
+const DELIVERY_DATE_MONTH_RATIO = 0.2;
 
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
@@ -421,6 +424,55 @@ function drawDeliveryFooterField(
     .stroke();
 }
 
+function drawDeliveryDateFooterField(
+  doc: PdfDoc,
+  label: string,
+  columnX: number,
+  columnWidth: number,
+  footerY: number,
+  lineY: number,
+): void {
+  doc.font("Helvetica").fontSize(9);
+  doc.text(`${label}:`, columnX, footerY, { lineBreak: false });
+
+  const valueStartX = deliveryFooterLineStartX(doc, columnX, label);
+  const valueEndX = columnX + columnWidth;
+  const valueWidth = valueEndX - valueStartX;
+  const segmentAreaWidth =
+    valueWidth - DELIVERY_DATE_SLASH_SLOT_WIDTH * 2;
+  const dayWidth = segmentAreaWidth * DELIVERY_DATE_DAY_RATIO;
+  const monthWidth = segmentAreaWidth * DELIVERY_DATE_MONTH_RATIO;
+  const yearWidth = segmentAreaWidth - dayWidth - monthWidth;
+
+  const dayLineEnd = valueStartX + dayWidth;
+  const monthLineStart = dayLineEnd + DELIVERY_DATE_SLASH_SLOT_WIDTH;
+  const monthLineEnd = monthLineStart + monthWidth;
+  const yearLineStart = monthLineEnd + DELIVERY_DATE_SLASH_SLOT_WIDTH;
+
+  doc
+    .strokeColor(BLACK)
+    .moveTo(valueStartX, lineY)
+    .lineTo(dayLineEnd, lineY)
+    .stroke()
+    .moveTo(monthLineStart, lineY)
+    .lineTo(monthLineEnd, lineY)
+    .stroke()
+    .moveTo(yearLineStart, lineY)
+    .lineTo(valueEndX, lineY)
+    .stroke();
+
+  doc.font("Helvetica-Bold").fontSize(DELIVERY_DATE_SLASH_FONT_SIZE);
+  const slashY = footerY - 1;
+  const slash1X =
+    dayLineEnd +
+    (DELIVERY_DATE_SLASH_SLOT_WIDTH - doc.widthOfString("/")) / 2;
+  const slash2X =
+    monthLineEnd +
+    (DELIVERY_DATE_SLASH_SLOT_WIDTH - doc.widthOfString("/")) / 2;
+  doc.text("/", slash1X, slashY, { lineBreak: false });
+  doc.text("/", slash2X, slashY, { lineBreak: false });
+}
+
 function drawDeliveryCard(
   doc: PdfDoc,
   order: BatchDeliveryOrder,
@@ -552,10 +604,9 @@ function drawDeliveryCard(
   const footerY = y;
   const lineY = footerY + 12;
 
-  drawDeliveryFooterField(
+  drawDeliveryDateFooterField(
     doc,
     labels.dateLine,
-    DELIVERY_DATE_PLACEHOLDER,
     leftX,
     halfWidth,
     footerY,
