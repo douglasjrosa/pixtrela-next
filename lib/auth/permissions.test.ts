@@ -16,6 +16,7 @@ import {
   canManageAwards,
   canViewAwards,
   canViewExchanges,
+  canUpdateExchangeShoppingPrices,
   canManageTasks,
   canDeactivateTemplates,
   canDeleteTemplates,
@@ -161,6 +162,15 @@ describe("canViewExchanges", () => {
     expect(canViewExchanges("admin")).toBe(true);
     expect(canViewExchanges("colaborator")).toBe(false);
     expect(canViewExchanges("kiosk")).toBe(false);
+  });
+});
+
+describe("canUpdateExchangeShoppingPrices", () => {
+  it("allows manager and admin only", () => {
+    expect(canUpdateExchangeShoppingPrices("admin")).toBe(true);
+    expect(canUpdateExchangeShoppingPrices("manager")).toBe(true);
+    expect(canUpdateExchangeShoppingPrices("leader")).toBe(false);
+    expect(canUpdateExchangeShoppingPrices("colaborator")).toBe(false);
   });
 });
 

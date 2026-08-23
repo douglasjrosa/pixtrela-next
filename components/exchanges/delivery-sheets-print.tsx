@@ -52,13 +52,13 @@ export async function DeliverySheetsPrint({
                     <th className="py-2 pr-3 font-semibold">
                       {t("exchangeList")}
                     </th>
-                    <th className="py-2 pr-3 text-right font-semibold">
+                    <th className="py-2 pr-3 text-center font-semibold">
                       {t("qty")}
                     </th>
-                    <th className="py-2 pr-3 text-right font-semibold">
+                    <th className="py-2 pr-3 text-center font-semibold">
                       {t("unit")}
                     </th>
-                    <th className="py-2 text-right font-semibold">
+                    <th className="py-2 text-center font-semibold">
                       {t("lineTotal")}
                     </th>
                   </tr>
@@ -70,13 +70,13 @@ export async function DeliverySheetsPrint({
                       className="border-b border-border/60"
                     >
                       <td className="py-2 pr-3">{item.awardTitle}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
+                      <td className="py-2 pr-3 text-center align-middle tabular-nums">
                         {item.qty}
                       </td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
+                      <td className="py-2 pr-3 text-center align-middle tabular-nums">
                         {item.unitNumberOf}
                       </td>
-                      <td className="py-2 text-right tabular-nums">
+                      <td className="py-2 text-center align-middle tabular-nums">
                         {item.lineNumberOf}
                       </td>
                     </tr>

@@ -12,7 +12,7 @@ import {
 } from "@/components/layout/app-page-layout";
 import { BackLink } from "@/components/navigation/back-link";
 import type { Role } from "@/lib/auth/nav";
-import { canManageAwards, canViewExchanges } from "@/lib/auth/permissions";
+import { canUpdateExchangeShoppingPrices, canViewExchanges } from "@/lib/auth/permissions";
 import { formatMonthYearPtBr } from "@/lib/format/datetime";
 import { getBatchDetailForStaff } from "@/lib/repos/exchange-batches";
 import { cn } from "@/lib/utils";
@@ -56,7 +56,7 @@ export default async function ExchangeBatchDetailPage({ params }: PageProps) {
         batchId={detail.id}
         month={detail.month}
         year={detail.year}
-        canUpdatePrices={canManageAwards(role)}
+        canUpdatePrices={canUpdateExchangeShoppingPrices(role)}
       />
       <DeliverySheetsPrint
         deliveries={detail.deliveries}

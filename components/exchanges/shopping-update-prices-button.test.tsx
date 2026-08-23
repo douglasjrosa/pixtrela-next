@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
 
-import { ShoppingListToolbar } from "./shopping-list-toolbar";
+import { ShoppingUpdatePricesButton } from "./shopping-update-prices-button";
 
 const updateShoppingListPrices = vi.fn();
 const refresh = vi.fn();
@@ -33,22 +33,16 @@ const lines = [
   },
 ];
 
-describe("ShoppingListToolbar", () => {
+describe("ShoppingUpdatePricesButton", () => {
   beforeEach(() => {
     updateShoppingListPrices.mockReset();
     refresh.mockReset();
     updateShoppingListPrices.mockResolvedValue(undefined);
   });
 
-  it("shows update prices button for admins when editable awards exist", () => {
+  it("renders update prices button when editable awards exist", () => {
     renderWithIntl(
-      <ShoppingListToolbar
-        lines={lines}
-        batchId="batch-1"
-        month={8}
-        year={2026}
-        canUpdatePrices
-      />,
+      <ShoppingUpdatePricesButton lines={lines} batchId="batch-1" />,
     );
 
     expect(
@@ -56,33 +50,11 @@ describe("ShoppingListToolbar", () => {
     ).toBeInTheDocument();
   });
 
-  it("hides update prices button when user cannot manage awards", () => {
-    renderWithIntl(
-      <ShoppingListToolbar
-        lines={lines}
-        batchId="batch-1"
-        month={8}
-        year={2026}
-        canUpdatePrices={false}
-      />,
-    );
-
-    expect(
-      screen.queryByRole("button", { name: "Atualizar preços" }),
-    ).not.toBeInTheDocument();
-  });
-
   it("opens modal with shopping list awards and saves prices", async () => {
     const user = userEvent.setup();
 
     renderWithIntl(
-      <ShoppingListToolbar
-        lines={lines}
-        batchId="batch-1"
-        month={8}
-        year={2026}
-        canUpdatePrices
-      />,
+      <ShoppingUpdatePricesButton lines={lines} batchId="batch-1" />,
     );
 
     await user.click(screen.getByRole("button", { name: "Atualizar preços" }));

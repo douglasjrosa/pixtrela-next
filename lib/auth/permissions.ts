@@ -91,6 +91,13 @@ export function canViewExchanges(role: Role | undefined): boolean {
   return isAtLeast(role, "leader");
 }
 
+/** Update shopping-list prices from exchange batch screens: manager and admin. */
+export function canUpdateExchangeShoppingPrices(
+  role: Role | undefined,
+): boolean {
+  return isAtLeast(role, "manager");
+}
+
 /** Manual colaborator balance adjustment: manager and admin. */
 export function canAdjustColaboratorBalance(role: Role | undefined): boolean {
   return isAtLeast(role, "manager");

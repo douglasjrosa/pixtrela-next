@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
-import { ShoppingListToolbar } from "@/components/exchanges/shopping-list-toolbar";
+import { ExchangesPrintButton } from "@/components/exchanges/print-button";
+import { ShoppingUpdatePricesButton } from "@/components/exchanges/shopping-update-prices-button";
 import type { BatchShoppingLine } from "@/lib/repos/exchange-batches";
 
 export async function ShoppingListPrint({
@@ -21,13 +22,18 @@ export async function ShoppingListPrint({
   return (
     <section className="exchanges-print-shopping space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-bold">{t("shoppingList")}</h2>
-        <ShoppingListToolbar
-          lines={lines}
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-xl font-bold">{t("shoppingList")}</h2>
+          {canUpdatePrices ? (
+            <ShoppingUpdatePricesButton lines={lines} batchId={batchId} />
+          ) : null}
+        </div>
+        <ExchangesPrintButton
           batchId={batchId}
           month={month}
           year={year}
-          canUpdatePrices={canUpdatePrices}
+          labelKey="printShopping"
+          mode="shopping"
         />
       </div>
       {lines.length === 0 ? (

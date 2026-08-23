@@ -14,8 +14,6 @@ import type { BatchShoppingLine } from "@/lib/repos/exchange-batches";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 import { cn } from "@/lib/utils";
 
-import { ExchangesPrintButton } from "./print-button";
-
 export type ShoppingPriceRow = {
   awardId: string;
   title: string;
@@ -36,21 +34,15 @@ function toPriceRows(lines: BatchShoppingLine[]): ShoppingPriceRow[] {
   );
 }
 
-export interface ShoppingListToolbarProps {
+export interface ShoppingUpdatePricesButtonProps {
   lines: BatchShoppingLine[];
   batchId: string;
-  month: number;
-  year: number;
-  canUpdatePrices: boolean;
 }
 
-export function ShoppingListToolbar({
+export function ShoppingUpdatePricesButton({
   lines,
   batchId,
-  month,
-  year,
-  canUpdatePrices,
-}: ShoppingListToolbarProps) {
+}: ShoppingUpdatePricesButtonProps) {
   const tExchanges = useTranslations("exchanges");
   const tCommon = useTranslations("common");
   const router = useRouter();
@@ -64,6 +56,10 @@ export function ShoppingListToolbar({
       setRows(toPriceRows(lines));
     }
   }, [open, lines]);
+
+  if (priceRows.length === 0) {
+    return null;
+  }
 
   function handlePriceChange(awardId: string, value: number): void {
     setRows((current) =>
@@ -94,26 +90,15 @@ export function ShoppingListToolbar({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        <ExchangesPrintButton
-          batchId={batchId}
-          month={month}
-          year={year}
-          labelKey="printShopping"
-          mode="shopping"
-        />
-        {canUpdatePrices && priceRows.length > 0 ? (
-          <Button
-            type="button"
-            variant="outline"
-            className="no-print gap-2 text-sm"
-            onClick={() => setOpen(true)}
-          >
-            <CircleDollarSign className="size-4 shrink-0" aria-hidden />
-            {tExchanges("updatePrices")}
-          </Button>
-        ) : null}
-      </div>
+      <Button
+        type="button"
+        variant="outline"
+        className="no-print gap-2 text-sm"
+        onClick={() => setOpen(true)}
+      >
+        <CircleDollarSign className="size-4 shrink-0" aria-hidden />
+        {tExchanges("updatePrices")}
+      </Button>
 
       {open ? (
         <FormModalShell
