@@ -30,13 +30,11 @@ export type PricedCartLine = {
   qty: number;
   stock: number;
   unitCost: number;
+  currencyId: string;
+  currencyPluralTitle: string;
 };
 
-/**
- * Clamp qty to stock, drop empty lines, then drop highest unitCost lines
- * until the cart is affordable (or empty).
- */
-export function trimCartLinesForClose(
+function trimCartLinesForSingleCurrency(
   lines: PricedCartLine[],
   balance: number,
 ): PricedCartLine[] {
@@ -63,6 +61,38 @@ export function trimCartLinesForClose(
       kept.push({ ...line, qty: affordableQty });
       total += line.unitCost * affordableQty;
     }
+  }
+
+  return kept;
+}
+
+/**
+ * Clamp qty to stock, drop empty lines, then drop highest unitCost lines
+ * until the cart is affordable (or empty).
+ */
+export function trimCartLinesForClose(
+  lines: PricedCartLine[],
+  balance: number | ((currencyPluralTitle: string) => number),
+): PricedCartLine[] {
+  const getBalance =
+    typeof balance === "function" ? balance : () => balance;
+
+  const groups = new Map<string, PricedCartLine[]>();
+  for (const line of lines) {
+    const key = line.currencyPluralTitle;
+    const list = groups.get(key) ?? [];
+    list.push(line);
+    groups.set(key, list);
+  }
+
+  const kept: PricedCartLine[] = [];
+  for (const [currencyPluralTitle, groupLines] of groups) {
+    kept.push(
+      ...trimCartLinesForSingleCurrency(
+        groupLines,
+        getBalance(currencyPluralTitle),
+      ),
+    );
   }
 
   return kept;

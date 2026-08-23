@@ -26,7 +26,6 @@ import {
   resolveAwardHistoryTitle,
   resolveCurrencyPluralTitle,
 } from "@/lib/domain/currency-display";
-import { exchangeCost } from "@/lib/domain/exchange";
 import { getDb, type Db } from "@/lib/db/client";
 import {
   debitBalanceOutcome,
@@ -153,41 +152,56 @@ export async function finalizeOpenCartForCycle(input: {
       .from(awardPrices)
       .where(inArray(awardPrices.awardId, awardIds));
 
+    const currencyIds = [...new Set(priceRows.map((price) => price.currencyId))];
+    const currencyRows =
+      currencyIds.length === 0
+        ? []
+        : await tx
+            .select({
+              id: currencies.id,
+              name: currencies.name,
+              title: currencies.title,
+              pluralTitle: currencies.pluralTitle,
+            })
+            .from(currencies)
+            .where(inArray(currencies.id, currencyIds));
+    const currencyById = new Map(
+      currencyRows.map((row) => [
+        row.id,
+        {
+          id: row.id,
+          name: row.name,
+          title: row.title,
+          pluralTitle: row.pluralTitle,
+        },
+      ]),
+    );
+
     const pricedRaw: PricedCartLine[] = [];
     for (const line of lines) {
       if (!line.active || !line.showInStore) continue;
-      const unitCost = exchangeCost(
-        priceRows
-          .filter((price) => price.awardId === line.awardId)
-          .map((price) => ({
-            currencyId: price.currencyId,
-            currencyName: price.currencyId,
-            qty: price.numberOf,
-          })),
-        payment.currencyId,
-        1,
-      );
-      if (unitCost <= 0) continue;
+      const linePrices = priceRows.filter((price) => price.awardId === line.awardId);
+      const chosen =
+        linePrices.find((price) => price.currencyId === payment.currencyId) ??
+        linePrices[0];
+      if (!chosen || chosen.numberOf <= 0) continue;
+
+      const lineCurrency = currencyById.get(chosen.currencyId);
+      if (!lineCurrency) continue;
+
       pricedRaw.push({
         awardId: line.awardId,
         awardTitle: resolveAwardHistoryTitle(line),
         qty: line.qty,
         stock: line.stock,
-        unitCost,
+        unitCost: chosen.numberOf,
+        currencyId: chosen.currencyId,
+        currencyPluralTitle: resolveCurrencyPluralTitle(lineCurrency),
       });
     }
 
-    const currency = await tx
-      .select({
-        name: currencies.name,
-        title: currencies.title,
-        pluralTitle: currencies.pluralTitle,
-      })
-      .from(currencies)
-      .where(eq(currencies.id, payment.currencyId))
-      .limit(1)
-      .then((rows) => rows[0]);
-    if (!currency) {
+    const paymentCurrency = currencyById.get(payment.currencyId);
+    if (!paymentCurrency) {
       await tx
         .update(carts)
         .set({ status: "abandoned", updatedAt: now })
@@ -195,17 +209,24 @@ export async function finalizeOpenCartForCycle(input: {
       return null;
     }
 
-    const currencyPluralTitle = resolveCurrencyPluralTitle(currency);
-    const balance = await getOrCreateMonthlyBalance(
-      {
-        userId: input.userId,
-        currencyPluralTitle,
-        now,
-      },
-      tx as unknown as Db,
-    );
+    const currencyPluralTitle = resolveCurrencyPluralTitle(paymentCurrency);
+    const balanceByCurrency = new Map<string, number>();
+    for (const title of new Set(pricedRaw.map((line) => line.currencyPluralTitle))) {
+      const balance = await getOrCreateMonthlyBalance(
+        {
+          userId: input.userId,
+          currencyPluralTitle: title,
+          now,
+        },
+        tx as unknown as Db,
+      );
+      balanceByCurrency.set(title, balance.balance);
+    }
 
-    const priced = trimCartLinesForClose(pricedRaw, balance.balance);
+    const priced = trimCartLinesForClose(
+      pricedRaw,
+      (title) => balanceByCurrency.get(title) ?? 0,
+    );
     if (priced.length === 0) {
       await tx
         .update(carts)
@@ -219,10 +240,36 @@ export async function finalizeOpenCartForCycle(input: {
     );
     const itemCount = cartItemCount(priced);
 
-    await debitBalanceOutcome(
-      { balanceId: balance.id, amount: total },
-      tx as unknown as Db,
-    );
+    const debitByCurrency = new Map<string, number>();
+    for (const line of priced) {
+      const lineCost = cartLineCost(line.unitCost, line.qty);
+      debitByCurrency.set(
+        line.currencyPluralTitle,
+        (debitByCurrency.get(line.currencyPluralTitle) ?? 0) + lineCost,
+      );
+    }
+
+    const balanceIdByCurrency = new Map<string, string>();
+    for (const title of debitByCurrency.keys()) {
+      const balance = await getOrCreateMonthlyBalance(
+        {
+          userId: input.userId,
+          currencyPluralTitle: title,
+          now,
+        },
+        tx as unknown as Db,
+      );
+      balanceIdByCurrency.set(title, balance.id);
+    }
+
+    for (const [title, amount] of debitByCurrency) {
+      const balanceId = balanceIdByCurrency.get(title);
+      if (!balanceId) continue;
+      await debitBalanceOutcome(
+        { balanceId, amount },
+        tx as unknown as Db,
+      );
+    }
 
     for (const line of priced) {
       const [fresh] = await tx
@@ -266,6 +313,8 @@ export async function finalizeOpenCartForCycle(input: {
         qty: line.qty,
         unitNumberOf: line.unitCost,
         lineNumberOf: cartLineCost(line.unitCost, line.qty),
+        currencyId: line.currencyId,
+        currencyPluralTitle: line.currencyPluralTitle,
       })),
     );
 
@@ -274,7 +323,7 @@ export async function finalizeOpenCartForCycle(input: {
         userId: input.userId,
         orderId: order.id,
         awardTitle: line.awardTitle,
-        currencyPluralTitle,
+        currencyPluralTitle: line.currencyPluralTitle,
         qty: line.qty,
         numberOf: cartLineCost(line.unitCost, line.qty),
         timestamp: now,

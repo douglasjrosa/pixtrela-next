@@ -732,6 +732,10 @@ export const exchangeOrderItems = pgTable(
     qty: integer("qty").default(1).notNull(),
     unitNumberOf: doublePrecision("unit_number_of").notNull(),
     lineNumberOf: doublePrecision("line_number_of").notNull(),
+    currencyId: uuid("currency_id").references(() => currencies.id, {
+      onDelete: "set null",
+    }),
+    currencyPluralTitle: text("currency_plural_title"),
   },
   (table) => [index("exchange_order_items_order_id_idx").on(table.orderId)],
 );

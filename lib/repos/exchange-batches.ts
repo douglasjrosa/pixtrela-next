@@ -41,11 +41,16 @@ export type BatchDeliveryOrder = {
   currencyPluralTitle: string;
   totalNumberOf: number;
   itemCount: number;
+  currencyRedemptions: Array<{
+    currencyPluralTitle: string;
+    amount: number;
+  }>;
   items: Array<{
     awardTitle: string;
     qty: number;
     unitNumberOf: number;
     lineNumberOf: number;
+    currencyPluralTitle: string;
   }>;
 };
 
@@ -57,6 +62,32 @@ export type ExchangeBatchDetail = {
   shoppingList: BatchShoppingLine[];
   deliveries: BatchDeliveryOrder[];
 };
+
+function aggregateCurrencyRedemptions(
+  items: Array<{ currencyPluralTitle: string; lineNumberOf: number }>,
+  fallback: { currencyPluralTitle: string; totalNumberOf: number },
+): BatchDeliveryOrder["currencyRedemptions"] {
+  const totals = new Map<string, number>();
+  for (const item of items) {
+    const title = item.currencyPluralTitle || fallback.currencyPluralTitle;
+    totals.set(title, (totals.get(title) ?? 0) + item.lineNumberOf);
+  }
+
+  if (totals.size === 0) {
+    return [
+      {
+        currencyPluralTitle: fallback.currencyPluralTitle,
+        amount: fallback.totalNumberOf,
+      },
+    ];
+  }
+
+  return [...totals.entries()]
+    .map(([currencyPluralTitle, amount]) => ({ currencyPluralTitle, amount }))
+    .sort((a, b) =>
+      a.currencyPluralTitle.localeCompare(b.currencyPluralTitle),
+    );
+}
 
 async function listActiveTeamLastDays(
   db: Db,
@@ -291,6 +322,7 @@ export async function getBatchDetailForStaff(input: {
             qty: exchangeOrderItems.qty,
             unitNumberOf: exchangeOrderItems.unitNumberOf,
             lineNumberOf: exchangeOrderItems.lineNumberOf,
+            currencyPluralTitle: exchangeOrderItems.currencyPluralTitle,
           })
           .from(exchangeOrderItems)
           .where(inArray(exchangeOrderItems.orderId, orderIds));
@@ -350,19 +382,28 @@ export async function getBatchDetailForStaff(input: {
     shoppingList: [...shoppingMap.values()].sort((a, b) =>
       a.awardTitle.localeCompare(b.awardTitle),
     ),
-    deliveries: orderRows.map((row) => ({
-      orderId: row.orderId,
-      userId: row.userId,
-      userName: [row.userName, row.userLastName].filter(Boolean).join(" "),
-      currencyPluralTitle: row.currencyPluralTitle,
-      totalNumberOf: row.totalNumberOf,
-      itemCount: row.itemCount,
-      items: (itemsByOrder.get(row.orderId) ?? []).map((item) => ({
+    deliveries: orderRows.map((row) => {
+      const orderItems = (itemsByOrder.get(row.orderId) ?? []).map((item) => ({
         awardTitle: item.awardTitle,
         qty: item.qty,
         unitNumberOf: item.unitNumberOf,
         lineNumberOf: item.lineNumberOf,
-      })),
-    })),
+        currencyPluralTitle:
+          item.currencyPluralTitle ?? row.currencyPluralTitle,
+      }));
+      return {
+        orderId: row.orderId,
+        userId: row.userId,
+        userName: [row.userName, row.userLastName].filter(Boolean).join(" "),
+        currencyPluralTitle: row.currencyPluralTitle,
+        totalNumberOf: row.totalNumberOf,
+        itemCount: row.itemCount,
+        currencyRedemptions: aggregateCurrencyRedemptions(orderItems, {
+          currencyPluralTitle: row.currencyPluralTitle,
+          totalNumberOf: row.totalNumberOf,
+        }),
+        items: orderItems,
+      };
+    }),
   };
 }

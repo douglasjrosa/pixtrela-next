@@ -50,6 +50,8 @@ describe("trimCartLinesForClose", () => {
           qty: 2,
           stock: 1,
           unitCost: 5,
+          currencyId: "cur-1",
+          currencyPluralTitle: "Stars",
         },
         {
           awardId: "b",
@@ -57,6 +59,8 @@ describe("trimCartLinesForClose", () => {
           qty: 1,
           stock: 5,
           unitCost: 20,
+          currencyId: "cur-1",
+          currencyPluralTitle: "Stars",
         },
       ],
       10,
@@ -68,6 +72,8 @@ describe("trimCartLinesForClose", () => {
         qty: 1,
         stock: 1,
         unitCost: 5,
+        currencyId: "cur-1",
+        currencyPluralTitle: "Stars",
       },
     ]);
   });
@@ -81,6 +87,8 @@ describe("trimCartLinesForClose", () => {
           qty: 5,
           stock: 5,
           unitCost: 3,
+          currencyId: "cur-1",
+          currencyPluralTitle: "Stars",
         },
       ],
       10,
@@ -92,6 +100,8 @@ describe("trimCartLinesForClose", () => {
         qty: 3,
         stock: 5,
         unitCost: 3,
+        currencyId: "cur-1",
+        currencyPluralTitle: "Stars",
       },
     ]);
   });
@@ -106,6 +116,8 @@ describe("trimCartLinesForClose", () => {
             qty: 1,
             stock: 1,
             unitCost: 50,
+            currencyId: "cur-1",
+            currencyPluralTitle: "Stars",
           },
         ],
         10,

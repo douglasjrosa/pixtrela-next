@@ -34,6 +34,9 @@ const SHOPPING_HEADER_GAP = 16;
 const SHOPPING_ROW_VERTICAL_PADDING = 4;
 const BRL_PREFIX = "R$";
 const DELIVERY_DATE_PLACEHOLDER = "      /      /            ";
+const DELIVERY_COLUMN_GAP = 12;
+const DELIVERY_HALF_ITEM_RATIO = 0.78;
+const DELIVERY_HALF_QTY_RATIO = 0.22;
 
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
@@ -50,11 +53,11 @@ export type DeliveryPdfLabels = {
   monthYearLabel: string;
   itemColumn: string;
   qtyColumn: string;
-  unitColumn: string;
-  lineTotalColumn: string;
+  currencyColumn: string;
+  redemptionsColumn: string;
   signature: string;
   dateLine: string;
-  formatOrderSummary: (itemCount: number, totalUnits: number) => string;
+  formatOrderSummary: (itemCount: number, totalPrizes: number) => string;
 };
 
 function collectPdfBuffer(doc: PdfDoc): Promise<Buffer> {
@@ -291,17 +294,57 @@ function orderRowCount(order: BatchDeliveryOrder): number {
   return order.items.length;
 }
 
-function orderTotalUnits(order: BatchDeliveryOrder): number {
-  return order.items.reduce((sum, item) => sum + item.lineNumberOf, 0);
+function orderTotalPrizes(order: BatchDeliveryOrder): number {
+  return order.items.reduce((sum, item) => sum + item.qty, 0);
 }
 
-function deliveryColumnWidths(innerWidth: number): number[] {
-  return [
-    innerWidth * 0.46,
-    innerWidth * 0.14,
-    innerWidth * 0.2,
-    innerWidth * 0.2,
-  ];
+function deliveryHalfWidths(innerWidth: number): {
+  halfWidth: number;
+  itemWidth: number;
+  qtyWidth: number;
+} {
+  const halfWidth = (innerWidth - DELIVERY_COLUMN_GAP) / 2;
+  return {
+    halfWidth,
+    itemWidth: halfWidth * DELIVERY_HALF_ITEM_RATIO,
+    qtyWidth: halfWidth * DELIVERY_HALF_QTY_RATIO,
+  };
+}
+
+function deliveryTableRowCount(order: BatchDeliveryOrder): number {
+  return Math.max(order.items.length, order.currencyRedemptions.length);
+}
+
+function measureDeliveryTableHeight(
+  doc: PdfDoc,
+  order: BatchDeliveryOrder,
+  innerWidth: number,
+): number {
+  const { halfWidth, itemWidth, qtyWidth } = deliveryHalfWidths(innerWidth);
+  const rowCount = deliveryTableRowCount(order);
+  let height = TABLE_HEADER_HEIGHT;
+
+  doc.font("Helvetica").fontSize(9);
+  for (let index = 0; index < rowCount; index++) {
+    const item = order.items[index];
+    const redemption = order.currencyRedemptions[index];
+    const cells = [
+      { text: item?.awardTitle ?? "", width: itemWidth },
+      { text: item ? String(item.qty) : "", width: qtyWidth },
+      {
+        text: redemption?.currencyPluralTitle ?? "",
+        width: itemWidth,
+      },
+      {
+        text: redemption ? String(redemption.amount) : "",
+        width: qtyWidth,
+      },
+    ];
+    height +=
+      measureRowHeight(doc, cells) + DELIVERY_ROW_VERTICAL_PADDING * 2 + 2;
+  }
+
+  return height;
 }
 
 function measureDeliveryCardHeight(
@@ -309,29 +352,38 @@ function measureDeliveryCardHeight(
   order: BatchDeliveryOrder,
 ): number {
   const innerWidth = CONTENT_WIDTH - CARD_INNER_PADDING * 2;
-  const colWidths = deliveryColumnWidths(innerWidth);
 
   let height = CARD_PADDING_TOP + HEADER_LINE_HEIGHT + SUMMARY_LINE_HEIGHT;
-  height += TABLE_HEADER_HEIGHT;
-
-  doc.font("Helvetica").fontSize(9);
-  for (const item of order.items) {
-    height +=
-      measureRowHeight(doc, [
-        { text: item.awardTitle, width: colWidths[0]! },
-        { text: String(item.qty), width: colWidths[1]! },
-        { text: String(item.unitNumberOf), width: colWidths[2]! },
-        { text: String(item.lineNumberOf), width: colWidths[3]! },
-      ]) +
-      DELIVERY_ROW_VERTICAL_PADDING * 2 +
-      2;
-  }
-
+  height += measureDeliveryTableHeight(doc, order, innerWidth);
   height +=
     DELIVERY_FOOTER_TOP_GAP +
     DELIVERY_FOOTER_BLOCK_HEIGHT +
     DELIVERY_CARD_PADDING_BOTTOM;
   return height;
+}
+
+function drawDeliveryTableRow(
+  doc: PdfDoc,
+  cells: Array<{
+    text: string;
+    x: number;
+    width: number;
+    align: CellTextAlign;
+  }>,
+  rowTop: number,
+  rowHeight: number,
+): void {
+  for (const cell of cells) {
+    drawCellText(
+      doc,
+      cell.text,
+      cell.x,
+      rowTop,
+      cell.width,
+      rowHeight,
+      cell.align,
+    );
+  }
 }
 
 function drawDeliveryCard(
@@ -342,7 +394,9 @@ function drawDeliveryCard(
 ): number {
   const innerX = MARGIN + CARD_INNER_PADDING;
   const innerWidth = CONTENT_WIDTH - CARD_INNER_PADDING * 2;
-  const colWidths = deliveryColumnWidths(innerWidth);
+  const { halfWidth, itemWidth, qtyWidth } = deliveryHalfWidths(innerWidth);
+  const leftX = innerX;
+  const rightX = innerX + halfWidth + DELIVERY_COLUMN_GAP;
   let y = yTop + CARD_PADDING_TOP;
 
   doc
@@ -362,7 +416,7 @@ function drawDeliveryCard(
     .text(
       labels.formatOrderSummary(
         orderRowCount(order),
-        orderTotalUnits(order),
+        orderTotalPrizes(order),
       ),
       innerX,
       y,
@@ -370,84 +424,117 @@ function drawDeliveryCard(
     );
   y += SUMMARY_LINE_HEIGHT;
 
-  y = drawTableHeader(
+  const tableTop = y;
+  const leftHeaderBottom = drawTableHeader(
     doc,
     [
-      { label: labels.itemColumn, width: colWidths[0]! },
-      { label: labels.qtyColumn, width: colWidths[1]!, align: "center" },
-      { label: labels.unitColumn, width: colWidths[2]!, align: "center" },
-      { label: labels.lineTotalColumn, width: colWidths[3]!, align: "center" },
+      { label: labels.itemColumn, width: itemWidth },
+      { label: labels.qtyColumn, width: qtyWidth, align: "center" },
     ],
-    y,
-    innerX,
+    tableTop,
+    leftX,
   );
+  const rightHeaderBottom = drawTableHeader(
+    doc,
+    [
+      { label: labels.currencyColumn, width: itemWidth },
+      { label: labels.redemptionsColumn, width: qtyWidth, align: "center" },
+    ],
+    tableTop,
+    rightX,
+  );
+  y = Math.max(leftHeaderBottom, rightHeaderBottom);
   doc.font("Helvetica").fontSize(9);
 
-  for (const item of order.items) {
+  const rowCount = deliveryTableRowCount(order);
+  for (let index = 0; index < rowCount; index++) {
+    const item = order.items[index];
+    const redemption = order.currencyRedemptions[index];
     const rowTop = y;
     const cells = [
-      { text: item.awardTitle, width: colWidths[0]!, align: "left" as const },
-      { text: String(item.qty), width: colWidths[1]!, align: "center" as const },
+      { text: item?.awardTitle ?? "", width: itemWidth },
+      { text: item ? String(item.qty) : "", width: qtyWidth },
       {
-        text: String(item.unitNumberOf),
-        width: colWidths[2]!,
-        align: "center" as const,
+        text: redemption?.currencyPluralTitle ?? "",
+        width: itemWidth,
       },
       {
-        text: String(item.lineNumberOf),
-        width: colWidths[3]!,
-        align: "center" as const,
+        text: redemption ? String(redemption.amount) : "",
+        width: qtyWidth,
       },
     ];
     const rowHeight =
       measureRowHeight(doc, cells) + DELIVERY_ROW_VERTICAL_PADDING * 2;
-    let columnX = innerX;
-    for (const cell of cells) {
-      drawCellText(
-        doc,
-        cell.text,
-        columnX,
-        rowTop,
-        cell.width,
-        rowHeight,
-        cell.align,
-      );
-      columnX += cell.width;
-    }
+
+    drawDeliveryTableRow(
+      doc,
+      [
+        {
+          text: item?.awardTitle ?? "",
+          x: leftX,
+          width: itemWidth,
+          align: "left",
+        },
+        {
+          text: item ? String(item.qty) : "",
+          x: leftX + itemWidth,
+          width: qtyWidth,
+          align: "center",
+        },
+        {
+          text: redemption?.currencyPluralTitle ?? "",
+          x: rightX,
+          width: itemWidth,
+          align: "left",
+        },
+        {
+          text: redemption ? String(redemption.amount) : "",
+          x: rightX + itemWidth,
+          width: qtyWidth,
+          align: "center",
+        },
+      ],
+      rowTop,
+      rowHeight,
+    );
+
     y = rowTop + rowHeight;
     doc
       .strokeColor(BLACK)
-      .moveTo(innerX, y)
-      .lineTo(innerX + innerWidth, y)
+      .moveTo(leftX, y)
+      .lineTo(leftX + halfWidth, y)
+      .stroke();
+    doc
+      .moveTo(rightX, y)
+      .lineTo(rightX + halfWidth, y)
       .stroke();
     y += 2;
   }
 
   y += DELIVERY_FOOTER_TOP_GAP;
   const footerY = y;
-  const signatureWidth = innerWidth * 0.55;
-  const dateWidth = innerWidth * 0.4;
-  const dateX = innerX + signatureWidth + innerWidth * 0.05;
+  const dateWidth = halfWidth;
+  const signatureWidth = halfWidth;
   const lineY = footerY + 12;
 
-  doc.fontSize(9).text(`${labels.signature}:`, innerX, footerY, {
-    width: signatureWidth,
-  });
-  doc.text(
+  doc.fontSize(9).text(
     `${labels.dateLine}: ${DELIVERY_DATE_PLACEHOLDER}`,
-    dateX,
+    leftX,
     footerY,
     {
       width: dateWidth,
     },
   );
+  doc.text(`${labels.signature}:`, rightX, footerY, {
+    width: signatureWidth,
+  });
   doc
-    .moveTo(innerX + 42, lineY)
-    .lineTo(innerX + signatureWidth, lineY)
+    .moveTo(leftX, lineY)
+    .lineTo(leftX + dateWidth, lineY)
     .stroke();
   doc
-    .moveTo(dateX, lineY)
-    .lineTo(dateX + dateWidth, lineY)
+    .moveTo(rightX + 42, lineY)
+    .lineTo(rightX + signatureWidth, lineY)
     .stroke();
 
   const yBottom =
