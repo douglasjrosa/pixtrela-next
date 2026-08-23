@@ -5,18 +5,13 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
 import { canExchange } from "@/lib/auth/permissions";
-import {
-  addCartItem,
-  syncOpenCartDraft,
-} from "@/lib/repos/carts";
+import { syncOpenCartDraft } from "@/lib/repos/carts";
 import { cartDraftPayloadSchema } from "@/lib/schemas/cart-draft";
 import { COLABORATOR_STORE_PAGE_PATH } from "@/lib/store/store-path";
 
 export type CartActionState = {
   ok: boolean;
   messageKey?:
-    | "addedToCart"
-    | "addFailed"
     | "outOfStock"
     | "insufficient"
     | "windowClosed"
@@ -33,7 +28,7 @@ function mapCartError(error: unknown): CartActionState["messageKey"] {
     return "windowClosed";
   }
   if (lower.includes("cartempty")) return "emptyCart";
-  return "addFailed";
+  return "saveFailed";
 }
 
 async function requireColaboratorId(): Promise<string> {
@@ -49,28 +44,6 @@ function revalidateCartTags(): void {
   revalidateTag("drizzle:carts", "default");
   revalidateTag("drizzle:awards", "default");
   revalidatePath(COLABORATOR_STORE_PAGE_PATH, "layout");
-}
-
-export async function addToCart(
-  _prev: CartActionState,
-  formData: FormData,
-): Promise<CartActionState> {
-  try {
-    const userId = await requireColaboratorId();
-    const awardId = String(formData.get("awardId") ?? "");
-    const qtyRaw = Number(formData.get("qty") ?? 1);
-    const qty = Number.isFinite(qtyRaw) ? Math.max(1, Math.floor(qtyRaw)) : 1;
-    if (!awardId) return { ok: false, messageKey: "addFailed" };
-
-    await addCartItem({ userId, awardId, qty });
-    revalidateCartTags();
-    return { ok: true, messageKey: "addedToCart" };
-  } catch (error) {
-    if (error instanceof Error && error.message === "forbidden") {
-      return { ok: false, messageKey: "addFailed" };
-    }
-    return { ok: false, messageKey: mapCartError(error) };
-  }
 }
 
 export async function saveCartDraft(
@@ -90,12 +63,8 @@ export async function saveCartDraft(
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message === "forbidden") {
-      return { ok: false, messageKey: "addFailed" };
-    }
-    const mapped = mapCartError(error);
-    if (mapped === "addFailed") {
       return { ok: false, messageKey: "saveFailed" };
     }
-    return { ok: false, messageKey: mapped };
+    return { ok: false, messageKey: mapCartError(error) };
   }
 }

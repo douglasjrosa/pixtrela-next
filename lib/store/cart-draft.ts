@@ -45,7 +45,7 @@ export function serializeCartDraftPayload(
 ): string {
   return JSON.stringify({
     items: draft.map((item) => ({
-      itemId: item.id,
+      awardId: item.id,
       qty: item.qty,
     })),
   });
@@ -53,5 +53,5 @@ export function serializeCartDraftPayload(
 
 export function clampDraftQty(qty: number, stock: number): number {
   if (stock <= 0) return 0;
-  return Math.max(1, Math.min(Math.floor(qty), stock));
+  return Math.max(0, Math.min(Math.floor(qty), stock));
 }

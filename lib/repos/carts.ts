@@ -206,66 +206,94 @@ export async function removeCartItem(input: {
 
 export async function syncOpenCartDraft(input: {
   userId: string;
-  items: Array<{ itemId: string; qty: number }>;
+  items: Array<{ awardId: string; qty: number }>;
 }): Promise<void> {
   const db = getDb();
   const desired = new Map(
-    input.items.map((item) => [item.itemId, Math.floor(item.qty)]),
+    input.items.map((item) => [item.awardId, Math.floor(item.qty)]),
   );
 
   await db.transaction(async (tx) => {
+    const cart = await getOrCreateOpenCart(input.userId, tx as unknown as Db);
+
     const rows = await tx
       .select({
         id: cartItems.id,
-        cartId: cartItems.cartId,
+        awardId: cartItems.awardId,
         qty: cartItems.qty,
-        cartUserId: carts.userId,
-        cartStatus: carts.status,
         stock: awards.stock,
       })
       .from(cartItems)
-      .innerJoin(carts, eq(cartItems.cartId, carts.id))
       .innerJoin(awards, eq(cartItems.awardId, awards.id))
-      .where(and(eq(carts.userId, input.userId), eq(carts.status, "open")));
+      .where(eq(cartItems.cartId, cart.id));
 
-    if (rows.length === 0) {
-      if (desired.size > 0) throw new Error("cartItemNotFound");
-      return;
-    }
+    const existingByAward = new Map(rows.map((row) => [row.awardId, row]));
 
-    const cartId = rows[0]?.cartId;
-    if (!cartId) throw new Error("cartItemNotFound");
+    for (const [awardId, nextQty] of desired) {
+      const existing = existingByAward.get(awardId);
 
-    for (const row of rows) {
-      if (row.cartUserId !== input.userId || row.cartStatus !== "open") {
-        throw new Error("cartItemNotFound");
-      }
-
-      const nextQty = desired.get(row.id);
-      if (nextQty === undefined || nextQty <= 0) {
-        await tx.delete(cartItems).where(eq(cartItems.id, row.id));
+      if (nextQty <= 0) {
+        if (existing) {
+          await tx.delete(cartItems).where(eq(cartItems.id, existing.id));
+        }
+        existingByAward.delete(awardId);
         continue;
       }
 
-      const clamped = clampCartQty(nextQty, row.stock);
-      if (clamped <= 0) throw new Error("awardOutOfStock");
+      let award: {
+        stock: number;
+        active: boolean;
+        showInStore: boolean;
+      } | undefined;
 
-      if (clamped !== row.qty) {
-        await tx
-          .update(cartItems)
-          .set({ qty: clamped, updatedAt: new Date() })
-          .where(eq(cartItems.id, row.id));
+      if (existing) {
+        award = { stock: existing.stock, active: true, showInStore: true };
+      } else {
+        const [found] = await tx
+          .select({
+            stock: awards.stock,
+            active: awards.active,
+            showInStore: awards.showInStore,
+          })
+          .from(awards)
+          .where(eq(awards.id, awardId))
+          .limit(1);
+        award = found;
       }
 
-      desired.delete(row.id);
+      if (!award || !award.active || !award.showInStore) {
+        throw new Error("awardUnavailable");
+      }
+
+      const clamped = clampCartQty(nextQty, award.stock);
+      if (clamped <= 0) throw new Error("awardOutOfStock");
+
+      if (existing) {
+        if (clamped !== existing.qty) {
+          await tx
+            .update(cartItems)
+            .set({ qty: clamped, updatedAt: new Date() })
+            .where(eq(cartItems.id, existing.id));
+        }
+        existingByAward.delete(awardId);
+        continue;
+      }
+
+      await tx.insert(cartItems).values({
+        cartId: cart.id,
+        awardId,
+        qty: clamped,
+      });
     }
 
-    if (desired.size > 0) throw new Error("cartItemNotFound");
+    for (const leftover of existingByAward.values()) {
+      await tx.delete(cartItems).where(eq(cartItems.id, leftover.id));
+    }
 
     await tx
       .update(carts)
       .set({ updatedAt: new Date() })
-      .where(eq(carts.id, cartId));
+      .where(eq(carts.id, cart.id));
   });
 }
 

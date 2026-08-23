@@ -8,10 +8,7 @@ import {
   saveCartDraft,
   type CartActionState,
 } from "@/app/[documentId]/store/actions";
-import {
-  CartQtyButton,
-  CartRemoveButton,
-} from "@/components/store/cart-form-buttons";
+import { CartQtyButton } from "@/components/store/cart-form-buttons";
 import { Button } from "@/components/ui/button";
 import { canAffordCart } from "@/lib/domain/cart";
 import { showErrorToast } from "@/lib/ui/app-toast";
@@ -30,12 +27,14 @@ export type CartEditorProps = {
   initialItems: CartDraftItem[];
   spendableBalance: number;
   currencyLabel?: string;
+  editable?: boolean;
 };
 
 export function CartEditor({
   initialItems,
   spendableBalance,
   currencyLabel,
+  editable = true,
 }: CartEditorProps) {
   const t = useTranslations("cart");
   const tCommon = useTranslations("common");
@@ -70,28 +69,11 @@ export function CartEditor({
     );
   };
 
-  const removeItem = (itemId: string) => {
-    setDraft((current) => current.filter((item) => item.id !== itemId));
-  };
-
   if (draft.length === 0) {
     return (
-      <form action={saveAction} className="space-y-4">
-        <input
-          type="hidden"
-          name="payload"
-          value={serializeCartDraftPayload(draft)}
-          readOnly
-        />
-        <div className="rounded-2xl border bg-card p-6 text-center">
-          <p className="text-muted-foreground">{t("emptyDraft")}</p>
-        </div>
-        <div className="flex justify-end">
-          <Button type="submit" disabled={!dirty || saving}>
-            {saving ? tCommon("loading") : tCommon("save")}
-          </Button>
-        </div>
-      </form>
+      <div className="rounded-2xl border bg-card p-6 text-center">
+        <p className="text-muted-foreground">{t("empty")}</p>
+      </div>
     );
   }
 
@@ -134,11 +116,11 @@ export function CartEditor({
                   </span>
                 </span>
               </p>
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              {editable ? (
                 <div className="flex items-center gap-2">
                   <CartQtyButton
                     label="−"
-                    disabled={saving || item.qty <= 1}
+                    disabled={saving || item.qty <= 0}
                     onClick={() => updateQty(item.id, item.qty - 1)}
                   />
                   <span className="min-w-8 text-center tabular-nums font-semibold">
@@ -151,11 +133,14 @@ export function CartEditor({
                   />
                   <span className="sr-only">{t("qty")}</span>
                 </div>
-                <CartRemoveButton
-                  disabled={saving}
-                  onClick={() => removeItem(item.id)}
-                />
-              </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {t("qty")}:{" "}
+                  <span className="tabular-nums font-semibold text-foreground">
+                    {item.qty}
+                  </span>
+                </p>
+              )}
             </div>
           </li>
         ))}
@@ -181,11 +166,13 @@ export function CartEditor({
         ) : null}
       </div>
 
-      <div className="flex justify-end">
-        <Button type="submit" disabled={!dirty || saving}>
-          {saving ? tCommon("loading") : tCommon("save")}
-        </Button>
-      </div>
+      {editable ? (
+        <div className="flex justify-end">
+          <Button type="submit" disabled={!dirty || saving}>
+            {saving ? tCommon("loading") : tCommon("save")}
+          </Button>
+        </div>
+      ) : null}
     </form>
   );
 }

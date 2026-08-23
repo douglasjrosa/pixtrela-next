@@ -11,17 +11,13 @@ import {
 } from "@/lib/domain/exchange";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { getOrCreateMonthlyBalance } from "@/lib/repos/balances";
+import { listOpenCartItemRows } from "@/lib/repos/carts";
 import { getCurrencyForSubtasks } from "@/lib/repos/settings";
 import { findActiveTeamWindowForUser } from "@/lib/repos/teams";
+import { mergeCatalogWithCart } from "@/lib/store/merge-catalog-with-cart";
 
 export const STORE_AWARDS_CACHE_TAG = "drizzle:awards";
 export const STORE_CURRENCIES_CACHE_TAG = "drizzle:currencies";
-
-export const STORE_LOW_STOCK_THRESHOLD = 5;
-export const STORE_ALMOST_PROGRESS = 0.7;
-
-export type StoreFilter = "all" | "affordable" | "almost" | "lowStock";
-export type StoreSort = "priceAsc" | "priceDesc";
 
 export interface StoreAwardView {
   id: string;
@@ -40,11 +36,20 @@ interface TeamEntity {
   exchangesLastDay: number;
 }
 
+export interface StoreCatalogLine {
+  awardId: string;
+  title: string;
+  qty: number;
+  stock: number;
+  imageUrl: string | null;
+  unitCost: number;
+}
+
 export interface StorePageData {
   balance: CurrencyBalanceProps;
   spendableBalance: number;
   paymentCurrencyId: string | null;
-  awards: StoreAwardView[];
+  catalogLines: StoreCatalogLine[];
   windowOpen: boolean;
   team: TeamEntity | null;
 }
@@ -148,78 +153,6 @@ function mapCatalogToAwards(
   return Array.from(byAward.values());
 }
 
-export function parseStoreFilter(value: string | undefined): StoreFilter {
-  if (
-    value === "affordable" ||
-    value === "almost" ||
-    value === "lowStock" ||
-    value === "all"
-  ) {
-    return value;
-  }
-  return "all";
-}
-
-export function parseStoreSort(value: string | undefined): StoreSort {
-  if (value === "priceDesc" || value === "priceAsc") return value;
-  return "priceAsc";
-}
-
-export function filterAndSortStoreAwards(
-  awards: StoreAwardView[],
-  balance: number,
-  filter: StoreFilter,
-  sort: StoreSort,
-): StoreAwardView[] {
-  let filtered = awards;
-
-  if (filter === "affordable") {
-    filtered = awards.filter(
-      (award) => award.cost > 0 && balance >= award.cost && award.stock > 0,
-    );
-  } else if (filter === "almost") {
-    filtered = awards.filter((award) => {
-      if (award.cost <= 0 || award.stock <= 0) return false;
-      const progress = balance / award.cost;
-      return progress >= STORE_ALMOST_PROGRESS && progress < 1;
-    });
-  } else if (filter === "lowStock") {
-    filtered = awards.filter(
-      (award) =>
-        award.stock > 0 && award.stock <= STORE_LOW_STOCK_THRESHOLD,
-    );
-  }
-
-  const sorted = [...filtered].sort((a, b) =>
-    sort === "priceDesc" ? b.cost - a.cost : a.cost - b.cost,
-  );
-  return sorted;
-}
-
-/** Lowest-cost in-stock awards, then low-stock urgency. */
-export function pickFeaturedAwards(
-  awards: StoreAwardView[],
-  limit = 6,
-): StoreAwardView[] {
-  const inStock = awards.filter((award) => award.stock > 0 && award.cost > 0);
-  const byPrice = [...inStock].sort((a, b) => a.cost - b.cost);
-  const lowStock = [...inStock]
-    .filter((award) => award.stock <= STORE_LOW_STOCK_THRESHOLD)
-    .sort((a, b) => a.stock - b.stock);
-
-  const seen = new Set<string>();
-  const featured: StoreAwardView[] = [];
-
-  for (const award of [...lowStock, ...byPrice]) {
-    if (seen.has(award.id)) continue;
-    seen.add(award.id);
-    featured.push(award);
-    if (featured.length >= limit) break;
-  }
-
-  return featured;
-}
-
 export async function loadStorePage(userId: string): Promise<StorePageData> {
   try {
     const payment = await getCurrencyForSubtasks();
@@ -247,16 +180,20 @@ export async function loadStorePage(userId: string): Promise<StorePageData> {
     }
 
     const paymentCurrencyId = payment?.currencyId ?? null;
-    const catalogRows = await loadCachedStoreCatalog();
+    const [catalogRows, cartRows] = await Promise.all([
+      loadCachedStoreCatalog(),
+      listOpenCartItemRows(userId),
+    ]);
     const awards = paymentCurrencyId
       ? mapCatalogToAwards(catalogRows, paymentCurrencyId)
       : [];
+    const catalogLines = mergeCatalogWithCart(awards, cartRows);
 
     return {
       balance,
       spendableBalance: balance.balance,
       paymentCurrencyId,
-      awards,
+      catalogLines,
       windowOpen,
       team,
     };
@@ -266,7 +203,7 @@ export async function loadStorePage(userId: string): Promise<StorePageData> {
       balance: EMPTY_BALANCE,
       spendableBalance: 0,
       paymentCurrencyId: null,
-      awards: [],
+      catalogLines: [],
       windowOpen: false,
       team: null,
     };

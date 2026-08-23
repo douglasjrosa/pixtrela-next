@@ -6,10 +6,6 @@ export function buildStorePath(documentId: string): string {
 /** Next.js dynamic path for revalidating every colaborator store page. */
 export const COLABORATOR_STORE_PAGE_PATH = "/[documentId]/store";
 
-export function buildStoreCartPath(documentId: string): string {
-  return `/${documentId}/store/cart`;
-}
-
 export function buildStoreOrdersPath(documentId: string): string {
   return `/${documentId}/store/orders`;
 }
@@ -22,8 +18,7 @@ export function buildStoreOrderPath(
 }
 
 /**
- * True for `/{documentId}/store` and nested store paths
- * (`/cart`, `/orders`, `/orders/{orderId}`).
+ * True for `/{documentId}/store` and nested store order paths.
  */
 export function isUserStorePath(
   pathname: string,
@@ -36,9 +31,7 @@ export function isUserStorePath(
   if (!documentId || reservedSegments.has(documentId)) return false;
 
   if (parts.length === 2) return true;
-  if (parts.length === 3 && (parts[2] === "cart" || parts[2] === "orders")) {
-    return true;
-  }
+  if (parts.length === 3 && parts[2] === "orders") return true;
   if (parts.length === 4 && parts[2] === "orders" && Boolean(parts[3])) {
     return true;
   }

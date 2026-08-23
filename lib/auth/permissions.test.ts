@@ -239,7 +239,7 @@ describe("canAccessRoute", () => {
     expect(canAccessRoute("colaborator", "/col-1", "col-1")).toBe(true);
     expect(canAccessRoute("colaborator", "/col-1/profile", "col-1")).toBe(true);
     expect(canAccessRoute("colaborator", "/col-1/store", "col-1")).toBe(true);
-    expect(canAccessRoute("colaborator", "/col-1/store/cart", "col-1")).toBe(
+    expect(canAccessRoute("colaborator", "/col-1/store/orders", "col-1")).toBe(
       true,
     );
     expect(canAccessRoute("colaborator", "/kiosk", "col-1")).toBe(false);

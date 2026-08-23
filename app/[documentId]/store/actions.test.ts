@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTag = vi.fn();
 const revalidatePath = vi.fn();
-const addCartItem = vi.fn();
 const syncOpenCartDraft = vi.fn();
 
 vi.mock("@/auth", () => ({
@@ -17,7 +16,6 @@ vi.mock("next/cache", () => ({
 }));
 
 vi.mock("@/lib/repos/carts", () => ({
-  addCartItem: (...args: unknown[]) => addCartItem(...args),
   syncOpenCartDraft: (...args: unknown[]) => syncOpenCartDraft(...args),
 }));
 
@@ -27,34 +25,15 @@ function expectStoreRevalidation(): void {
   expect(revalidatePath).toHaveBeenCalledWith("/[documentId]/store", "layout");
 }
 
-describe("store/cart actions", () => {
+describe("store cart draft actions", () => {
   beforeEach(() => {
     vi.resetModules();
     revalidateTag.mockReset();
     revalidatePath.mockReset();
-    addCartItem.mockReset();
     syncOpenCartDraft.mockReset();
   });
 
-  it("addToCart revalidates store layout and catalog tags", async () => {
-    addCartItem.mockResolvedValueOnce({ cartId: "cart-1", itemId: "item-1", qty: 1 });
-    const { addToCart } = await import("./actions");
-    const formData = new FormData();
-    formData.set("awardId", "award-1");
-    formData.set("qty", "2");
-
-    const result = await addToCart({ ok: false }, formData);
-
-    expect(result).toEqual({ ok: true, messageKey: "addedToCart" });
-    expect(addCartItem).toHaveBeenCalledWith({
-      userId: "col-1",
-      awardId: "award-1",
-      qty: 2,
-    });
-    expectStoreRevalidation();
-  });
-
-  it("saveCartDraft syncs draft and revalidates store layout", async () => {
+  it("saveCartDraft syncs award quantities and revalidates store layout", async () => {
     syncOpenCartDraft.mockResolvedValueOnce(undefined);
     const { saveCartDraft } = await import("./actions");
     const formData = new FormData();
@@ -63,8 +42,12 @@ describe("store/cart actions", () => {
       JSON.stringify({
         items: [
           {
-            itemId: "11111111-1111-4111-8111-111111111111",
+            awardId: "11111111-1111-4111-8111-111111111111",
             qty: 3,
+          },
+          {
+            awardId: "22222222-2222-4222-8222-222222222222",
+            qty: 0,
           },
         ],
       }),
@@ -75,7 +58,10 @@ describe("store/cart actions", () => {
     expect(result).toEqual({ ok: true });
     expect(syncOpenCartDraft).toHaveBeenCalledWith({
       userId: "col-1",
-      items: [{ itemId: "11111111-1111-4111-8111-111111111111", qty: 3 }],
+      items: [
+        { awardId: "11111111-1111-4111-8111-111111111111", qty: 3 },
+        { awardId: "22222222-2222-4222-8222-222222222222", qty: 0 },
+      ],
     });
     expectStoreRevalidation();
   });

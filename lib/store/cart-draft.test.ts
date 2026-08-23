@@ -22,6 +22,7 @@ describe("cart-draft helpers", () => {
   it("detects dirty drafts by qty changes and removals", () => {
     const baseline = [BASE_ITEM];
     expect(isCartDraftDirty(baseline, [{ ...BASE_ITEM, qty: 3 }])).toBe(true);
+    expect(isCartDraftDirty(baseline, [{ ...BASE_ITEM, qty: 0 }])).toBe(true);
     expect(isCartDraftDirty(baseline, [])).toBe(true);
     expect(isCartDraftDirty(baseline, baseline)).toBe(false);
   });
@@ -38,13 +39,13 @@ describe("cart-draft helpers", () => {
   it("serializes draft payload for server actions", () => {
     expect(serializeCartDraftPayload([BASE_ITEM])).toBe(
       JSON.stringify({
-        items: [{ itemId: BASE_ITEM.id, qty: 2 }],
+        items: [{ awardId: BASE_ITEM.id, qty: 2 }],
       }),
     );
   });
 
   it("clamps draft qty to stock bounds", () => {
-    expect(clampDraftQty(0, 5)).toBe(1);
+    expect(clampDraftQty(0, 5)).toBe(0);
     expect(clampDraftQty(9, 5)).toBe(5);
     expect(clampDraftQty(3, 0)).toBe(0);
   });
