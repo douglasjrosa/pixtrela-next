@@ -81,13 +81,13 @@ export async function DeliverySheetsPrint({
                       <th className="py-2 pr-3 font-semibold">
                         {t("exchangeList")}
                       </th>
-                      <th className="py-2 pr-3 text-right font-semibold">
+                      <th className="py-2 px-3 text-center font-semibold">
                         {t("qty")}
                       </th>
-                      <th className="py-2 pr-3 text-right font-semibold">
+                      <th className="py-2 px-3 text-center font-semibold">
                         {t("unit")}
                       </th>
-                      <th className="py-2 text-right font-semibold">
+                      <th className="py-2 text-center font-semibold">
                         {t("lineTotal")}
                       </th>
                     </tr>
