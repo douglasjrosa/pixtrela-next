@@ -22,8 +22,10 @@ const HEADER_LINE_HEIGHT = 18;
 const SUMMARY_LINE_HEIGHT = 18;
 const TABLE_HEADER_HEIGHT = 22;
 const ROW_MIN_HEIGHT = 14;
-const FOOTER_BLOCK_HEIGHT = 24;
-const FOOTER_TOP_GAP = 10;
+const DELIVERY_ROW_VERTICAL_PADDING = 4;
+const DELIVERY_FOOTER_TOP_GAP = 18;
+const DELIVERY_FOOTER_BLOCK_HEIGHT = 16;
+const DELIVERY_CARD_PADDING_BOTTOM = 8;
 const PAGE_BOTTOM = A4_HEIGHT - MARGIN;
 const SHOPPING_LOGO_SIZE = 28;
 const SHOPPING_HEADER_SIDE_WIDTH = 120;
@@ -276,10 +278,15 @@ function measureDeliveryCardHeight(
         { text: String(item.qty), width: colWidths[1]! },
         { text: String(item.unitNumberOf), width: colWidths[2]! },
         { text: String(item.lineNumberOf), width: colWidths[3]! },
-      ]) + 2;
+      ]) +
+      DELIVERY_ROW_VERTICAL_PADDING * 2 +
+      2;
   }
 
-  height += FOOTER_TOP_GAP + FOOTER_BLOCK_HEIGHT + CARD_PADDING_BOTTOM;
+  height +=
+    DELIVERY_FOOTER_TOP_GAP +
+    DELIVERY_FOOTER_BLOCK_HEIGHT +
+    DELIVERY_CARD_PADDING_BOTTOM;
   return height;
 }
 
@@ -323,9 +330,9 @@ function drawDeliveryCard(
     doc,
     [
       { label: labels.itemColumn, width: colWidths[0]! },
-      { label: labels.qtyColumn, width: colWidths[1]!, align: "right" },
-      { label: labels.unitColumn, width: colWidths[2]!, align: "right" },
-      { label: labels.lineTotalColumn, width: colWidths[3]!, align: "right" },
+      { label: labels.qtyColumn, width: colWidths[1]!, align: "center" },
+      { label: labels.unitColumn, width: colWidths[2]!, align: "center" },
+      { label: labels.lineTotalColumn, width: colWidths[3]!, align: "center" },
     ],
     y,
     innerX,
@@ -336,19 +343,20 @@ function drawDeliveryCard(
     const rowTop = y;
     const cells = [
       { text: item.awardTitle, width: colWidths[0]!, align: "left" as const },
-      { text: String(item.qty), width: colWidths[1]!, align: "right" as const },
+      { text: String(item.qty), width: colWidths[1]!, align: "center" as const },
       {
         text: String(item.unitNumberOf),
         width: colWidths[2]!,
-        align: "right" as const,
+        align: "center" as const,
       },
       {
         text: String(item.lineNumberOf),
         width: colWidths[3]!,
-        align: "right" as const,
+        align: "center" as const,
       },
     ];
-    const rowHeight = measureRowHeight(doc, cells);
+    const rowHeight =
+      measureRowHeight(doc, cells) + DELIVERY_ROW_VERTICAL_PADDING * 2;
     let columnX = innerX;
     for (const cell of cells) {
       drawCellText(
@@ -371,7 +379,7 @@ function drawDeliveryCard(
     y += 2;
   }
 
-  y += FOOTER_TOP_GAP;
+  y += DELIVERY_FOOTER_TOP_GAP;
   const footerY = y;
   const signatureWidth = innerWidth * 0.55;
   const dateWidth = innerWidth * 0.4;
@@ -389,7 +397,8 @@ function drawDeliveryCard(
     .lineTo(innerX + signatureWidth, lineY)
     .stroke();
 
-  const yBottom = footerY + FOOTER_BLOCK_HEIGHT + CARD_PADDING_BOTTOM;
+  const yBottom =
+    footerY + DELIVERY_FOOTER_BLOCK_HEIGHT + DELIVERY_CARD_PADDING_BOTTOM;
   doc
     .strokeColor(BLACK)
     .rect(MARGIN, yTop, CONTENT_WIDTH, yBottom - yTop)
