@@ -4,6 +4,7 @@ import {
   buildCrmItemKey,
   buildTaskNameFromPedidoItem,
   mapPedidoToTaskDrafts,
+  toExternalTaskDraft,
 } from "./map-pedido-to-tasks";
 
 describe("mapPedidoToTaskDrafts", () => {
@@ -39,5 +40,22 @@ describe("mapPedidoToTaskDrafts", () => {
         "Empresa X",
       ),
     ).toBe("Empresa X - Base");
+  });
+
+  it("maps a CRM draft onto the core ExternalTaskDraft port", () => {
+    const [draft] = mapPedidoToTaskDrafts({
+      id: 42,
+      itens: [{ Qtd: 10, prodId: 123, nomeProd: "Caixotona" }],
+      dataEntrega: "2026-07-15",
+      empresaNome: "Max Brasil",
+    });
+    expect(toExternalTaskDraft(draft!)).toEqual({
+      name: "Max Brasil - Caixotona",
+      qty: 10,
+      deliveryDate: "2026-07-15",
+      templateCode: "123",
+      externalKey: "42:0",
+      externalGroupId: "42",
+    });
   });
 });

@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const upsertTasksFromPedido = vi.fn();
 
-vi.mock("@/lib/crm/upsert-tasks-from-pedido", () => ({
+vi.mock("./upsert-tasks-from-pedido", () => ({
   isEligiblePedidoPayload: (payload: { Bpedido: string }) =>
     Boolean(payload.Bpedido?.trim()),
   upsertTasksFromPedido: (...args: unknown[]) => upsertTasksFromPedido(...args),
 }));
 
-import { signWebhookPayload } from "@/lib/crm/verify-webhook-signature";
-import { processCrmPedidoWebhook } from "@/lib/crm/handle-crm-pedido-webhook";
+import { signWebhookPayload } from "./verify-webhook-signature";
+import { processCrmPedidoWebhook } from "./handle-crm-pedido-webhook";
 
 const SECRET = "webhook-test-secret";
 

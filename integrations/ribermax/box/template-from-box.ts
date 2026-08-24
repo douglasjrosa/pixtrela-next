@@ -3,7 +3,9 @@ import type {
   LegacyAdesivo,
   LegacyFramedPart,
   LegacyNumber,
-} from "@/lib/legacy/rbx-types";
+} from "@/integrations/ribermax/rbx/rbx-types";
+import type { RibermaxBoxTemplateRates } from "@/integrations/ribermax/settings/schema";
+import { DEFAULT_BOX_TEMPLATE_RATES } from "@/integrations/ribermax/settings/schema";
 import type {
   TemplateSubTaskComponentInput,
   TemplateTaskFormInput,
@@ -14,8 +16,6 @@ import {
   applyTemplateSubTaskDependencies,
 } from "./template-subtask-dependencies";
 
-const CUT_SECONDS = 60;
-const ADHESIVE_SECONDS = 30;
 const MAX_WORKERS_SINGLE = 1;
 const MAX_WORKERS_DUAL = 2;
 const QTY_BASE = 1;
@@ -37,7 +37,7 @@ const MONTAGEM_CODE = {
 } as const;
 
 function toNumber(value: LegacyNumber): number {
-  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
@@ -49,7 +49,7 @@ function toSeconds(value: LegacyNumber): number {
   return Math.max(0, Math.round(toNumber(value)));
 }
 
-function montagemSeconds(
+function montagemUnits(
   montagem: BoxTemplateData["montagem"],
   code: number,
 ): number {
@@ -76,23 +76,27 @@ type SubTaskDraft = {
   include: boolean;
 };
 
-function cutDraft(name: string, present: boolean): SubTaskDraft {
+function cutDraft(name: string, present: boolean, cutSeconds: number): SubTaskDraft {
   return {
     name,
     qty: 1,
     sharingType: "duration",
-    expectedTime: CUT_SECONDS,
+    expectedTime: cutSeconds,
     include: present,
   };
 }
 
-function chapaCutDraft(name: string, qty: number, present: boolean): SubTaskDraft {
+function chapaCutDraft(
+  name: string,
+  qty: number,
+  present: boolean,
+  cutSeconds: number,
+): SubTaskDraft {
   return {
     name,
     qty,
     sharingType: "qty",
-    // Total time for all pieces of this cut (qty × per-piece cut seconds).
-    expectedTime: CUT_SECONDS * qty,
+    expectedTime: cutSeconds * qty,
     include: present,
   };
 }
@@ -130,19 +134,17 @@ function maxSameTimeWorkersFor(name: string): number {
 }
 
 /**
- * Turns a legacy box payload into a Pixtrela TemplateTask form input.
- *
- * Cut subtasks: duration for single pieces (60s) or qty cuts with
- * expectedTime = 60s × piece count (total for subTask.qty).
- * Assembly/fixation: quantity-based; expectedTime is the total for
- * subTask.qty (nails/staples as 1s each, or 30s × adhesives × pieces).
- * Subtasks for absent parts (count 0) are omitted. Part quantities
- * follow the box anatomy: 1 base, 1 tampa, 2 laterais, 2 cabeceiras.
+ * Turns a legacy box payload into a TemplateTask form input.
+ * Time rates default to historic Ribermax constants (60 / 30 / 1).
  */
 export function buildTemplateFromBox(
   data: BoxTemplateData,
+  rates: RibermaxBoxTemplateRates = DEFAULT_BOX_TEMPLATE_RATES,
 ): TemplateTaskFormInput {
   const { montagem, base, lateral, cabeceira, tampa } = data;
+  const cut = rates.cutSeconds;
+  const adhesive = rates.adhesiveSeconds;
+  const fastener = rates.fastenerSeconds;
 
   const hasBaseFeet = isPresent(base?.pe) || isPresent(base?.toco);
   const hasBaseBoards = isPresent(base?.tabua);
@@ -155,86 +157,98 @@ export function buildTemplateFromBox(
   const tampaAdhesives = countAdhesives(tampa);
 
   const drafts: SubTaskDraft[] = [
-    cutDraft("Corte dos pés da base", hasBaseFeet),
-    cutDraft("Corte das tábuas da base", hasBaseBoards),
-    cutDraft(TEMPLATE_SARRAFOS_CUT_NAME, hasFrames),
+    cutDraft("Corte dos pés da base", hasBaseFeet, cut),
+    cutDraft("Corte das tábuas da base", hasBaseBoards, cut),
+    cutDraft(TEMPLATE_SARRAFOS_CUT_NAME, hasFrames, cut),
     chapaCutDraft(
       "Corte das chapas das laterais",
       QTY_LATERAIS,
       isPresent(lateral),
+      cut,
     ),
     chapaCutDraft(
       "Corte das chapas das cabeceiras",
       QTY_CABECEIRAS,
       isPresent(cabeceira),
+      cut,
     ),
-    chapaCutDraft("Corte da chapa da tampa", QTY_TAMPA, isPresent(tampa)),
-    qtyDraft("Montagem dos pés", qPes, montagemSeconds(montagem, MONTAGEM_CODE.pe)),
+    chapaCutDraft(
+      "Corte da chapa da tampa",
+      QTY_TAMPA,
+      isPresent(tampa),
+      cut,
+    ),
+    qtyDraft(
+      "Montagem dos pés",
+      qPes,
+      montagemUnits(montagem, MONTAGEM_CODE.pe) * fastener,
+    ),
     qtyDraft(
       "Montagem da base",
       QTY_BASE,
-      montagemSeconds(montagem, MONTAGEM_CODE.base),
+      montagemUnits(montagem, MONTAGEM_CODE.base) * fastener,
     ),
     qtyDraft(
       "Montagem dos quadros das laterais",
       QTY_LATERAIS,
-      montagemSeconds(montagem, MONTAGEM_CODE.lateralQuadros),
+      montagemUnits(montagem, MONTAGEM_CODE.lateralQuadros) * fastener,
     ),
     qtyDraft(
       "Fixação das chapas das laterais",
       QTY_LATERAIS,
-      montagemSeconds(montagem, MONTAGEM_CODE.lateralChapa),
+      montagemUnits(montagem, MONTAGEM_CODE.lateralChapa) * fastener,
     ),
     qtyDraft(
       "Fixação dos adesivos das laterais",
       QTY_LATERAIS,
-      lateralAdhesives * ADHESIVE_SECONDS * QTY_LATERAIS,
+      lateralAdhesives * adhesive * QTY_LATERAIS,
     ),
     qtyDraft(
       "Montagem dos quadros das cabeceiras",
       QTY_CABECEIRAS,
-      montagemSeconds(montagem, MONTAGEM_CODE.cabeceiraQuadros),
+      montagemUnits(montagem, MONTAGEM_CODE.cabeceiraQuadros) * fastener,
     ),
     qtyDraft(
       "Fixação das chapas das cabeceiras",
       QTY_CABECEIRAS,
-      montagemSeconds(montagem, MONTAGEM_CODE.cabeceiraChapa),
+      montagemUnits(montagem, MONTAGEM_CODE.cabeceiraChapa) * fastener,
     ),
     qtyDraft(
       "Fixação dos adesivos das cabeceiras",
       QTY_CABECEIRAS,
-      cabeceiraAdhesives * ADHESIVE_SECONDS * QTY_CABECEIRAS,
+      cabeceiraAdhesives * adhesive * QTY_CABECEIRAS,
     ),
     qtyDraft(
       "Montagem dos quadros da tampa",
       QTY_TAMPA,
-      montagemSeconds(montagem, MONTAGEM_CODE.tampaQuadros),
+      montagemUnits(montagem, MONTAGEM_CODE.tampaQuadros) * fastener,
     ),
     qtyDraft(
       "Fixação das chapas da tampa",
       QTY_TAMPA,
-      montagemSeconds(montagem, MONTAGEM_CODE.tampaChapa),
+      montagemUnits(montagem, MONTAGEM_CODE.tampaChapa) * fastener,
     ),
     qtyDraft(
       "Fixação dos adesivos da tampa",
       QTY_TAMPA,
-      tampaAdhesives * ADHESIVE_SECONDS * QTY_TAMPA,
+      tampaAdhesives * adhesive * QTY_TAMPA,
     ),
   ];
 
-  const subTask: TemplateSubTaskComponentInput[] = applyTemplateSubTaskDependencies(
-    drafts
-      .filter((draft) => draft.include)
-      .map((draft, index) => ({
-        name: draft.name,
-        qty: draft.qty,
-        sharingType: draft.sharingType,
-        maxSameTimeWorkers: maxSameTimeWorkersFor(draft.name),
-        index,
-        expectedTime: draft.expectedTime,
-        dependencies: null,
-      })),
-  );
+  const subTask: TemplateSubTaskComponentInput[] =
+    applyTemplateSubTaskDependencies(
+      drafts
+        .filter((draft) => draft.include)
+        .map((draft, index) => ({
+          name: draft.name,
+          qty: draft.qty,
+          sharingType: draft.sharingType,
+          maxSameTimeWorkers: maxSameTimeWorkersFor(draft.name),
+          index,
+          expectedTime: draft.expectedTime,
+          dependencies: null,
+        })),
+    );
   return {
     name: buildTemplateName(data.empresaNome, data.boxName),
     code: String(data.prodId),
