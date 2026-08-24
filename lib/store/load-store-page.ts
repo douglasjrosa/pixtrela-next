@@ -18,6 +18,7 @@ import {
 
 export const STORE_AWARDS_CACHE_TAG = "drizzle:awards";
 export const STORE_CURRENCIES_CACHE_TAG = "drizzle:currencies";
+const STORE_CATALOG_CACHE_KEY = "store-awards-catalog-v2";
 
 interface TeamEntity {
   exchangesFirstDay: number;
@@ -74,12 +75,20 @@ async function fetchStoreCatalogRows(): Promise<CatalogAwardRow[]> {
 
 const loadCachedStoreCatalog = unstable_cache(
   async (): Promise<CatalogAwardRow[]> => fetchStoreCatalogRows(),
-  ["store-awards-catalog"],
+  [STORE_CATALOG_CACHE_KEY],
   {
     tags: [STORE_AWARDS_CACHE_TAG, STORE_CURRENCIES_CACHE_TAG],
     revalidate: 60,
   },
 );
+
+async function loadStoreCatalog(): Promise<CatalogAwardRow[]> {
+  try {
+    return await loadCachedStoreCatalog();
+  } catch {
+    return fetchStoreCatalogRows();
+  }
+}
 
 async function loadStoreCurrencies(
   userId: string,
@@ -124,7 +133,7 @@ export async function loadStorePage(userId: string): Promise<StorePageData> {
     const team = await findActiveTeamWindowForUser(userId);
     const windowOpen = team ? isExchangeWindowOpen(team, new Date()) : false;
     const [catalogRows, cartRows, storeCurrencies] = await Promise.all([
-      loadCachedStoreCatalog(),
+      loadStoreCatalog(),
       listOpenCartItemRows(userId),
       loadStoreCurrencies(userId),
     ]);
