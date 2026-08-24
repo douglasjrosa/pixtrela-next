@@ -24,6 +24,14 @@ import { cn } from "@/lib/utils";
 
 const INITIAL: CartActionState = { ok: false };
 
+function defaultSelectedCurrencies(
+  awards: CartDraftAward[],
+): Record<string, string> {
+  return Object.fromEntries(
+    awards.map((award) => [award.awardId, award.prices[0]?.currencyId ?? ""]),
+  );
+}
+
 export type CartEditorProps = {
   initialAwards: CartDraftAward[];
   currencies: StoreCurrencyBalance[];
@@ -40,27 +48,17 @@ export function CartEditor({
   const [baseline, setBaseline] = useState(initialAwards);
   const [draft, setDraft] = useState(initialAwards);
   const [selected, setSelected] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      initialAwards.map((award) => [
-        award.awardId,
-        award.prices[0]?.currencyId ?? "",
-      ]),
-    ),
+    defaultSelectedCurrencies(initialAwards),
   );
-  const [state, saveAction, saving] = useActionState(saveCartDraft, INITIAL);
-
-  useEffect(() => {
+  const sourceKey = serializeCartDraftPayload(initialAwards);
+  const [sourceSnapshot, setSourceSnapshot] = useState(sourceKey);
+  if (sourceSnapshot !== sourceKey) {
+    setSourceSnapshot(sourceKey);
     setBaseline(initialAwards);
     setDraft(initialAwards);
-    setSelected(
-      Object.fromEntries(
-        initialAwards.map((award) => [
-          award.awardId,
-          award.prices[0]?.currencyId ?? "",
-        ]),
-      ),
-    );
-  }, [initialAwards]);
+    setSelected(defaultSelectedCurrencies(initialAwards));
+  }
+  const [state, saveAction, saving] = useActionState(saveCartDraft, INITIAL);
 
   useEffect(() => {
     if (!state.ok && state.messageKey) {
