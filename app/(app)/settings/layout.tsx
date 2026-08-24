@@ -40,6 +40,11 @@ export default async function SettingsLayout({
             { href: "/settings/kiosk", label: t("tabs.kiosk") },
             { href: "/settings/login", label: t("tabs.login") },
             {
+              href: "/settings/integrations/ribermax",
+              activePrefix: "/settings/integrations",
+              label: t("tabs.integrations"),
+            },
+            {
               href: "/settings/themes/colors",
               activePrefix: "/settings/themes",
               label: t("tabs.themes"),

@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import {
+  STORE_BALANCE_BG_IMAGE_CLASS,
+  STORE_CATALOG_CARD_WIDTH_CLASS,
+} from "@/lib/store/store-layout";
 import { renderWithIntl } from "@/test/test-utils";
 import { CartEditor } from "./cart-editor";
 
@@ -42,8 +46,27 @@ const AWARD = {
 };
 
 const CURRENCIES = [
-  { currencyId: STAR, label: "Estrelas", iconUrl: null, balance: 1000 },
-  { currencyId: GEM, label: "Gemas", iconUrl: null, balance: 200 },
+  {
+    currencyId: STAR,
+    title: "Estrela",
+    pluralTitle: "Estrelas",
+    iconUrl: null,
+    balance: 1000,
+  },
+  {
+    currencyId: GEM,
+    title: "Gema",
+    pluralTitle: "Gemas",
+    iconUrl: "/gem.png",
+    balance: 200,
+  },
+  {
+    currencyId: "44444444-4444-4444-8444-444444444444",
+    title: "Coração",
+    pluralTitle: "Corações",
+    iconUrl: null,
+    balance: 1,
+  },
 ];
 
 describe("CartEditor", () => {
@@ -73,9 +96,54 @@ describe("CartEditor", () => {
     await user.click(screen.getByRole("button", { name: "+" }));
     expect(screen.getByRole("button", { name: "−" }).parentElement)
       .toHaveTextContent("1");
-    expect(
-      screen.getAllByText("Saldo depois das trocas").length,
-    ).toBeGreaterThan(0);
+
+    expect(screen.getAllByText("Seu saldo hoje")).toHaveLength(3);
+    expect(screen.getAllByText("Resgate total")).toHaveLength(3);
+    expect(screen.getAllByText("Saldo restante")).toHaveLength(3);
+    expect(screen.queryByText("Saldo depois das trocas")).not.toBeInTheDocument();
+    expect(screen.getByText("1.000 Estrelas")).toBeInTheDocument();
+    expect(screen.getByText("200 Gemas")).toBeInTheDocument();
+    expect(screen.getAllByText("1 Coração")).toHaveLength(2);
+  });
+
+  it("places awards and balances in horizontal catalog rows", () => {
+    renderWithIntl(
+      <CartEditor initialAwards={[AWARD]} currencies={CURRENCIES} />,
+    );
+
+    expect(screen.getByTestId("store-awards-row")).toHaveClass("overflow-x-auto");
+    expect(screen.getByTestId("store-awards-row")).toHaveClass("w-full", "min-w-0");
+    expect(screen.getByTestId("store-balances-row")).toHaveClass("overflow-x-auto");
+    expect(screen.getByTestId("store-awards-row").parentElement).toHaveClass(
+      "overflow-x-hidden",
+    );
+    expect(screen.getByRole("list", { name: "Prêmios" })).toBe(
+      screen.getByTestId("store-awards-row"),
+    );
+    expect(screen.getByRole("list", { name: "Saldos" })).toBe(
+      screen.getByTestId("store-balances-row"),
+    );
+    const awardCard = screen.getByText("Estrela Vermelha").closest("li");
+    expect(awardCard).toContainElement(screen.getByRole("button", { name: "+" }));
+    expect(awardCard).toHaveClass(...STORE_CATALOG_CARD_WIDTH_CLASS.split(" "));
+    const balanceCard = screen.getByTestId("store-balances-row")
+      .querySelector("li");
+    expect(balanceCard).toHaveClass(...STORE_CATALOG_CARD_WIDTH_CLASS.split(" "));
+  });
+
+  it("renders the currency icon as a small bottom-right watermark", () => {
+    renderWithIntl(
+      <CartEditor initialAwards={[AWARD]} currencies={CURRENCIES} />,
+    );
+
+    const images = screen.getByTestId("store-balances-row")
+      .querySelectorAll("img");
+    expect(images).toHaveLength(1);
+    expect(images[0]).toHaveClass(
+      ...STORE_BALANCE_BG_IMAGE_CLASS.split(" "),
+    );
+    expect(images[0]).toHaveClass("size-1/4", "bottom-0", "right-0");
+    expect(screen.getByTestId("store-awards-row").querySelector("img")).toBeNull();
   });
 
   it("hides save and qty controls when read-only", () => {

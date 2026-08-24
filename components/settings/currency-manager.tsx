@@ -380,6 +380,9 @@ export function CurrencyManager({
                   <th className={TABLE_HEAD_CELL_CLASS}>
                     {tSettings("currencyExchangeRate")}
                   </th>
+                  <th className={TABLE_HEAD_CELL_CLASS}>
+                    {tSettings("currencyShowInStore")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -425,6 +428,9 @@ export function CurrencyManager({
                       <td className={TABLE_NUMERIC_CELL_CLASS}>
                         {formatExchangeRate(currency.exchangeRate)}
                       </td>
+                      <td className={TABLE_BODY_CELL_CLASS}>
+                        {currency.showInStore ? tCommon("yes") : tCommon("no")}
+                      </td>
                     </tr>
                   );
                 })}
@@ -457,7 +463,9 @@ export function CurrencyManager({
                       <span className="mt-1 block text-sm text-muted-foreground">
                         {currency.name} ·{" "}
                         {formatCurrencyPerSecond(currency.currencyPerSecond)} ·{" "}
-                        {formatExchangeRate(currency.exchangeRate)}
+                        {formatExchangeRate(currency.exchangeRate)} ·{" "}
+                        {tSettings("currencyShowInStore")}{" "}
+                        {currency.showInStore ? tCommon("yes") : tCommon("no")}
                       </span>
                     </button>
                   </li>

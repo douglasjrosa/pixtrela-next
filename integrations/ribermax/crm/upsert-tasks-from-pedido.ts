@@ -1,12 +1,15 @@
-import { ensureTemplateTaskForProdId } from "@/lib/business/ensure-template-for-prod-id";
+import { ensureTemplateTaskForProdId } from "@/integrations/ribermax/box/ensure-template-for-prod-id";
+import {
+  mapPedidoToTaskDrafts,
+  toExternalTaskDraft,
+} from "@/integrations/ribermax/crm/map-pedido-to-tasks";
 import { applyAutoStepTaskOrderingAfterTaskChange } from "@/lib/business/apply-step-task-order";
 import { resolveDefaultStepDocumentId } from "@/lib/business/default-task-step";
 import { getNextTaskIndex } from "@/lib/business/task-order";
-import { mapPedidoToTaskDrafts } from "@/lib/crm/map-pedido-to-tasks";
 import { listSteps } from "@/lib/repos/steps";
 import {
   createTask,
-  findTaskByCrmItemKey,
+  findTaskByExternalKey,
   getTaskById,
   listActiveTasksForBoard,
   updateCrmPedidoTaskFields,
@@ -59,7 +62,7 @@ function taskNeedsUpdate(
 }
 
 /**
- * Creates or updates Pixtrela tasks from a CRM pedido webhook payload.
+ * Creates or updates tasks from a CRM pedido webhook payload.
  * Idempotent via crmItemKey; does not deactivate orphaned tasks.
  */
 export async function upsertTasksFromPedido(
@@ -88,7 +91,7 @@ export async function upsertTasksFromPedido(
   let skipped = 0;
 
   for (const draft of drafts) {
-    const existing = await findTaskByCrmItemKey(draft.crmItemKey);
+    const existing = await findTaskByExternalKey(draft.crmItemKey);
 
     if (existing) {
       if (taskNeedsUpdate(existing, draft)) {
@@ -121,16 +124,18 @@ export async function upsertTasksFromPedido(
     await ensureTemplateTaskForProdId(draft.prodId, draft.name);
     const index = getNextTaskIndex(taskIndexes.map((value) => ({ index: value })));
     taskIndexes.push(index);
+    const external = toExternalTaskDraft(draft);
+    const groupId = Number(external.externalGroupId);
     await createTask({
-      name: draft.name,
-      qty: draft.qty,
-      deliveryDate: draft.deliveryDate,
+      name: external.name,
+      qty: external.qty,
+      deliveryDate: external.deliveryDate,
       index,
       status: "waiting",
-      templateTaskCode: draft.templateTaskCode,
+      templateTaskCode: external.templateCode,
       stepId: defaultStepId,
-      crmPedidoId: draft.crmPedidoId,
-      crmItemKey: draft.crmItemKey,
+      crmPedidoId: Number.isFinite(groupId) ? groupId : draft.crmPedidoId,
+      crmItemKey: external.externalKey,
     });
     await applyAutoStepTaskOrderingAfterTaskChange({
       after: {

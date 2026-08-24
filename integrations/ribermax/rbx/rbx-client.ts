@@ -24,7 +24,7 @@ function isErrorResponse(value: unknown): value is LegacyErrorResponse {
  * Fetches a box's calcCx data and PHP-computed assembly counts from the legacy
  * RBX system, authenticating with the shared `Token` header.
  *
- * @param boxId Numeric product id (the template `code` in Pixtrela).
+ * @param boxId Numeric product id (the template `code` in the app).
  */
 export async function fetchBoxTemplateData(
   boxId: number,

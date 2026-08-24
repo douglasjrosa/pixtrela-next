@@ -368,6 +368,19 @@ export const taskAutomationSettings = pgTable("task_automation_settings", {
     .notNull(),
 });
 
+export const ribermaxBoxTemplateSettings = pgTable(
+  "ribermax_box_template_settings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    cutSeconds: integer("cut_seconds").default(60).notNull(),
+    adhesiveSeconds: integer("adhesive_seconds").default(30).notNull(),
+    fastenerSeconds: integer("fastener_seconds").default(1).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+);
+
 export const subTaskCategories = pgTable("sub_task_categories", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 128 }).notNull(),

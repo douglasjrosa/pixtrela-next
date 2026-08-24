@@ -11,6 +11,7 @@ export {
   kioskSettings,
   entryAccessSettings,
   taskAutomationSettings,
+  ribermaxBoxTemplateSettings,
   subTaskPresets,
   subTaskCategories,
   flags,

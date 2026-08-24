@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { crmPedidoWebhookSchema } from "@/lib/schemas/crm-pedido-webhook";
+import { crmPedidoWebhookSchema } from "./crm-pedido-webhook";
 
 describe("crmPedidoWebhookSchema", () => {
   it("parses a valid payload", () => {
