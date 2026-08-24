@@ -1,7 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import { awards } from "@/drizzle/schema";
@@ -36,6 +36,7 @@ import {
   type AwardListPageResult,
 } from "@/lib/awards/load-award-list-page";
 import { resolveAwardPricesOnSave } from "@/lib/awards/resolve-award-prices";
+import { COLABORATOR_STORE_PAGE_PATH } from "@/lib/store/store-path";
 
 async function assertCanView(): Promise<void> {
   const session = await auth();
@@ -67,6 +68,7 @@ async function assertCanDelete(): Promise<void> {
 
 function invalidateAwards(): void {
   revalidateTag("drizzle:awards", "default");
+  revalidatePath(COLABORATOR_STORE_PAGE_PATH, "layout");
 }
 
 export async function loadMoreAwards(

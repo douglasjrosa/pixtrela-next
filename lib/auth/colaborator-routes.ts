@@ -3,6 +3,10 @@ import {
   isUserProfilePath as isProfilePathShape,
 } from "@/lib/profile/profile-path";
 import {
+  buildOrdersPath,
+  isUserOrdersPath as isOrdersPathShape,
+} from "@/lib/orders/orders-path";
+import {
   buildStorePath,
   isUserStorePath as isStorePathShape,
 } from "@/lib/store/store-path";
@@ -34,6 +38,7 @@ const RESERVED_ROOT_SEGMENTS = new Set([
   "settings",
   "profile",
   "store",
+  "orders",
   "exchanges",
   "api",
   "serwist",
@@ -76,16 +81,25 @@ export function isUserStorePath(pathname: string): boolean {
   return isStorePathShape(pathname, RESERVED_ROOT_SEGMENTS);
 }
 
+/** True for `/{documentId}/orders` and `/{documentId}/orders/{orderId}`. */
+export function isUserOrdersPath(pathname: string): boolean {
+  return isOrdersPathShape(pathname, RESERVED_ROOT_SEGMENTS);
+}
+
 export function canColaboratorAccessPath(
   pathname: string,
   documentId: string,
 ): boolean {
   if (pathname === `/${documentId}`) return true;
   if (pathname === buildProfilePath(documentId)) return true;
-  return (
-    pathname === buildStorePath(documentId) ||
-    pathname.startsWith(`${buildStorePath(documentId)}/`)
-  );
+  if (pathname === buildStorePath(documentId)) return true;
+  if (
+    pathname === buildOrdersPath(documentId) ||
+    pathname.startsWith(`${buildOrdersPath(documentId)}/`)
+  ) {
+    return true;
+  }
+  return false;
 }
 
 interface RouteAccessInput {
@@ -160,13 +174,30 @@ export function resolveRouteAccess(
     if (!isColaborator) {
       return redirectTo("/", pathname);
     }
-    const ownStorePrefix = buildStorePath(userId ?? "");
+    const ownStore = buildStorePath(userId ?? "");
+    if (userId && pathname !== ownStore) {
+      return redirectTo(ownStore, pathname);
+    }
+    return { action: "allow" };
+  }
+
+  if (isUserOrdersPath(pathname)) {
+    if (!isAuthenticated) {
+      return redirectTo(buildLoginRedirect(pathname), pathname);
+    }
+    if (isKiosk) {
+      return redirectTo(KIOSK_HOME_PATH, pathname);
+    }
+    if (!isColaborator) {
+      return redirectTo("/", pathname);
+    }
+    const ownOrders = buildOrdersPath(userId ?? "");
     if (
       userId &&
-      pathname !== ownStorePrefix &&
-      !pathname.startsWith(`${ownStorePrefix}/`)
+      pathname !== ownOrders &&
+      !pathname.startsWith(`${ownOrders}/`)
     ) {
-      return redirectTo(ownStorePrefix, pathname);
+      return redirectTo(ownOrders, pathname);
     }
     return { action: "allow" };
   }

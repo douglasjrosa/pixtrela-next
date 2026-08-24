@@ -41,6 +41,24 @@ describe("NumberInput", () => {
     expect(onChange).toHaveBeenCalled();
   });
 
+  it("rounds decimal steps instead of keeping float noise", async () => {
+    const user = userEvent.setup();
+    renderWithIntl(
+      <NumberInput
+        aria-label="Preço"
+        defaultValue={10}
+        step="0.01"
+      />,
+    );
+
+    const input = screen.getByRole("spinbutton", { name: "Preço" });
+    for (let index = 0; index < 10; index += 1) {
+      await user.click(screen.getByRole("button", { name: "Aumentar valor" }));
+    }
+    expect(input).toHaveValue(10.1);
+    expect((input as HTMLInputElement).value).toBe("10.10");
+  });
+
   it("forwards ref to the native input", () => {
     const ref = vi.fn();
     renderWithIntl(<NumberInput ref={ref} aria-label="Quantidade" />);

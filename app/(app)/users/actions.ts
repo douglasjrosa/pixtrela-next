@@ -10,6 +10,7 @@ import {
   canPairUserTag,
 } from "@/lib/auth/permissions";
 import { canDeleteUsers, canManageRole } from "@/lib/business/roles";
+import { isUserArchivedForHardDelete } from "@/lib/business/user-archive";
 import { normalizeUserTag } from "@/lib/kiosk/user-tag";
 import { storeMedia } from "@/lib/media/store-media";
 import { insertMediaAsset } from "@/lib/repos/media";
@@ -264,7 +265,7 @@ export async function bulkDeleteUsers(userIds: string[]): Promise<void> {
   for (const userId of ids) {
     const user = await findUserById(userId);
     if (!user) throw new Error("notFound");
-    if (user.active) throw new Error("activeUser");
+    if (!isUserArchivedForHardDelete(user)) throw new Error("activeUser");
     await hardDeleteUser(userId);
   }
   invalidateUsers();

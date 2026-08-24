@@ -1,38 +1,27 @@
 "use client";
 
-import { useFormStatus } from "react-dom";
-import { useTranslations } from "next-intl";
-
 import { Button } from "@/components/ui/button";
 
-export function CartQtySubmitButton({ label }: { label: string }) {
-  const { pending } = useFormStatus();
+export function CartQtyButton({
+  label,
+  disabled = false,
+  onClick,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
   return (
     <Button
-      type="submit"
+      type="button"
       variant="outline"
       size="sm"
-      disabled={pending}
+      disabled={disabled}
       className="min-h-10 min-w-10 rounded-xl px-0"
       aria-label={label}
+      onClick={onClick}
     >
       {label}
-    </Button>
-  );
-}
-
-export function CartRemoveSubmitButton() {
-  const t = useTranslations("cart");
-  const { pending } = useFormStatus();
-  return (
-    <Button
-      type="submit"
-      variant="ghost"
-      size="sm"
-      disabled={pending}
-      className="text-destructive"
-    >
-      {t("remove")}
     </Button>
   );
 }

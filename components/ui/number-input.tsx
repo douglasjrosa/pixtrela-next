@@ -4,6 +4,11 @@ import * as React from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import {
+  decimalPlacesFromStep,
+  formatSteppedNumber,
+  roundDecimal,
+} from "@/lib/format/decimal";
 import { cn } from "@/lib/utils";
 
 const HIDE_NATIVE_SPIN_CLASS = cn(
@@ -90,22 +95,21 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
       } as React.ChangeEvent<HTMLInputElement>);
     }
 
+    function writeRoundedValue(input: HTMLInputElement, value: number): void {
+      const places = decimalPlacesFromStep(step);
+      const next = clampValue(roundDecimal(value, places), minValue, maxValue);
+      const formatted = formatSteppedNumber(next, places);
+      if (input.value === formatted) return;
+      setNativeInputValue(input, formatted);
+      notifyChange(input);
+    }
+
     function applyDelta(direction: 1 | -1): void {
       const input = inputRef.current;
       if (!input || disabled) return;
 
       const current = readInputNumber(input, fallbackValue);
-      const next = clampValue(
-        current + direction * stepValue,
-        minValue,
-        maxValue,
-      );
-      const formatted = Number.isInteger(stepValue)
-        ? String(Math.round(next))
-        : String(next);
-
-      setNativeInputValue(input, formatted);
-      notifyChange(input);
+      writeRoundedValue(input, current + direction * stepValue);
     }
 
     return (
@@ -126,7 +130,11 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
             HIDE_NATIVE_SPIN_CLASS,
           )}
           onChange={onChange}
-          onBlur={onBlur}
+          onBlur={(event) => {
+            const input = event.currentTarget;
+            writeRoundedValue(input, readInputNumber(input, fallbackValue));
+            onBlur?.(event);
+          }}
           {...props}
         />
         <div

@@ -176,6 +176,13 @@
       "when": 1787900000000,
       "tag": "0024_currency_per_second_decimal",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1787950000000,
+      "tag": "0025_store_multi_currency",
+      "breakpoints": true
     }
   ]
 }

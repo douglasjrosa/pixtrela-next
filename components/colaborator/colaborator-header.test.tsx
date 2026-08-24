@@ -28,13 +28,17 @@ describe("ColaboratorHeader", () => {
   it("renders dashboard and store links plus the account menu", () => {
     renderWithIntl(<ColaboratorHeader homeHref="/colab-1" />);
 
-    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Painel" })).toHaveAttribute(
       "href",
       "/colab-1",
     );
     expect(screen.getByRole("link", { name: "Loja" })).toHaveAttribute(
       "href",
       "/colab-1/store",
+    );
+    expect(screen.getByRole("link", { name: "Trocas" })).toHaveAttribute(
+      "href",
+      "/colab-1/orders",
     );
     expect(
       screen.getByRole("button", { name: "Maria, Abrir menu da conta" }),

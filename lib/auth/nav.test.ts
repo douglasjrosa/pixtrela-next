@@ -8,16 +8,17 @@ function hrefs(role: Parameters<typeof navItemsForRole>[0]) {
 describe("navItemsForRole", () => {
   it("sends colaborator home links to private path when userId is set", () => {
     expect(navItemsForRole("colaborator", { userId: "col-1" }).map((i) => i.href))
-      .toEqual(["/col-1", "/col-1/store", "/col-1/profile"]);
+      .toEqual(["/col-1", "/col-1/store", "/col-1/orders", "/col-1/profile"]);
     expect(
       navItemsForRole("colaborator", { userId: "col-1" }).map((i) => i.labelKey),
-    ).toEqual(["dashboard", "store", "profile"]);
+    ).toEqual(["dashboard", "store", "exchange", "profile"]);
   });
 
   it("exposes dashboard and store for the colaborator header menu", () => {
     expect(colaboratorMenuItems("col-1")).toEqual([
       { href: "/col-1", labelKey: "dashboard" },
       { href: "/col-1/store", labelKey: "store" },
+      { href: "/col-1/orders", labelKey: "exchange" },
     ]);
   });
 

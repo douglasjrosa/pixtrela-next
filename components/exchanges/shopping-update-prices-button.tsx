@@ -9,6 +9,7 @@ import { updateShoppingListPrices } from "@/app/(app)/exchanges/[batchId]/action
 import { Button } from "@/components/ui/button";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { NumberInput } from "@/components/ui/number-input";
+import { roundCurrencyRate } from "@/lib/format/currency-rate";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { BatchShoppingLine } from "@/lib/repos/exchange-batches";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
@@ -27,7 +28,7 @@ function toPriceRows(lines: BatchShoppingLine[]): ShoppingPriceRow[] {
           {
             awardId: line.awardId,
             title: line.awardTitle,
-            actualPrice: line.actualPrice,
+            actualPrice: roundCurrencyRate(line.actualPrice),
           },
         ]
       : [],
@@ -63,7 +64,9 @@ export function ShoppingUpdatePricesButton({
   function handlePriceChange(awardId: string, value: number): void {
     setRows((current) =>
       current.map((row) =>
-        row.awardId === awardId ? { ...row, actualPrice: value } : row,
+        row.awardId === awardId
+          ? { ...row, actualPrice: roundCurrencyRate(value) }
+          : row,
       ),
     );
   }

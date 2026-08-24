@@ -139,9 +139,7 @@ export async function listAwardsPage(
   const q = options.q?.trim();
   const sort = options.sort ?? { column: "title", direction: "asc" };
 
-  const activeClause = options.showArchived
-    ? undefined
-    : eq(awards.active, true);
+  const activeClause = eq(awards.active, !options.showArchived);
 
   const searchClause = q
     ? or(
@@ -308,6 +306,7 @@ export async function listCurrencies(
       iconMediaId: currencies.iconMediaId,
       iconMediaUrl: mediaAssets.url,
       active: currencies.active,
+      showInStore: currencies.showInStore,
     })
     .from(currencies)
     .leftJoin(mediaAssets, eq(currencies.iconMediaId, mediaAssets.id))
@@ -347,6 +346,7 @@ export async function createCurrency(
     currencyPerSecond: number;
     exchangeRate?: number;
     iconMediaId?: string | null;
+    showInStore?: boolean;
   },
   db: Db = getDb(),
 ) {
@@ -357,9 +357,10 @@ export async function createCurrency(
       title: input.title ?? null,
       pluralTitle: input.pluralTitle ?? null,
       currencyPerSecond: String(roundCurrencyRate(input.currencyPerSecond)),
-      exchangeRate: input.exchangeRate ?? 0,
+      exchangeRate: roundCurrencyRate(input.exchangeRate ?? 0),
       iconMediaId:
         typeof input.iconMediaId === "string" ? input.iconMediaId : null,
+      showInStore: input.showInStore ?? true,
     })
     .returning();
   return row;
