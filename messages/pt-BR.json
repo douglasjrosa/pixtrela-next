@@ -339,6 +339,8 @@
     "balanceAfterExchanges": "Saldo depois das trocas",
     "autoCloseBanner": "O carrinho fecha automaticamente no dia {lastDay}.",
     "currencyChoice": "Moeda",
+    "awardsRow": "Prêmios",
+    "balancesRow": "Saldos",
     "readOnlyClosed": "A janela de trocas encerrou. Seu carrinho será processado automaticamente.",
     "saveFailed": "Não foi possível salvar o carrinho.",
     "insufficient": "Saldo insuficiente para este carrinho.",

@@ -22,12 +22,13 @@ import {
   type StoreCurrencyBalance,
 } from "@/lib/store/cart-draft";
 import {
+  STORE_AWARD_CARD_CLASS,
   STORE_AWARD_IMAGE_FRAME_CLASS,
   STORE_BALANCE_BG_IMAGE_CLASS,
+  STORE_BALANCE_CARD_CLASS,
   STORE_BALANCE_LABEL_CLASS,
   STORE_BALANCE_VALUE_CLASS,
-  STORE_COLUMN_SCROLL_CLASS,
-  STORE_SPLIT_GRID_CLASS,
+  STORE_ROW_SCROLL_CLASS,
 } from "@/lib/store/store-layout";
 import { showErrorToast } from "@/lib/ui/app-toast";
 import { cn } from "@/lib/utils";
@@ -78,7 +79,7 @@ function StoreAwardCard({
   const t = useTranslations("cart");
 
   return (
-    <li className="overflow-hidden rounded-2xl border bg-card">
+    <li className={STORE_AWARD_CARD_CLASS}>
       <div className={STORE_AWARD_IMAGE_FRAME_CLASS}>
         {award.imageSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -188,7 +189,7 @@ function StoreBalanceCard({
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-[var(--star-gold-muted)] p-4">
+    <li className={STORE_BALANCE_CARD_CLASS}>
       {currency.iconUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -222,7 +223,7 @@ function StoreBalanceCard({
           </p>
         </div>
       </div>
-    </div>
+    </li>
   );
 }
 
@@ -267,10 +268,7 @@ export function CartEditor({
   );
 
   return (
-    <form
-      action={saveAction}
-      className="flex min-h-0 flex-1 flex-col overflow-hidden"
-    >
+    <form action={saveAction} className="space-y-6">
       <input
         type="hidden"
         name="payload"
@@ -278,77 +276,75 @@ export function CartEditor({
         readOnly
       />
 
-      <div className={STORE_SPLIT_GRID_CLASS}>
-        <div
-          className={STORE_COLUMN_SCROLL_CLASS}
-          data-testid="store-awards-column"
+      {draft.length === 0 ? (
+        <p className="rounded-2xl border bg-card p-6 text-center text-muted-foreground">
+          {t("empty")}
+        </p>
+      ) : (
+        <ul
+          className={STORE_ROW_SCROLL_CLASS}
+          aria-label={t("awardsRow")}
+          data-testid="store-awards-row"
         >
-          {draft.length === 0 ? (
-            <p className="rounded-2xl border bg-card p-6 text-center text-muted-foreground">
-              {t("empty")}
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {draft.map((award) => {
-                const selectedId =
-                  selected[award.awardId] ?? award.prices[0]?.currencyId ?? "";
-                const selectedPrice = award.prices.find(
-                  (price) => price.currencyId === selectedId,
-                );
-                const balance = balancesById.get(selectedId)?.balance ?? 0;
-                return (
-                  <StoreAwardCard
-                    key={award.awardId}
-                    award={award}
-                    selectedId={selectedId}
-                    selectedPrice={selectedPrice}
-                    balance={balance}
-                    editable={editable}
-                    saving={saving}
-                    draft={draft}
-                    balancesById={balancesById}
-                    onSelect={(currencyId) =>
-                      setSelected((current) => ({
-                        ...current,
-                        [award.awardId]: currencyId,
-                      }))
-                    }
-                    onQtyChange={(qty) =>
-                      setDraft((current) =>
-                        setAwardCurrencyQty(
-                          current,
-                          award.awardId,
-                          selectedId,
-                          qty,
-                          balance,
-                        ),
-                      )
-                    }
-                  />
-                );
-              })}
-            </ul>
-          )}
-        </div>
-
-        <div
-          className={STORE_COLUMN_SCROLL_CLASS}
-          data-testid="store-balances-column"
-        >
-          <div className="space-y-3">
-            {currencies.map((currency) => (
-              <StoreBalanceCard
-                key={currency.currencyId}
-                currency={currency}
+          {draft.map((award) => {
+            const selectedId =
+              selected[award.awardId] ?? award.prices[0]?.currencyId ?? "";
+            const selectedPrice = award.prices.find(
+              (price) => price.currencyId === selectedId,
+            );
+            const balance = balancesById.get(selectedId)?.balance ?? 0;
+            return (
+              <StoreAwardCard
+                key={award.awardId}
+                award={award}
+                selectedId={selectedId}
+                selectedPrice={selectedPrice}
+                balance={balance}
+                editable={editable}
+                saving={saving}
                 draft={draft}
+                balancesById={balancesById}
+                onSelect={(currencyId) =>
+                  setSelected((current) => ({
+                    ...current,
+                    [award.awardId]: currencyId,
+                  }))
+                }
+                onQtyChange={(qty) =>
+                  setDraft((current) =>
+                    setAwardCurrencyQty(
+                      current,
+                      award.awardId,
+                      selectedId,
+                      qty,
+                      balance,
+                    ),
+                  )
+                }
               />
-            ))}
-          </div>
-        </div>
-      </div>
+            );
+          })}
+        </ul>
+      )}
+
+      {currencies.length > 0 ? (
+        <ul
+          className={STORE_ROW_SCROLL_CLASS}
+          aria-label={t("balancesRow")}
+          data-testid="store-balances-row"
+        >
+          {currencies.map((currency) => (
+            <StoreBalanceCard
+              key={currency.currencyId}
+              currency={currency}
+              draft={draft}
+            />
+          ))}
+        </ul>
+      ) : null}
 
       {editable ? (
-        <div className="flex shrink-0 justify-end pt-3">
+        <div className="flex justify-end">
           <Button type="submit" disabled={!dirty || saving}>
             {saving ? tCommon("loading") : tCommon("save")}
           </Button>

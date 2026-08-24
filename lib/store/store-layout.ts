@@ -1,12 +1,15 @@
-/** Equal-width award and balance columns; only the columns scroll. */
-export const STORE_SPLIT_GRID_CLASS =
-  "grid min-h-0 flex-1 grid-cols-2 gap-3 overflow-hidden";
+/** Netflix-style horizontal catalogs; the page itself scrolls vertically. */
+export const STORE_PAGE_SHELL_CLASS = "space-y-6";
 
-export const STORE_COLUMN_SCROLL_CLASS =
-  "min-h-0 min-w-0 overflow-y-auto overscroll-y-contain pr-1.5";
+export const STORE_ROW_SCROLL_CLASS =
+  "flex gap-3 overflow-x-auto overscroll-x-contain pb-2 snap-x snap-mandatory";
 
-export const STORE_PAGE_SHELL_CLASS =
-  "flex min-h-0 flex-1 flex-col gap-4 overflow-hidden";
+export const STORE_AWARD_CARD_CLASS =
+  "w-56 shrink-0 snap-start overflow-hidden rounded-2xl border bg-card";
+
+export const STORE_BALANCE_CARD_CLASS =
+  "relative w-56 shrink-0 snap-start overflow-hidden rounded-2xl " +
+  "bg-[var(--star-gold-muted)] p-4";
 
 export const STORE_AWARD_IMAGE_FRAME_CLASS =
   "relative h-40 w-full overflow-hidden bg-muted";

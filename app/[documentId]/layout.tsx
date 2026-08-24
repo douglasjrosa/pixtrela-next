@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { auth } from "@/auth";
 import { AppNav } from "@/components/app-nav";
-import { ColaboratorDocumentPanel } from "@/components/colaborator/colaborator-document-panel";
+import { COLABORATOR_CONTENT_SURFACE_CLASS } from "@/components/colaborator/colaborator-content-surface";
 import { ColaboratorHeader } from "@/components/colaborator/colaborator-header";
 import { ColaboratorSurface } from "@/components/colaborator/colaborator-surface";
 import { RouteThemeFrame } from "@/components/themes/route-theme-frame";
@@ -43,12 +43,8 @@ export default async function DocumentIdLayout({
   const panelStyle = routeThemeSurfacePanelStyle(theme) as CSSProperties;
 
   return (
-    <ColaboratorSurface className="h-dvh overflow-hidden">
-      <RouteThemeFrame
-        theme={theme}
-        fallbackClassName="bg-[var(--surface-warm)]"
-        className="h-dvh overflow-hidden"
-      >
+    <ColaboratorSurface>
+      <RouteThemeFrame theme={theme} fallbackClassName="bg-[var(--surface-warm)]">
         <ColaboratorHeader
           homeHref={session?.user?.id ? `/${session.user.id}` : "/"}
           logoUrl={branding.menuLogoUrl}
@@ -56,17 +52,17 @@ export default async function DocumentIdLayout({
           menuLogoBackgroundColorOpacity={branding.menuLogoBackgroundColorOpacity}
         />
         <main
-          className={cn(
-            "relative z-10 min-h-0 overflow-hidden",
-            routeThemeContentFrameClass(theme),
-          )}
+          className={cn("relative z-10", routeThemeContentFrameClass(theme))}
         >
-          <ColaboratorDocumentPanel
-            className={routeThemeContentSurfaceRadiusClass(theme)}
+          <div
+            className={cn(
+              COLABORATOR_CONTENT_SURFACE_CLASS,
+              routeThemeContentSurfaceRadiusClass(theme),
+            )}
             style={panelStyle}
           >
             {children}
-          </ColaboratorDocumentPanel>
+          </div>
         </main>
       </RouteThemeFrame>
     </ColaboratorSurface>

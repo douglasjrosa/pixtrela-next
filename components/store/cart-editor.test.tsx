@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { STORE_COLUMN_SCROLL_CLASS } from "@/lib/store/store-layout";
+import { STORE_ROW_SCROLL_CLASS } from "@/lib/store/store-layout";
 import { renderWithIntl } from "@/test/test-utils";
 import { CartEditor } from "./cart-editor";
 
@@ -103,20 +103,20 @@ describe("CartEditor", () => {
     expect(screen.getAllByText("1 Coração")).toHaveLength(2);
   });
 
-  it("places awards and balances in independently scrollable columns", () => {
+  it("places awards and balances in horizontal catalog rows", () => {
     renderWithIntl(
       <CartEditor initialAwards={[AWARD]} currencies={CURRENCIES} />,
     );
 
-    expect(screen.getByTestId("store-awards-column")).toHaveClass(
-      ...STORE_COLUMN_SCROLL_CLASS.split(" "),
+    const rowClass = STORE_ROW_SCROLL_CLASS.split(" ");
+    expect(screen.getByTestId("store-awards-row")).toHaveClass(...rowClass);
+    expect(screen.getByTestId("store-balances-row")).toHaveClass(...rowClass);
+    expect(screen.getByRole("list", { name: "Prêmios" })).toBe(
+      screen.getByTestId("store-awards-row"),
     );
-    expect(screen.getByTestId("store-balances-column")).toHaveClass(
-      ...STORE_COLUMN_SCROLL_CLASS.split(" "),
+    expect(screen.getByRole("list", { name: "Saldos" })).toBe(
+      screen.getByTestId("store-balances-row"),
     );
-    expect(
-      screen.getByTestId("store-awards-column").parentElement,
-    ).toHaveClass("grid-cols-2");
     expect(screen.getByText("Estrela Vermelha").closest("li")).toContainElement(
       screen.getByRole("button", { name: "+" }),
     );
@@ -127,12 +127,11 @@ describe("CartEditor", () => {
       <CartEditor initialAwards={[AWARD]} currencies={CURRENCIES} />,
     );
 
-    const images = screen.getByTestId("store-balances-column")
+    const images = screen.getByTestId("store-balances-row")
       .querySelectorAll("img");
     expect(images).toHaveLength(1);
     expect(images[0]).toHaveClass("opacity-20");
-    expect(screen.getByTestId("store-awards-column").querySelector("img"))
-      .toBeNull();
+    expect(screen.getByTestId("store-awards-row").querySelector("img")).toBeNull();
   });
 
   it("hides save and qty controls when read-only", () => {

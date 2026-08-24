@@ -43,22 +43,18 @@ export default async function ColaboratorStorePage({ params }: PageProps) {
 
   return (
     <section className={STORE_PAGE_SHELL_CLASS}>
-      <h1 className="shrink-0 font-heading text-2xl font-bold">
-        {tStore("title")}
-      </h1>
+      <h1 className="font-heading text-2xl font-bold">{tStore("title")}</h1>
 
       {team ? (
-        <div className="shrink-0">
-          <StoreWindowInfoCard
-            windowOpen={windowOpen}
-            firstDay={team.exchangesFirstDay}
-            lastDay={team.exchangesLastDay}
-          />
-        </div>
+        <StoreWindowInfoCard
+          windowOpen={windowOpen}
+          firstDay={team.exchangesFirstDay}
+          lastDay={team.exchangesLastDay}
+        />
       ) : !windowOpen ? (
         <p
           className={
-            "shrink-0 rounded-2xl border border-destructive/30 " +
+            "rounded-2xl border border-destructive/30 " +
             "bg-destructive/5 px-4 py-3 text-sm text-destructive"
           }
         >
