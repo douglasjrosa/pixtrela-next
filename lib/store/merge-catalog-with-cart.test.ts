@@ -3,8 +3,20 @@ import { describe, expect, it } from "vitest";
 import { mergeCatalogWithCart } from "./merge-catalog-with-cart";
 
 const currencies = [
-  { currencyId: "star", label: "Estrelas", iconUrl: "/star.png", balance: 100 },
-  { currencyId: "gem", label: "Gemas", iconUrl: null, balance: 50 },
+  {
+    currencyId: "star",
+    title: "Estrela",
+    pluralTitle: "Estrelas",
+    iconUrl: "/star.png",
+    balance: 100,
+  },
+  {
+    currencyId: "gem",
+    title: "Gema",
+    pluralTitle: "Gemas",
+    iconUrl: null,
+    balance: 50,
+  },
 ];
 
 describe("mergeCatalogWithCart", () => {

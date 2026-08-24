@@ -18,7 +18,8 @@ export type CartDraftAward = {
 
 export type StoreCurrencyBalance = {
   currencyId: string;
-  label: string;
+  title: string;
+  pluralTitle: string;
   iconUrl: string | null;
   balance: number;
 };
