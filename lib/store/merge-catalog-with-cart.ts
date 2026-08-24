@@ -11,7 +11,8 @@ export type CatalogAwardPriceRow = {
 
 export type StoreCurrencyView = {
   currencyId: string;
-  label: string;
+  title: string;
+  pluralTitle: string;
   iconUrl: string | null;
   balance: number;
 };
@@ -66,7 +67,7 @@ export function mergeCatalogWithCart(
 
     existing.prices.push({
       currencyId: row.currencyId,
-      label: currency.label,
+      label: currency.pluralTitle,
       iconUrl: currency.iconUrl,
       unitCost: row.unitCost,
       qty: qtyByLine.get(`${row.awardId}:${row.currencyId}`) ?? 0,

@@ -4,7 +4,10 @@ import { unstable_cache } from "next/cache";
 
 import { awardPrices, awards, currencies, mediaAssets } from "@/drizzle/schema";
 import { getDb } from "@/lib/db/client";
-import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
+import {
+  resolveCurrencyPluralTitle,
+  resolveCurrencyTitle,
+} from "@/lib/domain/currency-display";
 import { isExchangeWindowOpen } from "@/lib/domain/exchange";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { getOrCreateMonthlyBalance } from "@/lib/repos/balances";
@@ -100,18 +103,24 @@ async function loadStoreCurrencies(
 
   const result: StoreCurrencyView[] = [];
   for (const row of rows) {
-    const label = resolveCurrencyPluralTitle({
+    const title = resolveCurrencyTitle({
+      pluralTitle: row.pluralTitle,
+      title: row.title,
+      name: row.name,
+    });
+    const pluralTitle = resolveCurrencyPluralTitle({
       pluralTitle: row.pluralTitle,
       title: row.title,
       name: row.name,
     });
     const monthly = await getOrCreateMonthlyBalance({
       userId,
-      currencyPluralTitle: label,
+      currencyPluralTitle: pluralTitle,
     });
     result.push({
       currencyId: row.currencyId,
-      label,
+      title,
+      pluralTitle,
       iconUrl: toBrowserMediaUrl(row.iconUrl),
       balance: monthly.balance,
     });
