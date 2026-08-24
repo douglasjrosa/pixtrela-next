@@ -149,9 +149,7 @@ export async function listTemplateTasks(
   const pageSize = Math.max(1, options.pageSize ?? 10);
   const offset = (page - 1) * pageSize;
   const q = options.q?.trim();
-  const activeClause = options.showArchived
-    ? undefined
-    : eq(templateTasks.active, true);
+  const activeClause = eq(templateTasks.active, !options.showArchived);
 
   const searchClause = q
     ? or(
