@@ -188,9 +188,7 @@ export async function listTeamsPage(
   const q = options.q?.trim();
   const sort = options.sort ?? { column: "name", direction: "asc" };
 
-  const activeClause = options.showArchived
-    ? undefined
-    : eq(teams.active, true);
+  const activeClause = eq(teams.active, !options.showArchived);
 
   const searchClause = q ? ilike(teams.name, `%${q}%`) : undefined;
 

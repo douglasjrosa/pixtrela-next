@@ -14,7 +14,11 @@ export const currencyFormSchema = z.object({
     .number()
     .min(0)
     .transform((value) => roundCurrencyRate(value)),
-  exchangeRate: z.number().finite().default(0),
+  exchangeRate: z
+    .number()
+    .finite()
+    .default(0)
+    .transform((value) => roundCurrencyRate(value)),
   showInStore: z.boolean().default(true),
 });
 

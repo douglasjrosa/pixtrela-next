@@ -1,8 +1,13 @@
 import { z } from "zod";
 
+import { roundCurrencyRate } from "@/lib/format/currency-rate";
+
 export const shoppingPriceRowSchema = z.object({
   awardId: z.string().uuid(),
-  actualPrice: z.coerce.number().finite(),
+  actualPrice: z.coerce
+    .number()
+    .finite()
+    .transform((value) => roundCurrencyRate(value)),
 });
 
 export const shoppingPriceUpdatesSchema = z.object({

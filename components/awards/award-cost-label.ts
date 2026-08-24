@@ -1,3 +1,5 @@
+import { roundCurrencyRate } from "@/lib/format/currency-rate";
+
 import type { AwardRow, CurrencyOption } from "./types";
 import { formatAwardValueRow } from "./types";
 
@@ -5,7 +7,7 @@ export function formatAwardActualPrice(value: number): string {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
-  }).format(value);
+  }).format(roundCurrencyRate(value));
 }
 
 export function awardCostLabel(

@@ -24,7 +24,10 @@ import {
   toggleSelectAllRows,
 } from "@/lib/business/list-selection";
 import { isProtectedCurrencyDocument } from "@/lib/business/primary-currency";
-import { formatCurrencyPerSecond } from "@/lib/format/currency-rate";
+import {
+  formatCurrencyPerSecond,
+  formatExchangeRate,
+} from "@/lib/format/currency-rate";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { MediaAssetRecord } from "@/lib/repos/media";
 import type { CurrencyFormInput } from "@/lib/schemas/currency";
@@ -96,10 +99,6 @@ function displayTitle(currency: CurrencyRow): string {
   return currency.name;
 }
 
-function formatExchangeRate(value: number): string {
-  return Number.isInteger(value) ? String(value) : String(value);
-}
-
 function actionErrorMessage(
   error: unknown,
   fallback: string,
@@ -144,7 +143,7 @@ export function CurrencyManager({
   }
 
   const visibleCurrencies = currencies.filter((currency) => {
-    if (!showArchived && !currency.active) return false;
+    if (currency.active === showArchived) return false;
     const needle = searchQuery.trim().toLowerCase();
     if (needle.length === 0) return true;
     const title = displayTitle(currency).toLowerCase();

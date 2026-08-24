@@ -110,7 +110,7 @@ describe("CurrencyManager", () => {
     expect(screen.getAllByText("0,50").length).toBeGreaterThan(0);
     expect(screen.getByRole("columnheader", { name: "Unidades por centavo" }))
       .toBeInTheDocument();
-    expect(screen.getAllByText("1.5").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1,50").length).toBeGreaterThan(0);
   });
 
   it("shows empty state when there are no currencies", () => {
@@ -287,6 +287,19 @@ describe("CurrencyManager", () => {
       expect(onBulkArchive).toHaveBeenCalledWith(["cur-gem"]);
     });
     expect(showSuccessToast).toHaveBeenCalledWith("Moedas arquivadas.");
+  });
+
+  it("shows only archived currencies when the toggle is on", () => {
+    renderManager({
+      currencies: [currencies[0]!, { ...currencies[1]!, active: false }],
+    });
+
+    expect(screen.getAllByText("Estrela").length).toBeGreaterThan(0);
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Exibir moedas arquivadas" }),
+    );
+    expect(screen.queryByText("Estrela")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Gema").length).toBeGreaterThan(0);
   });
 
   it("hard-deletes when every selected currency is archived", async () => {

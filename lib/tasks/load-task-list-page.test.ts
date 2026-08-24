@@ -91,4 +91,51 @@ describe("loadTaskListPage", () => {
     expect(result.hasMore).toBe(false);
     expect(result.tasks).toHaveLength(2);
   });
+
+  it("lists only archived tasks when showArchived is on", async () => {
+    listTasks.mockResolvedValue([
+      {
+        id: "active-1",
+        name: "Active",
+        qty: 1,
+        deliveryDate: "2026-07-01",
+        index: 0,
+        status: "waiting",
+        active: true,
+        templateTaskCode: null,
+        totalExpectedTime: 10,
+        totalTimeSpent: 0,
+        stepId: null,
+      },
+      {
+        id: "archived-1",
+        name: "Archived",
+        qty: 1,
+        deliveryDate: "2026-07-01",
+        index: 1,
+        status: "waiting",
+        active: false,
+        templateTaskCode: null,
+        totalExpectedTime: 10,
+        totalTimeSpent: 0,
+        stepId: null,
+      },
+    ]);
+
+    const result = await loadTaskListPage(
+      {
+        statuses: ["waiting"],
+        from: "2026-06-01",
+        to: "2026-07-15",
+        column: "deliveryDate",
+        direction: "asc",
+        showArchived: true,
+      },
+      1,
+    );
+
+    expect(result.tasks.map((task) => task.documentId)).toEqual([
+      "archived-1",
+    ]);
+  });
 });
