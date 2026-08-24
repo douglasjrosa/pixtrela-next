@@ -117,7 +117,7 @@ describe("CurrencyManager", () => {
     expect(screen.getAllByText("Sim").length).toBeGreaterThan(0);
   });
 
-  it("shows Sim or Nao in the last store-visibility column", () => {
+  it("shows yes or no in the last store-visibility column", () => {
     renderManager({
       currencies: [currencies[0]!, { ...currencies[1]!, showInStore: false }],
     });
