@@ -6,7 +6,7 @@ import {
   useTransition,
   type ReactNode,
 } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -125,7 +125,7 @@ function AwardFormDialog({
     setValue,
     formState: { errors },
   } = useForm<AwardFormInput>({
-    resolver: zodResolver(awardFormSchema),
+    resolver: zodResolver(awardFormSchema) as Resolver<AwardFormInput>,
     defaultValues: isEditing
       ? toFormValues(editingAward, currencies)
       : defaultValues(currencies),

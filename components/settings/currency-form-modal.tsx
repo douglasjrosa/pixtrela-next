@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -68,7 +68,7 @@ function CurrencyFormModalContent({
     control,
     formState: { errors },
   } = useForm<CurrencyFormInput>({
-    resolver: zodResolver(currencyFormSchema),
+    resolver: zodResolver(currencyFormSchema) as Resolver<CurrencyFormInput>,
     defaultValues,
   });
 

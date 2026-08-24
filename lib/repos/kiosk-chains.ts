@@ -683,7 +683,7 @@ async function reallocateChainRunInternal(
       };
     }),
     participations,
-    currencyPerSecond: currency?.currencyPerSecond ?? 0,
+    currencyPerSecond: Number(currency?.currencyPerSecond ?? 0),
   });
   const creditDeltas = diffChainRunCredits(nextAwards, previousAwards);
 

@@ -29,8 +29,8 @@ export type ListArchivedToggleProps<T extends ListArchivedFilters> =
   | ListArchivedToggleUrlProps<T>
   | ListArchivedToggleControlledProps;
 
-function isControlled(
-  props: ListArchivedToggleProps<ListArchivedFilters>,
+function isControlled<T extends ListArchivedFilters>(
+  props: ListArchivedToggleProps<T>,
 ): props is ListArchivedToggleControlledProps {
   return "checked" in props && "onChange" in props;
 }

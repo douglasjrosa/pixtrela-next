@@ -760,7 +760,7 @@ async function creditStopCurrency(
         sharingType: "qty",
       },
       { sessionQty: input.sessionQty },
-      { currencyPerSecond: currency.currencyPerSecond },
+      { currencyPerSecond: Number(currency.currencyPerSecond) },
     );
   } else if (
     input.sharingType === "duration" &&
@@ -802,7 +802,7 @@ async function creditStopCurrency(
         colaboratorId: row.colaboratorId,
         timeSpentSeconds: row.timeSpentSeconds,
       })),
-      { currencyPerSecond: currency.currencyPerSecond },
+      { currencyPerSecond: Number(currency.currencyPerSecond) },
     );
 
     for (const credit of credits) {

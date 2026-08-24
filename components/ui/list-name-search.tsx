@@ -37,8 +37,8 @@ export type ListNameSearchProps<T extends ListSearchFilters> =
   | ListNameSearchUrlProps<T>
   | ListNameSearchControlledProps;
 
-function isControlled(
-  props: ListNameSearchProps<ListSearchFilters>,
+function isControlled<T extends ListSearchFilters>(
+  props: ListNameSearchProps<T>,
 ): props is ListNameSearchControlledProps {
   return "value" in props && "onChange" in props;
 }
