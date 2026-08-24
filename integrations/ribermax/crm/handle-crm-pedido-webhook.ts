@@ -2,9 +2,9 @@ import {
   isEligiblePedidoPayload,
   upsertTasksFromPedido,
   type UpsertTasksFromPedidoResult,
-} from "@/lib/crm/upsert-tasks-from-pedido";
-import { verifyWebhookSignature } from "@/lib/crm/verify-webhook-signature";
-import { crmPedidoWebhookSchema } from "@/lib/schemas/crm-pedido-webhook";
+} from "./upsert-tasks-from-pedido";
+import { verifyWebhookSignature } from "./verify-webhook-signature";
+import { crmPedidoWebhookSchema } from "./crm-pedido-webhook";
 
 export type WebhookHandlerStatus = 200 | 400 | 401 | 500;
 

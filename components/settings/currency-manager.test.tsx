@@ -111,6 +111,19 @@ describe("CurrencyManager", () => {
     expect(screen.getByRole("columnheader", { name: "Unidades por centavo" }))
       .toBeInTheDocument();
     expect(screen.getAllByText("1,50").length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("columnheader", { name: "Mostrar na loja" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Sim").length).toBeGreaterThan(0);
+  });
+
+  it("shows yes or no in the last store-visibility column", () => {
+    renderManager({
+      currencies: [currencies[0]!, { ...currencies[1]!, showInStore: false }],
+    });
+
+    expect(screen.getAllByText("Sim").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Não").length).toBeGreaterThan(0);
   });
 
   it("shows empty state when there are no currencies", () => {

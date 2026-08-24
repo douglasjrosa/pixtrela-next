@@ -2,7 +2,8 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { auth } from "@/auth";
 import { AppNav } from "@/components/app-nav";
-import { COLABORATOR_CONTENT_SURFACE_CLASS } from "@/components/colaborator/colaborator-content-surface";
+import { ColaboratorDocumentPanel } from
+  "@/components/colaborator/colaborator-document-panel";
 import { ColaboratorHeader } from "@/components/colaborator/colaborator-header";
 import { ColaboratorSurface } from "@/components/colaborator/colaborator-surface";
 import { RouteThemeFrame } from "@/components/themes/route-theme-frame";
@@ -43,7 +44,7 @@ export default async function DocumentIdLayout({
   const panelStyle = routeThemeSurfacePanelStyle(theme) as CSSProperties;
 
   return (
-    <ColaboratorSurface>
+    <ColaboratorSurface className="overflow-x-hidden">
       <RouteThemeFrame theme={theme} fallbackClassName="bg-[var(--surface-warm)]">
         <ColaboratorHeader
           homeHref={session?.user?.id ? `/${session.user.id}` : "/"}
@@ -52,17 +53,17 @@ export default async function DocumentIdLayout({
           menuLogoBackgroundColorOpacity={branding.menuLogoBackgroundColorOpacity}
         />
         <main
-          className={cn("relative z-10", routeThemeContentFrameClass(theme))}
+          className={cn(
+            "relative z-10 min-w-0 overflow-x-hidden",
+            routeThemeContentFrameClass(theme),
+          )}
         >
-          <div
-            className={cn(
-              COLABORATOR_CONTENT_SURFACE_CLASS,
-              routeThemeContentSurfaceRadiusClass(theme),
-            )}
+          <ColaboratorDocumentPanel
+            className={routeThemeContentSurfaceRadiusClass(theme)}
             style={panelStyle}
           >
             {children}
-          </div>
+          </ColaboratorDocumentPanel>
         </main>
       </RouteThemeFrame>
     </ColaboratorSurface>

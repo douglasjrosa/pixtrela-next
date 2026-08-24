@@ -11,7 +11,8 @@ export type CatalogAwardPriceRow = {
 
 export type StoreCurrencyView = {
   currencyId: string;
-  label: string;
+  title: string;
+  pluralTitle: string;
   iconUrl: string | null;
   balance: number;
 };
@@ -51,7 +52,9 @@ export function mergeCatalogWithCart(
   const cards = new Map<string, MergedStoreCard>();
 
   for (const row of rows) {
-    if (!row.currencyActive || !row.currencyShowInStore) continue;
+    if (row.currencyActive === false || row.currencyShowInStore === false) {
+      continue;
+    }
     if (row.unitCost <= 0) continue;
     const currency = storeById.get(row.currencyId);
     if (!currency) continue;
@@ -66,7 +69,7 @@ export function mergeCatalogWithCart(
 
     existing.prices.push({
       currencyId: row.currencyId,
-      label: currency.label,
+      label: currency.pluralTitle,
       iconUrl: currency.iconUrl,
       unitCost: row.unitCost,
       qty: qtyByLine.get(`${row.awardId}:${row.currencyId}`) ?? 0,

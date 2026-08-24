@@ -3,8 +3,20 @@ import { describe, expect, it } from "vitest";
 import { mergeCatalogWithCart } from "./merge-catalog-with-cart";
 
 const currencies = [
-  { currencyId: "star", label: "Estrelas", iconUrl: "/star.png", balance: 100 },
-  { currencyId: "gem", label: "Gemas", iconUrl: null, balance: 50 },
+  {
+    currencyId: "star",
+    title: "Estrela",
+    pluralTitle: "Estrelas",
+    iconUrl: "/star.png",
+    balance: 100,
+  },
+  {
+    currencyId: "gem",
+    title: "Gema",
+    pluralTitle: "Gemas",
+    iconUrl: null,
+    balance: 50,
+  },
 ];
 
 describe("mergeCatalogWithCart", () => {
@@ -63,6 +75,26 @@ describe("mergeCatalogWithCart", () => {
         ],
       },
     ]);
+  });
+
+  it("keeps prices when store flags are omitted from a stale cache row", () => {
+    const cards = mergeCatalogWithCart(
+      [
+        {
+          awardId: "a",
+          title: "Amarela",
+          stock: 3,
+          imageUrl: null,
+          currencyId: "star",
+          unitCost: 10,
+          currencyActive: undefined as unknown as boolean,
+          currencyShowInStore: undefined as unknown as boolean,
+        },
+      ],
+      currencies,
+      [],
+    );
+    expect(cards).toHaveLength(1);
   });
 
   it("hides inactive currencies even when show_in_store is true", () => {

@@ -333,8 +333,14 @@
     "remove": "Remover",
     "total": "Total",
     "balance": "Seu saldo",
+    "balanceToday": "Seu saldo hoje",
+    "redemptionTotal": "Resgate total",
+    "remainingBalance": "Saldo restante",
     "balanceAfterExchanges": "Saldo depois das trocas",
-    "autoCloseBanner": "O carrinho fecha automaticamente no dia {lastDay}. Não é necessário confirmar a troca.",
+    "autoCloseBanner": "O carrinho fecha automaticamente no dia {lastDay}.",
+    "currencyChoice": "Moeda",
+    "awardsRow": "Prêmios",
+    "balancesRow": "Saldos",
     "readOnlyClosed": "A janela de trocas encerrou. Seu carrinho será processado automaticamente.",
     "saveFailed": "Não foi possível salvar o carrinho.",
     "insufficient": "Saldo insuficiente para este carrinho.",
@@ -719,6 +725,7 @@
       "automations": "Automações",
       "kiosk": "Totem",
       "login": "Login",
+      "integrations": "Integrações",
       "themes": "Temas",
       "subtasks": "Subtarefas"
     },
@@ -1031,6 +1038,13 @@
     "kioskSessionIdleSeconds": "Tempo de sessão do Totem (segundos):",
     "kioskLiveChainIntervalSeconds":
       "Intervalo máximo para permitir subtarefas simultâneas (s)",
+    "ribermax": {
+      "title": "Ribermax — receita de caixa",
+      "ratesHelp": "Vale só para templates criados daqui pra frente. Templates e tarefas já existentes não mudam.",
+      "cutSeconds": "Segundos por corte",
+      "adhesiveSeconds": "Segundos por adesivo",
+      "fastenerSeconds": "Segundos por unidade de montagem"
+    },
     "entryAccessHeading": "Formas de acesso",
     "entryAccessComputer": "No computador",
     "entryAccessMobile": "No celular",

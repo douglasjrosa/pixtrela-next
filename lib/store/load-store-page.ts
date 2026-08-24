@@ -4,7 +4,10 @@ import { unstable_cache } from "next/cache";
 
 import { awardPrices, awards, currencies, mediaAssets } from "@/drizzle/schema";
 import { getDb } from "@/lib/db/client";
-import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
+import {
+  resolveCurrencyPluralTitle,
+  resolveCurrencyTitle,
+} from "@/lib/domain/currency-display";
 import { isExchangeWindowOpen } from "@/lib/domain/exchange";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { getOrCreateMonthlyBalance } from "@/lib/repos/balances";
@@ -18,6 +21,7 @@ import {
 
 export const STORE_AWARDS_CACHE_TAG = "drizzle:awards";
 export const STORE_CURRENCIES_CACHE_TAG = "drizzle:currencies";
+const STORE_CATALOG_CACHE_KEY = "store-awards-catalog-v2";
 
 interface TeamEntity {
   exchangesFirstDay: number;
@@ -74,12 +78,20 @@ async function fetchStoreCatalogRows(): Promise<CatalogAwardRow[]> {
 
 const loadCachedStoreCatalog = unstable_cache(
   async (): Promise<CatalogAwardRow[]> => fetchStoreCatalogRows(),
-  ["store-awards-catalog"],
+  [STORE_CATALOG_CACHE_KEY],
   {
     tags: [STORE_AWARDS_CACHE_TAG, STORE_CURRENCIES_CACHE_TAG],
     revalidate: 60,
   },
 );
+
+async function loadStoreCatalog(): Promise<CatalogAwardRow[]> {
+  try {
+    return await loadCachedStoreCatalog();
+  } catch {
+    return fetchStoreCatalogRows();
+  }
+}
 
 async function loadStoreCurrencies(
   userId: string,
@@ -100,18 +112,24 @@ async function loadStoreCurrencies(
 
   const result: StoreCurrencyView[] = [];
   for (const row of rows) {
-    const label = resolveCurrencyPluralTitle({
+    const title = resolveCurrencyTitle({
+      pluralTitle: row.pluralTitle,
+      title: row.title,
+      name: row.name,
+    });
+    const pluralTitle = resolveCurrencyPluralTitle({
       pluralTitle: row.pluralTitle,
       title: row.title,
       name: row.name,
     });
     const monthly = await getOrCreateMonthlyBalance({
       userId,
-      currencyPluralTitle: label,
+      currencyPluralTitle: pluralTitle,
     });
     result.push({
       currencyId: row.currencyId,
-      label,
+      title,
+      pluralTitle,
       iconUrl: toBrowserMediaUrl(row.iconUrl),
       balance: monthly.balance,
     });
@@ -124,7 +142,7 @@ export async function loadStorePage(userId: string): Promise<StorePageData> {
     const team = await findActiveTeamWindowForUser(userId);
     const windowOpen = team ? isExchangeWindowOpen(team, new Date()) : false;
     const [catalogRows, cartRows, storeCurrencies] = await Promise.all([
-      loadCachedStoreCatalog(),
+      loadStoreCatalog(),
       listOpenCartItemRows(userId),
       loadStoreCurrencies(userId),
     ]);
