@@ -1,49 +1,22 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
 import { ExchangeWindowBanner } from "@/components/exchange/exchange-window-banner";
-import { StoreFeaturedRow } from "@/components/store/store-featured-row";
-import { StoreFilterChips } from "@/components/store/store-filter-chips";
-import { StoreProductGrid } from "@/components/store/store-product-grid";
-import { StoreWalletBar } from "@/components/store/store-wallet-bar";
-import { buttonVariants } from "@/components/ui/button";
-import {
-  filterAndSortStoreAwards,
-  loadStorePage,
-  parseStoreFilter,
-  parseStoreSort,
-  pickFeaturedAwards,
-} from "@/lib/store/load-store-page";
-import { loadOpenCartItemCount } from "@/lib/store/load-cart-page";
-import {
-  buildStoreCartPath,
-  buildStoreOrdersPath,
-  buildStorePath,
-} from "@/lib/store/store-path";
-import { cn } from "@/lib/utils";
+import { CartEditor } from "@/components/store/cart-editor";
+import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
+import { loadStorePage } from "@/lib/store/load-store-page";
+import { buildStorePath } from "@/lib/store/store-path";
 
 interface PageProps {
   params: Promise<{ documentId: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-function firstParam(
-  value: string | string[] | undefined,
-): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-export default async function ColaboratorStorePage({
-  params,
-  searchParams,
-}: PageProps) {
+export default async function ColaboratorStorePage({ params }: PageProps) {
   const tStore = await getTranslations("store");
-  const tExchange = await getTranslations("exchange");
+  const tCart = await getTranslations("cart");
   const session = await auth();
   const { documentId } = await params;
-  const query = await searchParams;
 
   if (session?.user?.role !== "colaborator" || !session.user.id) {
     redirect("/");
@@ -53,42 +26,23 @@ export default async function ColaboratorStorePage({
     redirect(buildStorePath(session.user.id));
   }
 
-  const filter = parseStoreFilter(firstParam(query.filter));
-  const sort = parseStoreSort(firstParam(query.sort));
-  const storePath = buildStorePath(documentId);
+  const { cards, currencies, windowOpen, team } =
+    await loadStorePage(documentId);
 
-  const [{ balance, spendableBalance, awards, windowOpen, team }, cartCount] =
-    await Promise.all([
-      loadStorePage(documentId),
-      loadOpenCartItemCount(documentId),
-    ]);
-
-  const featured = pickFeaturedAwards(awards);
-  const catalog = filterAndSortStoreAwards(
-    awards,
-    spendableBalance,
-    filter,
-    sort,
-  );
+  const editorAwards = cards.map((card) => ({
+    awardId: card.awardId,
+    title: card.title,
+    stock: card.stock,
+    imageSrc: toBrowserMediaUrl(card.imageUrl),
+    prices: card.prices.map((price) => ({
+      ...price,
+      iconUrl: toBrowserMediaUrl(price.iconUrl),
+    })),
+  }));
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-heading text-2xl font-bold">{tStore("title")}</h1>
-        <Link
-          href={buildStoreOrdersPath(documentId)}
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-        >
-          {tStore("viewOrders")}
-        </Link>
-      </div>
-
-      <StoreWalletBar
-        balance={balance.balance}
-        currencyLabel={balance.currencyLabel ?? ""}
-        cartHref={buildStoreCartPath(documentId)}
-        cartItemCount={cartCount}
-      />
+      <h1 className="font-heading text-2xl font-bold">{tStore("title")}</h1>
 
       {team ? (
         <ExchangeWindowBanner
@@ -98,25 +52,29 @@ export default async function ColaboratorStorePage({
         />
       ) : null}
 
-      <StoreFeaturedRow awards={featured} balance={spendableBalance} />
+      {team && windowOpen ? (
+        <p className="rounded-2xl border bg-muted/40 px-4 py-3 text-sm">
+          {tCart("autoCloseBanner", { lastDay: team.exchangesLastDay })}
+        </p>
+      ) : null}
 
-      <div className="space-y-4">
-        <h2 className="font-heading text-lg font-semibold">
-          {tStore("catalog")}
-        </h2>
-        <StoreFilterChips
-          basePath={storePath}
-          filter={filter}
-          sort={sort}
+      {!windowOpen ? (
+        <p className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          {tCart("readOnlyClosed")}
+        </p>
+      ) : null}
+
+      {editorAwards.length === 0 ? (
+        <div className="rounded-2xl border bg-card p-6 text-center">
+          <p className="text-muted-foreground">{tCart("empty")}</p>
+        </div>
+      ) : (
+        <CartEditor
+          initialAwards={editorAwards}
+          currencies={currencies}
+          editable={windowOpen}
         />
-        {awards.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {tExchange("emptyAwards")}
-          </p>
-        ) : (
-          <StoreProductGrid awards={catalog} balance={spendableBalance} />
-        )}
-      </div>
+      )}
     </section>
   );
 }

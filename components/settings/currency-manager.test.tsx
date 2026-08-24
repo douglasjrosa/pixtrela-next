@@ -30,6 +30,7 @@ const currencies = [
     currencyPerSecond: 2,
     exchangeRate: 1.5,
     active: true,
+    showInStore: true,
   },
   {
     documentId: "cur-gem",
@@ -41,6 +42,7 @@ const currencies = [
     currencyPerSecond: 0.5,
     exchangeRate: 0,
     active: true,
+    showInStore: true,
   },
 ];
 
@@ -108,7 +110,7 @@ describe("CurrencyManager", () => {
     expect(screen.getAllByText("0,50").length).toBeGreaterThan(0);
     expect(screen.getByRole("columnheader", { name: "Unidades por centavo" }))
       .toBeInTheDocument();
-    expect(screen.getAllByText("1.5").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1,50").length).toBeGreaterThan(0);
   });
 
   it("shows empty state when there are no currencies", () => {
@@ -124,6 +126,9 @@ describe("CurrencyManager", () => {
     fireEvent.click(screen.getByRole("button", { name: "Nova moeda" }));
 
     const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByRole("switch", { name: "Mostrar na loja" }),
+    ).toBeChecked();
     expect(
       within(dialog).getByLabelText("Unidades por centavo"),
     ).toHaveValue(0);
@@ -149,6 +154,7 @@ describe("CurrencyManager", () => {
         iconMediaId: null,
         currencyPerSecond: 1.5,
         exchangeRate: 0,
+        showInStore: true,
       });
     });
     expect(showSuccessToast).toHaveBeenCalledWith("Moeda salva.");
@@ -217,6 +223,7 @@ describe("CurrencyManager", () => {
         iconMediaId: 11,
         currencyPerSecond: 3,
         exchangeRate: -0.25,
+        showInStore: true,
       });
     });
   });
@@ -280,6 +287,19 @@ describe("CurrencyManager", () => {
       expect(onBulkArchive).toHaveBeenCalledWith(["cur-gem"]);
     });
     expect(showSuccessToast).toHaveBeenCalledWith("Moedas arquivadas.");
+  });
+
+  it("shows only archived currencies when the toggle is on", () => {
+    renderManager({
+      currencies: [currencies[0]!, { ...currencies[1]!, active: false }],
+    });
+
+    expect(screen.getAllByText("Estrela").length).toBeGreaterThan(0);
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Exibir moedas arquivadas" }),
+    );
+    expect(screen.queryByText("Estrela")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Gema").length).toBeGreaterThan(0);
   });
 
   it("hard-deletes when every selected currency is archived", async () => {

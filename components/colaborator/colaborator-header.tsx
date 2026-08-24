@@ -43,7 +43,7 @@ export function ColaboratorHeader({
   return (
     <header
       className={
-        "relative z-10 flex items-center justify-between gap-3 border-b " +
+        "relative z-20 flex items-center justify-between gap-3 border-b " +
         "bg-card px-4 py-3 shadow-sm"
       }
     >

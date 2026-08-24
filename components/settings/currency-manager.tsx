@@ -24,7 +24,10 @@ import {
   toggleSelectAllRows,
 } from "@/lib/business/list-selection";
 import { isProtectedCurrencyDocument } from "@/lib/business/primary-currency";
-import { formatCurrencyPerSecond } from "@/lib/format/currency-rate";
+import {
+  formatCurrencyPerSecond,
+  formatExchangeRate,
+} from "@/lib/format/currency-rate";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { MediaAssetRecord } from "@/lib/repos/media";
 import type { CurrencyFormInput } from "@/lib/schemas/currency";
@@ -45,6 +48,7 @@ export interface CurrencyRow {
   currencyPerSecond: number;
   exchangeRate: number;
   active: boolean;
+  showInStore: boolean;
 }
 
 export interface CurrencyManagerProps {
@@ -69,6 +73,7 @@ const EMPTY_FORM: CurrencyFormInput = {
   iconMediaId: null,
   currencyPerSecond: 0,
   exchangeRate: 0,
+  showInStore: true,
 };
 
 type ModalState =
@@ -84,6 +89,7 @@ function toFormValues(currency: CurrencyRow): CurrencyFormInput {
     iconMediaId: currency.iconMediaId,
     currencyPerSecond: currency.currencyPerSecond,
     exchangeRate: currency.exchangeRate,
+    showInStore: currency.showInStore,
   };
 }
 
@@ -91,10 +97,6 @@ function displayTitle(currency: CurrencyRow): string {
   if (currency.title.trim().length > 0) return currency.title;
   if (currency.pluralTitle.trim().length > 0) return currency.pluralTitle;
   return currency.name;
-}
-
-function formatExchangeRate(value: number): string {
-  return Number.isInteger(value) ? String(value) : String(value);
 }
 
 function actionErrorMessage(
@@ -141,7 +143,7 @@ export function CurrencyManager({
   }
 
   const visibleCurrencies = currencies.filter((currency) => {
-    if (!showArchived && !currency.active) return false;
+    if (currency.active === showArchived) return false;
     const needle = searchQuery.trim().toLowerCase();
     if (needle.length === 0) return true;
     const title = displayTitle(currency).toLowerCase();

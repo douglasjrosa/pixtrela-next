@@ -53,6 +53,7 @@ export function colaboratorMenuItems(userId: string): NavItem[] {
   return [
     { href: `/${userId}`, labelKey: "dashboard" },
     { href: `/${userId}/store`, labelKey: "store" },
+    { href: `/${userId}/orders`, labelKey: "exchange" },
   ];
 }
 
@@ -80,6 +81,7 @@ export function navItemsForRole(
     return [
       { href: `/${userId}`, labelKey: "dashboard" },
       { href: `/${userId}/store`, labelKey: "store" },
+      { href: `/${userId}/orders`, labelKey: "exchange" },
       { href: `/${userId}/profile`, labelKey: "profile" },
     ];
   }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   formatCurrencyPerSecond,
+  formatExchangeRate,
   roundCurrencyRate,
 } from "./currency-rate";
 
@@ -23,5 +24,11 @@ describe("formatCurrencyPerSecond", () => {
     expect(formatCurrencyPerSecond(2)).toBe("2,00");
     expect(formatCurrencyPerSecond(0.5)).toBe("0,50");
     expect(formatCurrencyPerSecond(1.234)).toBe("1,23");
+  });
+});
+
+describe("formatExchangeRate", () => {
+  it("limits binary float noise to two pt-BR decimals", () => {
+    expect(formatExchangeRate(10.099999999999)).toBe("10,10");
   });
 });

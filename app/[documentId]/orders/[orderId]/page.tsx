@@ -5,12 +5,9 @@ import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { buttonVariants } from "@/components/ui/button";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
+import { buildOrderPath, buildOrdersPath } from "@/lib/orders/orders-path";
 import { getOrderForUser } from "@/lib/repos/exchange-orders";
-import {
-  buildStoreOrderPath,
-  buildStoreOrdersPath,
-  buildStorePath,
-} from "@/lib/store/store-path";
+import { buildStorePath } from "@/lib/store/store-path";
 import { cn } from "@/lib/utils";
 
 interface PageProps {
@@ -18,7 +15,7 @@ interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function StoreOrderDetailPage({
+export default async function ColaboratorOrderDetailPage({
   params,
   searchParams,
 }: PageProps) {
@@ -32,7 +29,7 @@ export default async function StoreOrderDetailPage({
     redirect("/");
   }
   if (session.user.id !== documentId) {
-    redirect(buildStoreOrderPath(session.user.id, orderId));
+    redirect(buildOrderPath(session.user.id, orderId));
   }
 
   const order = await getOrderForUser(documentId, orderId);
@@ -41,7 +38,7 @@ export default async function StoreOrderDetailPage({
       <section className="space-y-4">
         <p className="text-muted-foreground">{t("notFound")}</p>
         <Link
-          href={buildStoreOrdersPath(documentId)}
+          href={buildOrdersPath(documentId)}
           className={cn(buttonVariants({ variant: "outline" }))}
         >
           {t("backToOrders")}
@@ -104,7 +101,7 @@ export default async function StoreOrderDetailPage({
 
       <div className="flex flex-wrap gap-3">
         <Link
-          href={buildStoreOrdersPath(documentId)}
+          href={buildOrdersPath(documentId)}
           className={cn(buttonVariants({ variant: "outline" }))}
         >
           {t("backToOrders")}
