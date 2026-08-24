@@ -52,10 +52,8 @@ auto-deactivated.
 
 ## CRM configuration
 
-| CRM env | Description |
-|---------|-------------|
-| CRM webhook URL | `https://<host>/api/webhooks/crm-pedido` |
-| CRM webhook secret | Same value as `CRM_WEBHOOK_SECRET` |
+Point the CRM lifecycle at `POST /api/webhooks/crm-pedido` with the same
+HMAC secret as `CRM_WEBHOOK_SECRET`.
 
 ## Local testing
 
