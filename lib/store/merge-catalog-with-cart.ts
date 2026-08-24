@@ -51,7 +51,9 @@ export function mergeCatalogWithCart(
   const cards = new Map<string, MergedStoreCard>();
 
   for (const row of rows) {
-    if (!row.currencyActive || !row.currencyShowInStore) continue;
+    if (row.currencyActive === false || row.currencyShowInStore === false) {
+      continue;
+    }
     if (row.unitCost <= 0) continue;
     const currency = storeById.get(row.currencyId);
     if (!currency) continue;
