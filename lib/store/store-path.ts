@@ -20,3 +20,9 @@ export function isUserStorePath(
   if (!documentId || reservedSegments.has(documentId)) return false;
   return true;
 }
+
+/** True for any `/{id}/store` path (used by the colaborator content shell). */
+export function isColaboratorStoreLayoutPath(pathname: string): boolean {
+  const parts = pathname.split("/").filter(Boolean);
+  return parts.length === 2 && parts[1] === "store";
+}

@@ -2,8 +2,8 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { auth } from "@/auth";
 import { AppNav } from "@/components/app-nav";
-import { COLABORATOR_CONTENT_SURFACE_CLASS } from
-  "@/components/colaborator/colaborator-content-surface";
+import { ColaboratorDocumentPanel } from
+  "@/components/colaborator/colaborator-document-panel";
 import { ColaboratorHeader } from "@/components/colaborator/colaborator-header";
 import { ColaboratorSurface } from "@/components/colaborator/colaborator-surface";
 import { RouteThemeFrame } from "@/components/themes/route-theme-frame";
@@ -55,15 +55,12 @@ export default async function DocumentIdLayout({
         <main
           className={cn("relative z-10", routeThemeContentFrameClass(theme))}
         >
-          <div
-            className={cn(
-              COLABORATOR_CONTENT_SURFACE_CLASS,
-              routeThemeContentSurfaceRadiusClass(theme),
-            )}
+          <ColaboratorDocumentPanel
+            className={routeThemeContentSurfaceRadiusClass(theme)}
             style={panelStyle}
           >
             {children}
-          </div>
+          </ColaboratorDocumentPanel>
         </main>
       </RouteThemeFrame>
     </ColaboratorSurface>

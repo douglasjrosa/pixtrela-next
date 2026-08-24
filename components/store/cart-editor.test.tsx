@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { STORE_ROW_SCROLL_CLASS } from "@/lib/store/store-layout";
+import {
+  STORE_BALANCE_BG_IMAGE_CLASS,
+  STORE_CATALOG_CARD_WIDTH_CLASS,
+  STORE_ROW_SCROLL_CLASS,
+} from "@/lib/store/store-layout";
 import { renderWithIntl } from "@/test/test-utils";
 import { CartEditor } from "./cart-editor";
 
@@ -117,12 +121,15 @@ describe("CartEditor", () => {
     expect(screen.getByRole("list", { name: "Saldos" })).toBe(
       screen.getByTestId("store-balances-row"),
     );
-    expect(screen.getByText("Estrela Vermelha").closest("li")).toContainElement(
-      screen.getByRole("button", { name: "+" }),
-    );
+    const awardCard = screen.getByText("Estrela Vermelha").closest("li");
+    expect(awardCard).toContainElement(screen.getByRole("button", { name: "+" }));
+    expect(awardCard).toHaveClass(...STORE_CATALOG_CARD_WIDTH_CLASS.split(" "));
+    const balanceCard = screen.getByTestId("store-balances-row")
+      .querySelector("li");
+    expect(balanceCard).toHaveClass(...STORE_CATALOG_CARD_WIDTH_CLASS.split(" "));
   });
 
-  it("renders the currency icon only as a low-opacity balance background", () => {
+  it("renders the currency icon as a small bottom-right watermark", () => {
     renderWithIntl(
       <CartEditor initialAwards={[AWARD]} currencies={CURRENCIES} />,
     );
@@ -130,7 +137,10 @@ describe("CartEditor", () => {
     const images = screen.getByTestId("store-balances-row")
       .querySelectorAll("img");
     expect(images).toHaveLength(1);
-    expect(images[0]).toHaveClass("opacity-20");
+    expect(images[0]).toHaveClass(
+      ...STORE_BALANCE_BG_IMAGE_CLASS.split(" "),
+    );
+    expect(images[0]).toHaveClass("size-1/4", "bottom-0", "right-0");
     expect(screen.getByTestId("store-awards-row").querySelector("img")).toBeNull();
   });
 
