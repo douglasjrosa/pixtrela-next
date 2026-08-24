@@ -60,4 +60,16 @@ describe("awardFormSchema", () => {
       ],
     });
   });
+
+  it("rounds actualPrice to two decimals", () => {
+    expect(
+      awardFormSchema.parse({
+        name: "Arroz",
+        showInStore: true,
+        stock: 0,
+        actualPrice: 10.099999999999,
+        values: [{ numberOf: 50, currencyDocumentId: "c1" }],
+      }).actualPrice,
+    ).toBe(10.1);
+  });
 });

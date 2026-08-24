@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { SwitchField } from "@/components/ui/switch-field";
 import { Textarea } from "@/components/ui/textarea";
 import { buildAwardValuesForCurrencies } from "@/lib/awards/build-award-form-values";
+import { roundCurrencyRate } from "@/lib/format/currency-rate";
 import type { MediaAssetRecord } from "@/lib/repos/media";
 import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
 
@@ -77,7 +78,7 @@ function toFormValues(
     imageId: award.imageId ?? null,
     showInStore: award.showInStore,
     stock: award.stock,
-    actualPrice: award.actualPrice,
+    actualPrice: roundCurrencyRate(award.actualPrice),
     autoRecalculate: award.autoRecalculate,
     values: buildAwardValuesForCurrencies(currencies, award.values),
   };

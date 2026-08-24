@@ -139,9 +139,7 @@ export async function listAwardsPage(
   const q = options.q?.trim();
   const sort = options.sort ?? { column: "title", direction: "asc" };
 
-  const activeClause = options.showArchived
-    ? undefined
-    : eq(awards.active, true);
+  const activeClause = eq(awards.active, !options.showArchived);
 
   const searchClause = q
     ? or(
@@ -357,7 +355,7 @@ export async function createCurrency(
       title: input.title ?? null,
       pluralTitle: input.pluralTitle ?? null,
       currencyPerSecond: String(roundCurrencyRate(input.currencyPerSecond)),
-      exchangeRate: input.exchangeRate ?? 0,
+      exchangeRate: roundCurrencyRate(input.exchangeRate ?? 0),
       iconMediaId:
         typeof input.iconMediaId === "string" ? input.iconMediaId : null,
     })

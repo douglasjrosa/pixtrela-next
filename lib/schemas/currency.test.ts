@@ -45,5 +45,14 @@ describe("currencyFormSchema", () => {
         exchangeRate: -1.25,
       }).exchangeRate,
     ).toBe(-1.25);
+    expect(
+      currencyFormSchema.parse({
+        name: "star",
+        title: "Estrela",
+        pluralTitle: "Estrelas",
+        currencyPerSecond: 1,
+        exchangeRate: 10.099999999999,
+      }).exchangeRate,
+    ).toBe(10.1);
   });
 });

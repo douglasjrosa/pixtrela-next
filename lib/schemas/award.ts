@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { roundCurrencyRate } from "@/lib/format/currency-rate";
+
 export const awardValueSchema = z.object({
   numberOf: z.number().int().min(0),
   currencyDocumentId: z.string().min(1),
@@ -13,7 +15,11 @@ export const awardFormSchema = z.object({
   imageId: z.string().uuid().nullable().optional(),
   showInStore: z.boolean(),
   stock: z.number().int().min(0),
-  actualPrice: z.coerce.number().finite().default(0),
+  actualPrice: z.coerce
+    .number()
+    .finite()
+    .default(0)
+    .transform((value) => roundCurrencyRate(value)),
   autoRecalculate: z.boolean().default(true),
   values: z.array(awardValueSchema).min(1),
 });
