@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
+import { SwitchField } from "@/components/ui/switch-field";
 import type { MediaAssetRecord } from "@/lib/repos/media";
 import {
   currencyFormSchema,
@@ -72,6 +73,7 @@ function CurrencyFormModalContent({
   });
 
   const iconMediaId = useWatch({ control, name: "iconMediaId" });
+  const showInStore = useWatch({ control, name: "showInStore" });
 
   useEffect(() => {
     reset(defaultValues);
@@ -152,6 +154,18 @@ function CurrencyFormModalContent({
               {errors.name ? (
                 <p className="text-sm text-destructive">{errors.name.message}</p>
               ) : null}
+            </div>
+
+            <div className="flex items-end">
+              <SwitchField
+                id="currency-show-in-store"
+                label={tSettings("currencyShowInStore")}
+                checked={showInStore ?? true}
+                disabled={saving}
+                onCheckedChange={(checked) => {
+                  setValue("showInStore", checked, { shouldDirty: true });
+                }}
+              />
             </div>
 
             <div className="space-y-2 sm:col-span-2">

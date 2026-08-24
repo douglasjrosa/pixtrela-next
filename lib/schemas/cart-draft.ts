@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const cartDraftItemSchema = z.object({
   awardId: z.string().uuid(),
+  currencyId: z.string().uuid(),
   qty: z.number().int().min(0),
 });
 

@@ -36,6 +36,10 @@ describe("ColaboratorHeader", () => {
       "href",
       "/colab-1/store",
     );
+    expect(screen.getByRole("link", { name: "Trocas" })).toHaveAttribute(
+      "href",
+      "/colab-1/orders",
+    );
     expect(
       screen.getByRole("button", { name: "Maria, Abrir menu da conta" }),
     ).toBeInTheDocument();

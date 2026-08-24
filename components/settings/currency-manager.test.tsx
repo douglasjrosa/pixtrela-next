@@ -30,6 +30,7 @@ const currencies = [
     currencyPerSecond: 2,
     exchangeRate: 1.5,
     active: true,
+    showInStore: true,
   },
   {
     documentId: "cur-gem",
@@ -41,6 +42,7 @@ const currencies = [
     currencyPerSecond: 0.5,
     exchangeRate: 0,
     active: true,
+    showInStore: true,
   },
 ];
 
@@ -124,6 +126,7 @@ describe("CurrencyManager", () => {
     fireEvent.click(screen.getByRole("button", { name: "Nova moeda" }));
 
     const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByLabelText("Mostrar na loja")).toBeChecked();
     expect(
       within(dialog).getByLabelText("Unidades por centavo"),
     ).toHaveValue(0);
@@ -149,6 +152,7 @@ describe("CurrencyManager", () => {
         iconMediaId: null,
         currencyPerSecond: 1.5,
         exchangeRate: 0,
+        showInStore: true,
       });
     });
     expect(showSuccessToast).toHaveBeenCalledWith("Moeda salva.");
@@ -217,6 +221,7 @@ describe("CurrencyManager", () => {
         iconMediaId: 11,
         currencyPerSecond: 3,
         exchangeRate: -0.25,
+        showInStore: true,
       });
     });
   });

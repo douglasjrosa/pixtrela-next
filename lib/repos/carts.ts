@@ -8,6 +8,7 @@ import {
 } from "@/drizzle/schema";
 import { clampCartQty } from "@/lib/domain/cart";
 import { getDb, type Db } from "@/lib/db/client";
+import { getCurrencyForSubtasks } from "@/lib/repos/settings";
 
 export type CartRecord = {
   id: string;
@@ -76,12 +77,18 @@ export async function addCartItem(input: {
   userId: string;
   awardId: string;
   qty?: number;
+  currencyId?: string;
 }): Promise<{ cartId: string; itemId: string; qty: number }> {
   const db = getDb();
   const qtyToAdd = Math.max(1, Math.floor(input.qty ?? 1));
 
   return db.transaction(async (tx) => {
     const cart = await getOrCreateOpenCart(input.userId, tx as unknown as Db);
+    const payment = input.currencyId
+      ? { currencyId: input.currencyId }
+      : await getCurrencyForSubtasks(tx as unknown as Db);
+    const currencyId = payment?.currencyId;
+    if (!currencyId) throw new Error("awardUnavailable");
 
     const [award] = await tx
       .select({
@@ -106,6 +113,7 @@ export async function addCartItem(input: {
         and(
           eq(cartItems.cartId, cart.id),
           eq(cartItems.awardId, input.awardId),
+          eq(cartItems.currencyId, currencyId),
         ),
       )
       .limit(1);
@@ -134,6 +142,7 @@ export async function addCartItem(input: {
       .values({
         cartId: cart.id,
         awardId: input.awardId,
+        currencyId,
         qty: nextQty,
       })
       .returning({ id: cartItems.id, qty: cartItems.qty });
@@ -204,13 +213,24 @@ export async function removeCartItem(input: {
   });
 }
 
+function draftLineKey(awardId: string, currencyId: string): string {
+  return `${awardId}:${currencyId}`;
+}
+
 export async function syncOpenCartDraft(input: {
   userId: string;
-  items: Array<{ awardId: string; qty: number }>;
+  items: Array<{ awardId: string; currencyId: string; qty: number }>;
 }): Promise<void> {
   const db = getDb();
   const desired = new Map(
-    input.items.map((item) => [item.awardId, Math.floor(item.qty)]),
+    input.items.map((item) => [
+      draftLineKey(item.awardId, item.currencyId),
+      {
+        awardId: item.awardId,
+        currencyId: item.currencyId,
+        qty: Math.floor(item.qty),
+      },
+    ]),
   );
 
   await db.transaction(async (tx) => {
@@ -220,6 +240,7 @@ export async function syncOpenCartDraft(input: {
       .select({
         id: cartItems.id,
         awardId: cartItems.awardId,
+        currencyId: cartItems.currencyId,
         qty: cartItems.qty,
         stock: awards.stock,
       })
@@ -227,16 +248,18 @@ export async function syncOpenCartDraft(input: {
       .innerJoin(awards, eq(cartItems.awardId, awards.id))
       .where(eq(cartItems.cartId, cart.id));
 
-    const existingByAward = new Map(rows.map((row) => [row.awardId, row]));
+    const existingByKey = new Map(
+      rows.map((row) => [draftLineKey(row.awardId, row.currencyId), row]),
+    );
 
-    for (const [awardId, nextQty] of desired) {
-      const existing = existingByAward.get(awardId);
+    for (const [key, next] of desired) {
+      const existing = existingByKey.get(key);
 
-      if (nextQty <= 0) {
+      if (next.qty <= 0) {
         if (existing) {
           await tx.delete(cartItems).where(eq(cartItems.id, existing.id));
         }
-        existingByAward.delete(awardId);
+        existingByKey.delete(key);
         continue;
       }
 
@@ -256,7 +279,7 @@ export async function syncOpenCartDraft(input: {
             showInStore: awards.showInStore,
           })
           .from(awards)
-          .where(eq(awards.id, awardId))
+          .where(eq(awards.id, next.awardId))
           .limit(1);
         award = found;
       }
@@ -265,7 +288,7 @@ export async function syncOpenCartDraft(input: {
         throw new Error("awardUnavailable");
       }
 
-      const clamped = clampCartQty(nextQty, award.stock);
+      const clamped = clampCartQty(next.qty, award.stock);
       if (clamped <= 0) throw new Error("awardOutOfStock");
 
       if (existing) {
@@ -275,18 +298,19 @@ export async function syncOpenCartDraft(input: {
             .set({ qty: clamped, updatedAt: new Date() })
             .where(eq(cartItems.id, existing.id));
         }
-        existingByAward.delete(awardId);
+        existingByKey.delete(key);
         continue;
       }
 
       await tx.insert(cartItems).values({
         cartId: cart.id,
-        awardId,
+        awardId: next.awardId,
+        currencyId: next.currencyId,
         qty: clamped,
       });
     }
 
-    for (const leftover of existingByAward.values()) {
+    for (const leftover of existingByKey.values()) {
       await tx.delete(cartItems).where(eq(cartItems.id, leftover.id));
     }
 
@@ -321,6 +345,7 @@ export async function listOpenCartItemRows(
     id: string;
     cartId: string;
     awardId: string;
+    currencyId: string;
     qty: number;
     title: string;
     stock: number;
@@ -342,6 +367,7 @@ export async function listOpenCartItemRows(
       id: cartItems.id,
       cartId: cartItems.cartId,
       awardId: cartItems.awardId,
+      currencyId: cartItems.currencyId,
       qty: cartItems.qty,
       title: sql<string>`coalesce(nullif(${awards.title}, ''), ${awards.name})`,
       stock: awards.stock,

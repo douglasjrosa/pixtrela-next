@@ -36,6 +36,7 @@ async function loadCurrencies(): Promise<CurrencyRow[]> {
     currencyPerSecond: roundCurrencyRate(Number(currency.currencyPerSecond ?? 0)),
     exchangeRate: Number(currency.exchangeRate ?? 0),
     active: currency.active,
+    showInStore: currency.showInStore,
   }));
 }
 

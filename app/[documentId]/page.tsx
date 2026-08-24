@@ -11,11 +11,8 @@ import { loadColaboratorPrivateHome } from "@/lib/colaborator/private-home-data"
 import { loadColaboratorInsights } from "@/lib/dashboard/load-colaborator-insights";
 import { loadMonthlyRanking } from "@/lib/dashboard/load-monthly-ranking";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
-import {
-  buildStoreOrderPath,
-  buildStoreOrdersPath,
-  buildStorePath,
-} from "@/lib/store/store-path";
+import { buildOrderPath, buildOrdersPath } from "@/lib/orders/orders-path";
+import { buildStorePath } from "@/lib/store/store-path";
 import { cn } from "@/lib/utils";
 
 interface PageProps {
@@ -86,7 +83,7 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-semibold">{tOrders("title")}</h2>
           <Link
-            href={buildStoreOrdersPath(documentId)}
+            href={buildOrdersPath(documentId)}
             className="text-sm font-medium text-primary"
           >
             {tOrders("viewAll")}
@@ -99,7 +96,7 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
             {orders.map((order) => (
               <li key={order.id}>
                 <Link
-                  href={buildStoreOrderPath(documentId, order.id)}
+                  href={buildOrderPath(documentId, order.id)}
                   className={
                     "flex items-center justify-between rounded-2xl border " +
                     "bg-card px-4 py-3 text-sm transition-colors hover:bg-muted/40"

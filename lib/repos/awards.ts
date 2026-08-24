@@ -308,6 +308,7 @@ export async function listCurrencies(
       iconMediaId: currencies.iconMediaId,
       iconMediaUrl: mediaAssets.url,
       active: currencies.active,
+      showInStore: currencies.showInStore,
     })
     .from(currencies)
     .leftJoin(mediaAssets, eq(currencies.iconMediaId, mediaAssets.id))
@@ -347,6 +348,7 @@ export async function createCurrency(
     currencyPerSecond: number;
     exchangeRate?: number;
     iconMediaId?: string | null;
+    showInStore?: boolean;
   },
   db: Db = getDb(),
 ) {
@@ -360,6 +362,7 @@ export async function createCurrency(
       exchangeRate: input.exchangeRate ?? 0,
       iconMediaId:
         typeof input.iconMediaId === "string" ? input.iconMediaId : null,
+      showInStore: input.showInStore ?? true,
     })
     .returning();
   return row;

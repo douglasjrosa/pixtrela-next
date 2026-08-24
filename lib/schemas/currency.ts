@@ -15,6 +15,7 @@ export const currencyFormSchema = z.object({
     .min(0)
     .transform((value) => roundCurrencyRate(value)),
   exchangeRate: z.number().finite().default(0),
+  showInStore: z.boolean().default(true),
 });
 
 export type CurrencyFormInput = z.infer<typeof currencyFormSchema>;

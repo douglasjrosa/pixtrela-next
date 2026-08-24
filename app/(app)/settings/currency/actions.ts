@@ -33,6 +33,7 @@ import {
   currencyFormSchema,
   type CurrencyFormInput,
 } from "@/lib/schemas/currency";
+import { COLABORATOR_STORE_PAGE_PATH } from "@/lib/store/store-path";
 
 const CURRENCY_SETTINGS_PATH = "/settings/currency";
 
@@ -47,6 +48,7 @@ function invalidateCurrencies(): void {
   revalidateTag("drizzle:currencies", "default");
   revalidateTag("drizzle:currency-for-subtasks", "default");
   revalidatePath(CURRENCY_SETTINGS_PATH);
+  revalidatePath(COLABORATOR_STORE_PAGE_PATH, "layout");
 }
 
 async function listAllCurrencies() {
@@ -103,6 +105,7 @@ export async function createCurrency(raw: CurrencyFormInput): Promise<void> {
     exchangeRate: data.exchangeRate,
     iconMediaId:
       typeof data.iconMediaId === "string" ? data.iconMediaId : null,
+    showInStore: data.showInStore,
   });
   invalidateCurrencies();
 }
@@ -123,6 +126,7 @@ export async function updateCurrency(
     pluralTitle: data.pluralTitle,
     currencyPerSecond: String(data.currencyPerSecond),
     exchangeRate: data.exchangeRate,
+    showInStore: data.showInStore,
     updatedAt: new Date(),
   };
   if (typeof data.iconMediaId === "string") {

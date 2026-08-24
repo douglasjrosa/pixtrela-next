@@ -2,33 +2,86 @@ import { describe, expect, it } from "vitest";
 
 import { mergeCatalogWithCart } from "./merge-catalog-with-cart";
 
+const currencies = [
+  { currencyId: "star", label: "Estrelas", iconUrl: "/star.png", balance: 100 },
+  { currencyId: "gem", label: "Gemas", iconUrl: null, balance: 50 },
+];
+
 describe("mergeCatalogWithCart", () => {
-  it("lists every catalog award and defaults missing cart qty to 0", () => {
-    const lines = mergeCatalogWithCart(
+  it("hides zero prices and awards without a store price", () => {
+    const cards = mergeCatalogWithCart(
       [
-        { id: "b", title: "Azul", stock: 4, cost: 20, imageUrl: null },
-        { id: "a", title: "Amarela", stock: 2, cost: 10, imageUrl: "/a.png" },
+        {
+          awardId: "a",
+          title: "Amarela",
+          stock: 3,
+          imageUrl: null,
+          currencyId: "star",
+          unitCost: 10,
+          currencyActive: true,
+          currencyShowInStore: true,
+        },
+        {
+          awardId: "a",
+          title: "Amarela",
+          stock: 3,
+          imageUrl: null,
+          currencyId: "gem",
+          unitCost: 0,
+          currencyActive: true,
+          currencyShowInStore: true,
+        },
+        {
+          awardId: "b",
+          title: "Sem preco",
+          stock: 1,
+          imageUrl: null,
+          currencyId: "star",
+          unitCost: 0,
+          currencyActive: true,
+          currencyShowInStore: true,
+        },
       ],
-      [{ awardId: "a", qty: 3 }],
+      currencies,
+      [{ awardId: "a", currencyId: "star", qty: 2 }],
     );
 
-    expect(lines).toEqual([
+    expect(cards).toEqual([
       {
         awardId: "a",
         title: "Amarela",
-        qty: 3,
-        stock: 2,
-        imageUrl: "/a.png",
-        unitCost: 10,
-      },
-      {
-        awardId: "b",
-        title: "Azul",
-        qty: 0,
-        stock: 4,
+        stock: 3,
         imageUrl: null,
-        unitCost: 20,
+        prices: [
+          {
+            currencyId: "star",
+            label: "Estrelas",
+            iconUrl: "/star.png",
+            unitCost: 10,
+            qty: 2,
+          },
+        ],
       },
     ]);
+  });
+
+  it("hides inactive currencies even when show_in_store is true", () => {
+    const cards = mergeCatalogWithCart(
+      [
+        {
+          awardId: "a",
+          title: "Amarela",
+          stock: 3,
+          imageUrl: null,
+          currencyId: "star",
+          unitCost: 10,
+          currencyActive: false,
+          currencyShowInStore: true,
+        },
+      ],
+      currencies,
+      [],
+    );
+    expect(cards).toEqual([]);
   });
 });

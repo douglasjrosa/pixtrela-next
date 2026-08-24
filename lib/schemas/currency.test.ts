@@ -12,7 +12,7 @@ describe("currencyFormSchema", () => {
         iconMediaId: 3,
         currencyPerSecond: 1,
       }),
-    ).toMatchObject({ iconMediaId: 3, exchangeRate: 0 });
+    ).toMatchObject({ iconMediaId: 3, exchangeRate: 0, showInStore: true });
   });
 
   it("rounds currencyPerSecond to two decimals", () => {

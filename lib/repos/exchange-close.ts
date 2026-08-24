@@ -17,6 +17,7 @@ import {
   cartLineCost,
   cartTotal,
 } from "@/lib/domain/cart";
+import { findCartLineAwardPrice } from "@/lib/domain/cart-line-price";
 import {
   cycleYearMonth,
   trimCartLinesForClose,
@@ -32,7 +33,6 @@ import {
   getOrCreateMonthlyBalance,
 } from "@/lib/repos/balances";
 import { getOrCreateBatch } from "@/lib/repos/exchange-batches";
-import { getCurrencyForSubtasks } from "@/lib/repos/settings";
 
 function shouldCloseTeamWindow(
   now: Date,
@@ -107,11 +107,6 @@ export async function finalizeOpenCartForCycle(input: {
       return null;
     }
 
-    const payment = await getCurrencyForSubtasks(tx as unknown as Db);
-    if (!payment?.currencyId) {
-      return null;
-    }
-
     const [cart] = await tx
       .select({ id: carts.id })
       .from(carts)
@@ -123,6 +118,7 @@ export async function finalizeOpenCartForCycle(input: {
       .select({
         itemId: cartItems.id,
         awardId: cartItems.awardId,
+        currencyId: cartItems.currencyId,
         qty: cartItems.qty,
         name: awards.name,
         title: awards.title,
@@ -180,11 +176,12 @@ export async function finalizeOpenCartForCycle(input: {
     const pricedRaw: PricedCartLine[] = [];
     for (const line of lines) {
       if (!line.active || !line.showInStore) continue;
-      const linePrices = priceRows.filter((price) => price.awardId === line.awardId);
-      const chosen =
-        linePrices.find((price) => price.currencyId === payment.currencyId) ??
-        linePrices[0];
-      if (!chosen || chosen.numberOf <= 0) continue;
+      const chosen = findCartLineAwardPrice(
+        priceRows,
+        line.awardId,
+        line.currencyId,
+      );
+      if (!chosen) continue;
 
       const lineCurrency = currencyById.get(chosen.currencyId);
       if (!lineCurrency) continue;
@@ -200,16 +197,14 @@ export async function finalizeOpenCartForCycle(input: {
       });
     }
 
-    const paymentCurrency = currencyById.get(payment.currencyId);
-    if (!paymentCurrency) {
+    const currencyPluralTitle = pricedRaw[0]?.currencyPluralTitle;
+    if (!currencyPluralTitle) {
       await tx
         .update(carts)
         .set({ status: "abandoned", updatedAt: now })
         .where(eq(carts.id, cart.id));
       return null;
     }
-
-    const currencyPluralTitle = resolveCurrencyPluralTitle(paymentCurrency);
     const balanceByCurrency = new Map<string, number>();
     for (const title of new Set(pricedRaw.map((line) => line.currencyPluralTitle))) {
       const balance = await getOrCreateMonthlyBalance(

@@ -45,6 +45,7 @@ export interface CurrencyRow {
   currencyPerSecond: number;
   exchangeRate: number;
   active: boolean;
+  showInStore: boolean;
 }
 
 export interface CurrencyManagerProps {
@@ -69,6 +70,7 @@ const EMPTY_FORM: CurrencyFormInput = {
   iconMediaId: null,
   currencyPerSecond: 0,
   exchangeRate: 0,
+  showInStore: true,
 };
 
 type ModalState =
@@ -84,6 +86,7 @@ function toFormValues(currency: CurrencyRow): CurrencyFormInput {
     iconMediaId: currency.iconMediaId,
     currencyPerSecond: currency.currencyPerSecond,
     exchangeRate: currency.exchangeRate,
+    showInStore: currency.showInStore,
   };
 }
 
