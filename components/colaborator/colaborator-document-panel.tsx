@@ -28,7 +28,9 @@ export function ColaboratorDocumentPanel({
     <div
       className={cn(
         COLABORATOR_CONTENT_SURFACE_CLASS,
+        "min-w-0",
         isStore && COLABORATOR_STORE_SURFACE_DESKTOP_WIDTH_CLASS,
+        isStore && "overflow-x-hidden",
         className,
       )}
       style={style}

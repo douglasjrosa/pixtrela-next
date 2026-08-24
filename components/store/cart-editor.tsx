@@ -268,7 +268,7 @@ export function CartEditor({
   );
 
   return (
-    <form action={saveAction} className="space-y-6">
+    <form action={saveAction} className="min-w-0 space-y-6 overflow-x-hidden">
       <input
         type="hidden"
         name="payload"

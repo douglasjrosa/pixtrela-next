@@ -44,7 +44,7 @@ export default async function DocumentIdLayout({
   const panelStyle = routeThemeSurfacePanelStyle(theme) as CSSProperties;
 
   return (
-    <ColaboratorSurface>
+    <ColaboratorSurface className="overflow-x-hidden">
       <RouteThemeFrame theme={theme} fallbackClassName="bg-[var(--surface-warm)]">
         <ColaboratorHeader
           homeHref={session?.user?.id ? `/${session.user.id}` : "/"}
@@ -53,7 +53,10 @@ export default async function DocumentIdLayout({
           menuLogoBackgroundColorOpacity={branding.menuLogoBackgroundColorOpacity}
         />
         <main
-          className={cn("relative z-10", routeThemeContentFrameClass(theme))}
+          className={cn(
+            "relative z-10 min-w-0 overflow-x-hidden",
+            routeThemeContentFrameClass(theme),
+          )}
         >
           <ColaboratorDocumentPanel
             className={routeThemeContentSurfaceRadiusClass(theme)}

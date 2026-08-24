@@ -1,8 +1,9 @@
 /** Netflix-style horizontal catalogs; the page itself scrolls vertically. */
-export const STORE_PAGE_SHELL_CLASS = "space-y-6";
+export const STORE_PAGE_SHELL_CLASS = "min-w-0 space-y-6 overflow-x-hidden";
 
 export const STORE_ROW_SCROLL_CLASS =
-  "flex gap-3 overflow-x-auto overscroll-x-contain pb-2 snap-x snap-mandatory";
+  "flex w-full min-w-0 gap-3 overflow-x-auto overscroll-x-contain " +
+  "pb-2 snap-x snap-mandatory";
 
 /**
  * Card width is a fraction of the row so the next card is always clipped.

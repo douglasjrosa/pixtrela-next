@@ -28,6 +28,7 @@ describe("ColaboratorDocumentPanel", () => {
     );
     expect(panel?.className).toContain("md:max-w-4xl");
     expect(panel?.className).toContain("lg:max-w-6xl");
+    expect(panel?.className).toContain("overflow-x-hidden");
   });
 
   it("keeps the default mobile-width panel on other colaborator pages", () => {
@@ -41,5 +42,6 @@ describe("ColaboratorDocumentPanel", () => {
     const panel = screen.getByText("home").parentElement;
     expect(panel?.className).toContain("max-w-lg");
     expect(panel?.className).not.toContain("md:max-w-4xl");
+    expect(panel?.className).not.toContain("overflow-x-hidden");
   });
 });

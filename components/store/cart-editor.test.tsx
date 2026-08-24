@@ -5,7 +5,6 @@ import userEvent from "@testing-library/user-event";
 import {
   STORE_BALANCE_BG_IMAGE_CLASS,
   STORE_CATALOG_CARD_WIDTH_CLASS,
-  STORE_ROW_SCROLL_CLASS,
 } from "@/lib/store/store-layout";
 import { renderWithIntl } from "@/test/test-utils";
 import { CartEditor } from "./cart-editor";
@@ -112,9 +111,12 @@ describe("CartEditor", () => {
       <CartEditor initialAwards={[AWARD]} currencies={CURRENCIES} />,
     );
 
-    const rowClass = STORE_ROW_SCROLL_CLASS.split(" ");
-    expect(screen.getByTestId("store-awards-row")).toHaveClass(...rowClass);
-    expect(screen.getByTestId("store-balances-row")).toHaveClass(...rowClass);
+    expect(screen.getByTestId("store-awards-row")).toHaveClass("overflow-x-auto");
+    expect(screen.getByTestId("store-awards-row")).toHaveClass("w-full", "min-w-0");
+    expect(screen.getByTestId("store-balances-row")).toHaveClass("overflow-x-auto");
+    expect(screen.getByTestId("store-awards-row").parentElement).toHaveClass(
+      "overflow-x-hidden",
+    );
     expect(screen.getByRole("list", { name: "Prêmios" })).toBe(
       screen.getByTestId("store-awards-row"),
     );
