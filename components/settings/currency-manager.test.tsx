@@ -126,7 +126,9 @@ describe("CurrencyManager", () => {
     fireEvent.click(screen.getByRole("button", { name: "Nova moeda" }));
 
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByLabelText("Mostrar na loja")).toBeChecked();
+    expect(
+      within(dialog).getByRole("switch", { name: "Mostrar na loja" }),
+    ).toBeChecked();
     expect(
       within(dialog).getByLabelText("Unidades por centavo"),
     ).toHaveValue(0);
