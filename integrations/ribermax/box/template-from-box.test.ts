@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { BoxTemplateData } from "@/lib/legacy/rbx-types";
+import type { BoxTemplateData } from "@/integrations/ribermax/rbx/rbx-types";
 
 import { buildTemplateFromBox } from "./template-from-box";
 import { TEMPLATE_SARRAFOS_CUT_NAME } from "./template-subtask-dependencies";
@@ -241,5 +241,21 @@ describe("buildTemplateFromBox", () => {
     );
     expect(byName["Montagem dos pés"]).toMatchObject({ qty: 2, expectedTime: 5 });
     expect(byName["Montagem da base"]).toMatchObject({ expectedTime: 40 });
+  });
+
+  it("scales cut, adhesive and fastener times from injected rates", () => {
+    const byName = Object.fromEntries(
+      (
+        buildTemplateFromBox(baseData(), {
+          cutSeconds: 90,
+          adhesiveSeconds: 10,
+          fastenerSeconds: 2,
+        }).subTask ?? []
+      ).map((s) => [s.name, s]),
+    );
+    expect(byName["Corte dos pés da base"]?.expectedTime).toBe(90);
+    expect(byName["Corte das chapas das laterais"]?.expectedTime).toBe(180);
+    expect(byName["Montagem da base"]?.expectedTime).toBe(156);
+    expect(byName["Fixação dos adesivos das laterais"]?.expectedTime).toBe(40);
   });
 });

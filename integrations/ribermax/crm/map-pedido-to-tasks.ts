@@ -1,3 +1,5 @@
+import type { ExternalTaskDraft } from "@/lib/integrations/types";
+
 import { parsePedidoItens, type CrmPedidoItem } from "./parse-pedido-itens";
 
 export interface CrmPedidoEntity {
@@ -15,6 +17,17 @@ export interface CrmTaskDraft {
   deliveryDate: string | null;
   templateTaskCode: string;
   prodId: number;
+}
+
+export function toExternalTaskDraft(draft: CrmTaskDraft): ExternalTaskDraft {
+  return {
+    name: draft.name,
+    qty: draft.qty,
+    deliveryDate: draft.deliveryDate,
+    templateCode: draft.templateTaskCode,
+    externalKey: draft.crmItemKey,
+    externalGroupId: String(draft.crmPedidoId),
+  };
 }
 
 export function buildCrmItemKey(pedidoId: number, itemIndex: number): string {

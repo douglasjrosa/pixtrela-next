@@ -15,7 +15,7 @@ vi.mock("@/lib/repos/steps", () => ({
 
 vi.mock("@/lib/repos/tasks", () => ({
   listActiveTasksForBoard: (...args: unknown[]) => listActiveTasksForBoard(...args),
-  findTaskByCrmItemKey: (...args: unknown[]) => findTaskByCrmItemKey(...args),
+  findTaskByExternalKey: (...args: unknown[]) => findTaskByCrmItemKey(...args),
   getTaskById: (...args: unknown[]) => getTaskById(...args),
   createTask: (...args: unknown[]) => createTask(...args),
   updateCrmPedidoTaskFields: (...args: unknown[]) => updateCrmPedidoTaskFields(...args),
@@ -26,7 +26,7 @@ vi.mock("@/lib/business/apply-step-task-order", () => ({
     applyAutoStepTaskOrderingAfterTaskChange(...args),
 }));
 
-vi.mock("@/lib/business/ensure-template-for-prod-id", () => ({
+vi.mock("@/integrations/ribermax/box/ensure-template-for-prod-id", () => ({
   ensureTemplateTaskForProdId: (...args: unknown[]) =>
     ensureTemplateTaskForProdId(...args),
 }));

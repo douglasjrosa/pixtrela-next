@@ -1,11 +1,15 @@
-import { buildTemplateFromBox } from "@/lib/business/template-from-box";
-import { fetchBoxTemplateData } from "@/lib/legacy/rbx-client";
+import { buildTemplateFromBox } from "@/integrations/ribermax/box/template-from-box";
+import { fetchBoxTemplateData } from "@/integrations/ribermax/rbx/rbx-client";
+import { getOrCreateBoxTemplateRates } from "@/integrations/ribermax/settings/repo";
 import {
   createTemplateTask,
   findTemplateByCode,
   updateTemplateTask,
 } from "@/lib/repos/templates";
-import type { TemplateSubTaskComponentInput } from "@/lib/schemas/template-task";
+import type {
+  TemplateSubTaskComponentInput,
+  TemplateTaskFormInput,
+} from "@/lib/schemas/template-task";
 
 function dependencyIndexesFrom(
   dependencies: TemplateSubTaskComponentInput["dependencies"],
@@ -43,8 +47,11 @@ export async function ensureTemplateTaskForProdId(
     subTasks: [],
   });
 
-  const data = await fetchBoxTemplateData(prodId);
-  const draft = buildTemplateFromBox(data);
+  const [data, rates] = await Promise.all([
+    fetchBoxTemplateData(prodId),
+    getOrCreateBoxTemplateRates(),
+  ]);
+  const draft = buildTemplateFromBox(data, rates);
 
   await updateTemplateTask({
     id: created.id,
@@ -54,4 +61,19 @@ export async function ensureTemplateTaskForProdId(
   });
 
   return created.id;
+}
+
+/** Loads a box template draft from RBX using current plugin time rates. */
+export async function loadRibermaxTemplateFromBoxCode(
+  code: string,
+): Promise<TemplateTaskFormInput> {
+  const boxId = Number(code.trim());
+  if (!Number.isInteger(boxId) || boxId <= 0) {
+    throw new Error("invalidCode");
+  }
+  const [data, rates] = await Promise.all([
+    fetchBoxTemplateData(boxId),
+    getOrCreateBoxTemplateRates(),
+  ]);
+  return buildTemplateFromBox(data, rates);
 }

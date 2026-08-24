@@ -24,8 +24,8 @@ vi.mock("@/lib/repos/templates", () => ({
     hardDeleteTemplateTask(...args),
 }));
 
-vi.mock("@/lib/legacy/rbx-client", () => ({
-  fetchBoxTemplateData: vi.fn(),
+vi.mock("@/integrations/ribermax", () => ({
+  loadRibermaxTemplateFromBoxCode: vi.fn(),
 }));
 
 vi.mock("@/lib/templates/load-template-list-page", () => ({

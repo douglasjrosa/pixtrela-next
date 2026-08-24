@@ -3,8 +3,7 @@
 import { revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
-import { buildTemplateFromBox } from "@/lib/business/template-from-box";
-import { fetchBoxTemplateData } from "@/lib/legacy/rbx-client";
+import { loadRibermaxTemplateFromBoxCode } from "@/integrations/ribermax";
 import type { Role } from "@/lib/auth/nav";
 import {
   canDeactivateTemplates,
@@ -115,12 +114,7 @@ export async function loadTemplateFromLegacy(
   code: string,
 ): Promise<void> {
   await assertCanManage();
-  const boxId = Number(code.trim());
-  if (!Number.isInteger(boxId) || boxId <= 0) {
-    throw new Error("invalidCode");
-  }
-  const data = await fetchBoxTemplateData(boxId);
-  const draft = buildTemplateFromBox(data);
+  const draft = await loadRibermaxTemplateFromBoxCode(code);
   await updateTemplate(documentId, draft);
 }
 

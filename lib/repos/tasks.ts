@@ -455,6 +455,14 @@ export async function findTaskByCrmItemKey(
   return row ?? null;
 }
 
+/** Alias for plugins: persists against `tasks.crm_item_key` today. */
+export async function findTaskByExternalKey(
+  externalKey: string,
+  db: Db = getDb(),
+): Promise<CrmPedidoTaskRecord | null> {
+  return findTaskByCrmItemKey(externalKey, db);
+}
+
 export async function updateCrmPedidoTaskFields(
   id: string,
   input: { name: string; qty: number; deliveryDate?: string | null },

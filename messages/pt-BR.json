@@ -719,6 +719,7 @@
       "automations": "Automações",
       "kiosk": "Totem",
       "login": "Login",
+      "integrations": "Integrações",
       "themes": "Temas",
       "subtasks": "Subtarefas"
     },
@@ -1031,6 +1032,13 @@
     "kioskSessionIdleSeconds": "Tempo de sessão do Totem (segundos):",
     "kioskLiveChainIntervalSeconds":
       "Intervalo máximo para permitir subtarefas simultâneas (s)",
+    "ribermax": {
+      "title": "Ribermax — receita de caixa",
+      "ratesHelp": "Vale só para templates criados daqui pra frente. Templates e tarefas já existentes não mudam.",
+      "cutSeconds": "Segundos por corte",
+      "adhesiveSeconds": "Segundos por adesivo",
+      "fastenerSeconds": "Segundos por unidade de montagem"
+    },
     "entryAccessHeading": "Formas de acesso",
     "entryAccessComputer": "No computador",
     "entryAccessMobile": "No celular",
