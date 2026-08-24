@@ -2,7 +2,8 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { auth } from "@/auth";
 import { AppNav } from "@/components/app-nav";
-import { COLABORATOR_CONTENT_SURFACE_CLASS } from "@/components/colaborator/colaborator-content-surface";
+import { COLABORATOR_CONTENT_SURFACE_CLASS } from
+  "@/components/colaborator/colaborator-content-surface";
 import { ColaboratorHeader } from "@/components/colaborator/colaborator-header";
 import { ColaboratorSurface } from "@/components/colaborator/colaborator-surface";
 import { RouteThemeFrame } from "@/components/themes/route-theme-frame";
