@@ -19,12 +19,6 @@ vi.mock("@/lib/repos/carts", () => ({
   syncOpenCartDraft: (...args: unknown[]) => syncOpenCartDraft(...args),
 }));
 
-function expectStoreRevalidation(): void {
-  expect(revalidateTag).toHaveBeenCalledWith("drizzle:carts", "default");
-  expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
-  expect(revalidatePath).toHaveBeenCalledWith("/[documentId]/store", "layout");
-}
-
 describe("store cart draft actions", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -33,7 +27,7 @@ describe("store cart draft actions", () => {
     syncOpenCartDraft.mockReset();
   });
 
-  it("saveCartDraft syncs award quantities and revalidates store layout", async () => {
+  it("saveCartDraft syncs award and currency quantities", async () => {
     syncOpenCartDraft.mockResolvedValueOnce(undefined);
     const { saveCartDraft } = await import("./actions");
     const formData = new FormData();
@@ -43,11 +37,8 @@ describe("store cart draft actions", () => {
         items: [
           {
             awardId: "11111111-1111-4111-8111-111111111111",
+            currencyId: "22222222-2222-4222-8222-222222222222",
             qty: 3,
-          },
-          {
-            awardId: "22222222-2222-4222-8222-222222222222",
-            qty: 0,
           },
         ],
       }),
@@ -59,10 +50,13 @@ describe("store cart draft actions", () => {
     expect(syncOpenCartDraft).toHaveBeenCalledWith({
       userId: "col-1",
       items: [
-        { awardId: "11111111-1111-4111-8111-111111111111", qty: 3 },
-        { awardId: "22222222-2222-4222-8222-222222222222", qty: 0 },
+        {
+          awardId: "11111111-1111-4111-8111-111111111111",
+          currencyId: "22222222-2222-4222-8222-222222222222",
+          qty: 3,
+        },
       ],
     });
-    expectStoreRevalidation();
+    expect(revalidatePath).toHaveBeenCalledWith("/[documentId]/store", "layout");
   });
 });

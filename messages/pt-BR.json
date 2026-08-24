@@ -313,7 +313,6 @@
     "success": "Troca realizada com sucesso.",
     "scrollToStore": "Resgatar prêmios",
     "goToStore": "Ir para a loja",
-    "starsRemaining": "Faltam {count} Estrelas",
     "redeemCelebration": "Você conquistou {award}",
     "daysRemaining": "Faltam {days} dias para resgatar",
     "imageAlt": "Imagem do prêmio {title}",
@@ -323,8 +322,7 @@
     "windowClosedShort": "Janela de trocas fechada."
   },
   "store": {
-    "title": "Loja de prêmios",
-    "viewOrders": "Minhas trocas"
+    "title": "Loja de prêmios"
   },
   "cart": {
     "title": "Carrinho",
@@ -336,7 +334,6 @@
     "total": "Total",
     "balance": "Seu saldo",
     "balanceAfterExchanges": "Saldo depois das trocas",
-    "starsRemaining": "Faltam {count} para concluir",
     "autoCloseBanner": "O carrinho fecha automaticamente no dia {lastDay}. Não é necessário confirmar a troca.",
     "readOnlyClosed": "A janela de trocas encerrou. Seu carrinho será processado automaticamente.",
     "saveFailed": "Não foi possível salvar o carrinho.",
@@ -985,6 +982,7 @@
     "newCurrency": "Nova moeda",
     "editCurrency": "Editar moeda",
     "currencyName": "Nome",
+    "currencyShowInStore": "Mostrar na loja",
     "currencyTitle": "Título",
     "currencyPluralTitle": "Título no plural",
     "currencyIcon": "Ícone",

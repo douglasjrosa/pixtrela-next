@@ -192,6 +192,7 @@ export const currencies = pgTable("currencies", {
     .notNull(),
   exchangeRate: doublePrecision("exchange_rate").default(0).notNull(),
   active: boolean("active").default(true).notNull(),
+  showInStore: boolean("show_in_store").default(true).notNull(),
   iconMediaId: uuid("icon_media_id").references(() => mediaAssets.id),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -645,6 +646,9 @@ export const cartItems = pgTable(
     awardId: uuid("award_id")
       .references(() => awards.id)
       .notNull(),
+    currencyId: uuid("currency_id")
+      .references(() => currencies.id)
+      .notNull(),
     qty: integer("qty").default(1).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -654,7 +658,11 @@ export const cartItems = pgTable(
       .notNull(),
   },
   (table) => [
-    unique("cart_items_cart_award_unique").on(table.cartId, table.awardId),
+    unique("cart_items_cart_award_currency_unique").on(
+      table.cartId,
+      table.awardId,
+      table.currencyId,
+    ),
     index("cart_items_cart_id_idx").on(table.cartId),
   ],
 );

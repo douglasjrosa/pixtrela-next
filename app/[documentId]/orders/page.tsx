@@ -5,19 +5,16 @@ import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { buttonVariants } from "@/components/ui/button";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
+import { buildOrderPath, buildOrdersPath } from "@/lib/orders/orders-path";
 import { listOrdersForUser } from "@/lib/repos/exchange-orders";
-import {
-  buildStoreOrderPath,
-  buildStoreOrdersPath,
-  buildStorePath,
-} from "@/lib/store/store-path";
+import { buildStorePath } from "@/lib/store/store-path";
 import { cn } from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{ documentId: string }>;
 }
 
-export default async function StoreOrdersPage({ params }: PageProps) {
+export default async function ColaboratorOrdersPage({ params }: PageProps) {
   const t = await getTranslations("orders");
   const tStore = await getTranslations("store");
   const session = await auth();
@@ -27,7 +24,7 @@ export default async function StoreOrdersPage({ params }: PageProps) {
     redirect("/");
   }
   if (session.user.id !== documentId) {
-    redirect(buildStoreOrdersPath(session.user.id));
+    redirect(buildOrdersPath(session.user.id));
   }
 
   const orders = await listOrdersForUser(documentId, 50);
@@ -51,7 +48,7 @@ export default async function StoreOrdersPage({ params }: PageProps) {
           {orders.map((order) => (
             <li key={order.id}>
               <Link
-                href={buildStoreOrderPath(documentId, order.id)}
+                href={buildOrderPath(documentId, order.id)}
                 className={
                   "block space-y-1 rounded-2xl border bg-card px-4 py-3 " +
                   "transition-colors hover:bg-muted/40"

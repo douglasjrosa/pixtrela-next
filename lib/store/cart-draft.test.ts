@@ -1,52 +1,78 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  clampDraftQty,
-  computeCartDraftTotal,
+  clampAwardCurrencyQty,
   isCartDraftDirty,
-  mapCartDraftLines,
+  maxQtyForCurrency,
   serializeCartDraftPayload,
-  type CartDraftItem,
+  setAwardCurrencyQty,
+  type CartDraftAward,
 } from "./cart-draft";
 
-const BASE_ITEM: CartDraftItem = {
-  id: "11111111-1111-4111-8111-111111111111",
+const AWARD: CartDraftAward = {
+  awardId: "11111111-1111-4111-8111-111111111111",
   title: "Estrela",
-  qty: 2,
   stock: 5,
   imageSrc: null,
-  unitCost: 100,
+  prices: [
+    {
+      currencyId: "22222222-2222-4222-8222-222222222222",
+      label: "Estrelas",
+      iconUrl: null,
+      unitCost: 100,
+      qty: 2,
+    },
+    {
+      currencyId: "33333333-3333-4333-8333-333333333333",
+      label: "Gemas",
+      iconUrl: null,
+      unitCost: 50,
+      qty: 1,
+    },
+  ],
 };
 
 describe("cart-draft helpers", () => {
-  it("detects dirty drafts by qty changes and removals", () => {
-    const baseline = [BASE_ITEM];
-    expect(isCartDraftDirty(baseline, [{ ...BASE_ITEM, qty: 3 }])).toBe(true);
-    expect(isCartDraftDirty(baseline, [{ ...BASE_ITEM, qty: 0 }])).toBe(true);
-    expect(isCartDraftDirty(baseline, [])).toBe(true);
-    expect(isCartDraftDirty(baseline, baseline)).toBe(false);
+  it("limits qty by remaining stock across currencies and remaining balance", () => {
+    expect(
+      maxQtyForCurrency([AWARD], AWARD.awardId, AWARD.prices[0]!.currencyId, 400),
+    ).toBe(4);
+    expect(
+      clampAwardCurrencyQty(
+        [AWARD],
+        AWARD.awardId,
+        AWARD.prices[1]!.currencyId,
+        9,
+        150,
+      ),
+    ).toBe(3);
   });
 
-  it("computes line totals and cart total from draft items", () => {
-    const lines = mapCartDraftLines([
-      BASE_ITEM,
-      { ...BASE_ITEM, id: "22222222-2222-4222-8222-222222222222", qty: 1, unitCost: 50 },
-    ]);
-    expect(lines[0]?.lineCost).toBe(200);
-    expect(computeCartDraftTotal(lines)).toBe(250);
+  it("detects dirty drafts by award plus currency qty", () => {
+    expect(isCartDraftDirty([AWARD], [AWARD])).toBe(false);
+    expect(
+      isCartDraftDirty(
+        [AWARD],
+        setAwardCurrencyQty(
+          [AWARD],
+          AWARD.awardId,
+          AWARD.prices[0]!.currencyId,
+          1,
+          1000,
+        ),
+      ),
+    ).toBe(true);
   });
 
-  it("serializes draft payload for server actions", () => {
-    expect(serializeCartDraftPayload([BASE_ITEM])).toBe(
-      JSON.stringify({
-        items: [{ awardId: BASE_ITEM.id, qty: 2 }],
-      }),
-    );
-  });
-
-  it("clamps draft qty to stock bounds", () => {
-    expect(clampDraftQty(0, 5)).toBe(0);
-    expect(clampDraftQty(9, 5)).toBe(5);
-    expect(clampDraftQty(3, 0)).toBe(0);
+  it("serializes every award currency pair", () => {
+    const parsed = JSON.parse(serializeCartDraftPayload([AWARD])) as {
+      items: Array<{ awardId: string; currencyId: string; qty: number }>;
+    };
+    expect(parsed.items).toHaveLength(2);
+    expect(parsed.items[0]).toEqual({
+      awardId: AWARD.awardId,
+      currencyId: AWARD.prices[0]!.currencyId,
+      qty: 2,
+    });
   });
 });

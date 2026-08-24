@@ -1,78 +1,50 @@
 import { and, eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { unstable_cache } from "next/cache";
 
 import { awardPrices, awards, currencies, mediaAssets } from "@/drizzle/schema";
-import type { CurrencyBalanceProps } from "@/lib/colaborator/balance-view";
 import { getDb } from "@/lib/db/client";
 import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
-import {
-  exchangeCost,
-  isExchangeWindowOpen,
-} from "@/lib/domain/exchange";
+import { isExchangeWindowOpen } from "@/lib/domain/exchange";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { getOrCreateMonthlyBalance } from "@/lib/repos/balances";
 import { listOpenCartItemRows } from "@/lib/repos/carts";
-import { getCurrencyForSubtasks } from "@/lib/repos/settings";
 import { findActiveTeamWindowForUser } from "@/lib/repos/teams";
-import { mergeCatalogWithCart } from "@/lib/store/merge-catalog-with-cart";
+import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
+import {
+  mergeCatalogWithCart,
+  type StoreCurrencyView,
+} from "@/lib/store/merge-catalog-with-cart";
 
 export const STORE_AWARDS_CACHE_TAG = "drizzle:awards";
 export const STORE_CURRENCIES_CACHE_TAG = "drizzle:currencies";
-
-export interface StoreAwardView {
-  id: string;
-  title: string;
-  description?: string;
-  warnings?: string;
-  currencyId: string;
-  currencyLabel: string;
-  cost: number;
-  stock: number;
-  imageUrl?: string | null;
-}
 
 interface TeamEntity {
   exchangesFirstDay: number;
   exchangesLastDay: number;
 }
 
-export interface StoreCatalogLine {
-  awardId: string;
-  title: string;
-  qty: number;
-  stock: number;
-  imageUrl: string | null;
-  unitCost: number;
-}
-
 export interface StorePageData {
-  balance: CurrencyBalanceProps;
-  spendableBalance: number;
-  paymentCurrencyId: string | null;
-  catalogLines: StoreCatalogLine[];
+  currencies: StoreCurrencyView[];
+  cards: ReturnType<typeof mergeCatalogWithCart>;
   windowOpen: boolean;
   team: TeamEntity | null;
 }
 
-const EMPTY_BALANCE: CurrencyBalanceProps = {
-  balance: 0,
-  previousBalance: 0,
-  totalIncome: 0,
-  totalOutcome: 0,
-};
+const awardImages = alias(mediaAssets, "award_images");
 
 interface CatalogAwardRow {
-  id: string;
+  awardId: string;
   name: string;
   title: string | null;
-  description: string | null;
-  warnings: string | null;
   stock: number;
   imageUrl: string | null;
   currencyId: string;
   currencyName: string;
   currencyTitle: string | null;
   currencyPluralTitle: string | null;
+  currencyActive: boolean;
+  currencyShowInStore: boolean;
   numberOf: number;
 }
 
@@ -80,23 +52,23 @@ async function fetchStoreCatalogRows(): Promise<CatalogAwardRow[]> {
   const db = getDb();
   return db
     .select({
-      id: awards.id,
+      awardId: awards.id,
       name: awards.name,
       title: awards.title,
-      description: awards.description,
-      warnings: awards.warnings,
       stock: awards.stock,
-      imageUrl: mediaAssets.url,
+      imageUrl: awardImages.url,
       currencyId: awardPrices.currencyId,
       currencyName: currencies.name,
       currencyTitle: currencies.title,
       currencyPluralTitle: currencies.pluralTitle,
+      currencyActive: currencies.active,
+      currencyShowInStore: currencies.showInStore,
       numberOf: awardPrices.numberOf,
     })
     .from(awards)
     .innerJoin(awardPrices, eq(awardPrices.awardId, awards.id))
     .innerJoin(currencies, eq(awardPrices.currencyId, currencies.id))
-    .leftJoin(mediaAssets, eq(awards.imageMediaId, mediaAssets.id))
+    .leftJoin(awardImages, eq(awards.imageMediaId, awardImages.id))
     .where(and(eq(awards.active, true), eq(awards.showInStore, true)));
 }
 
@@ -109,101 +81,80 @@ const loadCachedStoreCatalog = unstable_cache(
   },
 );
 
-function mapCatalogToAwards(
-  rows: CatalogAwardRow[],
-  paymentCurrencyId: string,
-): StoreAwardView[] {
-  const byAward = new Map<string, StoreAwardView>();
+async function loadStoreCurrencies(
+  userId: string,
+): Promise<StoreCurrencyView[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      currencyId: currencies.id,
+      name: currencies.name,
+      title: currencies.title,
+      pluralTitle: currencies.pluralTitle,
+      iconUrl: mediaAssets.url,
+    })
+    .from(currencies)
+    .leftJoin(mediaAssets, eq(currencies.iconMediaId, mediaAssets.id))
+    .where(and(eq(currencies.active, true), eq(currencies.showInStore, true)))
+    .orderBy(currencies.name);
 
+  const result: StoreCurrencyView[] = [];
   for (const row of rows) {
-    if (row.currencyId !== paymentCurrencyId) continue;
-
-    const existing = byAward.get(row.id);
-    if (existing) continue;
-
-    const currencyLabel = resolveCurrencyPluralTitle({
-      pluralTitle: row.currencyPluralTitle,
-      title: row.currencyTitle,
-      name: row.currencyName,
+    const label = resolveCurrencyPluralTitle({
+      pluralTitle: row.pluralTitle,
+      title: row.title,
+      name: row.name,
     });
-
-    byAward.set(row.id, {
-      id: row.id,
-      title: row.title ?? row.name,
-      description: row.description ?? undefined,
-      warnings: row.warnings ?? undefined,
+    const monthly = await getOrCreateMonthlyBalance({
+      userId,
+      currencyPluralTitle: label,
+    });
+    result.push({
       currencyId: row.currencyId,
-      currencyLabel,
-      cost: exchangeCost(
-        [
-          {
-            currencyId: row.currencyId,
-            currencyName: row.currencyName,
-            qty: row.numberOf,
-          },
-        ],
-        paymentCurrencyId,
-        1,
-      ),
-      stock: row.stock,
-      imageUrl: row.imageUrl,
+      label,
+      iconUrl: toBrowserMediaUrl(row.iconUrl),
+      balance: monthly.balance,
     });
   }
-
-  return Array.from(byAward.values());
+  return result;
 }
 
 export async function loadStorePage(userId: string): Promise<StorePageData> {
   try {
-    const payment = await getCurrencyForSubtasks();
     const team = await findActiveTeamWindowForUser(userId);
     const windowOpen = team ? isExchangeWindowOpen(team, new Date()) : false;
-
-    let balance: CurrencyBalanceProps = { ...EMPTY_BALANCE };
-    if (payment) {
-      const currencyLabel = resolveCurrencyPluralTitle({
-        pluralTitle: payment.currencyPluralTitle,
-        title: payment.currencyTitle,
-        name: payment.currencyName,
-      });
-      const monthly = await getOrCreateMonthlyBalance({
-        userId,
-        currencyPluralTitle: currencyLabel,
-      });
-      balance = {
-        balance: monthly.balance,
-        previousBalance: monthly.previousBalance,
-        totalIncome: monthly.totalIncome,
-        totalOutcome: monthly.totalOutcome,
-        currencyLabel,
-      };
-    }
-
-    const paymentCurrencyId = payment?.currencyId ?? null;
-    const [catalogRows, cartRows] = await Promise.all([
+    const [catalogRows, cartRows, storeCurrencies] = await Promise.all([
       loadCachedStoreCatalog(),
       listOpenCartItemRows(userId),
+      loadStoreCurrencies(userId),
     ]);
-    const awards = paymentCurrencyId
-      ? mapCatalogToAwards(catalogRows, paymentCurrencyId)
-      : [];
-    const catalogLines = mergeCatalogWithCart(awards, cartRows);
+
+    const cards = mergeCatalogWithCart(
+      catalogRows.map((row) => ({
+        awardId: row.awardId,
+        title: row.title ?? row.name,
+        stock: row.stock,
+        imageUrl: row.imageUrl,
+        currencyId: row.currencyId,
+        unitCost: row.numberOf,
+        currencyActive: row.currencyActive,
+        currencyShowInStore: row.currencyShowInStore,
+      })),
+      storeCurrencies,
+      cartRows,
+    );
 
     return {
-      balance,
-      spendableBalance: balance.balance,
-      paymentCurrencyId,
-      catalogLines,
+      currencies: storeCurrencies,
+      cards,
       windowOpen,
       team,
     };
   } catch (error) {
     rethrowIfNavigationError(error);
     return {
-      balance: EMPTY_BALANCE,
-      spendableBalance: 0,
-      paymentCurrencyId: null,
-      catalogLines: [],
+      currencies: [],
+      cards: [],
       windowOpen: false,
       team: null,
     };
@@ -211,9 +162,6 @@ export async function loadStorePage(userId: string): Promise<StorePageData> {
 }
 
 /** Exported for tests — bypasses unstable_cache. */
-export async function loadStoreCatalogUncached(
-  paymentCurrencyId: string,
-): Promise<StoreAwardView[]> {
-  const rows = await fetchStoreCatalogRows();
-  return mapCatalogToAwards(rows, paymentCurrencyId);
+export async function loadStoreCatalogUncached(): Promise<CatalogAwardRow[]> {
+  return fetchStoreCatalogRows();
 }
