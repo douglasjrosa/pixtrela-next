@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 
 import { COLABORATOR_CONTENT_SURFACE_CLASS } from
   "@/components/colaborator/colaborator-content-surface";
-import { COLABORATOR_STORE_SURFACE_MAX_WIDTH_CLASS } from "@/lib/store/store-layout";
 import { isColaboratorStoreLayoutPath } from "@/lib/store/store-path";
 import { cn } from "@/lib/utils";
 
@@ -28,12 +27,7 @@ export function ColaboratorDocumentPanel({
       className={cn(
         COLABORATOR_CONTENT_SURFACE_CLASS,
         "min-h-0",
-        isStore
-          ? cn(
-              COLABORATOR_STORE_SURFACE_MAX_WIDTH_CLASS,
-              "flex flex-col overflow-hidden",
-            )
-          : "overflow-y-auto",
+        isStore ? "flex flex-col overflow-hidden" : "overflow-y-auto",
         className,
       )}
       style={style}

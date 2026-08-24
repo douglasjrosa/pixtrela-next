@@ -6,6 +6,7 @@ import { CartEditor } from "@/components/store/cart-editor";
 import { StoreWindowInfoCard } from "@/components/store/store-window-info-card";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 import { loadStorePage } from "@/lib/store/load-store-page";
+import { STORE_PAGE_SHELL_CLASS } from "@/lib/store/store-layout";
 import { buildStorePath } from "@/lib/store/store-path";
 
 interface PageProps {
@@ -41,7 +42,7 @@ export default async function ColaboratorStorePage({ params }: PageProps) {
   }));
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-4">
+    <section className={STORE_PAGE_SHELL_CLASS}>
       <h1 className="shrink-0 font-heading text-2xl font-bold">
         {tStore("title")}
       </h1>

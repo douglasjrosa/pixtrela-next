@@ -116,7 +116,7 @@ describe("CartEditor", () => {
     );
     expect(
       screen.getByTestId("store-awards-column").parentElement,
-    ).toHaveClass("grid-cols-[7fr_3fr]");
+    ).toHaveClass("grid-cols-2");
     expect(screen.getByText("Estrela Vermelha").closest("li")).toContainElement(
       screen.getByRole("button", { name: "+" }),
     );

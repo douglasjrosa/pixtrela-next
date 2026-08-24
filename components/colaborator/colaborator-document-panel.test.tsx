@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-import { COLABORATOR_STORE_SURFACE_MAX_WIDTH_CLASS } from "@/lib/store/store-layout";
-
 import { ColaboratorDocumentPanel } from "./colaborator-document-panel";
 
 const pathname = { value: "/colab-1/store" };
@@ -12,7 +10,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("ColaboratorDocumentPanel", () => {
-  it("widens the store shell and disables page scroll for split columns", () => {
+  it("keeps a mobile-width store shell and disables page scroll", () => {
     pathname.value = "/colab-1/store";
     render(
       <ColaboratorDocumentPanel>
@@ -21,8 +19,9 @@ describe("ColaboratorDocumentPanel", () => {
     );
 
     const panel = screen.getByText("loja").parentElement;
-    expect(panel?.className).toContain(COLABORATOR_STORE_SURFACE_MAX_WIDTH_CLASS);
+    expect(panel?.className).toContain("max-w-lg");
     expect(panel?.className).toContain("overflow-hidden");
+    expect(panel?.className).not.toContain("overflow-y-auto");
   });
 
   it("keeps the default scrollable panel on other colaborator pages", () => {
@@ -35,8 +34,6 @@ describe("ColaboratorDocumentPanel", () => {
 
     const panel = screen.getByText("home").parentElement;
     expect(panel?.className).toContain("overflow-y-auto");
-    expect(panel?.className).not.toContain(
-      COLABORATOR_STORE_SURFACE_MAX_WIDTH_CLASS,
-    );
+    expect(panel?.className).toContain("max-w-lg");
   });
 });
