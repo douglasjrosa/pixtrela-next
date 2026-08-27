@@ -3,7 +3,7 @@ import { z } from "zod";
 export const SUBTASK_PRESET_LIST_SORT_COLUMNS = [
   "name",
   "sharingType",
-  "expectedTime",
+  "actionName",
 ] as const;
 
 export const SUBTASK_PRESET_LIST_SORT_DIRECTIONS = ["asc", "desc"] as const;

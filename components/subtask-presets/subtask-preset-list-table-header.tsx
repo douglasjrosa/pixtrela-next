@@ -34,8 +34,8 @@ export async function SubtaskPresetListTableHeader({
           align="center"
         />
         <SubtaskPresetListSortHeaderLink
-          column="expectedTime"
-          label={tSubtasks("expectedTime")}
+          column="actionName"
+          label={tSubtasks("action")}
           sort={sort}
           filters={filters}
           align="center"

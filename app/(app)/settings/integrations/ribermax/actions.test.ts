@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const revalidateTag = vi.fn();
 const revalidatePath = vi.fn();
 const redirect = vi.fn();
-const upsertBoxTemplateRates = vi.fn();
+const upsertRibermaxConnection = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "jwt" })),
@@ -19,11 +19,12 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/integrations/ribermax", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/integrations/ribermax")>();
+  const actual =
+    await importOriginal<typeof import("@/integrations/ribermax")>();
   return {
     ...actual,
-    upsertBoxTemplateRates: (...args: unknown[]) =>
-      upsertBoxTemplateRates(...args),
+    upsertRibermaxConnection: (...args: unknown[]) =>
+      upsertRibermaxConnection(...args),
   };
 });
 
@@ -33,20 +34,18 @@ describe("ribermax settings actions", () => {
     revalidateTag.mockReset();
     revalidatePath.mockReset();
     redirect.mockReset();
-    upsertBoxTemplateRates.mockReset();
+    upsertRibermaxConnection.mockReset();
   });
 
-  it("upserts box template rates and revalidates", async () => {
-    const { updateRibermaxBoxTemplateRates } = await import("./actions");
+  it("upserts connection credentials and revalidates", async () => {
+    const { updateRibermaxConnection } = await import("./actions");
     const formData = new FormData();
-    formData.set("cutSeconds", "90");
-    formData.set("adhesiveSeconds", "15");
-    formData.set("fastenerSeconds", "2");
-    await updateRibermaxBoxTemplateRates(formData);
-    expect(upsertBoxTemplateRates).toHaveBeenCalledWith({
-      cutSeconds: 90,
-      adhesiveSeconds: 15,
-      fastenerSeconds: 2,
+    formData.set("baseUrl", "https://rbx.example");
+    formData.set("token", "secret-token");
+    await updateRibermaxConnection(formData);
+    expect(upsertRibermaxConnection).toHaveBeenCalledWith({
+      baseUrl: "https://rbx.example",
+      token: "secret-token",
     });
     expect(revalidatePath).toHaveBeenCalledWith(
       "/settings/integrations/ribermax",

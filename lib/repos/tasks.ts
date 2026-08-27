@@ -16,7 +16,11 @@ import {
   type ActivitySession,
 } from "@/lib/business/task-progress";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
-import { scaleExpectedTimeByTaskQty } from "@/lib/domain/work-currency";
+import {
+  rescaleExpectedTimeForTaskQtyChange,
+  rescaleQtyForTaskQtyChange,
+  scaleTemplateSubTaskForTask,
+} from "@/lib/domain/work-currency";
 import { getDb, type Db } from "@/lib/db/client";
 import type { TasksRevision } from "@/lib/tasks/tasks-revision";
 import { recordActivityViaKiosk } from "@/lib/repos/kiosk-subtasks";
@@ -76,19 +80,20 @@ export async function createTask(
         let totalExpected = 0;
 
         for (const row of templateRows) {
-          const expectedTime = scaleExpectedTimeByTaskQty(
-            row.expectedTime,
-            qty,
-          );
-          totalExpected += expectedTime;
+          const scaled = scaleTemplateSubTaskForTask({
+            templateQty: row.qty,
+            templateExpectedTime: row.expectedTime,
+            taskQty: qty,
+          });
+          totalExpected += scaled.expectedTime;
           const [created] = await tx
             .insert(subTasks)
             .values({
               taskId: task.id,
               name: row.name,
-              qty: row.qty,
+              qty: scaled.qty,
               index: row.index,
-              expectedTime,
+              expectedTime: scaled.expectedTime,
               sharingType: row.sharingType,
               maxSameTimeWorkers: row.maxSameTimeWorkers,
               linkedToPrevious: row.linkedToPrevious,
@@ -495,20 +500,67 @@ export async function updateTaskFields(
   input: UpdateTaskInput,
   db: Db = getDb(),
 ) {
-  const [row] = await db
-    .update(tasks)
-    .set({
-      name: input.name.trim(),
-      qty: Math.max(1, input.qty),
-      deliveryDate: input.deliveryDate ?? null,
-      status: input.status,
-      templateTaskCode: input.templateTaskCode?.trim() || null,
-      updatedAt: new Date(),
-    })
-    .where(eq(tasks.id, id))
-    .returning();
-  if (!row) throw new Error("taskNotFound");
-  return row;
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({ id: tasks.id, qty: tasks.qty })
+      .from(tasks)
+      .where(eq(tasks.id, id))
+      .limit(1);
+    if (!current) throw new Error("taskNotFound");
+
+    const nextQty = Math.max(1, input.qty);
+    const previousQty = Math.max(1, current.qty);
+
+    if (previousQty !== nextQty) {
+      const rows = await tx
+        .select({
+          id: subTasks.id,
+          qty: subTasks.qty,
+          expectedTime: subTasks.expectedTime,
+        })
+        .from(subTasks)
+        .where(eq(subTasks.taskId, id));
+
+      let totalExpected = 0;
+      for (const row of rows) {
+        const qty = rescaleQtyForTaskQtyChange(
+          row.qty,
+          previousQty,
+          nextQty,
+        );
+        const expectedTime = rescaleExpectedTimeForTaskQtyChange(
+          row.expectedTime,
+          previousQty,
+          nextQty,
+        );
+        totalExpected += expectedTime;
+        await tx
+          .update(subTasks)
+          .set({ qty, expectedTime, updatedAt: new Date() })
+          .where(eq(subTasks.id, row.id));
+      }
+
+      await tx
+        .update(tasks)
+        .set({ totalExpectedTime: totalExpected })
+        .where(eq(tasks.id, id));
+    }
+
+    const [row] = await tx
+      .update(tasks)
+      .set({
+        name: input.name.trim(),
+        qty: nextQty,
+        deliveryDate: input.deliveryDate ?? null,
+        status: input.status,
+        templateTaskCode: input.templateTaskCode?.trim() || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, id))
+      .returning();
+    if (!row) throw new Error("taskNotFound");
+    return row;
+  });
 }
 
 export async function setTaskActive(

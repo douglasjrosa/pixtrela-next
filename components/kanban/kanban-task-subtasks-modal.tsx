@@ -1546,7 +1546,7 @@ export function KanbanTaskSubtasksModal({
                 sharingType={infoSubtask.sharingType}
                 expectedTime={infoSubtask.expectedTime}
                 timeSpent={infoSubtask.timeSpent}
-                targetQty={Math.max(1, infoSubtask.qty) * Math.max(1, taskQty)}
+                targetQty={Math.max(1, infoSubtask.qty)}
                 paymentCurrency={paymentCurrency}
                 totalsFirst
               />

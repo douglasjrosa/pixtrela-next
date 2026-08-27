@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 
 import { renderWithIntl } from "@/test/test-utils";
+import { sampleSubTaskPreset } from "@/test/sample-subtask-preset";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 
 import { SubTaskPresetListProvider } from "./subtask-preset-list-context";
@@ -26,13 +27,7 @@ const filters = {
 };
 
 const initialPresets: SubTaskPreset[] = [
-  {
-    documentId: "p1",
-    name: "Primeiro",
-    sharingType: "qty",
-    maxSameTimeWorkers: 1,
-    expectedTime: 60,
-  },
+  sampleSubTaskPreset({ documentId: "p1", name: "Primeiro" }),
 ];
 
 describe("SubtaskPresetListTableFrame", () => {
@@ -44,13 +39,12 @@ describe("SubtaskPresetListTableFrame", () => {
   it("appends the next page when Carregar mais is clicked", async () => {
     loadMoreSubTaskPresets.mockResolvedValueOnce({
       presets: [
-        {
+        sampleSubTaskPreset({
           documentId: "p2",
           name: "Segundo",
           sharingType: "duration",
           maxSameTimeWorkers: 1,
-          expectedTime: 120,
-        },
+        }),
       ],
       page: 2,
       pageCount: 2,

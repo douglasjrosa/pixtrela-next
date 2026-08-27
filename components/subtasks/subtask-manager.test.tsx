@@ -242,7 +242,7 @@ describe("SubTaskManager", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows total qty as sub-task qty times task qty", () => {
+  it("shows stored sub-task qty without multiplying by task qty", () => {
     renderWithIntl(
       <SubTaskManager
         subtasks={subtasks}
@@ -255,7 +255,8 @@ describe("SubTaskManager", () => {
       />,
     );
 
-    expect(screen.getByText("20")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.queryByText("20")).not.toBeInTheDocument();
   });
 
   it("inserts a local draft clone after the source row from the modal", async () => {

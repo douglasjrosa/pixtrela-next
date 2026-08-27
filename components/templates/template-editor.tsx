@@ -11,7 +11,7 @@ import {
   deleteTemplate,
   loadTemplateFromLegacy,
   updateTemplate,
-} from "@/app/(app)/templates/actions";
+} from "@/app/(app)/templates/template-task-actions";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";

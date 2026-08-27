@@ -1,32 +1,28 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  DEFAULT_BOX_TEMPLATE_RATES,
-  ribermaxBoxTemplateRatesSchema,
-} from "./schema";
+import { ribermaxConnectionSchema } from "./schema";
 
-describe("ribermaxBoxTemplateRatesSchema", () => {
-  it("accepts the historic defaults", () => {
-    expect(ribermaxBoxTemplateRatesSchema.parse(DEFAULT_BOX_TEMPLATE_RATES)).toEqual(
-      {
-        cutSeconds: 60,
-        adhesiveSeconds: 30,
-        fastenerSeconds: 1,
-      },
-    );
+describe("ribermaxConnectionSchema", () => {
+  it("accepts a url and token", () => {
+    expect(
+      ribermaxConnectionSchema.parse({
+        baseUrl: "https://rbx.example",
+        token: "secret",
+      }),
+    ).toEqual({
+      baseUrl: "https://rbx.example",
+      token: "secret",
+    });
   });
 
-  it("rejects zero and oversized rates", () => {
+  it("rejects empty fields", () => {
     expect(() =>
-      ribermaxBoxTemplateRatesSchema.parse({
-        ...DEFAULT_BOX_TEMPLATE_RATES,
-        cutSeconds: 0,
-      }),
+      ribermaxConnectionSchema.parse({ baseUrl: "", token: "secret" }),
     ).toThrow();
     expect(() =>
-      ribermaxBoxTemplateRatesSchema.parse({
-        ...DEFAULT_BOX_TEMPLATE_RATES,
-        adhesiveSeconds: 3601,
+      ribermaxConnectionSchema.parse({
+        baseUrl: "https://rbx.example",
+        token: "",
       }),
     ).toThrow();
   });

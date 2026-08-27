@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { loadMoreSubTaskPresets } from "@/app/(app)/sub-task-presets/actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
-import { formatDurationMinutes } from "@/lib/format/duration";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { SubtaskPresetListFilters } from "@/lib/schemas/subtask-preset-list-filters";
 import { subtaskPresetListFilterKey } from "@/lib/subtask-presets/subtask-preset-list-params";
@@ -35,7 +34,6 @@ export function SubtaskPresetListTableFrame({
 }: SubtaskPresetListTableFrameProps) {
   const tPresets = useTranslations("subTaskPresets");
   const tSharing = useTranslations("subtasks.sharingType");
-  const tDuration = useTranslations("duration");
   const filterKey = subtaskPresetListFilterKey(filters);
   const [extraPresets, setExtraPresets] = useState<SubTaskPreset[]>([]);
   const [page, setPage] = useState(initialPage);
@@ -58,9 +56,7 @@ export function SubtaskPresetListTableFrame({
   function labelsFor(preset: SubTaskPreset) {
     return {
       sharingType: tSharing(preset.sharingType),
-      expectedTime: formatDurationMinutes(preset.expectedTime, (key, values) =>
-        tDuration(key, values),
-      ),
+      actionName: preset.actionName,
     };
   }
 

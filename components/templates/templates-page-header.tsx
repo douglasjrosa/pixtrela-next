@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { createTemplate } from "@/app/(app)/templates/actions";
+import { createTemplate } from "@/app/(app)/templates/template-task-actions";
 import { AddNewButton } from "@/components/ui/add-new-button";
 import { Button } from "@/components/ui/button";
 import { FormModalShell } from "@/components/ui/form-modal-shell";

@@ -8,7 +8,7 @@ import {
   bulkArchiveTemplates,
   bulkDeleteTemplates,
   loadMoreTemplates,
-} from "@/app/(app)/templates/actions";
+} from "@/app/(app)/templates/template-task-actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
