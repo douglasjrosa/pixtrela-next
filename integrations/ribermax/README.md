@@ -38,6 +38,8 @@ though the database does not enforce uniqueness.
 
 Unknown `presetName` fails the import (`presetNotFound:<name>`).
 
+See [RBX-PAYLOAD.md](./RBX-PAYLOAD.md) for the full PHP migration contract.
+
 ## Webhook
 
 `POST /api/webhooks/crm-pedido` (legacy URL used by CRM today)
