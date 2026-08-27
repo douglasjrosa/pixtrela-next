@@ -483,6 +483,7 @@
     "title": "Modelos",
     "tasksTab": "Tarefas",
     "subtasksTab": "Subtarefas",
+    "actionsTab": "Ações",
     "newTemplate": "Novo modelo",
     "editTemplate": "Editar modelo",
     "code": "Código",
@@ -529,6 +530,27 @@
     "loadMore": "Carregar mais",
     "loadingMore": "Carregando..."
   },
+  "factoryActions": {
+    "title": "Ações",
+    "new": "Nova ação",
+    "empty": "Nenhuma ação cadastrada.",
+    "saved": "Ação salva.",
+    "deleted": "Ação excluída.",
+    "error": "Não foi possível concluir a operação.",
+    "inUse": "Esta ação está vinculada a um modelo de subtarefa.",
+    "deleteTitle": "Excluir ação",
+    "deleteConfirm": "Excluir permanentemente esta ação?",
+    "name": "Nome",
+    "description": "Descrição",
+    "unitTime": "Tempo unitário (s)",
+    "qtyQuestion": "Pergunta de quantidade",
+    "suggestions": "Sugestões de ações",
+    "loading": "Buscando ações...",
+    "searchEmpty": "Nenhuma ação encontrada.",
+    "actionUnitsTitle": "Quantidade da ação",
+    "actionUnitsInvalid": "Informe um valor maior que zero.",
+    "confirm": "Confirmar"
+  },
   "steps": {
     "title": "Etapas de produção",
     "newStep": "Nova etapa",
@@ -555,6 +577,7 @@
     "newSubtask": "Nova subtarefa",
     "editSubtask": "Editar subtarefa",
     "name": "Nome",
+    "action": "Ação",
     "expectedTime": "Tempo previsto (s)",
     "timeSpent": "Tempo gasto (s)",
     "qty": "Quantidade",
@@ -737,6 +760,10 @@
       "colors": "Cores padrão",
       "routes": "Temas por rota",
       "preferences": "Preferências"
+    },
+    "integrationTabs": {
+      "ribermax": "Ribermax",
+      "crm": "CRM"
     },
     "mediaFilesTitle": "Arquivos",
     "mediaFilesHelp": "Biblioteca de imagens e PDFs armazenados no R2.",
@@ -1039,11 +1066,15 @@
     "kioskLiveChainIntervalSeconds":
       "Intervalo máximo para permitir subtarefas simultâneas (s)",
     "ribermax": {
-      "title": "Ribermax — receita de caixa",
-      "ratesHelp": "Vale só para templates criados daqui pra frente. Templates e tarefas já existentes não mudam.",
-      "cutSeconds": "Segundos por corte",
-      "adhesiveSeconds": "Segundos por adesivo",
-      "fastenerSeconds": "Segundos por unidade de montagem"
+      "title": "Ribermax",
+      "help": "URL e token da API de templates de caixa. Sem isso, o import de modelos e o webhook de pedidos não conseguem buscar o produto no legado.",
+      "baseUrl": "URL da API",
+      "token": "Token"
+    },
+    "crm": {
+      "title": "CRM",
+      "help": "Segredo HMAC usado para validar o webhook de pedidos. O CRM deve enviar o mesmo valor no cabeçalho de assinatura.",
+      "webhookSecret": "Segredo do webhook"
     },
     "entryAccessHeading": "Formas de acesso",
     "entryAccessComputer": "No computador",

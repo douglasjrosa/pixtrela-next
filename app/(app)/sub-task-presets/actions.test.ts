@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  SAMPLE_ACTION_ID,
+  sampleSubTaskPreset,
+} from "@/test/sample-subtask-preset";
+
 const searchSubTaskPresetsByName = vi.fn();
 const listSubTaskPresetsRepo = vi.fn();
 const createSubTaskPresetRepo = vi.fn();
@@ -57,13 +62,10 @@ describe("sub-task-presets actions", () => {
 
   it("searchSubTaskPresets searches presets by name", async () => {
     searchSubTaskPresetsByName.mockResolvedValue([
-      {
+      sampleSubTaskPreset({
         documentId: "p1",
         name: "Corte dos sarrafos",
-        sharingType: "qty",
-        maxSameTimeWorkers: 2,
-        expectedTime: 120,
-      },
+      }),
     ]);
 
     const { searchSubTaskPresets } = await import("./actions");
@@ -75,13 +77,11 @@ describe("sub-task-presets actions", () => {
 
   it("listSubTaskPresets returns ordered presets", async () => {
     listSubTaskPresetsRepo.mockResolvedValue([
-      {
+      sampleSubTaskPreset({
         documentId: "p1",
         name: "A",
-        sharingType: "qty",
         maxSameTimeWorkers: 1,
-        expectedTime: 10,
-      },
+      }),
     ]);
 
     const { listSubTaskPresets } = await import("./actions");
@@ -110,7 +110,7 @@ describe("sub-task-presets actions", () => {
       name: "Corte",
       sharingType: "duration",
       maxSameTimeWorkers: 2,
-      expectedTime: 60,
+      actionId: SAMPLE_ACTION_ID,
     });
     expect(id).toBe("p-new");
     expect(revalidateTag).toHaveBeenCalledWith(
@@ -125,7 +125,7 @@ describe("sub-task-presets actions", () => {
       name: "Corte",
       sharingType: "qty",
       maxSameTimeWorkers: 1,
-      expectedTime: 30,
+      actionId: SAMPLE_ACTION_ID,
     });
     expect(updateSubTaskPresetRepo).toHaveBeenCalledWith(
       "p1",

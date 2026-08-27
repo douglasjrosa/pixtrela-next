@@ -12,7 +12,7 @@ const showSuccessToast = vi.fn();
 const showErrorToast = vi.fn();
 const refresh = vi.fn();
 
-vi.mock("@/app/(app)/templates/actions", () => ({
+vi.mock("@/app/(app)/templates/template-task-actions", () => ({
   createTemplate: (...args: unknown[]) => createTemplate(...args),
 }));
 

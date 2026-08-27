@@ -11,7 +11,7 @@ const deleteTemplate = vi.fn();
 const push = vi.fn();
 const refresh = vi.fn();
 
-vi.mock("@/app/(app)/templates/actions", () => ({
+vi.mock("@/app/(app)/templates/template-task-actions", () => ({
   updateTemplate: (...args: unknown[]) => updateTemplate(...args),
   loadTemplateFromLegacy: (...args: unknown[]) =>
     loadTemplateFromLegacy(...args),

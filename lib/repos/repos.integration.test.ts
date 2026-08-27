@@ -30,6 +30,7 @@ import {
   getTaskById,
   listSubTasksForTask,
   recordActivity,
+  updateTaskFields,
 } from "@/lib/repos/tasks";
 import { createTeam } from "@/lib/repos/teams";
 import { createTemplateTask } from "@/lib/repos/templates";
@@ -297,7 +298,12 @@ describeWithDb("drizzle repos integration", () => {
 
       const subs = await listSubTasksForTask(task.id);
       expect(subs).toHaveLength(2);
+      expect(subs[0]?.qty).toBe(2);
       expect(subs[0]?.expectedTime).toBe(20);
+      expect(subs[1]?.qty).toBe(2);
+      expect(subs[1]?.expectedTime).toBe(10);
+      const created = await getTaskById(task.id);
+      expect(created?.totalExpectedTime).toBe(30);
       expect(fromDrizzleActivationStatus(subs[0]?.activationStatus)).toBe(
         "unlocked",
       );
@@ -339,6 +345,42 @@ describeWithDb("drizzle repos integration", () => {
         .where(eq(currencies.id, currency.id))
         .limit(1);
       expect(stillThere).toBeTruthy();
+    },
+    45_000,
+  );
+
+  it(
+    "scales template qty and expected time onto the task, then rescales",
+    async () => {
+      const suffix = String(Date.now());
+      await createTemplateTask({
+        code: `S${suffix.slice(-8)}`,
+        name: "Scale template",
+        subTasks: [{ name: "Assemble", qty: 2, expectedTime: 31, index: 0 }],
+      });
+      const step = await createStep({ name: `Scale ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `Scale task ${suffix}`,
+        qty: 10,
+        stepId: step.id,
+        templateTaskCode: `S${suffix.slice(-8)}`,
+      });
+
+      const [createdSub] = await listSubTasksForTask(task.id);
+      expect(createdSub?.qty).toBe(20);
+      expect(createdSub?.expectedTime).toBe(620);
+      expect(task.totalExpectedTime).toBe(620);
+
+      const updated = await updateTaskFields(task.id, {
+        name: task.name,
+        qty: 5,
+        status: task.status,
+        templateTaskCode: task.templateTaskCode,
+      });
+      const [rescaled] = await listSubTasksForTask(task.id);
+      expect(rescaled?.qty).toBe(10);
+      expect(rescaled?.expectedTime).toBe(310);
+      expect(updated.totalExpectedTime).toBe(310);
     },
     45_000,
   );

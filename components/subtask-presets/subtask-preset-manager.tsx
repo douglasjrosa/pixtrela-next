@@ -27,7 +27,7 @@ const EMPTY_FORM: SubTaskPresetFormInput = {
   name: "",
   sharingType: "qty",
   maxSameTimeWorkers: 2,
-  expectedTime: 0,
+  actionId: "",
   subTaskCategoryId: null,
 };
 
@@ -94,10 +94,12 @@ export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
           name: modal.preset.name,
           sharingType: modal.preset.sharingType,
           maxSameTimeWorkers: modal.preset.maxSameTimeWorkers,
-          expectedTime: modal.preset.expectedTime,
+          actionId: modal.preset.actionId,
           subTaskCategoryId: modal.preset.subTaskCategoryId ?? null,
         }
       : EMPTY_FORM;
+
+  const actionName = modal.mode === "edit" ? modal.preset.actionName : "";
 
   return (
     <SubTaskPresetListProvider
@@ -121,6 +123,7 @@ export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
           title={modal.mode === "edit" ? tCommon("edit") : tPresets("new")}
           formId={formId}
           defaultValues={defaultValues}
+          actionName={actionName}
           saving={isPending}
           showDelete={modal.mode === "edit"}
           onClose={closeModal}

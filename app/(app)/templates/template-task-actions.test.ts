@@ -45,7 +45,7 @@ describe("templates/actions drizzle CRUD", () => {
 
   it("createTemplate returns repo id", async () => {
     createTemplateTaskRepo.mockResolvedValue({ id: "tpl-1" });
-    const { createTemplate } = await import("./actions");
+    const { createTemplate } = await import("./template-task-actions");
     const id = await createTemplate({ name: "Montagem", code: "100" });
     expect(id).toBe("tpl-1");
     expect(createTemplateTaskRepo).toHaveBeenCalledWith({
@@ -57,7 +57,7 @@ describe("templates/actions drizzle CRUD", () => {
   });
 
   it("updateTemplate persists subtasks via repo", async () => {
-    const { updateTemplate } = await import("./actions");
+    const { updateTemplate } = await import("./template-task-actions");
     await updateTemplate("tpl-1", {
       name: "Montagem",
       code: "100",
@@ -89,14 +89,14 @@ describe("templates/actions drizzle CRUD", () => {
   });
 
   it("deleteTemplate removes via repo", async () => {
-    const { deleteTemplate } = await import("./actions");
+    const { deleteTemplate } = await import("./template-task-actions");
     await deleteTemplate("tpl-1");
     expect(deleteTemplateTaskRepo).toHaveBeenCalledWith("tpl-1");
   });
 
   it("bulkArchiveTemplates archives each selected template", async () => {
     findTemplateById.mockResolvedValue({ active: true });
-    const { bulkArchiveTemplates } = await import("./actions");
+    const { bulkArchiveTemplates } = await import("./template-task-actions");
     await bulkArchiveTemplates(["tpl-1", "tpl-2"]);
     expect(deleteTemplateTaskRepo).toHaveBeenCalledTimes(2);
     expect(deleteTemplateTaskRepo).toHaveBeenCalledWith("tpl-1");
@@ -105,7 +105,7 @@ describe("templates/actions drizzle CRUD", () => {
 
   it("bulkDeleteTemplates hard-deletes only inactive templates", async () => {
     findTemplateById.mockResolvedValue({ active: false });
-    const { bulkDeleteTemplates } = await import("./actions");
+    const { bulkDeleteTemplates } = await import("./template-task-actions");
     await bulkDeleteTemplates(["tpl-1", "tpl-2"]);
     expect(hardDeleteTemplateTask).toHaveBeenCalledTimes(2);
     expect(hardDeleteTemplateTask).toHaveBeenCalledWith("tpl-1");
@@ -114,7 +114,7 @@ describe("templates/actions drizzle CRUD", () => {
 
   it("bulkDeleteTemplates rejects active templates", async () => {
     findTemplateById.mockResolvedValue({ active: true });
-    const { bulkDeleteTemplates } = await import("./actions");
+    const { bulkDeleteTemplates } = await import("./template-task-actions");
     await expect(bulkDeleteTemplates(["tpl-1"])).rejects.toThrow(
       "activeTemplate",
     );

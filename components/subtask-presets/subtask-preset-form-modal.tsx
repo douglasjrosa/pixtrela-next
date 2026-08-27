@@ -13,6 +13,7 @@ export interface SubTaskPresetFormModalProps {
   title: string;
   formId: string;
   defaultValues: SubTaskPresetFormInput;
+  actionName?: string;
   saving?: boolean;
   showDelete?: boolean;
   onClose: () => void;
@@ -25,6 +26,7 @@ export function SubTaskPresetFormModal({
   title,
   formId,
   defaultValues,
+  actionName = "",
   saving = false,
   showDelete = false,
   onClose,
@@ -93,6 +95,7 @@ export function SubTaskPresetFormModal({
             key={formId}
             formId={formId}
             defaultValues={defaultValues}
+            actionName={actionName}
             disabled={saving}
             onSubmit={onSave}
           />

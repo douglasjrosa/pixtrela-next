@@ -4,6 +4,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
+import { sampleSubTaskPreset } from "@/test/sample-subtask-preset";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 import { SubTaskNamePresetField } from "./subtask-name-preset-field";
 
@@ -13,13 +14,9 @@ vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
   searchSubTaskPresets: (...args: unknown[]) => searchSubTaskPresets(...args),
 }));
 
-const preset: SubTaskPreset = {
-  documentId: "p1",
+const preset: SubTaskPreset = sampleSubTaskPreset({
   name: "Corte dos sarrafos",
-  sharingType: "qty",
-  maxSameTimeWorkers: 2,
-  expectedTime: 120,
-};
+});
 
 function Harness({
   onApplyPreset,

@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import {
-  ribermaxBoxTemplateRatesSchema,
-  upsertBoxTemplateRates,
+  ribermaxConnectionSchema,
+  upsertRibermaxConnection,
 } from "@/integrations/ribermax";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
@@ -18,22 +18,16 @@ async function assertCanManage(): Promise<void> {
   }
 }
 
-function formNumber(formData: FormData, name: string): number {
-  const value = formData.get(name);
-  return Number(typeof value === "string" ? value : "");
-}
-
-export async function updateRibermaxBoxTemplateRates(
+export async function updateRibermaxConnection(
   formData: FormData,
 ): Promise<void> {
   await assertCanManage();
-  const values = ribermaxBoxTemplateRatesSchema.parse({
-    cutSeconds: formNumber(formData, "cutSeconds"),
-    adhesiveSeconds: formNumber(formData, "adhesiveSeconds"),
-    fastenerSeconds: formNumber(formData, "fastenerSeconds"),
+  const values = ribermaxConnectionSchema.parse({
+    baseUrl: String(formData.get("baseUrl") ?? ""),
+    token: String(formData.get("token") ?? ""),
   });
-  await upsertBoxTemplateRates(values);
-  revalidateTag("drizzle:ribermax-box-template-settings", "default");
+  await upsertRibermaxConnection(values);
+  revalidateTag("drizzle:ribermax-connection-settings", "default");
   revalidatePath("/settings/integrations/ribermax");
   redirect("/settings/integrations/ribermax");
 }

@@ -1,15 +1,18 @@
-import { RibermaxBoxTemplateRatesForm } from "@/components/settings/ribermax-box-template-rates-form";
-import { getOrCreateBoxTemplateRates } from "@/integrations/ribermax";
+import { RibermaxConnectionForm } from "@/components/settings/ribermax-connection-form";
+import { getRibermaxConnection } from "@/integrations/ribermax";
 
-import { updateRibermaxBoxTemplateRates } from "./actions";
+import { updateRibermaxConnection } from "./actions";
 
 export default async function SettingsRibermaxIntegrationPage() {
-  const rates = await getOrCreateBoxTemplateRates();
+  const connection = (await getRibermaxConnection()) ?? {
+    baseUrl: "",
+    token: "",
+  };
 
   return (
-    <RibermaxBoxTemplateRatesForm
-      values={rates}
-      action={updateRibermaxBoxTemplateRates}
+    <RibermaxConnectionForm
+      values={connection}
+      action={updateRibermaxConnection}
     />
   );
 }

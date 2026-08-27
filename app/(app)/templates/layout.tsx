@@ -36,6 +36,7 @@ export default async function TemplatesLayout({
           items={[
             { href: "/templates/tasks", label: t("tasksTab") },
             { href: "/templates/subtasks", label: t("subtasksTab") },
+            { href: "/templates/actions", label: t("actionsTab") },
           ]}
         />
       </div>
