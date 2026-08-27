@@ -52,15 +52,15 @@ describe("rescaleQtyForTaskQtyChange", () => {
 
 describe("resolveSubTaskTargetQty", () => {
   it("returns the stored sub-task qty without multiplying by task qty", () => {
-    expect(resolveSubTaskTargetQty(20, 10)).toBe(20);
-    expect(resolveSubTaskTargetQty(2, 1)).toBe(2);
+    expect(resolveSubTaskTargetQty(20)).toBe(20);
+    expect(resolveSubTaskTargetQty(2)).toBe(2);
   });
 });
 
 describe("resolveSecondsPerPiece", () => {
   it("divides stored expectedTime by sub-task qty", () => {
-    expect(resolveSecondsPerPiece(620, 20, 10)).toBe(31);
-    expect(resolveSecondsPerPiece(120, 2, 1)).toBe(60);
+    expect(resolveSecondsPerPiece(620, 20)).toBe(31);
+    expect(resolveSecondsPerPiece(120, 2)).toBe(60);
   });
 });
 

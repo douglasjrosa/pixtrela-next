@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -20,40 +20,32 @@ export interface ActionUnitsPromptModalProps {
   onConfirm: (expectedTime: number) => void;
 }
 
-export function ActionUnitsPromptModal({
-  open,
+function ActionUnitsPromptForm({
   preset,
   onClose,
   onConfirm,
-}: ActionUnitsPromptModalProps) {
+}: {
+  preset: SubTaskPreset;
+  onClose: () => void;
+  onConfirm: (expectedTime: number) => void;
+}) {
   const tCommon = useTranslations("common");
   const tActions = useTranslations("factoryActions");
   const [units, setUnits] = useState(1);
   const [invalid, setInvalid] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setUnits(1);
-      setInvalid(false);
-    }
-  }, [open, preset?.documentId]);
-
-  if (!preset) return null;
-
   function handleSubmit(event: React.FormEvent): void {
     event.preventDefault();
-    if (!preset || !Number.isFinite(units) || units <= 0) {
+    if (!Number.isFinite(units) || units <= 0) {
       setInvalid(true);
       return;
     }
-    onConfirm(
-      calculateExpectedTimeFromAction(preset.actionUnitTime, units),
-    );
+    onConfirm(calculateExpectedTimeFromAction(preset.actionUnitTime, units));
   }
 
   return (
     <FormModalShell
-      open={open}
+      open
       title={tActions("actionUnitsTitle")}
       size="sm"
       fillBody={false}
@@ -91,5 +83,23 @@ export function ActionUnitsPromptModal({
         </div>
       </form>
     </FormModalShell>
+  );
+}
+
+export function ActionUnitsPromptModal({
+  open,
+  preset,
+  onClose,
+  onConfirm,
+}: ActionUnitsPromptModalProps) {
+  if (!open || !preset) return null;
+
+  return (
+    <ActionUnitsPromptForm
+      key={preset.documentId}
+      preset={preset}
+      onClose={onClose}
+      onConfirm={onConfirm}
+    />
   );
 }

@@ -80,19 +80,15 @@ export function rescaleQtyForTaskQtyChange(
   return Math.max(1, Math.round((current / previousQty) * nextQty));
 }
 
-export function resolveSubTaskTargetQty(
-  subTaskQty: number,
-  _taskQty?: number,
-): number {
+export function resolveSubTaskTargetQty(subTaskQty: number): number {
   return Math.max(1, Math.floor(Number(subTaskQty) || 0) || 1);
 }
 
 export function resolveSecondsPerPiece(
   expectedTime: number,
   subTaskQty: number,
-  taskQty?: number,
 ): number {
-  const targetQty = resolveSubTaskTargetQty(subTaskQty, taskQty);
+  const targetQty = resolveSubTaskTargetQty(subTaskQty);
   const expected = Math.max(0, Number(expectedTime) || 0);
   if (targetQty <= 0) return 0;
   return expected / targetQty;
@@ -111,7 +107,6 @@ export function calculateQtySessionCurrency(
   const secondsPerPiece = resolveSecondsPerPiece(
     context.expectedTime,
     context.qty,
-    context.taskQty,
   );
   return pieces * secondsPerPiece * rate;
 }

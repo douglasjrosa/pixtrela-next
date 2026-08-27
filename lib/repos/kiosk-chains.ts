@@ -474,15 +474,12 @@ async function sumStoppedQtyExcludingRun(
     .reduce((sum, row) => sum + Math.max(0, row.qty), 0);
 }
 
-function allocationMemberFromRow(
-  row: SubTaskWithAssignees,
-  taskQty: number,
-): AllocationMember {
+function allocationMemberFromRow(row: SubTaskWithAssignees): AllocationMember {
   return {
     documentId: row.id,
     expectedTime: row.expectedTime,
     sharingType: row.sharingType === "qty" ? "qty" : "duration",
-    targetQty: resolveSubTaskTargetQty(row.qty, taskQty),
+    targetQty: resolveSubTaskTargetQty(row.qty),
     completedQtyBefore: 0,
   };
 }
@@ -555,7 +552,7 @@ async function reallocateChainRunInternal(
       db,
     );
     allocationMembers.push({
-      ...allocationMemberFromRow(row, task.qty),
+      ...allocationMemberFromRow(row),
       completedQtyBefore,
     });
   }

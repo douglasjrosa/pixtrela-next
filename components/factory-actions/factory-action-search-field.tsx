@@ -53,18 +53,12 @@ export function FactoryActionSearchField({
   const [isSearching, startSearch] = useTransition();
   const listRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setQuery(selectedName);
-  }, [selectedName]);
-
   const canSearch = !disabled && shouldSearchFactoryActions(query);
+  const visibleActions = canSearch ? actions : [];
   const showSuggestions = canSearch;
 
   useEffect(() => {
-    if (!canSearch) {
-      setActions([]);
-      return;
-    }
+    if (!canSearch) return;
 
     const handle = window.setTimeout(() => {
       startSearch(async () => {
@@ -88,17 +82,17 @@ export function FactoryActionSearchField({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
-    if (!showSuggestions || actions.length === 0) return;
+    if (!showSuggestions || visibleActions.length === 0) return;
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setHighlight((current) => (current + 1) % actions.length);
+      setHighlight((current) => (current + 1) % visibleActions.length);
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       setHighlight((current) =>
-        current === 0 ? actions.length - 1 : current - 1,
+        current === 0 ? visibleActions.length - 1 : current - 1,
       );
     } else if (event.key === "Enter") {
-      const selected = actions[highlight];
+      const selected = visibleActions[highlight];
       if (selected) {
         event.preventDefault();
         selectAction(selected);
@@ -120,8 +114,8 @@ export function FactoryActionSearchField({
         aria-expanded={showSuggestions}
         aria-controls={listId}
         aria-activedescendant={
-          showSuggestions && actions[highlight]
-            ? `${listId}-${actions[highlight].documentId}`
+          showSuggestions && visibleActions[highlight]
+            ? `${listId}-${visibleActions[highlight].documentId}`
             : undefined
         }
         onChange={(event) => {
@@ -146,17 +140,17 @@ export function FactoryActionSearchField({
             "bg-background shadow-md",
           )}
         >
-          {isSearching && actions.length === 0 ? (
+          {isSearching && visibleActions.length === 0 ? (
             <p className="px-3 py-2 text-sm text-muted-foreground" role="status">
               {tActions("loading")}
             </p>
           ) : null}
-          {!isSearching && actions.length === 0 ? (
+          {!isSearching && visibleActions.length === 0 ? (
             <p className="px-3 py-2 text-sm text-muted-foreground" role="status">
               {tActions("searchEmpty")}
             </p>
           ) : null}
-          {actions.map((action, index) => (
+          {visibleActions.map((action, index) => (
             <button
               key={action.documentId}
               id={`${listId}-${action.documentId}`}

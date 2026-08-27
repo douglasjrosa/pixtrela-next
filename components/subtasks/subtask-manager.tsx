@@ -586,7 +586,7 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
                   <SortableSubTaskRow
                     key={subtask.documentId}
                     subtask={subtask}
-                    displayQty={calculateSubTaskDisplayQty(subtask.qty, taskQty)}
+                    displayQty={calculateSubTaskDisplayQty(subtask.qty)}
                     statusLabel={tStatus(subtask.status)}
                     dragLabel={tSubtasks("dragToReorder")}
                     openLabel={tSubtasks("toggleSubtaskForm")}

@@ -71,7 +71,6 @@ export function mapSubTaskDbRow(
 ): KioskSubTaskRow {
   const sharingType = row.sharingType;
   const qty = Number(row.qty ?? 1);
-  const taskQty = Number(row.taskQty ?? 1);
   return {
     documentId: row.id,
     name: String(row.name ?? ""),
@@ -79,7 +78,7 @@ export function mapSubTaskDbRow(
     status: String(row.status ?? "waiting"),
     activationStatus: readActivationStatus(row.activationStatus),
     qty,
-    targetQty: resolveSubTaskTargetQty(qty, taskQty),
+    targetQty: resolveSubTaskTargetQty(qty),
     completedQty: Math.max(0, completedQty),
     sharingType: sharingType === "qty" ? "qty" : "duration",
     timeSpent: Number(row.timeSpent ?? 0),

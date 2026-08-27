@@ -72,6 +72,7 @@ export function SubTaskPresetForm({
           control={control}
           render={({ field }) => (
             <FactoryActionSearchField
+              key={`${field.value}:${selectedActionName}`}
               id={`${formId}-action`}
               value={field.value}
               selectedName={selectedActionName}
