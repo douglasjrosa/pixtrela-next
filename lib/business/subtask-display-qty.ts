@@ -1,6 +1,6 @@
 export function calculateSubTaskDisplayQty(
   subTaskQty: number,
-  taskQty: number,
+  _taskQty?: number,
 ): number {
-  return subTaskQty * taskQty;
+  return Math.max(1, Math.floor(Number(subTaskQty) || 0) || 1);
 }

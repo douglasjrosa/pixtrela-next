@@ -16,15 +16,15 @@ describe("parseSubtaskPresetListSearchParams", () => {
 
   it("parses sort and direction", () => {
     const filters = parseSubtaskPresetListSearchParams({
-      sort: "expectedTime",
+      sort: "actionName",
       dir: "desc",
     });
-    expect(filters.column).toBe("expectedTime");
+    expect(filters.column).toBe("actionName");
     expect(filters.direction).toBe("desc");
   });
 
   it("ignores unknown sort columns", () => {
-    const filters = parseSubtaskPresetListSearchParams({ sort: "code" });
+    const filters = parseSubtaskPresetListSearchParams({ sort: "expectedTime" });
     expect(filters.column).toBe("name");
   });
 });
@@ -54,7 +54,7 @@ describe("subtaskPresetListFilterKey", () => {
     expect(
       subtaskPresetListFilterKey({
         ...base,
-        column: "expectedTime",
+        column: "actionName",
         direction: "asc",
       }),
     ).not.toBe(subtaskPresetListFilterKey(base));

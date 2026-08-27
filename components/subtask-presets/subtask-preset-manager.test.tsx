@@ -3,6 +3,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
+import { sampleSubTaskPreset } from "@/test/sample-subtask-preset";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 
 const createSubTaskPreset = vi.fn();
@@ -32,15 +33,7 @@ vi.mock("@/lib/ui/app-toast", () => ({
 import { SubtaskPresetListRowPresentational } from "./subtask-preset-list-row-presentational";
 import { SubTaskPresetManager } from "./subtask-preset-manager";
 
-const presets: SubTaskPreset[] = [
-  {
-    documentId: "p1",
-    name: "Corte",
-    sharingType: "qty",
-    maxSameTimeWorkers: 2,
-    expectedTime: 120,
-  },
-];
+const presets: SubTaskPreset[] = [sampleSubTaskPreset()];
 
 function renderManagerWithRow() {
   return renderWithIntl(
@@ -50,7 +43,10 @@ function renderManagerWithRow() {
           <SubtaskPresetListRowPresentational
             preset={presets[0]!}
             variant="table"
-            labels={{ sharingType: "Por quantidade", expectedTime: "2min" }}
+            labels={{
+              sharingType: "Por quantidade",
+              actionName: "Grampear quadro",
+            }}
           />
         </tbody>
       </table>

@@ -368,18 +368,39 @@ export const taskAutomationSettings = pgTable("task_automation_settings", {
     .notNull(),
 });
 
-export const ribermaxBoxTemplateSettings = pgTable(
-  "ribermax_box_template_settings",
+export const factoryActions = pgTable("actions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(),
+  unitTime: numeric("unit_time", { precision: 12, scale: 2 }).notNull(),
+  description: text("description").notNull(),
+  qtyQuestion: text("qty_question").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const ribermaxConnectionSettings = pgTable(
+  "ribermax_connection_settings",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    cutSeconds: integer("cut_seconds").default(60).notNull(),
-    adhesiveSeconds: integer("adhesive_seconds").default(30).notNull(),
-    fastenerSeconds: integer("fastener_seconds").default(1).notNull(),
+    baseUrl: varchar("base_url", { length: 512 }).notNull(),
+    token: text("token").notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
 );
+
+export const crmConnectionSettings = pgTable("crm_connection_settings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  webhookSecret: text("webhook_secret").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
 
 export const subTaskCategories = pgTable("sub_task_categories", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -420,7 +441,9 @@ export const flags = pgTable(
 export const subTaskPresets = pgTable("sub_task_presets", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 128 }).notNull(),
-  expectedTime: integer("expected_time").default(0).notNull(),
+  actionId: uuid("action_id")
+    .references(() => factoryActions.id, { onDelete: "restrict" })
+    .notNull(),
   sharingType: sharingTypeEnum("sharing_type").default("duration").notNull(),
   maxSameTimeWorkers: integer("max_same_time_workers").default(1).notNull(),
   subTaskCategoryId: uuid("sub_task_category_id").references(

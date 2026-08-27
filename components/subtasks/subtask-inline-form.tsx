@@ -6,6 +6,7 @@ import { Controller, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
+import { ActionUnitsPromptModal } from "@/components/factory-actions/action-units-prompt-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
@@ -79,6 +80,9 @@ export function SubTaskInlineForm({
   onChange,
 }: SubTaskInlineFormProps) {
   const [dependenciesOpen, setDependenciesOpen] = useState(false);
+  const [pendingPreset, setPendingPreset] = useState<SubTaskPreset | null>(
+    null,
+  );
   const tSubtasks = useTranslations("subtasks");
   const tTasks = useTranslations("tasks");
   const tStatus = useTranslations("tasks.status");
@@ -99,8 +103,11 @@ export function SubTaskInlineForm({
     defaultValues,
   });
 
-  function handleApplyPreset(preset: SubTaskPreset): void {
-    const next = applySubTaskPreset(getValues(), preset);
+  function applyPresetValues(
+    preset: SubTaskPreset,
+    expectedTime: number,
+  ): void {
+    const next = applySubTaskPreset(getValues(), preset, expectedTime);
     setValue("name", next.name, { shouldDirty: true, shouldValidate: true });
     setValue("sharingType", next.sharingType, {
       shouldDirty: true,
@@ -118,6 +125,10 @@ export function SubTaskInlineForm({
       shouldDirty: true,
       shouldValidate: true,
     });
+  }
+
+  function handleApplyPreset(preset: SubTaskPreset): void {
+    setPendingPreset(preset);
   }
 
   useEffect(() => {
@@ -318,6 +329,16 @@ export function SubTaskInlineForm({
         selectedIds={dependencyIds}
         onClose={() => setDependenciesOpen(false)}
         onConfirm={(ids) => setValue("dependencyIds", ids, { shouldDirty: true })}
+      />
+      <ActionUnitsPromptModal
+        open={pendingPreset !== null}
+        preset={pendingPreset}
+        onClose={() => setPendingPreset(null)}
+        onConfirm={(expectedTime) => {
+          if (!pendingPreset) return;
+          applyPresetValues(pendingPreset, expectedTime);
+          setPendingPreset(null);
+        }}
       />
     </div>
   );

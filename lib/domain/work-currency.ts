@@ -36,7 +36,24 @@ export function scaleExpectedTimeByTaskQty(
 ): number {
   const base = Math.max(0, Number(baseExpectedTime) || 0);
   const qty = Math.max(1, Math.floor(Number(taskQty) || 0) || 1);
-  return base * qty;
+  return Math.round(base * qty);
+}
+
+export function scaleTemplateSubTaskForTask(input: {
+  templateQty: number;
+  templateExpectedTime: number;
+  taskQty: number;
+}): { qty: number; expectedTime: number } {
+  const taskQty = Math.max(1, Math.floor(Number(input.taskQty) || 0) || 1);
+  const templateQty = Math.max(
+    1,
+    Math.floor(Number(input.templateQty) || 0) || 1,
+  );
+  const qty = templateQty * taskQty;
+  const expectedTime = Math.round(
+    Math.max(0, Number(input.templateExpectedTime) || 0) * qty,
+  );
+  return { qty, expectedTime };
 }
 
 export function rescaleExpectedTimeForTaskQtyChange(
@@ -51,19 +68,29 @@ export function rescaleExpectedTimeForTaskQtyChange(
   return Math.round((current / previousQty) * nextQty);
 }
 
+export function rescaleQtyForTaskQtyChange(
+  currentQty: number,
+  previousTaskQty: number,
+  nextTaskQty: number,
+): number {
+  const previousQty = Math.max(1, Math.floor(Number(previousTaskQty) || 0) || 1);
+  const nextQty = Math.max(1, Math.floor(Number(nextTaskQty) || 0) || 1);
+  const current = Math.max(1, Math.floor(Number(currentQty) || 0) || 1);
+  if (previousQty === nextQty) return current;
+  return Math.max(1, Math.round((current / previousQty) * nextQty));
+}
+
 export function resolveSubTaskTargetQty(
   subTaskQty: number,
-  taskQty: number,
+  _taskQty?: number,
 ): number {
-  const pieces = Math.max(1, Math.floor(Number(subTaskQty) || 0) || 1);
-  const tasks = Math.max(1, Math.floor(Number(taskQty) || 0) || 1);
-  return pieces * tasks;
+  return Math.max(1, Math.floor(Number(subTaskQty) || 0) || 1);
 }
 
 export function resolveSecondsPerPiece(
   expectedTime: number,
   subTaskQty: number,
-  taskQty: number,
+  taskQty?: number,
 ): number {
   const targetQty = resolveSubTaskTargetQty(subTaskQty, taskQty);
   const expected = Math.max(0, Number(expectedTime) || 0);

@@ -3,18 +3,40 @@
 Import of CRM `pedido` rows into core tasks and box templates from the
 legacy RBX calculator. This is a **tenant plugin**, not the product core.
 
-Code lives under `integrations/ribermax/`. Time rates (cut / adhesive /
-fastener seconds) are edited at `/settings/integrations/ribermax`.
+Code lives under `integrations/ribermax/`. Connection credentials are stored
+in the database and edited at `/settings/integrations/ribermax` (RBX URL +
+token) and `/settings/integrations/crm` (webhook HMAC secret). There are no
+environment variables for this plugin.
 
-They apply only to **new** templates. Existing templates and tasks do not
-change.
+RBX does not know factory actions. It sends preset names plus structural
+`qty` and per-piece `actionUnits`. The app looks up the preset, reads
+`action.unit_time`, and stores
+`template_sub_tasks.expected_time = round(actionUnits * unit_time)`.
 
-## Environment
+Extra-large variants are distinct preset names chosen by RBX (for example
+`Fixar adesivo - Extra Grande`). Keep preset names unique in practice even
+though the database does not enforce uniqueness.
 
-| Variable | Description |
-|----------|-------------|
-| `CRM_WEBHOOK_SECRET` | HMAC secret (must match the CRM webhook secret) |
-| `LEGACY_RBX_URL` / `LEGACY_RBX_TOKEN` | Box template API (`prodId`) |
+## Box template payload
+
+`GET {baseUrl}/produtos?templateData={prodId}` with header `Token`.
+
+```json
+{
+  "prodId": 123,
+  "empresaNome": "Max Brasil",
+  "boxName": "Caixotona",
+  "subtasks": [
+    {
+      "presetName": "Montagem dos quadros das laterais",
+      "qty": 2,
+      "actionUnits": 30
+    }
+  ]
+}
+```
+
+Unknown `presetName` fails the import (`presetNotFound:<name>`).
 
 ## Webhook
 
@@ -23,7 +45,8 @@ change.
 `POST /api/integrations/ribermax/crm-pedido` (canonical)
 
 Header: HMAC-SHA256 of the raw JSON body, `sha256=<hex>`
-(see `CRM_SIGNATURE_HEADER` in the route).
+(see `CRM_SIGNATURE_HEADER` in the route). Secret comes from
+`/settings/integrations/crm`.
 
 ### Payload
 
@@ -39,7 +62,7 @@ Header: HMAC-SHA256 of the raw JSON body, `sha256=<hex>`
 
 ## Behaviour
 
-1. CRM Strapi (sys-rbx-backend) fires webhook on `pedido` create/update when `Bpedido` is set.
+1. CRM fires webhook on `pedido` create/update when `Bpedido` is set.
 2. Plugin validates signature and payload schema.
 3. For each item: ensure `template-task` for `prodId` (legacy RBX if missing).
 4. **Create** task when `crmItemKey` (`pedidoId:index`) does not exist.
@@ -53,18 +76,4 @@ auto-deactivated.
 ## CRM configuration
 
 Point the CRM lifecycle at `POST /api/webhooks/crm-pedido` with the same
-HMAC secret as `CRM_WEBHOOK_SECRET`.
-
-## Local testing
-
-```bash
-node -e "const c=require('crypto');const b=JSON.stringify({pedidoId:1,Bpedido:'B-1',itens:[{Qtd:1,prodId:2,nomeProd:'X'}],empresaNome:'Test'});console.log(c.createHmac('sha256',process.env.CRM_WEBHOOK_SECRET).update(b).digest('hex'))"
-
-curl -X POST <APP_ORIGIN>/api/webhooks/crm-pedido \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer unused" \
-  -H "X-Webhook-Signature: sha256=<hex>" \
-  -d '{"pedidoId":1,"Bpedido":"B-1","itens":[{"Qtd":1,"prodId":2,"nomeProd":"X"}],"empresaNome":"Test"}'
-```
-
-Use the HMAC header name implemented in the webhook route, not the placeholder above.
+HMAC secret saved in Settings → Integrations → CRM.
