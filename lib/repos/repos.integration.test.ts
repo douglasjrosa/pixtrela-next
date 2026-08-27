@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
 
+import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
 import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
@@ -23,7 +24,12 @@ import {
   confirmChainStop,
   startChain,
 } from "@/lib/repos/kiosk-chains";
+import {
+  assignFlagsToSubTask,
+  createMaterialFlag,
+} from "@/lib/repos/material-flags";
 import { createStep, listSteps } from "@/lib/repos/steps";
+import { createSubTaskCategory } from "@/lib/repos/sub-task-categories";
 import {
   assignColaboratorsToSubTask,
   createTask,
@@ -37,6 +43,24 @@ import { createTemplateTask } from "@/lib/repos/templates";
 import { createUser } from "@/lib/repos/users";
 import { activities, currencies, currencyForSubtasks, exchanges } from "@/drizzle/schema";
 import { asc, eq } from "drizzle-orm";
+
+function lettersFromStamp(suffix: string): string {
+  return suffix.slice(-5).replace(/\d/g, (digit) =>
+    String.fromCharCode(65 + Number(digit)),
+  );
+}
+
+async function createCategoryWithFlag(prefix: string, suffix: string) {
+  const category = await createSubTaskCategory({
+    name: `Cat ${suffix}`,
+    ref: `${prefix}${lettersFromStamp(suffix)}`,
+  });
+  const flag = await createMaterialFlag({
+    subTaskCategoryId: category.id,
+    index: 1,
+  });
+  return { category, flag };
+}
 
 describeWithDb("drizzle repos integration", () => {
   beforeAll(async () => {
@@ -279,11 +303,18 @@ describeWithDb("drizzle repos integration", () => {
         code: Number(suffix.slice(-5)),
       });
 
+      const { category, flag } = await createCategoryWithFlag("P", suffix);
+
       await createTemplateTask({
         code: `T${suffix.slice(-8)}`,
         name: "Template",
         subTasks: [
-          { name: "Cut", expectedTime: 10, index: 0 },
+          {
+            name: "Cut",
+            expectedTime: 10,
+            index: 0,
+            subTaskCategoryId: category.id,
+          },
           { name: "Pack", expectedTime: 5, index: 1, dependencyIndexes: [0] },
         ],
       });
@@ -312,6 +343,7 @@ describeWithDb("drizzle repos integration", () => {
       );
 
       await assignColaboratorsToSubTask(subs[0]!.id, [colaborator.id]);
+      await assignFlagsToSubTask(subs[0]!.id, [flag.id]);
 
       const startedAt = new Date("2026-08-09T10:00:00Z");
       const stoppedAt = new Date("2026-08-09T10:00:30Z");
@@ -404,11 +436,18 @@ describeWithDb("drizzle repos integration", () => {
         code: Number(String(Number(suffix.slice(-5)) + 1).slice(-5)),
       });
 
+      const { category, flag } = await createCategoryWithFlag("K", suffix);
+
       await createTemplateTask({
         code: `K${suffix.slice(-7)}`,
         name: "Kiosk template",
         subTasks: [
-          { name: "First", expectedTime: 10, index: 0 },
+          {
+            name: "First",
+            expectedTime: 10,
+            index: 0,
+            subTaskCategoryId: category.id,
+          },
           { name: "Second", expectedTime: 5, index: 1, dependencyIndexes: [0] },
         ],
       });
@@ -437,7 +476,7 @@ describeWithDb("drizzle repos integration", () => {
       await stopSubTask(
         workerA.id,
         first!.id,
-        { completed: true },
+        { completed: true, flagIds: [flag.id] },
         undefined,
         new Date("2026-08-10T10:05:00Z"),
       );
