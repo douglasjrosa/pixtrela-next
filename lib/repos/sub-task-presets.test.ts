@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { subTaskPresets } from "@/drizzle/schema";
 import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
+import { createFactoryActionRepo } from "@/lib/repos/factory-actions";
 import {
   createSubTaskPresetRepo,
   deleteSubTaskPresetById,
@@ -24,12 +25,18 @@ describeWithDb("sub-task-presets repo", () => {
   it("creates, searches, updates, lists, and deletes presets", async () => {
     const suffix = String(Date.now());
     const name = `Preset ${suffix}`;
+    const actionId = await createFactoryActionRepo({
+      name: `Action ${suffix}`,
+      description: "Test action",
+      unitTime: 1.5,
+      qtyQuestion: "How many units?",
+    });
 
     const id = await createSubTaskPresetRepo({
       name,
       sharingType: "duration",
       maxSameTimeWorkers: 2,
-      expectedTime: 90,
+      actionId,
     });
     expect(id).toBeTruthy();
 
@@ -40,13 +47,14 @@ describeWithDb("sub-task-presets repo", () => {
       name: `${name} updated`,
       sharingType: "qty",
       maxSameTimeWorkers: 1,
-      expectedTime: 45,
+      actionId,
     });
 
     const listed = await listSubTaskPresetsRepo();
     const updated = listed.find((row) => row.documentId === id);
     expect(updated?.sharingType).toBe("qty");
-    expect(updated?.expectedTime).toBe(45);
+    expect(updated?.actionId).toBe(actionId);
+    expect(updated?.actionName).toBe(`Action ${suffix}`);
 
     await deleteSubTaskPresetById(id);
     const db = getDb();

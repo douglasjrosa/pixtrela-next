@@ -6,10 +6,12 @@ import bcrypt from "bcryptjs";
 import {
   currencies,
   currencyForSubtasks,
+  factoryActions,
   kioskSettings,
   steps,
   users,
 } from "../drizzle/schema";
+import { DEFAULT_FACTORY_ACTIONS } from "../lib/actions/default-actions";
 import { closeDb, getDb } from "../lib/db/client";
 
 const ADMIN_USERNAME = process.env.SEED_ADMIN_USERNAME ?? "admin";
@@ -108,7 +110,21 @@ async function main(): Promise<void> {
     await db.insert(kioskSettings).values({ sessionIdleSeconds: 120 });
   }
 
-   
+  const [existingAction] = await db
+    .select({ id: factoryActions.id })
+    .from(factoryActions)
+    .limit(1);
+  if (!existingAction) {
+    await db.insert(factoryActions).values(
+      DEFAULT_FACTORY_ACTIONS.map((row) => ({
+        name: row.name,
+        unitTime: row.unitTime,
+        description: row.description,
+        qtyQuestion: row.qtyQuestion,
+      })),
+    );
+  }
+
   console.log("Seed complete.");
   await closeDb();
 }

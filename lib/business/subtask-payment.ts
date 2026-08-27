@@ -35,7 +35,7 @@ export type ColaboratorEarningsInput = {
   expectedTime: number;
   currencyPerSecond: number;
   /**
-   * Target pieces for qty sharing (`subTask.qty * task.qty`).
+   * Target pieces for qty sharing (`subTask.qty`, already scaled).
    * Falls back to `totalQty` when omitted (incomplete preview).
    */
   targetQty?: number;

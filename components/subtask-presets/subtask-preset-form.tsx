@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { Controller, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
+import { FactoryActionSearchField } from "@/components/factory-actions/factory-action-search-field";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +19,7 @@ import {
 export interface SubTaskPresetFormProps {
   formId: string;
   defaultValues: SubTaskPresetFormInput;
+  actionName?: string;
   disabled?: boolean;
   onSubmit: (values: SubTaskPresetFormInput) => void;
 }
@@ -24,19 +27,24 @@ export interface SubTaskPresetFormProps {
 export function SubTaskPresetForm({
   formId,
   defaultValues,
+  actionName = "",
   disabled = false,
   onSubmit,
 }: SubTaskPresetFormProps) {
   const tSubtasks = useTranslations("subtasks");
   const tSharing = useTranslations("subtasks.sharingType");
+  const [selectedActionName, setSelectedActionName] = useState(actionName);
 
   const {
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<SubTaskPresetFormInput>({
-    resolver: zodResolver(subTaskPresetFormSchema) as Resolver<SubTaskPresetFormInput>,
+    resolver: zodResolver(
+      subTaskPresetFormSchema,
+    ) as Resolver<SubTaskPresetFormInput>,
     defaultValues,
   });
 
@@ -58,15 +66,25 @@ export function SubTaskPresetForm({
         ) : null}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor={`${formId}-expectedTime`}>
-          {tSubtasks("expectedTime")}
-        </Label>
-        <NumberInput
-          id={`${formId}-expectedTime`}
-          min={0}
-          disabled={disabled}
-          {...register("expectedTime", { valueAsNumber: true })}
+      <div className="space-y-2 sm:col-span-2">
+        <Controller
+          name="actionId"
+          control={control}
+          render={({ field }) => (
+            <FactoryActionSearchField
+              key={`${field.value}:${selectedActionName}`}
+              id={`${formId}-action`}
+              value={field.value}
+              selectedName={selectedActionName}
+              disabled={disabled}
+              errorMessage={errors.actionId?.message}
+              onChange={(actionId, action) => {
+                field.onChange(actionId);
+                setValue("actionId", actionId, { shouldValidate: true });
+                setSelectedActionName(action?.name ?? "");
+              }}
+            />
+          )}
         />
       </div>
 
@@ -82,7 +100,7 @@ export function SubTaskPresetForm({
         />
       </div>
 
-      <div className="space-y-2 sm:col-span-2">
+      <div className="space-y-2">
         <Label htmlFor={`${formId}-sharingType`}>
           {tSubtasks("sharingTypeLabel")}
         </Label>
@@ -111,18 +129,18 @@ export function SubTaskPresetForm({
       </div>
 
       <div className="sm:col-span-2">
-          <Controller
-            name="subTaskCategoryId"
-            control={control}
-            render={({ field }) => (
-              <SubTaskCategorySelect
-                id={`${formId}-category`}
-                value={field.value}
-                disabled={disabled}
-                onChange={field.onChange}
-              />
-            )}
-          />
+        <Controller
+          name="subTaskCategoryId"
+          control={control}
+          render={({ field }) => (
+            <SubTaskCategorySelect
+              id={`${formId}-category`}
+              value={field.value}
+              disabled={disabled}
+              onChange={field.onChange}
+            />
+          )}
+        />
       </div>
     </form>
   );

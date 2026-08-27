@@ -5,9 +5,11 @@ import {
   calculateDurationSecondsCurrency,
   calculateQtySessionCurrency,
   rescaleExpectedTimeForTaskQtyChange,
+  rescaleQtyForTaskQtyChange,
   resolveSecondsPerPiece,
   resolveSubTaskTargetQty,
   scaleExpectedTimeByTaskQty,
+  scaleTemplateSubTaskForTask,
   shouldCreditDurationCurrency,
 } from "./work-currency";
 
@@ -22,24 +24,43 @@ describe("scaleExpectedTimeByTaskQty", () => {
   });
 });
 
+describe("scaleTemplateSubTaskForTask", () => {
+  it("scales structural qty and per-piece expected time by task qty", () => {
+    expect(
+      scaleTemplateSubTaskForTask({
+        templateQty: 2,
+        templateExpectedTime: 31,
+        taskQty: 10,
+      }),
+    ).toEqual({ qty: 20, expectedTime: 620 });
+  });
+});
+
 describe("rescaleExpectedTimeForTaskQtyChange", () => {
   it("rescales stored expected time when task qty changes", () => {
-    expect(rescaleExpectedTimeForTaskQtyChange(300, 10, 5)).toBe(150);
+    expect(rescaleExpectedTimeForTaskQtyChange(620, 10, 5)).toBe(310);
     expect(rescaleExpectedTimeForTaskQtyChange(120, 1, 10)).toBe(1200);
   });
 });
 
+describe("rescaleQtyForTaskQtyChange", () => {
+  it("rescales stored qty when task qty changes", () => {
+    expect(rescaleQtyForTaskQtyChange(20, 10, 5)).toBe(10);
+    expect(rescaleQtyForTaskQtyChange(2, 1, 10)).toBe(20);
+  });
+});
+
 describe("resolveSubTaskTargetQty", () => {
-  it("multiplies sub-task qty by task qty", () => {
-    expect(resolveSubTaskTargetQty(2, 10)).toBe(20);
-    expect(resolveSubTaskTargetQty(2, 1)).toBe(2);
+  it("returns the stored sub-task qty without multiplying by task qty", () => {
+    expect(resolveSubTaskTargetQty(20)).toBe(20);
+    expect(resolveSubTaskTargetQty(2)).toBe(2);
   });
 });
 
 describe("resolveSecondsPerPiece", () => {
-  it("divides stored expectedTime by task.qty * subTask.qty", () => {
-    expect(resolveSecondsPerPiece(300, 2, 10)).toBe(15);
-    expect(resolveSecondsPerPiece(120, 2, 1)).toBe(60);
+  it("divides stored expectedTime by sub-task qty", () => {
+    expect(resolveSecondsPerPiece(620, 20)).toBe(31);
+    expect(resolveSecondsPerPiece(120, 2)).toBe(60);
   });
 });
 
@@ -48,14 +69,14 @@ describe("calculateQtySessionCurrency", () => {
 
   it("pays per piece using expected time share", () => {
     const context = {
-      expectedTime: 300,
-      qty: 2,
+      expectedTime: 620,
+      qty: 20,
       taskQty: 10,
       sharingType: "qty" as const,
     };
     expect(
       calculateQtySessionCurrency(context, { sessionQty: 5 }, currency),
-    ).toBe(75);
+    ).toBe(155);
   });
 
   it("returns 0 for duration sharing", () => {

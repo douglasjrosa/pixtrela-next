@@ -10,7 +10,7 @@ const CENTER_CELL_CLASS = "text-center";
 
 export type SubtaskPresetListRowLabels = {
   sharingType: string;
-  expectedTime: string;
+  actionName: string;
 };
 
 export interface SubtaskPresetListRowPresentationalProps {
@@ -45,7 +45,7 @@ export function SubtaskPresetListRowPresentational({
       <tr className="cursor-pointer border-b hover:bg-muted/40" {...rowProps}>
         <td className="py-2">{preset.name}</td>
         <td className={CENTER_CELL_CLASS}>{labels.sharingType}</td>
-        <td className={CENTER_CELL_CLASS}>{labels.expectedTime}</td>
+        <td className={CENTER_CELL_CLASS}>{labels.actionName}</td>
       </tr>
     );
   }
@@ -57,7 +57,7 @@ export function SubtaskPresetListRowPresentational({
     >
       <div className="text-base font-medium">{preset.name}</div>
       <div className="text-muted-foreground text-sm">{labels.sharingType}</div>
-      <div className="text-muted-foreground text-sm">{labels.expectedTime}</div>
+      <div className="text-muted-foreground text-sm">{labels.actionName}</div>
     </li>
   );
 }

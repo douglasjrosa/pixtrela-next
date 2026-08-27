@@ -14,7 +14,7 @@ const showErrorToast = vi.fn();
 const showSuccessToast = vi.fn();
 const refresh = vi.fn();
 
-vi.mock("@/app/(app)/templates/actions", () => ({
+vi.mock("@/app/(app)/templates/template-task-actions", () => ({
   loadMoreTemplates: (...args: unknown[]) => loadMoreTemplates(...args),
   bulkArchiveTemplates: (...args: unknown[]) => bulkArchiveTemplates(...args),
   bulkDeleteTemplates: (...args: unknown[]) => bulkDeleteTemplates(...args),

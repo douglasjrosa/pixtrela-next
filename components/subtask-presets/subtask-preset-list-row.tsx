@@ -1,7 +1,8 @@
-import { getTranslations } from "next-intl/server";
+"use client";
+
+import { useTranslations } from "next-intl";
 
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
-import { formatDurationMinutes } from "@/lib/format/duration";
 
 import {
   SubtaskPresetListRowPresentational,
@@ -13,17 +14,14 @@ export interface SubtaskPresetListRowProps {
   variant: "table" | "mobile";
 }
 
-export async function SubtaskPresetListRowView({
+export function SubtaskPresetListRowView({
   preset,
   variant,
 }: SubtaskPresetListRowProps) {
-  const tSharing = await getTranslations("subtasks.sharingType");
-  const tDuration = await getTranslations("duration");
+  const tSharing = useTranslations("subtasks.sharingType");
   const labels: SubtaskPresetListRowLabels = {
     sharingType: tSharing(preset.sharingType),
-    expectedTime: formatDurationMinutes(preset.expectedTime, (key, values) =>
-      tDuration(key, values),
-    ),
+    actionName: preset.actionName,
   };
 
   return (

@@ -894,7 +894,7 @@ export async function stopSubTask(
   const baseStopResult =
     sharingType === "qty"
       ? resolveQtyStop(
-          resolveSubTaskTargetQty(sub.qty, taskQty),
+          resolveSubTaskTargetQty(sub.qty),
           await sumStoppedQty(subTaskId, db),
           parseQtyStopBody(body),
         )

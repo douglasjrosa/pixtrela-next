@@ -120,8 +120,6 @@ const EMPTY_PAYMENT_CURRENCY: SubtaskPaymentCurrency = {
 export interface KanbanTaskSubtasksModalProps {
   open: boolean;
   taskName: string;
-  /** Task production quantity (scales qty-sharing target pieces). */
-  taskQty?: number;
   subtasks: BoardSubTaskSummary[];
   teams: TeamAssignmentOption[];
   assignWarnMax: number;
@@ -462,7 +460,6 @@ function SortablePendingSubtaskCard({
 export function KanbanTaskSubtasksModal({
   open,
   taskName,
-  taskQty = 1,
   subtasks,
   teams,
   assignWarnMax,
@@ -1546,7 +1543,7 @@ export function KanbanTaskSubtasksModal({
                 sharingType={infoSubtask.sharingType}
                 expectedTime={infoSubtask.expectedTime}
                 timeSpent={infoSubtask.timeSpent}
-                targetQty={Math.max(1, infoSubtask.qty) * Math.max(1, taskQty)}
+                targetQty={Math.max(1, infoSubtask.qty)}
                 paymentCurrency={paymentCurrency}
                 totalsFirst
               />

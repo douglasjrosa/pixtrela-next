@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { sampleSubTaskPreset } from "@/test/sample-subtask-preset";
+
 const listSubTaskPresetsPaged = vi.fn();
 
 vi.mock("@/lib/repos/sub-task-presets", () => ({
@@ -16,15 +18,7 @@ describe("loadSubtaskPresetListPage", () => {
 
   it("maps presets and derives pagination", async () => {
     listSubTaskPresetsPaged.mockResolvedValueOnce({
-      items: [
-        {
-          documentId: "p1",
-          name: "Corte",
-          sharingType: "qty",
-          maxSameTimeWorkers: 2,
-          expectedTime: 120,
-        },
-      ],
+      items: [sampleSubTaskPreset({ documentId: "p1", name: "Corte" })],
       total: 12,
     });
 

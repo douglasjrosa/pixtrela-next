@@ -8,7 +8,10 @@ export interface SubTaskPreset {
   name: string;
   sharingType: "qty" | "duration";
   maxSameTimeWorkers: number;
-  expectedTime: number;
+  actionId: string;
+  actionName: string;
+  actionUnitTime: number;
+  actionQtyQuestion: string;
   subTaskCategoryId?: string | null;
 }
 
@@ -28,13 +31,14 @@ export function shouldSearchSubTaskPresets(query: string): boolean {
 export function applySubTaskPreset<T extends SubTaskPresetApplyTarget>(
   current: T,
   preset: SubTaskPreset,
+  expectedTime: number,
 ): T {
   return {
     ...current,
     name: preset.name,
     sharingType: preset.sharingType,
     maxSameTimeWorkers: preset.maxSameTimeWorkers,
-    expectedTime: preset.expectedTime,
+    expectedTime,
     subTaskCategoryId: preset.subTaskCategoryId ?? null,
   };
 }

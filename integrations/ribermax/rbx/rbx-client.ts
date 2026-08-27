@@ -1,35 +1,32 @@
-import type { BoxTemplateData, LegacyErrorResponse } from "./rbx-types";
+import type { BoxTemplateData } from "./rbx-types";
+import { isLegacyErrorResponse } from "./rbx-types";
+import { getRibermaxConnection } from "@/integrations/ribermax/settings/connection-repo";
 
 const DEFAULT_TIMEOUT_MS = 55_000;
 
-function getLegacyConfig(): { url: string; token: string } {
-  const url = process.env.LEGACY_RBX_URL;
-  const token = process.env.LEGACY_RBX_TOKEN;
-  if (!url || !token) {
-    throw new Error("LEGACY_RBX_URL and LEGACY_RBX_TOKEN must be set.");
-  }
-  return { url: url.replace(/\/+$/, ""), token };
-}
-
-function isErrorResponse(value: unknown): value is LegacyErrorResponse {
+function isBoxTemplateData(value: unknown): value is BoxTemplateData {
+  if (typeof value !== "object" || value === null) return false;
+  const record = value as Record<string, unknown>;
   return (
-    typeof value === "object" &&
-    value !== null &&
-    "error" in value &&
-    typeof (value as LegacyErrorResponse).error === "string"
+    typeof record.prodId === "number" &&
+    typeof record.empresaNome === "string" &&
+    typeof record.boxName === "string" &&
+    Array.isArray(record.subtasks)
   );
 }
 
 /**
- * Fetches a box's calcCx data and PHP-computed assembly counts from the legacy
- * RBX system, authenticating with the shared `Token` header.
- *
- * @param boxId Numeric product id (the template `code` in the app).
+ * Fetches box template data from the legacy RBX system using DB credentials.
  */
 export async function fetchBoxTemplateData(
   boxId: number,
 ): Promise<BoxTemplateData> {
-  const { url, token } = getLegacyConfig();
+  const connection = await getRibermaxConnection();
+  if (!connection) {
+    throw new Error("ribermaxMisconfigured");
+  }
+
+  const url = connection.baseUrl.replace(/\/+$/, "");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
@@ -37,7 +34,7 @@ export async function fetchBoxTemplateData(
   try {
     response = await fetch(`${url}/produtos?templateData=${boxId}`, {
       method: "GET",
-      headers: { Token: token, Accept: "application/json" },
+      headers: { Token: connection.token, Accept: "application/json" },
       cache: "no-store",
       signal: controller.signal,
     });
@@ -59,15 +56,19 @@ export async function fetchBoxTemplateData(
   }
 
   if (!response.ok) {
-    const message = isErrorResponse(data)
+    const message = isLegacyErrorResponse(data)
       ? data.error
       : `Legacy RBX request failed (${response.status}).`;
     throw new Error(message);
   }
 
-  if (isErrorResponse(data)) {
+  if (isLegacyErrorResponse(data)) {
     throw new Error(data.error);
   }
 
-  return data as BoxTemplateData;
+  if (!isBoxTemplateData(data)) {
+    throw new Error("Invalid box template payload from the legacy RBX system.");
+  }
+
+  return data;
 }

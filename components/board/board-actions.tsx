@@ -908,7 +908,6 @@ export function BoardActions({
       <KanbanTaskSubtasksModal
         open={selectedTask !== null}
         taskName={selectedTaskDisplayTitle}
-        taskQty={selectedTask?.qty ?? 1}
         subtasks={subtasks}
         teams={teams}
         assignWarnMax={assignWarnMax}

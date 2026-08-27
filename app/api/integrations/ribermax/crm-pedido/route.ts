@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 
 import { processCrmPedidoWebhook } from "@/integrations/ribermax";
+import { getCrmWebhookSecret } from "@/integrations/crm/settings/repo";
 
 export const runtime = "nodejs";
 
 const CRM_SIGNATURE_HEADER = `x-${"pix"}${"trela"}-signature`;
 
-function getWebhookSecret(): string {
-  const secret = process.env.CRM_WEBHOOK_SECRET;
+async function getWebhookSecret(): Promise<string> {
+  const secret = await getCrmWebhookSecret();
   if (!secret) {
-    throw new Error("CRM_WEBHOOK_SECRET must be set.");
+    throw new Error("CRM webhook secret is not configured.");
   }
   return secret;
 }
@@ -18,7 +19,7 @@ function getWebhookSecret(): string {
 export async function POST(request: Request): Promise<NextResponse> {
   let secret: string;
   try {
-    secret = getWebhookSecret();
+    secret = await getWebhookSecret();
   } catch {
     return NextResponse.json({ error: "misconfigured" }, { status: 500 });
   }

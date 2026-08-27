@@ -1,19 +1,16 @@
 import { describe, expect, it } from "vitest";
 
+import { sampleSubTaskPreset } from "@/test/sample-subtask-preset";
+
 import {
   applySubTaskPreset,
   shouldSearchSubTaskPresets,
   SUBTASK_PRESET_MIN_QUERY_LENGTH,
-  type SubTaskPreset,
 } from "./subtask-preset";
 
-const preset: SubTaskPreset = {
-  documentId: "p1",
+const preset = sampleSubTaskPreset({
   name: "Corte dos sarrafos",
-  sharingType: "qty",
-  maxSameTimeWorkers: 2,
-  expectedTime: 120,
-};
+});
 
 describe("shouldSearchSubTaskPresets", () => {
   it("requires at least the minimum query length after trim", () => {
@@ -42,12 +39,12 @@ describe("applySubTaskPreset", () => {
       subTaskCategoryId: null,
     };
 
-    expect(applySubTaskPreset(current, preset)).toEqual({
+    expect(applySubTaskPreset(current, preset, 31)).toEqual({
       ...current,
       name: preset.name,
       sharingType: preset.sharingType,
       maxSameTimeWorkers: preset.maxSameTimeWorkers,
-      expectedTime: preset.expectedTime,
+      expectedTime: 31,
       subTaskCategoryId: preset.subTaskCategoryId ?? null,
     });
   });

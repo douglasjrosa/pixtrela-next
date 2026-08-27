@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
 
+import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
 import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
@@ -23,19 +24,43 @@ import {
   confirmChainStop,
   startChain,
 } from "@/lib/repos/kiosk-chains";
+import {
+  assignFlagsToSubTask,
+  createMaterialFlag,
+} from "@/lib/repos/material-flags";
 import { createStep, listSteps } from "@/lib/repos/steps";
+import { createSubTaskCategory } from "@/lib/repos/sub-task-categories";
 import {
   assignColaboratorsToSubTask,
   createTask,
   getTaskById,
   listSubTasksForTask,
   recordActivity,
+  updateTaskFields,
 } from "@/lib/repos/tasks";
 import { createTeam } from "@/lib/repos/teams";
 import { createTemplateTask } from "@/lib/repos/templates";
 import { createUser } from "@/lib/repos/users";
 import { activities, currencies, currencyForSubtasks, exchanges } from "@/drizzle/schema";
 import { asc, eq } from "drizzle-orm";
+
+function lettersFromStamp(suffix: string): string {
+  return suffix.slice(-5).replace(/\d/g, (digit) =>
+    String.fromCharCode(65 + Number(digit)),
+  );
+}
+
+async function createCategoryWithFlag(prefix: string, suffix: string) {
+  const category = await createSubTaskCategory({
+    name: `Cat ${suffix}`,
+    ref: `${prefix}${lettersFromStamp(suffix)}`,
+  });
+  const flag = await createMaterialFlag({
+    subTaskCategoryId: category.id,
+    index: 1,
+  });
+  return { category, flag };
+}
 
 describeWithDb("drizzle repos integration", () => {
   beforeAll(async () => {
@@ -278,11 +303,18 @@ describeWithDb("drizzle repos integration", () => {
         code: Number(suffix.slice(-5)),
       });
 
+      const { category, flag } = await createCategoryWithFlag("P", suffix);
+
       await createTemplateTask({
         code: `T${suffix.slice(-8)}`,
         name: "Template",
         subTasks: [
-          { name: "Cut", expectedTime: 10, index: 0 },
+          {
+            name: "Cut",
+            expectedTime: 10,
+            index: 0,
+            subTaskCategoryId: category.id,
+          },
           { name: "Pack", expectedTime: 5, index: 1, dependencyIndexes: [0] },
         ],
       });
@@ -297,7 +329,12 @@ describeWithDb("drizzle repos integration", () => {
 
       const subs = await listSubTasksForTask(task.id);
       expect(subs).toHaveLength(2);
+      expect(subs[0]?.qty).toBe(2);
       expect(subs[0]?.expectedTime).toBe(20);
+      expect(subs[1]?.qty).toBe(2);
+      expect(subs[1]?.expectedTime).toBe(10);
+      const created = await getTaskById(task.id);
+      expect(created?.totalExpectedTime).toBe(30);
       expect(fromDrizzleActivationStatus(subs[0]?.activationStatus)).toBe(
         "unlocked",
       );
@@ -306,6 +343,7 @@ describeWithDb("drizzle repos integration", () => {
       );
 
       await assignColaboratorsToSubTask(subs[0]!.id, [colaborator.id]);
+      await assignFlagsToSubTask(subs[0]!.id, [flag.id]);
 
       const startedAt = new Date("2026-08-09T10:00:00Z");
       const stoppedAt = new Date("2026-08-09T10:00:30Z");
@@ -344,6 +382,42 @@ describeWithDb("drizzle repos integration", () => {
   );
 
   it(
+    "scales template qty and expected time onto the task, then rescales",
+    async () => {
+      const suffix = String(Date.now());
+      await createTemplateTask({
+        code: `S${suffix.slice(-8)}`,
+        name: "Scale template",
+        subTasks: [{ name: "Assemble", qty: 2, expectedTime: 31, index: 0 }],
+      });
+      const step = await createStep({ name: `Scale ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `Scale task ${suffix}`,
+        qty: 10,
+        stepId: step.id,
+        templateTaskCode: `S${suffix.slice(-8)}`,
+      });
+
+      const [createdSub] = await listSubTasksForTask(task.id);
+      expect(createdSub?.qty).toBe(20);
+      expect(createdSub?.expectedTime).toBe(620);
+      expect(task.totalExpectedTime).toBe(620);
+
+      const updated = await updateTaskFields(task.id, {
+        name: task.name,
+        qty: 5,
+        status: task.status,
+        templateTaskCode: task.templateTaskCode,
+      });
+      const [rescaled] = await listSubTasksForTask(task.id);
+      expect(rescaled?.qty).toBe(10);
+      expect(rescaled?.expectedTime).toBe(310);
+      expect(updated.totalExpectedTime).toBe(310);
+    },
+    45_000,
+  );
+
+  it(
     "lists kiosk queue for assignees only and unlocks dependent subtask",
     async () => {
       const suffix = String(Date.now());
@@ -362,11 +436,18 @@ describeWithDb("drizzle repos integration", () => {
         code: Number(String(Number(suffix.slice(-5)) + 1).slice(-5)),
       });
 
+      const { category, flag } = await createCategoryWithFlag("K", suffix);
+
       await createTemplateTask({
         code: `K${suffix.slice(-7)}`,
         name: "Kiosk template",
         subTasks: [
-          { name: "First", expectedTime: 10, index: 0 },
+          {
+            name: "First",
+            expectedTime: 10,
+            index: 0,
+            subTaskCategoryId: category.id,
+          },
           { name: "Second", expectedTime: 5, index: 1, dependencyIndexes: [0] },
         ],
       });
@@ -395,7 +476,7 @@ describeWithDb("drizzle repos integration", () => {
       await stopSubTask(
         workerA.id,
         first!.id,
-        { completed: true },
+        { completed: true, flagIds: [flag.id] },
         undefined,
         new Date("2026-08-10T10:05:00Z"),
       );

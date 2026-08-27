@@ -1,6 +1,33 @@
 import { describe, expect, it } from "vitest";
 
-import { buildViewerStopStatsBySubTaskId } from "./kiosk-subtask-map";
+import {
+  buildViewerStopStatsBySubTaskId,
+  mapSubTaskDbRow,
+} from "./kiosk-subtask-map";
+
+describe("mapSubTaskDbRow", () => {
+  it("uses stored qty as targetQty without multiplying by task qty", () => {
+    const mapped = mapSubTaskDbRow({
+      id: "s1",
+      name: "Cut",
+      index: 0,
+      status: "waiting",
+      activationStatus: "unlocked",
+      qty: 20,
+      sharingType: "qty",
+      timeSpent: 0,
+      expectedTime: 620,
+      taskId: "t1",
+      taskName: "Task",
+      taskIndex: 0,
+      taskQty: 10,
+      maxSameTimeWorkers: 1,
+      linkedToPrevious: false,
+    });
+    expect(mapped.targetQty).toBe(20);
+    expect(mapped.qty).toBe(20);
+  });
+});
 
 describe("buildViewerStopStatsBySubTaskId", () => {
   it("marks participation and sums currency from viewer stops", () => {

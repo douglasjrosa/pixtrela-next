@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest";
 import { calculateSubTaskDisplayQty } from "./subtask-display-qty";
 
 describe("calculateSubTaskDisplayQty", () => {
-  it("multiplies sub-task qty by parent task qty", () => {
-    expect(calculateSubTaskDisplayQty(2, 10)).toBe(20);
+  it("returns the stored sub-task qty without multiplying by task qty", () => {
+    expect(calculateSubTaskDisplayQty(2)).toBe(2);
   });
 
   it("returns sub-task qty when parent task qty is 1", () => {
-    expect(calculateSubTaskDisplayQty(3, 1)).toBe(3);
+    expect(calculateSubTaskDisplayQty(3)).toBe(3);
   });
 });

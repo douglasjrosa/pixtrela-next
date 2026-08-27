@@ -1,6 +1,6 @@
 import { buildTemplateFromBox } from "@/integrations/ribermax/box/template-from-box";
 import { fetchBoxTemplateData } from "@/integrations/ribermax/rbx/rbx-client";
-import { getOrCreateBoxTemplateRates } from "@/integrations/ribermax/settings/repo";
+import { findSubTaskPresetByName } from "@/lib/repos/sub-task-presets";
 import {
   createTemplateTask,
   findTemplateByCode,
@@ -10,6 +10,8 @@ import type {
   TemplateSubTaskComponentInput,
   TemplateTaskFormInput,
 } from "@/lib/schemas/template-task";
+import type { SubTaskPreset } from "@/lib/business/subtask-preset";
+import type { BoxTemplateData } from "@/integrations/ribermax/rbx/rbx-types";
 
 function dependencyIndexesFrom(
   dependencies: TemplateSubTaskComponentInput["dependencies"],
@@ -27,7 +29,27 @@ function toRepoSubTasks(subTasks: TemplateSubTaskComponentInput[]) {
     index,
     expectedTime: row.expectedTime,
     dependencyIndexes: dependencyIndexesFrom(row.dependencies),
+    subTaskCategoryId: row.subTaskCategoryId ?? null,
   }));
+}
+
+async function resolvePresetsForPayload(
+  data: BoxTemplateData,
+): Promise<Map<string, SubTaskPreset>> {
+  const names = [
+    ...new Set(
+      data.subtasks.map((item) => item.presetName.trim()).filter(Boolean),
+    ),
+  ];
+  const presetsByName = new Map<string, SubTaskPreset>();
+  for (const name of names) {
+    const preset = await findSubTaskPresetByName(name);
+    if (!preset) {
+      throw new Error(`presetNotFound:${name}`);
+    }
+    presetsByName.set(name, preset);
+  }
+  return presetsByName;
 }
 
 /**
@@ -47,11 +69,9 @@ export async function ensureTemplateTaskForProdId(
     subTasks: [],
   });
 
-  const [data, rates] = await Promise.all([
-    fetchBoxTemplateData(prodId),
-    getOrCreateBoxTemplateRates(),
-  ]);
-  const draft = buildTemplateFromBox(data, rates);
+  const data = await fetchBoxTemplateData(prodId);
+  const presetsByName = await resolvePresetsForPayload(data);
+  const draft = buildTemplateFromBox(data, presetsByName);
 
   await updateTemplateTask({
     id: created.id,
@@ -63,7 +83,7 @@ export async function ensureTemplateTaskForProdId(
   return created.id;
 }
 
-/** Loads a box template draft from RBX using current plugin time rates. */
+/** Loads a box template draft from RBX using current plugin mapping. */
 export async function loadRibermaxTemplateFromBoxCode(
   code: string,
 ): Promise<TemplateTaskFormInput> {
@@ -71,9 +91,7 @@ export async function loadRibermaxTemplateFromBoxCode(
   if (!Number.isInteger(boxId) || boxId <= 0) {
     throw new Error("invalidCode");
   }
-  const [data, rates] = await Promise.all([
-    fetchBoxTemplateData(boxId),
-    getOrCreateBoxTemplateRates(),
-  ]);
-  return buildTemplateFromBox(data, rates);
+  const data = await fetchBoxTemplateData(boxId);
+  const presetsByName = await resolvePresetsForPayload(data);
+  return buildTemplateFromBox(data, presetsByName);
 }
