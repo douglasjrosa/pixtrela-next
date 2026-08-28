@@ -543,6 +543,7 @@
     "name": "Nome",
     "description": "Descrição",
     "unitTime": "Tempo unitário (s)",
+    "unitTimeSeconds": "{value} segundos",
     "qtyQuestion": "Pergunta de quantidade",
     "suggestions": "Sugestões de ações",
     "loading": "Buscando ações...",

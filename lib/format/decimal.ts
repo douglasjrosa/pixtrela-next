@@ -51,3 +51,14 @@ export function formatDecimalPtBr(
     maximumFractionDigits: places,
   }).format(roundDecimal(value, places));
 }
+
+/** pt-BR decimal without trailing ,00 (e.g. 14 → "14", 1.66 → "1,66"). */
+export function formatCompactDecimalPtBr(value: number): string {
+  const rounded = roundDecimal(value, DEFAULT_DECIMAL_PLACES);
+  if (Number.isInteger(rounded)) {
+    return new Intl.NumberFormat("pt-BR", {
+      maximumFractionDigits: 0,
+    }).format(rounded);
+  }
+  return formatDecimalPtBr(rounded, DEFAULT_DECIMAL_PLACES);
+}
