@@ -57,6 +57,7 @@ export function FactoryActionListTableFrame({
     return {
       unitTime: formatDecimalPtBr(action.unitTime),
       qtyQuestion: action.qtyQuestion,
+      description: action.description,
     };
   }
 
