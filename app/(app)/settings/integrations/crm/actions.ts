@@ -42,7 +42,8 @@ export async function testCrmConnection(): Promise<IntegrationSettingsActionResu
     await assertCanManage();
     const secret = await getCrmWebhookSecret();
     if (!secret) return { ok: false };
-    return probeCrmWebhookSecret(secret) ? { ok: true } : { ok: false };
+    const accepted = await probeCrmWebhookSecret(secret);
+    return accepted ? { ok: true } : { ok: false };
   } catch {
     return { ok: false };
   }

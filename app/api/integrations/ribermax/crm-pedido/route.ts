@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 
-import { processCrmPedidoWebhook } from "@/integrations/ribermax";
 import { getCrmWebhookSecret } from "@/integrations/crm/settings/repo";
+import { processCrmPedidoWebhook } from "@/integrations/ribermax";
+import { CRM_WEBHOOK_SIGNATURE_HEADER } from "@/integrations/ribermax/crm/crm-webhook-http";
 
 export const runtime = "nodejs";
-
-const CRM_SIGNATURE_HEADER = `x-${"pix"}${"trela"}-signature`;
 
 async function getWebhookSecret(): Promise<string> {
   const secret = await getCrmWebhookSecret();
@@ -25,7 +24,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const rawBody = await request.text();
-  const signature = request.headers.get(CRM_SIGNATURE_HEADER);
+  const signature = request.headers.get(CRM_WEBHOOK_SIGNATURE_HEADER);
   const result = await processCrmPedidoWebhook(rawBody, signature, secret);
 
   if (result.revalidateTasks) {
