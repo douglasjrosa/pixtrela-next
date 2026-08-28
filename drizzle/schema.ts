@@ -396,6 +396,7 @@ export const ribermaxConnectionSettings = pgTable(
 
 export const crmConnectionSettings = pgTable("crm_connection_settings", {
   id: uuid("id").defaultRandom().primaryKey(),
+  baseUrl: varchar("base_url", { length: 512 }),
   webhookSecret: text("webhook_secret").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()

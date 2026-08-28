@@ -1,7 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CRM_WEBHOOK_SIGNATURE_HEADER } from "@/integrations/ribermax/crm/crm-webhook-http";
-
 import { probeCrmWebhookSecret } from "./test-connection";
 
 const fetchMock = vi.fn();
@@ -16,35 +14,43 @@ describe("probeCrmWebhookSecret", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns true when the webhook route accepts the signed probe", async () => {
+  it("returns true when the CRM handshake accepts the secret", async () => {
     fetchMock.mockResolvedValue({ ok: true });
 
-    const ok = await probeCrmWebhookSecret("hmac-secret");
+    const ok = await probeCrmWebhookSecret({
+      baseUrl: "https://crm.example",
+      webhookSecret: "hmac-secret",
+    });
 
     expect(ok).toBe(true);
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/api/webhooks/crm-pedido");
-    expect(init.method).toBe("POST");
-    expect(init.body).toContain('"Bpedido":""');
+    expect(url).toBe("https://crm.example/api/pixtrela/handshake");
+    expect(init.method).toBe("GET");
     expect(init.headers).toMatchObject({
-      "Content-Type": "application/json",
-      [CRM_WEBHOOK_SIGNATURE_HEADER]: expect.stringMatching(/^sha256=/),
+      Token: "hmac-secret",
+      Accept: "application/json",
     });
   });
 
-  it("returns false when the webhook route rejects the probe", async () => {
+  it("returns false when the handshake rejects the secret", async () => {
     fetchMock.mockResolvedValue({ ok: false });
 
-    const ok = await probeCrmWebhookSecret("hmac-secret");
+    const ok = await probeCrmWebhookSecret({
+      baseUrl: "https://crm.example",
+      webhookSecret: "hmac-secret",
+    });
 
     expect(ok).toBe(false);
   });
 
-  it("returns false when the webhook request fails", async () => {
+  it("returns false when the handshake request fails", async () => {
     fetchMock.mockRejectedValue(new Error("network"));
 
-    const ok = await probeCrmWebhookSecret("hmac-secret");
+    const ok = await probeCrmWebhookSecret({
+      baseUrl: "https://crm.example",
+      webhookSecret: "hmac-secret",
+    });
 
     expect(ok).toBe(false);
   });

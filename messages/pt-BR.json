@@ -1074,7 +1074,8 @@
     },
     "crm": {
       "title": "CRM",
-      "help": "Segredo HMAC usado para validar o webhook de pedidos. O CRM deve enviar o mesmo valor no cabeçalho de assinatura.",
+      "help": "URL do CRM (sys-rbx) e segredo HMAC compartilhado. O teste de integração chama o handshake do CRM; o webhook de pedidos usa o mesmo segredo no cabeçalho de assinatura.",
+      "baseUrl": "URL do CRM",
       "webhookSecret": "Segredo do webhook"
     },
     "entryAccessHeading": "Formas de acesso",

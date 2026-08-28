@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTag = vi.fn();
 const revalidatePath = vi.fn();
-const upsertCrmWebhookSecret = vi.fn();
-const getCrmWebhookSecret = vi.fn();
+const upsertCrmConnection = vi.fn();
+const getCrmConnection = vi.fn();
 const probeCrmWebhookSecret = vi.fn();
 
 vi.mock("@/auth", () => ({
@@ -16,9 +16,8 @@ vi.mock("next/cache", () => ({
 }));
 
 vi.mock("@/integrations/crm/settings/repo", () => ({
-  upsertCrmWebhookSecret: (...args: unknown[]) =>
-    upsertCrmWebhookSecret(...args),
-  getCrmWebhookSecret: (...args: unknown[]) => getCrmWebhookSecret(...args),
+  upsertCrmConnection: (...args: unknown[]) => upsertCrmConnection(...args),
+  getCrmConnection: (...args: unknown[]) => getCrmConnection(...args),
 }));
 
 vi.mock("@/integrations/crm/settings/test-connection", () => ({
@@ -31,27 +30,37 @@ describe("crm settings actions", () => {
     vi.resetModules();
     revalidateTag.mockReset();
     revalidatePath.mockReset();
-    upsertCrmWebhookSecret.mockReset();
-    getCrmWebhookSecret.mockReset();
+    upsertCrmConnection.mockReset();
+    getCrmConnection.mockReset();
     probeCrmWebhookSecret.mockReset();
   });
 
-  it("upserts the webhook secret and revalidates", async () => {
+  it("upserts CRM connection and revalidates", async () => {
     const { updateCrmConnection } = await import("./actions");
     const formData = new FormData();
+    formData.set("baseUrl", "https://crm.example");
     formData.set("webhookSecret", "hmac-secret");
     const result = await updateCrmConnection(formData);
     expect(result).toEqual({ ok: true });
-    expect(upsertCrmWebhookSecret).toHaveBeenCalledWith("hmac-secret");
+    expect(upsertCrmConnection).toHaveBeenCalledWith({
+      baseUrl: "https://crm.example",
+      webhookSecret: "hmac-secret",
+    });
     expect(revalidatePath).toHaveBeenCalledWith("/settings/integrations/crm");
   });
 
-  it("tests saved webhook secret", async () => {
-    getCrmWebhookSecret.mockResolvedValue("hmac-secret");
+  it("tests saved CRM handshake credentials", async () => {
+    getCrmConnection.mockResolvedValue({
+      baseUrl: "https://crm.example",
+      webhookSecret: "hmac-secret",
+    });
     probeCrmWebhookSecret.mockResolvedValue(true);
     const { testCrmConnection } = await import("./actions");
     const result = await testCrmConnection();
     expect(result).toEqual({ ok: true });
-    expect(probeCrmWebhookSecret).toHaveBeenCalledWith("hmac-secret");
+    expect(probeCrmWebhookSecret).toHaveBeenCalledWith({
+      baseUrl: "https://crm.example",
+      webhookSecret: "hmac-secret",
+    });
   });
 });

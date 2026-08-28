@@ -5,8 +5,8 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import { crmConnectionSchema } from "@/integrations/crm/settings/schema";
 import {
-  getCrmWebhookSecret,
-  upsertCrmWebhookSecret,
+  getCrmConnection,
+  upsertCrmConnection,
 } from "@/integrations/crm/settings/repo";
 import { probeCrmWebhookSecret } from "@/integrations/crm/settings/test-connection";
 import type { Role } from "@/lib/auth/nav";
@@ -26,9 +26,10 @@ export async function updateCrmConnection(
   try {
     await assertCanManage();
     const values = crmConnectionSchema.parse({
+      baseUrl: String(formData.get("baseUrl") ?? ""),
       webhookSecret: String(formData.get("webhookSecret") ?? ""),
     });
-    await upsertCrmWebhookSecret(values.webhookSecret);
+    await upsertCrmConnection(values);
     revalidateTag("drizzle:crm-connection-settings", "default");
     revalidatePath("/settings/integrations/crm");
     return { ok: true };
@@ -40,9 +41,9 @@ export async function updateCrmConnection(
 export async function testCrmConnection(): Promise<IntegrationSettingsActionResult> {
   try {
     await assertCanManage();
-    const secret = await getCrmWebhookSecret();
-    if (!secret) return { ok: false };
-    const accepted = await probeCrmWebhookSecret(secret);
+    const connection = await getCrmConnection();
+    if (!connection) return { ok: false };
+    const accepted = await probeCrmWebhookSecret(connection);
     return accepted ? { ok: true } : { ok: false };
   } catch {
     return { ok: false };

@@ -13,7 +13,7 @@ export function CrmConnectionForm({
   saveAction,
   testAction,
 }: {
-  values: { webhookSecret: string };
+  values: { baseUrl: string; webhookSecret: string };
   hasSavedConnection: boolean;
   saveAction: (formData: FormData) => Promise<IntegrationSettingsActionResult>;
   testAction: () => Promise<IntegrationSettingsActionResult>;
@@ -24,6 +24,17 @@ export function CrmConnectionForm({
     <form className="max-w-md space-y-4">
       <h2 className="text-lg font-semibold">{t("title")}</h2>
       <p className="text-sm text-muted-foreground">{t("help")}</p>
+
+      <div className="space-y-2">
+        <Label htmlFor="baseUrl">{t("baseUrl")}</Label>
+        <Input
+          id="baseUrl"
+          name="baseUrl"
+          type="url"
+          defaultValue={values.baseUrl}
+          required
+        />
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="webhookSecret">{t("webhookSecret")}</Label>

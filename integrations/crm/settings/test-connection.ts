@@ -1,28 +1,26 @@
-import {
-  buildCrmConnectionProbeBody,
-  CRM_PEDIDO_WEBHOOK_PATH,
-  CRM_WEBHOOK_SIGNATURE_HEADER,
-} from "@/integrations/ribermax/crm/crm-webhook-http";
-import { signWebhookPayload } from "@/integrations/ribermax/crm/verify-webhook-signature";
-import { getAppBaseUrl } from "@/lib/app/app-base-url";
+import type { CrmConnection } from "./schema";
 
 const PROBE_TIMEOUT_MS = 15_000;
+const CRM_HANDSHAKE_PATH = "/api/pixtrela/handshake";
 
-export async function probeCrmWebhookSecret(secret: string): Promise<boolean> {
-  const body = buildCrmConnectionProbeBody();
-  const signature = signWebhookPayload(body, secret);
-  const baseUrl = getAppBaseUrl().replace(/\/+$/, "");
+/**
+ * Probes the CRM (sys-rbx-frontend) handshake with the shared webhook secret.
+ * Success only when the remote validates Token and returns HTTP 2xx.
+ */
+export async function probeCrmWebhookSecret(
+  connection: CrmConnection,
+): Promise<boolean> {
+  const baseUrl = connection.baseUrl.replace(/\/+$/, "");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${baseUrl}${CRM_PEDIDO_WEBHOOK_PATH}`, {
-      method: "POST",
+    const response = await fetch(`${baseUrl}${CRM_HANDSHAKE_PATH}`, {
+      method: "GET",
       headers: {
-        "Content-Type": "application/json",
-        [CRM_WEBHOOK_SIGNATURE_HEADER]: signature,
+        Token: connection.webhookSecret,
+        Accept: "application/json",
       },
-      body,
       cache: "no-store",
       signal: controller.signal,
     });

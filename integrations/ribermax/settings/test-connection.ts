@@ -1,7 +1,11 @@
 import type { RibermaxConnection } from "./connection-repo";
 
 const PROBE_TIMEOUT_MS = 15_000;
+const RBX_HANDSHAKE_PATH = "/handshake";
 
+/**
+ * Probes the legacy RBX handshake. Success only when Token is accepted (2xx).
+ */
 export async function probeRibermaxConnection(
   connection: RibermaxConnection,
 ): Promise<boolean> {
@@ -10,7 +14,7 @@ export async function probeRibermaxConnection(
   const timeout = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${baseUrl}/produtos?templateData=0`, {
+    const response = await fetch(`${baseUrl}${RBX_HANDSHAKE_PATH}`, {
       method: "GET",
       headers: {
         Token: connection.token,
@@ -20,11 +24,7 @@ export async function probeRibermaxConnection(
       signal: controller.signal,
     });
 
-    if (response.status === 401 || response.status === 403) {
-      return false;
-    }
-
-    return true;
+    return response.ok;
   } catch {
     return false;
   } finally {
