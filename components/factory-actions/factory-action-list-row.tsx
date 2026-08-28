@@ -18,6 +18,7 @@ export function FactoryActionListRowView({
   const labels: FactoryActionListRowLabels = {
     unitTime: formatDecimalPtBr(action.unitTime),
     qtyQuestion: action.qtyQuestion,
+    description: action.description,
   };
 
   return (

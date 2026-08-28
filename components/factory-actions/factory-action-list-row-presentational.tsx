@@ -11,6 +11,7 @@ const CENTER_CELL_CLASS = "text-center";
 export type FactoryActionListRowLabels = {
   unitTime: string;
   qtyQuestion: string;
+  description: string;
 };
 
 export interface FactoryActionListRowPresentationalProps {
@@ -57,7 +58,7 @@ export function FactoryActionListRowPresentational({
     >
       <div className="text-base font-medium">{action.name}</div>
       <div className="text-muted-foreground text-sm">{labels.unitTime}</div>
-      <div className="text-muted-foreground text-sm">{labels.qtyQuestion}</div>
+      <div className="text-muted-foreground text-sm">{labels.description}</div>
     </li>
   );
 }
