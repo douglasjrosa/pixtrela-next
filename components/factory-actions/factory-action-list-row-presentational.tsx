@@ -67,7 +67,7 @@ export function FactoryActionListRowPresentational({
           })}
         </div>
       </div>
-      <div className="text-muted-foreground text-sm">{labels.description}</div>
+      <div className="pt-1.5 text-muted-foreground text-sm">{labels.description}</div>
     </li>
   );
 }
