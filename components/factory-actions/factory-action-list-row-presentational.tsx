@@ -1,8 +1,10 @@
 "use client";
 
 import type { KeyboardEvent } from "react";
+import { useTranslations } from "next-intl";
 
 import type { FactoryAction } from "@/lib/business/factory-action";
+import { formatCompactDecimalPtBr } from "@/lib/format/decimal";
 
 import { useFactoryActionList } from "./factory-action-list-context";
 
@@ -11,6 +13,7 @@ const CENTER_CELL_CLASS = "text-center";
 export type FactoryActionListRowLabels = {
   unitTime: string;
   qtyQuestion: string;
+  description: string;
 };
 
 export interface FactoryActionListRowPresentationalProps {
@@ -24,6 +27,7 @@ export function FactoryActionListRowPresentational({
   variant,
   labels,
 }: FactoryActionListRowPresentationalProps) {
+  const tActions = useTranslations("factoryActions");
   const { openEdit } = useFactoryActionList();
   const activate = () => openEdit(action);
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -55,9 +59,15 @@ export function FactoryActionListRowPresentational({
       className="list-none cursor-pointer border-b py-3 hover:bg-muted/40"
       {...rowProps}
     >
-      <div className="text-base font-medium">{action.name}</div>
-      <div className="text-muted-foreground text-sm">{labels.unitTime}</div>
-      <div className="text-muted-foreground text-sm">{labels.qtyQuestion}</div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-base font-medium">{action.name}</div>
+        <div className="shrink-0 text-muted-foreground text-sm">
+          {tActions("unitTimeSeconds", {
+            value: formatCompactDecimalPtBr(action.unitTime),
+          })}
+        </div>
+      </div>
+      <div className="pt-1.5 text-muted-foreground text-sm">{labels.description}</div>
     </li>
   );
 }

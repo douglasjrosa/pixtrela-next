@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   decimalPlacesFromStep,
+  formatCompactDecimalPtBr,
   formatDecimalPtBr,
   formatSteppedNumber,
   roundDecimal,
@@ -33,5 +34,17 @@ describe("formatSteppedNumber", () => {
 describe("formatDecimalPtBr", () => {
   it("formats rounded values for display", () => {
     expect(formatDecimalPtBr(10.099999999999)).toBe("10,10");
+  });
+});
+
+describe("formatCompactDecimalPtBr", () => {
+  it("omits fractional digits for whole numbers", () => {
+    expect(formatCompactDecimalPtBr(14)).toBe("14");
+    expect(formatCompactDecimalPtBr(2)).toBe("2");
+  });
+
+  it("keeps two decimal digits when needed", () => {
+    expect(formatCompactDecimalPtBr(1.66)).toBe("1,66");
+    expect(formatCompactDecimalPtBr(16.11)).toBe("16,11");
   });
 });

@@ -1,18 +1,21 @@
 import { RibermaxConnectionForm } from "@/components/settings/ribermax-connection-form";
 import { getRibermaxConnection } from "@/integrations/ribermax";
 
-import { updateRibermaxConnection } from "./actions";
+import {
+  testRibermaxConnection,
+  updateRibermaxConnection,
+} from "./actions";
 
 export default async function SettingsRibermaxIntegrationPage() {
-  const connection = (await getRibermaxConnection()) ?? {
-    baseUrl: "",
-    token: "",
-  };
+  const connection = await getRibermaxConnection();
+  const values = connection ?? { baseUrl: "", token: "" };
 
   return (
     <RibermaxConnectionForm
-      values={connection}
-      action={updateRibermaxConnection}
+      values={values}
+      hasSavedConnection={connection !== null}
+      saveAction={updateRibermaxConnection}
+      testAction={testRibermaxConnection}
     />
   );
 }

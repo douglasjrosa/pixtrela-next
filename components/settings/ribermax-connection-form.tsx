@@ -1,21 +1,27 @@
-import { getTranslations } from "next-intl/server";
+"use client";
 
-import { FormSubmitButton } from "@/components/ui/form-submit-button";
+import { useTranslations } from "next-intl";
+
+import { IntegrationSettingsFormFooter } from "@/components/settings/integration-settings-form-footer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { IntegrationSettingsActionResult } from "@/lib/integrations/settings-action-result";
 
-export async function RibermaxConnectionForm({
+export function RibermaxConnectionForm({
   values,
-  action,
+  hasSavedConnection,
+  saveAction,
+  testAction,
 }: {
   values: { baseUrl: string; token: string };
-  action: (formData: FormData) => void | Promise<void>;
+  hasSavedConnection: boolean;
+  saveAction: (formData: FormData) => Promise<IntegrationSettingsActionResult>;
+  testAction: () => Promise<IntegrationSettingsActionResult>;
 }) {
-  const tCommon = await getTranslations("common");
-  const t = await getTranslations("settings.ribermax");
+  const t = useTranslations("settings.ribermax");
 
   return (
-    <form action={action} className="max-w-md space-y-4">
+    <form className="max-w-md space-y-4">
       <h2 className="text-lg font-semibold">{t("title")}</h2>
       <p className="text-sm text-muted-foreground">{t("help")}</p>
 
@@ -41,7 +47,11 @@ export async function RibermaxConnectionForm({
         />
       </div>
 
-      <FormSubmitButton label={tCommon("save")} />
+      <IntegrationSettingsFormFooter
+        hasSavedConnection={hasSavedConnection}
+        saveAction={saveAction}
+        testAction={testAction}
+      />
     </form>
   );
 }
