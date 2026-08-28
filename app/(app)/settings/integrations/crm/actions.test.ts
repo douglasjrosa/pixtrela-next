@@ -48,7 +48,7 @@ describe("crm settings actions", () => {
 
   it("tests saved webhook secret", async () => {
     getCrmWebhookSecret.mockResolvedValue("hmac-secret");
-    probeCrmWebhookSecret.mockReturnValue(true);
+    probeCrmWebhookSecret.mockResolvedValue(true);
     const { testCrmConnection } = await import("./actions");
     const result = await testCrmConnection();
     expect(result).toEqual({ ok: true });
