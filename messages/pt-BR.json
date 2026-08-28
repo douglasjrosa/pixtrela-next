@@ -1082,7 +1082,10 @@
     "entryAccessMobile": "No celular",
     "entryAccessNfc": "Tag NFC",
     "saved": "Configurações salvas.",
-    "error": "Não foi possível salvar as configurações."
+    "error": "Não foi possível salvar as configurações.",
+    "testIntegration": "Testar integração",
+    "testSuccess": "Conexão estabelecida com sucesso.",
+    "testFailed": "Não foi possível estabelecer conexão."
   },
   "kiosk": {
     "idleMessage": "Olhe para a câmera para entrar, aproxime o chaveiro NFC ou use código e senha.",
