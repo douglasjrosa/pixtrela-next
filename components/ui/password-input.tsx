@@ -135,7 +135,6 @@ export const PasswordInput = React.forwardRef<
       return;
     }
 
-    const input = event.currentTarget;
     const current = revealStateRef.current;
     const { start, end } = selectionRef.current;
     const now = Date.now();

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 
-import { renderWithIntl } from "@/test/test-utils";
+import { renderWithIntl, typePassword } from "@/test/test-utils";
 
 import { ProfilePasswordForm } from "./profile-password-form";
 
@@ -28,9 +28,7 @@ describe("ProfilePasswordForm", () => {
     renderWithIntl(<ProfilePasswordForm onSave={vi.fn()} />);
     expandPasswordForm();
 
-    fireEvent.change(screen.getByLabelText("Senha atual"), {
-      target: { value: "oldpass1" },
-    });
+    typePassword(screen.getByLabelText("Senha atual"), "oldpass1");
 
     expect(screen.queryByRole("button", { name: "Salvar" })).toBeNull();
   });
@@ -42,9 +40,7 @@ describe("ProfilePasswordForm", () => {
     );
     expandPasswordForm();
 
-    fireEvent.change(screen.getByLabelText("Senha atual"), {
-      target: { value: "oldpass1" },
-    });
+    typePassword(screen.getByLabelText("Senha atual"), "oldpass1");
 
     expect(onDirtyChange).toHaveBeenCalledWith(true);
   });
@@ -58,15 +54,9 @@ describe("ProfilePasswordForm", () => {
     renderWithIntl(<ProfilePasswordForm ref={ref} onSave={vi.fn()} />);
     expandPasswordForm();
 
-    fireEvent.change(screen.getByLabelText("Senha atual"), {
-      target: { value: "oldpass1" },
-    });
-    fireEvent.change(screen.getByLabelText("Nova senha"), {
-      target: { value: "newpass1" },
-    });
-    fireEvent.change(screen.getByLabelText("Confirmar nova senha"), {
-      target: { value: "other1" },
-    });
+    typePassword(screen.getByLabelText("Senha atual"), "oldpass1");
+    typePassword(screen.getByLabelText("Nova senha"), "newpass1");
+    typePassword(screen.getByLabelText("Confirmar nova senha"), "other1");
 
     const result = await ref.current!.submit();
     expect(result).toEqual({ ok: false, error: "invalid" });

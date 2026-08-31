@@ -47,22 +47,17 @@ export function FactoryActionSearchField({
   const tActions = useTranslations("factoryActions");
   const tSubtasks = useTranslations("subtasks");
   const listId = useId();
-  const [query, setQuery] = useState(selectedName);
+  const [draftQuery, setDraftQuery] = useState(selectedName);
   const [actions, setActions] = useState<FactoryAction[]>([]);
   const [highlight, setHighlight] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
   const [isSearching, startSearch] = useTransition();
   const listRef = useRef<HTMLDivElement>(null);
 
+  const query = isFocused ? draftQuery : selectedName;
   const canSearch = !disabled && shouldSearchFactoryActions(query);
   const visibleActions = canSearch ? actions : [];
   const showSuggestions = canSearch && isFocused;
-
-  useEffect(() => {
-    if (!isFocused) {
-      setQuery(selectedName);
-    }
-  }, [isFocused, selectedName]);
 
   useEffect(() => {
     if (!canSearch) return;
@@ -84,7 +79,7 @@ export function FactoryActionSearchField({
 
   function selectAction(action: FactoryAction): void {
     onChange(action.documentId, action);
-    setQuery(action.name);
+    setDraftQuery(action.name);
     setActions([]);
     setIsFocused(false);
   }
@@ -133,12 +128,15 @@ export function FactoryActionSearchField({
         }
         onChange={(event) => {
           const next = event.target.value;
-          setQuery(next);
+          setDraftQuery(next);
           if (value && next !== selectedName) {
             onChange("", null);
           }
         }}
-        onFocus={() => setIsFocused(true)}
+        onFocus={() => {
+          setDraftQuery(selectedName);
+          setIsFocused(true);
+        }}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
       />

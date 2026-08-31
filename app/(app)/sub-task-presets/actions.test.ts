@@ -9,7 +9,7 @@ const searchSubTaskPresetsByName = vi.fn();
 const listSubTaskPresetsRepo = vi.fn();
 const createSubTaskPresetRepo = vi.fn();
 const updateSubTaskPresetRepo = vi.fn();
-const deleteSubTaskPresetById = vi.fn();
+const archiveSubTaskPresetById = vi.fn();
 const auth = vi.fn(async () => ({ user: { role: "manager" } }));
 const revalidateTag = vi.fn();
 const revalidatePath = vi.fn();
@@ -31,8 +31,8 @@ vi.mock("@/lib/repos/sub-task-presets", () => ({
     createSubTaskPresetRepo(...args),
   updateSubTaskPresetRepo: (...args: unknown[]) =>
     updateSubTaskPresetRepo(...args),
-  deleteSubTaskPresetById: (...args: unknown[]) =>
-    deleteSubTaskPresetById(...args),
+  archiveSubTaskPresetById: (...args: unknown[]) =>
+    archiveSubTaskPresetById(...args),
 }));
 
 const loadSubtaskPresetListPageMock = vi.fn();
@@ -49,7 +49,7 @@ describe("sub-task-presets actions", () => {
     loadSubtaskPresetListPageMock.mockReset();
     createSubTaskPresetRepo.mockReset();
     updateSubTaskPresetRepo.mockReset();
-    deleteSubTaskPresetById.mockReset();
+    archiveSubTaskPresetById.mockReset();
     auth.mockReset();
     revalidateTag.mockReset();
     revalidatePath.mockReset();
@@ -101,7 +101,7 @@ describe("sub-task-presets actions", () => {
     const { loadMoreSubTaskPresets } = await import("./actions");
     await loadMoreSubTaskPresets({ column: "name", direction: "asc" }, 2);
     expect(loadSubtaskPresetListPageMock).toHaveBeenCalledWith(
-      { column: "name", direction: "asc" },
+      { column: "name", direction: "asc", q: undefined, showArchived: false },
       2,
     );
   });
@@ -140,7 +140,7 @@ describe("sub-task-presets actions", () => {
   it("deleteSubTaskPreset deletes by id", async () => {
     const { deleteSubTaskPreset } = await import("./actions");
     await deleteSubTaskPreset("p1");
-    expect(deleteSubTaskPresetById).toHaveBeenCalledWith("p1");
+    expect(archiveSubTaskPresetById).toHaveBeenCalledWith("p1");
   });
 
   it("rejects leader from managing presets", async () => {

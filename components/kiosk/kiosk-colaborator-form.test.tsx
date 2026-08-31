@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 
-import { renderWithIntl } from "@/test/test-utils";
+import { renderWithIntl, typePassword } from "@/test/test-utils";
 import { KioskColaboratorForm } from "./kiosk-colaborator-form";
 
 describe("KioskColaboratorForm", () => {
@@ -18,9 +18,7 @@ describe("KioskColaboratorForm", () => {
     fireEvent.input(screen.getByLabelText("Código"), {
       target: { value: "1234" },
     });
-    fireEvent.input(screen.getByLabelText("Senha"), {
-      target: { value: "secret1" },
-    });
+    typePassword(screen.getByLabelText("Senha"), "secret1");
     fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
     await waitFor(() => {

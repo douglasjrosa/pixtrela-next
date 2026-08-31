@@ -4,6 +4,10 @@ import { sampleSubTaskPreset } from "@/test/sample-subtask-preset";
 
 const listSubTaskPresetsPaged = vi.fn();
 
+vi.mock("next/cache", () => ({
+  unstable_cache: (fn: () => unknown) => () => fn(),
+}));
+
 vi.mock("@/lib/repos/sub-task-presets", () => ({
   listSubTaskPresetsPaged: (...args: unknown[]) =>
     listSubTaskPresetsPaged(...args),
@@ -23,11 +27,13 @@ describe("loadSubtaskPresetListPage", () => {
     });
 
     const result = await loadSubtaskPresetListPage(
-      { column: "name", direction: "asc" },
+      { column: "name", direction: "asc", showArchived: false },
       1,
     );
 
     expect(listSubTaskPresetsPaged).toHaveBeenCalledWith({
+      q: undefined,
+      showArchived: false,
       page: 1,
       pageSize: 10,
       sort: { column: "name", direction: "asc" },
