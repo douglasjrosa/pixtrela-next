@@ -32,7 +32,7 @@ function emitInputChange(
 
 export const PasswordInput = React.forwardRef<
   HTMLInputElement,
-  Omit<React.ComponentProps<"input">, "type" | "value" | "defaultValue">
+  Omit<React.ComponentProps<"input">, "type" | "value">
 >(function PasswordInput(
   {
     className,
