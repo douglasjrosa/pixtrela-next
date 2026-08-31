@@ -11,14 +11,17 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     loadRouteThemes(),
     loadBrandingForLayout(),
   ]);
+  const menuLogo = branding.menu_logo;
 
   return (
     <div className="relative flex min-h-dvh flex-col">
       <RouteThemeBackground themes={themes} />
       <AppNav
-        logoUrl={branding.menuLogoUrl}
-        menuLogoBackgroundColor={branding.menuLogoBackgroundColor}
-        menuLogoBackgroundColorOpacity={branding.menuLogoBackgroundColorOpacity}
+        logoUrl={menuLogo.mediaUrl}
+        menuLogoBackgroundColor={menuLogo.config.backgroundColor ?? null}
+        menuLogoBackgroundColorOpacity={
+          menuLogo.config.backgroundColorOpacity ?? 0
+        }
       />
       <RouteThemeContentFrame themes={themes}>{children}</RouteThemeContentFrame>
     </div>

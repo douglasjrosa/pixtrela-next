@@ -26,13 +26,7 @@ export function awardPricesFromValues(
     }));
 }
 
-/**
- * Trades are only allowed between the team's first and last exchange day.
- */
-export function isExchangeWindowOpen(team: ExchangeWindow, date: Date): boolean {
-  const day = date.getUTCDate();
-  return day >= team.exchangesFirstDay && day <= team.exchangesLastDay;
-}
+export { isExchangeWindowOpen } from "@/lib/domain/exchange";
 
 /**
  * Cost (in a given currency) to redeem `qty` units of an award.

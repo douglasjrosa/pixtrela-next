@@ -18,6 +18,7 @@ import {
   cartTotal,
 } from "@/lib/domain/cart";
 import { findCartLineAwardPrice } from "@/lib/domain/cart-line-price";
+import { effectiveExchangeLastDay } from "@/lib/domain/exchange";
 import {
   cycleYearMonth,
   trimCartLinesForClose,
@@ -40,8 +41,9 @@ function shouldCloseTeamWindow(
 ): { close: boolean; cycle: { year: number; month: number } } {
   const utcDay = now.getUTCDate();
   const current = cycleYearMonth(now);
+  const lastDay = effectiveExchangeLastDay(exchangesLastDay, now);
 
-  if (utcDay > exchangesLastDay) {
+  if (utcDay > lastDay) {
     return { close: true, cycle: current };
   }
 

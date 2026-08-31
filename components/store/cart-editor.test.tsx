@@ -5,6 +5,8 @@ import userEvent from "@testing-library/user-event";
 import {
   STORE_BALANCE_BG_IMAGE_CLASS,
   STORE_CATALOG_CARD_WIDTH_CLASS,
+  STORE_SUMMARY_CARD_WIDTH_CLASS,
+  STORE_SUMMARY_ROW_CLASS,
 } from "@/lib/store/store-layout";
 import { renderWithIntl } from "@/test/test-utils";
 import { CartEditor } from "./cart-editor";
@@ -113,7 +115,10 @@ describe("CartEditor", () => {
 
     expect(screen.getByTestId("store-awards-row")).toHaveClass("overflow-x-auto");
     expect(screen.getByTestId("store-awards-row")).toHaveClass("w-full", "min-w-0");
-    expect(screen.getByTestId("store-balances-row")).toHaveClass("overflow-x-auto");
+    expect(screen.getByTestId("store-balances-row")).toHaveClass("flex-col");
+    expect(screen.getByTestId("store-balances-row")).toHaveClass(
+      ...STORE_SUMMARY_ROW_CLASS.split(" "),
+    );
     expect(screen.getByTestId("store-awards-row").parentElement).toHaveClass(
       "overflow-x-hidden",
     );
@@ -127,8 +132,10 @@ describe("CartEditor", () => {
     expect(awardCard).toContainElement(screen.getByRole("button", { name: "+" }));
     expect(awardCard).toHaveClass(...STORE_CATALOG_CARD_WIDTH_CLASS.split(" "));
     const balanceCard = screen.getByTestId("store-balances-row")
-      .querySelector("li");
-    expect(balanceCard).toHaveClass(...STORE_CATALOG_CARD_WIDTH_CLASS.split(" "));
+      .querySelector("li:last-child");
+    expect(balanceCard).toHaveClass(
+      ...STORE_SUMMARY_CARD_WIDTH_CLASS.split(" "),
+    );
   });
 
   it("renders the currency icon as a small bottom-right watermark", () => {
@@ -142,8 +149,22 @@ describe("CartEditor", () => {
     expect(images[0]).toHaveClass(
       ...STORE_BALANCE_BG_IMAGE_CLASS.split(" "),
     );
-    expect(images[0]).toHaveClass("size-1/4", "bottom-0", "right-0");
+    expect(images[0]).toHaveClass("bottom-2", "right-2");
+    expect(images[0]).toHaveStyle({ opacity: "0.7", width: "50%" });
     expect(screen.getByTestId("store-awards-row").querySelector("img")).toBeNull();
+  });
+
+  it("renders summary slot before balance cards", () => {
+    renderWithIntl(
+      <CartEditor initialAwards={[AWARD]} currencies={CURRENCIES}>
+        <li data-testid="summary-slot">Lista</li>
+      </CartEditor>,
+    );
+
+    const row = screen.getByTestId("store-balances-row");
+    const items = row.querySelectorAll(":scope > li");
+    expect(items[0]).toHaveAttribute("data-testid", "summary-slot");
+    expect(items[items.length - 1]).toHaveClass("bg-[var(--star-gold-muted)]");
   });
 
   it("hides save and qty controls when read-only", () => {

@@ -7,27 +7,27 @@ import { mediaAssets } from "../drizzle/schema";
 import { closeDb, getDb } from "../lib/db/client";
 import { extensionFromMime } from "../lib/media/media-mime";
 import { storeMedia } from "../lib/media/store-media";
+import { upsertBrandingSlot } from "../lib/repos/branding";
 import { insertMediaAsset } from "../lib/repos/media";
-import { upsertBrandingMediaIds } from "../lib/repos/branding";
 
 const PRODUCT_ASSETS = [
   {
-    key: "menuLogo" as const,
+    key: "menu_logo" as const,
     relativePath: "images/logotipo-colorido-fundo-transparente-400x400px.png",
     mimeType: "image/png",
   },
   {
-    key: "rankingFirst" as const,
+    key: "ranking_first" as const,
     relativePath: "images/ranking-antares-1st.svg",
     mimeType: "image/svg+xml",
   },
   {
-    key: "rankingSecond" as const,
+    key: "ranking_second" as const,
     relativePath: "images/ranking-sirius-2nd.svg",
     mimeType: "image/svg+xml",
   },
   {
-    key: "rankingThird" as const,
+    key: "ranking_third" as const,
     relativePath: "images/ranking-vega-3rd.svg",
     mimeType: "image/svg+xml",
   },
@@ -69,23 +69,12 @@ async function upsertProductAsset(asset: (typeof PRODUCT_ASSETS)[number]) {
 }
 
 async function main(): Promise<void> {
-  const ids = {
-    menuLogoMediaId: null as string | null,
-    rankingFirstMediaId: null as string | null,
-    rankingSecondMediaId: null as string | null,
-    rankingThirdMediaId: null as string | null,
-  };
-
   for (const asset of PRODUCT_ASSETS) {
     const id = await upsertProductAsset(asset);
-    if (asset.key === "menuLogo") ids.menuLogoMediaId = id;
-    if (asset.key === "rankingFirst") ids.rankingFirstMediaId = id;
-    if (asset.key === "rankingSecond") ids.rankingSecondMediaId = id;
-    if (asset.key === "rankingThird") ids.rankingThirdMediaId = id;
+    await upsertBrandingSlot({ key: asset.key, mediaId: id });
   }
 
-  await upsertBrandingMediaIds(ids);
-  console.log("Branding preferences updated with product media ids");
+  console.log("Branding slots updated with product media ids");
 }
 
 main()

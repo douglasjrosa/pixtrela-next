@@ -2,6 +2,8 @@
  * Monthly exchange batch visibility and cycle helpers (UTC).
  */
 
+import { effectiveExchangeLastDay } from "@/lib/domain/exchange";
+
 export type CycleYearMonth = { year: number; month: number };
 
 export function cycleYearMonth(date: Date): CycleYearMonth {
@@ -20,8 +22,9 @@ export function maxActiveTeamLastDay(
 
 /** Batch for a month is visible after the max last-day among active teams. */
 export function isBatchVisible(now: Date, maxLastDay: number): boolean {
-  if (maxLastDay <= 0) return false;
-  return now.getUTCDate() > maxLastDay;
+  const effectiveLastDay = effectiveExchangeLastDay(maxLastDay, now);
+  if (effectiveLastDay <= 0) return false;
+  return now.getUTCDate() > effectiveLastDay;
 }
 
 export type PricedCartLine = {

@@ -1,7 +1,7 @@
 import { and, count, desc, eq, ilike, ne, or, sql, type SQL } from "drizzle-orm";
 
 import {
-  appBrandingSettings,
+  appBrandingSlots,
   awards,
   currencies,
   mediaAssets,
@@ -387,37 +387,17 @@ export async function findMediaReferences(
     });
   }
 
-  const [branding] = await db.select().from(appBrandingSettings).limit(1);
-  if (branding) {
-    const brandingSectionKey = mediaReferenceSectionKey("branding");
-    if (branding.menuLogoMediaId === id) {
-      refs.push({
-        kind: "branding",
-        label: "menuLogo",
-        sectionKey: brandingSectionKey,
-      });
-    }
-    if (branding.rankingFirstMediaId === id) {
-      refs.push({
-        kind: "branding",
-        label: "rankingFirst",
-        sectionKey: brandingSectionKey,
-      });
-    }
-    if (branding.rankingSecondMediaId === id) {
-      refs.push({
-        kind: "branding",
-        label: "rankingSecond",
-        sectionKey: brandingSectionKey,
-      });
-    }
-    if (branding.rankingThirdMediaId === id) {
-      refs.push({
-        kind: "branding",
-        label: "rankingThird",
-        sectionKey: brandingSectionKey,
-      });
-    }
+  const brandingRows = await db
+    .select({ key: appBrandingSlots.key })
+    .from(appBrandingSlots)
+    .where(eq(appBrandingSlots.mediaId, id));
+  const brandingSectionKey = mediaReferenceSectionKey("branding");
+  for (const slot of brandingRows) {
+    refs.push({
+      kind: "branding",
+      label: slot.key,
+      sectionKey: brandingSectionKey,
+    });
   }
 
   return refs;

@@ -1,12 +1,13 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 
 import { users } from "@/drizzle/schema";
-import { getDb } from "@/lib/db/client";
+import { closeDb, getDb } from "@/lib/db/client";
+import { describeWithDb } from "@/lib/db/test-utils";
 import { storeMedia } from "@/lib/media/store-media";
 import {
-  loadResolvedBrandingAssets,
-  updateMenuLogoMediaId,
+  loadResolvedBranding,
+  upsertBrandingSlot,
 } from "@/lib/repos/branding";
 import {
   deleteMediaAsset,
@@ -18,15 +19,20 @@ import {
 } from "@/lib/repos/media";
 import { deactivateUser } from "@/lib/repos/users";
 
-describe("media repo", () => {
+describeWithDb("media repo", () => {
   beforeAll(() => {
     getDb();
+  });
+
+  afterAll(async () => {
+    await closeDb();
   });
 
   it(
     "lists inserted assets and blocks delete while branding references them",
     async () => {
-      const previous = await loadResolvedBrandingAssets();
+      const previous = await loadResolvedBranding();
+      const previousMenuLogoMediaId = previous.menu_logo.mediaId;
       const stored = await storeMedia({
         bytes: Buffer.from("fake-png"),
         mimeType: "image/png",
@@ -50,14 +56,17 @@ describe("media repo", () => {
       });
       expect(listed.items.some((item) => item.id === asset.id)).toBe(true);
 
-      await updateMenuLogoMediaId(asset.id);
+      await upsertBrandingSlot({ key: "menu_logo", mediaId: asset.id });
       const refs = await findMediaReferences(asset.id);
       expect(refs.some((ref) => ref.kind === "branding")).toBe(true);
       expect(refs.some((ref) => ref.sectionKey === "preferences")).toBe(true);
 
       await expect(deleteMediaAsset(asset.id)).rejects.toThrow("inUse");
 
-      await updateMenuLogoMediaId(previous.menuLogoMediaId);
+      await upsertBrandingSlot({
+        key: "menu_logo",
+        mediaId: previousMenuLogoMediaId,
+      });
       await deleteMediaAsset(asset.id);
 
       const after = await listMediaAssets({

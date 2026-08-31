@@ -25,14 +25,17 @@ export default async function DocumentIdLayout({
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
   const branding = await loadBrandingForLayout();
+  const menuLogo = branding.menu_logo;
 
   if (role === "manager" || role === "leader") {
     return (
       <div className="relative flex min-h-dvh flex-col">
         <AppNav
-          logoUrl={branding.menuLogoUrl}
-          menuLogoBackgroundColor={branding.menuLogoBackgroundColor}
-          menuLogoBackgroundColorOpacity={branding.menuLogoBackgroundColorOpacity}
+          logoUrl={menuLogo.mediaUrl}
+          menuLogoBackgroundColor={menuLogo.config.backgroundColor ?? null}
+          menuLogoBackgroundColorOpacity={
+            menuLogo.config.backgroundColorOpacity ?? 0
+          }
         />
         <main className="relative z-10 flex-1 px-4 py-6">{children}</main>
       </div>
@@ -48,9 +51,11 @@ export default async function DocumentIdLayout({
       <RouteThemeFrame theme={theme} fallbackClassName="bg-[var(--surface-warm)]">
         <ColaboratorHeader
           homeHref={session?.user?.id ? `/${session.user.id}` : "/"}
-          logoUrl={branding.menuLogoUrl}
-          menuLogoBackgroundColor={branding.menuLogoBackgroundColor}
-          menuLogoBackgroundColorOpacity={branding.menuLogoBackgroundColorOpacity}
+          logoUrl={menuLogo.mediaUrl}
+          menuLogoBackgroundColor={menuLogo.config.backgroundColor ?? null}
+          menuLogoBackgroundColorOpacity={
+            menuLogo.config.backgroundColorOpacity ?? 0
+          }
         />
         <main
           className={cn(

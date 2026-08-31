@@ -74,4 +74,14 @@ describe("isExchangeWindowOpen boundary days", () => {
     expect(isExchangeWindowOpen(team, new Date("2026-06-05T00:00:00Z"))).toBe(true);
     expect(isExchangeWindowOpen(team, new Date("2026-06-15T00:00:00Z"))).toBe(true);
   });
+
+  it("treats configured day 31 as the month's last day when shorter", () => {
+    const febTeam = { exchangesFirstDay: 3, exchangesLastDay: 31 };
+    expect(
+      isExchangeWindowOpen(febTeam, new Date("2026-02-28T00:00:00Z")),
+    ).toBe(true);
+    expect(
+      isExchangeWindowOpen(febTeam, new Date("2026-04-30T00:00:00Z")),
+    ).toBe(true);
+  });
 });

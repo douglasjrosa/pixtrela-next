@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 
-import { renderWithIntl } from "@/test/test-utils";
+import { renderWithIntl, typePassword } from "@/test/test-utils";
 
 import { ProfileClient } from "./profile-client";
 
@@ -73,9 +73,7 @@ describe("ProfileClient", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Alterar senha" }));
-    fireEvent.change(screen.getByLabelText("Senha atual"), {
-      target: { value: "oldpass1" },
-    });
+    typePassword(screen.getByLabelText("Senha atual"), "oldpass1");
 
     expect(
       await screen.findByRole("button", { name: "Salvar" }),

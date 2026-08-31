@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
@@ -10,6 +10,7 @@ const createSubTaskPreset = vi.fn();
 const updateSubTaskPreset = vi.fn();
 const deleteSubTaskPreset = vi.fn();
 const refresh = vi.fn();
+const useRegisterTemplatesPageCreateAction = vi.fn();
 
 vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
   createSubTaskPreset: (...args: unknown[]) => createSubTaskPreset(...args),
@@ -24,6 +25,19 @@ vi.mock("@/app/(app)/settings/subtasks/actions", () => ({
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh, replace: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock("@/components/templates/templates-page-actions-context", () => ({
+  useRegisterTemplatesPageCreateAction: (...args: unknown[]) =>
+    useRegisterTemplatesPageCreateAction(...args),
+}));
+
+vi.mock("@/components/factory-actions/factory-action-search-field", () => ({
+  FactoryActionSearchField: () => <div data-testid="action-search" />,
+}));
+
+vi.mock("@/components/subtasks/subtask-category-select", () => ({
+  SubTaskCategorySelect: () => <div data-testid="category-select" />,
 }));
 
 vi.mock("@/lib/ui/app-toast", () => ({
@@ -58,13 +72,16 @@ function renderManagerWithRow() {
 }
 
 describe("SubTaskPresetManager", () => {
-  it("renders presets and opens create modal from plus button", async () => {
-    const user = userEvent.setup();
+  it("renders presets and opens create modal from registered chrome action", async () => {
     renderManagerWithRow();
 
     expect(screen.getByText("Corte")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Novo modelo" }));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    const openCreate = useRegisterTemplatesPageCreateAction.mock.calls[0]?.[1];
+    expect(openCreate).toBeTypeOf("function");
+    act(() => {
+      openCreate!();
+    });
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Novo modelo" }),
     ).toBeInTheDocument();
