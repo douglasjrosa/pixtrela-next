@@ -8,7 +8,11 @@ import {
   resolveCurrencyPluralTitle,
   resolveCurrencyTitle,
 } from "@/lib/domain/currency-display";
-import { isExchangeWindowOpen } from "@/lib/domain/exchange";
+import {
+  isExchangeWindowOpen,
+  resolveExchangeWindowPhase,
+  type ExchangeWindowPhase,
+} from "@/lib/domain/exchange";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { getOrCreateMonthlyBalance } from "@/lib/repos/balances";
 import { listOpenCartItemRows } from "@/lib/repos/carts";
@@ -32,6 +36,7 @@ export interface StorePageData {
   currencies: StoreCurrencyView[];
   cards: ReturnType<typeof mergeCatalogWithCart>;
   windowOpen: boolean;
+  windowPhase: ExchangeWindowPhase | null;
   team: TeamEntity | null;
 }
 
@@ -140,7 +145,9 @@ async function loadStoreCurrencies(
 export async function loadStorePage(userId: string): Promise<StorePageData> {
   try {
     const team = await findActiveTeamWindowForUser(userId);
-    const windowOpen = team ? isExchangeWindowOpen(team, new Date()) : false;
+    const now = new Date();
+    const windowOpen = team ? isExchangeWindowOpen(team, now) : false;
+    const windowPhase = team ? resolveExchangeWindowPhase(team, now) : null;
     const [catalogRows, cartRows, storeCurrencies] = await Promise.all([
       loadStoreCatalog(),
       listOpenCartItemRows(userId),
@@ -166,6 +173,7 @@ export async function loadStorePage(userId: string): Promise<StorePageData> {
       currencies: storeCurrencies,
       cards,
       windowOpen,
+      windowPhase,
       team,
     };
   } catch (error) {
@@ -174,6 +182,7 @@ export async function loadStorePage(userId: string): Promise<StorePageData> {
       currencies: [],
       cards: [],
       windowOpen: false,
+      windowPhase: null,
       team: null,
     };
   }

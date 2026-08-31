@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import { withSerwist } from "@serwist/turbopack";
 
+import { buildNextImageRemotePatterns } from "./lib/media/next-image-remote-patterns";
+
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
@@ -10,6 +12,17 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["pdfkit", "fontkit"],
   outputFileTracingIncludes: {
     "/exchanges/*/pdf": ["./node_modules/pdfkit/js/data/**/*"],
+  },
+  images: {
+    localPatterns: [
+      {
+        pathname: "/api/media/**",
+      },
+      {
+        pathname: "/api/kiosk/face-media",
+      },
+    ],
+    remotePatterns: buildNextImageRemotePatterns(),
   },
   async redirects() {
     return [

@@ -7,6 +7,7 @@ export interface StepOption {
 
 export interface TaskRow {
   documentId: string;
+  crmItemKey?: string | null;
   name: string;
   qty: number;
   deliveryDate?: string | null;

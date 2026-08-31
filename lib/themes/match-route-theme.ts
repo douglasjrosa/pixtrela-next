@@ -10,7 +10,11 @@ export const ROUTE_THEME_KEYS = [
   "users",
   "settings",
   "colaborator",
+  "store",
+  "orders",
+  "profile",
   "kiosk",
+  "kiosk-staff",
 ] as const;
 
 export type RouteThemeKey = (typeof ROUTE_THEME_KEYS)[number];
@@ -156,6 +160,7 @@ export interface RouteThemeView {
 
 /** Static path prefixes ordered longest-first for matching. */
 const PREFIX_RULES: { prefix: string; key: RouteThemeKey }[] = [
+  { prefix: "/kiosk/staff", key: "kiosk-staff" },
   { prefix: "/settings", key: "settings" },
   { prefix: "/templates", key: "templates" },
   { prefix: "/board", key: "board" },
@@ -185,6 +190,12 @@ const RESERVED_TOP_SEGMENTS = new Set([
   "serwist",
 ]);
 
+const COLABORATOR_SUBROUTE_KEYS: Record<string, RouteThemeKey> = {
+  store: "store",
+  orders: "orders",
+  profile: "profile",
+};
+
 export function resolveRouteThemeKey(pathname: string): RouteThemeKey | null {
   const normalized =
     pathname.length > 1 && pathname.endsWith("/")
@@ -204,12 +215,18 @@ export function resolveRouteThemeKey(pathname: string): RouteThemeKey | null {
     }
   }
 
-  const segment = normalized.split("/").filter(Boolean)[0];
-  if (segment && !RESERVED_TOP_SEGMENTS.has(segment)) {
-    return "colaborator";
+  const parts = normalized.split("/").filter(Boolean);
+  const top = parts[0];
+  if (!top || RESERVED_TOP_SEGMENTS.has(top)) {
+    return null;
   }
 
-  return null;
+  const sub = parts[1];
+  if (sub && COLABORATOR_SUBROUTE_KEYS[sub]) {
+    return COLABORATOR_SUBROUTE_KEYS[sub];
+  }
+
+  return "colaborator";
 }
 
 export function matchRouteTheme(

@@ -81,6 +81,7 @@ const loadTaskListPageCached = cache(
       };
       tasks.push({
         documentId: task.id,
+        crmItemKey: task.crmItemKey,
         name: task.name,
         qty: task.qty,
         deliveryDate: task.deliveryDate,

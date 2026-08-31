@@ -5,6 +5,7 @@ import { useState, type ChangeEvent } from "react";
 import { useTranslations } from "next-intl";
 
 import { FaceOvalCapture } from "@/components/kiosk/face-oval-capture";
+import { AppImage } from "@/components/media/app-image";
 import { Button } from "@/components/ui/button";
 import { compressProfileImage } from "@/lib/media/compress-profile-image";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
@@ -81,16 +82,16 @@ export function ProfileAvatarEditor({
       <div className="flex items-center gap-4">
         <div
           className={
-            "flex size-24 shrink-0 items-center justify-center overflow-hidden " +
+            "relative flex size-24 shrink-0 items-center justify-center overflow-hidden " +
             "rounded-full border bg-background"
           }
         >
           {resolvedUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <AppImage
               src={resolvedUrl}
               alt={t("avatarAlt", { name: userName })}
-              className="size-full object-cover"
+              fill
+              className="object-cover"
             />
           ) : (
             <User className="size-10 text-muted-foreground" aria-hidden />

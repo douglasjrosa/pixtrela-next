@@ -2,21 +2,23 @@
 
 import { useTranslations } from "next-intl";
 
+import type { ExchangeWindowPhase } from "@/lib/domain/exchange";
+
 export interface StoreWindowInfoCardProps {
-  windowOpen: boolean;
+  windowPhase: ExchangeWindowPhase;
   firstDay: number;
   lastDay: number;
 }
 
 export function StoreWindowInfoCard({
-  windowOpen,
+  windowPhase,
   firstDay,
   lastDay,
 }: StoreWindowInfoCardProps) {
   const tExchange = useTranslations("exchange");
   const tCart = useTranslations("cart");
 
-  if (windowOpen) {
+  if (windowPhase === "open") {
     return (
       <div
         role="status"
@@ -38,7 +40,11 @@ export function StoreWindowInfoCard({
       <p className="text-sm text-destructive">
         {tExchange("windowClosed", { first: firstDay, last: lastDay })}
       </p>
-      <p className="text-sm">{tCart("readOnlyClosed")}</p>
+      <p className="text-sm">
+        {windowPhase === "before_open"
+          ? tCart("readOnlyNotYetOpen")
+          : tCart("readOnlyClosed")}
+      </p>
     </div>
   );
 }

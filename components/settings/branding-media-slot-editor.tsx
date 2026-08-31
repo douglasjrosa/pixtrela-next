@@ -4,6 +4,7 @@ import { useCallback, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import { MediaPickerModal } from "@/components/settings/media-picker-modal";
+import { AppImage } from "@/components/media/app-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -186,18 +187,21 @@ export function BrandingMediaSlotEditor({
           style={{ backgroundColor: previewBackground ?? undefined }}
         >
           {mediaUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={mediaUrl} alt="" className="size-full object-contain" />
+            <AppImage
+              src={mediaUrl}
+              fill
+              className="object-contain"
+            />
           ) : (
             <span className="px-2 text-center text-[10px] text-muted-foreground">
               {t(noneKey)}
             </span>
           )}
           {supportsDisplay && mediaUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <AppImage
               src={mediaUrl}
-              alt=""
+              width={64}
+              height={64}
               className="pointer-events-none absolute right-1 bottom-1 object-contain"
               style={{
                 width: `${watermarkStyle.widthPercent}%`,

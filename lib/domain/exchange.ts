@@ -37,6 +37,20 @@ export function isExchangeWindowOpen(
   return day >= team.exchangesFirstDay && day <= lastDay;
 }
 
+export type ExchangeWindowPhase = "open" | "before_open" | "after_close";
+
+export function resolveExchangeWindowPhase(
+  team: ExchangeWindow,
+  date: Date,
+): ExchangeWindowPhase {
+  if (isExchangeWindowOpen(team, date)) return "open";
+
+  const day = date.getUTCDate();
+  if (day < team.exchangesFirstDay) return "before_open";
+
+  return "after_close";
+}
+
 export function exchangeCost(
   prices: AwardPrice[],
   currencyId: string,

@@ -8,7 +8,7 @@ import { StoreWindowInfoCard } from "./store-window-info-card";
 describe("StoreWindowInfoCard", () => {
   it("merges the open-window messages into one card with two paragraphs", () => {
     const { container } = renderWithIntl(
-      <StoreWindowInfoCard windowOpen firstDay={3} lastDay={15} />,
+      <StoreWindowInfoCard windowPhase="open" firstDay={3} lastDay={15} />,
     );
 
     const card = screen.getByRole("status");
@@ -20,9 +20,9 @@ describe("StoreWindowInfoCard", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("merges the closed-window messages into one card with two paragraphs", () => {
+  it("shows the after-close message when the window has ended", () => {
     renderWithIntl(
-      <StoreWindowInfoCard windowOpen={false} firstDay={3} lastDay={15} />,
+      <StoreWindowInfoCard windowPhase="after_close" firstDay={3} lastDay={15} />,
     );
 
     const card = screen.getByRole("alert");
@@ -30,5 +30,19 @@ describe("StoreWindowInfoCard", () => {
     expect(paragraphs).toHaveLength(2);
     expect(paragraphs[0]).toHaveTextContent(/disponíveis somente/i);
     expect(paragraphs[1]).toHaveTextContent(/janela de trocas encerrou/i);
+  });
+
+  it("shows the before-open message at the start of the month", () => {
+    renderWithIntl(
+      <StoreWindowInfoCard windowPhase="before_open" firstDay={3} lastDay={30} />,
+    );
+
+    const card = screen.getByRole("alert");
+    const paragraphs = card.querySelectorAll("p");
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs[0]).toHaveTextContent(/disponíveis somente/i);
+    expect(paragraphs[1]).toHaveTextContent(
+      /janela de trocas ainda não está aberta/i,
+    );
   });
 });

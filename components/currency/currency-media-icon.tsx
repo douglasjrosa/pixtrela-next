@@ -1,5 +1,6 @@
 import { Currency } from "lucide-react";
 
+import { AppImage } from "@/components/media/app-image";
 import { cn } from "@/lib/utils";
 
 export interface CurrencyMediaIconProps {
@@ -11,11 +12,10 @@ export interface CurrencyMediaIconProps {
 export function CurrencyMediaIcon({ url, className }: CurrencyMediaIconProps) {
   if (url) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- external currency icon URL
-      <img
+      <AppImage
         src={url}
-        alt=""
-        role="presentation"
+        width={16}
+        height={16}
         className={cn("object-contain", className)}
       />
     );

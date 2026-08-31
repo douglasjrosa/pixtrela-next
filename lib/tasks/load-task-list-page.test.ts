@@ -92,6 +92,39 @@ describe("loadTaskListPage", () => {
     expect(result.tasks).toHaveLength(2);
   });
 
+  it("maps crmItemKey from drizzle tasks", async () => {
+    listTasks.mockResolvedValue([
+      {
+        id: "crm-1",
+        name: "Ecel - Autoclave 45L",
+        crmItemKey: "42:0",
+        qty: 1,
+        deliveryDate: "2026-07-01",
+        index: 0,
+        status: "waiting",
+        active: true,
+        templateTaskCode: null,
+        totalExpectedTime: 10,
+        totalTimeSpent: 0,
+        stepId: null,
+      },
+    ]);
+
+    const result = await loadTaskListPage(
+      {
+        statuses: ["waiting"],
+        from: "2026-06-01",
+        to: "2026-07-15",
+        column: "deliveryDate",
+        direction: "asc",
+        showArchived: false,
+      },
+      1,
+    );
+
+    expect(result.tasks[0]?.crmItemKey).toBe("42:0");
+  });
+
   it("lists only archived tasks when showArchived is on", async () => {
     listTasks.mockResolvedValue([
       {

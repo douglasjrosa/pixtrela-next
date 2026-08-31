@@ -192,4 +192,21 @@ describe("TaskListRowPresentational", () => {
     );
     expect(screen.getAllByText("32min de 1h 21min").length).toBeGreaterThan(0);
   });
+
+  it("renders crm item key before the task name in table rows", () => {
+    renderWithIntl(
+      <table>
+        <tbody>
+          <TaskListRowPresentational
+            task={{ ...tasks[0]!, crmItemKey: "42:0" }}
+            variant="table"
+            href="/tasks/t1"
+            labels={rowLabels}
+          />
+        </tbody>
+      </table>,
+    );
+
+    expect(screen.getByText("42:0")).toBeInTheDocument();
+  });
 });

@@ -4,6 +4,7 @@ import {
   canAfford,
   exchangeCost,
   isExchangeWindowOpen,
+  resolveExchangeWindowPhase,
 } from "./exchange";
 
 describe("exchange domain", () => {
@@ -28,6 +29,20 @@ describe("exchange domain", () => {
     expect(isExchangeWindowOpen(team, new Date("2026-01-31T12:00:00Z"))).toBe(
       true,
     );
+  });
+
+  it("resolves before-open vs after-close phases", () => {
+    const team = { exchangesFirstDay: 3, exchangesLastDay: 30 };
+
+    expect(
+      resolveExchangeWindowPhase(team, new Date("2026-08-02T12:00:00Z")),
+    ).toBe("before_open");
+    expect(
+      resolveExchangeWindowPhase(team, new Date("2026-08-03T12:00:00Z")),
+    ).toBe("open");
+    expect(
+      resolveExchangeWindowPhase(team, new Date("2026-08-31T12:00:00Z")),
+    ).toBe("after_close");
   });
 
   it("computes cost and affordability", () => {

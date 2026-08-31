@@ -6,10 +6,12 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from "react";
+import { Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { AppImage } from "@/components/media/app-image";
 import { SettingsSectionHeading } from "@/components/settings/settings-section-heading";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
@@ -101,14 +103,28 @@ const selectClassName = NATIVE_SELECT_TALL_CLASS_NAME;
 const CHECKERBOARD =
   "repeating-conic-gradient(#d4d4d4 0% 25%, #fafafa 0% 50%) 50% / 10px 10px";
 
+const THEME_PREVIEW_TILE_CLASS =
+  "block aspect-square h-auto w-full rounded-md border border-border";
+
+const THEME_CARD_EDIT_ICON_CLASS = cn(
+  "absolute right-3 top-3 inline-flex size-[1.875em] items-center justify-center",
+  "rounded-md border border-border text-muted-foreground opacity-0",
+  "pointer-events-none transition-opacity",
+  "group-hover:opacity-100 group-focus-visible:opacity-100",
+);
+
+const THEME_CARD_EDIT_ICON_GLYPH_CLASS = "size-[1.05em]";
+
 function ColorSwatch({
   color,
   opacity,
   transparentLabel,
+  className,
 }: {
   color: string;
   opacity: number;
   transparentLabel: string;
+  className?: string;
 }) {
   const isTransparent =
     !color || opacity === FULLY_TRANSPARENT_OPACITY;
@@ -117,7 +133,7 @@ function ColorSwatch({
   return (
     <span
       aria-label={isTransparent ? transparentLabel : color}
-      className="inline-block h-8 w-12 shrink-0 rounded-md border border-border"
+      className={cn(THEME_PREVIEW_TILE_CLASS, className)}
       style={{
         background: isTransparent ? CHECKERBOARD : (rgba ?? color),
       }}
@@ -128,21 +144,23 @@ function ColorSwatch({
 function ImagePreviewRect({
   url,
   emptyLabel,
+  className,
 }: {
   url: string | null;
   emptyLabel: string;
+  className?: string;
 }) {
   return (
     <span
       aria-label={url ? undefined : emptyLabel}
       className={cn(
-        "inline-block h-10 w-16 shrink-0 overflow-hidden rounded-md border",
-        "border-border bg-muted",
+        THEME_PREVIEW_TILE_CLASS,
+        "relative overflow-hidden bg-muted",
+        className,
       )}
     >
       {url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" className="h-full w-full object-cover" />
+        <AppImage src={url} alt="" fill className="object-cover" />
       ) : null}
     </span>
   );
@@ -282,83 +300,61 @@ export function ThemeSettingsManager({
       {themes.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("themesEmpty")}</p>
       ) : (
-        <>
-          <table className="hidden w-full text-sm md:table">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="py-2 pr-4 font-medium">{t("themesColumnRoute")}</th>
-                <th className="py-2 pr-4 font-medium">{t("themesColumnColor")}</th>
-                <th className="py-2 font-medium">{t("themesColumnImage")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {themes.map((theme) => {
-                const row = committed[theme.documentId] ?? draftFromTheme(theme);
-                return (
-                  <tr
-                    key={theme.documentId}
-                    className={cn(
-                      "border-b cursor-pointer hover:bg-muted/40",
-                      "focus-visible:bg-muted/40 focus-visible:outline-none",
-                    )}
-                    {...rowInteraction(theme)}
-                  >
-                    <td className="py-3 pr-4">
-                      <span className="font-medium">{theme.label}</span>
-                      <span className="mt-0.5 block text-xs text-muted-foreground">
-                        {theme.routeKey}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <ColorSwatch
-                        color={row.color}
-                        opacity={row.opacity}
-                        transparentLabel={t("themesTransparent")}
-                      />
-                    </td>
-                    <td className="py-3">
-                      <ImagePreviewRect
-                        url={row.clearImage ? null : row.previewUrl}
-                        emptyLabel={t("themesNoImage")}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          <ul className="space-y-2 md:hidden">
-            {themes.map((theme) => {
-              const row = committed[theme.documentId] ?? draftFromTheme(theme);
-              return (
-                <li
-                  key={theme.documentId}
-                    className={cn(
-                      "flex cursor-pointer items-center gap-3 rounded-xl border",
-                      "p-3 hover:bg-muted/40",
-                      "focus-visible:bg-muted/40 focus-visible:outline-none",
-                    )}
-                  {...rowInteraction(theme)}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium">{theme.label}</p>
-                    <p className="text-xs text-muted-foreground">{theme.routeKey}</p>
+        <ul
+          className={cn(
+            "grid grid-cols-1 gap-3",
+            "md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+          )}
+          aria-label={t("routeThemesTitle")}
+        >
+          {themes.map((theme) => {
+            const row = committed[theme.documentId] ?? draftFromTheme(theme);
+            return (
+              <li
+                key={theme.documentId}
+                className={cn(
+                  "group relative flex cursor-pointer flex-col gap-3 rounded-xl border bg-card p-3",
+                  "hover:bg-muted/40",
+                  "focus-visible:bg-muted/40 focus-visible:outline-none",
+                )}
+                {...rowInteraction(theme)}
+              >
+                <span className={THEME_CARD_EDIT_ICON_CLASS} aria-hidden>
+                  <Pencil className={THEME_CARD_EDIT_ICON_GLYPH_CLASS} />
+                </span>
+                <div className="min-w-0 pr-8">
+                  <p className="truncate font-medium leading-tight">
+                    {theme.label}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {theme.routeKey}
+                  </p>
+                </div>
+                <div className="mt-auto grid w-full grid-cols-2 gap-3">
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
+                      {t("themesColumnColor")}
+                    </p>
+                    <ColorSwatch
+                      color={row.color}
+                      opacity={row.opacity}
+                      transparentLabel={t("themesTransparent")}
+                    />
                   </div>
-                  <ColorSwatch
-                    color={row.color}
-                    opacity={row.opacity}
-                    transparentLabel={t("themesTransparent")}
-                  />
-                  <ImagePreviewRect
-                    url={row.clearImage ? null : row.previewUrl}
-                    emptyLabel={t("themesNoImage")}
-                  />
-                </li>
-              );
-            })}
-          </ul>
-        </>
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
+                      {t("themesColumnImage")}
+                    </p>
+                    <ImagePreviewRect
+                      url={row.clearImage ? null : row.previewUrl}
+                      emptyLabel={t("themesNoImage")}
+                    />
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
       </section>
 
@@ -370,24 +366,24 @@ export function ThemeSettingsManager({
           disabled={busy}
           size="lg"
           fillBody={false}
+          footerStart={
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={closeModal}
+            >
+              {tCommon("cancel")}
+            </Button>
+          }
           footerEnd={
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={closeModal}
-              >
-                {tCommon("cancel")}
-              </Button>
-              <Button
-                type="submit"
-                form={formId}
-                disabled={busy}
-              >
-                {tCommon("save")}
-              </Button>
-            </>
+            <Button
+              type="submit"
+              form={formId}
+              disabled={busy}
+            >
+              {tCommon("save")}
+            </Button>
           }
         >
           <form
@@ -619,12 +615,14 @@ export function ThemeSettingsManager({
                   onChange={handleImageChange}
                 />
                 {showImageOptions ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={draft.previewUrl ?? ""}
-                    alt=""
-                    className="mt-2 h-24 w-full rounded-xl object-cover"
-                  />
+                  <div className="relative mt-2 h-24 w-full overflow-hidden rounded-xl">
+                    <AppImage
+                      src={draft.previewUrl ?? ""}
+                      alt=""
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
                 ) : null}
                 {showImageOptions ? (
                   <Button

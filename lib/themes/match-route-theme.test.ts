@@ -83,7 +83,12 @@ describe("resolveRouteThemeKey", () => {
     expect(resolveRouteThemeKey("/")).toBe("staff-home");
     expect(resolveRouteThemeKey("/board")).toBe("board");
     expect(resolveRouteThemeKey("/tasks/abc")).toBe("tasks");
+    expect(resolveRouteThemeKey("/kiosk")).toBe("kiosk");
     expect(resolveRouteThemeKey("/kiosk/user1")).toBe("kiosk");
+    expect(resolveRouteThemeKey("/kiosk/staff/admin1")).toBe("kiosk-staff");
+    expect(resolveRouteThemeKey("/kiosk/staff/admin1/users")).toBe(
+      "kiosk-staff",
+    );
     expect(resolveRouteThemeKey("/settings/themes")).toBe("settings");
     expect(resolveRouteThemeKey("/settings/themes/colors")).toBe("settings");
     expect(resolveRouteThemeKey("/settings/themes/routes")).toBe("settings");
@@ -92,8 +97,12 @@ describe("resolveRouteThemeKey", () => {
     expect(resolveRouteThemeKey("/exchanges/batch-1")).toBe("exchanges");
   });
 
-  it("maps colaborator documentId paths", () => {
+  it("maps colaborator documentId paths and surfaces", () => {
     expect(resolveRouteThemeKey("/abcDocumentId")).toBe("colaborator");
+    expect(resolveRouteThemeKey("/abcDocumentId/store")).toBe("store");
+    expect(resolveRouteThemeKey("/abcDocumentId/orders")).toBe("orders");
+    expect(resolveRouteThemeKey("/abcDocumentId/orders/ord-1")).toBe("orders");
+    expect(resolveRouteThemeKey("/abcDocumentId/profile")).toBe("profile");
   });
 });
 

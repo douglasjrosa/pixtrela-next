@@ -9,12 +9,13 @@ import {
   type CartActionState,
 } from "@/app/[documentId]/store/actions";
 import { CartQtyButton } from "@/components/store/cart-form-buttons";
+import { CardWatermarkImage } from "@/components/store/card-watermark-image";
+import { AppImage } from "@/components/media/app-image";
 import { Button } from "@/components/ui/button";
 import { formatExchangeCurrencyLabel } from "@/lib/format/exchange-currency";
 import {
   DEFAULT_CART_WATERMARK_DISPLAY_OPACITY,
   DEFAULT_CART_WATERMARK_WIDTH_PERCENT,
-  resolveCartWatermarkStyle,
 } from "@/lib/domain/branding-slots";
 import {
   isCartDraftDirty,
@@ -29,7 +30,6 @@ import {
 import {
   STORE_AWARD_CARD_CLASS,
   STORE_AWARD_IMAGE_FRAME_CLASS,
-  STORE_BALANCE_BG_IMAGE_CLASS,
   STORE_BALANCE_CARD_CLASS,
   STORE_BALANCE_LABEL_CLASS,
   STORE_BALANCE_VALUE_CLASS,
@@ -37,6 +37,7 @@ import {
   STORE_SUMMARY_ROW_CLASS,
 } from "@/lib/store/store-layout";
 import { showErrorToast } from "@/lib/ui/app-toast";
+import { useUnsavedLeaveGuard } from "@/lib/ui/use-unsaved-leave-guard";
 import { cn } from "@/lib/utils";
 
 const INITIAL: CartActionState = { ok: false };
@@ -58,6 +59,9 @@ function currencyLabels(
     pluralTitle: currency?.pluralTitle ?? fallback,
   };
 }
+
+const AWARD_PRICE_CURRENCY_ICON_CLASS =
+  "size-4 shrink-0 object-contain";
 
 function StoreAwardCard({
   award,
@@ -88,11 +92,12 @@ function StoreAwardCard({
     <li className={STORE_AWARD_CARD_CLASS}>
       <div className={STORE_AWARD_IMAGE_FRAME_CLASS}>
         {award.imageSrc ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <AppImage
             src={award.imageSrc}
             alt={award.title}
-            className="size-full object-cover"
+            fill
+            sizes="(max-width: 640px) 72vw, 32vw"
+            className="object-contain"
           />
         ) : (
           <div className="flex size-full items-center justify-center">
@@ -107,10 +112,9 @@ function StoreAwardCard({
         <fieldset className="space-y-1">
           <legend className="sr-only">{t("currencyChoice")}</legend>
           {award.prices.map((price) => {
-            const labels = currencyLabels(
-              balancesById.get(price.currencyId),
-              price.label,
-            );
+            const currency = balancesById.get(price.currencyId);
+            const labels = currencyLabels(currency, price.label);
+            const iconUrl = price.iconUrl ?? currency?.iconUrl ?? null;
             return (
               <label
                 key={price.currencyId}
@@ -127,6 +131,14 @@ function StoreAwardCard({
                   disabled={!editable || saving}
                   onChange={() => onSelect(price.currencyId)}
                 />
+                {iconUrl ? (
+                  <AppImage
+                    src={iconUrl}
+                    width={16}
+                    height={16}
+                    className={AWARD_PRICE_CURRENCY_ICON_CLASS}
+                  />
+                ) : null}
                 <span className="tabular-nums font-bold text-[var(--star-gold-foreground)]">
                   {formatExchangeCurrencyLabel(price.unitCost, labels)}
                 </span>
@@ -139,15 +151,19 @@ function StoreAwardCard({
           {editable && selectedPrice ? (
             <div className="flex items-center gap-2">
               <CartQtyButton
-                label="−"
+                action="decrease"
                 disabled={saving || selectedPrice.qty <= 0}
                 onClick={() => onQtyChange(selectedPrice.qty - 1)}
               />
-              <span className="min-w-8 text-center tabular-nums font-semibold">
+              <span
+                className={
+                  "min-w-10 text-center text-xl font-bold tabular-nums"
+                }
+              >
                 {selectedPrice.qty}
               </span>
               <CartQtyButton
-                label="+"
+                action="increase"
                 disabled={
                   saving ||
                   selectedPrice.qty >=
@@ -178,15 +194,9 @@ function StoreAwardCard({
 function StoreBalanceCard({
   currency,
   draft,
-  cartWatermark,
 }: {
   currency: StoreCurrencyBalance;
   draft: CartDraftAward[];
-  cartWatermark?: {
-    url: string | null;
-    displayOpacity?: number;
-    widthPercent?: number;
-  };
 }) {
   const t = useTranslations("cart");
   const after = remainingCurrencyBalance(
@@ -199,30 +209,14 @@ function StoreBalanceCard({
     title: currency.title,
     pluralTitle: currency.pluralTitle,
   };
-  const watermarkUrl = cartWatermark?.url ?? currency.iconUrl;
-  const watermarkStyle = cartWatermark?.url
-    ? resolveCartWatermarkStyle({
-        displayOpacity: cartWatermark.displayOpacity,
-        widthPercent: cartWatermark.widthPercent,
-      })
-    : {
-        opacity: DEFAULT_CART_WATERMARK_DISPLAY_OPACITY,
-        widthPercent: DEFAULT_CART_WATERMARK_WIDTH_PERCENT,
-      };
 
   return (
     <li className={STORE_BALANCE_CARD_CLASS}>
-      {watermarkUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={watermarkUrl}
-          alt=""
-          className={STORE_BALANCE_BG_IMAGE_CLASS}
-          style={{
-            width: `${watermarkStyle.widthPercent}%`,
-            maxHeight: "100%",
-            opacity: watermarkStyle.opacity / 100,
-          }}
+      {currency.iconUrl ? (
+        <CardWatermarkImage
+          src={currency.iconUrl}
+          widthPercent={DEFAULT_CART_WATERMARK_WIDTH_PERCENT}
+          opacity={DEFAULT_CART_WATERMARK_DISPLAY_OPACITY}
         />
       ) : null}
       <div className="relative z-10 space-y-3">
@@ -258,20 +252,16 @@ export type CartEditorProps = {
   initialAwards: CartDraftAward[];
   currencies: StoreCurrencyBalance[];
   editable?: boolean;
+  unsavedLeaveMessage: string;
   children?: React.ReactNode;
-  cartWatermark?: {
-    url: string | null;
-    displayOpacity?: number;
-    widthPercent?: number;
-  };
 };
 
 export function CartEditor({
   initialAwards,
   currencies,
   editable = true,
+  unsavedLeaveMessage,
   children,
-  cartWatermark,
 }: CartEditorProps) {
   const t = useTranslations("cart");
   const tCommon = useTranslations("common");
@@ -296,7 +286,19 @@ export function CartEditor({
     }
   }, [state, t]);
 
+  useEffect(() => {
+    if (state.ok) {
+      setBaseline(draft);
+    }
+  }, [state, draft]);
+
   const dirty = isCartDraftDirty(baseline, draft);
+  useUnsavedLeaveGuard({
+    enabled: editable && dirty,
+    message: unsavedLeaveMessage,
+    yesLabel: tCommon("yes"),
+    noLabel: tCommon("no"),
+  });
   const balancesById = useMemo(
     () => new Map(currencies.map((currency) => [currency.currencyId, currency])),
     [currencies],
@@ -316,50 +318,65 @@ export function CartEditor({
           {t("empty")}
         </p>
       ) : (
-        <ul
-          className={STORE_ROW_SCROLL_CLASS}
-          aria-label={t("awardsRow")}
-          data-testid="store-awards-row"
-        >
-          {draft.map((award) => {
-            const selectedId =
-              selected[award.awardId] ?? award.prices[0]?.currencyId ?? "";
-            const selectedPrice = award.prices.find(
-              (price) => price.currencyId === selectedId,
-            );
-            const balance = balancesById.get(selectedId)?.balance ?? 0;
-            return (
-              <StoreAwardCard
-                key={award.awardId}
-                award={award}
-                selectedId={selectedId}
-                selectedPrice={selectedPrice}
-                balance={balance}
-                editable={editable}
-                saving={saving}
-                draft={draft}
-                balancesById={balancesById}
-                onSelect={(currencyId) =>
-                  setSelected((current) => ({
-                    ...current,
-                    [award.awardId]: currencyId,
-                  }))
-                }
-                onQtyChange={(qty) =>
-                  setDraft((current) =>
-                    setAwardCurrencyQty(
-                      current,
-                      award.awardId,
-                      selectedId,
-                      qty,
-                      balance,
-                    ),
-                  )
-                }
-              />
-            );
-          })}
-        </ul>
+        <>
+          <ul
+            className={STORE_ROW_SCROLL_CLASS}
+            aria-label={t("awardsRow")}
+            data-testid="store-awards-row"
+          >
+            {draft.map((award) => {
+              const selectedId =
+                selected[award.awardId] ?? award.prices[0]?.currencyId ?? "";
+              const selectedPrice = award.prices.find(
+                (price) => price.currencyId === selectedId,
+              );
+              const balance = balancesById.get(selectedId)?.balance ?? 0;
+              return (
+                <StoreAwardCard
+                  key={award.awardId}
+                  award={award}
+                  selectedId={selectedId}
+                  selectedPrice={selectedPrice}
+                  balance={balance}
+                  editable={editable}
+                  saving={saving}
+                  draft={draft}
+                  balancesById={balancesById}
+                  onSelect={(currencyId) =>
+                    setSelected((current) => ({
+                      ...current,
+                      [award.awardId]: currencyId,
+                    }))
+                  }
+                  onQtyChange={(qty) =>
+                    setDraft((current) =>
+                      setAwardCurrencyQty(
+                        current,
+                        award.awardId,
+                        selectedId,
+                        qty,
+                        balance,
+                      ),
+                    )
+                  }
+                />
+              );
+            })}
+          </ul>
+
+          {editable ? (
+            <div className="flex justify-center" data-testid="store-save-row">
+              <Button
+                type="submit"
+                size="lg"
+                className="min-h-11 min-w-36 px-6"
+                disabled={!dirty || saving}
+              >
+                {saving ? tCommon("loading") : tCommon("save")}
+              </Button>
+            </div>
+          ) : null}
+        </>
       )}
 
       {currencies.length > 0 || children ? (
@@ -374,18 +391,9 @@ export function CartEditor({
               key={currency.currencyId}
               currency={currency}
               draft={draft}
-              cartWatermark={cartWatermark}
             />
           ))}
         </ul>
-      ) : null}
-
-      {editable ? (
-        <div className="flex justify-end">
-          <Button type="submit" disabled={!dirty || saving}>
-            {saving ? tCommon("loading") : tCommon("save")}
-          </Button>
-        </div>
       ) : null}
     </form>
   );

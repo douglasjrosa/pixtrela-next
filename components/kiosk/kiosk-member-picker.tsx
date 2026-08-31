@@ -4,6 +4,7 @@ import { User } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { AppImage } from "@/components/media/app-image";
 import { toKioskFaceMediaProxyUrl } from "@/lib/kiosk/face/face-media-proxy-url";
 import { cn } from "@/lib/utils";
 
@@ -61,14 +62,13 @@ export function KioskMemberPicker({
                   }
                   onClick={() => onSelect(member)}
                 >
-                  <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background">
+                  <span className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background">
                     {photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <AppImage
                         src={photoUrl}
-                        alt=""
-                        className="size-full object-cover"
+                        fill
                         crossOrigin="anonymous"
+                        className="object-cover"
                       />
                     ) : (
                       <User className="size-6 text-muted-foreground" aria-hidden />

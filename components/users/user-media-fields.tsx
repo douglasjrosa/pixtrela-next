@@ -5,6 +5,7 @@ import { useState, type ChangeEvent } from "react";
 import { useTranslations } from "next-intl";
 
 import { FaceOvalCapture } from "@/components/kiosk/face-oval-capture";
+import { AppImage } from "@/components/media/app-image";
 import { Button } from "@/components/ui/button";
 import { extractFaceDescriptorFromFile } from "@/lib/kiosk/face/extract-face-descriptor";
 import { compressProfileImage } from "@/lib/media/compress-profile-image";
@@ -60,20 +61,20 @@ function UserImageField({
     <section className="flex min-w-0 items-center gap-3 rounded-lg border p-3">
       <div
         className={
-          "flex size-20 shrink-0 items-center justify-center overflow-hidden " +
+          "relative flex size-20 shrink-0 items-center justify-center overflow-hidden " +
           "rounded-full border bg-background"
         }
       >
         {resolvedUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <AppImage
             src={resolvedUrl}
             alt={
               isAvatar
                 ? t("avatarAlt", { name: userName })
                 : t("facePhotoAlt", { name: userName })
             }
-            className="size-full object-cover"
+            fill
+            className="object-cover"
           />
         ) : isAvatar ? (
           <User className="size-8 text-muted-foreground" aria-hidden />

@@ -5,6 +5,7 @@ import { FileText, Pencil, Trash2, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { SettingsSectionHeading } from "@/components/settings/settings-section-heading";
+import { AppImage } from "@/components/media/app-image";
 import { AddNewButton } from "@/components/ui/add-new-button";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -432,11 +433,10 @@ export function MediaFilesManager({
               >
                 <div className={MEDIA_THUMBNAIL_FRAME_CLASS}>
                   {image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <AppImage
                       src={item.browserUrl!}
                       alt={item.altText?.trim() || title}
-                      title={item.title?.trim() || undefined}
+                      fill
                       className={MEDIA_THUMBNAIL_IMAGE_CLASS}
                     />
                   ) : (

@@ -3,7 +3,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import {
-  STORE_BALANCE_BG_IMAGE_CLASS,
+  STORE_CARD_WATERMARK_IMAGE_CLASS,
   STORE_CATALOG_CARD_WIDTH_CLASS,
   STORE_SUMMARY_CARD_WIDTH_CLASS,
   STORE_SUMMARY_ROW_CLASS,
@@ -21,6 +21,10 @@ vi.mock("@/lib/ui/app-toast", () => ({
   showErrorToast: vi.fn(),
 }));
 
+vi.mock("@/lib/ui/use-unsaved-leave-guard", () => ({
+  useUnsavedLeaveGuard: vi.fn(),
+}));
+
 const STAR = "22222222-2222-4222-8222-222222222222";
 const GEM = "33333333-3333-4333-8333-333333333333";
 
@@ -33,7 +37,7 @@ const AWARD = {
     {
       currencyId: STAR,
       label: "Estrelas",
-      iconUrl: null,
+      iconUrl: "/star.png",
       unitCost: 100,
       qty: 0,
     },
@@ -71,6 +75,15 @@ const CURRENCIES = [
   },
 ];
 
+const UNSAVED_LEAVE_MESSAGE =
+  "Tem certeza de que quer sair da página sem salvar?";
+
+const defaultCartEditorProps = {
+  initialAwards: [AWARD],
+  currencies: CURRENCIES,
+  unsavedLeaveMessage: UNSAVED_LEAVE_MESSAGE,
+};
+
 describe("CartEditor", () => {
   beforeEach(() => {
     saveCartDraft.mockReset();
@@ -80,24 +93,27 @@ describe("CartEditor", () => {
   it("keeps save disabled until a qty changes and edits the selected currency", async () => {
     const user = userEvent.setup();
     renderWithIntl(
-      <CartEditor initialAwards={[AWARD]} currencies={CURRENCIES} />,
+      <CartEditor {...defaultCartEditorProps} />,
     );
 
     const saveButton = screen.getByRole("button", { name: "Salvar" });
     expect(saveButton).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: "+" }));
+    await user.click(screen.getByRole("button", { name: "Aumentar valor" }));
     expect(saveButton).toBeEnabled();
-    expect(screen.getByRole("button", { name: "−" }).parentElement)
-      .toHaveTextContent("1");
+    expect(
+      screen.getByRole("button", { name: "Diminuir valor" }).parentElement,
+    ).toHaveTextContent("1");
 
     await user.click(screen.getByDisplayValue(GEM));
-    expect(screen.getByRole("button", { name: "−" }).parentElement)
-      .toHaveTextContent("0");
+    expect(
+      screen.getByRole("button", { name: "Diminuir valor" }).parentElement,
+    ).toHaveTextContent("0");
 
-    await user.click(screen.getByRole("button", { name: "+" }));
-    expect(screen.getByRole("button", { name: "−" }).parentElement)
-      .toHaveTextContent("1");
+    await user.click(screen.getByRole("button", { name: "Aumentar valor" }));
+    expect(
+      screen.getByRole("button", { name: "Diminuir valor" }).parentElement,
+    ).toHaveTextContent("1");
 
     expect(screen.getAllByText("Seu saldo hoje")).toHaveLength(3);
     expect(screen.getAllByText("Resgate total")).toHaveLength(3);
@@ -110,7 +126,7 @@ describe("CartEditor", () => {
 
   it("places awards and balances in horizontal catalog rows", () => {
     renderWithIntl(
-      <CartEditor initialAwards={[AWARD]} currencies={CURRENCIES} />,
+      <CartEditor {...defaultCartEditorProps} />,
     );
 
     expect(screen.getByTestId("store-awards-row")).toHaveClass("overflow-x-auto");
@@ -129,7 +145,9 @@ describe("CartEditor", () => {
       screen.getByTestId("store-balances-row"),
     );
     const awardCard = screen.getByText("Estrela Vermelha").closest("li");
-    expect(awardCard).toContainElement(screen.getByRole("button", { name: "+" }));
+    expect(awardCard).toContainElement(
+      screen.getByRole("button", { name: "Aumentar valor" }),
+    );
     expect(awardCard).toHaveClass(...STORE_CATALOG_CARD_WIDTH_CLASS.split(" "));
     const balanceCard = screen.getByTestId("store-balances-row")
       .querySelector("li:last-child");
@@ -138,25 +156,38 @@ describe("CartEditor", () => {
     );
   });
 
+  it("renders currency icons next to award price labels", () => {
+    renderWithIntl(
+      <CartEditor {...defaultCartEditorProps} />,
+    );
+
+    const awardsRow = screen.getByTestId("store-awards-row");
+    const priceIcon = awardsRow.querySelector('img[src="/star.png"]');
+    expect(priceIcon).not.toBeNull();
+    expect(priceIcon).toHaveClass("size-4");
+    // Gem falls back to currency.iconUrl from balances
+    expect(awardsRow.querySelector('img[src="/gem.png"]')).not.toBeNull();
+  });
+
   it("renders the currency icon as a small bottom-right watermark", () => {
     renderWithIntl(
-      <CartEditor initialAwards={[AWARD]} currencies={CURRENCIES} />,
+      <CartEditor {...defaultCartEditorProps} />,
     );
 
     const images = screen.getByTestId("store-balances-row")
       .querySelectorAll("img");
     expect(images).toHaveLength(1);
+    expect(images[0]).toHaveAttribute("src", "/gem.png");
     expect(images[0]).toHaveClass(
-      ...STORE_BALANCE_BG_IMAGE_CLASS.split(" "),
+      ...STORE_CARD_WATERMARK_IMAGE_CLASS.split(" "),
     );
     expect(images[0]).toHaveClass("bottom-2", "right-2");
-    expect(images[0]).toHaveStyle({ opacity: "0.7", width: "50%" });
-    expect(screen.getByTestId("store-awards-row").querySelector("img")).toBeNull();
+    expect(images[0]).toHaveStyle({ opacity: "0.7", maxWidth: "50%" });
   });
 
   it("renders summary slot before balance cards", () => {
     renderWithIntl(
-      <CartEditor initialAwards={[AWARD]} currencies={CURRENCIES}>
+      <CartEditor {...defaultCartEditorProps}>
         <li data-testid="summary-slot">Lista</li>
       </CartEditor>,
     );
@@ -170,13 +201,14 @@ describe("CartEditor", () => {
   it("hides save and qty controls when read-only", () => {
     renderWithIntl(
       <CartEditor
-        initialAwards={[AWARD]}
-        currencies={CURRENCIES}
+        {...defaultCartEditorProps}
         editable={false}
       />,
     );
 
     expect(screen.queryByRole("button", { name: "Salvar" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "+" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Aumentar valor" }),
+    ).not.toBeInTheDocument();
   });
 });

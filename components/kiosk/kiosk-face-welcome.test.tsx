@@ -21,10 +21,9 @@ describe("KioskFaceWelcome", () => {
 
     expect(screen.getByText("Bem vinda Ana!")).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /Ana Silva/i })).toHaveAttribute(
-      "src",
-      "/api/media/a.jpg",
-    );
+    expect(
+      screen.getByRole("img", { name: /Ana Silva/i }).getAttribute("src"),
+    ).toContain(encodeURIComponent("/api/media/a.jpg"));
 
     act(() => {
       vi.advanceTimersByTime(1999);

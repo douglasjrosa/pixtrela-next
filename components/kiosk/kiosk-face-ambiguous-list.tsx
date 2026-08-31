@@ -4,6 +4,7 @@ import { User } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { AppImage } from "@/components/media/app-image";
 import type { KioskFaceIdentifyCandidate } from "@/app/kiosk/actions";
 import { toKioskFaceMediaProxyUrl } from "@/lib/kiosk/face/face-media-proxy-url";
 
@@ -47,17 +48,16 @@ export function KioskFaceAmbiguousList({
               >
                 <span
                   className={
-                    "flex size-12 shrink-0 items-center justify-center " +
+                    "relative flex size-12 shrink-0 items-center justify-center " +
                     "overflow-hidden rounded-full border bg-background"
                   }
                 >
                   {photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <AppImage
                       src={photoUrl}
-                      alt=""
-                      className="size-full object-cover"
+                      fill
                       crossOrigin="anonymous"
+                      className="object-cover"
                     />
                   ) : (
                     <User

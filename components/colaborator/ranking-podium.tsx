@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
+import { AppImage } from "@/components/media/app-image";
 import type { RankingRow } from "@/lib/dashboard/types";
 import { cn } from "@/lib/utils";
 
@@ -49,8 +50,7 @@ export function RankingPodium({
             )}
           >
             {imageUrl && altKey ? (
-              // eslint-disable-next-line @next/next/no-img-element -- R2 media URLs
-              <img
+              <AppImage
                 src={imageUrl}
                 alt={t(altKey)}
                 width={64}

@@ -137,7 +137,7 @@ export function KanbanBoard({
     >
       <div
         className={
-          "flex h-full min-h-0 flex-1 gap-4 overflow-x-auto p-4 " +
+          "flex h-full min-h-0 flex-1 items-start gap-4 overflow-x-auto p-4 " +
           "max-[500px]:gap-2 max-[500px]:p-2"
         }
       >

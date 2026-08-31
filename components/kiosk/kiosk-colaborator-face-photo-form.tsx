@@ -5,6 +5,7 @@ import { Camera, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { FaceOvalCapture } from "@/components/kiosk/face-oval-capture";
+import { AppImage } from "@/components/media/app-image";
 import { Button } from "@/components/ui/button";
 import { extractFaceDescriptorFromFile } from "@/lib/kiosk/face/extract-face-descriptor";
 import { compressProfileImage } from "@/lib/media/compress-profile-image";
@@ -93,14 +94,13 @@ export function KioskColaboratorFacePhotoForm({
       </div>
 
       <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-        <div className="flex size-28 items-center justify-center overflow-hidden rounded-full border bg-background">
+        <div className="relative flex size-28 items-center justify-center overflow-hidden rounded-full border bg-background">
           {currentUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <AppImage
               src={currentUrl}
-              alt=""
-              className="size-full object-cover"
+              fill
               crossOrigin="anonymous"
+              className="object-cover"
             />
           ) : (
             <Camera className="size-8 text-muted-foreground" aria-hidden />

@@ -17,9 +17,8 @@ describe("KioskColaboratorHeader", () => {
       screen.getByRole("banner", { name: "Colaborador Ana Silva" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Ana Silva" })).toBeInTheDocument();
-    expect(screen.getByRole("presentation")).toHaveAttribute(
-      "src",
-      "/api/media/ana.jpg",
+    expect(screen.getByRole("presentation").getAttribute("src")).toContain(
+      encodeURIComponent("/api/media/ana.jpg"),
     );
   });
 

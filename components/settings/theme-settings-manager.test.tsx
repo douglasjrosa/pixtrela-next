@@ -71,14 +71,17 @@ describe("ThemeSettingsManager", () => {
     expect(screen.getByText(/Selecione uma rota para configurar/i)).toBeInTheDocument();
   });
 
-  it("renders a route list without the edit form by default", () => {
+  it("renders route theme cards without the edit form by default", () => {
     renderWithIntl(<ThemeSettingsManager {...defaultProps} />);
 
-    expect(screen.getByText("Nome da rota")).toBeInTheDocument();
-    expect(screen.getByText("Cor de fundo")).toBeInTheDocument();
-    expect(screen.getByText("Imagem")).toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "Temas por rota" });
+    expect(list).toHaveClass("md:grid-cols-3", "lg:grid-cols-4", "xl:grid-cols-5");
     expect(screen.getAllByText("Login").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Totem").length).toBeGreaterThan(0);
+    expect(screen.getByText("login")).toBeInTheDocument();
+    expect(screen.getByText("kiosk")).toBeInTheDocument();
+    expect(screen.getAllByText("Cor de fundo").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Imagem").length).toBeGreaterThan(0);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Cor de fundo")).not.toBeInTheDocument();
   });

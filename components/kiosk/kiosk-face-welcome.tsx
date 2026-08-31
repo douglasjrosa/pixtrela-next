@@ -9,6 +9,7 @@ import {
   formatKioskWelcomeMessage,
   type GreetingGender,
 } from "@/lib/business/kiosk-welcome";
+import { AppImage } from "@/components/media/app-image";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 import { cn } from "@/lib/utils";
 
@@ -90,16 +91,16 @@ export function KioskFaceWelcome({
       >
         <div
           className={
-            "flex size-40 items-center justify-center overflow-hidden " +
+            "relative flex size-40 items-center justify-center overflow-hidden " +
             "rounded-full border-4 border-primary/40 bg-muted shadow-lg"
           }
         >
           {imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <AppImage
               src={imageUrl}
               alt={t("faceWelcomeAvatarAlt", { name })}
-              className="size-full object-cover"
+              fill
+              className="object-cover"
             />
           ) : (
             <span className="text-4xl font-semibold text-muted-foreground">

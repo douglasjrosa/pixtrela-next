@@ -2,11 +2,13 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { exchangeOrderItems, exchangeOrders } from "@/drizzle/schema";
 import { getDb, type Db } from "@/lib/db/client";
+import { loadCurrencyIconUrlByPluralTitle } from "@/lib/media/load-currency-icon-url";
 
 export type ExchangeOrderListItem = {
   id: string;
   status: "completed" | "cancelled";
   currencyPluralTitle: string;
+  currencyIconUrl: string | null;
   totalNumberOf: number;
   itemCount: number;
   checkedOutAt: Date;
@@ -46,6 +48,7 @@ export async function listOrdersForUser(
     id: row.id,
     status: row.status,
     currencyPluralTitle: row.currencyPluralTitle,
+    currencyIconUrl: null,
     totalNumberOf: row.totalNumberOf,
     itemCount: row.itemCount,
     checkedOutAt: row.checkedOutAt,
@@ -74,22 +77,26 @@ export async function getOrderForUser(
 
   if (!order) return null;
 
-  const items = await db
-    .select({
-      id: exchangeOrderItems.id,
-      awardId: exchangeOrderItems.awardId,
-      awardTitle: exchangeOrderItems.awardTitle,
-      qty: exchangeOrderItems.qty,
-      unitNumberOf: exchangeOrderItems.unitNumberOf,
-      lineNumberOf: exchangeOrderItems.lineNumberOf,
-    })
-    .from(exchangeOrderItems)
-    .where(eq(exchangeOrderItems.orderId, order.id));
+  const [items, currencyIconUrl] = await Promise.all([
+    db
+      .select({
+        id: exchangeOrderItems.id,
+        awardId: exchangeOrderItems.awardId,
+        awardTitle: exchangeOrderItems.awardTitle,
+        qty: exchangeOrderItems.qty,
+        unitNumberOf: exchangeOrderItems.unitNumberOf,
+        lineNumberOf: exchangeOrderItems.lineNumberOf,
+      })
+      .from(exchangeOrderItems)
+      .where(eq(exchangeOrderItems.orderId, order.id)),
+    loadCurrencyIconUrlByPluralTitle(order.currencyPluralTitle, db),
+  ]);
 
   return {
     id: order.id,
     status: order.status,
     currencyPluralTitle: order.currencyPluralTitle,
+    currencyIconUrl,
     totalNumberOf: order.totalNumberOf,
     itemCount: order.itemCount,
     checkedOutAt: order.checkedOutAt,

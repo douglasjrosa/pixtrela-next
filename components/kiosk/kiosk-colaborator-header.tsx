@@ -3,6 +3,7 @@
 import { User } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { AppImage } from "@/components/media/app-image";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 import { cn } from "@/lib/utils";
 
@@ -31,17 +32,12 @@ export function KioskColaboratorHeader({
     >
       <span
         className={
-          "flex size-12 shrink-0 items-center justify-center overflow-hidden " +
+          "relative flex size-12 shrink-0 items-center justify-center overflow-hidden " +
           "rounded-full border bg-background"
         }
       >
         {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={photoUrl}
-            alt=""
-            className="size-full object-cover"
-          />
+          <AppImage src={photoUrl} fill className="object-cover" />
         ) : (
           <User className="size-6 text-muted-foreground" aria-hidden />
         )}

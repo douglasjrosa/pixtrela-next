@@ -31,13 +31,19 @@ export const STORE_BALANCE_CARD_CLASS =
   "bg-[var(--star-gold-muted)] p-4";
 
 export const STORE_MY_LIST_CARD_CLASS =
-  `${STORE_SUMMARY_CARD_WIDTH_CLASS} overflow-hidden rounded-2xl border bg-card p-4`;
+  `${STORE_SUMMARY_CARD_WIDTH_CLASS} relative overflow-hidden rounded-2xl ` +
+  "border bg-card p-4";
 
 export const STORE_AWARD_IMAGE_FRAME_CLASS =
-  "relative h-40 w-full overflow-hidden bg-muted";
+  "relative h-40 w-full overflow-hidden bg-white";
 
-export const STORE_BALANCE_BG_IMAGE_CLASS =
-  "pointer-events-none absolute right-2 bottom-2 h-auto object-contain " +
+/** Clips watermark art to the card bounds (content-sized cards). */
+export const STORE_CARD_WATERMARK_SLOT_CLASS =
+  "pointer-events-none absolute inset-0 overflow-hidden";
+
+/** Bottom-right watermark on summary cards (my list / balance). */
+export const STORE_CARD_WATERMARK_IMAGE_CLASS =
+  "absolute right-2 bottom-2 h-auto max-h-full w-auto object-contain " +
   "object-right-bottom";
 
 export const STORE_BALANCE_LABEL_CLASS = "text-xs text-muted-foreground";

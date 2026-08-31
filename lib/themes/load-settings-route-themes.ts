@@ -16,8 +16,11 @@ export async function loadSettingsRouteThemes(): Promise<RouteThemeView[]> {
   await ensureRouteThemes(labels);
 
   const themes = await loadRouteThemes();
-  return themes.map((theme) => ({
-    ...theme,
-    label: labels[theme.routeKey] ?? theme.label,
-  }));
+  const byKey = new Map(themes.map((theme) => [theme.routeKey, theme]));
+
+  return ROUTE_THEME_KEYS.flatMap((key) => {
+    const theme = byKey.get(key);
+    if (!theme) return [];
+    return [{ ...theme, label: labels[key] ?? theme.label }];
+  });
 }

@@ -30,7 +30,7 @@ export default async function ColaboratorStorePage({ params }: PageProps) {
     redirect(buildStorePath(session.user.id));
   }
 
-  const [{ cards, currencies, windowOpen, team }, branding] = await Promise.all([
+  const [{ cards, currencies, windowOpen, windowPhase, team }, branding] = await Promise.all([
     loadStorePage(documentId),
     loadBrandingForLayout(),
   ]);
@@ -59,9 +59,9 @@ export default async function ColaboratorStorePage({ params }: PageProps) {
     <section className={STORE_PAGE_SHELL_CLASS}>
       <h1 className="font-heading text-2xl font-bold">{tStore("title")}</h1>
 
-      {team ? (
+      {team && windowPhase ? (
         <StoreWindowInfoCard
-          windowOpen={windowOpen}
+          windowPhase={windowPhase}
           firstDay={team.exchangesFirstDay}
           lastDay={team.exchangesLastDay}
         />
@@ -80,13 +80,19 @@ export default async function ColaboratorStorePage({ params }: PageProps) {
         initialAwards={editorAwards}
         currencies={currencies}
         editable={windowOpen}
-        cartWatermark={{
-          url: cartWatermarkSlot.mediaUrl,
-          displayOpacity: cartWatermarkSlot.config.displayOpacity,
-          widthPercent: cartWatermarkSlot.config.widthPercent,
-        }}
+        unsavedLeaveMessage={tCart("leaveWithoutSavingConfirm")}
       >
-        <StoreMyListCard items={savedListItems} />
+        <StoreMyListCard
+          items={savedListItems}
+          cartWatermark={{
+            url: cartWatermarkSlot.mediaUrl,
+            backgroundColor: cartWatermarkSlot.config.backgroundColor,
+            backgroundColorOpacity:
+              cartWatermarkSlot.config.backgroundColorOpacity,
+            displayOpacity: cartWatermarkSlot.config.displayOpacity,
+            widthPercent: cartWatermarkSlot.config.widthPercent,
+          }}
+        />
       </CartEditor>
     </section>
   );

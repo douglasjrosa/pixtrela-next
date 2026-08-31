@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
+import { AppImage } from "@/components/media/app-image";
 import { resolveMenuLogoBackgroundStyle } from "@/lib/themes/menu-logo-background";
 import { cn } from "@/lib/utils";
 
@@ -38,10 +39,8 @@ export function AppBrandLink({
           className="flex size-7 shrink-0 items-center justify-center rounded-sm p-0.5"
           style={{ backgroundColor: logoBackground }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element -- R2 /api media URLs */}
-          <img
+          <AppImage
             src={logoUrl}
-            alt=""
             width={28}
             height={28}
             className="size-full object-contain"

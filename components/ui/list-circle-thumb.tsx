@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { AppImage } from "@/components/media/app-image";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 
 export interface ListCircleThumbProps {
@@ -19,16 +20,16 @@ export function ListCircleThumb({
   return (
     <span
       className={
-        "flex size-9 shrink-0 items-center justify-center overflow-hidden " +
+        "relative flex size-9 shrink-0 items-center justify-center overflow-hidden " +
         "rounded-full border bg-muted"
       }
     >
       {url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <AppImage
           src={url}
           alt={label}
-          className="size-full rounded-full object-cover"
+          fill
+          className="rounded-full object-cover"
         />
       ) : (
         fallback

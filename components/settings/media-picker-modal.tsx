@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { AppImage } from "@/components/media/app-image";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import type { MediaAssetRecord } from "@/lib/repos/media";
 import {
@@ -152,10 +153,10 @@ export function MediaPickerModal({
                 >
                   <span className={MEDIA_THUMBNAIL_FRAME_CLASS}>
                     {item.browserUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <AppImage
                         src={item.browserUrl}
                         alt={title}
+                        fill
                         className={MEDIA_THUMBNAIL_IMAGE_CLASS}
                       />
                     ) : null}

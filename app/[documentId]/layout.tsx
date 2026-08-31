@@ -1,21 +1,14 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 
-import { auth } from "@/auth";
 import { AppNav } from "@/components/app-nav";
-import { ColaboratorDocumentPanel } from
-  "@/components/colaborator/colaborator-document-panel";
 import { ColaboratorHeader } from "@/components/colaborator/colaborator-header";
 import { ColaboratorSurface } from "@/components/colaborator/colaborator-surface";
-import { RouteThemeFrame } from "@/components/themes/route-theme-frame";
+import { RouteThemeBackground } from "@/components/themes/route-theme-background";
+import { RouteThemeMatchedMain } from "@/components/themes/route-theme-matched-main";
+import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
 import { loadBrandingForLayout } from "@/lib/themes/load-branding";
 import { loadRouteThemes } from "@/lib/themes/load-route-themes";
-import { cn } from "@/lib/utils";
-import {
-  routeThemeContentFrameClass,
-  routeThemeContentSurfaceRadiusClass,
-  routeThemeSurfacePanelStyle,
-} from "@/lib/themes/match-route-theme";
 
 export default async function DocumentIdLayout({
   children,
@@ -43,34 +36,28 @@ export default async function DocumentIdLayout({
   }
 
   const themes = await loadRouteThemes();
-  const theme = themes.find((entry) => entry.routeKey === "colaborator") ?? null;
-  const panelStyle = routeThemeSurfacePanelStyle(theme) as CSSProperties;
 
   return (
     <ColaboratorSurface className="overflow-x-hidden">
-      <RouteThemeFrame theme={theme} fallbackClassName="bg-[var(--surface-warm)]">
-        <ColaboratorHeader
-          homeHref={session?.user?.id ? `/${session.user.id}` : "/"}
-          logoUrl={menuLogo.mediaUrl}
-          menuLogoBackgroundColor={menuLogo.config.backgroundColor ?? null}
-          menuLogoBackgroundColorOpacity={
-            menuLogo.config.backgroundColorOpacity ?? 0
-          }
+      <div className="relative flex min-h-dvh flex-col">
+        <RouteThemeBackground
+          themes={themes}
+          fallbackClassName="bg-[var(--surface-warm)]"
         />
-        <main
-          className={cn(
-            "relative z-10 min-w-0 overflow-x-hidden",
-            routeThemeContentFrameClass(theme),
-          )}
-        >
-          <ColaboratorDocumentPanel
-            className={routeThemeContentSurfaceRadiusClass(theme)}
-            style={panelStyle}
-          >
+        <div className="relative z-10 flex min-h-dvh flex-1 flex-col">
+          <ColaboratorHeader
+            homeHref={session?.user?.id ? `/${session.user.id}` : "/"}
+            logoUrl={menuLogo.mediaUrl}
+            menuLogoBackgroundColor={menuLogo.config.backgroundColor ?? null}
+            menuLogoBackgroundColorOpacity={
+              menuLogo.config.backgroundColorOpacity ?? 0
+            }
+          />
+          <RouteThemeMatchedMain themes={themes} withDocumentPanel>
             {children}
-          </ColaboratorDocumentPanel>
-        </main>
-      </RouteThemeFrame>
+          </RouteThemeMatchedMain>
+        </div>
+      </div>
     </ColaboratorSurface>
   );
 }

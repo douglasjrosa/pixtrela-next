@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
+import { CurrencyAmount } from "@/components/currency/currency-amount";
 import { buttonVariants } from "@/components/ui/button";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
 import { buildOrderPath, buildOrdersPath } from "@/lib/orders/orders-path";
@@ -85,18 +86,25 @@ export default async function ColaboratorOrderDetailPage({
                 {t("qty")} {item.qty} · {t("unit")} {item.unitNumberOf}
               </p>
             </div>
-            <span className="tabular-nums font-semibold">
+            <CurrencyAmount
+              iconUrl={order.currencyIconUrl}
+              className="tabular-nums font-semibold"
+            >
               {item.lineNumberOf}
-            </span>
+            </CurrencyAmount>
           </li>
         ))}
       </ul>
 
       <div className="flex justify-between rounded-2xl bg-[var(--star-gold-muted)] px-4 py-3 text-lg font-bold text-[var(--star-gold-foreground)]">
         <span>{t("total")}</span>
-        <span className="tabular-nums">
+        <CurrencyAmount
+          iconUrl={order.currencyIconUrl}
+          iconSize="md"
+          className="tabular-nums"
+        >
           {order.totalNumberOf} {order.currencyPluralTitle}
-        </span>
+        </CurrencyAmount>
       </div>
 
       <div className="flex flex-wrap gap-3">

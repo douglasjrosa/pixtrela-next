@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { MediaPickerModal } from "@/components/settings/media-picker-modal";
+import { AppImage } from "@/components/media/app-image";
 import { Button } from "@/components/ui/button";
 import type { MediaAssetRecord } from "@/lib/repos/media";
 
@@ -40,11 +41,10 @@ export function MediaImageField({
     <>
       <div className="flex flex-wrap items-start gap-4">
         {previewUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <AppImage
             src={previewUrl}
-            alt=""
-            role="presentation"
+            width={96}
+            height={96}
             className={PREVIEW_IMAGE_CLASS}
           />
         ) : null}

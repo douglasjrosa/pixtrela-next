@@ -53,6 +53,9 @@ export function TaskListRowPresentational({
             ariaLabel={labels.selectRow}
           />
         ) : null}
+        <td className="py-2 text-muted-foreground tabular-nums">
+          {task.crmItemKey ?? ""}
+        </td>
         <td className="py-2">
           <Link href={href} className={ROW_LINK_CLASS} aria-label={task.name}>
             {nameCell}
@@ -85,6 +88,11 @@ export function TaskListRowPresentational({
           aria-label={task.name}
         >
           <div className="text-base font-medium">{nameCell}</div>
+          {task.crmItemKey ? (
+            <div className="text-muted-foreground text-sm tabular-nums">
+              {task.crmItemKey}
+            </div>
+          ) : null}
           <div className="text-muted-foreground text-sm">
             {labels.qtyShort} | {labels.status}
           </div>
