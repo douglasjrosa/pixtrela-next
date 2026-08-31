@@ -16,6 +16,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx scripts/seed.ts",
+    "db:seed:rbx-presets": "tsx scripts/seed-rbx-presets.ts",
     "db:seed:branding": "tsx scripts/seed-branding-media.ts",
     "db:seed:e2e": "tsx scripts/seed-e2e.ts",
     "db:etl": "tsx scripts/etl-from-strapi.ts",
