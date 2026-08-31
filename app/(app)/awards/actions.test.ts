@@ -37,7 +37,7 @@ vi.mock("@/lib/awards/load-award-list-page", () => ({
 
 const resolveAwardPricesOnSave = vi.fn();
 
-vi.mock("@/lib/awards/resolve-award-prices", () => ({
+vi.mock("@/lib/awards/resolve-award-prices-on-save", () => ({
   resolveAwardPricesOnSave: (...args: unknown[]) =>
     resolveAwardPricesOnSave(...args),
 }));

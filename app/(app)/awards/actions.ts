@@ -35,7 +35,7 @@ import {
   loadAwardListPage,
   type AwardListPageResult,
 } from "@/lib/awards/load-award-list-page";
-import { resolveAwardPricesOnSave } from "@/lib/awards/resolve-award-prices";
+import { resolveAwardPricesOnSave } from "@/lib/awards/resolve-award-prices-on-save";
 import { COLABORATOR_STORE_PAGE_PATH } from "@/lib/store/store-path";
 
 async function assertCanView(): Promise<void> {
