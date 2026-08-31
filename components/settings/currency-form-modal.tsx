@@ -63,7 +63,6 @@ function CurrencyFormModalContent({
   const {
     register,
     handleSubmit,
-    reset,
     setValue,
     control,
     formState: { errors },
@@ -74,10 +73,6 @@ function CurrencyFormModalContent({
 
   const iconMediaId = useWatch({ control, name: "iconMediaId" });
   const showInStore = useWatch({ control, name: "showInStore" });
-
-  useEffect(() => {
-    reset(defaultValues);
-  }, [defaultValues, reset]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;

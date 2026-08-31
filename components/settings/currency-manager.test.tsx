@@ -241,6 +241,34 @@ describe("CurrencyManager", () => {
     });
   });
 
+  it("keeps edited values visible while save is pending", async () => {
+    let resolveUpdate: (() => void) | undefined;
+    const onUpdate = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveUpdate = resolve;
+        }),
+    );
+    renderManager({ onUpdate });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Abrir Estrela" })[0]!);
+
+    const dialog = screen.getByRole("dialog");
+    const rateInput = within(dialog).getByLabelText("Unidades por centavo");
+    fireEvent.change(rateInput, { target: { value: "3" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => {
+      expect(onUpdate).toHaveBeenCalled();
+    });
+    expect(rateInput).toHaveValue(3);
+
+    resolveUpdate?.();
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
+
   it("does not show delete for the assigned subtasks currency", () => {
     renderManager({ protectedCurrencyId: "cur-star" });
 
