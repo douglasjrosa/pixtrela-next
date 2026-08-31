@@ -3,11 +3,14 @@ import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
 import { CartEditor } from "@/components/store/cart-editor";
+import { StoreMyListCard } from "@/components/store/store-my-list-card";
 import { StoreWindowInfoCard } from "@/components/store/store-window-info-card";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
+import { listSavedCartItems } from "@/lib/store/list-saved-cart-items";
 import { loadStorePage } from "@/lib/store/load-store-page";
 import { STORE_PAGE_SHELL_CLASS } from "@/lib/store/store-layout";
 import { buildStorePath } from "@/lib/store/store-path";
+import { loadBrandingForLayout } from "@/lib/themes/load-branding";
 
 interface PageProps {
   params: Promise<{ documentId: string }>;
@@ -27,8 +30,11 @@ export default async function ColaboratorStorePage({ params }: PageProps) {
     redirect(buildStorePath(session.user.id));
   }
 
-  const { cards, currencies, windowOpen, team } =
-    await loadStorePage(documentId);
+  const [{ cards, currencies, windowOpen, team }, branding] = await Promise.all([
+    loadStorePage(documentId),
+    loadBrandingForLayout(),
+  ]);
+  const cartWatermarkSlot = branding.cart_watermark;
 
   const editorAwards = cards.map((card) => ({
     awardId: card.awardId,
@@ -38,6 +44,14 @@ export default async function ColaboratorStorePage({ params }: PageProps) {
     prices: card.prices.map((price) => ({
       ...price,
       iconUrl: toBrowserMediaUrl(price.iconUrl),
+    })),
+  }));
+  const savedListItems = listSavedCartItems(cards).map((item) => ({
+    ...item,
+    imageUrl: toBrowserMediaUrl(item.imageUrl),
+    lines: item.lines.map((line) => ({
+      ...line,
+      iconUrl: toBrowserMediaUrl(line.iconUrl),
     })),
   }));
 
@@ -66,7 +80,14 @@ export default async function ColaboratorStorePage({ params }: PageProps) {
         initialAwards={editorAwards}
         currencies={currencies}
         editable={windowOpen}
-      />
+        cartWatermark={{
+          url: cartWatermarkSlot.mediaUrl,
+          displayOpacity: cartWatermarkSlot.config.displayOpacity,
+          widthPercent: cartWatermarkSlot.config.widthPercent,
+        }}
+      >
+        <StoreMyListCard items={savedListItems} />
+      </CartEditor>
     </section>
   );
 }

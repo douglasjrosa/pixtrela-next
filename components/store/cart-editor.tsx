@@ -12,6 +12,11 @@ import { CartQtyButton } from "@/components/store/cart-form-buttons";
 import { Button } from "@/components/ui/button";
 import { formatExchangeCurrencyLabel } from "@/lib/format/exchange-currency";
 import {
+  DEFAULT_CART_WATERMARK_DISPLAY_OPACITY,
+  DEFAULT_CART_WATERMARK_WIDTH_PERCENT,
+  resolveCartWatermarkStyle,
+} from "@/lib/domain/branding-slots";
+import {
   isCartDraftDirty,
   maxQtyForCurrency,
   remainingCurrencyBalance,
@@ -29,6 +34,7 @@ import {
   STORE_BALANCE_LABEL_CLASS,
   STORE_BALANCE_VALUE_CLASS,
   STORE_ROW_SCROLL_CLASS,
+  STORE_SUMMARY_ROW_CLASS,
 } from "@/lib/store/store-layout";
 import { showErrorToast } from "@/lib/ui/app-toast";
 import { cn } from "@/lib/utils";
@@ -172,9 +178,15 @@ function StoreAwardCard({
 function StoreBalanceCard({
   currency,
   draft,
+  cartWatermark,
 }: {
   currency: StoreCurrencyBalance;
   draft: CartDraftAward[];
+  cartWatermark?: {
+    url: string | null;
+    displayOpacity?: number;
+    widthPercent?: number;
+  };
 }) {
   const t = useTranslations("cart");
   const after = remainingCurrencyBalance(
@@ -187,15 +199,30 @@ function StoreBalanceCard({
     title: currency.title,
     pluralTitle: currency.pluralTitle,
   };
+  const watermarkUrl = cartWatermark?.url ?? currency.iconUrl;
+  const watermarkStyle = cartWatermark?.url
+    ? resolveCartWatermarkStyle({
+        displayOpacity: cartWatermark.displayOpacity,
+        widthPercent: cartWatermark.widthPercent,
+      })
+    : {
+        opacity: DEFAULT_CART_WATERMARK_DISPLAY_OPACITY,
+        widthPercent: DEFAULT_CART_WATERMARK_WIDTH_PERCENT,
+      };
 
   return (
     <li className={STORE_BALANCE_CARD_CLASS}>
-      {currency.iconUrl ? (
+      {watermarkUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={currency.iconUrl}
+          src={watermarkUrl}
           alt=""
           className={STORE_BALANCE_BG_IMAGE_CLASS}
+          style={{
+            width: `${watermarkStyle.widthPercent}%`,
+            maxHeight: "100%",
+            opacity: watermarkStyle.opacity / 100,
+          }}
         />
       ) : null}
       <div className="relative z-10 space-y-3">
@@ -231,12 +258,20 @@ export type CartEditorProps = {
   initialAwards: CartDraftAward[];
   currencies: StoreCurrencyBalance[];
   editable?: boolean;
+  children?: React.ReactNode;
+  cartWatermark?: {
+    url: string | null;
+    displayOpacity?: number;
+    widthPercent?: number;
+  };
 };
 
 export function CartEditor({
   initialAwards,
   currencies,
   editable = true,
+  children,
+  cartWatermark,
 }: CartEditorProps) {
   const t = useTranslations("cart");
   const tCommon = useTranslations("common");
@@ -327,17 +362,19 @@ export function CartEditor({
         </ul>
       )}
 
-      {currencies.length > 0 ? (
+      {currencies.length > 0 || children ? (
         <ul
-          className={STORE_ROW_SCROLL_CLASS}
+          className={STORE_SUMMARY_ROW_CLASS}
           aria-label={t("balancesRow")}
           data-testid="store-balances-row"
         >
+          {children}
           {currencies.map((currency) => (
             <StoreBalanceCard
               key={currency.currencyId}
               currency={currency}
               draft={draft}
+              cartWatermark={cartWatermark}
             />
           ))}
         </ul>
