@@ -1,15 +1,16 @@
 import { ThemePreferencesForm } from "@/components/settings/theme-preferences-form";
-import { loadResolvedBrandingAssets } from "@/lib/repos/branding";
+import type { BrandingSlotConfig } from "@/lib/domain/branding-slots";
+import { loadResolvedBranding } from "@/lib/repos/branding";
 
 import {
   listLibraryMedia,
-  updateMenuLogo,
-  updateMenuLogoBackground,
+  updateBrandingSlotConfig,
+  updateBrandingSlotMedia,
   uploadLibraryMedia,
 } from "../media-actions";
 
 export default async function SettingsThemePreferencesPage() {
-  const branding = await loadResolvedBrandingAssets();
+  const branding = await loadResolvedBranding();
 
   async function handleListImages() {
     "use server";
@@ -28,31 +29,30 @@ export default async function SettingsThemePreferencesPage() {
     return uploadLibraryMedia(formData);
   }
 
-  async function handleSaveMenuLogo(mediaId: string | null) {
-    "use server";
-    await updateMenuLogo(mediaId);
-  }
-
-  async function handleSaveMenuLogoBackground(
-    backgroundColor: string | null,
-    backgroundColorOpacity: number,
+  async function handleSaveSlotMedia(
+    key: "menu_logo" | "cart_watermark",
+    mediaId: string | null,
   ) {
     "use server";
-    await updateMenuLogoBackground(backgroundColor, backgroundColorOpacity);
+    await updateBrandingSlotMedia(key, mediaId);
+  }
+
+  async function handleSaveSlotConfig(
+    key: "menu_logo" | "cart_watermark",
+    config: BrandingSlotConfig,
+  ) {
+    "use server";
+    await updateBrandingSlotConfig(key, config);
   }
 
   return (
     <ThemePreferencesForm
-      initialMenuLogoMediaId={branding.menuLogoMediaId}
-      initialMenuLogoUrl={branding.menuLogoUrl}
-      initialMenuLogoBackgroundColor={branding.menuLogoBackgroundColor}
-      initialMenuLogoBackgroundColorOpacity={
-        branding.menuLogoBackgroundColorOpacity
-      }
+      menuLogo={branding.menu_logo}
+      cartWatermark={branding.cart_watermark}
       onListImages={handleListImages}
       onUploadImage={handleUploadImage}
-      onSaveMenuLogo={handleSaveMenuLogo}
-      onSaveMenuLogoBackground={handleSaveMenuLogoBackground}
+      onSaveSlotMedia={handleSaveSlotMedia}
+      onSaveSlotConfig={handleSaveSlotConfig}
     />
   );
 }

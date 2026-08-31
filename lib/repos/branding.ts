@@ -1,79 +1,53 @@
 import { eq } from "drizzle-orm";
 
-import { appBrandingSettings, mediaAssets } from "@/drizzle/schema";
+import { appBrandingSlots, mediaAssets } from "@/drizzle/schema";
+import {
+  BRANDING_SLOT_KEYS,
+  type BrandingSlotConfig,
+  type BrandingSlotKey,
+  defaultBrandingSlotConfig,
+  normalizeBrandingSlotConfig,
+} from "@/lib/domain/branding-slots";
 import { getDb, type Db } from "@/lib/db/client";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
-import { normalizeOpacity } from "@/lib/themes/match-route-theme";
+import { brandingSlotUpsertSchema } from "@/lib/schemas/branding-slot";
 
-export type BrandingSettingsRecord = {
-  id: string;
-  menuLogoMediaId: string | null;
-  menuLogoBackgroundColor: string | null;
-  menuLogoBackgroundColorOpacity: number;
-  rankingFirstMediaId: string | null;
-  rankingSecondMediaId: string | null;
-  rankingThirdMediaId: string | null;
+export type BrandingSlotRecord = {
+  key: BrandingSlotKey;
+  mediaId: string | null;
+  config: BrandingSlotConfig;
+  updatedAt: Date;
 };
 
-export type ResolvedBrandingAssets = {
-  menuLogoMediaId: string | null;
-  menuLogoUrl: string | null;
-  menuLogoBackgroundColor: string | null;
-  menuLogoBackgroundColorOpacity: number;
-  rankingFirstUrl: string | null;
-  rankingSecondUrl: string | null;
-  rankingThirdUrl: string | null;
+export type ResolvedBrandingSlot = {
+  key: BrandingSlotKey;
+  mediaId: string | null;
+  mediaUrl: string | null;
+  config: BrandingSlotConfig;
 };
 
-const BRANDING_COLUMNS = {
-  id: appBrandingSettings.id,
-  menuLogoMediaId: appBrandingSettings.menuLogoMediaId,
-  menuLogoBackgroundColor: appBrandingSettings.menuLogoBackgroundColor,
-  menuLogoBackgroundColorOpacity:
-    appBrandingSettings.menuLogoBackgroundColorOpacity,
-  rankingFirstMediaId: appBrandingSettings.rankingFirstMediaId,
-  rankingSecondMediaId: appBrandingSettings.rankingSecondMediaId,
-  rankingThirdMediaId: appBrandingSettings.rankingThirdMediaId,
+export type ResolvedBranding = Record<BrandingSlotKey, ResolvedBrandingSlot>;
+
+const SLOT_COLUMNS = {
+  key: appBrandingSlots.key,
+  mediaId: appBrandingSlots.mediaId,
+  config: appBrandingSlots.config,
+  updatedAt: appBrandingSlots.updatedAt,
 } as const;
 
-function mapBrandingRow(row: {
-  id: string;
-  menuLogoMediaId: string | null;
-  menuLogoBackgroundColor: string | null;
-  menuLogoBackgroundColorOpacity: number | null;
-  rankingFirstMediaId: string | null;
-  rankingSecondMediaId: string | null;
-  rankingThirdMediaId: string | null;
-}): BrandingSettingsRecord {
+function mapSlotRow(row: {
+  key: string;
+  mediaId: string | null;
+  config: Record<string, unknown> | null;
+  updatedAt: Date;
+}): BrandingSlotRecord {
+  const key = row.key as BrandingSlotKey;
   return {
-    id: row.id,
-    menuLogoMediaId: row.menuLogoMediaId,
-    menuLogoBackgroundColor: row.menuLogoBackgroundColor,
-    menuLogoBackgroundColorOpacity: normalizeOpacity(
-      row.menuLogoBackgroundColorOpacity,
-    ),
-    rankingFirstMediaId: row.rankingFirstMediaId,
-    rankingSecondMediaId: row.rankingSecondMediaId,
-    rankingThirdMediaId: row.rankingThirdMediaId,
+    key,
+    mediaId: row.mediaId,
+    config: normalizeBrandingSlotConfig(key, row.config ?? {}),
+    updatedAt: row.updatedAt,
   };
-}
-
-async function getBrandingRow(db: Db): Promise<BrandingSettingsRecord | null> {
-  const [row] = await db
-    .select(BRANDING_COLUMNS)
-    .from(appBrandingSettings)
-    .limit(1);
-  return row ? mapBrandingRow(row) : null;
-}
-
-async function ensureBrandingRow(db: Db): Promise<BrandingSettingsRecord> {
-  const existing = await getBrandingRow(db);
-  if (existing) return existing;
-  const [created] = await db
-    .insert(appBrandingSettings)
-    .values({})
-    .returning(BRANDING_COLUMNS);
-  return mapBrandingRow(created);
 }
 
 async function resolveMediaUrl(
@@ -89,105 +63,94 @@ async function resolveMediaUrl(
   return toBrowserMediaUrl(row?.url ?? null);
 }
 
-export async function loadResolvedBrandingAssets(
-  db: Db = getDb(),
-): Promise<ResolvedBrandingAssets> {
-  const row = await getBrandingRow(db);
-  if (!row) {
-    return {
-      menuLogoMediaId: null,
-      menuLogoUrl: null,
-      menuLogoBackgroundColor: null,
-      menuLogoBackgroundColorOpacity: 0,
-      rankingFirstUrl: null,
-      rankingSecondUrl: null,
-      rankingThirdUrl: null,
-    };
-  }
-  const [menuLogoUrl, rankingFirstUrl, rankingSecondUrl, rankingThirdUrl] =
-    await Promise.all([
-      resolveMediaUrl(row.menuLogoMediaId, db),
-      resolveMediaUrl(row.rankingFirstMediaId, db),
-      resolveMediaUrl(row.rankingSecondMediaId, db),
-      resolveMediaUrl(row.rankingThirdMediaId, db),
-    ]);
-  return {
-    menuLogoMediaId: row.menuLogoMediaId,
-    menuLogoUrl,
-    menuLogoBackgroundColor: row.menuLogoBackgroundColor,
-    menuLogoBackgroundColorOpacity: row.menuLogoBackgroundColorOpacity,
-    rankingFirstUrl,
-    rankingSecondUrl,
-    rankingThirdUrl,
-  };
+function emptyResolvedBranding(): ResolvedBranding {
+  return Object.fromEntries(
+    BRANDING_SLOT_KEYS.map((key) => [
+      key,
+      {
+        key,
+        mediaId: null,
+        mediaUrl: null,
+        config: defaultBrandingSlotConfig(key),
+      },
+    ]),
+  ) as ResolvedBranding;
 }
 
-export async function updateMenuLogoMediaId(
-  menuLogoMediaId: string | null,
+export async function listBrandingSlots(
   db: Db = getDb(),
-): Promise<BrandingSettingsRecord> {
-  const row = await ensureBrandingRow(db);
-  const [updated] = await db
-    .update(appBrandingSettings)
-    .set({
-      menuLogoMediaId,
-      updatedAt: new Date(),
-    })
-    .where(eq(appBrandingSettings.id, row.id))
-    .returning(BRANDING_COLUMNS);
-  return mapBrandingRow(updated);
+): Promise<BrandingSlotRecord[]> {
+  const rows = await db.select(SLOT_COLUMNS).from(appBrandingSlots);
+  return rows.map(mapSlotRow);
 }
 
-export async function updateMenuLogoBackground(
+export async function getBrandingSlot(
+  key: BrandingSlotKey,
+  db: Db = getDb(),
+): Promise<BrandingSlotRecord | null> {
+  const [row] = await db
+    .select(SLOT_COLUMNS)
+    .from(appBrandingSlots)
+    .where(eq(appBrandingSlots.key, key))
+    .limit(1);
+  return row ? mapSlotRow(row) : null;
+}
+
+export async function upsertBrandingSlot(
   input: {
-    backgroundColor: string | null;
-    backgroundColorOpacity: number;
+    key: BrandingSlotKey;
+    mediaId?: string | null;
+    config?: BrandingSlotConfig;
   },
   db: Db = getDb(),
-): Promise<BrandingSettingsRecord> {
-  const row = await ensureBrandingRow(db);
-  const [updated] = await db
-    .update(appBrandingSettings)
-    .set({
-      menuLogoBackgroundColor: input.backgroundColor,
-      menuLogoBackgroundColorOpacity: normalizeOpacity(
-        input.backgroundColorOpacity,
-      ),
+): Promise<BrandingSlotRecord> {
+  const parsed = brandingSlotUpsertSchema.parse(input);
+  const existing = await getBrandingSlot(parsed.key, db);
+  const nextConfig = parsed.config
+    ? normalizeBrandingSlotConfig(parsed.key, {
+        ...(existing?.config ?? defaultBrandingSlotConfig(parsed.key)),
+        ...parsed.config,
+      })
+    : (existing?.config ?? defaultBrandingSlotConfig(parsed.key));
+
+  const [row] = await db
+    .insert(appBrandingSlots)
+    .values({
+      key: parsed.key,
+      mediaId:
+        parsed.mediaId !== undefined ? parsed.mediaId : (existing?.mediaId ?? null),
+      config: nextConfig,
       updatedAt: new Date(),
     })
-    .where(eq(appBrandingSettings.id, row.id))
-    .returning(BRANDING_COLUMNS);
-  return mapBrandingRow(updated);
+    .onConflictDoUpdate({
+      target: appBrandingSlots.key,
+      set: {
+        ...(parsed.mediaId !== undefined ? { mediaId: parsed.mediaId } : {}),
+        ...(parsed.config !== undefined ? { config: nextConfig } : {}),
+        updatedAt: new Date(),
+      },
+    })
+    .returning(SLOT_COLUMNS);
+
+  return mapSlotRow(row);
 }
 
-export async function upsertBrandingMediaIds(
-  input: {
-    menuLogoMediaId?: string | null;
-    rankingFirstMediaId?: string | null;
-    rankingSecondMediaId?: string | null;
-    rankingThirdMediaId?: string | null;
-  },
+export async function loadResolvedBranding(
   db: Db = getDb(),
-): Promise<BrandingSettingsRecord> {
-  const row = await ensureBrandingRow(db);
-  const [updated] = await db
-    .update(appBrandingSettings)
-    .set({
-      ...(input.menuLogoMediaId !== undefined
-        ? { menuLogoMediaId: input.menuLogoMediaId }
-        : {}),
-      ...(input.rankingFirstMediaId !== undefined
-        ? { rankingFirstMediaId: input.rankingFirstMediaId }
-        : {}),
-      ...(input.rankingSecondMediaId !== undefined
-        ? { rankingSecondMediaId: input.rankingSecondMediaId }
-        : {}),
-      ...(input.rankingThirdMediaId !== undefined
-        ? { rankingThirdMediaId: input.rankingThirdMediaId }
-        : {}),
-      updatedAt: new Date(),
-    })
-    .where(eq(appBrandingSettings.id, row.id))
-    .returning(BRANDING_COLUMNS);
-  return mapBrandingRow(updated);
+): Promise<ResolvedBranding> {
+  const rows = await listBrandingSlots(db);
+  const resolved = emptyResolvedBranding();
+
+  await Promise.all(
+    rows.map(async (row) => {
+      resolved[row.key] = {
+        key: row.key,
+        mediaId: row.mediaId,
+        mediaUrl: await resolveMediaUrl(row.mediaId, db),
+        config: row.config,
+      };
+    }),
+  );
+
+  return resolved;
 }

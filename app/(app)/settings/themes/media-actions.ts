@@ -10,11 +10,9 @@ import {
   isAllowedLibraryMime,
 } from "@/lib/media/media-mime";
 import { storeMedia } from "@/lib/media/store-media";
-import {
-  loadResolvedBrandingAssets,
-  updateMenuLogoBackground as updateMenuLogoBackgroundRepo,
-  updateMenuLogoMediaId,
-} from "@/lib/repos/branding";
+import type { BrandingSlotConfig } from "@/lib/domain/branding-slots";
+import type { BrandingSlotKey } from "@/lib/domain/branding-slots";
+import { upsertBrandingSlot } from "@/lib/repos/branding";
 import { normalizeOpacity } from "@/lib/themes/match-route-theme";
 import {
   deleteMediaAsset,
@@ -194,45 +192,41 @@ export async function deleteLibraryMedia(
   return { ok: true };
 }
 
-export async function loadBrandingPreferences(): Promise<{
-  menuLogoMediaId: string | null;
-  menuLogoUrl: string | null;
-  menuLogoBackgroundColor: string | null;
-  menuLogoBackgroundColorOpacity: number;
-}> {
-  await assertCanManage();
-  const branding = await loadResolvedBrandingAssets();
-  return {
-    menuLogoMediaId: branding.menuLogoMediaId,
-    menuLogoUrl: branding.menuLogoUrl,
-    menuLogoBackgroundColor: branding.menuLogoBackgroundColor,
-    menuLogoBackgroundColorOpacity: branding.menuLogoBackgroundColorOpacity,
-  };
-}
-
-export async function updateMenuLogo(
-  menuLogoMediaId: string | null,
+export async function updateBrandingSlotMedia(
+  key: BrandingSlotKey,
+  mediaId: string | null,
 ): Promise<void> {
   await assertCanManage();
-  if (menuLogoMediaId) {
-    const asset = await getMediaAsset(menuLogoMediaId);
+  if (mediaId) {
+    const asset = await getMediaAsset(mediaId);
     if (!asset) throw new Error("notFound");
     if (!asset.mimeType?.toLowerCase().startsWith("image/")) {
       throw new Error("unsupportedType");
     }
   }
-  await updateMenuLogoMediaId(menuLogoMediaId);
+  await upsertBrandingSlot({ key, mediaId });
   invalidateBranding();
 }
 
-export async function updateMenuLogoBackground(
-  backgroundColor: string | null,
-  backgroundColorOpacity: number,
+export async function updateBrandingSlotConfig(
+  key: BrandingSlotKey,
+  config: BrandingSlotConfig,
 ): Promise<void> {
   await assertCanManage();
-  await updateMenuLogoBackgroundRepo({
-    backgroundColor: normalizeMenuLogoHexColor(backgroundColor),
-    backgroundColorOpacity: normalizeOpacity(backgroundColorOpacity),
-  });
+  const normalized: BrandingSlotConfig = { ...config };
+  if (normalized.backgroundColor !== undefined) {
+    normalized.backgroundColor = normalizeMenuLogoHexColor(
+      normalized.backgroundColor,
+    );
+  }
+  if (normalized.backgroundColorOpacity !== undefined) {
+    normalized.backgroundColorOpacity = normalizeOpacity(
+      normalized.backgroundColorOpacity,
+    );
+  }
+  if (normalized.displayOpacity !== undefined) {
+    normalized.displayOpacity = normalizeOpacity(normalized.displayOpacity);
+  }
+  await upsertBrandingSlot({ key, config: normalized });
   invalidateBranding();
 }

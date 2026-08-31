@@ -1,16 +1,16 @@
-import {
-  FULLY_TRANSPARENT_OPACITY,
-  hexToRgba,
-  normalizeOpacity,
-} from "@/lib/themes/match-route-theme";
+import { resolveBrandingBackgroundStyle } from "@/lib/domain/branding-slots";
+import type { BrandingSlotConfig } from "@/lib/domain/branding-slots";
 
 export function resolveMenuLogoBackgroundStyle(
   color: string | null | undefined,
   opacity: number | null | undefined,
 ): string | undefined {
-  const trimmed = color?.trim();
-  if (!trimmed) return undefined;
-  const normalizedOpacity = normalizeOpacity(opacity);
-  if (normalizedOpacity === FULLY_TRANSPARENT_OPACITY) return undefined;
-  return hexToRgba(trimmed, normalizedOpacity) ?? undefined;
+  return resolveBrandingBackgroundStyle({
+    backgroundColor: color ?? undefined,
+    backgroundColorOpacity: opacity ?? undefined,
+  });
 }
+
+export { resolveBrandingBackgroundStyle };
+
+export type { BrandingSlotConfig };

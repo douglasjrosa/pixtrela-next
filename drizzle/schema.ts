@@ -282,27 +282,12 @@ export const semanticThemeSettings = pgTable("semantic_theme_settings", {
     .notNull(),
 });
 
-export const appBrandingSettings = pgTable("app_branding_settings", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  menuLogoMediaId: uuid("menu_logo_media_id").references(() => mediaAssets.id, {
+export const appBrandingSlots = pgTable("app_branding_slots", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  mediaId: uuid("media_id").references(() => mediaAssets.id, {
     onDelete: "set null",
   }),
-  menuLogoBackgroundColor: varchar("menu_logo_background_color", { length: 32 }),
-  menuLogoBackgroundColorOpacity: doublePrecision(
-    "menu_logo_background_color_opacity",
-  ).default(0),
-  rankingFirstMediaId: uuid("ranking_first_media_id").references(
-    () => mediaAssets.id,
-    { onDelete: "set null" },
-  ),
-  rankingSecondMediaId: uuid("ranking_second_media_id").references(
-    () => mediaAssets.id,
-    { onDelete: "set null" },
-  ),
-  rankingThirdMediaId: uuid("ranking_third_media_id").references(
-    () => mediaAssets.id,
-    { onDelete: "set null" },
-  ),
+  config: jsonb("config").$type<Record<string, unknown>>().default({}).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

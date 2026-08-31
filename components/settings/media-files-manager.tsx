@@ -66,15 +66,17 @@ export interface MediaFilesManagerProps {
 
 const BRANDING_REF_LABEL_KEYS: Record<
   string,
-  | "mediaRefBrandingLabels.menuLogo"
-  | "mediaRefBrandingLabels.rankingFirst"
-  | "mediaRefBrandingLabels.rankingSecond"
-  | "mediaRefBrandingLabels.rankingThird"
+  | "mediaRefBrandingLabels.menu_logo"
+  | "mediaRefBrandingLabels.cart_watermark"
+  | "mediaRefBrandingLabels.ranking_first"
+  | "mediaRefBrandingLabels.ranking_second"
+  | "mediaRefBrandingLabels.ranking_third"
 > = {
-  menuLogo: "mediaRefBrandingLabels.menuLogo",
-  rankingFirst: "mediaRefBrandingLabels.rankingFirst",
-  rankingSecond: "mediaRefBrandingLabels.rankingSecond",
-  rankingThird: "mediaRefBrandingLabels.rankingThird",
+  menu_logo: "mediaRefBrandingLabels.menu_logo",
+  cart_watermark: "mediaRefBrandingLabels.cart_watermark",
+  ranking_first: "mediaRefBrandingLabels.ranking_first",
+  ranking_second: "mediaRefBrandingLabels.ranking_second",
+  ranking_third: "mediaRefBrandingLabels.ranking_third",
 };
 
 function formatMediaReferenceLabel(
