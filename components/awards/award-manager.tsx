@@ -2,6 +2,7 @@
 
 import {
   Suspense,
+  useEffect,
   useState,
   useTransition,
   type ReactNode,
@@ -22,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { SwitchField } from "@/components/ui/switch-field";
 import { Textarea } from "@/components/ui/textarea";
 import { buildAwardValuesForCurrencies } from "@/lib/awards/build-award-form-values";
+import { resolveAwardPrices } from "@/lib/awards/resolve-award-prices";
 import { roundCurrencyRate } from "@/lib/format/currency-rate";
 import type { MediaAssetRecord } from "@/lib/repos/media";
 import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
@@ -123,6 +125,7 @@ function AwardFormDialog({
     handleSubmit,
     control,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<AwardFormInput>({
     resolver: zodResolver(awardFormSchema) as Resolver<AwardFormInput>,
@@ -132,7 +135,40 @@ function AwardFormDialog({
   });
 
   const imageId = useWatch({ control, name: "imageId" });
+  const actualPrice = useWatch({ control, name: "actualPrice" });
   const autoRecalculate = useWatch({ control, name: "autoRecalculate" });
+
+  useEffect(() => {
+    if (!autoRecalculate || currencies.length === 0) {
+      return;
+    }
+
+    const manualPrices = currencies.map((currency) => ({
+      currencyId: currency.documentId,
+      numberOf: 0,
+    }));
+    const recalculated = resolveAwardPrices({
+      autoRecalculate: true,
+      actualPrice: Number(actualPrice) || 0,
+      manualPrices,
+      exchangeRateById: Object.fromEntries(
+        currencies.map((currency) => [
+          currency.documentId,
+          currency.exchangeRate,
+        ]),
+      ),
+    });
+
+    recalculated.forEach((price, index) => {
+      const current = getValues(`values.${index}.numberOf`);
+      if (current === price.numberOf) {
+        return;
+      }
+      setValue(`values.${index}.numberOf`, price.numberOf, {
+        shouldValidate: true,
+      });
+    });
+  }, [actualPrice, autoRecalculate, currencies, getValues, setValue]);
 
   function handleImageConfirm(asset: MediaAssetRecord): void {
     setValue("imageId", asset.id);

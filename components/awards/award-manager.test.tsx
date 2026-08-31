@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const currencies = [
-  { documentId: "c1", name: "star", title: "Estrela" },
+  { documentId: "c1", name: "star", title: "Estrela", exchangeRate: 0.5 },
 ];
 
 const activeAward: AwardRow = {
@@ -160,6 +160,20 @@ describe("AwardManager", () => {
     expect(screen.getByLabelText("Nome")).toHaveValue("Arroz");
   });
 
+  it("recalculates currency values when actual price changes with auto recalculate on", async () => {
+    const user = userEvent.setup();
+    renderManager();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Arroz" })[0]!);
+    const actualPriceInput = screen.getByLabelText("Custo (R$)");
+    await user.clear(actualPriceInput);
+    await user.type(actualPriceInput, "12.5");
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Estrela")).toHaveValue(625);
+    });
+  });
+
   it("shows archive action for active awards when canDeactivate is true", () => {
     renderManager({ canDeactivate: true, canDelete: false });
     fireEvent.click(screen.getAllByRole("button", { name: "Arroz" })[0]!);
@@ -241,7 +255,7 @@ describe("AwardManager", () => {
           stock: 0,
           actualPrice: 0,
           autoRecalculate: true,
-          values: [{ numberOf: 1, currencyDocumentId: "c1" }],
+          values: [{ numberOf: 0, currencyDocumentId: "c1" }],
         }),
       );
     });

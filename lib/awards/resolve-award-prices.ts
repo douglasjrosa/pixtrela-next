@@ -9,6 +9,40 @@ export type ManualAwardPrice = {
   numberOf: number;
 };
 
+export type ExchangeRateLookup =
+  | ReadonlyMap<string, number>
+  | Readonly<Record<string, number>>;
+
+function readExchangeRate(
+  exchangeRateById: ExchangeRateLookup,
+  currencyId: string,
+): number {
+  if (exchangeRateById instanceof Map) {
+    return exchangeRateById.get(currencyId) ?? 0;
+  }
+  return exchangeRateById[currencyId] ?? 0;
+}
+
+/** Pure pricing resolver shared by the award form and save actions. */
+export function resolveAwardPrices(input: {
+  autoRecalculate: boolean;
+  actualPrice: number;
+  manualPrices: ManualAwardPrice[];
+  exchangeRateById: ExchangeRateLookup;
+}): ManualAwardPrice[] {
+  if (!input.autoRecalculate) {
+    return input.manualPrices;
+  }
+
+  return input.manualPrices.map((price) => ({
+    currencyId: price.currencyId,
+    numberOf: calculateAwardNumberOf(
+      input.actualPrice,
+      readExchangeRate(input.exchangeRateById, price.currencyId),
+    ),
+  }));
+}
+
 export async function resolveAwardPricesOnSave(
   input: {
     autoRecalculate: boolean;
@@ -21,11 +55,8 @@ export async function resolveAwardPricesOnSave(
     return input.manualPrices;
   }
 
-  const activeCurrencyIds = input.manualPrices
-    .filter((price) => price.numberOf > 0)
-    .map((price) => price.currencyId);
-
-  if (activeCurrencyIds.length === 0) {
+  const currencyIds = input.manualPrices.map((price) => price.currencyId);
+  if (currencyIds.length === 0) {
     return input.manualPrices;
   }
 
@@ -36,7 +67,7 @@ export async function resolveAwardPricesOnSave(
       active: currencies.active,
     })
     .from(currencies)
-    .where(inArray(currencies.id, activeCurrencyIds));
+    .where(inArray(currencies.id, currencyIds));
 
   const exchangeRateById = new Map(
     rows
@@ -44,15 +75,10 @@ export async function resolveAwardPricesOnSave(
       .map((row) => [row.id, Number(row.exchangeRate ?? 0)]),
   );
 
-  return input.manualPrices.map((price) => {
-    if (price.numberOf <= 0) {
-      return price;
-    }
-
-    const exchangeRate = exchangeRateById.get(price.currencyId) ?? 0;
-    return {
-      currencyId: price.currencyId,
-      numberOf: calculateAwardNumberOf(input.actualPrice, exchangeRate),
-    };
+  return resolveAwardPrices({
+    autoRecalculate: true,
+    actualPrice: input.actualPrice,
+    manualPrices: input.manualPrices,
+    exchangeRateById,
   });
 }

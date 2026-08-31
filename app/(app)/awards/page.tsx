@@ -44,6 +44,7 @@ async function loadCurrencies(): Promise<CurrencyOption[]> {
       documentId: currency.id,
       name: currency.name,
       title: currency.title,
+      exchangeRate: Number(currency.exchangeRate ?? 0),
     }));
   } catch (error) {
     rethrowIfNavigationError(error);

@@ -4,6 +4,7 @@ export interface CurrencyOption {
   documentId: string;
   name: string;
   title?: string | null;
+  exchangeRate: number;
 }
 
 export interface AwardRow {

@@ -37,7 +37,7 @@ const filters = {
   showArchived: false,
 };
 
-const currencies = [{ documentId: "c1", name: "star", title: "Estrela" }];
+const currencies = [{ documentId: "c1", name: "star", title: "Estrela", exchangeRate: 0.5 }];
 
 const initialAwards: AwardRow[] = [
   {
