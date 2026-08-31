@@ -96,7 +96,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
     }
 
     function writeRoundedValue(input: HTMLInputElement, value: number): void {
-      const places = decimalPlacesFromStep(step);
+      const places = decimalPlacesFromStep(stepValue);
       const next = clampValue(roundDecimal(value, places), minValue, maxValue);
       const formatted = formatSteppedNumber(next, places);
       if (input.value === formatted) return;
@@ -119,7 +119,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
           ref={assignRef}
           min={min}
           max={max}
-          step={step}
+          step={stepValue}
           disabled={disabled}
           className={cn(
             "h-9 w-full min-w-0 rounded-md border border-input bg-transparent",

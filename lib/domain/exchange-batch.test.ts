@@ -38,6 +38,11 @@ describe("isBatchVisible", () => {
     expect(isBatchVisible(new Date("2026-08-16T00:00:00Z"), 15)).toBe(true);
     expect(isBatchVisible(new Date("2026-08-16T00:00:00Z"), 0)).toBe(false);
   });
+
+  it("does not mark batch visible on the capped last exchange day", () => {
+    expect(isBatchVisible(new Date("2026-02-28T12:00:00Z"), 31)).toBe(false);
+    expect(isBatchVisible(new Date("2026-04-30T12:00:00Z"), 31)).toBe(false);
+  });
 });
 
 describe("trimCartLinesForClose", () => {

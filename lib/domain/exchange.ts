@@ -13,12 +13,28 @@ export interface AwardPrice {
   qty: number;
 }
 
+/** Calendar length for the UTC month containing `date`. */
+export function daysInUtcMonth(date: Date): number {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+}
+
+/** Last exchange day for a month (caps configured day to month length). */
+export function effectiveExchangeLastDay(
+  configuredLastDay: number,
+  date: Date,
+): number {
+  return Math.min(configuredLastDay, daysInUtcMonth(date));
+}
+
 export function isExchangeWindowOpen(
   team: ExchangeWindow,
   date: Date,
 ): boolean {
   const day = date.getUTCDate();
-  return day >= team.exchangesFirstDay && day <= team.exchangesLastDay;
+  const lastDay = effectiveExchangeLastDay(team.exchangesLastDay, date);
+  return day >= team.exchangesFirstDay && day <= lastDay;
 }
 
 export function exchangeCost(

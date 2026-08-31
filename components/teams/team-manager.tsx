@@ -150,6 +150,7 @@ function TeamFormDialog({
             id="exchangesFirstDay"
             min={1}
             max={31}
+            step={1}
             disabled={isPending}
             {...register("exchangesFirstDay", { valueAsNumber: true })}
           />
@@ -161,6 +162,7 @@ function TeamFormDialog({
             id="exchangesLastDay"
             min={1}
             max={31}
+            step={1}
             disabled={isPending}
             {...register("exchangesLastDay", { valueAsNumber: true })}
           />
