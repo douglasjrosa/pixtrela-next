@@ -149,4 +149,30 @@ describe("userFormSchema", () => {
     if (result.success) return;
     expect(result.error.issues[0]?.message).toBe(USER_EMAIL_NOT_UNIQUE_KEY);
   });
+
+  it("allows editing a user to a new unique pixtrela.local email", () => {
+    const withLocalEmail = [
+      {
+        documentId: "u1",
+        code: 1234,
+        username: "ana.123",
+        email: "ana@pixtrela.local",
+      },
+      {
+        documentId: "u2",
+        code: 5678,
+        username: "joao.5678",
+        email: "joao@pixtrela.local",
+      },
+    ];
+
+    expect(
+      createUserFormSchema(withLocalEmail, "u1").parse({
+        ...validUser,
+        username: "ana.123",
+        email: "ana.123@pixtrela.locals",
+        code: 1234,
+      }),
+    ).toMatchObject({ email: "ana.123@pixtrela.locals" });
+  });
 });
