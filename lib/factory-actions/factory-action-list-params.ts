@@ -47,12 +47,19 @@ function parseSortDirection(
 export function parseFactoryActionListSearchParams(
   params: SearchParamsRecord,
 ): FactoryActionListFilters {
+  const qRaw = firstParam(params.q)?.trim();
   const sortColumn = parseSortColumn(firstParam(params.sort));
   const sortDirection = parseSortDirection(firstParam(params.dir));
+  const showArchived = firstParam(params.archived) === "1";
 
   const result = factoryActionListFiltersSchema.safeParse({
+    q:
+      qRaw && qRaw.length >= 3
+        ? qRaw
+        : undefined,
     column: sortColumn ?? FACTORY_ACTION_LIST_DEFAULT_SORT_COLUMN,
     direction: sortDirection ?? FACTORY_ACTION_LIST_DEFAULT_SORT_DIRECTION,
+    showArchived,
   });
 
   if (!result.success) {
@@ -65,6 +72,12 @@ export function serializeFactoryActionListSearchParams(
   filters: FactoryActionListFilters,
 ): URLSearchParams {
   const params = new URLSearchParams();
+  if (filters.q) {
+    params.set("q", filters.q);
+  }
+  if (filters.showArchived) {
+    params.set("archived", "1");
+  }
   if (
     !isDefaultFactoryActionListSort({
       column: filters.column,
@@ -80,5 +93,10 @@ export function serializeFactoryActionListSearchParams(
 export function factoryActionListFilterKey(
   filters: FactoryActionListFilters,
 ): string {
-  return [filters.column, filters.direction].join("|");
+  return [
+    filters.q ?? "",
+    filters.column,
+    filters.direction,
+    filters.showArchived ? "1" : "0",
+  ].join("|");
 }

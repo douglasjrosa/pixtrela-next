@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import {
   entryDeviceFromMediaQuery,
@@ -8,27 +8,29 @@ import {
   type EntryAccessDevice,
 } from "@/lib/business/entry-access";
 
-function readIsMobile(): boolean {
-  if (typeof window === "undefined") return false;
-  if (typeof window.matchMedia !== "function") return false;
-  return window.matchMedia(MOBILE_ENTRY_MEDIA_QUERY).matches;
+function getServerSnapshot(): EntryAccessDevice {
+  return "computer";
 }
 
-export function useEntryAccessDevice(): EntryAccessDevice {
-  const [device, setDevice] = useState<EntryAccessDevice>(() =>
-    entryDeviceFromMediaQuery(readIsMobile()),
+function getSnapshot(): EntryAccessDevice {
+  if (typeof window.matchMedia !== "function") {
+    return "computer";
+  }
+  return entryDeviceFromMediaQuery(
+    window.matchMedia(MOBILE_ENTRY_MEDIA_QUERY).matches,
   );
+}
 
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") return;
-    const media = window.matchMedia(MOBILE_ENTRY_MEDIA_QUERY);
-    function sync(): void {
-      setDevice(entryDeviceFromMediaQuery(media.matches));
-    }
-    sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
+function subscribe(callback: () => void): () => void {
+  if (typeof window.matchMedia !== "function") {
+    return () => {};
+  }
+  const media = window.matchMedia(MOBILE_ENTRY_MEDIA_QUERY);
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
 
-  return device;
+/** SSR-safe device bucket for entry-access settings (computer vs mobile). */
+export function useEntryAccessDevice(): EntryAccessDevice {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

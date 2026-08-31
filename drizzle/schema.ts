@@ -374,6 +374,7 @@ export const factoryActions = pgTable("actions", {
   unitTime: numeric("unit_time", { precision: 12, scale: 2 }).notNull(),
   description: text("description").notNull(),
   qtyQuestion: text("qty_question").notNull(),
+  active: boolean("active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -451,6 +452,7 @@ export const subTaskPresets = pgTable("sub_task_presets", {
     () => subTaskCategories.id,
     { onDelete: "set null" },
   ),
+  active: boolean("active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

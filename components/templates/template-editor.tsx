@@ -17,6 +17,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
+import { parseLoadTemplateError } from "@/lib/templates/load-template-error";
 import {
   mapTemplateRowsToComponents,
   type TemplateSubTaskRow,
@@ -102,7 +103,24 @@ export function TemplateEditor({
         await loadTemplateFromLegacy(documentId, code);
         showSuccessToast(tTemplates("loadTemplateSuccess"));
         router.refresh();
-      } catch {
+      } catch (error) {
+        const details = parseLoadTemplateError(error);
+        if (details.code === "misconfigured") {
+          showErrorToast(tTemplates("loadTemplateMisconfigured"));
+          return;
+        }
+        if (details.code === "invalidCode") {
+          showErrorToast(tTemplates("loadTemplateInvalidCode"));
+          return;
+        }
+        if (details.code === "presetNotFound" && details.presetName) {
+          showErrorToast(
+            tTemplates("loadTemplatePresetNotFound", {
+              name: details.presetName,
+            }),
+          );
+          return;
+        }
         showErrorToast(tTemplates("loadTemplateError"));
       }
     });

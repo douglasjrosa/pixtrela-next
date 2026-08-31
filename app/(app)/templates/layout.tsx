@@ -3,13 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
-import {
-  APP_LIST_PAGE_CHROME_CLASS,
-  APP_LIST_PAGE_SHELL_CLASS,
-  APP_LIST_PAGE_TITLE_CLASS,
-  APP_SECTION_TABS_COMPACT_CLASS,
-} from "@/components/layout/app-page-layout";
-import { SectionTabs } from "@/components/navigation/section-tabs";
+import { TemplatesLayoutClient } from "@/components/templates/templates-layout-client";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTemplates } from "@/lib/auth/permissions";
 
@@ -27,20 +21,16 @@ export default async function TemplatesLayout({
   }
 
   return (
-    <div className={APP_LIST_PAGE_SHELL_CLASS}>
-      <div className={APP_LIST_PAGE_CHROME_CLASS}>
-        <h1 className={APP_LIST_PAGE_TITLE_CLASS}>{t("title")}</h1>
-        <SectionTabs
-          ariaLabel={t("title")}
-          className={APP_SECTION_TABS_COMPACT_CLASS}
-          items={[
-            { href: "/templates/tasks", label: t("tasksTab") },
-            { href: "/templates/subtasks", label: t("subtasksTab") },
-            { href: "/templates/actions", label: t("actionsTab") },
-          ]}
-        />
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-    </div>
+    <TemplatesLayoutClient
+      title={t("title")}
+      tabsAriaLabel={t("title")}
+      tabItems={[
+        { href: "/templates/tasks", label: t("tasksTab") },
+        { href: "/templates/subtasks", label: t("subtasksTab") },
+        { href: "/templates/actions", label: t("actionsTab") },
+      ]}
+    >
+      {children}
+    </TemplatesLayoutClient>
   );
 }

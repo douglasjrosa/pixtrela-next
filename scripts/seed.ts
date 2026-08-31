@@ -13,6 +13,7 @@ import {
 } from "../drizzle/schema";
 import { DEFAULT_FACTORY_ACTIONS } from "../lib/actions/default-actions";
 import { closeDb, getDb } from "../lib/db/client";
+import { seedRbxBoxTemplatePresets } from "../lib/subtask-presets/rbx-box-template-presets";
 
 const ADMIN_USERNAME = process.env.SEED_ADMIN_USERNAME ?? "admin";
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "PixtrelaAdmin1";
@@ -123,6 +124,11 @@ async function main(): Promise<void> {
         qtyQuestion: row.qtyQuestion,
       })),
     );
+  }
+
+  const insertedPresets = await seedRbxBoxTemplatePresets(db);
+  if (insertedPresets > 0) {
+    console.log(`Created ${insertedPresets} Ribermax box template preset(s)`);
   }
 
   console.log("Seed complete.");

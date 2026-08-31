@@ -40,7 +40,8 @@ export function SubTaskPresetForm({
     control,
     handleSubmit,
     setValue,
-    formState: { errors },
+    clearErrors,
+    formState: { errors, submitCount },
   } = useForm<SubTaskPresetFormInput>({
     resolver: zodResolver(
       subTaskPresetFormSchema,
@@ -51,10 +52,10 @@ export function SubTaskPresetForm({
   return (
     <form
       id={formId}
-      className="grid gap-4 sm:grid-cols-2"
+      className="grid gap-4"
       onSubmit={handleSubmit(onSubmit)}
     >
-      <div className="space-y-2 sm:col-span-2">
+      <div className="space-y-2">
         <Label htmlFor={`${formId}-name`}>{tSubtasks("name")}</Label>
         <Input
           id={`${formId}-name`}
@@ -66,22 +67,27 @@ export function SubTaskPresetForm({
         ) : null}
       </div>
 
-      <div className="space-y-2 sm:col-span-2">
+      <div className="space-y-2">
         <Controller
           name="actionId"
           control={control}
           render={({ field }) => (
             <FactoryActionSearchField
-              key={`${field.value}:${selectedActionName}`}
               id={`${formId}-action`}
               value={field.value}
               selectedName={selectedActionName}
               disabled={disabled}
-              errorMessage={errors.actionId?.message}
+              errorMessage={
+                submitCount > 0 ? (errors.actionId?.message ?? null) : null
+              }
               onChange={(actionId, action) => {
                 field.onChange(actionId);
-                setValue("actionId", actionId, { shouldValidate: true });
-                setSelectedActionName(action?.name ?? "");
+                if (action) {
+                  setSelectedActionName(action.name);
+                  setValue("actionId", actionId, { shouldValidate: true });
+                  return;
+                }
+                clearErrors("actionId");
               }}
             />
           )}
@@ -128,7 +134,7 @@ export function SubTaskPresetForm({
         />
       </div>
 
-      <div className="sm:col-span-2">
+      <div className="space-y-2">
         <Controller
           name="subTaskCategoryId"
           control={control}

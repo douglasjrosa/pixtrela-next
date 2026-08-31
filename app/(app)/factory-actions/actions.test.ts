@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const auth = vi.fn(async () => ({ user: { role: "manager" } }));
 const revalidateTag = vi.fn();
+const revalidatePath = vi.fn();
 const createFactoryActionRepo = vi.fn();
 const updateFactoryActionRepo = vi.fn();
 const deleteFactoryActionById = vi.fn();
@@ -13,6 +14,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
+  revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
 vi.mock("@/lib/repos/factory-actions", () => ({
@@ -34,6 +36,7 @@ describe("factory-actions actions", () => {
   beforeEach(() => {
     auth.mockReset();
     revalidateTag.mockReset();
+    revalidatePath.mockReset();
     createFactoryActionRepo.mockReset();
     updateFactoryActionRepo.mockReset();
     deleteFactoryActionById.mockReset();
@@ -62,6 +65,7 @@ describe("factory-actions actions", () => {
       "drizzle:factory-actions",
       "default",
     );
+    expect(revalidatePath).toHaveBeenCalledWith("/templates/actions");
   });
 
   it("deleteFactoryAction deletes by id", async () => {

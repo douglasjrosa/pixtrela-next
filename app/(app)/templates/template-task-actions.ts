@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import { loadRibermaxTemplateFromBoxCode } from "@/integrations/ribermax";
@@ -65,6 +65,7 @@ function toRepoSubTasks(subTasks: TemplateSubTaskComponentInput[]) {
 
 function invalidateTemplates(): void {
   revalidateTag("drizzle:templates", "default");
+  revalidatePath("/templates/tasks");
 }
 
 export async function loadMoreTemplates(

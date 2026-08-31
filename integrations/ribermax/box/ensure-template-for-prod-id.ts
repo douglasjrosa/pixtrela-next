@@ -1,4 +1,7 @@
-import { buildTemplateFromBox } from "@/integrations/ribermax/box/template-from-box";
+import {
+  buildTemplateFromBox,
+  PRESET_NOT_FOUND_PREFIX,
+} from "@/integrations/ribermax/box/template-from-box";
 import { fetchBoxTemplateData } from "@/integrations/ribermax/rbx/rbx-client";
 import { findSubTaskPresetByName } from "@/lib/repos/sub-task-presets";
 import {
@@ -45,7 +48,7 @@ async function resolvePresetsForPayload(
   for (const name of names) {
     const preset = await findSubTaskPresetByName(name);
     if (!preset) {
-      throw new Error(`presetNotFound:${name}`);
+      throw new Error(`${PRESET_NOT_FOUND_PREFIX}${name}`);
     }
     presetsByName.set(name, preset);
   }

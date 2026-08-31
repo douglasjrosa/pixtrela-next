@@ -204,6 +204,13 @@
       "when": 1788100000000,
       "tag": "0028_crm_connection_base_url",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1788150000000,
+      "tag": "0029_catalog_active_flags",
+      "breakpoints": true
     }
   ]
 }

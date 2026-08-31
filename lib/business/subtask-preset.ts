@@ -13,6 +13,7 @@ export interface SubTaskPreset {
   actionUnitTime: number;
   actionQtyQuestion: string;
   subTaskCategoryId?: string | null;
+  active: boolean;
 }
 
 export type SubTaskPresetApplyTarget = Pick<

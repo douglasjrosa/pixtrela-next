@@ -12,16 +12,22 @@ import {
 export interface SubtaskPresetListRowProps {
   preset: SubTaskPreset;
   variant: "table" | "mobile";
+  showCheckboxColumn?: boolean;
 }
 
 export function SubtaskPresetListRowView({
   preset,
   variant,
+  showCheckboxColumn = false,
 }: SubtaskPresetListRowProps) {
   const tSharing = useTranslations("subtasks.sharingType");
+  const tTemplates = useTranslations("templates");
+  const tCommon = useTranslations("common");
   const labels: SubtaskPresetListRowLabels = {
     sharingType: tSharing(preset.sharingType),
     actionName: preset.actionName,
+    inactive: tTemplates("inactive"),
+    selectRow: tCommon("selectRow", { name: preset.name }),
   };
 
   return (
@@ -29,6 +35,7 @@ export function SubtaskPresetListRowView({
       preset={preset}
       variant={variant}
       labels={labels}
+      showCheckboxColumn={showCheckboxColumn}
     />
   );
 }

@@ -12,6 +12,7 @@ const updateSubTaskPresetRepo = vi.fn();
 const deleteSubTaskPresetById = vi.fn();
 const auth = vi.fn(async () => ({ user: { role: "manager" } }));
 const revalidateTag = vi.fn();
+const revalidatePath = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: (...args: unknown[]) => auth(...args),
@@ -19,6 +20,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
+  revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
 vi.mock("@/lib/repos/sub-task-presets", () => ({
@@ -50,6 +52,7 @@ describe("sub-task-presets actions", () => {
     deleteSubTaskPresetById.mockReset();
     auth.mockReset();
     revalidateTag.mockReset();
+    revalidatePath.mockReset();
     auth.mockResolvedValue({ user: { role: "manager" } });
     vi.resetModules();
   });
@@ -117,6 +120,7 @@ describe("sub-task-presets actions", () => {
       "drizzle:sub-task-presets",
       "default",
     );
+    expect(revalidatePath).toHaveBeenCalledWith("/templates/subtasks");
   });
 
   it("updateSubTaskPreset updates repo row", async () => {

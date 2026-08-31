@@ -20,6 +20,7 @@ import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { buildDefaultLogin } from "@/lib/business/default-login";
@@ -405,7 +406,7 @@ function UserFormDialog({
         {canSetPassword ? (
           <div className="space-y-2">
             <Label htmlFor="password">{tUsers("password")}</Label>
-            <Input id="password" type="password" {...register("password")} />
+            <PasswordInput id="password" autoComplete="new-password" {...register("password")} />
             {isEditing ? (
               <p className="text-xs text-muted-foreground">
                 {tUsers("passwordOptional")}

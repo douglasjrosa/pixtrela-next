@@ -1,17 +1,24 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
-import { canManageTasks, canManageTemplates } from "@/lib/auth/permissions";
+import {
+  canDeactivateTemplates,
+  canDeleteTemplates,
+  canManageTasks,
+  canManageTemplates,
+} from "@/lib/auth/permissions";
 import {
   shouldSearchSubTaskPresets,
   type SubTaskPreset,
 } from "@/lib/business/subtask-preset";
 import {
+  archiveSubTaskPresetById,
   createSubTaskPresetRepo,
-  deleteSubTaskPresetById,
+  findSubTaskPresetById,
+  hardDeleteSubTaskPresetById,
   listSubTaskPresetsRepo,
   searchSubTaskPresetsByName,
   updateSubTaskPresetRepo,
@@ -20,6 +27,7 @@ import {
   subTaskPresetFormSchema,
   type SubTaskPresetFormInput,
 } from "@/lib/schemas/sub-task-preset";
+import { bulkDocumentIdsSchema } from "@/lib/schemas/bulk-ids";
 import { subtaskPresetListFiltersSchema } from "@/lib/schemas/subtask-preset-list-filters";
 import {
   loadSubtaskPresetListPage,
@@ -40,8 +48,16 @@ async function assertCanManagePresets(): Promise<void> {
   }
 }
 
+async function assertCanDeactivatePresets(): Promise<void> {
+  const session = await auth();
+  if (!canDeactivateTemplates(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+}
+
 function invalidatePresets(): void {
   revalidateTag("drizzle:sub-task-presets", "default");
+  revalidatePath("/templates/subtasks");
 }
 
 export async function searchSubTaskPresets(
@@ -93,6 +109,39 @@ export async function updateSubTaskPreset(
 
 export async function deleteSubTaskPreset(documentId: string): Promise<void> {
   await assertCanManagePresets();
-  await deleteSubTaskPresetById(documentId);
+  await archiveSubTaskPresetById(documentId);
+  invalidatePresets();
+}
+
+export async function bulkArchiveSubTaskPresets(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanDeactivatePresets();
+  const ids = bulkDocumentIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const preset = await findSubTaskPresetById(documentId);
+    if (!preset) throw new Error("notFound");
+    await archiveSubTaskPresetById(documentId);
+  }
+  invalidatePresets();
+}
+
+export async function bulkDeleteSubTaskPresets(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanManagePresets();
+  const session = await auth();
+  if (!canDeleteTemplates(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+  const ids = bulkDocumentIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const preset = await findSubTaskPresetById(documentId);
+    if (!preset) throw new Error("notFound");
+    if (preset.active) throw new Error("activePreset");
+    await hardDeleteSubTaskPresetById(documentId);
+  }
   invalidatePresets();
 }

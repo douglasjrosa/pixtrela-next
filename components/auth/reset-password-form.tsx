@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { resetPassword } from "@/app/login/password-reset-actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
@@ -53,13 +54,13 @@ export function ResetPasswordForm({ token }: { token: string }) {
       <input type="hidden" {...register("token")} />
       <div className="space-y-2">
         <Label htmlFor="password">{t("newPassword")}</Label>
-        <Input id="password" type="password" {...register("password")} />
+        <PasswordInput id="password" autoComplete="new-password" {...register("password")} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="passwordConfirmation">{t("confirmNewPassword")}</Label>
-        <Input
+        <PasswordInput
           id="passwordConfirmation"
-          type="password"
+          autoComplete="new-password"
           {...register("passwordConfirmation")}
         />
       </div>

@@ -1,4 +1,4 @@
-import { asc, count, desc, eq, ilike } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or } from "drizzle-orm";
 
 import { factoryActions, subTaskPresets } from "@/drizzle/schema";
 import {
@@ -21,6 +21,7 @@ function mapActionRow(
     unitTime: parseActionUnitTime(row.unitTime),
     description: row.description,
     qtyQuestion: row.qtyQuestion,
+    active: row.active,
   };
 }
 
@@ -43,6 +44,21 @@ function actionListOrderBy(sort: FactoryActionListSort) {
   return [dir(factoryActions.name), asc(factoryActions.id)];
 }
 
+function listWhereClause(options: {
+  q?: string;
+  showArchived?: boolean;
+}) {
+  const activeClause = eq(factoryActions.active, !options.showArchived);
+  const q = options.q?.trim();
+  const searchClause = q
+    ? or(
+        ilike(factoryActions.name, `%${q}%`),
+        ilike(factoryActions.qtyQuestion, `%${q}%`),
+      )
+    : undefined;
+  return and(activeClause, searchClause);
+}
+
 export async function searchFactoryActionsByName(
   query: string,
   db: Db = getDb(),
@@ -50,7 +66,12 @@ export async function searchFactoryActionsByName(
   const rows = await db
     .select()
     .from(factoryActions)
-    .where(ilike(factoryActions.name, `%${query.trim()}%`))
+    .where(
+      and(
+        eq(factoryActions.active, true),
+        ilike(factoryActions.name, `%${query.trim()}%`),
+      ),
+    )
     .orderBy(asc(factoryActions.name))
     .limit(FACTORY_ACTION_SEARCH_LIMIT);
   return rows.map(mapActionRow);
@@ -70,9 +91,11 @@ export async function getFactoryActionById(
 
 export async function listFactoryActionsPaged(
   options: {
+    q?: string;
     page?: number;
     pageSize?: number;
     sort?: FactoryActionListSort;
+    showArchived?: boolean;
   } = {},
   db: Db = getDb(),
 ): Promise<{ items: FactoryAction[]; total: number }> {
@@ -80,14 +103,17 @@ export async function listFactoryActionsPaged(
   const pageSize = Math.max(1, options.pageSize ?? 10);
   const offset = (page - 1) * pageSize;
   const sort = options.sort ?? { column: "name", direction: "asc" };
+  const where = listWhereClause(options);
 
   const [totalRow] = await db
     .select({ total: count() })
-    .from(factoryActions);
+    .from(factoryActions)
+    .where(where);
 
   const rows = await db
     .select()
     .from(factoryActions)
+    .where(where)
     .orderBy(...actionListOrderBy(sort))
     .limit(pageSize)
     .offset(offset);
@@ -131,7 +157,17 @@ export async function updateFactoryActionRepo(
     .where(eq(factoryActions.id, id));
 }
 
-export async function deleteFactoryActionById(
+export async function archiveFactoryActionById(
+  id: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await db
+    .update(factoryActions)
+    .set({ active: false, updatedAt: new Date() })
+    .where(eq(factoryActions.id, id));
+}
+
+export async function hardDeleteFactoryActionById(
   id: string,
   db: Db = getDb(),
 ): Promise<void> {
@@ -143,4 +179,12 @@ export async function deleteFactoryActionById(
     throw new Error("actionInUse");
   }
   await db.delete(factoryActions).where(eq(factoryActions.id, id));
+}
+
+/** @deprecated Use archiveFactoryActionById for soft delete. */
+export async function deleteFactoryActionById(
+  id: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await archiveFactoryActionById(id, db);
 }

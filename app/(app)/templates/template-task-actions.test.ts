@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTag = vi.fn();
+const revalidatePath = vi.fn();
 const createTemplateTaskRepo = vi.fn();
 const updateTemplateTaskRepo = vi.fn();
 const deleteTemplateTaskRepo = vi.fn();
@@ -13,6 +14,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
+  revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
 vi.mock("@/lib/repos/templates", () => ({
@@ -36,6 +38,7 @@ describe("templates/actions drizzle CRUD", () => {
   beforeEach(() => {
     vi.resetModules();
     revalidateTag.mockReset();
+    revalidatePath.mockReset();
     createTemplateTaskRepo.mockReset();
     updateTemplateTaskRepo.mockReset();
     deleteTemplateTaskRepo.mockReset();
@@ -54,6 +57,7 @@ describe("templates/actions drizzle CRUD", () => {
       subTasks: [],
     });
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:templates", "default");
+    expect(revalidatePath).toHaveBeenCalledWith("/templates/tasks");
   });
 
   it("updateTemplate persists subtasks via repo", async () => {

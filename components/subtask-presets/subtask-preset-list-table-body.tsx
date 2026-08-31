@@ -4,10 +4,12 @@ import { SubtaskPresetListRowView } from "./subtask-preset-list-row";
 
 export interface SubtaskPresetListTableBodyProps {
   presets: SubTaskPreset[];
+  showCheckboxColumn?: boolean;
 }
 
 export async function SubtaskPresetListTableBody({
   presets,
+  showCheckboxColumn = false,
 }: SubtaskPresetListTableBodyProps) {
   return (
     <tbody>
@@ -16,6 +18,7 @@ export async function SubtaskPresetListTableBody({
           key={preset.documentId}
           preset={preset}
           variant="table"
+          showCheckboxColumn={showCheckboxColumn}
         />
       ))}
     </tbody>

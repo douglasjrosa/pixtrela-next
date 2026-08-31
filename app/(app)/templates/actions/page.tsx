@@ -1,16 +1,20 @@
+import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { APP_LIST_PAGE_STACK_CLASS } from "@/components/layout/app-page-layout";
-import { FactoryActionListMobileList } from "@/components/factory-actions/factory-action-list-mobile-list";
-import { FactoryActionListTableBody } from "@/components/factory-actions/factory-action-list-table-body";
 import { FactoryActionListTableFrame } from "@/components/factory-actions/factory-action-list-table-frame";
 import { FactoryActionListTableHeader } from "@/components/factory-actions/factory-action-list-table-header";
 import { FactoryActionManager } from "@/components/factory-actions/factory-action-manager";
+import { FactoryActionsToolbar } from "@/components/factory-actions/factory-actions-toolbar";
 import { ListEmptyMessage } from "@/components/ui/list-empty-message";
 import type { Role } from "@/lib/auth/nav";
-import { canManageTemplates } from "@/lib/auth/permissions";
+import {
+  canDeactivateTemplates,
+  canDeleteTemplates,
+  canManageTemplates,
+} from "@/lib/auth/permissions";
 import { parseFactoryActionListSearchParams } from "@/lib/factory-actions/factory-action-list-params";
 import { loadFactoryActionListPage } from "@/lib/factory-actions/load-factory-action-list-page";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
@@ -33,6 +37,10 @@ export default async function TemplateActionsPage({
   const filters = parseFactoryActionListSearchParams(params);
   const tActions = await getTranslations("factoryActions");
   const sort = { column: filters.column, direction: filters.direction };
+  const canDeactivate = canDeactivateTemplates(role);
+  const canDelete = canDeleteTemplates(role);
+  const bulkEnabled = canDeactivate || canDelete;
+  const showCheckboxColumn = bulkEnabled;
 
   const pageResult = await loadFactoryActionListPage(filters, 1).catch(
     (error) => {
@@ -56,22 +64,27 @@ export default async function TemplateActionsPage({
         initialActions={pageResult.actions}
         initialPage={pageResult.page}
         initialHasMore={pageResult.hasMore}
+        canDeactivate={canDeactivate}
+        canDelete={canDelete}
         tableHeader={
-          <FactoryActionListTableHeader sort={sort} filters={filters} />
-        }
-        tableBody={
-          <FactoryActionListTableBody actions={pageResult.actions} />
-        }
-        mobileList={
-          <FactoryActionListMobileList actions={pageResult.actions} />
+          <FactoryActionListTableHeader
+            sort={sort}
+            filters={filters}
+            showCheckboxColumn={showCheckboxColumn}
+          />
         }
       />
     );
   }
 
   return (
-    <div className={APP_LIST_PAGE_STACK_CLASS}>
-      <FactoryActionManager>{listContent}</FactoryActionManager>
-    </div>
+    <FactoryActionManager>
+      <div className={APP_LIST_PAGE_STACK_CLASS}>
+        <Suspense fallback={null}>
+          <FactoryActionsToolbar />
+        </Suspense>
+        {listContent}
+      </div>
+    </FactoryActionManager>
   );
 }

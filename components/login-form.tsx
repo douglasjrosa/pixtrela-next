@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +12,7 @@ import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { loginSchema, type LoginInput } from "@/lib/schemas/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 
 export function LoginForm() {
@@ -58,16 +58,8 @@ export function LoginForm() {
         />
       </div>
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <Label htmlFor="password">{t("password")}</Label>
-          <Link
-            href="/login/forgot-password"
-            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
-          >
-            {t("forgotPassword")}
-          </Link>
-        </div>
-        <Input id="password" type="password" {...register("password")} />
+        <Label htmlFor="password">{t("password")}</Label>
+        <PasswordInput id="password" autoComplete="current-password" {...register("password")} />
       </div>
       {formError ? (
         <p role="alert" className="text-sm text-destructive">

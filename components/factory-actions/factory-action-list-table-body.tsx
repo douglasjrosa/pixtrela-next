@@ -4,10 +4,12 @@ import { FactoryActionListRowView } from "./factory-action-list-row";
 
 export interface FactoryActionListTableBodyProps {
   actions: FactoryAction[];
+  showCheckboxColumn?: boolean;
 }
 
 export function FactoryActionListTableBody({
   actions,
+  showCheckboxColumn = false,
 }: FactoryActionListTableBodyProps) {
   return (
     <tbody>
@@ -16,6 +18,7 @@ export function FactoryActionListTableBody({
           key={action.documentId}
           action={action}
           variant="table"
+          showCheckboxColumn={showCheckboxColumn}
         />
       ))}
     </tbody>

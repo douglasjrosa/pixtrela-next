@@ -6,8 +6,9 @@ import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
 import { createFactoryActionRepo } from "@/lib/repos/factory-actions";
 import {
+  archiveSubTaskPresetById,
   createSubTaskPresetRepo,
-  deleteSubTaskPresetById,
+  hardDeleteSubTaskPresetById,
   listSubTaskPresetsRepo,
   searchSubTaskPresetsByName,
   updateSubTaskPresetRepo,
@@ -56,13 +57,21 @@ describeWithDb("sub-task-presets repo", () => {
     expect(updated?.actionId).toBe(actionId);
     expect(updated?.actionName).toBe(`Action ${suffix}`);
 
-    await deleteSubTaskPresetById(id);
+    await archiveSubTaskPresetById(id);
     const db = getDb();
     const [row] = await db
+      .select({ id: subTaskPresets.id, active: subTaskPresets.active })
+      .from(subTaskPresets)
+      .where(eq(subTaskPresets.id, id))
+      .limit(1);
+    expect(row?.active).toBe(false);
+
+    await hardDeleteSubTaskPresetById(id);
+    const [deleted] = await db
       .select({ id: subTaskPresets.id })
       .from(subTaskPresets)
       .where(eq(subTaskPresets.id, id))
       .limit(1);
-    expect(row).toBeUndefined();
+    expect(deleted).toBeUndefined();
   });
 });

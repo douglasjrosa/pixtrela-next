@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useCallback, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -10,7 +10,7 @@ import {
   updateFactoryAction,
 } from "@/app/(app)/factory-actions/actions";
 import { FactoryActionFormModal } from "@/components/factory-actions/factory-action-form-modal";
-import { AddNewButton } from "@/components/ui/add-new-button";
+import { useRegisterTemplatesPageCreateAction } from "@/components/templates/templates-page-actions-context";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { FactoryAction } from "@/lib/business/factory-action";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
@@ -42,6 +42,12 @@ export function FactoryActionManager({ children }: FactoryActionManagerProps) {
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const openCreate = useCallback(() => {
+    setModal({ mode: "create" });
+  }, []);
+
+  useRegisterTemplatesPageCreateAction("actions", openCreate);
 
   function closeModal(): void {
     setModal({ mode: "closed" });
@@ -105,40 +111,28 @@ export function FactoryActionManager({ children }: FactoryActionManagerProps) {
     <FactoryActionListProvider
       openEdit={(action) => setModal({ mode: "edit", action })}
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
-        <div className="flex shrink-0 items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold max-[500px]:text-base">
-            {tActions("title")}
-          </h2>
-          <AddNewButton
-            label={tActions("new")}
-            onClick={() => setModal({ mode: "create" })}
-          />
-        </div>
+      {children}
 
-        {children}
+      <FactoryActionFormModal
+        open={modal.mode !== "closed"}
+        title={modal.mode === "edit" ? tCommon("edit") : tActions("new")}
+        formId={formId}
+        defaultValues={defaultValues}
+        saving={isPending}
+        showDelete={modal.mode === "edit"}
+        onClose={closeModal}
+        onSave={handleSave}
+        onDelete={() => setDeleteOpen(true)}
+      />
 
-        <FactoryActionFormModal
-          open={modal.mode !== "closed"}
-          title={modal.mode === "edit" ? tCommon("edit") : tActions("new")}
-          formId={formId}
-          defaultValues={defaultValues}
-          saving={isPending}
-          showDelete={modal.mode === "edit"}
-          onClose={closeModal}
-          onSave={handleSave}
-          onDelete={() => setDeleteOpen(true)}
-        />
-
-        <ConfirmDialog
-          open={deleteOpen}
-          title={tActions("deleteTitle")}
-          description={tActions("deleteConfirm")}
-          disabled={isPending}
-          onClose={() => setDeleteOpen(false)}
-          onConfirm={handleConfirmDelete}
-        />
-      </div>
+      <ConfirmDialog
+        open={deleteOpen}
+        title={tActions("deleteTitle")}
+        description={tActions("deleteConfirm")}
+        disabled={isPending}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={handleConfirmDelete}
+      />
     </FactoryActionListProvider>
   );
 }

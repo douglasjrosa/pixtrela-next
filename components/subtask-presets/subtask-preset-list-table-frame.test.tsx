@@ -21,9 +21,14 @@ vi.mock("@/lib/ui/app-toast", () => ({
   showSuccessToast: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+
 const filters = {
   column: "name" as const,
   direction: "asc" as const,
+  showArchived: false,
 };
 
 const initialPresets: SubTaskPreset[] = [
@@ -64,18 +69,6 @@ describe("SubtaskPresetListTableFrame", () => {
                 <th>Nome</th>
               </tr>
             </thead>
-          }
-          tableBody={
-            <tbody>
-              <tr>
-                <td>Primeiro</td>
-              </tr>
-            </tbody>
-          }
-          mobileList={
-            <ul>
-              <li>Primeiro</li>
-            </ul>
           }
         />
       </SubTaskPresetListProvider>,

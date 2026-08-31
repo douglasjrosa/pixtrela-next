@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const listTemplateTasks = vi.fn();
 
+vi.mock("next/cache", () => ({
+  unstable_cache: (fn: () => unknown) => () => fn(),
+}));
+
 vi.mock("@/lib/repos/templates", () => ({
   listTemplateTasks: (...args: unknown[]) => listTemplateTasks(...args),
 }));

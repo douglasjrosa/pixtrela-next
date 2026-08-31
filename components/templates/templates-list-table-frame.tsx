@@ -39,8 +39,6 @@ export interface TemplatesListTableFrameProps {
   canDeactivate?: boolean;
   canDelete?: boolean;
   tableHeader: ReactNode;
-  tableBody: ReactNode;
-  mobileList: ReactNode;
 }
 
 function buildRowLabels(
@@ -65,8 +63,6 @@ export function TemplatesListTableFrame({
   canDeactivate = false,
   canDelete = false,
   tableHeader,
-  tableBody,
-  mobileList,
 }: TemplatesListTableFrameProps) {
   const tTemplates = useTranslations("templates");
   const tCommon = useTranslations("common");
@@ -192,39 +188,32 @@ export function TemplatesListTableFrame({
         <div className="min-h-0 flex-1 overflow-y-auto">
           <table className="hidden w-full text-sm md:table">
             {tableHeader}
-            {tableBody}
-            {extraTemplates.length > 0 ? (
-              <tbody>
-                {extraTemplates.map((template) => (
-                  <TemplateListRowPresentational
-                    key={template.documentId}
-                    template={template}
-                    variant="table"
-                    href={`/templates/tasks/${template.documentId}`}
-                    labels={buildRowLabels(template, tTemplates, tCommon)}
-                    showCheckboxColumn={showCheckboxColumn}
-                  />
-                ))}
-              </tbody>
-            ) : null}
-          </table>
-
-          {mobileList}
-
-          {extraTemplates.length > 0 ? (
-            <ul className="md:hidden">
-              {extraTemplates.map((template) => (
+            <tbody>
+              {templates.map((template) => (
                 <TemplateListRowPresentational
                   key={template.documentId}
                   template={template}
-                  variant="mobile"
+                  variant="table"
                   href={`/templates/tasks/${template.documentId}`}
                   labels={buildRowLabels(template, tTemplates, tCommon)}
                   showCheckboxColumn={showCheckboxColumn}
                 />
               ))}
-            </ul>
-          ) : null}
+            </tbody>
+          </table>
+
+          <ul className="md:hidden">
+            {templates.map((template) => (
+              <TemplateListRowPresentational
+                key={template.documentId}
+                template={template}
+                variant="mobile"
+                href={`/templates/tasks/${template.documentId}`}
+                labels={buildRowLabels(template, tTemplates, tCommon)}
+                showCheckboxColumn={showCheckboxColumn}
+              />
+            ))}
+          </ul>
         </div>
 
         <ListLoadMore

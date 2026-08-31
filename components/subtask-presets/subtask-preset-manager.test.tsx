@@ -23,6 +23,7 @@ vi.mock("@/app/(app)/settings/subtasks/actions", () => ({
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh, replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/lib/ui/app-toast", () => ({
@@ -46,6 +47,8 @@ function renderManagerWithRow() {
             labels={{
               sharingType: "Por quantidade",
               actionName: "Grampear quadro",
+              inactive: "Inativo",
+              selectRow: "Selecionar Corte",
             }}
           />
         </tbody>

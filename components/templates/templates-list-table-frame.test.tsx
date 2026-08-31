@@ -51,20 +51,6 @@ const rowLabels = {
   selectRow: "Selecionar Primeiro",
 };
 
-function selectableBody(template = initialTemplates[0]!) {
-  return (
-    <tbody>
-      <TemplateListRowPresentational
-        template={template}
-        variant="table"
-        href={`/templates/tasks/${template.documentId}`}
-        labels={rowLabels}
-        showCheckboxColumn
-      />
-    </tbody>
-  );
-}
-
 describe("TemplatesListTableFrame", () => {
   beforeEach(() => {
     loadMoreTemplates.mockReset();
@@ -104,18 +90,6 @@ describe("TemplatesListTableFrame", () => {
             </tr>
           </thead>
         }
-        tableBody={
-          <tbody>
-            <tr>
-              <td>Primeiro</td>
-            </tr>
-          </tbody>
-        }
-        mobileList={
-          <ul>
-            <li>Primeiro</li>
-          </ul>
-        }
       />,
     );
 
@@ -142,8 +116,6 @@ describe("TemplatesListTableFrame", () => {
         initialHasMore
         initialPage={1}
         tableHeader={null}
-        tableBody={null}
-        mobileList={null}
       />,
     );
 
@@ -169,8 +141,6 @@ describe("TemplatesListTableFrame", () => {
             </tr>
           </thead>
         }
-        tableBody={selectableBody()}
-        mobileList={null}
       />,
     );
 
@@ -208,8 +178,6 @@ describe("TemplatesListTableFrame", () => {
             </tr>
           </thead>
         }
-        tableBody={selectableBody(archived[0]!)}
-        mobileList={null}
       />,
     );
 

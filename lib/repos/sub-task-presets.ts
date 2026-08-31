@@ -1,4 +1,4 @@
-import { asc, count, desc, eq, ilike } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or } from "drizzle-orm";
 
 import { factoryActions, subTaskPresets } from "@/drizzle/schema";
 import { parseActionUnitTime } from "@/lib/business/factory-action";
@@ -16,6 +16,7 @@ type PresetJoinRow = {
   sharingType: "qty" | "duration";
   maxSameTimeWorkers: number;
   subTaskCategoryId: string | null;
+  active: boolean;
   actionId: string;
   actionName: string;
   actionUnitTime: string;
@@ -33,6 +34,7 @@ function mapPresetRow(row: PresetJoinRow): SubTaskPreset {
     actionUnitTime: parseActionUnitTime(row.actionUnitTime),
     actionQtyQuestion: row.actionQtyQuestion,
     subTaskCategoryId: row.subTaskCategoryId,
+    active: row.active,
   };
 }
 
@@ -42,6 +44,7 @@ const PRESET_SELECT = {
   sharingType: subTaskPresets.sharingType,
   maxSameTimeWorkers: subTaskPresets.maxSameTimeWorkers,
   subTaskCategoryId: subTaskPresets.subTaskCategoryId,
+  active: subTaskPresets.active,
   actionId: factoryActions.id,
   actionName: factoryActions.name,
   actionUnitTime: factoryActions.unitTime,
@@ -67,6 +70,21 @@ function subtaskPresetListOrderBy(sort: SubtaskPresetListSort) {
   return [dir(subTaskPresets.name), asc(subTaskPresets.id)];
 }
 
+function listWhereClause(options: {
+  q?: string;
+  showArchived?: boolean;
+}) {
+  const activeClause = eq(subTaskPresets.active, !options.showArchived);
+  const q = options.q?.trim();
+  const searchClause = q
+    ? or(
+        ilike(subTaskPresets.name, `%${q}%`),
+        ilike(factoryActions.name, `%${q}%`),
+      )
+    : undefined;
+  return and(activeClause, searchClause);
+}
+
 export async function searchSubTaskPresetsByName(
   query: string,
   db: Db = getDb(),
@@ -75,7 +93,12 @@ export async function searchSubTaskPresetsByName(
     .select(PRESET_SELECT)
     .from(subTaskPresets)
     .innerJoin(factoryActions, eq(subTaskPresets.actionId, factoryActions.id))
-    .where(ilike(subTaskPresets.name, `%${query.trim()}%`))
+    .where(
+      and(
+        eq(subTaskPresets.active, true),
+        ilike(subTaskPresets.name, `%${query.trim()}%`),
+      ),
+    )
     .orderBy(asc(subTaskPresets.name))
     .limit(SUBTASK_PRESET_SEARCH_LIMIT);
   return rows.map(mapPresetRow);
@@ -89,7 +112,25 @@ export async function findSubTaskPresetByName(
     .select(PRESET_SELECT)
     .from(subTaskPresets)
     .innerJoin(factoryActions, eq(subTaskPresets.actionId, factoryActions.id))
-    .where(eq(subTaskPresets.name, name.trim()))
+    .where(
+      and(
+        eq(subTaskPresets.name, name.trim()),
+        eq(subTaskPresets.active, true),
+      ),
+    )
+    .limit(1);
+  return row ? mapPresetRow(row) : null;
+}
+
+export async function findSubTaskPresetById(
+  id: string,
+  db: Db = getDb(),
+): Promise<SubTaskPreset | null> {
+  const [row] = await db
+    .select(PRESET_SELECT)
+    .from(subTaskPresets)
+    .innerJoin(factoryActions, eq(subTaskPresets.actionId, factoryActions.id))
+    .where(eq(subTaskPresets.id, id))
     .limit(1);
   return row ? mapPresetRow(row) : null;
 }
@@ -101,6 +142,7 @@ export async function listSubTaskPresetsRepo(
     .select(PRESET_SELECT)
     .from(subTaskPresets)
     .innerJoin(factoryActions, eq(subTaskPresets.actionId, factoryActions.id))
+    .where(eq(subTaskPresets.active, true))
     .orderBy(asc(subTaskPresets.name))
     .limit(SUBTASK_PRESET_LIST_LIMIT);
   return rows.map(mapPresetRow);
@@ -108,9 +150,11 @@ export async function listSubTaskPresetsRepo(
 
 export async function listSubTaskPresetsPaged(
   options: {
+    q?: string;
     page?: number;
     pageSize?: number;
     sort?: SubtaskPresetListSort;
+    showArchived?: boolean;
   } = {},
   db: Db = getDb(),
 ): Promise<{ items: SubTaskPreset[]; total: number }> {
@@ -118,15 +162,19 @@ export async function listSubTaskPresetsPaged(
   const pageSize = Math.max(1, options.pageSize ?? 10);
   const offset = (page - 1) * pageSize;
   const sort = options.sort ?? { column: "name", direction: "asc" };
+  const where = listWhereClause(options);
 
   const [totalRow] = await db
     .select({ total: count() })
-    .from(subTaskPresets);
+    .from(subTaskPresets)
+    .innerJoin(factoryActions, eq(subTaskPresets.actionId, factoryActions.id))
+    .where(where);
 
   const rows = await db
     .select(PRESET_SELECT)
     .from(subTaskPresets)
     .innerJoin(factoryActions, eq(subTaskPresets.actionId, factoryActions.id))
+    .where(where)
     .orderBy(...subtaskPresetListOrderBy(sort))
     .limit(pageSize)
     .offset(offset);
@@ -172,9 +220,27 @@ export async function updateSubTaskPresetRepo(
     .where(eq(subTaskPresets.id, id));
 }
 
-export async function deleteSubTaskPresetById(
+export async function archiveSubTaskPresetById(
+  id: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await db
+    .update(subTaskPresets)
+    .set({ active: false, updatedAt: new Date() })
+    .where(eq(subTaskPresets.id, id));
+}
+
+export async function hardDeleteSubTaskPresetById(
   id: string,
   db: Db = getDb(),
 ): Promise<void> {
   await db.delete(subTaskPresets).where(eq(subTaskPresets.id, id));
+}
+
+/** @deprecated Use archiveSubTaskPresetById for soft delete. */
+export async function deleteSubTaskPresetById(
+  id: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await archiveSubTaskPresetById(id, db);
 }

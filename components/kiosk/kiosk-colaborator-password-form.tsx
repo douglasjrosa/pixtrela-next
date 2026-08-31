@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   kioskColaboratorPasswordSchema,
@@ -54,9 +55,8 @@ export function KioskColaboratorPasswordForm({
 
       <div className="space-y-2">
         <Label htmlFor="kiosk-colaborator-password">{tUsers("password")}</Label>
-        <Input
+        <PasswordInput
           id="kiosk-colaborator-password"
-          type="password"
           autoComplete="new-password"
           disabled={disabled || isSubmitting}
           {...register("password")}
@@ -72,9 +72,8 @@ export function KioskColaboratorPasswordForm({
         <Label htmlFor="kiosk-colaborator-confirm-password">
           {t("staffConfirmPassword")}
         </Label>
-        <Input
+        <PasswordInput
           id="kiosk-colaborator-confirm-password"
-          type="password"
           autoComplete="new-password"
           disabled={disabled || isSubmitting}
           {...register("confirmPassword")}

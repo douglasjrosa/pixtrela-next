@@ -6,6 +6,7 @@ export interface FactoryAction {
   unitTime: number;
   description: string;
   qtyQuestion: string;
+  active: boolean;
 }
 
 export function shouldSearchFactoryActions(query: string): boolean {

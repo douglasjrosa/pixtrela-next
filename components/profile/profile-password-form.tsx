@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   changeOwnPasswordSchema,
@@ -130,9 +130,8 @@ export const ProfilePasswordForm = forwardRef<
               <Label htmlFor="profile-current-password">
                 {t("currentPassword")}
               </Label>
-              <Input
+              <PasswordInput
                 id="profile-current-password"
-                type="password"
                 autoComplete="current-password"
                 disabled={disabled || isSubmitting || !expanded}
                 tabIndex={expanded ? undefined : -1}
@@ -147,9 +146,8 @@ export const ProfilePasswordForm = forwardRef<
 
             <div className="space-y-2">
               <Label htmlFor="profile-new-password">{t("newPassword")}</Label>
-              <Input
+              <PasswordInput
                 id="profile-new-password"
-                type="password"
                 autoComplete="new-password"
                 disabled={disabled || isSubmitting || !expanded}
                 tabIndex={expanded ? undefined : -1}
@@ -166,9 +164,8 @@ export const ProfilePasswordForm = forwardRef<
               <Label htmlFor="profile-confirm-password">
                 {t("confirmPassword")}
               </Label>
-              <Input
+              <PasswordInput
                 id="profile-confirm-password"
-                type="password"
                 autoComplete="new-password"
                 disabled={disabled || isSubmitting || !expanded}
                 tabIndex={expanded ? undefined : -1}

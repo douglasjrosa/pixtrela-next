@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useCallback, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -10,7 +10,7 @@ import {
   updateSubTaskPreset,
 } from "@/app/(app)/sub-task-presets/actions";
 import { SubTaskPresetFormModal } from "@/components/subtask-presets/subtask-preset-form-modal";
-import { AddNewButton } from "@/components/ui/add-new-button";
+import { useRegisterTemplatesPageCreateAction } from "@/components/templates/templates-page-actions-context";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
@@ -43,6 +43,12 @@ export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const openCreate = useCallback(() => {
+    setModal({ mode: "create" });
+  }, []);
+
+  useRegisterTemplatesPageCreateAction("subtasks", openCreate);
 
   function closeModal(): void {
     setModal({ mode: "closed" });
@@ -105,41 +111,29 @@ export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
     <SubTaskPresetListProvider
       openEdit={(preset) => setModal({ mode: "edit", preset })}
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
-        <div className="flex shrink-0 items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold max-[500px]:text-base">
-            {tPresets("title")}
-          </h2>
-          <AddNewButton
-            label={tPresets("new")}
-            onClick={() => setModal({ mode: "create" })}
-          />
-        </div>
+      {children}
 
-        {children}
+      <SubTaskPresetFormModal
+        open={modal.mode !== "closed"}
+        title={modal.mode === "edit" ? tCommon("edit") : tPresets("new")}
+        formId={formId}
+        defaultValues={defaultValues}
+        actionName={actionName}
+        saving={isPending}
+        showDelete={modal.mode === "edit"}
+        onClose={closeModal}
+        onSave={handleSave}
+        onDelete={() => setDeleteOpen(true)}
+      />
 
-        <SubTaskPresetFormModal
-          open={modal.mode !== "closed"}
-          title={modal.mode === "edit" ? tCommon("edit") : tPresets("new")}
-          formId={formId}
-          defaultValues={defaultValues}
-          actionName={actionName}
-          saving={isPending}
-          showDelete={modal.mode === "edit"}
-          onClose={closeModal}
-          onSave={handleSave}
-          onDelete={() => setDeleteOpen(true)}
-        />
-
-        <ConfirmDialog
-          open={deleteOpen}
-          title={tPresets("deleteTitle")}
-          description={tPresets("deleteConfirm")}
-          disabled={isPending}
-          onClose={() => setDeleteOpen(false)}
-          onConfirm={handleConfirmDelete}
-        />
-      </div>
+      <ConfirmDialog
+        open={deleteOpen}
+        title={tPresets("deleteTitle")}
+        description={tPresets("deleteConfirm")}
+        disabled={isPending}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={handleConfirmDelete}
+      />
     </SubTaskPresetListProvider>
   );
 }

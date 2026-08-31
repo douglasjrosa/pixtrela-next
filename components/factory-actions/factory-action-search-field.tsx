@@ -50,12 +50,19 @@ export function FactoryActionSearchField({
   const [query, setQuery] = useState(selectedName);
   const [actions, setActions] = useState<FactoryAction[]>([]);
   const [highlight, setHighlight] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
   const [isSearching, startSearch] = useTransition();
   const listRef = useRef<HTMLDivElement>(null);
 
   const canSearch = !disabled && shouldSearchFactoryActions(query);
   const visibleActions = canSearch ? actions : [];
-  const showSuggestions = canSearch;
+  const showSuggestions = canSearch && isFocused;
+
+  useEffect(() => {
+    if (!isFocused) {
+      setQuery(selectedName);
+    }
+  }, [isFocused, selectedName]);
 
   useEffect(() => {
     if (!canSearch) return;
@@ -79,6 +86,11 @@ export function FactoryActionSearchField({
     onChange(action.documentId, action);
     setQuery(action.name);
     setActions([]);
+    setIsFocused(false);
+  }
+
+  function handleBlur(): void {
+    window.setTimeout(() => setIsFocused(false), 150);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
@@ -99,6 +111,7 @@ export function FactoryActionSearchField({
       }
     } else if (event.key === "Escape") {
       setActions([]);
+      setIsFocused(false);
     }
   }
 
@@ -121,8 +134,12 @@ export function FactoryActionSearchField({
         onChange={(event) => {
           const next = event.target.value;
           setQuery(next);
-          if (value) onChange("", null);
+          if (value && next !== selectedName) {
+            onChange("", null);
+          }
         }}
+        onFocus={() => setIsFocused(true)}
+        onBlur={handleBlur}
         onKeyDown={handleKeyDown}
       />
       {errorMessage ? (
@@ -163,6 +180,7 @@ export function FactoryActionSearchField({
                 index === highlight ? "bg-muted" : null,
               )}
               onMouseEnter={() => setHighlight(index)}
+              onMouseDown={(event) => event.preventDefault()}
               onClick={() => selectAction(action)}
             >
               {action.name}

@@ -44,19 +44,22 @@ function parseSortDirection(
   );
 }
 
-/**
- * Parses URL search params into subtask-preset list filters.
- * Missing params use default sort (name asc).
- */
 export function parseSubtaskPresetListSearchParams(
   params: SearchParamsRecord,
 ): SubtaskPresetListFilters {
+  const qRaw = firstParam(params.q)?.trim();
   const sortColumn = parseSortColumn(firstParam(params.sort));
   const sortDirection = parseSortDirection(firstParam(params.dir));
+  const showArchived = firstParam(params.archived) === "1";
 
   const result = subtaskPresetListFiltersSchema.safeParse({
+    q:
+      qRaw && qRaw.length >= 3
+        ? qRaw
+        : undefined,
     column: sortColumn ?? SUBTASK_PRESET_LIST_DEFAULT_SORT_COLUMN,
     direction: sortDirection ?? SUBTASK_PRESET_LIST_DEFAULT_SORT_DIRECTION,
+    showArchived,
   });
 
   if (!result.success) {
@@ -65,13 +68,16 @@ export function parseSubtaskPresetListSearchParams(
   return result.data;
 }
 
-/**
- * Serializes filters to URLSearchParams, omitting default sort.
- */
 export function serializeSubtaskPresetListSearchParams(
   filters: SubtaskPresetListFilters,
 ): URLSearchParams {
   const params = new URLSearchParams();
+  if (filters.q) {
+    params.set("q", filters.q);
+  }
+  if (filters.showArchived) {
+    params.set("archived", "1");
+  }
   if (
     !isDefaultSubtaskPresetListSort({
       column: filters.column,
@@ -84,9 +90,13 @@ export function serializeSubtaskPresetListSearchParams(
   return params;
 }
 
-/** Stable key for remount/reset when sort changes. */
 export function subtaskPresetListFilterKey(
   filters: SubtaskPresetListFilters,
 ): string {
-  return [filters.column, filters.direction].join("|");
+  return [
+    filters.q ?? "",
+    filters.column,
+    filters.direction,
+    filters.showArchived ? "1" : "0",
+  ].join("|");
 }

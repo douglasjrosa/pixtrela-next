@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { unstable_cache } from "next/cache";
 
 import type { TemplateListRow } from "@/components/templates/types";
 import {
@@ -10,6 +10,8 @@ import {
   type TemplateListFilters,
 } from "@/lib/schemas/template-list-filters";
 import { templateListFilterKey } from "@/lib/templates/template-list-params";
+
+export const TEMPLATE_LIST_CACHE_TAG = "drizzle:templates";
 
 export type TemplateListPageResult = {
   templates: TemplateListRow[];
@@ -28,41 +30,41 @@ function mapDrizzleItem(item: TemplateTaskListItem): TemplateListRow {
   };
 }
 
-const loadTemplateListPageCached = cache(
-  async (
-    _filterKey: string,
-    page: number,
-    filters: TemplateListFilters,
-  ): Promise<TemplateListPageResult> => {
-    const resolvedPage = Math.max(1, page);
-    const { items, total } = await listTemplateTasks({
-      q: filters.q,
-      page: resolvedPage,
-      pageSize: TEMPLATE_LIST_PAGE_SIZE,
-      sort: { column: filters.column, direction: filters.direction },
-      showArchived: filters.showArchived,
-    });
-    const pageCount = Math.max(1, Math.ceil(total / TEMPLATE_LIST_PAGE_SIZE));
-    return {
-      templates: items.map(mapDrizzleItem),
-      page: resolvedPage,
-      pageCount,
-      hasMore: resolvedPage < pageCount,
-    };
-  },
-);
+async function loadTemplateListPageImpl(
+  filters: TemplateListFilters,
+  page: number,
+): Promise<TemplateListPageResult> {
+  const resolvedPage = Math.max(1, page);
+  const { items, total } = await listTemplateTasks({
+    q: filters.q,
+    page: resolvedPage,
+    pageSize: TEMPLATE_LIST_PAGE_SIZE,
+    sort: { column: filters.column, direction: filters.direction },
+    showArchived: filters.showArchived,
+  });
+  const pageCount = Math.max(1, Math.ceil(total / TEMPLATE_LIST_PAGE_SIZE));
+  return {
+    templates: items.map(mapDrizzleItem),
+    page: resolvedPage,
+    pageCount,
+    hasMore: resolvedPage < pageCount,
+  };
+}
 
 /**
  * Loads one page of filtered template-tasks from Drizzle repos.
- * Deduped per request via React.cache keyed by filterKey + page.
+ * Cached with `TEMPLATE_LIST_CACHE_TAG` for mutation invalidation.
  */
 export async function loadTemplateListPage(
   filters: TemplateListFilters,
   page: number,
 ): Promise<TemplateListPageResult> {
-  return loadTemplateListPageCached(
-    templateListFilterKey(filters),
-    page,
-    filters,
+  const filterKey = templateListFilterKey(filters);
+  const resolvedPage = Math.max(1, page);
+  const cached = unstable_cache(
+    async () => loadTemplateListPageImpl(filters, resolvedPage),
+    ["template-list-page", filterKey, String(resolvedPage)],
+    { tags: [TEMPLATE_LIST_CACHE_TAG] },
   );
+  return cached();
 }

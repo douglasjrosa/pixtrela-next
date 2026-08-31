@@ -73,7 +73,7 @@ export function SubTaskPresetFormModal({
         }
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 id={titleId} className="text-lg font-semibold">
             {title}
           </h2>
@@ -90,7 +90,7 @@ export function SubTaskPresetFormModal({
           </Button>
         </div>
 
-        <div className="overflow-y-auto p-4">
+        <div className="overflow-y-auto p-6">
           <SubTaskPresetForm
             key={formId}
             formId={formId}
@@ -101,7 +101,7 @@ export function SubTaskPresetFormModal({
           />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4">
           {showDelete && onDelete ? (
             <Button
               type="button"

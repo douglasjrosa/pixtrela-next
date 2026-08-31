@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { getSession, signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -331,6 +332,14 @@ export function LoginEntryClient({
     return (
       <div className="flex flex-col gap-4">
         <LoginForm />
+        <div className="text-center">
+          <Link
+            href="/login/forgot-password"
+            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+          >
+            {t("forgotPassword")}
+          </Link>
+        </div>
         <div className="text-center">
           <Button
             type="button"

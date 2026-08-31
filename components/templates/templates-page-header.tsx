@@ -94,7 +94,7 @@ export function TemplatesPageHeader() {
   }
 
   return (
-    <div className="flex shrink-0 items-center justify-end gap-3">
+    <>
       <AddNewButton
         label={tTemplates("newTemplate")}
         onClick={() => setCreateOpen(true)}
@@ -108,6 +108,6 @@ export function TemplatesPageHeader() {
           onInvalid={handleInvalid}
         />
       ) : null}
-    </div>
+    </>
   );
 }

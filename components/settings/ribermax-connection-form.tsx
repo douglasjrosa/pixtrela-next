@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 
 import { IntegrationSettingsFormFooter } from "@/components/settings/integration-settings-form-footer";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import type { IntegrationSettingsActionResult } from "@/lib/integrations/settings-action-result";
 
@@ -38,10 +39,9 @@ export function RibermaxConnectionForm({
 
       <div className="space-y-2">
         <Label htmlFor="token">{t("token")}</Label>
-        <Input
+        <PasswordInput
           id="token"
           name="token"
-          type="password"
           defaultValue={values.token}
           required
         />

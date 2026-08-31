@@ -39,6 +39,73 @@ describe("FactoryActionSearchField", () => {
     vi.useRealTimers();
   });
 
+  it("does not show suggestions when the field is not focused", () => {
+    renderWithIntl(
+      <FactoryActionSearchField
+        id="action"
+        value=""
+        selectedName="Cortar compensado"
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(screen.queryByText("Nenhuma ação encontrada.")).not.toBeInTheDocument();
+  });
+
+  it("shows empty state only while the field is focused", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    searchFactoryActions.mockResolvedValue([]);
+
+    renderWithIntl(
+      <FactoryActionSearchField
+        id="action"
+        value=""
+        selectedName="Cortar compensado"
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("Ação"));
+    await vi.advanceTimersByTimeAsync(400);
+
+    expect(await screen.findByRole("listbox")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Nenhuma ação encontrada."),
+    ).toBeInTheDocument();
+
+    await user.tab();
+
+    await waitFor(() => {
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+  });
+
+  it("clears the bound action id without wiping the query on backspace", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const onChange = vi.fn();
+
+    renderWithIntl(
+      <FactoryActionSearchField
+        id="action"
+        value="a1"
+        selectedName="Cortar compensado"
+        onChange={onChange}
+      />,
+    );
+
+    const input = screen.getByLabelText("Ação");
+    expect(input).toHaveValue("Cortar compensado");
+
+    await user.click(input);
+    await user.keyboard("{Backspace}");
+
+    expect(input).toHaveValue("Cortar compensad");
+    expect(onChange).toHaveBeenCalledWith("", null);
+  });
+
   it("selects a highlighted suggestion with arrow keys and Enter", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const onChange = vi.fn();

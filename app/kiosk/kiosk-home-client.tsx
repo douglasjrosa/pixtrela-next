@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -45,6 +46,7 @@ export function KioskHomeClient({
   accessSettings?: EntryAccessByDevice;
 }) {
   const t = useTranslations("kiosk");
+  const tAuth = useTranslations("auth");
   const router = useRouter();
   const device = useEntryAccessDevice();
   const methods: EntryAccessMethods = accessSettings
@@ -291,6 +293,14 @@ export function KioskHomeClient({
     return (
       <div className="flex flex-col gap-4">
         <LoginForm />
+        <div className="text-center">
+          <Link
+            href="/login/forgot-password"
+            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+          >
+            {tAuth("forgotPassword")}
+          </Link>
+        </div>
         <div className="text-center">
           <Button
             type="button"
