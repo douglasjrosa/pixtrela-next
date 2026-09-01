@@ -5,11 +5,11 @@
     "description": "Plataforma de gamificação industrial para gestão de tarefas e recompensas."
   },
   "duration": {
-    "hoursMinutes": "{hours}h {minutes}min",
+    "hoursMinutes": "{hours}h {minutes}m",
     "hoursOnly": "{hours}h",
-    "minutesOnly": "{minutes}min",
-    "hoursMinutesSeconds": "{hours}h {minutes}min {seconds}s",
-    "minutesSeconds": "{minutes}min {seconds}s",
+    "minutesOnly": "{minutes}m",
+    "hoursMinutesSeconds": "{hours}h {minutes}m {seconds}s",
+    "minutesSeconds": "{minutes}m {seconds}s",
     "secondsOnly": "{seconds}s"
   },
   "common": {

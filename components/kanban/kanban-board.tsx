@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -22,6 +22,7 @@ import {
   toKanbanTaskId,
 } from "@/lib/business/kanban-task-order";
 import { resolveBoardTaskRelativeMove } from "@/lib/business/board-task-relative-move";
+import { appendBoardColumnPage } from "@/lib/board/append-column-page";
 import {
   boardColumnHasMore,
   boardColumnsFromPages,
@@ -167,9 +168,12 @@ export function KanbanBoard({
     setInternalColumns(boardColumnsFromPages(initialColumns));
   }
   const columns = controlledColumns ?? internalColumns;
+  const columnsRef = useRef(columns);
+  columnsRef.current = columns;
 
   const setColumns = useCallback(
     (next: BoardColumnState[]): void => {
+      columnsRef.current = next;
       if (onColumnStatesChange) {
         onColumnStatesChange(next);
         return;
@@ -234,71 +238,49 @@ export function KanbanBoard({
     (step: KanbanStep) => {
       if (!onLoadMoreColumn) return;
 
-      let request:
-        | {
-            stepDocumentId: string;
-            cursor: BoardColumnPageCursor | null;
-            limit: number;
-          }
-        | null = null;
+      const current = columnsRef.current;
+      const target = current.find(
+        (item) => item.stepDocumentId === step.documentId,
+      );
+      if (!target || target.loadingMore || !boardColumnHasMore(target)) return;
+
+      const request = {
+        stepDocumentId: step.documentId,
+        cursor: target.cursor,
+        limit: step.tasksPerLoad,
+      };
 
       setColumns(
-        columns.map((item) => {
-          if (item.stepDocumentId !== step.documentId) return item;
-          if (item.loadingMore || !boardColumnHasMore(item)) return item;
-          request = {
-            stepDocumentId: step.documentId,
-            cursor: item.cursor,
-            limit: step.tasksPerLoad,
-          };
-          return { ...item, loadingMore: true, loadMoreError: false };
-        }),
+        current.map((item) =>
+          item.stepDocumentId === step.documentId
+            ? { ...item, loadingMore: true, loadMoreError: false }
+            : item,
+        ),
       );
-
-      if (!request) return;
 
       void onLoadMoreColumn(request)
         .then((result) => {
-          const update = (current: BoardColumnState[]): BoardColumnState[] =>
-            current.map((item) => {
-              if (item.stepDocumentId !== step.documentId) return item;
-              const existingIds = new Set(
-                item.tasks.map((task) => task.documentId),
-              );
-              const appended = result.tasks.filter(
-                (task) => !existingIds.has(task.documentId),
-              );
-              return {
-                ...item,
-                tasks: [...item.tasks, ...appended],
-                cursor: result.cursor,
-                totalCount: result.totalCount,
-                loadingMore: false,
-                loadMoreError: false,
-              };
-            });
-
-          if (onColumnStatesChange) {
-            onColumnStatesChange(update(columns));
-            return;
-          }
-          setInternalColumns((current) => update(current));
+          const latest = columnsRef.current;
+          setColumns(
+            latest.map((item) =>
+              item.stepDocumentId === step.documentId
+                ? appendBoardColumnPage(item, result)
+                : item,
+            ),
+          );
         })
         .catch(() => {
-          const update = (current: BoardColumnState[]): BoardColumnState[] =>
-            current.map((item) =>
+          const latest = columnsRef.current;
+          setColumns(
+            latest.map((item) =>
               item.stepDocumentId === step.documentId
                 ? { ...item, loadingMore: false, loadMoreError: true }
                 : item,
-            );
-          if (onColumnStatesChange) {
-            onColumnStatesChange(update(columns));
-            return;
-          }
-          setInternalColumns((current) => update(current));
+            ),
+          );
         });
     },
-    [columns, onColumnStatesChange, onLoadMoreColumn, setColumns],
+    [onLoadMoreColumn, setColumns],
   );
 
   if (steps.length === 0) {

@@ -23,7 +23,7 @@ describe("KioskSubtaskProducingMetrics", () => {
       screen.getByText(formatDateTimePtBr(startedAt)),
     ).toBeInTheDocument();
     expect(screen.getByText("Tempo previsto")).toBeInTheDocument();
-    expect(screen.getByText("1h 40min 32s")).toBeInTheDocument();
+    expect(screen.getByText("1h 40m 32s")).toBeInTheDocument();
     expect(screen.getByText("Tempo decorrido")).toBeInTheDocument();
   });
 });

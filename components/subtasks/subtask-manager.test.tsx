@@ -83,7 +83,7 @@ describe("SubTaskManager", () => {
     );
 
     expect(screen.getByText("Soldar")).toBeInTheDocument();
-    expect(screen.getByText("2min")).toBeInTheDocument();
+    expect(screen.getByText("2m")).toBeInTheDocument();
   });
 
   it("does not show a position column and keeps row order", () => {

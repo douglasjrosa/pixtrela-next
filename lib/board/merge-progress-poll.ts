@@ -1,8 +1,12 @@
 import type { KanbanStep, KanbanTask } from "@/components/kanban/types";
 import type { BoardColumnState } from "@/lib/board/board-column-state";
 import type { BoardProgressPollSnapshot } from "@/lib/board/progress-poll";
+import { isBoardColumnTaskAfterCursor } from "@/lib/board/column-task-page";
 import { compareTasksForStepOrder } from "@/lib/business/step-task-order";
-import { needsLiveBoardProgress } from "@/lib/business/task-progress";
+import {
+  needsLiveBoardProgress,
+  shouldShowKanbanTaskProgress,
+} from "@/lib/business/task-progress";
 import { stableKanbanTaskNumericId } from "@/lib/board/kanban-drizzle-ids";
 
 function applyLoadedTaskFields(
@@ -34,7 +38,7 @@ function applyLoadedTaskFields(
     : withLayout;
 
   if (
-    !needsLiveBoardProgress(withBadges.status) ||
+    !shouldShowKanbanTaskProgress(withBadges.status) ||
     withBadges.totalExpectedTime <= 0
   ) {
     return withBadges;
@@ -52,7 +56,9 @@ function applyLoadedTaskFields(
       },
     totalTimeSpent: totals?.totalTimeSpent ?? withBadges.totalTimeSpent,
     totalExpectedTime: totals?.totalExpectedTime ?? withBadges.totalExpectedTime,
-    progressNowMs: snapshot.nowMs,
+    progressNowMs: needsLiveBoardProgress(withBadges.status)
+      ? snapshot.nowMs
+      : (withBadges.progressNowMs ?? snapshot.nowMs),
   };
 }
 
@@ -158,25 +164,24 @@ export function mergeBoardColumnsProgressPoll(
       }
       continue;
     }
-    const belongsInWindow =
-      compareTasksForStepOrder(
-        {
-          id: documentId,
-          stepId: null,
-          index: layout.index,
-          deliveryDate: layout.deliveryDate ?? null,
-          createdAt: new Date(0),
-        },
-        {
-          id: last.documentId,
-          stepId: null,
-          index: last.index,
-          deliveryDate: last.deliveryDate ?? null,
-          createdAt: new Date(0),
-        },
-        step.taskOrderBy,
-      ) <= 0;
-    if (!belongsInWindow) continue;
+    // Only insert into the loaded window when the layout task sorts at or
+    // before the last loaded card (not after the keyset cursor).
+    const afterWindow = isBoardColumnTaskAfterCursor(
+      {
+        id: documentId,
+        index: layout.index,
+        deliveryDate: layout.deliveryDate ?? null,
+        createdAt: new Date(0),
+      },
+      {
+        id: last.documentId,
+        index: last.index,
+        deliveryDate: last.deliveryDate ?? null,
+        createdAt: column.cursor?.createdAt ?? new Date(0).toISOString(),
+      },
+      step.taskOrderBy,
+    );
+    if (afterWindow) continue;
     const bucket = nextByStepDoc.get(step.documentId);
     bucket?.push(taskFromLayout(documentId, layout));
   }

@@ -47,7 +47,7 @@ const tasks = [
 const rowLabels = {
   inactive: "Inativa",
   status: "Aguardando",
-  spentOfExpected: "32min de 1h 21min",
+  spentOfExpected: "32m de 1h 21m",
   finishedSubTasks: "0 de 0",
   qtyShort: "Qtde.: 2",
   selectRow: "Selecionar Montagem",
@@ -190,7 +190,7 @@ describe("TaskListRowPresentational", () => {
         </tbody>
       </table>,
     );
-    expect(screen.getAllByText("32min de 1h 21min").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("32m de 1h 21m").length).toBeGreaterThan(0);
   });
 
   it("renders crm item key before the task name in table rows", () => {

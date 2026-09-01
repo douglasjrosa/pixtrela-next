@@ -24,24 +24,20 @@ export type BoardProgressPollState = {
 
 /**
  * Polls live board progress for loaded cards only (heavy) while receiving a
- * full layout map. Pauses while the document is hidden or `paused` is true.
+ * full layout map. Writes merges back through `onColumnsChange` so column
+ * paging and poll share one source of truth. Pauses while hidden or paused.
  */
 export function useBoardProgressPoll(
   columns: BoardColumnState[],
   steps: KanbanStep[],
   assignedCountByColaboratorId: Record<string, number>,
   pollBoardProgress: PollBoardProgressFn,
+  onColumnsChange: (columns: BoardColumnState[]) => void,
   paused = false,
 ): BoardProgressPollState {
-  const [polledColumns, setPolledColumns] = useState(columns);
   const [assignedCounts, setAssignedCounts] = useState(
     assignedCountByColaboratorId,
   );
-  const [prevColumns, setPrevColumns] = useState(columns);
-  if (columns !== prevColumns) {
-    setPrevColumns(columns);
-    setPolledColumns(columns);
-  }
   const [prevAssignedCounts, setPrevAssignedCounts] = useState(
     assignedCountByColaboratorId,
   );
@@ -53,6 +49,7 @@ export function useBoardProgressPoll(
   const columnsRef = useRef(columns);
   const stepsRef = useRef(steps);
   const pollRef = useRef(pollBoardProgress);
+  const onColumnsChangeRef = useRef(onColumnsChange);
 
   useEffect(() => {
     columnsRef.current = columns;
@@ -65,6 +62,10 @@ export function useBoardProgressPoll(
   useEffect(() => {
     pollRef.current = pollBoardProgress;
   }, [pollBoardProgress]);
+
+  useEffect(() => {
+    onColumnsChangeRef.current = onColumnsChange;
+  }, [onColumnsChange]);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,9 +92,13 @@ export function useBoardProgressPoll(
           })),
         );
         if (cancelled) return;
-        setPolledColumns((current) =>
-          mergeBoardColumnsProgressPoll(current, stepsRef.current, snapshot),
+        const merged = mergeBoardColumnsProgressPoll(
+          columnsRef.current,
+          stepsRef.current,
+          snapshot,
         );
+        columnsRef.current = merged;
+        onColumnsChangeRef.current(merged);
         setAssignedCounts(snapshot.assignedCountByColaboratorId);
       } catch {
         // Keep last good snapshot; next interval retries.
@@ -128,8 +133,8 @@ export function useBoardProgressPoll(
   }, [paused]);
 
   return {
-    columns: polledColumns,
-    tasks: flattenBoardColumnTasks(polledColumns),
+    columns,
+    tasks: flattenBoardColumnTasks(columns),
     assignedCountByColaboratorId: assignedCounts,
   };
 }

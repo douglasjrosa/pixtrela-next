@@ -10,20 +10,20 @@ import {
 
 const t: DurationTranslator = (key, values) => {
   if (key === "hoursMinutes") {
-    return `${values.hours}h ${values.minutes}min`;
+    return `${values.hours}h ${values.minutes}m`;
   }
   if (key === "hoursOnly") {
     return `${values.hours}h`;
   }
-  return `${values.minutes}min`;
+  return `${values.minutes}m`;
 };
 
 const tHms: HmsDurationTranslator = (key, values) => {
   if (key === "hoursMinutesSeconds") {
-    return `${values.hours}h ${values.minutes}min ${values.seconds}s`;
+    return `${values.hours}h ${values.minutes}m ${values.seconds}s`;
   }
   if (key === "minutesSeconds") {
-    return `${values.minutes}min ${values.seconds}s`;
+    return `${values.minutes}m ${values.seconds}s`;
   }
   return `${values.seconds}s`;
 };
@@ -38,7 +38,7 @@ describe("ceilSecondsToMinutes", () => {
 
 describe("formatDurationMinutes", () => {
   it("formats hours and minutes", () => {
-    expect(formatDurationMinutes(5400, t)).toBe("1h 30min");
+    expect(formatDurationMinutes(5400, t)).toBe("1h 30m");
   });
 
   it("formats hours only", () => {
@@ -46,21 +46,21 @@ describe("formatDurationMinutes", () => {
   });
 
   it("formats minutes only", () => {
-    expect(formatDurationMinutes(125, t)).toBe("3min");
+    expect(formatDurationMinutes(125, t)).toBe("3m");
   });
 
-  it("formats zero as 0min", () => {
-    expect(formatDurationMinutes(0, t)).toBe("0min");
+  it("formats zero as 0m", () => {
+    expect(formatDurationMinutes(0, t)).toBe("0m");
   });
 });
 
 describe("formatDurationHms", () => {
   it("formats minutes and seconds", () => {
-    expect(formatDurationHms(323, tHms)).toBe("5min 23s");
+    expect(formatDurationHms(323, tHms)).toBe("5m 23s");
   });
 
   it("formats hours, minutes and seconds", () => {
-    expect(formatDurationHms(3725, tHms)).toBe("1h 2min 5s");
+    expect(formatDurationHms(3725, tHms)).toBe("1h 2m 5s");
   });
 
   it("formats seconds only", () => {

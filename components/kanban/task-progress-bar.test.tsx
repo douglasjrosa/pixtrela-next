@@ -23,7 +23,7 @@ describe("TaskProgressBar", () => {
     );
 
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
-    expect(screen.getAllByText("30min")).toHaveLength(2);
+    expect(screen.getAllByText("30m")).toHaveLength(2);
   });
 
   it("hides when expected time is zero", () => {
@@ -54,11 +54,11 @@ describe("TaskProgressBar", () => {
       />,
     );
 
-    // liveSpent = 4000 + 600 = 4600s => 1h 17min
-    // remaining = 3600 - 3500 - 600 = -500s => -9min (ceil)
-    expect(screen.getByText("1h 17min")).toBeInTheDocument();
+    // liveSpent = 4000 + 600 = 4600s => 1h 17m
+    // remaining = 3600 - 3500 - 600 = -500s => -9m (ceil)
+    expect(screen.getByText("1h 17m")).toBeInTheDocument();
     expect(
-      screen.getByText((_, element) => element?.textContent === "-9min"),
+      screen.getByText((_, element) => element?.textContent === "-9m"),
     ).toBeInTheDocument();
   });
 

@@ -128,44 +128,58 @@ export function BoardLiveProgress({
     );
     setSteps(synced.steps);
 
-    const nextColumns: BoardColumnState[] = [];
-    for (const step of synced.steps) {
-      const existing = columns.find(
-        (column) => column.stepDocumentId === step.documentId,
-      );
-      const previous = previousById.get(step.documentId);
-      const orderChanged =
-        previous != null && previous.taskOrderBy !== step.taskOrderBy;
+    setColumns((currentColumns) => {
+      const nextColumns: BoardColumnState[] = [];
+      // sync is async; loadFirst runs outside — handled below via effect path
+      for (const step of synced.steps) {
+        const existing = currentColumns.find(
+          (column) => column.stepDocumentId === step.documentId,
+        );
+        const previous = previousById.get(step.documentId);
+        const orderChanged =
+          previous != null && previous.taskOrderBy !== step.taskOrderBy;
 
-      if (existing && !orderChanged) {
-        nextColumns.push(existing);
-        continue;
-      }
+        if (existing && !orderChanged) {
+          nextColumns.push(existing);
+          continue;
+        }
 
-      if (loadFirstColumnPage) {
-        const page = await loadFirstColumnPage(step.documentId);
         nextColumns.push({
-          stepDocumentId: page.stepDocumentId,
-          totalCount: page.totalCount,
-          tasks: page.tasks,
-          cursor: page.cursor,
+          stepDocumentId: step.documentId,
+          totalCount: existing?.totalCount ?? 0,
+          tasks: orderChanged ? [] : (existing?.tasks ?? []),
+          cursor: orderChanged ? null : (existing?.cursor ?? null),
           loadingMore: false,
           loadMoreError: false,
         });
-        continue;
       }
+      return nextColumns;
+    });
 
-      nextColumns.push({
-        stepDocumentId: step.documentId,
-        totalCount: existing?.totalCount ?? 0,
-        tasks: orderChanged ? [] : (existing?.tasks ?? []),
-        cursor: orderChanged ? null : (existing?.cursor ?? null),
-        loadingMore: false,
-        loadMoreError: false,
-      });
+    for (const step of synced.steps) {
+      const previous = previousById.get(step.documentId);
+      const orderChanged =
+        previous != null && previous.taskOrderBy !== step.taskOrderBy;
+      const missing = !previous;
+      if (!missing && !orderChanged) continue;
+      if (!loadFirstColumnPage) continue;
+      const page = await loadFirstColumnPage(step.documentId);
+      setColumns((current) =>
+        current.map((column) =>
+          column.stepDocumentId === step.documentId
+            ? {
+                stepDocumentId: page.stepDocumentId,
+                totalCount: page.totalCount,
+                tasks: page.tasks,
+                cursor: page.cursor,
+                loadingMore: false,
+                loadMoreError: false,
+              }
+            : column,
+        ),
+      );
     }
-    setColumns(nextColumns);
-  }, [columns, loadFirstColumnPage, steps, syncBoardSteps]);
+  }, [loadFirstColumnPage, steps, syncBoardSteps]);
 
   useBoardRevisionRefresh(subtasksModalOpen, handleStepsChanged);
 
@@ -174,6 +188,7 @@ export function BoardLiveProgress({
     steps,
     assignedCountByColaboratorId,
     pollBoardProgress,
+    setColumns,
     subtasksModalOpen,
   );
 

@@ -8,21 +8,32 @@ import { cn } from "@/lib/utils";
 export function KanbanCardSkeleton({
   className,
   error = false,
+  announce = true,
 }: {
   className?: string;
   error?: boolean;
+  /** When false, renders a visual placeholder without a status region. */
+  announce?: boolean;
 }) {
   const t = useTranslations("kanban");
 
   return (
     <div
-      role="status"
-      aria-label={error ? t("loadMoreError") : t("loadingMoreCards")}
+      role={announce ? "status" : undefined}
+      aria-label={
+        announce
+          ? error
+            ? t("loadMoreError")
+            : t("loadingMoreCards")
+          : undefined
+      }
+      aria-hidden={announce ? undefined : true}
       className={cn(
         "relative min-w-0 rounded-md border bg-card p-3 shadow-sm",
         error && "border-destructive/40",
         className,
       )}
+      data-testid="kanban-card-skeleton"
     >
       <div className="h-5 w-3/4 animate-pulse rounded bg-muted" />
       <div className="mt-2 flex items-center justify-between gap-2">
@@ -32,7 +43,7 @@ export function KanbanCardSkeleton({
       <div className="mt-3">
         <TaskProgressBarSkeleton />
       </div>
-      {error ? (
+      {error && announce ? (
         <p className="mt-2 text-xs text-destructive">{t("loadMoreError")}</p>
       ) : null}
     </div>

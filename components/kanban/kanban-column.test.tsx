@@ -60,6 +60,7 @@ describe("KanbanColumn", () => {
     expect(
       screen.getByRole("status", { name: "Carregando mais tarefas" }),
     ).toBeInTheDocument();
+    expect(screen.getAllByTestId("kanban-card-skeleton")).toHaveLength(5);
   });
 
   it("keeps overflow-x hidden on the column scroll area", () => {
@@ -89,6 +90,7 @@ describe("KanbanColumn", () => {
 
     const column = screen.getByRole("region", { name: "Fila de produção" });
     expect(column).toHaveClass("self-start");
+    expect(column).toHaveClass("min-w-80");
     expect(column).not.toHaveClass("h-full");
   });
 });

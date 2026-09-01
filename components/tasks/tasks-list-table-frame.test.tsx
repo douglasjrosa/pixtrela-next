@@ -58,7 +58,7 @@ const initialTasks = [
 const rowLabels = {
   inactive: "Inativa",
   status: "Aguardando",
-  spentOfExpected: "0min de 0min",
+  spentOfExpected: "0m de 0m",
   finishedSubTasks: "0 de 0",
   qtyShort: "Qtde.: 1",
   selectRow: "Selecionar Primeira",

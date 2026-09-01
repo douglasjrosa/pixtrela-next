@@ -722,6 +722,27 @@ function sortStepsForLookup(
   return mapStepsToKanbanSteps(stepRows).map((step) => ({ id: step.id }));
 }
 
+export async function loadFirstBoardColumnPage(
+  stepDocumentId: string,
+): Promise<{
+  stepDocumentId: string;
+  totalCount: number;
+  tasks: KanbanTask[];
+  cursor: BoardColumnPageCursor | null;
+}> {
+  const result = await loadMoreBoardColumnTasks({
+    stepDocumentId,
+    cursor: null,
+    limit: 0,
+  });
+  return {
+    stepDocumentId,
+    totalCount: result.totalCount,
+    tasks: result.tasks,
+    cursor: result.cursor,
+  };
+}
+
 export async function loadMoreBoardColumnTasks(input: {
   stepDocumentId: string;
   cursor: BoardColumnPageCursor | null;
@@ -787,7 +808,10 @@ export async function loadMoreBoardColumnTasks(input: {
       unassignedSubTaskCount: badges?.unassignedSubTaskCount ?? 0,
       participantCount: badges?.participantCount ?? 0,
       progressPending: false,
-      progressInput: progressByTaskId[task.documentId],
+      progressInput: progressByTaskId[task.documentId] ?? {
+        subTasks: [],
+        openActivityStartedAts: [],
+      },
       progressNowMs: nowMs,
     };
   });

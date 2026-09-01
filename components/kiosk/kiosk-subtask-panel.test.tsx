@@ -326,7 +326,7 @@ describe("KioskSubtaskPanel", () => {
     expect(finishedItem).not.toBeNull();
     expect(within(finishedItem!).queryByRole("button")).toBeNull();
     expect(screen.getByText(/Tempo gasto:/)).toBeInTheDocument();
-    expect(screen.getByText("3min")).toBeInTheDocument();
+    expect(screen.getByText("3m")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Iniciar" })).toHaveLength(1);
   });
 

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 
 import { auth } from "@/auth";
-import { BoardLiveProgress } from "@/components/board/board-live-progress";
+import { BoardPageCanvas } from "@/components/board/board-page-canvas";
 import type { KanbanStep } from "@/components/kanban/types";
 import { APP_BOARD_SHELL_CLASS } from "@/components/layout/app-page-layout";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
@@ -22,22 +22,6 @@ import {
   type SubtaskPaymentCurrency,
 } from "@/lib/settings/load-currency-for-subtasks";
 import { loadTaskAutomationSetting } from "@/lib/settings/load-task-automation";
-
-import {
-  applyBoardTaskRelativeMove,
-  createBoardSubtask,
-  loadBoardSubtasks,
-  loadBoardSubtaskLive,
-  loadBoardSubtaskSession,
-  loadBoardSubtaskSessions,
-  loadMoreBoardColumnTasks,
-  pollBoardProgress,
-  releaseBoardSubTaskFlags,
-  reorderBoardSubtasks,
-  syncBoardSteps,
-  updateBoardSubtaskAssignees,
-  updateBoardSubtaskLink,
-} from "./actions";
 
 async function loadBoard(): Promise<{
   steps: KanbanStep[];
@@ -120,64 +104,6 @@ async function withProgressLoaded(columns: BoardColumnPage[]): Promise<{
   };
 }
 
-function BoardCanvas({
-  steps,
-  columns,
-  teams,
-  interactive,
-  assignWarnMax,
-  assignedCountByColaboratorId,
-  paymentCurrency,
-  assigneePeople,
-}: {
-  steps: KanbanStep[];
-  columns: BoardColumnPage[];
-  teams: TeamAssignmentOption[];
-  interactive: boolean;
-  assignWarnMax: number;
-  assignedCountByColaboratorId: Record<string, number>;
-  paymentCurrency: SubtaskPaymentCurrency;
-  assigneePeople: { documentId: string; name: string }[];
-}) {
-  return (
-    <BoardLiveProgress
-      columns={columns}
-      steps={steps}
-      teams={teams}
-      interactive={interactive}
-      assignWarnMax={assignWarnMax}
-      assignedCountByColaboratorId={assignedCountByColaboratorId}
-      paymentCurrency={paymentCurrency}
-      assigneePeople={assigneePeople}
-      pollBoardProgress={pollBoardProgress}
-      applyBoardTaskRelativeMove={applyBoardTaskRelativeMove}
-      loadMoreBoardColumnTasks={loadMoreBoardColumnTasks}
-      syncBoardSteps={syncBoardSteps}
-      loadFirstColumnPage={async (stepDocumentId) =>
-        loadMoreBoardColumnTasks({
-          stepDocumentId,
-          cursor: null,
-          limit: 0,
-        }).then((result) => ({
-          stepDocumentId,
-          totalCount: result.totalCount,
-          tasks: result.tasks,
-          cursor: result.cursor,
-        }))
-      }
-      loadSubtasks={loadBoardSubtasks}
-      loadSubtaskLive={loadBoardSubtaskLive}
-      loadSubtaskSessions={loadBoardSubtaskSessions}
-      loadSubtaskSession={loadBoardSubtaskSession}
-      reorderSubtasks={reorderBoardSubtasks}
-      updateSubtaskAssignees={updateBoardSubtaskAssignees}
-      linkSubtask={updateBoardSubtaskLink}
-      createSubtask={createBoardSubtask}
-      releaseSubtaskFlags={releaseBoardSubTaskFlags}
-    />
-  );
-}
-
 async function BoardWithProgress({
   steps,
   columns,
@@ -197,7 +123,7 @@ async function BoardWithProgress({
 }) {
   const loaded = await withProgressLoaded(columns);
   return (
-    <BoardCanvas
+    <BoardPageCanvas
       steps={steps}
       columns={loaded.columns}
       teams={teams}
@@ -228,7 +154,7 @@ export default async function BoardPage() {
     <div className={APP_BOARD_SHELL_CLASS}>
       <Suspense
         fallback={
-          <BoardCanvas
+          <BoardPageCanvas
             steps={steps}
             columns={withProgressPending(columns)}
             teams={teams}

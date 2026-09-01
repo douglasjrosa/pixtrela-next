@@ -89,13 +89,63 @@ describe("mergeBoardProgressPoll", () => {
     expect(merged[1]).toBe(tasks[1]);
   });
 
-  it("updates badges on waiting tasks without touching progress fields", () => {
+  it("loads progress for waiting tasks from the snapshot", () => {
+    const waiting = taskStub({
+      documentId: "waiting",
+      status: "waiting",
+      totalExpectedTime: 50,
+      progressPending: true,
+    });
+
+    const merged = mergeBoardProgressPoll([waiting], {
+      nowMs: 1_700_000_000_000,
+      progressByTaskId: {
+        waiting: {
+          subTasks: [{ status: "waiting", expectedTime: 50, timeSpent: 10 }],
+          openActivityStartedAts: [],
+        },
+      },
+      badgesByTaskId: {
+        waiting: {
+          activeColaboratorCount: 0,
+          unassignedSubTaskCount: 3,
+          participantCount: 0,
+        },
+      },
+      assignedCountByColaboratorId: {},
+      totalsByTaskId: {
+        waiting: { totalTimeSpent: 10, totalExpectedTime: 50 },
+      },
+      layoutByTaskId: {},
+    });
+
+    expect(merged[0]).toMatchObject({
+      documentId: "waiting",
+      status: "waiting",
+      unassignedSubTaskCount: 3,
+      totalTimeSpent: 10,
+      totalExpectedTime: 50,
+      progressPending: false,
+      progressNowMs: 1_700_000_000_000,
+      progressInput: {
+        subTasks: [{ status: "waiting", expectedTime: 50, timeSpent: 10 }],
+        openActivityStartedAts: [],
+      },
+    });
+  });
+
+  it("updates badges on waiting tasks without clearing existing progress", () => {
     const waiting = taskStub({
       documentId: "waiting",
       status: "waiting",
       totalExpectedTime: 50,
       activeColaboratorCount: 0,
       unassignedSubTaskCount: 0,
+      progressInput: {
+        subTasks: [{ status: "waiting", expectedTime: 50, timeSpent: 5 }],
+        openActivityStartedAts: [],
+      },
+      progressNowMs: 1_699_999_000_000,
     });
 
     const merged = mergeBoardProgressPoll([waiting], {
@@ -118,10 +168,10 @@ describe("mergeBoardProgressPoll", () => {
       status: "waiting",
       unassignedSubTaskCount: 3,
       totalExpectedTime: 50,
+      progressPending: false,
+      progressNowMs: 1_699_999_000_000,
     });
-    expect(merged[0].progressInput).toBe(waiting.progressInput);
-    expect(merged[0].progressNowMs).toBeUndefined();
-    expect(merged[0].progressPending).toBeUndefined();
+    expect(merged[0].progressInput).toEqual(waiting.progressInput);
   });
 
   it("merges task layout fields from the snapshot", () => {

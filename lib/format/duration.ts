@@ -24,7 +24,7 @@ export function ceilSecondsToMinutes(totalSeconds: number): number {
   return Math.ceil(Math.max(0, totalSeconds) / SECONDS_PER_MINUTE);
 }
 
-/** Formats seconds as "1h 30min" (always rounded up to minutes). */
+/** Formats seconds as "1h 30m" (always rounded up to minutes). */
 export function formatDurationMinutes(
   totalSeconds: number,
   t: DurationTranslator,
@@ -42,7 +42,7 @@ export function formatDurationMinutes(
   return t("minutesOnly", { hours: 0, minutes });
 }
 
-/** Formats seconds with live second precision (e.g. 5min 23s). */
+/** Formats seconds with live second precision (e.g. 5m 23s). */
 export function formatDurationHms(
   totalSeconds: number,
   t: HmsDurationTranslator,

@@ -82,12 +82,12 @@ describe("KanbanCard", () => {
     expect(screen.getByText(endedParts.date)).toBeInTheDocument();
     expect(screen.getByText(endedParts.time)).toBeInTheDocument();
     expect(screen.queryByText("Finalizada")).not.toBeInTheDocument();
-    expect(screen.getByText("Previsão").parentElement?.className).toContain(
-      "destructive",
-    );
-    expect(screen.getByText("Conclusão").parentElement?.className).toContain(
-      "secondary",
-    );
+    const deliveryBadge = screen.getByText("Previsão").parentElement;
+    const completionBadge = screen.getByText("Conclusão").parentElement;
+    expect(deliveryBadge?.className).toContain("destructive");
+    expect(completionBadge?.className).toContain("secondary");
+    expect(deliveryBadge?.className).toContain("flex-1");
+    expect(completionBadge?.className).toContain("flex-1");
     expect(screen.getByLabelText(/Tempo estimado/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Tempo gasto/)).toBeInTheDocument();
     expect(
@@ -103,14 +103,19 @@ describe("KanbanCard", () => {
           items={[toKanbanTaskId(task.id)]}
           strategy={verticalListSortingStrategy}
         >
-          <KanbanCard task={{ ...task, status: "paused" }} />
+          <KanbanCard
+            task={{ ...task, status: "paused", deliveryDate: "2026-07-06" }}
+          />
         </SortableContext>
       </DndContext>,
     );
 
-    expect(screen.getByText("Pausada").className).toContain("bg-warning");
-    expect(screen.getByText("Pausada").className).toContain(
-      "text-warning-foreground",
+    const statusBadge = screen.getByText("Pausada");
+    expect(statusBadge.className).toContain("bg-warning");
+    expect(statusBadge.className).toContain("text-warning-foreground");
+    expect(statusBadge.className).toContain("flex-1");
+    expect(screen.getByText("Previsão").parentElement?.className).toContain(
+      "flex-1",
     );
   });
 
@@ -169,7 +174,7 @@ describe("KanbanCard", () => {
     );
 
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
-    expect(screen.getAllByText("30min")).toHaveLength(2);
+    expect(screen.getAllByText("30m")).toHaveLength(2);
   });
 
   it("shows floating unassigned badge and producing status with active count", () => {

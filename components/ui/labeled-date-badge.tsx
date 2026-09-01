@@ -32,7 +32,7 @@ export function LabeledDateBadge({
   return (
     <CardBadge
       className={cn(
-        "flex-col items-start gap-0 py-1",
+        "flex flex-col items-start gap-0 py-1",
         labeledDateBadgeToneClassName(tone),
         className,
       )}

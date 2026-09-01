@@ -7,11 +7,11 @@ import { Duration } from "./duration";
 describe("Duration", () => {
   it("renders hours and minutes from seconds", () => {
     renderWithIntl(<Duration seconds={5400} />);
-    expect(screen.getByText("1h 30min")).toBeInTheDocument();
+    expect(screen.getByText("1h 30m")).toBeInTheDocument();
   });
 
   it("rounds up to the next minute", () => {
     renderWithIntl(<Duration seconds={61} />);
-    expect(screen.getByText("2min")).toBeInTheDocument();
+    expect(screen.getByText("2m")).toBeInTheDocument();
   });
 });

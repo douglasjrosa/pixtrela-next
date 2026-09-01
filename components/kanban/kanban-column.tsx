@@ -16,6 +16,8 @@ import { KanbanCardSkeleton } from "./kanban-card-skeleton";
 import type { KanbanStep, KanbanTask } from "./types";
 
 const KANBAN_COLUMN_SCROLL_AREA_CLASS = "max-h-[calc(100dvh-9rem)]";
+const KANBAN_COLUMN_WIDTH_CLASS = "w-80 min-w-80";
+const KANBAN_LOAD_MORE_SKELETON_COUNT = 5;
 
 export function KanbanColumn({
   step,
@@ -47,24 +49,30 @@ export function KanbanColumn({
   const { setNodeRef, isOver } = useDroppable({ id: toKanbanColumnId(step.id) });
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const onLoadMoreRef = useRef(onLoadMore);
+  onLoadMoreRef.current = onLoadMore;
 
   useEffect(() => {
-    if (!hasMore || !onLoadMore) return;
+    if (!hasMore || !onLoadMoreRef.current || loadingMore) return;
     const root = scrollRef.current;
     const sentinel = sentinelRef.current;
     if (!root || !sentinel) return;
 
+    let cancelled = false;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          onLoadMore();
-        }
+        if (cancelled) return;
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        onLoadMoreRef.current?.();
       },
-      { root, rootMargin: "0px", threshold: 0 },
+      { root, rootMargin: "80px", threshold: 0 },
     );
     observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore, onLoadMore, loadMoreError, tasks.length]);
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [hasMore, loadingMore, loadMoreError, tasks.length]);
 
   const sortableIds = tasks.map((task) => toKanbanTaskId(task.id));
 
@@ -73,7 +81,8 @@ export function KanbanColumn({
       ref={setNodeRef}
       aria-label={step.name}
       className={cn(
-        "flex w-72 shrink-0 flex-col gap-3 self-start overflow-hidden",
+        "flex shrink-0 flex-col gap-3 self-start overflow-hidden",
+        KANBAN_COLUMN_WIDTH_CLASS,
         "max-h-full rounded-lg border bg-muted p-3",
         isOver && "ring-2 ring-ring",
       )}
@@ -111,8 +120,17 @@ export function KanbanColumn({
                 />
               ))}
               {hasMore || loadingMore || loadMoreError ? (
-                <div ref={sentinelRef}>
-                  <KanbanCardSkeleton error={loadMoreError && !loadingMore} />
+                <div ref={sentinelRef} className="flex flex-col gap-3">
+                  {Array.from(
+                    { length: KANBAN_LOAD_MORE_SKELETON_COUNT },
+                    (_, skeletonIndex) => (
+                      <KanbanCardSkeleton
+                        key={skeletonIndex}
+                        error={loadMoreError && !loadingMore}
+                        announce={skeletonIndex === 0}
+                      />
+                    ),
+                  )}
                 </div>
               ) : null}
             </div>

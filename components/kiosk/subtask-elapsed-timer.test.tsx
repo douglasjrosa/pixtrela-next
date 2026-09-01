@@ -27,7 +27,7 @@ describe("SubtaskElapsedTimer", () => {
       vi.advanceTimersByTime(60_000);
     });
 
-    const timer = screen.getByText("1min 0s");
+    const timer = screen.getByText("1m 0s");
     expect(timer).not.toHaveClass("text-destructive");
   });
 
@@ -44,7 +44,7 @@ describe("SubtaskElapsedTimer", () => {
       vi.advanceTimersByTime(31_000);
     });
 
-    const timer = screen.getByText("2min 1s");
+    const timer = screen.getByText("2m 1s");
     expect(timer).toHaveClass("text-destructive");
   });
 

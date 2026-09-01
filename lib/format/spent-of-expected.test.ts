@@ -9,13 +9,13 @@ describe("formatSpentOfExpected", () => {
       81 * 60,
       (key, values) => {
         if (key === "hoursMinutes") {
-          return `${values.hours}h${values.minutes}min`;
+          return `${values.hours}h${values.minutes}m`;
         }
         if (key === "hoursOnly") return `${values.hours}h`;
-        return `${values.minutes}min`;
+        return `${values.minutes}m`;
       },
       (spent, expected) => `${spent} de ${expected}`,
     );
-    expect(result).toBe("32min de 1h21min");
+    expect(result).toBe("32m de 1h21m");
   });
 });

@@ -91,7 +91,7 @@ describe("SubTaskSessionsPanel", () => {
     expect(totalsTable.getByText("Ana")).toBeInTheDocument();
     expect(totalsTable.getAllByText("60").length).toBeGreaterThan(0);
     expect(totalsTable.getAllByText("50%").length).toBe(2);
-    expect(totalsTable.getAllByText("1min").length).toBe(2);
+    expect(totalsTable.getAllByText("1m").length).toBe(2);
   });
 
   it("stacks session date above time without a comma", () => {

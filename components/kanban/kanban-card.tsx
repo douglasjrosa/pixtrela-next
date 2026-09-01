@@ -70,9 +70,11 @@ function FinishedParticipantCount({ count }: { count: number }) {
 function KanbanTaskStatusBadge({
   status,
   activeCount,
+  className,
 }: {
   status: KanbanTask["status"];
   activeCount: number;
+  className?: string;
 }) {
   const tStatus = useTranslations("tasks.status");
   const tKanban = useTranslations("kanban");
@@ -83,9 +85,10 @@ function KanbanTaskStatusBadge({
   return (
     <CardBadge
       className={cn(
-        "inline-flex shrink-0 items-center gap-1",
+        "flex items-center justify-center gap-1 py-1",
         isProducing && KANBAN_PRODUCING_BADGE_CLASS_NAME,
         isPaused && KANBAN_PAUSED_BADGE_CLASS_NAME,
+        className,
       )}
       aria-label={
         showActive
@@ -148,25 +151,25 @@ export function KanbanCardSurface({
           <FinishedParticipantCount count={participantCount} />
         </div>
       ) : null}
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <div className="mt-2 flex w-full items-stretch gap-2">
+        <LabeledDateBadge
+          label={tKanban("deliveryForecast")}
+          value={task.deliveryDate}
+          tone={deliveryTone}
+          className="min-w-0 flex-1"
+        />
+        {isCompleted ? (
           <LabeledDateBadge
-            label={tKanban("deliveryForecast")}
-            value={task.deliveryDate}
-            tone={deliveryTone}
+            label={tKanban("completion")}
+            value={task.endedAt}
+            showTime
+            className="min-w-0 flex-1"
           />
-          {isCompleted ? (
-            <LabeledDateBadge
-              label={tKanban("completion")}
-              value={task.endedAt}
-              showTime
-            />
-          ) : null}
-        </div>
-        {!hideStatusBadge ? (
+        ) : !hideStatusBadge ? (
           <KanbanTaskStatusBadge
             status={task.status}
             activeCount={activeCount}
+            className="min-w-0 flex-1"
           />
         ) : null}
       </div>
