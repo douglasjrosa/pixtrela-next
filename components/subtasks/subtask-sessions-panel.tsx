@@ -15,6 +15,8 @@ import {
   type SharingType,
 } from "@/lib/business/task-progress";
 import type { SubtaskPaymentCurrency } from "@/lib/settings/currency-for-subtasks-types";
+import { TABLE_HEAD_TEXT_CLASS } from "@/lib/ui/table-head-styles";
+import { cn } from "@/lib/utils";
 
 export interface SubTaskSessionsPanelProps {
   sessions: ActivitySession[];
@@ -60,12 +62,20 @@ export function SubTaskSessionsPanel({
       <h3 className="mb-2 text-sm font-medium">{t("sessionsTitle")}</h3>
       <div className="overflow-x-auto rounded-md border">
         <table className="w-full min-w-[28rem] text-left text-sm">
-          <thead className="border-b bg-muted/40 text-muted-foreground">
+          <thead className="border-b bg-muted/40">
             <tr>
-              <th className="px-2 py-1.5 font-medium">{t("sessionWho")}</th>
-              <th className="px-2 py-1.5 font-medium">{t("sessionStart")}</th>
-              <th className="px-2 py-1.5 font-medium">{t("sessionEnd")}</th>
-              <th className="px-2 py-1.5 font-medium">{t("sessionDuration")}</th>
+              <th className={cn("px-2 py-1.5", TABLE_HEAD_TEXT_CLASS)}>
+                {t("sessionWho")}
+              </th>
+              <th className={cn("px-2 py-1.5", TABLE_HEAD_TEXT_CLASS)}>
+                {t("sessionStart")}
+              </th>
+              <th className={cn("px-2 py-1.5", TABLE_HEAD_TEXT_CLASS)}>
+                {t("sessionEnd")}
+              </th>
+              <th className={cn("px-2 py-1.5", TABLE_HEAD_TEXT_CLASS)}>
+                {t("sessionDuration")}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -99,14 +109,20 @@ export function SubTaskSessionsPanel({
       <h3 className="mb-2 text-sm font-medium">{t("sessionTotalsTitle")}</h3>
       <div className="overflow-x-auto rounded-md border">
         <table className="w-full min-w-[28rem] text-left text-sm">
-          <thead className="border-b bg-muted/40 text-muted-foreground">
+          <thead className="border-b bg-muted/40">
             <tr>
-              <th className="px-2 py-1.5 font-medium">{t("totalName")}</th>
-              <th className="px-2 py-1.5 font-medium">{t("totalEarnings")}</th>
-              <th className="px-2 py-1.5 font-medium">
+              <th className={cn("px-2 py-1.5", TABLE_HEAD_TEXT_CLASS)}>
+                {t("totalName")}
+              </th>
+              <th className={cn("px-2 py-1.5", TABLE_HEAD_TEXT_CLASS)}>
+                {t("totalEarnings")}
+              </th>
+              <th className={cn("px-2 py-1.5", TABLE_HEAD_TEXT_CLASS)}>
                 {t("totalParticipation")}
               </th>
-              <th className="px-2 py-1.5 font-medium">{t("totalDuration")}</th>
+              <th className={cn("px-2 py-1.5", TABLE_HEAD_TEXT_CLASS)}>
+                {t("totalDuration")}
+              </th>
             </tr>
           </thead>
           <tbody>

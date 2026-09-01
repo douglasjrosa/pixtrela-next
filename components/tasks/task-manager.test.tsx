@@ -207,6 +207,6 @@ describe("TaskListRowPresentational", () => {
       </table>,
     );
 
-    expect(screen.getByText("42:0")).toBeInTheDocument();
+    expect(screen.getByText("42-0")).toBeInTheDocument();
   });
 });

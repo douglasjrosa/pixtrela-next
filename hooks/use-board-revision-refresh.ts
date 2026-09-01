@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 
 import { pollBoardRevision } from "@/app/(app)/board/poll-revision";
 import {
@@ -11,13 +10,22 @@ import {
 
 const BOARD_REVISION_POLL_MS = 10_000;
 
+export type SyncBoardStepsFn = () => Promise<void>;
+
 /**
- * Polls board-wide revision and refreshes /board when tasks, sub-tasks,
- * activities, assignees, or steps change. Skips while `paused` is true.
+ * Polls board-wide revision. Structural step changes call `onStepsChanged`
+ * (syncBoardSteps). Task layout is left to progress poll C — no router.refresh.
  */
-export function useBoardRevisionRefresh(paused = false): void {
-  const router = useRouter();
+export function useBoardRevisionRefresh(
+  paused = false,
+  onStepsChanged?: SyncBoardStepsFn,
+): void {
   const revisionRef = useRef<BoardRevision | null>(null);
+  const onStepsChangedRef = useRef(onStepsChanged);
+
+  useEffect(() => {
+    onStepsChangedRef.current = onStepsChanged;
+  }, [onStepsChanged]);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,8 +44,14 @@ export function useBoardRevisionRefresh(paused = false): void {
         const revision = await pollBoardRevision();
         if (cancelled) return;
 
-        if (hasBoardRevisionChanged(revisionRef.current, revision)) {
-          router.refresh();
+        const previous = revisionRef.current;
+        if (hasBoardRevisionChanged(previous, revision)) {
+          const stepsChanged =
+            previous != null &&
+            previous.stepsMaxUpdatedAt !== revision.stepsMaxUpdatedAt;
+          if (stepsChanged) {
+            await onStepsChangedRef.current?.();
+          }
         }
 
         revisionRef.current = revision;
@@ -69,5 +83,5 @@ export function useBoardRevisionRefresh(paused = false): void {
       if (timerId !== undefined) window.clearInterval(timerId);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [paused, router]);
+  }, [paused]);
 }

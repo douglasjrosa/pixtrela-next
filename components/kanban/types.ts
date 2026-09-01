@@ -7,6 +7,7 @@ export interface KanbanStep {
   documentId: string;
   name: string;
   taskOrderBy: StepTaskOrderBy;
+  tasksPerLoad: number;
 }
 
 export interface KanbanTask {

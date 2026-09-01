@@ -1,26 +1,33 @@
 import type { KanbanStep, KanbanTask } from "@/components/kanban/types";
 import {
+  boardColumnCursorFromTask,
+  type BoardColumnPageCursor,
+} from "@/lib/board/column-task-page";
+import {
   buildStepKanbanLookup,
   mapStepsToKanbanSteps,
   stableKanbanTaskNumericId,
 } from "@/lib/board/kanban-drizzle-ids";
+import { STEP_TASKS_PER_LOAD_DEFAULT } from "@/lib/schemas/step";
 import { listSteps as listStepsRepo } from "@/lib/repos/steps";
-import { listActiveTasksForBoard } from "@/lib/repos/tasks";
+import {
+  countActiveTasksByStepId,
+  listActiveTasksForBoard,
+  listActiveTasksForBoardColumn,
+} from "@/lib/repos/tasks";
 
-export async function loadDrizzleBoardData(): Promise<{
-  steps: KanbanStep[];
+export type BoardColumnPage = {
+  stepDocumentId: string;
+  totalCount: number;
   tasks: KanbanTask[];
-  stepLookup: ReturnType<typeof buildStepKanbanLookup>;
-}> {
-  const [stepRows, taskRows] = await Promise.all([
-    listStepsRepo(),
-    listActiveTasksForBoard(),
-  ]);
-  const stepLookup = buildStepKanbanLookup(stepRows);
+  cursor: BoardColumnPageCursor | null;
+};
 
-  const steps: KanbanStep[] = mapStepsToKanbanSteps(stepRows);
-
-  const tasks: KanbanTask[] = taskRows.map((task) => ({
+function mapTaskRowToKanban(
+  task: Awaited<ReturnType<typeof listActiveTasksForBoardColumn>>[number],
+  stepLookup: ReturnType<typeof buildStepKanbanLookup>,
+): KanbanTask {
+  return {
     id: stableKanbanTaskNumericId(task.id),
     documentId: task.id,
     name: task.name,
@@ -34,9 +41,39 @@ export async function loadDrizzleBoardData(): Promise<{
     endedAt: task.endedAt?.toISOString() ?? null,
     totalExpectedTime: task.totalExpectedTime,
     totalTimeSpent: task.totalTimeSpent,
-  }));
+  };
+}
 
-  return { steps, tasks, stepLookup };
+export async function loadDrizzleBoardData(): Promise<{
+  steps: KanbanStep[];
+  columns: BoardColumnPage[];
+  tasks: KanbanTask[];
+  stepLookup: ReturnType<typeof buildStepKanbanLookup>;
+}> {
+  const stepRows = await listStepsRepo();
+  const stepLookup = buildStepKanbanLookup(stepRows);
+  const steps: KanbanStep[] = mapStepsToKanbanSteps(stepRows);
+
+  const columns = await Promise.all(
+    stepRows.map(async (step) => {
+      const limit = step.tasksPerLoad ?? STEP_TASKS_PER_LOAD_DEFAULT;
+      const [totalCount, taskRows] = await Promise.all([
+        countActiveTasksByStepId(step.id),
+        listActiveTasksForBoardColumn(step.id, step.taskOrderBy, { limit }),
+      ]);
+      const tasks = taskRows.map((task) => mapTaskRowToKanban(task, stepLookup));
+      const last = taskRows[taskRows.length - 1];
+      return {
+        stepDocumentId: step.id,
+        totalCount,
+        tasks,
+        cursor: last ? boardColumnCursorFromTask(last) : null,
+      } satisfies BoardColumnPage;
+    }),
+  );
+
+  const tasks = columns.flatMap((column) => column.tasks);
+  return { steps, columns, tasks, stepLookup };
 }
 
 export async function resolveDrizzleTaskIdByKanbanNumericId(

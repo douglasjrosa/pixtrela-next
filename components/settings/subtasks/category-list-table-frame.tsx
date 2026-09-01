@@ -9,6 +9,7 @@ import { ListLoadMore } from "@/components/ui/load-more-button";
 import type { SubTaskCategoryListFilters } from "@/lib/schemas/sub-task-category";
 import { SETTINGS_ENTITY_LIST_PAGE_SIZE } from "@/lib/schemas/sub-task-category";
 import { categoryListFilterKey } from "@/lib/settings/category-list-params";
+import { TABLE_HEAD_CELL_CLASS } from "@/lib/ui/table-head-styles";
 
 const ROW_LINK_CLASS =
   "text-inherit after:absolute after:inset-0 after:content-['']";
@@ -64,9 +65,9 @@ export function CategoryListTableFrame({
       <table className="hidden w-full text-sm md:table">
         <thead>
           <tr className="border-b text-left">
-            <th className="py-2 font-medium">{t("categoryName")}</th>
-            <th className="py-2 font-medium">{t("categoryRef")}</th>
-            <th className="py-2 font-medium">{t("categoryDescription")}</th>
+            <th className={TABLE_HEAD_CELL_CLASS}>{t("categoryName")}</th>
+            <th className={TABLE_HEAD_CELL_CLASS}>{t("categoryRef")}</th>
+            <th className={TABLE_HEAD_CELL_CLASS}>{t("categoryDescription")}</th>
           </tr>
         </thead>
         <tbody>

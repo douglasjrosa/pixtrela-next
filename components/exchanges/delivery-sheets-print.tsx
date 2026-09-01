@@ -3,6 +3,11 @@ import { getTranslations } from "next-intl/server";
 import { ExchangesPrintButton } from "@/components/exchanges/print-button";
 import { formatExchangeCurrencyLabel } from "@/lib/format/exchange-currency";
 import type { BatchDeliveryOrder } from "@/lib/repos/exchange-batches";
+import {
+  TABLE_HEAD_CELL_CENTER_CLASS,
+  TABLE_HEAD_CELL_CLASS,
+} from "@/lib/ui/table-head-styles";
+import { cn } from "@/lib/utils";
 
 function buildOrderSummaryParts(
   order: BatchDeliveryOrder,
@@ -77,16 +82,16 @@ export async function DeliverySheetsPrint({
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b text-left">
-                      <th className="py-2 pr-3 font-semibold">
+                      <th className={cn("pr-3", TABLE_HEAD_CELL_CLASS)}>
                         {t("exchangeList")}
                       </th>
-                      <th className="py-2 px-3 text-center font-semibold">
+                      <th className={cn("px-3", TABLE_HEAD_CELL_CENTER_CLASS)}>
                         {t("qty")}
                       </th>
-                      <th className="py-2 px-3 text-center font-semibold">
+                      <th className={cn("px-3", TABLE_HEAD_CELL_CENTER_CLASS)}>
                         {t("unit")}
                       </th>
-                      <th className="py-2 text-center font-semibold">
+                      <th className={TABLE_HEAD_CELL_CENTER_CLASS}>
                         {t("lineTotal")}
                       </th>
                     </tr>

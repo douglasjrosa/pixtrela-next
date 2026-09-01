@@ -27,7 +27,9 @@ import { AddNewButton } from "@/components/ui/add-new-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { reorderStepsByDrag } from "@/lib/business/step-order";
 import type { StepNameFormInput } from "@/lib/schemas/step";
+import { STEP_TASKS_PER_LOAD_DEFAULT } from "@/lib/schemas/step";
 import type { SettingsStepRow } from "@/lib/steps/map-settings-step";
+import { TABLE_HEAD_CELL_CLASS } from "@/lib/ui/table-head-styles";
 
 export type StepRow = SettingsStepRow;
 
@@ -44,7 +46,11 @@ export interface StepManagerProps {
   onDelete: (documentId: string) => void | Promise<void>;
 }
 
-const EMPTY_FORM: StepNameFormInput = { name: "", orderBy: "manual" };
+const EMPTY_FORM: StepNameFormInput = {
+  name: "",
+  orderBy: "manual",
+  tasksPerLoad: STEP_TASKS_PER_LOAD_DEFAULT,
+};
 const STEP_DND_CONTEXT_ID = "step-manager-dnd";
 
 type ModalState =
@@ -184,7 +190,12 @@ export function StepManager({
         setOrderedSteps((current) =>
           current.map((step) =>
             step.documentId === documentId
-              ? { ...step, name: values.name, orderBy: values.orderBy }
+              ? {
+                  ...step,
+                  name: values.name,
+                  orderBy: values.orderBy,
+                  tasksPerLoad: values.tasksPerLoad,
+                }
               : step,
           ),
         );
@@ -236,7 +247,11 @@ export function StepManager({
 
   const defaultValues: StepNameFormInput =
     modal.mode === "edit"
-      ? { name: modal.step.name, orderBy: modal.step.orderBy }
+      ? {
+          name: modal.step.name,
+          orderBy: modal.step.orderBy,
+          tasksPerLoad: modal.step.tasksPerLoad,
+        }
       : EMPTY_FORM;
 
   return (
@@ -272,7 +287,7 @@ export function StepManager({
             <thead>
               <tr className="border-b text-left">
                 <th className="w-10 py-2" aria-hidden />
-                <th className="py-2">{tSteps("name")}</th>
+                <th className={TABLE_HEAD_CELL_CLASS}>{tSteps("name")}</th>
               </tr>
             </thead>
             <tbody>

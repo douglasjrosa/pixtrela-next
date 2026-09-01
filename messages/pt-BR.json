@@ -255,6 +255,8 @@
     "deliveryForecast": "Previsão",
     "completion": "Conclusão",
     "loadMoreCards": "Carregar mais...",
+    "loadingMoreCards": "Carregando mais tarefas",
+    "loadMoreError": "Falha ao carregar. Role novamente para tentar.",
     "linkToPrevious": "Ligar à anterior",
     "unlinkFromPrevious": "Desligar da anterior",
     "assigneesFollowHead": "As atribuições desta subtarefa seguem a primeira da cadeia."
@@ -596,6 +598,7 @@
       "created_at_asc": "Data de criação - Crescente",
       "created_at_desc": "Data de criação - Decrescente"
     },
+    "tasksPerLoad": "Quantidade de tarefas por carregamento",
     "index": "Ordem",
     "dragToReorder": "Arrastar para reordenar",
     "openStep": "Abrir etapa",

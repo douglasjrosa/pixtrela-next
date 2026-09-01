@@ -3,6 +3,8 @@ import { getTranslations } from "next-intl/server";
 import { ExchangesPrintButton } from "@/components/exchanges/print-button";
 import { ShoppingUpdatePricesButton } from "@/components/exchanges/shopping-update-prices-button";
 import type { BatchShoppingLine } from "@/lib/repos/exchange-batches";
+import { TABLE_HEAD_CELL_CENTER_CLASS, TABLE_HEAD_CELL_CLASS } from "@/lib/ui/table-head-styles";
+import { cn } from "@/lib/utils";
 
 export async function ShoppingListPrint({
   lines,
@@ -42,8 +44,10 @@ export async function ShoppingListPrint({
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b text-left">
-              <th className="py-2 pr-3 font-semibold">{t("shoppingList")}</th>
-              <th className="py-2 text-center font-semibold">{t("qty")}</th>
+              <th className={cn("pr-3", TABLE_HEAD_CELL_CLASS)}>
+                {t("shoppingList")}
+              </th>
+              <th className={TABLE_HEAD_CELL_CENTER_CLASS}>{t("qty")}</th>
             </tr>
           </thead>
           <tbody>

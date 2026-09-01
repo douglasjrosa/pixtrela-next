@@ -11,6 +11,7 @@ export type StepRowForKanban = {
   name: string;
   index: number;
   taskOrderBy: StepTaskOrderBy;
+  tasksPerLoad: number;
 };
 
 export function stableKanbanTaskNumericId(taskUuid: string): number {
@@ -54,6 +55,7 @@ export function mapStepsToKanbanSteps(
     documentId: step.id,
     name: step.name,
     taskOrderBy: step.taskOrderBy,
+    tasksPerLoad: step.tasksPerLoad,
   }));
 }
 

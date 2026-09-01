@@ -8,6 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatDatePtBr } from "@/lib/format/datetime";
+import { TABLE_HEAD_CELL_CLASS } from "@/lib/ui/table-head-styles";
+import { cn } from "@/lib/utils";
 import type { CurrencyRanking } from "@/lib/dashboard/types";
 
 export interface MonthlyRankingPanelProps {
@@ -48,9 +50,13 @@ export function MonthlyRankingPanel({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="py-2 pr-4">{t("position")}</th>
-                    <th className="py-2 pr-4">{t("colaborator")}</th>
-                    <th className="py-2">{t("earned")}</th>
+                    <th className={cn("pr-4", TABLE_HEAD_CELL_CLASS)}>
+                      {t("position")}
+                    </th>
+                    <th className={cn("pr-4", TABLE_HEAD_CELL_CLASS)}>
+                      {t("colaborator")}
+                    </th>
+                    <th className={TABLE_HEAD_CELL_CLASS}>{t("earned")}</th>
                   </tr>
                 </thead>
                 <tbody>

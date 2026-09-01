@@ -7,6 +7,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatDatePtBr } from "@/lib/format/datetime";
+import { TABLE_HEAD_CELL_CLASS } from "@/lib/ui/table-head-styles";
+import { cn } from "@/lib/utils";
 import type {
   ColaboratorInsightsData,
   CurrencyRanking,
@@ -53,8 +55,8 @@ export function DailyIncomeTable({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="py-2 pr-4">{t("day")}</th>
-                    <th className="py-2">{t("earned")}</th>
+                    <th className={cn("pr-4", TABLE_HEAD_CELL_CLASS)}>{t("day")}</th>
+                    <th className={TABLE_HEAD_CELL_CLASS}>{t("earned")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -106,10 +108,10 @@ export function PreviousMonthsSummary({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="py-2 pr-4">{t("month")}</th>
-                  <th className="py-2 pr-4">{t("income")}</th>
-                  <th className="py-2 pr-4">{t("outcome")}</th>
-                  <th className="py-2">{t("net")}</th>
+                  <th className={cn("pr-4", TABLE_HEAD_CELL_CLASS)}>{t("month")}</th>
+                  <th className={cn("pr-4", TABLE_HEAD_CELL_CLASS)}>{t("income")}</th>
+                  <th className={cn("pr-4", TABLE_HEAD_CELL_CLASS)}>{t("outcome")}</th>
+                  <th className={TABLE_HEAD_CELL_CLASS}>{t("net")}</th>
                 </tr>
               </thead>
               <tbody>

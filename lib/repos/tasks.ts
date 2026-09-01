@@ -27,6 +27,11 @@ import { recordActivityViaKiosk } from "@/lib/repos/kiosk-subtasks";
 import { listAssignedFlagsForSubTasks } from "@/lib/repos/material-flags";
 import { formatMaterialFlagCode } from "@/lib/business/material-flag-code";
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
+import {
+  selectBoardColumnPage,
+  type BoardColumnPageCursor,
+} from "@/lib/board/column-task-page";
+import type { StepTaskOrderBy } from "@/lib/schemas/step-task-order-by";
 
 export type CreateTaskInput = {
   name: string;
@@ -413,6 +418,105 @@ export async function listActiveTasksForBoard(db: Db = getDb()) {
     .where(eq(tasks.active, true))
     .orderBy(asc(tasks.index));
 }
+
+export type BoardTaskOrderRow = {
+  id: string;
+  stepId: string | null;
+  index: number;
+  deliveryDate: string | null;
+  createdAt: Date;
+};
+
+export type BoardTaskLayoutRow = {
+  id: string;
+  name: string;
+  qty: number;
+  status: InferSelectModel<typeof tasks>["status"];
+  stepId: string | null;
+  index: number;
+  deliveryDate: string | null;
+  endedAt: Date | null;
+  totalExpectedTime: number;
+  totalTimeSpent: number;
+};
+
+export async function listActiveTaskOrderRows(
+  db: Db = getDb(),
+): Promise<BoardTaskOrderRow[]> {
+  return db
+    .select({
+      id: tasks.id,
+      stepId: tasks.stepId,
+      index: tasks.index,
+      deliveryDate: tasks.deliveryDate,
+      createdAt: tasks.createdAt,
+    })
+    .from(tasks)
+    .where(eq(tasks.active, true));
+}
+
+export async function listActiveTaskLayoutRows(
+  db: Db = getDb(),
+): Promise<BoardTaskLayoutRow[]> {
+  return db
+    .select({
+      id: tasks.id,
+      name: tasks.name,
+      qty: tasks.qty,
+      status: tasks.status,
+      stepId: tasks.stepId,
+      index: tasks.index,
+      deliveryDate: tasks.deliveryDate,
+      endedAt: tasks.endedAt,
+      totalExpectedTime: tasks.totalExpectedTime,
+      totalTimeSpent: tasks.totalTimeSpent,
+    })
+    .from(tasks)
+    .where(eq(tasks.active, true));
+}
+
+export async function countActiveTasksByStepId(
+  stepId: string,
+  db: Db = getDb(),
+): Promise<number> {
+  const [row] = await db
+    .select({ value: count() })
+    .from(tasks)
+    .where(and(eq(tasks.active, true), eq(tasks.stepId, stepId)));
+  return row?.value ?? 0;
+}
+
+export async function listActiveTasksForBoardColumn(
+  stepUuid: string,
+  orderBy: StepTaskOrderBy,
+  options: { limit: number; cursor?: BoardColumnPageCursor | null },
+  db: Db = getDb(),
+) {
+  const lightRows = await db
+    .select({
+      id: tasks.id,
+      index: tasks.index,
+      deliveryDate: tasks.deliveryDate,
+      createdAt: tasks.createdAt,
+    })
+    .from(tasks)
+    .where(and(eq(tasks.active, true), eq(tasks.stepId, stepUuid)));
+
+  const page = selectBoardColumnPage(lightRows, orderBy, options);
+  if (page.length === 0) return [];
+
+  const pageIds = page.map((row) => row.id);
+  const fullRows = await db
+    .select()
+    .from(tasks)
+    .where(inArray(tasks.id, pageIds));
+  const byId = new Map(fullRows.map((row) => [row.id, row]));
+  return pageIds
+    .map((id) => byId.get(id))
+    .filter((row): row is NonNullable<typeof row> => row != null);
+}
+
+export type { BoardColumnPageCursor };
 
 export async function getActiveTasksRevision(
   db: Db = getDb(),

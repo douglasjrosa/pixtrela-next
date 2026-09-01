@@ -1,3 +1,4 @@
+import { compareCrmItemKeys } from "@/lib/format/format-crm-item-key";
 import { TASK_STATUSES } from "@/lib/schemas/task";
 import type {
   TaskListSort,
@@ -13,6 +14,7 @@ export type TaskListSortableRow = {
   deliveryDate: string | null;
   status: string;
   totalTimeSpent: number;
+  crmItemKey?: string | null;
 };
 
 const STATUS_ORDER = new Map<string, number>(
@@ -48,6 +50,8 @@ function compareByColumn(
   completionByTaskId: ReadonlyMap<string, SubTaskCompletionCount>,
 ): number {
   switch (column) {
+    case "crmItemKey":
+      return compareCrmItemKeys(left.crmItemKey, right.crmItemKey);
     case "name":
       return compareStrings(left.name, right.name);
     case "qty":

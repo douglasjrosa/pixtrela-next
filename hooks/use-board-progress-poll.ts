@@ -2,8 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import type { KanbanTask } from "@/components/kanban/types";
-import { mergeBoardProgressPoll } from "@/lib/board/merge-progress-poll";
+import type { KanbanStep, KanbanTask } from "@/components/kanban/types";
+import {
+  flattenBoardColumnTasks,
+  type BoardColumnState,
+} from "@/lib/board/board-column-state";
+import { mergeBoardColumnsProgressPoll } from "@/lib/board/merge-progress-poll";
 import type { BoardProgressPollSnapshot } from "@/lib/board/progress-poll";
 
 const BOARD_PROGRESS_POLL_MS = 12_000;
@@ -13,29 +17,30 @@ export type PollBoardProgressFn = (
 ) => Promise<BoardProgressPollSnapshot>;
 
 export type BoardProgressPollState = {
+  columns: BoardColumnState[];
   tasks: KanbanTask[];
   assignedCountByColaboratorId: Record<string, number>;
 };
 
 /**
- * Polls live board progress without refreshing the rest of the page cache.
- * Pauses while the document is hidden, and when `paused` is true (subtask modal).
- * Polls all board tasks so assignment counts stay board-wide.
+ * Polls live board progress for loaded cards only (heavy) while receiving a
+ * full layout map. Pauses while the document is hidden or `paused` is true.
  */
 export function useBoardProgressPoll(
-  tasks: KanbanTask[],
+  columns: BoardColumnState[],
+  steps: KanbanStep[],
   assignedCountByColaboratorId: Record<string, number>,
   pollBoardProgress: PollBoardProgressFn,
   paused = false,
 ): BoardProgressPollState {
-  const [polledTasks, setPolledTasks] = useState(tasks);
+  const [polledColumns, setPolledColumns] = useState(columns);
   const [assignedCounts, setAssignedCounts] = useState(
     assignedCountByColaboratorId,
   );
-  const [prevTasks, setPrevTasks] = useState(tasks);
-  if (tasks !== prevTasks) {
-    setPrevTasks(tasks);
-    setPolledTasks(tasks);
+  const [prevColumns, setPrevColumns] = useState(columns);
+  if (columns !== prevColumns) {
+    setPrevColumns(columns);
+    setPolledColumns(columns);
   }
   const [prevAssignedCounts, setPrevAssignedCounts] = useState(
     assignedCountByColaboratorId,
@@ -44,12 +49,18 @@ export function useBoardProgressPoll(
     setPrevAssignedCounts(assignedCountByColaboratorId);
     setAssignedCounts(assignedCountByColaboratorId);
   }
-  const tasksRef = useRef(tasks);
+
+  const columnsRef = useRef(columns);
+  const stepsRef = useRef(steps);
   const pollRef = useRef(pollBoardProgress);
 
   useEffect(() => {
-    tasksRef.current = tasks;
-  }, [tasks]);
+    columnsRef.current = columns;
+  }, [columns]);
+
+  useEffect(() => {
+    stepsRef.current = steps;
+  }, [steps]);
 
   useEffect(() => {
     pollRef.current = pollBoardProgress;
@@ -68,19 +79,21 @@ export function useBoardProgressPoll(
       ) {
         return;
       }
-      const boardTasks = tasksRef.current;
-      if (boardTasks.length === 0) return;
+      const boardColumns = columnsRef.current;
+      const loadedTasks = flattenBoardColumnTasks(boardColumns);
 
       inFlight = true;
       try {
         const snapshot = await pollRef.current(
-          boardTasks.map((task) => ({
+          loadedTasks.map((task) => ({
             documentId: task.documentId,
             status: task.status,
           })),
         );
         if (cancelled) return;
-        setPolledTasks((current) => mergeBoardProgressPoll(current, snapshot));
+        setPolledColumns((current) =>
+          mergeBoardColumnsProgressPoll(current, stepsRef.current, snapshot),
+        );
         setAssignedCounts(snapshot.assignedCountByColaboratorId);
       } catch {
         // Keep last good snapshot; next interval retries.
@@ -115,7 +128,8 @@ export function useBoardProgressPoll(
   }, [paused]);
 
   return {
-    tasks: polledTasks,
+    columns: polledColumns,
+    tasks: flattenBoardColumnTasks(polledColumns),
     assignedCountByColaboratorId: assignedCounts,
   };
 }
