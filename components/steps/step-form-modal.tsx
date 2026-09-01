@@ -9,11 +9,14 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NumberInput } from "@/components/ui/number-input";
 import { cn } from "@/lib/utils";
 import {
   STEP_TASK_ORDER_BY_VALUES,
 } from "@/lib/schemas/step-task-order-by";
 import {
+  STEP_TASKS_PER_LOAD_MAX,
+  STEP_TASKS_PER_LOAD_MIN,
   stepNameFormSchema,
   type StepNameFormInput,
 } from "@/lib/schemas/step";
@@ -146,6 +149,23 @@ export function StepFormModal({
               </select>
               {errors.orderBy ? (
                 <p className="text-sm text-destructive">{errors.orderBy.message}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="step-tasks-per-load">{tSteps("tasksPerLoad")}</Label>
+              <NumberInput
+                id="step-tasks-per-load"
+                min={STEP_TASKS_PER_LOAD_MIN}
+                max={STEP_TASKS_PER_LOAD_MAX}
+                step={1}
+                disabled={saving}
+                {...register("tasksPerLoad", { valueAsNumber: true })}
+              />
+              {errors.tasksPerLoad ? (
+                <p className="text-sm text-destructive">
+                  {errors.tasksPerLoad.message}
+                </p>
               ) : null}
             </div>
           </form>

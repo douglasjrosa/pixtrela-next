@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { KanbanBoard } from "@/components/kanban/kanban-board";
@@ -13,6 +12,11 @@ import type {
   KanbanTask,
 } from "@/components/kanban/types";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
+import type { BoardColumnState } from "@/lib/board/board-column-state";
+import { flattenBoardColumnTasks } from "@/lib/board/board-column-state";
+import type { BoardColumnPageCursor } from "@/lib/board/column-task-page";
+import type { BoardTaskRelativeMove } from "@/lib/business/board-task-relative-move";
+import type { LoadMoreBoardColumnResult } from "@/components/kanban/kanban-board";
 import {
   applyAssigneeDraftDeltasToCounts,
   assigneeIdsKey,
@@ -90,14 +94,20 @@ function mergeSessionsIntoSubtasks(
 
 export interface BoardActionsProps {
   steps: KanbanStep[];
-  tasks: KanbanTask[];
+  columns: BoardColumnState[];
   teams: TeamAssignmentOption[];
   assignWarnMax: number;
   assignedCountByColaboratorId: Record<string, number>;
   paymentCurrency: SubtaskPaymentCurrency;
-  applyBoardTaskOrder: (
-    updates: { documentId: string; index: number; stepId: number | null }[],
+  applyBoardTaskRelativeMove: (
+    move: BoardTaskRelativeMove,
   ) => void | Promise<void>;
+  loadMoreBoardColumnTasks: (input: {
+    stepDocumentId: string;
+    cursor: BoardColumnPageCursor | null;
+    limit: number;
+  }) => Promise<LoadMoreBoardColumnResult>;
+  onColumnsChange: (columns: BoardColumnState[]) => void;
   loadSubtasks: (taskDocumentId: string) => Promise<BoardSubTaskSummary[]>;
   loadSubtaskLive?: (
     taskDocumentId: string,
@@ -135,12 +145,14 @@ export interface BoardActionsProps {
 
 export function BoardActions({
   steps,
-  tasks,
+  columns,
   teams,
   assignWarnMax,
   assignedCountByColaboratorId,
   paymentCurrency,
-  applyBoardTaskOrder,
+  applyBoardTaskRelativeMove,
+  loadMoreBoardColumnTasks,
+  onColumnsChange,
   loadSubtasks,
   loadSubtaskLive,
   loadSubtaskSessions,
@@ -153,15 +165,23 @@ export function BoardActions({
   assigneePeople = [],
   onSubtasksModalOpenChange,
 }: BoardActionsProps) {
-  const router = useRouter();
   const tKanban = useTranslations("kanban");
   const tKiosk = useTranslations("kiosk");
   const [, startTransition] = useTransition();
-  const [orderedTasks, setOrderedTasks] = useState(tasks);
-  const [prevTasks, setPrevTasks] = useState(tasks);
-  if (tasks !== prevTasks) {
-    setPrevTasks(tasks);
-    setOrderedTasks(tasks);
+  const orderedTasks = flattenBoardColumnTasks(columns);
+
+  function patchTaskInColumns(
+    taskDocumentId: string,
+    patch: Partial<KanbanTask>,
+  ): void {
+    onColumnsChange(
+      columns.map((column) => ({
+        ...column,
+        tasks: column.tasks.map((task) =>
+          task.documentId === taskDocumentId ? { ...task, ...patch } : task,
+        ),
+      })),
+    );
   }
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
   const [subtasks, setSubtasks] = useState<BoardSubTaskSummary[]>([]);
@@ -211,30 +231,13 @@ export function BoardActions({
     setSubtasksLoadedAt(entry.loadedAt);
   }
 
-  function handleApplyOrder(
-    updates: { documentId: string; index: number; stepId: number | null }[],
-  ): void {
-    const before = orderedTasks;
-    const updateMap = new Map(
-      updates.map((update) => [update.documentId, update]),
-    );
-    const next = before
-      .map((task) => {
-        const update = updateMap.get(task.documentId);
-        if (!update) return task;
-        return { ...task, index: update.index, stepId: update.stepId };
-      })
-      .sort((left, right) => left.index - right.index);
-
-    setOrderedTasks(next);
-
+  function handleApplyRelativeMove(move: BoardTaskRelativeMove): void {
     startTransition(() => {
       void (async () => {
         try {
-          await applyBoardTaskOrder(updates);
-          router.refresh();
+          await applyBoardTaskRelativeMove(move);
         } catch {
-          setOrderedTasks(before);
+          // Optimistic update lives in KanbanBoard; poll C corrects drift.
         }
       })();
     });
@@ -778,16 +781,9 @@ export function BoardActions({
       taskDocumentId,
       createSubtaskListCacheEntry(snapshot),
     );
-    setOrderedTasks((current) =>
-      current.map((task) =>
-        task.documentId === taskDocumentId
-          ? {
-              ...task,
-              unassignedSubTaskCount: resolveUnassignedSubTaskCount(snapshot),
-            }
-          : task,
-      ),
-    );
+    patchTaskInColumns(taskDocumentId, {
+      unassignedSubTaskCount: resolveUnassignedSubTaskCount(snapshot),
+    });
     handleCloseSubtasksModal({ keepDraftCache: true });
 
     const saveToastId = showLoadingToast(
@@ -835,13 +831,9 @@ export function BoardActions({
         });
       } catch {
         invalidateSubtaskCache(taskDocumentId);
-        setOrderedTasks((current) =>
-          current.map((task) =>
-            task.documentId === taskDocumentId
-              ? { ...task, unassignedSubTaskCount: previousUnassigned }
-              : task,
-          ),
-        );
+        patchTaskInColumns(taskDocumentId, {
+          unassignedSubTaskCount: previousUnassigned,
+        });
         showErrorToast(tKanban("taskUpdateFailed", { title: taskTitle }), {
           toastId: saveToastId,
         });
@@ -860,18 +852,14 @@ export function BoardActions({
       try {
         await createSubtask(taskDocumentId, values);
         await refreshSubtasksList(taskDocumentId, { keepDraftAssignees: true });
-        setOrderedTasks((current) =>
-          current.map((task) =>
-            task.documentId === taskDocumentId
-              ? {
-                  ...task,
-                  unassignedSubTaskCount:
-                    (task.unassignedSubTaskCount ?? 0) +
-                    (values.assignedToIds?.length ? 0 : 1),
-                }
-              : task,
-          ),
+        const current = orderedTasks.find(
+          (task) => task.documentId === taskDocumentId,
         );
+        patchTaskInColumns(taskDocumentId, {
+          unassignedSubTaskCount:
+            (current?.unassignedSubTaskCount ?? 0) +
+            (values.assignedToIds?.length ? 0 : 1),
+        });
         setCreateOpen(false);
       } finally {
         setSavingCreate(false);
@@ -896,8 +884,16 @@ export function BoardActions({
       <div className="flex h-full min-h-0 flex-col">
         <KanbanBoard
           steps={steps}
-          tasks={orderedTasks}
-          onApplyOrder={handleApplyOrder}
+          columns={columns.map((column) => ({
+            stepDocumentId: column.stepDocumentId,
+            totalCount: column.totalCount,
+            tasks: column.tasks,
+            cursor: column.cursor,
+          }))}
+          columnStates={columns}
+          onColumnStatesChange={onColumnsChange}
+          onApplyRelativeMove={handleApplyRelativeMove}
+          onLoadMoreColumn={loadMoreBoardColumnTasks}
           onTaskClick={handleTaskClick}
           onTaskPrefetch={handleTaskPrefetch}
           onTaskVisiblePrefetch={prefetchSubtasks}

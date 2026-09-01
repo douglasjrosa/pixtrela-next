@@ -79,7 +79,9 @@ describe("UserListRowPresentational", () => {
     );
 
     const avatar = screen.getAllByRole("img", { name: "Maria" })[0]!;
-    expect(avatar).toHaveAttribute("src", "/api/media/maria.jpg");
+    expect(decodeURIComponent(avatar.getAttribute("src") ?? "")).toContain(
+      "/api/media/maria.jpg",
+    );
     expect(avatar.className).toMatch(/rounded-full/);
   });
 

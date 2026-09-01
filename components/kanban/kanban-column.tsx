@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -8,16 +8,11 @@ import {
 } from "@dnd-kit/sortable";
 import { useTranslations } from "next-intl";
 
-import { LoadMoreButton, LoadMoreButtonRow } from "@/components/ui/load-more-button";
 import { toKanbanColumnId, toKanbanTaskId } from "@/lib/business/kanban-task-order";
-import {
-  KANBAN_COLUMN_INITIAL_VISIBLE_COUNT,
-  kanbanColumnHasMore,
-  nextKanbanColumnVisibleCount,
-  sliceVisibleKanbanTasks,
-} from "@/lib/kanban/column-visibility";
+import { isAutoStepTaskOrder } from "@/lib/schemas/step-task-order-by";
 import { cn } from "@/lib/utils";
 import { KanbanCard } from "./kanban-card";
+import { KanbanCardSkeleton } from "./kanban-card-skeleton";
 import type { KanbanStep, KanbanTask } from "./types";
 
 const KANBAN_COLUMN_SCROLL_AREA_CLASS = "max-h-[calc(100dvh-9rem)]";
@@ -25,6 +20,11 @@ const KANBAN_COLUMN_SCROLL_AREA_CLASS = "max-h-[calc(100dvh-9rem)]";
 export function KanbanColumn({
   step,
   tasks,
+  totalCount,
+  hasMore,
+  loadingMore = false,
+  loadMoreError = false,
+  onLoadMore,
   onTaskClick,
   onTaskPrefetch,
   onTaskVisiblePrefetch,
@@ -32,26 +32,41 @@ export function KanbanColumn({
 }: {
   step: KanbanStep;
   tasks: KanbanTask[];
+  totalCount: number;
+  hasMore: boolean;
+  loadingMore?: boolean;
+  loadMoreError?: boolean;
+  onLoadMore?: () => void;
   onTaskClick?: (task: KanbanTask) => void;
   onTaskPrefetch?: (task: KanbanTask) => void;
   onTaskVisiblePrefetch?: (task: KanbanTask) => void;
   onTaskPrefetchCancel?: () => void;
 }) {
   const t = useTranslations("kanban");
+  const sortableDisabled = isAutoStepTaskOrder(step.taskOrderBy);
   const { setNodeRef, isOver } = useDroppable({ id: toKanbanColumnId(step.id) });
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [visibleCount, setVisibleCount] = useState(
-    KANBAN_COLUMN_INITIAL_VISIBLE_COUNT,
-  );
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setVisibleCount(KANBAN_COLUMN_INITIAL_VISIBLE_COUNT);
-  }, [step.id]);
+    if (!hasMore || !onLoadMore) return;
+    const root = scrollRef.current;
+    const sentinel = sentinelRef.current;
+    if (!root || !sentinel) return;
 
-  const effectiveVisibleCount = Math.min(visibleCount, tasks.length);
-  const visibleTasks = sliceVisibleKanbanTasks(tasks, effectiveVisibleCount);
-  const hasMore = kanbanColumnHasMore(tasks.length, effectiveVisibleCount);
-  const sortableIds = visibleTasks.map((task) => toKanbanTaskId(task.id));
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          onLoadMore();
+        }
+      },
+      { root, rootMargin: "0px", threshold: 0 },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, onLoadMore, loadMoreError, tasks.length]);
+
+  const sortableIds = tasks.map((task) => toKanbanTaskId(task.id));
 
   return (
     <section
@@ -65,24 +80,29 @@ export function KanbanColumn({
     >
       <header className="flex shrink-0 items-center justify-between">
         <h2 className="font-semibold">{step.name}</h2>
-        <span className="text-xs text-muted-foreground">{tasks.length}</span>
+        <span className="text-xs text-muted-foreground">{totalCount}</span>
       </header>
-      {tasks.length === 0 ? (
+      {totalCount === 0 && tasks.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
         <div
           ref={scrollRef}
-          className={cn("min-h-0 overflow-y-auto", KANBAN_COLUMN_SCROLL_AREA_CLASS)}
+          className={cn(
+            "min-h-0 min-w-0 overflow-x-hidden overflow-y-auto",
+            KANBAN_COLUMN_SCROLL_AREA_CLASS,
+          )}
         >
           <SortableContext
             items={sortableIds}
             strategy={verticalListSortingStrategy}
+            disabled={sortableDisabled}
           >
-            <div className="flex flex-col gap-3 pt-2 pr-2">
-              {visibleTasks.map((task) => (
+            <div className="flex min-w-0 flex-col gap-3 pt-2 pr-2">
+              {tasks.map((task) => (
                 <KanbanCard
-                  key={task.id}
+                  key={task.documentId}
                   task={task}
+                  sortableDisabled={sortableDisabled}
                   onTaskClick={onTaskClick}
                   onTaskPrefetch={onTaskPrefetch}
                   onTaskVisiblePrefetch={onTaskVisiblePrefetch}
@@ -90,18 +110,10 @@ export function KanbanColumn({
                   prefetchRootRef={scrollRef}
                 />
               ))}
-              {hasMore ? (
-                <LoadMoreButtonRow>
-                  <LoadMoreButton
-                    label={t("loadMoreCards")}
-                    loadingLabel={t("loading")}
-                    onClick={() =>
-                      setVisibleCount((current) =>
-                        nextKanbanColumnVisibleCount(current, tasks.length),
-                      )
-                    }
-                  />
-                </LoadMoreButtonRow>
+              {hasMore || loadingMore || loadMoreError ? (
+                <div ref={sentinelRef}>
+                  <KanbanCardSkeleton error={loadMoreError && !loadingMore} />
+                </div>
               ) : null}
             </div>
           </SortableContext>

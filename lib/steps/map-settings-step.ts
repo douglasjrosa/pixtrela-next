@@ -6,6 +6,7 @@ export type SettingsStepRow = {
   name: string;
   index: number;
   orderBy: StepNameFormInput["orderBy"];
+  tasksPerLoad: number;
 };
 
 export function mapStepRecordToSettingsRow(
@@ -16,5 +17,6 @@ export function mapStepRecordToSettingsRow(
     name: step.name,
     index: step.index,
     orderBy: step.taskOrderBy,
+    tasksPerLoad: step.tasksPerLoad,
   };
 }

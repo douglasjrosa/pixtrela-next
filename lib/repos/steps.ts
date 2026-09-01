@@ -2,19 +2,24 @@ import { eq } from "drizzle-orm";
 
 import { steps, tasks } from "@/drizzle/schema";
 import { getDb, type Db } from "@/lib/db/client";
-import type { StepTaskOrderBy } from "@/lib/schemas/step-task-order-by";
+import {
+  STEP_TASKS_PER_LOAD_DEFAULT,
+  type StepTaskOrderBy,
+} from "@/lib/schemas/step";
 
 export type StepRecord = {
   id: string;
   name: string;
   index: number;
   taskOrderBy: StepTaskOrderBy;
+  tasksPerLoad: number;
 };
 
 export type CreateStepInput = {
   name: string;
   index?: number;
   taskOrderBy?: StepTaskOrderBy;
+  tasksPerLoad?: number;
 };
 
 const STEP_COLUMNS = {
@@ -22,6 +27,7 @@ const STEP_COLUMNS = {
   name: steps.name,
   index: steps.index,
   taskOrderBy: steps.taskOrderBy,
+  tasksPerLoad: steps.tasksPerLoad,
 } as const;
 
 export async function listSteps(db: Db = getDb()): Promise<StepRecord[]> {
@@ -46,6 +52,7 @@ export async function createStep(
       name,
       index: input.index ?? 0,
       taskOrderBy: input.taskOrderBy ?? "manual",
+      tasksPerLoad: input.tasksPerLoad ?? STEP_TASKS_PER_LOAD_DEFAULT,
     })
     .returning(STEP_COLUMNS);
   return row;
@@ -82,6 +89,7 @@ export async function updateStepName(
 export type UpdateStepFieldsInput = {
   name?: string;
   taskOrderBy?: StepTaskOrderBy;
+  tasksPerLoad?: number;
 };
 
 export async function updateStepFields(
@@ -92,6 +100,7 @@ export async function updateStepFields(
   const patch: {
     name?: string;
     taskOrderBy?: StepTaskOrderBy;
+    tasksPerLoad?: number;
     updatedAt: Date;
   } = { updatedAt: new Date() };
 
@@ -102,6 +111,9 @@ export async function updateStepFields(
   }
   if (input.taskOrderBy !== undefined) {
     patch.taskOrderBy = input.taskOrderBy;
+  }
+  if (input.tasksPerLoad !== undefined) {
+    patch.tasksPerLoad = input.tasksPerLoad;
   }
 
   const [row] = await db

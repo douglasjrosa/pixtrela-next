@@ -53,21 +53,28 @@ describe("settings/steps/actions drizzle CRUD", () => {
       name: "B",
       index: 3,
       taskOrderBy: "manual",
+      tasksPerLoad: 10,
     });
 
     const { createStep } = await import("./actions");
-    const created = await createStep({ name: "B", orderBy: "manual" });
+    const created = await createStep({
+      name: "B",
+      orderBy: "manual",
+      tasksPerLoad: 10,
+    });
 
     expect(createStepRepo).toHaveBeenCalledWith({
       name: "B",
       index: 3,
       taskOrderBy: "manual",
+      tasksPerLoad: 10,
     });
     expect(created).toEqual({
       documentId: "s2",
       name: "B",
       index: 3,
       orderBy: "manual",
+      tasksPerLoad: 10,
     });
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps", "default");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks", "default");
@@ -80,14 +87,20 @@ describe("settings/steps/actions drizzle CRUD", () => {
       name: "Old",
       index: 0,
       taskOrderBy: "manual",
+      tasksPerLoad: 10,
     });
 
     const { updateStep } = await import("./actions");
-    await updateStep("s1", { name: "Produção", orderBy: "delivery_date_asc" });
+    await updateStep("s1", {
+      name: "Produção",
+      orderBy: "delivery_date_asc",
+      tasksPerLoad: 20,
+    });
 
     expect(updateStepFields).toHaveBeenCalledWith("s1", {
       name: "Produção",
       taskOrderBy: "delivery_date_asc",
+      tasksPerLoad: 20,
     });
     expect(applyAutoStepTaskOrdering).toHaveBeenCalledWith({ stepIds: ["s1"] });
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps", "default");

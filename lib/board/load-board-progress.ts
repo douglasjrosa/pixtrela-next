@@ -20,6 +20,7 @@ import {
   activities,
   subTaskAssignees,
   subTasks,
+  tasks,
 } from "@/drizzle/schema";
 
 interface SubTaskProgressEntity {
@@ -361,4 +362,31 @@ export async function loadBoardProgressByTaskId(
   }
 
   return { progressByTaskId, badgesByTaskId, assignedCountByColaboratorId };
+}
+
+/** Board-wide unfinished assignee load (warn badges), independent of loaded cards. */
+export async function loadGlobalAssignedCountByColaboratorId(): Promise<
+  Record<string, number>
+> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      subTaskId: subTaskAssignees.subTaskId,
+      userId: subTaskAssignees.userId,
+    })
+    .from(subTaskAssignees)
+    .innerJoin(subTasks, eq(subTaskAssignees.subTaskId, subTasks.id))
+    .innerJoin(tasks, eq(subTasks.taskId, tasks.id))
+    .where(and(eq(tasks.active, true), ne(subTasks.status, FINISHED_STATUS)))
+    .limit(SUBTASK_PAGE_SIZE);
+
+  const bySubTask = new Map<string, string[]>();
+  for (const row of rows) {
+    const list = bySubTask.get(row.subTaskId) ?? [];
+    list.push(row.userId);
+    bySubTask.set(row.subTaskId, list);
+  }
+  return countAssignedSubTasksByColaborator(
+    [...bySubTask.values()].map((assignedToIds) => ({ assignedToIds })),
+  );
 }
