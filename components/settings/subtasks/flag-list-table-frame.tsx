@@ -9,6 +9,7 @@ import { ListLoadMore } from "@/components/ui/load-more-button";
 import type { MaterialFlagListFilters } from "@/lib/schemas/material-flag";
 import { SETTINGS_ENTITY_LIST_PAGE_SIZE } from "@/lib/schemas/sub-task-category";
 import { flagListFilterKey } from "@/lib/settings/flag-list-params";
+import { TABLE_HEAD_CELL_CLASS } from "@/lib/ui/table-head-styles";
 
 const ROW_LINK_CLASS =
   "text-inherit after:absolute after:inset-0 after:content-['']";
@@ -63,10 +64,10 @@ export function FlagListTableFrame({
       <table className="hidden w-full text-sm md:table">
         <thead>
           <tr className="border-b text-left">
-            <th className="py-2 font-medium">{t("flagCode")}</th>
-            <th className="py-2 font-medium">{t("flagCategory")}</th>
-            <th className="py-2 font-medium">{t("flagIndex")}</th>
-            <th className="py-2 font-medium">{t("flagOccupied")}</th>
+            <th className={TABLE_HEAD_CELL_CLASS}>{t("flagCode")}</th>
+            <th className={TABLE_HEAD_CELL_CLASS}>{t("flagCategory")}</th>
+            <th className={TABLE_HEAD_CELL_CLASS}>{t("flagIndex")}</th>
+            <th className={TABLE_HEAD_CELL_CLASS}>{t("flagOccupied")}</th>
           </tr>
         </thead>
         <tbody>

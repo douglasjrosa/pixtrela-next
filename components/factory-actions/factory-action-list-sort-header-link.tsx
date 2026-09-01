@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowDown, ArrowUp } from "lucide-react";
 
+import { LIST_SORT_HEADER_LINK_CLASS } from "@/lib/ui/table-head-styles";
 import { cn } from "@/lib/utils";
 import type {
   FactoryActionListSort,
@@ -40,7 +41,7 @@ export function FactoryActionListSortHeaderLink({
           "transition-colors hover:bg-muted focus-visible:outline-none",
           "focus-visible:ring-2 focus-visible:ring-ring",
           align === "center" ? "justify-center" : "justify-start",
-          active ? "text-foreground" : "text-muted-foreground",
+          LIST_SORT_HEADER_LINK_CLASS,
         )}
         aria-sort={
           active ? (direction === "asc" ? "ascending" : "descending") : "none"

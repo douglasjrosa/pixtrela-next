@@ -43,6 +43,7 @@ import { normalizeSubTaskCreateValues } from "@/lib/business/subtask-create-fiel
 import { calculateSubTaskDisplayQty } from "@/lib/business/subtask-display-qty";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
+import { TABLE_HEAD_CELL_CLASS } from "@/lib/ui/table-head-styles";
 
 import { SubTaskFormModal } from "./subtask-form-modal";
 import { SubTaskInlineForm } from "./subtask-inline-form";
@@ -570,11 +571,11 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
             <thead>
               <tr className="border-b text-left">
                 <th className="w-10 py-2" aria-hidden />
-                <th className="py-2">{tSubtasks("name")}</th>
-                <th>{tSubtasks("qty")}</th>
-                <th>{tSubtasks("expectedTime")}</th>
-                <th>{tSubtasks("timeSpent")}</th>
-                <th>{tTasks("manage.status")}</th>
+                <th className={TABLE_HEAD_CELL_CLASS}>{tSubtasks("name")}</th>
+                <th className={TABLE_HEAD_CELL_CLASS}>{tSubtasks("qty")}</th>
+                <th className={TABLE_HEAD_CELL_CLASS}>{tSubtasks("expectedTime")}</th>
+                <th className={TABLE_HEAD_CELL_CLASS}>{tSubtasks("timeSpent")}</th>
+                <th className={TABLE_HEAD_CELL_CLASS}>{tTasks("manage.status")}</th>
               </tr>
             </thead>
             <tbody>

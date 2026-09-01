@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const TASK_LIST_SORT_COLUMNS = [
+  "crmItemKey",
   "name",
   "qty",
   "deliveryDate",

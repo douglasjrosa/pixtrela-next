@@ -28,6 +28,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { reorderStepsByDrag } from "@/lib/business/step-order";
 import type { StepNameFormInput } from "@/lib/schemas/step";
 import type { SettingsStepRow } from "@/lib/steps/map-settings-step";
+import { TABLE_HEAD_CELL_CLASS } from "@/lib/ui/table-head-styles";
 
 export type StepRow = SettingsStepRow;
 
@@ -272,7 +273,7 @@ export function StepManager({
             <thead>
               <tr className="border-b text-left">
                 <th className="w-10 py-2" aria-hidden />
-                <th className="py-2">{tSteps("name")}</th>
+                <th className={TABLE_HEAD_CELL_CLASS}>{tSteps("name")}</th>
               </tr>
             </thead>
             <tbody>

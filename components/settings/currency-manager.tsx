@@ -32,9 +32,9 @@ import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { MediaAssetRecord } from "@/lib/repos/media";
 import type { CurrencyFormInput } from "@/lib/schemas/currency";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { TABLE_HEAD_CELL_CENTER_CLASS } from "@/lib/ui/table-head-styles";
 import { cn } from "@/lib/utils";
 
-const TABLE_HEAD_CELL_CLASS = "py-2 text-center";
 const TABLE_BODY_CELL_CLASS = "py-2 text-center";
 const TABLE_NUMERIC_CELL_CLASS = "text-center tabular-nums";
 
@@ -368,19 +368,19 @@ export function CurrencyManager({
                     />
                   </th>
                   <th className="w-12 py-2 text-center" aria-hidden />
-                  <th className={TABLE_HEAD_CELL_CLASS}>
+                  <th className={TABLE_HEAD_CELL_CENTER_CLASS}>
                     {tSettings("currencyTitle")}
                   </th>
-                  <th className={TABLE_HEAD_CELL_CLASS}>
+                  <th className={TABLE_HEAD_CELL_CENTER_CLASS}>
                     {tSettings("currencyName")}
                   </th>
-                  <th className={TABLE_HEAD_CELL_CLASS}>
+                  <th className={TABLE_HEAD_CELL_CENTER_CLASS}>
                     {tSettings("currencyPerSecond")}
                   </th>
-                  <th className={TABLE_HEAD_CELL_CLASS}>
+                  <th className={TABLE_HEAD_CELL_CENTER_CLASS}>
                     {tSettings("currencyExchangeRate")}
                   </th>
-                  <th className={TABLE_HEAD_CELL_CLASS}>
+                  <th className={TABLE_HEAD_CELL_CENTER_CLASS}>
                     {tSettings("currencyShowInStore")}
                   </th>
                 </tr>

@@ -1,4 +1,4 @@
-import { listTrustedMediaPublicOrigins } from "@/lib/media/trusted-public-origin";
+import { listTrustedMediaPublicOrigins } from "./trusted-public-origin";
 
 type RemotePattern = {
   protocol: "http" | "https";

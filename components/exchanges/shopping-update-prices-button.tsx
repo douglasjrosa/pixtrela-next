@@ -13,6 +13,7 @@ import { roundCurrencyRate } from "@/lib/format/currency-rate";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { BatchShoppingLine } from "@/lib/repos/exchange-batches";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { TABLE_HEAD_CELL_CLASS } from "@/lib/ui/table-head-styles";
 import { cn } from "@/lib/utils";
 
 export type ShoppingPriceRow = {
@@ -129,10 +130,10 @@ export function ShoppingUpdatePricesButton({
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b text-left">
-                <th className="py-2 pr-3 font-semibold">
+                <th className={cn("pr-3", TABLE_HEAD_CELL_CLASS)}>
                   {tExchanges("awardColumn")}
                 </th>
-                <th className="py-2 font-semibold">
+                <th className={TABLE_HEAD_CELL_CLASS}>
                   {tExchanges("currentPriceColumn")}
                 </th>
               </tr>

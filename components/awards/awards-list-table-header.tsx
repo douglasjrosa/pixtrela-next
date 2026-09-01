@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
 import { cn } from "@/lib/utils";
+import { TABLE_HEAD_CELL_CENTER_CLASS } from "@/lib/ui/table-head-styles";
 import type { AwardListSort } from "@/lib/schemas/award-list-sort";
 import type { AwardListFilters } from "@/lib/schemas/award-list-filters";
 
@@ -49,10 +50,16 @@ export async function AwardsListTableHeader({
           filters={filters}
           align="center"
         />
-        <th className="w-24 py-2 text-center">{tAwards("listStock")}</th>
-        <th className="w-28 py-2 text-center">{tAwards("listShowInStore")}</th>
-        <th className="w-28 py-2 text-center">{tAwards("listActualPrice")}</th>
-        <th className="w-28 py-2 text-center">
+        <th className={cn("w-24 text-center", TABLE_HEAD_CELL_CENTER_CLASS)}>
+          {tAwards("listStock")}
+        </th>
+        <th className={cn("w-28 text-center", TABLE_HEAD_CELL_CENTER_CLASS)}>
+          {tAwards("listShowInStore")}
+        </th>
+        <th className={cn("w-28 text-center", TABLE_HEAD_CELL_CENTER_CLASS)}>
+          {tAwards("listActualPrice")}
+        </th>
+        <th className={cn("w-28 text-center", TABLE_HEAD_CELL_CENTER_CLASS)}>
           {tAwards("listAutoRecalculate")}
         </th>
       </tr>

@@ -34,7 +34,13 @@ export async function TasksListTableHeader({
             />
           </th>
         ) : null}
-        <th className="py-2 text-left">{tManage("crmItemKey")}</th>
+        <TaskListSortHeaderLink
+          column="crmItemKey"
+          label={tManage("crmItemKey")}
+          sort={sort}
+          filters={filters}
+          align="left"
+        />
         <TaskListSortHeaderLink
           column="name"
           label={tManage("name")}

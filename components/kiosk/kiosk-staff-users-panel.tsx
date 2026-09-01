@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { KIOSK_HOME_PATH } from "@/lib/auth/colaborator-routes";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { TABLE_HEAD_TEXT_CLASS } from "@/lib/ui/table-head-styles";
 import { cn } from "@/lib/utils";
 
 import {
@@ -175,8 +176,12 @@ export function KioskStaffUsersPanel({
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40">
               <tr>
-                <th className="p-3 text-left font-medium">{t("staffUserName")}</th>
-                <th className="p-3 text-left font-medium">{t("staffUserCode")}</th>
+                <th className={cn("p-3 text-left", TABLE_HEAD_TEXT_CLASS)}>
+                  {t("staffUserName")}
+                </th>
+                <th className={cn("p-3 text-left", TABLE_HEAD_TEXT_CLASS)}>
+                  {t("staffUserCode")}
+                </th>
               </tr>
             </thead>
             <tbody>

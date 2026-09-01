@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { CardBadge } from "@/components/ui/card";
+import { formatCrmItemKeyLabel } from "@/lib/format/format-crm-item-key";
 import { formatDatePtBr } from "@/lib/format/datetime";
 
 import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
@@ -43,6 +44,8 @@ export function TaskListRowPresentational({
     </>
   );
 
+  const crmItemKeyLabel = formatCrmItemKeyLabel(task.crmItemKey);
+
   if (variant === "table") {
     return (
       <tr className="relative cursor-pointer border-b hover:bg-muted/40">
@@ -54,7 +57,7 @@ export function TaskListRowPresentational({
           />
         ) : null}
         <td className="py-2 text-muted-foreground tabular-nums">
-          {task.crmItemKey ?? ""}
+          {crmItemKeyLabel}
         </td>
         <td className="py-2">
           <Link href={href} className={ROW_LINK_CLASS} aria-label={task.name}>
@@ -88,9 +91,9 @@ export function TaskListRowPresentational({
           aria-label={task.name}
         >
           <div className="text-base font-medium">{nameCell}</div>
-          {task.crmItemKey ? (
+          {crmItemKeyLabel ? (
             <div className="text-muted-foreground text-sm tabular-nums">
-              {task.crmItemKey}
+              {crmItemKeyLabel}
             </div>
           ) : null}
           <div className="text-muted-foreground text-sm">
