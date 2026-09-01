@@ -90,9 +90,8 @@ function applyOptimisticRelativeMove(
   if (move.placement.kind === "end") {
     overRaw = `column:${move.targetStepKanbanId}`;
   } else {
-    const anchor = flat.find(
-      (task) => task.documentId === move.placement.anchorDocumentId,
-    );
+    const anchorDocumentId = move.placement.anchorDocumentId;
+    const anchor = flat.find((task) => task.documentId === anchorDocumentId);
     if (!anchor) return columns;
     overRaw = toKanbanTaskId(anchor.id);
   }
