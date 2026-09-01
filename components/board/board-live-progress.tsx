@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { BoardActions, type BoardActionsProps } from "@/components/board/board-actions";
 import { KanbanBoard } from "@/components/kanban/kanban-board";
-import type { KanbanStep, KanbanTask } from "@/components/kanban/types";
+import type { KanbanStep } from "@/components/kanban/types";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import {
   boardColumnsFromPages,
@@ -110,11 +110,16 @@ export function BoardLiveProgress({
   const [columns, setColumns] = useState<BoardColumnState[]>(() =>
     boardColumnsFromPages(initialColumns),
   );
-
-  useEffect(() => {
+  const [prevInitialSteps, setPrevInitialSteps] = useState(initialSteps);
+  const [prevInitialColumns, setPrevInitialColumns] = useState(initialColumns);
+  if (initialSteps !== prevInitialSteps) {
+    setPrevInitialSteps(initialSteps);
     setSteps(initialSteps);
+  }
+  if (initialColumns !== prevInitialColumns) {
+    setPrevInitialColumns(initialColumns);
     setColumns(boardColumnsFromPages(initialColumns));
-  }, [initialColumns, initialSteps]);
+  }
 
   const handleStepsChanged = useCallback(async () => {
     const synced = await syncBoardSteps();

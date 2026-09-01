@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -162,20 +162,23 @@ export function KanbanBoard({
   const [internalColumns, setInternalColumns] = useState(() =>
     boardColumnsFromPages(initialColumns),
   );
+  const [prevInitialColumns, setPrevInitialColumns] = useState(initialColumns);
+  if (!controlledColumns && initialColumns !== prevInitialColumns) {
+    setPrevInitialColumns(initialColumns);
+    setInternalColumns(boardColumnsFromPages(initialColumns));
+  }
   const columns = controlledColumns ?? internalColumns;
 
-  useEffect(() => {
-    if (controlledColumns) return;
-    setInternalColumns(boardColumnsFromPages(initialColumns));
-  }, [initialColumns, controlledColumns]);
-
-  function setColumns(next: BoardColumnState[]): void {
-    if (onColumnStatesChange) {
-      onColumnStatesChange(next);
-      return;
-    }
-    setInternalColumns(next);
-  }
+  const setColumns = useCallback(
+    (next: BoardColumnState[]): void => {
+      if (onColumnStatesChange) {
+        onColumnStatesChange(next);
+        return;
+      }
+      setInternalColumns(next);
+    },
+    [onColumnStatesChange],
+  );
 
   const flatTasks = useMemo(() => flattenBoardColumnTasks(columns), [columns]);
   const [activeTask, setActiveTask] = useState<KanbanTask | null>(null);
@@ -296,7 +299,7 @@ export function KanbanBoard({
           setInternalColumns((current) => update(current));
         });
     },
-    [columns, onColumnStatesChange, onLoadMoreColumn],
+    [columns, onColumnStatesChange, onLoadMoreColumn, setColumns],
   );
 
   if (steps.length === 0) {

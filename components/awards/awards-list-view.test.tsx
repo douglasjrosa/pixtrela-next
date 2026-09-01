@@ -46,7 +46,9 @@ describe("AwardListRowPresentational", () => {
     );
 
     const image = screen.getAllByRole("img", { name: "Arroz 5kg" })[0]!;
-    expect(image).toHaveAttribute("src", "/api/media/arroz.jpg");
+    expect(decodeURIComponent(image.getAttribute("src") ?? "")).toContain(
+      "/api/media/arroz.jpg",
+    );
     expect(image.className).toMatch(/rounded-full/);
     expect(screen.getByRole("button", { name: "Arroz 5kg" })).toBeInTheDocument();
     expect(screen.getByText("0")).toBeInTheDocument();

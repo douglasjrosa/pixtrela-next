@@ -279,18 +279,19 @@ export function CartEditor({
     setSelected(defaultSelectedCurrencies(initialAwards));
   }
   const [state, saveAction, saving] = useActionState(saveCartDraft, INITIAL);
+  const [prevSaveOk, setPrevSaveOk] = useState(false);
+  if (state.ok !== prevSaveOk) {
+    setPrevSaveOk(state.ok);
+    if (state.ok) {
+      setBaseline(draft);
+    }
+  }
 
   useEffect(() => {
     if (!state.ok && state.messageKey) {
       showErrorToast(t(state.messageKey));
     }
   }, [state, t]);
-
-  useEffect(() => {
-    if (state.ok) {
-      setBaseline(draft);
-    }
-  }, [state, draft]);
 
   const dirty = isCartDraftDirty(baseline, draft);
   useUnsavedLeaveGuard({
