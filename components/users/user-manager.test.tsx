@@ -154,6 +154,39 @@ describe("UserManager", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Novo usuário" }));
     expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+    expect(
+      screen.getByText("Informe uma senha com pelo menos 6 caracteres."),
+    ).toBeInTheDocument();
+  });
+
+  it("blocks admin create when password is missing", async () => {
+    const onCreate = vi.fn();
+    renderWithIntl(
+      <TestUserManager
+        users={[]}
+        onCreate={onCreate}
+        onUpdate={vi.fn()}
+        canDelete={false}
+        manageableRoles={["colaborator", "leader", "manager", "admin"]}
+        canSetPassword
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Novo usuário" }));
+    fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Ana" } });
+    fillCreateEmail();
+    fireEvent.change(screen.getByLabelText("Código"), {
+      target: { value: "9999" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Criar" }));
+
+    expect(
+      await screen.findByText("Informe a senha do usuário."),
+    ).toBeInTheDocument();
+    expect(showErrorToast).toHaveBeenCalledWith(
+      "Revise os campos destacados antes de salvar.",
+    );
+    expect(onCreate).not.toHaveBeenCalled();
   });
 
   it("hides password field for manager on create", () => {

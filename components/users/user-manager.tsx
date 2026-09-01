@@ -39,6 +39,8 @@ import {
   USER_CODE_NOT_UNIQUE_KEY,
   USER_EMAIL_NOT_UNIQUE_KEY,
   USER_LOGIN_NOT_UNIQUE_KEY,
+  USER_PASSWORD_MIN_LENGTH_KEY,
+  USER_PASSWORD_REQUIRED_KEY,
   USER_ROLES,
   createUserFormSchema,
   type UserFormInput,
@@ -157,6 +159,20 @@ function emailErrorMessage(
   return message;
 }
 
+function passwordErrorMessage(
+  message: string | undefined,
+  translate: (key: "passwordRequired" | "passwordMinLength") => string,
+): string | undefined {
+  if (!message) return undefined;
+  if (message === USER_PASSWORD_REQUIRED_KEY) {
+    return translate("passwordRequired");
+  }
+  if (message === USER_PASSWORD_MIN_LENGTH_KEY) {
+    return translate("passwordMinLength");
+  }
+  return message;
+}
+
 function isLoginConflictError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   const message = error.message.toLowerCase();
@@ -180,6 +196,7 @@ interface UserFormDialogProps {
   showDeactivate: boolean;
   onClose: () => void;
   onSubmit: (values: UserFormInput) => void;
+  onInvalid: () => void;
   onDelete?: () => void;
   onDeactivate?: () => void;
   onPreviewKioskColaborator: (documentId: string) => void;
@@ -208,6 +225,7 @@ function UserFormDialog({
   showDeactivate,
   onClose,
   onSubmit,
+  onInvalid,
   onDelete,
   onDeactivate,
   onPreviewKioskColaborator,
@@ -278,6 +296,7 @@ function UserFormDialog({
   const codeError = codeErrorMessage(errors.code?.message, tUsers);
   const loginError = loginErrorMessage(errors.username?.message, tUsers);
   const emailFieldError = emailErrorMessage(errors.email?.message, tUsers);
+  const passwordFieldError = passwordErrorMessage(errors.password?.message, tUsers);
   const usernameRegister = register("username");
   const formId = "user-form";
 
@@ -355,7 +374,7 @@ function UserFormDialog({
     >
       <form
         id={formId}
-        onSubmit={handleSubmit(onSubmit)}
+        onSubmit={handleSubmit(onSubmit, onInvalid)}
         className="grid gap-4 sm:grid-cols-2"
       >
         <div className="space-y-2">
@@ -407,11 +426,18 @@ function UserFormDialog({
           <div className="space-y-2">
             <Label htmlFor="password">{tUsers("password")}</Label>
             <PasswordInput id="password" autoComplete="new-password" {...register("password")} />
+            {passwordFieldError ? (
+              <p className="text-sm text-destructive">{passwordFieldError}</p>
+            ) : null}
             {isEditing ? (
               <p className="text-xs text-muted-foreground">
                 {tUsers("passwordOptional")}
               </p>
-            ) : null}
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {tUsers("passwordCreateHint")}
+              </p>
+            )}
           </div>
         ) : null}
 
@@ -564,6 +590,10 @@ export function UserManager({
     setDeleteOpen(false);
     setDeactivateOpen(false);
     setFormOpen(true);
+  }
+
+  function handleInvalidForm(): void {
+    showErrorToast(tUsers("formInvalid"));
   }
 
   function onSubmit(values: UserFormInput): void {
@@ -740,6 +770,7 @@ export function UserManager({
             showDeactivate={canDeactivateEditingUser}
             onClose={closeForm}
             onSubmit={onSubmit}
+            onInvalid={handleInvalidForm}
             onDelete={() => setDeleteOpen(true)}
             onDeactivate={() => setDeactivateOpen(true)}
             onPreviewKioskColaborator={handlePreviewKioskColaborator}

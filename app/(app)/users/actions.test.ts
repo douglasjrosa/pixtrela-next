@@ -14,9 +14,13 @@ const setUserFacePhotoMedia = vi.fn();
 const storeMedia = vi.fn();
 const insertMediaAsset = vi.fn();
 const listUsers = vi.fn();
+const authMock = vi.fn(async () => ({
+  user: { role: "admin", id: "admin-1" },
+  jwt: "",
+}));
 
 vi.mock("@/auth", () => ({
-  auth: vi.fn(async () => ({ user: { role: "admin", id: "admin-1" }, jwt: "" })),
+  auth: () => authMock(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -60,6 +64,10 @@ vi.mock("@/lib/users/load-user-list-page", () => ({
 describe("users/actions drizzle CRUD", () => {
   beforeEach(() => {
     vi.resetModules();
+    authMock.mockResolvedValue({
+      user: { role: "admin", id: "admin-1" },
+      jwt: "",
+    });
     revalidateTag.mockReset();
     createUserRepo.mockReset();
     updateUserAccount.mockReset();
@@ -159,6 +167,35 @@ describe("users/actions drizzle CRUD", () => {
         email: "maria@example.com",
         role: "colaborator",
         code: 1,
+        password: "secret1",
+      }),
+    );
+  });
+
+  it("createUser uses code as initial password for manager without password", async () => {
+    authMock.mockResolvedValue({
+      user: { role: "manager", id: "manager-1" },
+      jwt: "",
+    });
+    createUserRepo.mockResolvedValue({
+      id: "u3",
+      username: "ana.9999",
+      name: "Ana",
+      role: "colaborator",
+      code: 9999,
+    });
+    const { createUser } = await import("./actions");
+    await createUser({
+      name: "Ana",
+      username: "ana.9999",
+      email: "ana@example.com",
+      code: 9999,
+      roleType: "colaborator",
+      greetingGender: "feminine",
+    });
+    expect(createUserRepo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        password: "9999",
       }),
     );
   });

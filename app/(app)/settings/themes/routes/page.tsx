@@ -1,7 +1,8 @@
 import { ThemeSettingsManager } from "@/components/settings/theme-settings-manager";
 import { loadSettingsRouteThemes } from "@/lib/themes/load-settings-route-themes";
 
-import { updateRouteTheme, uploadRouteThemeImage } from "../actions";
+import { updateRouteTheme } from "../actions";
+import { listLibraryMedia, uploadLibraryMedia } from "../media-actions";
 
 export default async function SettingsThemeRoutesPage() {
   const themes = await loadSettingsRouteThemes();
@@ -14,18 +15,29 @@ export default async function SettingsThemeRoutesPage() {
     await updateRouteTheme(documentId, values);
   }
 
-  async function handleUpload(
-    formData: FormData,
-  ): Promise<number | string> {
+  async function handleListImages() {
     "use server";
-    return uploadRouteThemeImage(formData);
+    const result = await listLibraryMedia({
+      mimeFilter: "image",
+      category: "route_theme",
+      page: 1,
+      pageSize: 100,
+    });
+    return result.items;
+  }
+
+  async function handleUploadImage(formData: FormData) {
+    "use server";
+    formData.set("category", "route_theme");
+    return uploadLibraryMedia(formData);
   }
 
   return (
     <ThemeSettingsManager
       themes={themes}
       onSave={handleSave}
-      onUploadImage={handleUpload}
+      onListImages={handleListImages}
+      onUploadImage={handleUploadImage}
     />
   );
 }

@@ -39,7 +39,10 @@ describe("userFormSchema", () => {
 
   it("requires password on admin create when requirePassword is true", () => {
     const schema = buildUserFormSchema({ requirePassword: true });
-    expect(schema.safeParse({ ...validUser, password: "" }).success).toBe(false);
+    const emptyPassword = schema.safeParse({ ...validUser, password: "" });
+    expect(emptyPassword.success).toBe(false);
+    if (emptyPassword.success) return;
+    expect(emptyPassword.error.issues[0]?.message).toBe("passwordRequired");
     expect(schema.safeParse({ ...validUser, password: "123456" }).success).toBe(true);
   });
 

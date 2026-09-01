@@ -9,6 +9,7 @@ import {
   canSetUserPassword,
   canPairUserTag,
 } from "@/lib/auth/permissions";
+import { resolveInitialUserPassword } from "@/lib/business/initial-user-password";
 import { canDeleteUsers, canManageRole } from "@/lib/business/roles";
 import { isUserArchivedForHardDelete } from "@/lib/business/user-archive";
 import { normalizeUserTag } from "@/lib/kiosk/user-tag";
@@ -121,9 +122,17 @@ export async function createUser(raw: UserFormInput): Promise<void> {
   }).parse(sanitized);
   await assertCanManageTargetRole(data.roleType as Role);
 
+  const password = canSetUserPassword(actorRole)
+    ? data.password!
+    : resolveInitialUserPassword({
+        password: data.password,
+        code: data.code,
+        username: data.username,
+      });
+
   await createUserRepo({
     username: data.username,
-    password: data.password!,
+    password,
     name: data.name,
     role: data.roleType as UserRole,
     email: data.email,

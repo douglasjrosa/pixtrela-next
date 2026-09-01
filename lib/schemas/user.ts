@@ -27,11 +27,17 @@ export const GREETING_GENDERS = ["masculine", "feminine"] as const;
 export const USER_CODE_NOT_UNIQUE_KEY = "codeNotUnique";
 export const USER_LOGIN_NOT_UNIQUE_KEY = "loginNotUnique";
 export const USER_EMAIL_NOT_UNIQUE_KEY = "emailNotUnique";
+export const USER_PASSWORD_REQUIRED_KEY = "passwordRequired";
+export const USER_PASSWORD_MIN_LENGTH_KEY = "passwordMinLength";
+
+export const USER_PASSWORD_MIN_LENGTH = 6;
 
 const optionalPasswordSchema = z
   .string()
   .optional()
-  .refine((value) => !value || value.length >= 6);
+  .refine((value) => !value || value.length >= USER_PASSWORD_MIN_LENGTH, {
+    message: USER_PASSWORD_MIN_LENGTH_KEY,
+  });
 
 const optionalUserCodeSchema = z.number().int().min(0).nullable();
 
@@ -41,7 +47,12 @@ export function buildUserFormSchema(options?: { requirePassword?: boolean }) {
     username: z.string().min(3),
     email: userEmailFieldSchema,
     password: options?.requirePassword
-      ? z.string().min(6)
+      ? z
+          .string()
+          .min(1, { message: USER_PASSWORD_REQUIRED_KEY })
+          .min(USER_PASSWORD_MIN_LENGTH, {
+            message: USER_PASSWORD_MIN_LENGTH_KEY,
+          })
       : optionalPasswordSchema,
     code: optionalUserCodeSchema,
     roleType: z.enum(USER_ROLES),

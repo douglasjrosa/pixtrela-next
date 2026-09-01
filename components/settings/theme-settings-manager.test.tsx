@@ -58,6 +58,7 @@ describe("ThemeSettingsManager", () => {
   const defaultProps = {
     themes,
     onSave: vi.fn(),
+    onListImages: vi.fn().mockResolvedValue([]),
     onUploadImage: vi.fn(),
   };
 
@@ -96,7 +97,10 @@ describe("ThemeSettingsManager", () => {
     expect(dialog).toBeInTheDocument();
     expect(within(dialog).getByText("Login")).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Cor de fundo")).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Imagem de fundo")).toBeInTheDocument();
+    expect(within(dialog).getByText("Imagem de fundo")).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Escolher imagem" }),
+    ).toBeInTheDocument();
     expect(
       within(dialog).getByLabelText("Margem da página (mobile)"),
     ).toBeInTheDocument();

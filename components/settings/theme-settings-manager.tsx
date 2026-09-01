@@ -2,8 +2,6 @@
 
 import {
   useState,
-  useTransition,
-  type ChangeEvent,
   type KeyboardEvent,
 } from "react";
 import { Pencil } from "lucide-react";
@@ -11,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { MediaImageField } from "@/components/media/media-image-field";
 import { AppImage } from "@/components/media/app-image";
 import { SettingsSectionHeading } from "@/components/settings/settings-section-heading";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
@@ -49,11 +48,13 @@ import {
   type RouteThemeView,
 } from "@/lib/themes/match-route-theme";
 import { cn } from "@/lib/utils";
+import type { MediaAssetRecord } from "@/lib/repos/media";
 
 export interface ThemeSettingsManagerProps {
   themes: RouteThemeView[];
   onSave: (documentId: string, values: RouteThemeFormInput) => Promise<void>;
-  onUploadImage: (formData: FormData) => Promise<number | string>;
+  onListImages: () => Promise<MediaAssetRecord[]>;
+  onUploadImage: (formData: FormData) => Promise<MediaAssetRecord>;
 }
 
 interface ThemeDraft {
@@ -169,6 +170,7 @@ function ImagePreviewRect({
 export function ThemeSettingsManager({
   themes,
   onSave,
+  onListImages,
   onUploadImage,
 }: ThemeSettingsManagerProps) {
   const router = useRouter();
@@ -179,9 +181,8 @@ export function ThemeSettingsManager({
   );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ThemeDraft | null>(null);
-  const [isPending, startTransition] = useTransition();
   const [isSaving, setIsSaving] = useState(false);
-  const busy = isPending || isSaving;
+  const busy = isSaving;
 
   const editingTheme =
     themes.find((theme) => theme.documentId === editingId) ?? null;
@@ -202,32 +203,21 @@ export function ThemeSettingsManager({
     setDraft((current) => (current ? { ...current, ...patch } : current));
   }
 
-  function handleImageChange(event: ChangeEvent<HTMLInputElement>): void {
-    if (!editingId || !draft) return;
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const preview = URL.createObjectURL(file);
-    patchDraft({ previewUrl: preview, message: null });
-    startTransition(async () => {
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const id = await onUploadImage(formData);
-        patchDraft({
-          imageId: id,
-          clearImage: false,
-          message: t("themesImageSelected"),
-        });
-      } catch {
-        const theme = themes.find((entry) => entry.documentId === editingId);
-        const fallback =
-          committed[editingId]?.previewUrl ?? theme?.backgroundImageUrl ?? null;
-        patchDraft({
-          previewUrl: fallback,
-          imageId: null,
-          message: t("themesImageUploadFailed"),
-        });
-      }
+  function handleImageSelect(asset: MediaAssetRecord): void {
+    patchDraft({
+      imageId: asset.id,
+      previewUrl: asset.browserUrl,
+      clearImage: false,
+      message: null,
+    });
+  }
+
+  function handleImageRemove(): void {
+    patchDraft({
+      clearImage: true,
+      previewUrl: null,
+      imageId: null,
+      message: null,
     });
   }
 
@@ -289,6 +279,9 @@ export function ThemeSettingsManager({
   }
 
   const showImageOptions = Boolean(draft?.previewUrl && !draft.clearImage);
+  const selectedImageId =
+    draft?.imageId ??
+    (draft?.previewUrl && !draft.clearImage ? "current" : null);
   const formId = "route-theme-form";
 
   return (
@@ -606,42 +599,17 @@ export function ThemeSettingsManager({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="theme-image">{t("themesBackgroundImage")}</Label>
-                <Input
-                  id="theme-image"
-                  type="file"
-                  accept="image/*"
+                <Label>{t("themesBackgroundImage")}</Label>
+                <MediaImageField
+                  selectedId={selectedImageId}
+                  previewUrl={draft.clearImage ? null : draft.previewUrl}
                   disabled={busy}
-                  onChange={handleImageChange}
+                  attachedLabel={t("themesImageSelected")}
+                  onSelect={handleImageSelect}
+                  onRemove={handleImageRemove}
+                  onListImages={onListImages}
+                  onUploadImage={onUploadImage}
                 />
-                {showImageOptions ? (
-                  <div className="relative mt-2 h-24 w-full overflow-hidden rounded-xl">
-                    <AppImage
-                      src={draft.previewUrl ?? ""}
-                      alt=""
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                ) : null}
-                {showImageOptions ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() =>
-                      patchDraft({
-                        clearImage: true,
-                        previewUrl: null,
-                        imageId: null,
-                        message: null,
-                      })
-                    }
-                  >
-                    {t("themesClearImage")}
-                  </Button>
-                ) : null}
               </div>
             </div>
 
