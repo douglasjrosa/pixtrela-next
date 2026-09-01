@@ -22,5 +22,6 @@ export type BoardProgressPollSnapshot = {
     { totalTimeSpent: number; totalExpectedTime: number }
   >;
   layoutByTaskId: Record<string, BoardTaskLayoutSnapshot>;
+  totalCountByStepId?: Record<string, number>;
   nowMs: number;
 };

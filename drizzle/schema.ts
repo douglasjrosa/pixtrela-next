@@ -174,6 +174,7 @@ export const steps = pgTable("steps", {
   name: varchar("name", { length: 128 }).notNull(),
   index: integer("index").default(0).notNull(),
   taskOrderBy: stepTaskOrderByEnum("task_order_by").default("manual").notNull(),
+  tasksPerLoad: integer("tasks_per_load").default(10).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -507,30 +508,40 @@ export const templateSubTasks = pgTable("template_sub_tasks", {
   ),
 });
 
-export const tasks = pgTable("tasks", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 256 }).notNull(),
-  active: boolean("active").default(true).notNull(),
-  reasonForDeactivation: text("reason_for_deactivation"),
-  qty: integer("qty").default(1).notNull(),
-  deliveryDate: date("delivery_date"),
-  startedAt: timestamp("started_at", { withTimezone: true }),
-  endedAt: timestamp("ended_at", { withTimezone: true }),
-  stepId: uuid("step_id").references(() => steps.id, { onDelete: "set null" }),
-  index: integer("index").default(0).notNull(),
-  status: taskStatusEnum("status").default("waiting").notNull(),
-  totalExpectedTime: integer("total_expected_time").default(0).notNull(),
-  totalTimeSpent: integer("total_time_spent").default(0).notNull(),
-  templateTaskCode: varchar("template_task_code", { length: 64 }),
-  crmPedidoId: integer("crm_pedido_id"),
-  crmItemKey: varchar("crm_item_key", { length: 128 }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: varchar("name", { length: 256 }).notNull(),
+    active: boolean("active").default(true).notNull(),
+    reasonForDeactivation: text("reason_for_deactivation"),
+    qty: integer("qty").default(1).notNull(),
+    deliveryDate: date("delivery_date"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    stepId: uuid("step_id").references(() => steps.id, { onDelete: "set null" }),
+    index: integer("index").default(0).notNull(),
+    status: taskStatusEnum("status").default("waiting").notNull(),
+    totalExpectedTime: integer("total_expected_time").default(0).notNull(),
+    totalTimeSpent: integer("total_time_spent").default(0).notNull(),
+    templateTaskCode: varchar("template_task_code", { length: 64 }),
+    crmPedidoId: integer("crm_pedido_id"),
+    crmItemKey: varchar("crm_item_key", { length: 128 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("tasks_active_step_index_idx").on(
+      table.active,
+      table.stepId,
+      table.index,
+    ),
+  ],
+);
 
 export const subTasks = pgTable("sub_tasks", {
   id: uuid("id").defaultRandom().primaryKey(),

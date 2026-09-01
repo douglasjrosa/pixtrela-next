@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -17,34 +17,55 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
 import {
-  collectKanbanTaskUpdates,
   parseKanbanTaskId,
   resolveKanbanDragEnd,
-  tasksInStep,
-  type KanbanTaskOrderItem,
+  toKanbanTaskId,
 } from "@/lib/business/kanban-task-order";
+import { resolveBoardTaskRelativeMove } from "@/lib/business/board-task-relative-move";
+import {
+  boardColumnHasMore,
+  boardColumnsFromPages,
+  flattenBoardColumnTasks,
+  type BoardColumnState,
+} from "@/lib/board/board-column-state";
+import type { BoardColumnPage } from "@/lib/board/load-board-data";
+import type { BoardColumnPageCursor } from "@/lib/board/column-task-page";
 import { isAutoStepTaskOrder } from "@/lib/schemas/step-task-order-by";
 
 import { KanbanCardDragOverlay } from "./kanban-card";
 import { KanbanColumn } from "./kanban-column";
 import type { KanbanStep, KanbanTask } from "./types";
 
+export type LoadMoreBoardColumnResult = {
+  tasks: KanbanTask[];
+  cursor: BoardColumnPageCursor | null;
+  totalCount: number;
+};
+
 export interface KanbanBoardProps {
   steps: KanbanStep[];
-  tasks: KanbanTask[];
-  onApplyOrder?: (
-    updates: { documentId: string; index: number; stepId: number | null }[],
+  columns: BoardColumnPage[];
+  onApplyRelativeMove?: (
+    move: NonNullable<ReturnType<typeof resolveBoardTaskRelativeMove>>,
   ) => void | Promise<void>;
+  onLoadMoreColumn?: (input: {
+    stepDocumentId: string;
+    cursor: BoardColumnPageCursor | null;
+    limit: number;
+  }) => Promise<LoadMoreBoardColumnResult>;
   onTaskClick?: (task: KanbanTask) => void;
   onTaskPrefetch?: (task: KanbanTask) => void;
   onTaskVisiblePrefetch?: (task: KanbanTask) => void;
   onTaskPrefetchCancel?: () => void;
+  /** Controlled column state from live poll / parent. */
+  columnStates?: BoardColumnState[];
+  onColumnStatesChange?: (columns: BoardColumnState[]) => void;
 }
 
 const KANBAN_DND_CONTEXT_ID = "kanban-board-dnd";
 const KANBAN_DRAG_ACTIVATION_DISTANCE_PX = 8;
 
-export function toKanbanTaskOrderItems(tasks: KanbanTask[]): KanbanTaskOrderItem[] {
+export function toKanbanTaskOrderItems(tasks: KanbanTask[]) {
   return tasks.map((task) => ({
     id: task.id,
     documentId: task.documentId,
@@ -55,16 +76,108 @@ export function toKanbanTaskOrderItems(tasks: KanbanTask[]): KanbanTaskOrderItem
 
 export { resolveKanbanDragEnd };
 
+function applyOptimisticRelativeMove(
+  columns: BoardColumnState[],
+  steps: KanbanStep[],
+  move: NonNullable<ReturnType<typeof resolveBoardTaskRelativeMove>>,
+): BoardColumnState[] {
+  const flat = flattenBoardColumnTasks(columns);
+  const active = flat.find((task) => task.documentId === move.taskDocumentId);
+  if (!active) return columns;
+
+  const before = toKanbanTaskOrderItems(flat);
+  let overRaw: string;
+  if (move.placement.kind === "end") {
+    overRaw = `column:${move.targetStepKanbanId}`;
+  } else {
+    const anchor = flat.find(
+      (task) => task.documentId === move.placement.anchorDocumentId,
+    );
+    if (!anchor) return columns;
+    overRaw = toKanbanTaskId(anchor.id);
+  }
+
+  const result = resolveKanbanDragEnd(
+    before,
+    steps,
+    toKanbanTaskId(active.id),
+    overRaw,
+  );
+  if (result.type !== "updates") return columns;
+
+  const byId = new Map(flat.map((task) => [task.documentId, task]));
+  const nextFlat = result.tasks
+    .map((ordered) => {
+      const task = byId.get(ordered.documentId);
+      if (!task) return null;
+      return { ...task, index: ordered.index, stepId: ordered.stepId };
+    })
+    .filter((task): task is KanbanTask => task != null);
+
+  return columns.map((column) => {
+    const step = steps.find((item) => item.documentId === column.stepDocumentId);
+    if (!step) return column;
+    const tasks = nextFlat
+      .filter((task) => task.stepId === step.id)
+      .sort((left, right) => left.index - right.index);
+    let totalCount = column.totalCount;
+    const hadActive = column.tasks.some(
+      (task) => task.documentId === move.taskDocumentId,
+    );
+    const hasActive = tasks.some(
+      (task) => task.documentId === move.taskDocumentId,
+    );
+    if (hadActive && !hasActive) totalCount = Math.max(0, totalCount - 1);
+    if (!hadActive && hasActive) totalCount += 1;
+    const last = tasks[tasks.length - 1];
+    return {
+      ...column,
+      tasks,
+      totalCount,
+      cursor: last
+        ? {
+            id: last.documentId,
+            index: last.index,
+            deliveryDate: last.deliveryDate ?? null,
+            createdAt: new Date(0).toISOString(),
+          }
+        : null,
+    };
+  });
+}
+
 export function KanbanBoard({
   steps,
-  tasks,
-  onApplyOrder,
+  columns: initialColumns,
+  onApplyRelativeMove,
+  onLoadMoreColumn,
   onTaskClick,
   onTaskPrefetch,
   onTaskVisiblePrefetch,
   onTaskPrefetchCancel,
+  columnStates: controlledColumns,
+  onColumnStatesChange,
 }: KanbanBoardProps) {
   const t = useTranslations("kanban");
+  const [internalColumns, setInternalColumns] = useState(() =>
+    boardColumnsFromPages(initialColumns),
+  );
+  const columns = controlledColumns ?? internalColumns;
+
+  useEffect(() => {
+    if (controlledColumns) return;
+    setInternalColumns(boardColumnsFromPages(initialColumns));
+  }, [initialColumns, controlledColumns]);
+
+  function setColumns(next: BoardColumnState[]): void {
+    if (onColumnStatesChange) {
+      onColumnStatesChange(next);
+      return;
+    }
+    setInternalColumns(next);
+  }
+
+  const flatTasks = useMemo(() => flattenBoardColumnTasks(columns), [columns]);
   const [activeTask, setActiveTask] = useState<KanbanTask | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -74,49 +187,117 @@ export function KanbanBoard({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+
   function handleDragStart(event: DragStartEvent): void {
     const taskId = parseKanbanTaskId(event.active.id);
     if (taskId === null) {
       setActiveTask(null);
       return;
     }
-
-    setActiveTask(tasks.find((task) => task.id === taskId) ?? null);
+    setActiveTask(flatTasks.find((task) => task.id === taskId) ?? null);
   }
 
   function handleDragEnd(event: DragEndEvent): void {
     setActiveTask(null);
-    const before = toKanbanTaskOrderItems(tasks);
-    const result = resolveKanbanDragEnd(
-      before,
-      steps,
+    const move = resolveBoardTaskRelativeMove(
+      flatTasks,
       event.active.id,
       event.over?.id,
     );
-    if (result.type !== "updates") return;
+    if (!move) return;
 
-    const activeTaskId = parseKanbanTaskId(event.active.id);
-    const overTaskId = parseKanbanTaskId(event.over?.id);
-    if (activeTaskId != null && overTaskId != null) {
-      const active = tasks.find((task) => task.id === activeTaskId);
-      const over = tasks.find((task) => task.id === overTaskId);
-      if (
-        active &&
-        over &&
-        active.stepId === over.stepId &&
-        active.stepId != null
-      ) {
-        const step = steps.find((item) => item.id === active.stepId);
-        if (step && isAutoStepTaskOrder(step.taskOrderBy)) {
-          return;
-        }
-      }
+    const targetStep = steps.find((step) => step.id === move.targetStepKanbanId);
+    if (!targetStep) return;
+
+    const active = flatTasks.find(
+      (task) => task.documentId === move.taskDocumentId,
+    );
+    if (
+      active &&
+      active.stepId === move.targetStepKanbanId &&
+      move.placement.kind !== "end" &&
+      isAutoStepTaskOrder(targetStep.taskOrderBy)
+    ) {
+      return;
     }
 
-    const updates = collectKanbanTaskUpdates(before, result.tasks);
-    if (updates.length === 0) return;
-    void onApplyOrder?.(updates);
+    const before = columns;
+    setColumns(applyOptimisticRelativeMove(columns, steps, move));
+    void Promise.resolve(onApplyRelativeMove?.(move)).catch(() => {
+      setColumns(before);
+    });
   }
+
+  const handleLoadMore = useCallback(
+    (step: KanbanStep) => {
+      if (!onLoadMoreColumn) return;
+
+      let request:
+        | {
+            stepDocumentId: string;
+            cursor: BoardColumnPageCursor | null;
+            limit: number;
+          }
+        | null = null;
+
+      setColumns(
+        columns.map((item) => {
+          if (item.stepDocumentId !== step.documentId) return item;
+          if (item.loadingMore || !boardColumnHasMore(item)) return item;
+          request = {
+            stepDocumentId: step.documentId,
+            cursor: item.cursor,
+            limit: step.tasksPerLoad,
+          };
+          return { ...item, loadingMore: true, loadMoreError: false };
+        }),
+      );
+
+      if (!request) return;
+
+      void onLoadMoreColumn(request)
+        .then((result) => {
+          const update = (current: BoardColumnState[]): BoardColumnState[] =>
+            current.map((item) => {
+              if (item.stepDocumentId !== step.documentId) return item;
+              const existingIds = new Set(
+                item.tasks.map((task) => task.documentId),
+              );
+              const appended = result.tasks.filter(
+                (task) => !existingIds.has(task.documentId),
+              );
+              return {
+                ...item,
+                tasks: [...item.tasks, ...appended],
+                cursor: result.cursor,
+                totalCount: result.totalCount,
+                loadingMore: false,
+                loadMoreError: false,
+              };
+            });
+
+          if (onColumnStatesChange) {
+            onColumnStatesChange(update(columns));
+            return;
+          }
+          setInternalColumns((current) => update(current));
+        })
+        .catch(() => {
+          const update = (current: BoardColumnState[]): BoardColumnState[] =>
+            current.map((item) =>
+              item.stepDocumentId === step.documentId
+                ? { ...item, loadingMore: false, loadMoreError: true }
+                : item,
+            );
+          if (onColumnStatesChange) {
+            onColumnStatesChange(update(columns));
+            return;
+          }
+          setInternalColumns((current) => update(current));
+        });
+    },
+    [columns, onColumnStatesChange, onLoadMoreColumn],
+  );
 
   if (steps.length === 0) {
     return (
@@ -142,16 +323,23 @@ export function KanbanBoard({
         }
       >
         {steps.map((step) => {
-          const stepTasks = tasksInStep(toKanbanTaskOrderItems(tasks), step.id);
-          const stepCards = stepTasks
-            .map((ordered) => tasks.find((task) => task.id === ordered.id))
-            .filter((task): task is KanbanTask => task != null);
+          const column = columns.find(
+            (item) => item.stepDocumentId === step.documentId,
+          );
+          const tasks = column?.tasks ?? [];
+          const totalCount = column?.totalCount ?? tasks.length;
+          const hasMore = column ? boardColumnHasMore(column) : false;
 
           return (
             <KanbanColumn
               key={step.documentId}
               step={step}
-              tasks={stepCards}
+              tasks={tasks}
+              totalCount={totalCount}
+              hasMore={hasMore}
+              loadingMore={column?.loadingMore}
+              loadMoreError={column?.loadMoreError}
+              onLoadMore={() => handleLoadMore(step)}
               onTaskClick={onTaskClick}
               onTaskPrefetch={onTaskPrefetch}
               onTaskVisiblePrefetch={onTaskVisiblePrefetch}

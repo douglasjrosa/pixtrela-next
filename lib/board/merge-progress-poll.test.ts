@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { KanbanTask } from "@/components/kanban/types";
-import { mergeBoardProgressPoll } from "./merge-progress-poll";
+import type { KanbanStep, KanbanTask } from "@/components/kanban/types";
+import type { BoardColumnState } from "@/lib/board/board-column-state";
+import {
+  mergeBoardColumnsProgressPoll,
+  mergeBoardProgressPoll,
+} from "./merge-progress-poll";
 
 function taskStub(
   partial: Partial<KanbanTask> & Pick<KanbanTask, "documentId">,
@@ -18,6 +22,23 @@ function taskStub(
     ...partial,
   };
 }
+
+const steps: KanbanStep[] = [
+  {
+    id: 0,
+    documentId: "step-a",
+    name: "A",
+    taskOrderBy: "manual",
+    tasksPerLoad: 10,
+  },
+  {
+    id: 1,
+    documentId: "step-b",
+    name: "B",
+    taskOrderBy: "manual",
+    tasksPerLoad: 10,
+  },
+];
 
 describe("mergeBoardProgressPoll", () => {
   it("updates live tasks from snapshot and leaves finished untouched", () => {
@@ -141,5 +162,87 @@ describe("mergeBoardProgressPoll", () => {
       qty: 3,
       deliveryDate: "2026-08-01",
     });
+  });
+});
+
+describe("mergeBoardColumnsProgressPoll", () => {
+  it("moves a loaded card between columns and adjusts totals", () => {
+    const columns: BoardColumnState[] = [
+      {
+        stepDocumentId: "step-a",
+        totalCount: 1,
+        cursor: null,
+        loadingMore: false,
+        loadMoreError: false,
+        tasks: [taskStub({ documentId: "t1", stepId: 0, index: 0, id: 10 })],
+      },
+      {
+        stepDocumentId: "step-b",
+        totalCount: 0,
+        cursor: null,
+        loadingMore: false,
+        loadMoreError: false,
+        tasks: [],
+      },
+    ];
+
+    const merged = mergeBoardColumnsProgressPoll(columns, steps, {
+      nowMs: 1,
+      progressByTaskId: {},
+      badgesByTaskId: {},
+      assignedCountByColaboratorId: {},
+      totalsByTaskId: {},
+      totalCountByStepId: { "step-a": 0, "step-b": 1 },
+      layoutByTaskId: {
+        t1: {
+          status: "waiting",
+          stepId: 1,
+          index: 0,
+          name: "Task",
+          qty: 1,
+          deliveryDate: null,
+          endedAt: null,
+        },
+      },
+    });
+
+    expect(merged[0]?.tasks).toHaveLength(0);
+    expect(merged[0]?.totalCount).toBe(0);
+    expect(merged[1]?.tasks.map((task) => task.documentId)).toEqual(["t1"]);
+    expect(merged[1]?.totalCount).toBe(1);
+  });
+
+  it("removes a loaded card that disappeared from layout", () => {
+    const columns: BoardColumnState[] = [
+      {
+        stepDocumentId: "step-a",
+        totalCount: 1,
+        cursor: null,
+        loadingMore: false,
+        loadMoreError: false,
+        tasks: [taskStub({ documentId: "gone", stepId: 0, index: 0 })],
+      },
+      {
+        stepDocumentId: "step-b",
+        totalCount: 0,
+        cursor: null,
+        loadingMore: false,
+        loadMoreError: false,
+        tasks: [],
+      },
+    ];
+
+    const merged = mergeBoardColumnsProgressPoll(columns, steps, {
+      nowMs: 1,
+      progressByTaskId: {},
+      badgesByTaskId: {},
+      assignedCountByColaboratorId: {},
+      totalsByTaskId: {},
+      totalCountByStepId: { "step-a": 0, "step-b": 0 },
+      layoutByTaskId: {},
+    });
+
+    expect(merged[0]?.tasks).toHaveLength(0);
+    expect(merged[0]?.totalCount).toBe(0);
   });
 });

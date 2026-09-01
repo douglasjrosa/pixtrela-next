@@ -38,15 +38,39 @@ const paymentCurrency = {
 };
 
 function renderBoard(overrides: Partial<ComponentProps<typeof BoardActions>> = {}) {
+  const columns = [
+    {
+      stepDocumentId: "step-1",
+      totalCount: tasks.filter((task) => task.stepId === 1).length,
+      cursor: null,
+      loadingMore: false,
+      loadMoreError: false,
+      tasks: tasks.filter((task) => task.stepId === 1),
+    },
+    {
+      stepDocumentId: "step-2",
+      totalCount: tasks.filter((task) => task.stepId === 2).length,
+      cursor: null,
+      loadingMore: false,
+      loadMoreError: false,
+      tasks: tasks.filter((task) => task.stepId === 2),
+    },
+  ];
   return renderWithIntl(
     <BoardActions
       steps={steps}
-      tasks={tasks}
+      columns={columns}
       teams={teams}
       assignWarnMax={4}
       assignedCountByColaboratorId={{}}
       paymentCurrency={paymentCurrency}
-      applyBoardTaskOrder={vi.fn()}
+      applyBoardTaskRelativeMove={vi.fn()}
+      loadMoreBoardColumnTasks={vi.fn(async () => ({
+        tasks: [],
+        cursor: null,
+        totalCount: 0,
+      }))}
+      onColumnsChange={vi.fn()}
       loadSubtasks={vi.fn()}
       reorderSubtasks={vi.fn()}
       linkSubtask={vi.fn()}
@@ -58,8 +82,20 @@ function renderBoard(overrides: Partial<ComponentProps<typeof BoardActions>> = {
 }
 
 const steps = [
-  { id: 1, name: "Fila de produção", taskOrderBy: "manual" as const },
-  { id: 2, name: "Produzindo", taskOrderBy: "manual" as const },
+  {
+    id: 1,
+    documentId: "step-1",
+    name: "Fila de produção",
+    taskOrderBy: "manual" as const,
+    tasksPerLoad: 10,
+  },
+  {
+    id: 2,
+    documentId: "step-2",
+    name: "Produzindo",
+    taskOrderBy: "manual" as const,
+    tasksPerLoad: 10,
+  },
 ];
 
 const tasks = [

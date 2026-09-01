@@ -12,12 +12,19 @@ import { renderWithIntl } from "@/test/test-utils";
 import { resolveStepReorder, StepManager } from "./step-manager";
 
 const steps = [
-  { documentId: "s1", name: "Fila", index: 0, orderBy: "manual" as const },
+  {
+    documentId: "s1",
+    name: "Fila",
+    index: 0,
+    orderBy: "manual" as const,
+    tasksPerLoad: 10,
+  },
   {
     documentId: "s2",
     name: "Produção",
     index: 1,
     orderBy: "delivery_date_asc" as const,
+    tasksPerLoad: 10,
   },
 ];
 
@@ -150,6 +157,7 @@ describe("StepManager", () => {
       name: "Corte",
       index: 0,
       orderBy: "manual" as const,
+      tasksPerLoad: 10,
     });
     renderWithIntl(
       <StepManager
@@ -166,7 +174,11 @@ describe("StepManager", () => {
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => {
-      expect(onCreate).toHaveBeenCalledWith({ name: "Corte", orderBy: "manual" });
+      expect(onCreate).toHaveBeenCalledWith({
+        name: "Corte",
+        orderBy: "manual",
+        tasksPerLoad: 10,
+      });
     });
     await waitFor(() => {
       expect(refresh).toHaveBeenCalled();

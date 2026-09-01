@@ -13,18 +13,21 @@ describe("kanban-drizzle-ids", () => {
         name: "B",
         index: 0,
         taskOrderBy: "manual" as const,
+        tasksPerLoad: 10,
       },
       {
         id: "uuid-a",
         name: "A",
         index: 0,
         taskOrderBy: "manual" as const,
+        tasksPerLoad: 15,
       },
     ];
 
     const steps = mapStepsToKanbanSteps(rows);
     expect(steps.map((step) => step.id)).toEqual([0, 1]);
     expect(steps.map((step) => step.documentId)).toEqual(["uuid-a", "uuid-b"]);
+    expect(steps.map((step) => step.tasksPerLoad)).toEqual([15, 10]);
 
     const lookup = buildStepKanbanLookup(rows);
     expect(lookup.kanbanIdByStepUuid.get("uuid-a")).toBe(0);
