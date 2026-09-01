@@ -36,6 +36,7 @@ const FINISHED_STATUS = "finished";
 
 export interface KanbanCardProps {
   task: KanbanTask;
+  sortableDisabled?: boolean;
   onTaskClick?: (task: KanbanTask) => void;
   onTaskPrefetch?: (task: KanbanTask) => void;
   onTaskVisiblePrefetch?: (task: KanbanTask) => void;
@@ -130,7 +131,7 @@ export function KanbanCardSurface({
   return (
     <div
       className={cn(
-        "relative rounded-md border bg-card p-3 shadow-sm",
+        "relative min-w-0 rounded-md border bg-card p-3 shadow-sm",
         className,
       )}
     >
@@ -198,6 +199,7 @@ export function KanbanCardDragOverlay({ task }: { task: KanbanTask }) {
 
 export function KanbanCard({
   task,
+  sortableDisabled = false,
   onTaskClick,
   onTaskPrefetch,
   onTaskVisiblePrefetch,
@@ -213,7 +215,10 @@ export function KanbanCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: toKanbanTaskId(task.id) });
+  } = useSortable({
+    id: toKanbanTaskId(task.id),
+    disabled: sortableDisabled,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -273,7 +278,7 @@ export function KanbanCard({
       ref={setCardRef}
       style={style}
       className={cn(
-        "relative overflow-visible",
+        "relative min-w-0 overflow-visible",
         onTaskClick && "cursor-pointer",
         isDragging && "opacity-40",
       )}

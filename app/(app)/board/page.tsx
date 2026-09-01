@@ -2,13 +2,16 @@ import { Suspense } from "react";
 
 import { auth } from "@/auth";
 import { BoardLiveProgress } from "@/components/board/board-live-progress";
-import type { KanbanStep, KanbanTask } from "@/components/kanban/types";
+import type { KanbanStep } from "@/components/kanban/types";
 import { APP_BOARD_SHELL_CLASS } from "@/components/layout/app-page-layout";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import type { Role } from "@/lib/auth/nav";
 import { canMoveBoardTasks } from "@/lib/auth/permissions";
 import { DEFAULT_ASSIGN_WARN_MAX } from "@/lib/business/assign-warn-max";
-import { loadDrizzleBoardData } from "@/lib/board/load-board-data";
+import {
+  loadDrizzleBoardData,
+  type BoardColumnPage,
+} from "@/lib/board/load-board-data";
 import { loadBoardProgressByTaskId } from "@/lib/board/load-board-progress";
 import { shouldShowKanbanTaskProgress } from "@/lib/business/task-progress";
 import { listTeamsWithMembers } from "@/lib/repos/teams";
@@ -21,21 +24,27 @@ import {
 import { loadTaskAutomationSetting } from "@/lib/settings/load-task-automation";
 
 import {
-  applyBoardTaskOrder,
+  applyBoardTaskRelativeMove,
   createBoardSubtask,
   loadBoardSubtasks,
   loadBoardSubtaskLive,
   loadBoardSubtaskSession,
   loadBoardSubtaskSessions,
+  loadMoreBoardColumnTasks,
   pollBoardProgress,
   releaseBoardSubTaskFlags,
   reorderBoardSubtasks,
+  syncBoardSteps,
   updateBoardSubtaskAssignees,
   updateBoardSubtaskLink,
 } from "./actions";
 
-async function loadBoard(): Promise<{ steps: KanbanStep[]; tasks: KanbanTask[] }> {
-  return loadDrizzleBoardData();
+async function loadBoard(): Promise<{
+  steps: KanbanStep[];
+  columns: BoardColumnPage[];
+}> {
+  const data = await loadDrizzleBoardData();
+  return { steps: data.steps, columns: data.columns };
 }
 
 async function loadTeamsForAssignment(): Promise<TeamAssignmentOption[]> {
@@ -54,56 +63,66 @@ async function loadBoardPaymentCurrency(): Promise<SubtaskPaymentCurrency> {
   return toSubtaskPaymentCurrency(setting);
 }
 
-function withProgressPending(tasks: KanbanTask[]): KanbanTask[] {
-  return tasks.map((task) => {
-    if (!shouldShowKanbanTaskProgress(task.status) || task.totalExpectedTime <= 0) {
-      return task;
-    }
-    return { ...task, progressPending: true };
-  });
+function withProgressPending(columns: BoardColumnPage[]): BoardColumnPage[] {
+  return columns.map((column) => ({
+    ...column,
+    tasks: column.tasks.map((task) => {
+      if (
+        !shouldShowKanbanTaskProgress(task.status) ||
+        task.totalExpectedTime <= 0
+      ) {
+        return task;
+      }
+      return { ...task, progressPending: true };
+    }),
+  }));
 }
 
-async function withProgressLoaded(tasks: KanbanTask[]): Promise<{
-  tasks: KanbanTask[];
+async function withProgressLoaded(columns: BoardColumnPage[]): Promise<{
+  columns: BoardColumnPage[];
   assignedCountByColaboratorId: Record<string, number>;
 }> {
+  const tasks = columns.flatMap((column) => column.tasks);
   const { progressByTaskId, badgesByTaskId, assignedCountByColaboratorId } =
     await loadBoardProgressByTaskId(tasks);
   const nowMs = Date.now();
 
   return {
     assignedCountByColaboratorId,
-    tasks: tasks.map((task) => {
-      const badges = badgesByTaskId[task.documentId];
-      const badgeFields = {
-        activeColaboratorCount: badges?.activeColaboratorCount ?? 0,
-        unassignedSubTaskCount: badges?.unassignedSubTaskCount ?? 0,
-        participantCount: badges?.participantCount ?? 0,
-      };
+    columns: columns.map((column) => ({
+      ...column,
+      tasks: column.tasks.map((task) => {
+        const badges = badgesByTaskId[task.documentId];
+        const badgeFields = {
+          activeColaboratorCount: badges?.activeColaboratorCount ?? 0,
+          unassignedSubTaskCount: badges?.unassignedSubTaskCount ?? 0,
+          participantCount: badges?.participantCount ?? 0,
+        };
 
-      if (
-        !shouldShowKanbanTaskProgress(task.status) ||
-        task.totalExpectedTime <= 0
-      ) {
-        return { ...task, ...badgeFields };
-      }
-      return {
-        ...task,
-        ...badgeFields,
-        progressPending: false,
-        progressInput: progressByTaskId[task.documentId] ?? {
-          subTasks: [],
-          openActivityStartedAts: [],
-        },
-        progressNowMs: nowMs,
-      };
-    }),
+        if (
+          !shouldShowKanbanTaskProgress(task.status) ||
+          task.totalExpectedTime <= 0
+        ) {
+          return { ...task, ...badgeFields };
+        }
+        return {
+          ...task,
+          ...badgeFields,
+          progressPending: false,
+          progressInput: progressByTaskId[task.documentId] ?? {
+            subTasks: [],
+            openActivityStartedAts: [],
+          },
+          progressNowMs: nowMs,
+        };
+      }),
+    })),
   };
 }
 
 function BoardCanvas({
   steps,
-  tasks,
+  columns,
   teams,
   interactive,
   assignWarnMax,
@@ -112,7 +131,7 @@ function BoardCanvas({
   assigneePeople,
 }: {
   steps: KanbanStep[];
-  tasks: KanbanTask[];
+  columns: BoardColumnPage[];
   teams: TeamAssignmentOption[];
   interactive: boolean;
   assignWarnMax: number;
@@ -122,7 +141,7 @@ function BoardCanvas({
 }) {
   return (
     <BoardLiveProgress
-      tasks={tasks}
+      columns={columns}
       steps={steps}
       teams={teams}
       interactive={interactive}
@@ -131,7 +150,21 @@ function BoardCanvas({
       paymentCurrency={paymentCurrency}
       assigneePeople={assigneePeople}
       pollBoardProgress={pollBoardProgress}
-      applyBoardTaskOrder={applyBoardTaskOrder}
+      applyBoardTaskRelativeMove={applyBoardTaskRelativeMove}
+      loadMoreBoardColumnTasks={loadMoreBoardColumnTasks}
+      syncBoardSteps={syncBoardSteps}
+      loadFirstColumnPage={async (stepDocumentId) =>
+        loadMoreBoardColumnTasks({
+          stepDocumentId,
+          cursor: null,
+          limit: 0,
+        }).then((result) => ({
+          stepDocumentId,
+          totalCount: result.totalCount,
+          tasks: result.tasks,
+          cursor: result.cursor,
+        }))
+      }
       loadSubtasks={loadBoardSubtasks}
       loadSubtaskLive={loadBoardSubtaskLive}
       loadSubtaskSessions={loadBoardSubtaskSessions}
@@ -147,7 +180,7 @@ function BoardCanvas({
 
 async function BoardWithProgress({
   steps,
-  tasks,
+  columns,
   teams,
   interactive,
   assignWarnMax,
@@ -155,18 +188,18 @@ async function BoardWithProgress({
   assigneePeople,
 }: {
   steps: KanbanStep[];
-  tasks: KanbanTask[];
+  columns: BoardColumnPage[];
   teams: TeamAssignmentOption[];
   interactive: boolean;
   assignWarnMax: number;
   paymentCurrency: SubtaskPaymentCurrency;
   assigneePeople: { documentId: string; name: string }[];
 }) {
-  const loaded = await withProgressLoaded(tasks);
+  const loaded = await withProgressLoaded(columns);
   return (
     <BoardCanvas
       steps={steps}
-      tasks={loaded.tasks}
+      columns={loaded.columns}
       teams={teams}
       interactive={interactive}
       assignWarnMax={assignWarnMax}
@@ -181,7 +214,7 @@ export default async function BoardPage() {
   const session = await auth();
   const role = session?.user?.role as Role | undefined;
   const interactive = canMoveBoardTasks(role);
-  const [{ steps, tasks }, teams, automation, paymentCurrency, assigneePeople] =
+  const [{ steps, columns }, teams, automation, paymentCurrency, assigneePeople] =
     await Promise.all([
       loadBoard(),
       interactive ? loadTeamsForAssignment() : Promise.resolve([]),
@@ -197,7 +230,7 @@ export default async function BoardPage() {
         fallback={
           <BoardCanvas
             steps={steps}
-            tasks={withProgressPending(tasks)}
+            columns={withProgressPending(columns)}
             teams={teams}
             interactive={interactive}
             assignWarnMax={assignWarnMax}
@@ -209,7 +242,7 @@ export default async function BoardPage() {
       >
         <BoardWithProgress
           steps={steps}
-          tasks={tasks}
+          columns={columns}
           teams={teams}
           interactive={interactive}
           assignWarnMax={assignWarnMax}

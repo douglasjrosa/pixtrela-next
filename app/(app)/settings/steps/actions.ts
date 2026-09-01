@@ -55,11 +55,16 @@ export async function createStep(
   raw: StepNameFormInput,
 ): Promise<SettingsStepRow> {
   await assertCanManage();
-  const { name, orderBy } = stepNameFormSchema.parse(raw);
+  const { name, orderBy, tasksPerLoad } = stepNameFormSchema.parse(raw);
   const indexes = await fetchStepIndexes();
   const index = getNextStepIndex(indexes.map((value) => ({ index: value })));
 
-  const created = await createStepRepo({ name, index, taskOrderBy: orderBy });
+  const created = await createStepRepo({
+    name,
+    index,
+    taskOrderBy: orderBy,
+    tasksPerLoad,
+  });
   if (orderBy !== "manual") {
     await applyAutoStepTaskOrdering({ stepIds: [created.id] });
   }
@@ -72,10 +77,14 @@ export async function updateStep(
   raw: StepNameFormInput,
 ): Promise<void> {
   await assertCanManage();
-  const { name, orderBy } = stepNameFormSchema.parse(raw);
+  const { name, orderBy, tasksPerLoad } = stepNameFormSchema.parse(raw);
 
   const existing = await getStepById(documentId);
-  await updateStepFields(documentId, { name, taskOrderBy: orderBy });
+  await updateStepFields(documentId, {
+    name,
+    taskOrderBy: orderBy,
+    tasksPerLoad,
+  });
   if (
     existing &&
     existing.taskOrderBy !== orderBy &&

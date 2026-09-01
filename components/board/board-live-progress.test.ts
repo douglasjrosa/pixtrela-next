@@ -17,21 +17,36 @@ describe("BoardLiveProgress RSC data props", () => {
   it("pickBoardLiveProgressDataProps stays JSON-serializable", () => {
     expect(BOARD_LIVE_PROGRESS_DATA_PROP_KEYS).not.toContain("children");
     const props = pickBoardLiveProgressDataProps({
-      tasks: [
+      columns: [
         {
-          id: 1,
-          documentId: "t1",
-          name: "Task",
-          qty: 1,
-          status: "producing",
-          stepId: 1,
-          index: 0,
-          deliveryDate: null,
-          totalExpectedTime: 60,
-          totalTimeSpent: 10,
+          stepDocumentId: "step-1",
+          totalCount: 1,
+          cursor: null,
+          tasks: [
+            {
+              id: 1,
+              documentId: "t1",
+              name: "Task",
+              qty: 1,
+              status: "producing",
+              stepId: 1,
+              index: 0,
+              deliveryDate: null,
+              totalExpectedTime: 60,
+              totalTimeSpent: 10,
+            },
+          ],
         },
       ],
-      steps: [{ id: 1, name: "Produção", taskOrderBy: "manual" }],
+      steps: [
+        {
+          id: 1,
+          documentId: "step-1",
+          name: "Produção",
+          taskOrderBy: "manual",
+          tasksPerLoad: 10,
+        },
+      ],
       teams: [],
       interactive: true,
       assignWarnMax: 4,

@@ -9,6 +9,8 @@ const listBoardSubTasksForTask = vi.fn();
 const listBoardSubtaskSessionHistory = vi.fn();
 const listBoardSubtaskAssignees = vi.fn();
 const listSubTaskActivitySessions = vi.fn();
+const listActiveTaskOrderRows = vi.fn();
+const listActiveTaskLayoutRows = vi.fn();
 const getTaskById = vi.fn();
 const getSubTaskById = vi.fn();
 const listSubTasksWithRelationsForTask = vi.fn();
@@ -35,6 +37,7 @@ vi.mock("@/lib/board/load-board-progress", () => ({
     badgesByTaskId: {},
     assignedCountByColaboratorId: {},
   })),
+  loadGlobalAssignedCountByColaboratorId: vi.fn(async () => ({})),
 }));
 
 vi.mock("@/app/(app)/tasks/[documentId]/actions", () => ({
@@ -63,6 +66,12 @@ vi.mock("@/lib/repos/tasks", async (importOriginal) => {
     listSubTaskActivitySessions: (...args: unknown[]) =>
       listSubTaskActivitySessions(...args),
     getTaskById: (...args: unknown[]) => getTaskById(...args),
+    listActiveTaskOrderRows: (...args: unknown[]) =>
+      listActiveTaskOrderRows(...args),
+    listActiveTaskLayoutRows: (...args: unknown[]) =>
+      listActiveTaskLayoutRows(...args),
+    listActiveTasksForBoardColumn: vi.fn(async () => []),
+    countActiveTasksByStepId: vi.fn(async () => 0),
     getSubTaskById: (...args: unknown[]) => getSubTaskById(...args),
     listSubTasksWithRelationsForTask: (...args: unknown[]) =>
       listSubTasksWithRelationsForTask(...args),
@@ -91,6 +100,10 @@ describe("board/actions drizzle", () => {
     listBoardSubtaskAssignees.mockReset();
     listSubTaskActivitySessions.mockReset();
     getTaskById.mockReset();
+    listActiveTaskOrderRows.mockReset();
+    listActiveTaskLayoutRows.mockReset();
+    listActiveTaskOrderRows.mockResolvedValue([]);
+    listActiveTaskLayoutRows.mockResolvedValue([]);
     getSubTaskById.mockReset();
     listSubTasksWithRelationsForTask.mockReset();
     updateSubTaskLinkedToPrevious.mockReset();
@@ -98,12 +111,50 @@ describe("board/actions drizzle", () => {
     updateSubTask.mockReset();
     applyAutoStepTaskOrderingAfterTaskChange.mockReset();
     listStepsRepo.mockResolvedValue([
-      { id: "step-uuid", name: "Produção", index: 1, taskOrderBy: "manual" },
+      { id: "step-uuid", name: "Produção", index: 1, taskOrderBy: "manual", tasksPerLoad: 10 },
     ]);
     getTaskById.mockResolvedValue({
       stepId: "step-uuid",
       deliveryDate: "2026-08-01",
     });
+  });
+
+  it("applyBoardTaskRelativeMove persists before placement on manual column", async () => {
+    listActiveTaskOrderRows.mockResolvedValue([
+      {
+        id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
+        stepId: "step-uuid",
+        index: 0,
+        deliveryDate: null,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+      {
+        id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2",
+        stepId: "step-uuid",
+        index: 1,
+        deliveryDate: null,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+    ]);
+    getTaskById.mockImplementation(async (id: string) => ({
+      id,
+      stepId: "step-uuid",
+      deliveryDate: null,
+      index: id.endsWith("1") ? 0 : 1,
+    }));
+
+    const { applyBoardTaskRelativeMove } = await import("./actions");
+    await applyBoardTaskRelativeMove({
+      taskDocumentId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2",
+      targetStepKanbanId: 0,
+      placement: {
+        kind: "before",
+        anchorDocumentId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
+      },
+    });
+
+    expect(updateTaskBoardFields).toHaveBeenCalled();
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks", "default");
   });
 
   it("applyBoardTaskOrder maps kanban step id to uuid", async () => {
@@ -216,17 +267,20 @@ describe("board/actions drizzle", () => {
   });
 
   it("pollBoardProgress loads totals and layout from task repo", async () => {
-    getTaskById.mockResolvedValue({
-      status: "producing",
-      stepId: "step-uuid",
-      index: 2,
-      name: "Caixa",
-      qty: 4,
-      deliveryDate: "2026-08-01",
-      endedAt: null,
-      totalTimeSpent: 10,
-      totalExpectedTime: 100,
-    });
+    listActiveTaskLayoutRows.mockResolvedValue([
+      {
+        id: "task-1",
+        status: "producing",
+        stepId: "step-uuid",
+        index: 2,
+        name: "Caixa",
+        qty: 4,
+        deliveryDate: "2026-08-01",
+        endedAt: null,
+        totalTimeSpent: 10,
+        totalExpectedTime: 100,
+      },
+    ]);
 
     const { pollBoardProgress } = await import("./actions");
     const snapshot = await pollBoardProgress([
