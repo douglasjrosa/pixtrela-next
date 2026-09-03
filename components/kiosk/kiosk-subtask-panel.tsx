@@ -1,10 +1,10 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import type { KioskQueueUnit } from "@/lib/business/kiosk-queue-units";
+import type { KioskQueueUnit, OpenChainRun } from "@/lib/business/kiosk-queue-units";
 import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
 import {
   canCompleteSubTaskOnExit,
@@ -42,7 +42,16 @@ export interface KioskSubtaskPanelProps {
     answers: ChainStopAnswer[],
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
-  onReleaseFlags?: (documentId: string) => void | Promise<void>;
+  onReleaseMaterialFlag?: (flagId: string) => void | Promise<void>;
+  onRefreshMaterialFlags?: (
+    subTaskId: string,
+  ) => Promise<{
+    flags: Array<{ id: string; code: string }>;
+    categoryId: string | null;
+    requiresMaterialFlagsOnFinish?: boolean;
+  }>;
+  onChainRunNotReady?: () => void;
+  openRuns?: readonly OpenChainRun[];
   blockingUi?: boolean;
   timerPaused?: boolean;
   exitBusy?: boolean;
@@ -69,7 +78,10 @@ export function KioskSubtaskPanel({
   onStartChain,
   onConfirmChainStop,
   onAdvanceChain,
-  onReleaseFlags,
+  onReleaseMaterialFlag,
+  onRefreshMaterialFlags,
+  onChainRunNotReady,
+  openRuns,
   blockingUi = false,
   timerPaused,
   exitBusy = false,
@@ -77,8 +89,17 @@ export function KioskSubtaskPanel({
 }: KioskSubtaskPanelProps) {
   const t = useTranslations("kiosk");
   const [exitingId, setExitingId] = useState<string | null>(null);
+  const [collectingChainRunId, setCollectingChainRunId] = useState<string | null>(
+    null,
+  );
   const queueContext = allSubTasks ?? subTasks;
   const resolvedUnits = units ?? unitsFromSubTasks(subTasks);
+
+  useEffect(() => {
+    if (!blockingUi && !exitBusy) {
+      setCollectingChainRunId(null);
+    }
+  }, [blockingUi, exitBusy]);
 
   return (
     <ul className="space-y-3">
@@ -86,18 +107,25 @@ export function KioskSubtaskPanel({
         if (unit.type === "group") {
           return (
             <KioskChainGroupCard
-              key={`group-${unit.headId}-${unit.principalActive ? "active" : "idle"}`}
+              key={`group-${unit.chainRunId ?? unit.headId}-${unit.principalActive ? "active" : "idle"}`}
               unit={unit}
+              openRuns={openRuns}
               readOnly={readOnly}
               blockingUi={blockingUi}
               timerPaused={timerPaused}
               exitBusy={exitBusy}
               compactFinishedCards={compactFinishedCards}
               flash={unit.memberIds.includes(flashDocumentId ?? "")}
+              collecting={collectingChainRunId === unit.headId}
+              onCollectingChange={(next) => {
+                setCollectingChainRunId(next ? unit.headId : null);
+              }}
               onStartChain={onStartChain}
               onConfirmChainStop={onConfirmChainStop}
               onAdvanceChain={onAdvanceChain}
-              onReleaseFlags={onReleaseFlags}
+              onReleaseMaterialFlag={onReleaseMaterialFlag}
+              onRefreshMaterialFlags={onRefreshMaterialFlags}
+              onChainRunNotReady={onChainRunNotReady}
             />
           );
         }
@@ -177,11 +205,10 @@ export function KioskSubtaskPanel({
                 <MaterialFlagHintList
                   dependencyFlags={subTask.dependencyFlags}
                   assignedFlagCodes={subTask.assignedFlagCodes}
-                  onRelease={
-                    !readOnly && (subTask.assignedFlagCodes?.length ?? 0) > 0
-                      ? () => onReleaseFlags?.(subTask.documentId)
-                      : undefined
+                  onReleaseFlag={
+                    !readOnly ? onReleaseMaterialFlag : undefined
                   }
+                  canReleaseFlags={isProducing}
                   releaseDisabled={blockingUi}
                 />
               </div>
@@ -236,6 +263,16 @@ export function KioskSubtaskPanel({
                   disabled={blockingUi}
                   busy={exitBusy}
                   availableFlags={subTask.availableFlags}
+                  assignedFlagCodes={subTask.assignedFlagCodes}
+                  subTaskCategoryId={subTask.subTaskCategoryId}
+                  requiresMaterialFlagsOnFinish={
+                    subTask.requiresMaterialFlagsOnFinish
+                  }
+                  onRefreshFlags={
+                    onRefreshMaterialFlags
+                      ? () => onRefreshMaterialFlags(subTask.documentId)
+                      : undefined
+                  }
                   onCancel={() => setExitingId(null)}
                   onConfirm={(input) => {
                     onExit(subTask.documentId, input);

@@ -34,14 +34,16 @@ describe("WelcomeOverlayHost", () => {
     resetKioskColaboratorReady();
   });
 
-  it("shows the welcome modal from a stashed payload", () => {
+  it("shows the welcome modal from a stashed payload", async () => {
     stashWelcomePayload({
       name: "Ana Silva",
       greetingGender: "feminine",
       avatarUrl: "/uploads/a.jpg",
     });
 
-    renderWithIntl(<WelcomeOverlayHost />);
+    await act(async () => {
+      renderWithIntl(<WelcomeOverlayHost />);
+    });
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Bem vinda Ana!")).toBeInTheDocument();
@@ -50,11 +52,13 @@ describe("WelcomeOverlayHost", () => {
     expect(window.sessionStorage.getItem(WELCOME_SESSION_KEY)).toBeTruthy();
   });
 
-  it("keeps welcome until the kiosk queue is ready", () => {
+  it("keeps welcome until the kiosk queue is ready", async () => {
     vi.useFakeTimers();
     stashWelcomePayload({ name: "Bruno" });
 
-    renderWithIntl(<WelcomeOverlayHost />);
+    await act(async () => {
+      renderWithIntl(<WelcomeOverlayHost />);
+    });
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Carregando...")).toBeInTheDocument();
 
@@ -75,12 +79,14 @@ describe("WelcomeOverlayHost", () => {
     vi.useRealTimers();
   });
 
-  it("clears a non-kiosk welcome after the duration", () => {
+  it("clears a non-kiosk welcome after the duration", async () => {
     vi.useFakeTimers();
     usePathname.mockReturnValue("/board");
     stashWelcomePayload({ name: "Bruno" });
 
-    renderWithIntl(<WelcomeOverlayHost />);
+    await act(async () => {
+      renderWithIntl(<WelcomeOverlayHost />);
+    });
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.queryByText("Carregando...")).not.toBeInTheDocument();
 

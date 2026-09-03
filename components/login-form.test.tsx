@@ -35,6 +35,8 @@ describe("LoginForm", () => {
     });
 
     renderWithIntl(<LoginForm />);
+    expect(screen.getByLabelText("Login")).toHaveClass("text-center");
+    expect(document.activeElement).toBe(screen.getByLabelText("Login"));
     await user.type(screen.getByLabelText("Login"), "maria");
     await user.type(screen.getByLabelText("Senha"), "secret1");
     await user.click(screen.getByRole("button", { name: "Entrar" }));

@@ -9,6 +9,8 @@ describe("KioskColaboratorForm", () => {
     renderWithIntl(<KioskColaboratorForm onSubmit={vi.fn()} />);
     expect(screen.getByLabelText("Código")).toBeInTheDocument();
     expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+    expect(screen.getByLabelText("Código")).toHaveClass("text-center");
+    expect(document.activeElement).toBe(screen.getByLabelText("Código"));
   });
 
   it("submits code and password", async () => {

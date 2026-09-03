@@ -302,6 +302,7 @@ export const kioskSettings = pgTable("kiosk_settings", {
   )
     .default(300)
     .notNull(),
+  queuePageSize: integer("queue_page_size").default(15).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

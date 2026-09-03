@@ -57,6 +57,7 @@ export async function updateKioskSessionIdleSeconds(
       formData,
       "maxSimultaneousSubtaskIntervalSeconds",
     ),
+    queuePageSize: formNumber(formData, "queuePageSize"),
   });
   await upsertKioskSettings(values);
   revalidateTag("drizzle:kiosk-setting", "default");

@@ -51,11 +51,12 @@ export function KioskColaboratorForm({
         </Label>
         <Input
           id="code"
-          type="number"
+          type="text"
           inputMode="numeric"
-          min={0}
-          className="h-14 rounded-2xl text-lg"
-          {...register("code", { valueAsNumber: true })}
+          autoComplete="off"
+          autoFocus
+          className="h-14 rounded-2xl text-center text-lg"
+          {...register("code")}
         />
         {errors.code ? (
           <p className="text-sm text-destructive">{errors.code.message}</p>
@@ -69,7 +70,7 @@ export function KioskColaboratorForm({
         <PasswordInput
           id="password"
           autoComplete="current-password"
-          className="h-14 rounded-2xl text-lg"
+          className="h-14 rounded-2xl text-center text-lg"
           {...register("password")}
         />
         {errors.password ? (

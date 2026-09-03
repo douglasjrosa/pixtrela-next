@@ -324,11 +324,123 @@ export async function listFlagIdsForSubTask(
   return rows.map((row) => row.flagId);
 }
 
+export type KioskMaterialFlagOption = {
+  id: string;
+  code: string;
+};
+
+export async function resolveKioskMaterialFlagOptions(
+  subTaskId: string,
+  categoryId: string | null | undefined,
+  db: Db = getDb(),
+): Promise<{
+  categoryId: string | null;
+  flags: KioskMaterialFlagOption[];
+  requiresMaterialFlagsOnFinish: boolean;
+}> {
+  const hasDependents = await subTaskHasDependents(subTaskId, db);
+  const resolvedCategory = categoryId ?? null;
+
+  if (!resolvedCategory) {
+    return {
+      categoryId: null,
+      flags: [],
+      requiresMaterialFlagsOnFinish: hasDependents,
+    };
+  }
+
+  const [availableRows, assignedRows] = await Promise.all([
+    listAvailableFlagsForCategory(resolvedCategory, subTaskId, db),
+    listAssignedFlagsForSubTasks([subTaskId], db),
+  ]);
+  const byId = new Map<string, KioskMaterialFlagOption>();
+  for (const row of availableRows) {
+    byId.set(row.id, {
+      id: row.id,
+      code: formatMaterialFlagCode(row.categoryRef, row.index),
+    });
+  }
+  for (const row of assignedRows) {
+    if (!byId.has(row.flagId)) {
+      byId.set(row.flagId, {
+        id: row.flagId,
+        code: formatMaterialFlagCode(row.categoryRef, row.index),
+      });
+    }
+  }
+
+  const flags = [...byId.values()].sort((left, right) =>
+    left.code.localeCompare(right.code),
+  );
+
+  return {
+    categoryId: resolvedCategory,
+    flags,
+    requiresMaterialFlagsOnFinish: hasDependents,
+  };
+}
+
+/** Release flags still attached to finished consumer sub-tasks (refresh cleanup). */
+export async function releaseFlagsOnFinishedConsumerSubTasks(
+  db: Db = getDb(),
+): Promise<number> {
+  const consumerRows = await db
+    .select({
+      subTaskId: subTaskFlags.subTaskId,
+      status: subTasks.status,
+    })
+    .from(subTaskFlags)
+    .innerJoin(subTasks, eq(subTaskFlags.subTaskId, subTasks.id))
+    .innerJoin(
+      subTaskDependencies,
+      eq(subTaskDependencies.subTaskId, subTaskFlags.subTaskId),
+    )
+    .where(eq(subTasks.status, "finished"));
+
+  const toRelease = [...new Set(consumerRows.map((row) => row.subTaskId))];
+  if (toRelease.length === 0) return 0;
+  await db
+    .delete(subTaskFlags)
+    .where(inArray(subTaskFlags.subTaskId, toRelease));
+  return toRelease.length;
+}
+
+export async function refreshKioskMaterialFlags(
+  subTaskId: string,
+  db: Db = getDb(),
+): Promise<{
+  categoryId: string | null;
+  flags: KioskMaterialFlagOption[];
+  requiresMaterialFlagsOnFinish: boolean;
+}> {
+  await releaseFlagsOnFinishedConsumerSubTasks(db);
+  const [sub] = await db
+    .select({
+      id: subTasks.id,
+      categoryId: subTasks.subTaskCategoryId,
+    })
+    .from(subTasks)
+    .where(eq(subTasks.id, subTaskId))
+    .limit(1);
+  if (!sub) throw new Error("notFound");
+  return resolveKioskMaterialFlagOptions(subTaskId, sub.categoryId, db);
+}
+
 export async function releaseFlagsForSubTask(
   subTaskId: string,
   db: Db = getDb(),
 ): Promise<void> {
   await db.delete(subTaskFlags).where(eq(subTaskFlags.subTaskId, subTaskId));
+}
+
+/** Release a single material flag (unique on flag_id). */
+export async function releaseMaterialFlag(
+  flagId: string,
+  db: Db = getDb(),
+): Promise<void> {
+  const trimmed = flagId.trim();
+  if (!trimmed) throw new Error("flagNotFound");
+  await db.delete(subTaskFlags).where(eq(subTaskFlags.flagId, trimmed));
 }
 
 export async function subTaskHasDependents(

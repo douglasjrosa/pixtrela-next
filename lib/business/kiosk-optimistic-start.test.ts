@@ -3,10 +3,14 @@ import { describe, expect, it } from "vitest";
 import type { KioskSubTask } from "@/lib/business/subtask-queue";
 
 import {
+  applyOptimisticChainStopToOpenRuns,
+  applyOptimisticChainStopToSubTasks,
   applyOptimisticKioskStartToOpenRuns,
   applyOptimisticKioskStartToSubTasks,
+  isOptimisticChainStopSettled,
   isOptimisticKioskStartSettled,
   OPTIMISTIC_CHAIN_RUN_PREFIX,
+  resolvePersistedChainRunId,
 } from "./kiosk-optimistic-start";
 
 function stub(overrides: Partial<KioskSubTask> = {}): KioskSubTask {
@@ -89,6 +93,101 @@ describe("kiosk optimistic start", () => {
         startedAt: "2026-08-17T23:00:00.000Z",
         mode: "solo",
       }),
+    ).toBe(false);
+  });
+
+  it("resolves a persisted chain run id from open runs", () => {
+    expect(
+      resolvePersistedChainRunId(
+        `${OPTIMISTIC_CHAIN_RUN_PREFIX}st-1`,
+        [
+          {
+            chainHeadId: "st-1",
+            chainRunId: "run-1",
+            principalId: "user-1",
+            runStartedAt: "2026-08-17T23:00:00.000Z",
+          },
+        ],
+        "st-1",
+      ),
+    ).toBe("run-1");
+  });
+
+  it("moves chain members out of producing and clears the open run", () => {
+    const stop = {
+      chainRunId: "run-1",
+      chainHeadId: "st-1",
+      memberIds: ["st-1", "st-2"],
+      answers: [
+        { documentId: "st-1", qty: 1 },
+        { documentId: "st-2", qty: 1 },
+      ],
+    };
+    const next = applyOptimisticChainStopToSubTasks(
+      [
+        stub({
+          documentId: "st-1",
+          status: "producing",
+          startedAt: "2026-08-17T23:00:00.000Z",
+          sharingType: "qty",
+          targetQty: 1,
+        }),
+        stub({
+          documentId: "st-2",
+          status: "producing",
+          startedAt: "2026-08-17T23:00:00.000Z",
+          sharingType: "qty",
+          targetQty: 1,
+        }),
+      ],
+      stop,
+    );
+
+    expect(next[0]).toMatchObject({
+      status: "finished",
+      startedAt: null,
+      completedQty: 1,
+    });
+    expect(next[1]).toMatchObject({
+      status: "finished",
+      startedAt: null,
+      completedQty: 1,
+    });
+    expect(
+      applyOptimisticChainStopToOpenRuns(
+        [
+          {
+            chainHeadId: "st-1",
+            chainRunId: "run-1",
+            principalId: "user-1",
+            runStartedAt: "2026-08-17T23:00:00.000Z",
+          },
+        ],
+        stop,
+      ),
+    ).toEqual([]);
+  });
+
+  it("settles chain stop when server queue no longer has the open run", () => {
+    const stop = {
+      chainRunId: "run-1",
+      chainHeadId: "st-1",
+      memberIds: ["st-1"],
+      answers: [{ documentId: "st-1", completed: true }],
+    };
+    expect(
+      isOptimisticChainStopSettled(
+        [stub({ documentId: "st-1", status: "waiting" })],
+        [],
+        stop,
+      ),
+    ).toBe(true);
+    expect(
+      isOptimisticChainStopSettled(
+        [stub({ documentId: "st-1", status: "producing" })],
+        [],
+        stop,
+      ),
     ).toBe(false);
   });
 });

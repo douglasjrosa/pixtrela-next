@@ -12,6 +12,13 @@ import {
 } from "@/drizzle/schema";
 import { calculateActivityDurationSeconds } from "@/lib/business/activity-duration";
 import type { OpenChainRun } from "@/lib/business/kiosk-queue-units";
+import {
+  buildKioskQueueUnits,
+  paginateQueueUnits,
+  splitQueueUnitsByKioskSection,
+  type KioskQueueSectionKey,
+  type KioskQueueUnit,
+} from "@/lib/business/kiosk-queue-units";
 import { resolveChains } from "@/lib/business/subtask-chain";
 import { listSubTasksWithRelationsForTasks } from "@/lib/repos/tasks";
 import {
@@ -30,11 +37,13 @@ import {
 } from "@/lib/business/kiosk-subtask-map";
 import {
   canAuthorizeKioskStop,
+  isQtyTargetFullyMet,
   parseDurationStopBody,
   parseQtyStopBody,
   resolveDurationStop,
+  resolveKioskStopNextStatus,
   resolveQtyStop,
-  resolveStopStatusWithPeers,
+  shouldFinalizeSubTaskOnStop,
   type KioskStopBody,
 } from "@/lib/business/kiosk-stop";
 import type { KioskSubTask } from "@/lib/business/subtask-queue";
@@ -69,11 +78,18 @@ import {
   listAvailableFlagsForCategory,
   listFlagIdsForSubTask,
   releaseProducerFlagsWhenConsumersFinished,
+  resolveKioskMaterialFlagOptions,
   subTaskHasDependents,
 } from "@/lib/repos/material-flags";
+import { getKioskSettings } from "@/lib/repos/settings";
+import {
+  DEFAULT_KIOSK_QUEUE_PAGE_SIZE,
+  normalizeKioskQueuePageSize,
+} from "@/lib/schemas/kiosk-setting";
 import { formatMaterialFlagCode } from "@/lib/business/material-flag-code";
 import {
   assertFinishFlagsAllowed,
+  isSemBandeiraHint,
   mergeFlagIds,
 } from "@/lib/business/subtask-material-flags";
 import {
@@ -154,7 +170,7 @@ function toSubTaskDbRow(
   };
 }
 
-async function attachKioskFlagFields(
+async function attachKioskListingFlagFields(
   items: KioskSubTask[],
   db: Db,
 ): Promise<KioskSubTask[]> {
@@ -162,49 +178,83 @@ async function attachKioskFlagFields(
   const ids = items.map((item) => item.documentId);
   const assignedRows = await listAssignedFlagsForSubTasks(ids, db);
   const codesBySubTask = new Map<string, string[]>();
+  const flagsBySubTask = new Map<
+    string,
+    Array<{ id: string; code: string }>
+  >();
   for (const row of assignedRows) {
-    const list = codesBySubTask.get(row.subTaskId) ?? [];
-    list.push(formatMaterialFlagCode(row.categoryRef, row.index));
-    codesBySubTask.set(row.subTaskId, list);
+    const code = formatMaterialFlagCode(row.categoryRef, row.index);
+    const codes = codesBySubTask.get(row.subTaskId) ?? [];
+    codes.push(code);
+    codesBySubTask.set(row.subTaskId, codes);
+    const flags = flagsBySubTask.get(row.subTaskId) ?? [];
+    flags.push({ id: row.flagId, code });
+    flagsBySubTask.set(row.subTaskId, flags);
   }
 
   const byId = new Map(items.map((item) => [item.documentId, item]));
 
+  return items.map((item) => {
+    const dependencyFlags = (item.dependencyIds ?? [])
+      .map((depId) => {
+        const predecessor = byId.get(depId);
+        const codes = codesBySubTask.get(depId) ?? [];
+        const flags = flagsBySubTask.get(depId) ?? [];
+        const semBandeira = isSemBandeiraHint({
+          categoryId: predecessor?.subTaskCategoryId ?? null,
+          status: predecessor?.status,
+          assignedFlagCodes: codes,
+        });
+        if (!semBandeira && codes.length === 0) return null;
+        return {
+          predecessorId: depId,
+          predecessorName: predecessor?.name ?? "",
+          codes,
+          flags,
+          semBandeira,
+        };
+      })
+      .filter((hint): hint is NonNullable<typeof hint> => Boolean(hint));
+
+    return {
+      ...item,
+      assignedFlagCodes: codesBySubTask.get(item.documentId) ?? [],
+      dependencyFlags,
+      availableFlags: undefined,
+      requiresMaterialFlagsOnFinish: undefined,
+    };
+  });
+}
+
+/** Full flag options for producing / exit (N+1 acceptable for few cards). */
+async function attachKioskProducingFlagFields(
+  items: KioskSubTask[],
+  db: Db,
+): Promise<KioskSubTask[]> {
+  if (items.length === 0) return items;
+  const withListing = await attachKioskListingFlagFields(items, db);
   return Promise.all(
-    items.map(async (item) => {
-      const dependencyFlags = (item.dependencyIds ?? [])
-        .map((depId) => {
-          const predecessor = byId.get(depId);
-          const codes = codesBySubTask.get(depId) ?? [];
-          if (!predecessor && codes.length === 0) return null;
-          return {
-            predecessorName: predecessor?.name ?? "",
-            codes,
-          };
-        })
-        .filter((hint): hint is NonNullable<typeof hint> => Boolean(hint));
-
-      let availableFlags: KioskSubTask["availableFlags"] = [];
-      if (item.subTaskCategoryId) {
-        const rows = await listAvailableFlagsForCategory(
-          item.subTaskCategoryId,
-          item.documentId,
-          db,
-        );
-        availableFlags = rows.map((row) => ({
-          id: row.id,
-          code: formatMaterialFlagCode(row.categoryRef, row.index),
-        }));
-      }
-
+    withListing.map(async (item) => {
+      const flagOptions = await resolveKioskMaterialFlagOptions(
+        item.documentId,
+        item.subTaskCategoryId,
+        db,
+      );
       return {
         ...item,
-        assignedFlagCodes: codesBySubTask.get(item.documentId) ?? [],
-        availableFlags,
-        dependencyFlags,
+        subTaskCategoryId: flagOptions.categoryId,
+        availableFlags: flagOptions.flags,
+        requiresMaterialFlagsOnFinish: flagOptions.requiresMaterialFlagsOnFinish,
       };
     }),
   );
+}
+
+async function attachKioskFlagFields(
+  items: KioskSubTask[],
+  db: Db,
+): Promise<KioskSubTask[]> {
+  return attachKioskListingFlagFields(items, db);
 }
 
 async function fetchAssignedSubTaskRows(
@@ -437,6 +487,56 @@ async function loadAssigneeAndDependencyMaps(
   return { assignedToIdsBySubTaskId, dependencyIdsBySubTaskId };
 }
 
+async function reconcileQtyCompletePausedSubTasks(
+  rows: Array<{
+    id: string;
+    status: string | null;
+    qty: number;
+    sharingType: string | null;
+    taskId: string;
+  }>,
+  completedQtyBySubTaskId: Map<string, number>,
+  activeColaboratorIdsBySubTaskId: Map<string, string[]>,
+  db: Db,
+): Promise<void> {
+  const now = new Date();
+  const idsToFinish: string[] = [];
+
+  for (const row of rows) {
+    if (row.sharingType !== "qty") continue;
+    const status = String(row.status ?? "");
+    if (status !== "paused" && status !== "waiting") continue;
+    if ((activeColaboratorIdsBySubTaskId.get(row.id) ?? []).length > 0) {
+      continue;
+    }
+    const completed = completedQtyBySubTaskId.get(row.id) ?? 0;
+    if (!isQtyTargetFullyMet(row.qty, completed)) continue;
+    idsToFinish.push(row.id);
+  }
+
+  if (idsToFinish.length === 0) return;
+
+  await db
+    .update(subTasks)
+    .set({ status: "finished", updatedAt: now })
+    .where(inArray(subTasks.id, idsToFinish));
+
+  const taskIds = new Set(
+    rows
+      .filter((row) => idsToFinish.includes(row.id))
+      .map((row) => row.taskId),
+  );
+  for (const taskId of taskIds) {
+    await runTaskSubTaskSyncRoutine(taskId, db, now);
+  }
+
+  for (const row of rows) {
+    if (idsToFinish.includes(row.id)) {
+      row.status = "finished";
+    }
+  }
+}
+
 export async function listAssignedSubTasks(
   colaboratorId: string,
   db: Db = getDb(),
@@ -463,6 +563,13 @@ export async function listAssignedSubTasks(
     loadActivityEnrichment(subTaskIds, colaboratorId, db),
     loadAssigneeAndDependencyMaps(subTaskIds, db),
   ]);
+
+  await reconcileQtyCompletePausedSubTasks(
+    rows,
+    enrichment.completedQtyBySubTaskId,
+    enrichment.activeColaboratorIdsBySubTaskId,
+    db,
+  );
 
   const now = new Date();
   const mapped = filterKioskVisibleSubTasks(
@@ -620,6 +727,112 @@ export async function listKioskQueueData(
   };
 }
 
+function flattenUnitsToSubTasks(units: readonly KioskQueueUnit[]): KioskSubTask[] {
+  const byId = new Map<string, KioskSubTask>();
+  for (const unit of units) {
+    if (unit.type === "isolated") {
+      byId.set(unit.subTask.documentId, unit.subTask);
+      continue;
+    }
+    for (const member of unit.members) {
+      byId.set(member.documentId, member);
+    }
+  }
+  return [...byId.values()];
+}
+
+async function enrichProducingUnits(
+  units: KioskQueueUnit[],
+  db: Db,
+): Promise<KioskQueueUnit[]> {
+  return Promise.all(
+    units.map(async (unit) => {
+      if (unit.type === "isolated") {
+        const [enriched] = await attachKioskProducingFlagFields(
+          [unit.subTask],
+          db,
+        );
+        return { ...unit, subTask: enriched ?? unit.subTask };
+      }
+      const members = await attachKioskProducingFlagFields(unit.members, db);
+      return { ...unit, members };
+    }),
+  );
+}
+
+export type KioskQueueSectionPage = {
+  section: KioskQueueSectionKey;
+  producingUnits: KioskQueueUnit[];
+  units: KioskQueueUnit[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  openRuns: OpenChainRun[];
+  subTasks: KioskSubTask[];
+  catalog: KioskSubTask[];
+  queuePageSize: number;
+};
+
+export async function listKioskQueueSectionPage(
+  input: {
+    colaboratorId: string;
+    section: KioskQueueSectionKey;
+    cursor?: string | null;
+    liveChainIntervalSeconds?: number;
+  },
+  db: Db = getDb(),
+): Promise<KioskQueueSectionPage> {
+  const settings = await getKioskSettings(db);
+  const queuePageSize = normalizeKioskQueuePageSize(
+    Number(settings?.queuePageSize ?? DEFAULT_KIOSK_QUEUE_PAGE_SIZE),
+  );
+
+  const queue = await listKioskQueueData(input.colaboratorId, db);
+  const units = buildKioskQueueUnits({
+    viewerId: input.colaboratorId,
+    subTasks: queue.subTasks,
+    allTaskSubTasks: queue.catalog,
+    openRuns: queue.openRuns,
+    maxSimultaneousSubtaskIntervalSeconds:
+      input.liveChainIntervalSeconds ?? 0,
+  });
+  const sections = splitQueueUnitsByKioskSection(units);
+
+  const isFirstPage = !input.cursor;
+  let producingUnits: KioskQueueUnit[] = [];
+  let source: KioskQueueUnit[] = [];
+
+  if (input.section === "liberadas") {
+    if (isFirstPage) {
+      producingUnits = await enrichProducingUnits(sections.producing, db);
+    }
+    source = sections.unlockedPending;
+  } else if (input.section === "bloqueadas") {
+    source = sections.locked;
+  } else {
+    source = sections.finishedToday;
+  }
+
+  const page = paginateQueueUnits(source, {
+    limit: queuePageSize,
+    cursor: input.cursor,
+  });
+
+  const visibleUnits = [...producingUnits, ...page.units];
+  const pageSubTasks = flattenUnitsToSubTasks(visibleUnits);
+
+  return {
+    section: input.section,
+    producingUnits,
+    units: page.units,
+    nextCursor: page.nextCursor,
+    hasMore: page.hasMore,
+    openRuns: queue.openRuns,
+    subTasks: pageSubTasks,
+    catalog: queue.catalog,
+    queuePageSize,
+  };
+}
+
 async function sumStoppedQty(subTaskId: string, db: Db): Promise<number> {
   const rows = await db
     .select({ qty: activities.qty })
@@ -708,6 +921,14 @@ export async function startSubTask(
   if (activeIds.includes(colaboratorId)) throw new Error("forbidden");
   if (isSubTaskAtWorkerCapacity(sub.maxSameTimeWorkers, activeIds.length)) {
     throw new Error("forbidden");
+  }
+
+  if (sub.sharingType === "qty") {
+    const completed = await sumStoppedQty(subTaskId, db);
+    const targetQty = resolveSubTaskTargetQty(sub.qty);
+    if (targetQty - completed <= 0) {
+      throw new Error("forbidden");
+    }
   }
 
   await db.transaction(async (tx) => {
@@ -891,12 +1112,17 @@ export async function stopSubTask(
   const sharingType = sub.sharingType === "qty" ? "qty" : "duration";
   const taskQty = task.qty;
 
+  const totalStoppedQty =
+    sharingType === "qty" ? await sumStoppedQty(subTaskId, db) : 0;
+  const sessionQty =
+    sharingType === "qty" ? parseQtyStopBody(body) : 0;
+
   const baseStopResult =
     sharingType === "qty"
       ? resolveQtyStop(
           resolveSubTaskTargetQty(sub.qty),
-          await sumStoppedQty(subTaskId, db),
-          parseQtyStopBody(body),
+          totalStoppedQty,
+          sessionQty,
         )
       : resolveDurationStop(parseDurationStopBody(body));
 
@@ -910,45 +1136,52 @@ export async function stopSubTask(
       : (openRun?.chainRunId ??
         (await findLatestChainRunIdForSubTask(subTaskId, colaboratorId, db)));
   const isHelper = Boolean(helperRunId);
-  const helperSafeBase =
-    isHelper && openRun && baseStopResult.subTaskStatus === "finished"
-      ? { ...baseStopResult, subTaskStatus: "waiting" as const }
-      : baseStopResult;
-  const stopResult = resolveStopStatusWithPeers(
-    helperSafeBase,
-    remainingActiveIds.length,
-  );
-
-  const nextStatusPreview =
-    isHelper &&
-    remainingActiveIds.length === 0 &&
-    stopResult.subTaskStatus !== "finished"
-      ? openRun
-        ? "paused"
-        : stopResult.subTaskStatus
-      : stopResult.subTaskStatus;
+  const qtyTargetMet =
+    sharingType === "qty" &&
+    isQtyTargetFullyMet(resolveSubTaskTargetQty(sub.qty), totalStoppedQty);
+  const wouldComplete = shouldFinalizeSubTaskOnStop(baseStopResult, qtyTargetMet);
   const flagIds = body.flagIds ?? [];
   const existingFlagIds = await listFlagIdsForSubTask(subTaskId, db);
   const mergedFlagIds = mergeFlagIds(existingFlagIds, flagIds);
   const hasDependents = await subTaskHasDependents(subTaskId, db);
-  assertFinishFlagsAllowed({
-    willFinish: nextStatusPreview === "finished",
-    hasDependents,
-    categoryId: sub.subTaskCategoryId,
-    totalFlagCount: mergedFlagIds.length,
+  const categoryForFinish = sub.subTaskCategoryId ?? null;
+  let availableCount = 0;
+  if (categoryForFinish) {
+    const available = await listAvailableFlagsForCategory(
+      categoryForFinish,
+      subTaskId,
+      db,
+    );
+    availableCount = available.length;
+  }
+
+  if (wouldComplete) {
+    assertFinishFlagsAllowed({
+      willFinish: true,
+      hasDependents,
+      categoryId: categoryForFinish,
+      totalFlagCount: mergedFlagIds.length,
+      availableCount,
+    });
+  }
+
+  const resolvedStop = resolveKioskStopNextStatus({
+    baseStopResult,
+    shouldFinalize: wouldComplete,
+    isHelper,
+    hasOpenRun: Boolean(openRun),
+    remainingPeerCount: remainingActiveIds.length,
   });
+  const stopResult = {
+    qty: resolvedStop.qty,
+    subTaskStatus: resolvedStop.subTaskStatus,
+  };
+  const nextStatusPreview = resolvedStop.nextStatus;
 
   let activityId = "";
 
   await db.transaction(async (tx) => {
-    const nextStatus =
-      isHelper &&
-      remainingActiveIds.length === 0 &&
-      stopResult.subTaskStatus !== "finished"
-        ? openRun
-          ? "paused"
-          : stopResult.subTaskStatus
-        : stopResult.subTaskStatus;
+    const nextStatus = nextStatusPreview;
     await tx
       .update(subTasks)
       .set({

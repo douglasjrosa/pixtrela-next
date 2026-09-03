@@ -46,7 +46,21 @@ export function resolveQtyStop(
   const targetQty = Math.max(1, subTaskQty);
   const remaining = targetQty - totalCompletedQty;
 
-  if (sessionQty < 0 || sessionQty > remaining) {
+  if (sessionQty < 0) {
+    throw new Error("qty exceeds sub-task quantity");
+  }
+
+  if (remaining <= 0) {
+    if (sessionQty !== 0) {
+      throw new Error("qty exceeds sub-task quantity");
+    }
+    return {
+      qty: 0,
+      subTaskStatus: totalCompletedQty >= targetQty ? "finished" : "waiting",
+    };
+  }
+
+  if (sessionQty > remaining) {
     throw new Error("qty exceeds sub-task quantity");
   }
 
@@ -55,6 +69,56 @@ export function resolveQtyStop(
     qty: sessionQty,
     subTaskStatus: totalCompleted >= targetQty ? "finished" : "waiting",
   };
+}
+
+export function isQtyTargetFullyMet(
+  subTaskQty: number,
+  totalCompletedQty: number,
+): boolean {
+  return totalCompletedQty >= Math.max(1, subTaskQty);
+}
+
+export function shouldFinalizeSubTaskOnStop(
+  baseStopResult: KioskStopResult,
+  qtyTargetMet: boolean,
+): boolean {
+  return qtyTargetMet || baseStopResult.subTaskStatus === "finished";
+}
+
+export type KioskOperationalStatus = SubTaskStatus | "paused";
+
+export function resolveKioskStopNextStatus(input: {
+  baseStopResult: KioskStopResult;
+  shouldFinalize: boolean;
+  isHelper: boolean;
+  hasOpenRun: boolean;
+  remainingPeerCount: number;
+}): KioskStopResult & { nextStatus: KioskOperationalStatus } {
+  const shouldFinalize = input.shouldFinalize;
+
+  const helperSafeBase =
+    input.isHelper &&
+    input.hasOpenRun &&
+    input.baseStopResult.subTaskStatus === "finished" &&
+    !shouldFinalize
+      ? { ...input.baseStopResult, subTaskStatus: "waiting" as const }
+      : input.baseStopResult;
+
+  const stopResult = shouldFinalize
+    ? { ...helperSafeBase, subTaskStatus: "finished" as const }
+    : resolveStopStatusWithPeers(helperSafeBase, input.remainingPeerCount);
+
+  const nextStatus: KioskOperationalStatus = shouldFinalize
+    ? "finished"
+    : input.isHelper &&
+        input.remainingPeerCount === 0 &&
+        stopResult.subTaskStatus !== "finished"
+      ? input.hasOpenRun
+        ? "paused"
+        : stopResult.subTaskStatus
+      : stopResult.subTaskStatus;
+
+  return { ...stopResult, nextStatus };
 }
 
 /**

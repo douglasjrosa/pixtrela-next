@@ -270,4 +270,47 @@ describe("splitQueueUnitsBySection", () => {
     expect(sections.producing).toHaveLength(1);
     expect(sections.pending).toHaveLength(0);
   });
+
+  it("orders pending units with unlocked cards before locked cards", () => {
+    const units = [
+      {
+        type: "isolated" as const,
+        subTask: subTask({
+          documentId: "locked-b",
+          name: "Locked B",
+          index: 1,
+          activationStatus: "locked",
+        }),
+        helperMode: false,
+        showStart: false,
+      },
+      {
+        type: "isolated" as const,
+        subTask: subTask({
+          documentId: "unlocked-a",
+          name: "Unlocked A",
+          index: 0,
+        }),
+        helperMode: false,
+        showStart: true,
+      },
+      {
+        type: "isolated" as const,
+        subTask: subTask({
+          documentId: "locked-c",
+          name: "Locked C",
+          index: 2,
+          activationStatus: "locked",
+        }),
+        helperMode: false,
+        showStart: false,
+      },
+    ];
+    const sections = splitQueueUnitsBySection(units);
+    expect(
+      sections.pending.map((unit) =>
+        unit.type === "isolated" ? unit.subTask.documentId : "",
+      ),
+    ).toEqual(["unlocked-a", "locked-b", "locked-c"]);
+  });
 });

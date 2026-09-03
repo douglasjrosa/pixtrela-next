@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   allocateChainTimeline,
+  buildInitialChainStopAnswers,
   elapsedSecondsBetween,
+  isChainMemberAnswerComplete,
   isFinishedThisRun,
   msUntilNextAutoAdvance,
   planPrincipalSegmentActivities,
@@ -43,6 +45,91 @@ describe("isFinishedThisRun", () => {
     };
     expect(isFinishedThisRun(member, { documentId: "a", qty: 2 })).toBe(true);
     expect(isFinishedThisRun(member, { documentId: "a", qty: 1 })).toBe(false);
+  });
+});
+
+describe("isChainMemberAnswerComplete", () => {
+  const categoryId = "11111111-1111-4111-8111-111111111111";
+
+  it("requires qty or duration answer before flags", () => {
+    expect(isChainMemberAnswerComplete("duration", undefined)).toBe(false);
+    expect(
+      isChainMemberAnswerComplete("duration", {
+        documentId: "a",
+        completed: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("requires a flag when finishing with dependents and available flags", () => {
+    expect(
+      isChainMemberAnswerComplete(
+        "duration",
+        { documentId: "a", completed: true },
+        {
+          requiresMaterialFlagsOnFinish: true,
+          categoryId,
+          availableFlagCount: 2,
+        },
+      ),
+    ).toBe(false);
+    expect(
+      isChainMemberAnswerComplete(
+        "duration",
+        { documentId: "a", completed: true, flagIds: ["f1"] },
+        {
+          requiresMaterialFlagsOnFinish: true,
+          categoryId,
+          availableFlagCount: 2,
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it("allows Sem bandeira when none available and selected", () => {
+    expect(
+      isChainMemberAnswerComplete(
+        "duration",
+        { documentId: "a", completed: true, semBandeira: true },
+        {
+          requiresMaterialFlagsOnFinish: true,
+          categoryId,
+          availableFlagCount: 0,
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it("skips flag gate on partial duration exit", () => {
+    expect(
+      isChainMemberAnswerComplete(
+        "duration",
+        { documentId: "a", completed: false },
+        {
+          requiresMaterialFlagsOnFinish: true,
+          categoryId,
+          availableFlagCount: 2,
+        },
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("buildInitialChainStopAnswers", () => {
+  it("prefills qty 0 when no pieces remain", () => {
+    expect(
+      buildInitialChainStopAnswers([
+        {
+          documentId: "a",
+          sharingType: "qty",
+          status: "producing",
+          targetQty: 2,
+          completedQty: 2,
+        },
+      ]),
+    ).toEqual({
+      a: { documentId: "a", qty: 0, availableFlagCount: 0 },
+    });
   });
 });
 

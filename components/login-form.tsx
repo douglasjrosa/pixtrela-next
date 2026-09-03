@@ -53,13 +53,20 @@ export function LoginForm() {
         <Label htmlFor="login">{t("login")}</Label>
         <Input
           id="login"
+          autoFocus
           placeholder={t("loginPlaceholder")}
+          className="text-center"
           {...register("login")}
         />
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">{t("password")}</Label>
-        <PasswordInput id="password" autoComplete="current-password" {...register("password")} />
+        <PasswordInput
+          id="password"
+          autoComplete="current-password"
+          className="text-center"
+          {...register("password")}
+        />
       </div>
       {formError ? (
         <p role="alert" className="text-sm text-destructive">

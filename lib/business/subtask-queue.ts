@@ -8,8 +8,11 @@ export type MaterialFlagOption = {
 };
 
 export type DependencyFlagHint = {
+  predecessorId?: string;
   predecessorName: string;
   codes: string[];
+  flags?: Array<{ id: string; code: string }>;
+  semBandeira?: boolean;
 };
 
 const DEFAULT_ACTIVATION_STATUS: ActivationStatus = "locked";
@@ -51,6 +54,8 @@ export interface KioskSubTask extends QueuedSubTask {
   assignedFlagCodes?: string[];
   availableFlags?: MaterialFlagOption[];
   dependencyFlags?: DependencyFlagHint[];
+  /** Producer sub-tasks must assign material flags before finishing. */
+  requiresMaterialFlagsOnFinish?: boolean;
 }
 
 export interface KioskQueueSections {
@@ -65,6 +70,20 @@ export function getRemainingSubTaskQty(
   completedQty: number,
 ): number {
   return Math.max(0, targetQty - completedQty);
+}
+
+/** Whether a qty-sharing subtask can still accept reported pieces. */
+export function hasRemainingReportableQty(
+  subTask: QueuedSubTask & {
+    sharingType?: "qty" | "duration";
+    targetQty?: number;
+    completedQty?: number;
+  },
+): boolean {
+  if (subTask.sharingType !== "qty") return true;
+  const target = subTask.targetQty ?? 1;
+  const completed = subTask.completedQty ?? 0;
+  return getRemainingSubTaskQty(target, completed) > 0;
 }
 
 /** Sort subtasks by index ascending. */
@@ -123,7 +142,9 @@ export function nextStartableSubTask(
   return (
     sorted.find((st) => {
       if (isFinishedSubTask(st) || hasViewerSession(st)) return false;
-      if (st.status === "waiting") return isUnlockedSubTask(st);
+      if (st.status === "waiting" || st.status === "paused") {
+        return isUnlockedSubTask(st);
+      }
       return st.status === "producing";
     }) ?? null
   );
@@ -138,10 +159,11 @@ export function canStartSubTask(
   const subTask = subTasks.find((st) => st.documentId === documentId);
   if (!subTask || hasViewerSession(subTask)) return false;
   if (isFinishedSubTask(subTask)) return false;
+  if (!hasRemainingReportableQty(subTask)) return false;
   if (resolveActivationStatus(subTask.activationStatus) === "disabled") {
     return false;
   }
-  if (subTask.status === "waiting") {
+  if (subTask.status === "waiting" || subTask.status === "paused") {
     return isUnlockedSubTask(subTask);
   }
   // Join an in-progress multi-worker subtask still shown in the queue.

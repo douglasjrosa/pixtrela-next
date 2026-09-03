@@ -63,10 +63,12 @@ describe("settings/actions drizzle paths", () => {
     const formData = new FormData();
     formData.set("sessionIdleSeconds", "90");
     formData.set("maxSimultaneousSubtaskIntervalSeconds", "300");
+    formData.set("queuePageSize", "15");
     await updateKioskSessionIdleSeconds(formData);
     expect(upsertKioskSettings).toHaveBeenCalledWith({
       sessionIdleSeconds: 90,
       maxSimultaneousSubtaskIntervalSeconds: 300,
+      queuePageSize: 15,
     });
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:kiosk-setting", "default");
     expect(revalidatePath).toHaveBeenCalledWith("/settings/kiosk");

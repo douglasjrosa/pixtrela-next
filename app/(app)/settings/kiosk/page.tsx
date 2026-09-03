@@ -33,6 +33,7 @@ export default async function SettingsKioskPage() {
         maxSimultaneousSubtaskIntervalSeconds={
           settings.maxSimultaneousSubtaskIntervalSeconds
         }
+        queuePageSize={settings.queuePageSize}
         action={updateKioskSessionIdleSeconds}
       />
       <EntryAccessForm value={access} onSave={handleSaveAccess} />

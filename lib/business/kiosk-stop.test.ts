@@ -4,6 +4,7 @@ import {
   parseDurationStopBody,
   parseQtyStopBody,
   resolveDurationStop,
+  resolveKioskStopNextStatus,
   resolveQtyStop,
   resolveStopStatusWithPeers,
   canAuthorizeKioskStop,
@@ -44,6 +45,58 @@ describe('resolveQtyStop', () => {
 
   it('allows zero completed pieces in a session', () => {
     expect(resolveQtyStop(10, 7, 0)).toEqual({ qty: 0, subTaskStatus: 'waiting' });
+  });
+
+  it('allows closing session with zero qty when target is already met', () => {
+    expect(resolveQtyStop(2, 2, 0)).toEqual({ qty: 0, subTaskStatus: 'finished' });
+    expect(resolveQtyStop(2, 3, 0)).toEqual({ qty: 0, subTaskStatus: 'finished' });
+  });
+});
+
+describe('resolveKioskStopNextStatus', () => {
+  it('finishes when qty target is met even for helper with open chain run', () => {
+    const result = resolveKioskStopNextStatus({
+      baseStopResult: { qty: 0, subTaskStatus: 'finished' },
+      shouldFinalize: true,
+      isHelper: true,
+      hasOpenRun: true,
+      remainingPeerCount: 0,
+    });
+    expect(result).toEqual({
+      qty: 0,
+      subTaskStatus: 'finished',
+      nextStatus: 'finished',
+    });
+  });
+
+  it('finishes duration helper exit when subtask is marked complete', () => {
+    const result = resolveKioskStopNextStatus({
+      baseStopResult: { qty: 0, subTaskStatus: 'finished' },
+      shouldFinalize: true,
+      isHelper: true,
+      hasOpenRun: true,
+      remainingPeerCount: 0,
+    });
+    expect(result).toEqual({
+      qty: 0,
+      subTaskStatus: 'finished',
+      nextStatus: 'finished',
+    });
+  });
+
+  it('pauses helper when qty target is not met and chain run is open', () => {
+    const result = resolveKioskStopNextStatus({
+      baseStopResult: { qty: 0, subTaskStatus: 'waiting' },
+      shouldFinalize: false,
+      isHelper: true,
+      hasOpenRun: true,
+      remainingPeerCount: 0,
+    });
+    expect(result).toEqual({
+      qty: 0,
+      subTaskStatus: 'waiting',
+      nextStatus: 'paused',
+    });
   });
 });
 

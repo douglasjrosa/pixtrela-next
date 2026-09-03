@@ -32,6 +32,7 @@ describeWithDb("joinLiveChain", () => {
       await upsertKioskSettings({
         sessionIdleSeconds: 7,
         maxSimultaneousSubtaskIntervalSeconds: 300,
+        queuePageSize: 15,
       });
       const worker = await createUser({
         username: `live-${suffix}`,

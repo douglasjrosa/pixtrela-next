@@ -14,6 +14,7 @@ import { nextJoinableSubTask } from "@/lib/business/kiosk-live-chain";
 import {
   canStartSubTask,
   hasActiveSubTask,
+  isLockedSubTask,
   type KioskSubTask,
 } from "@/lib/business/subtask-queue";
 
@@ -263,6 +264,38 @@ function applyStartVisibility(
   });
 }
 
+function isLockedQueueUnit(unit: KioskQueueUnit): boolean {
+  if (unit.type === "group") return unit.locked;
+  return isLockedSubTask(unit.subTask);
+}
+
+function isProducingQueueUnit(unit: KioskQueueUnit): boolean {
+  if (unit.type === "isolated") return unit.subTask.status === "producing";
+  return (
+    unit.principalActive ||
+    unit.members.some((item) => item.status === "producing")
+  );
+}
+
+function isFinishedQueueUnit(unit: KioskQueueUnit): boolean {
+  if (unit.type === "isolated") return unit.subTask.status === "finished";
+  return (
+    unit.members.length > 0 &&
+    unit.members.every((item) => item.status === "finished")
+  );
+}
+
+function sortPendingUnitsByLock(units: KioskQueueUnit[]): KioskQueueUnit[] {
+  const unlocked: KioskQueueUnit[] = [];
+  const locked: KioskQueueUnit[] = [];
+  for (const unit of units) {
+    if (isLockedQueueUnit(unit)) locked.push(unit);
+    else unlocked.push(unit);
+  }
+  return [...unlocked, ...locked];
+}
+
+/** @deprecated Prefer splitQueueUnitsByKioskSection for the paginated queue UI. */
 export function splitQueueUnitsBySection(units: readonly KioskQueueUnit[]): {
   producing: KioskQueueUnit[];
   pending: KioskQueueUnit[];
@@ -273,20 +306,89 @@ export function splitQueueUnitsBySection(units: readonly KioskQueueUnit[]): {
   const finishedToday: KioskQueueUnit[] = [];
 
   for (const unit of units) {
-    if (unit.type === "isolated") {
-      if (unit.subTask.status === "producing") producing.push(unit);
-      else if (unit.subTask.status === "finished") finishedToday.push(unit);
-      else pending.push(unit);
-      continue;
-    }
-    const hasProducing = unit.members.some((item) => item.status === "producing");
-    const allFinished =
-      unit.members.length > 0 &&
-      unit.members.every((item) => item.status === "finished");
-    if (hasProducing || unit.principalActive) producing.push(unit);
-    else if (allFinished) finishedToday.push(unit);
+    if (isProducingQueueUnit(unit)) producing.push(unit);
+    else if (isFinishedQueueUnit(unit)) finishedToday.push(unit);
     else pending.push(unit);
   }
 
-  return { producing, pending, finishedToday };
+  return {
+    producing,
+    pending: sortPendingUnitsByLock(pending),
+    finishedToday,
+  };
+}
+
+export type KioskQueueSectionKey =
+  | "liberadas"
+  | "bloqueadas"
+  | "finalizadas_hoje";
+
+export type KioskQueueSectionSplit = {
+  /** Always shown at the top of Liberadas (not paginated). */
+  producing: KioskQueueUnit[];
+  /** Unlocked pending cards in Liberadas (paginated). */
+  unlockedPending: KioskQueueUnit[];
+  /** Locked pending cards (accordion). */
+  locked: KioskQueueUnit[];
+  /** Finished today cards (accordion). */
+  finishedToday: KioskQueueUnit[];
+};
+
+export function splitQueueUnitsByKioskSection(
+  units: readonly KioskQueueUnit[],
+): KioskQueueSectionSplit {
+  const producing: KioskQueueUnit[] = [];
+  const unlockedPending: KioskQueueUnit[] = [];
+  const locked: KioskQueueUnit[] = [];
+  const finishedToday: KioskQueueUnit[] = [];
+
+  for (const unit of units) {
+    if (isProducingQueueUnit(unit)) {
+      producing.push(unit);
+      continue;
+    }
+    if (isFinishedQueueUnit(unit)) {
+      finishedToday.push(unit);
+      continue;
+    }
+    if (isLockedQueueUnit(unit)) locked.push(unit);
+    else unlockedPending.push(unit);
+  }
+
+  return { producing, unlockedPending, locked, finishedToday };
+}
+
+export function queueUnitCursor(unit: KioskQueueUnit): string {
+  return unit.type === "group" ? unit.headId : unit.subTask.documentId;
+}
+
+export function paginateQueueUnits(
+  units: readonly KioskQueueUnit[],
+  options: { limit: number; cursor?: string | null },
+): {
+  units: KioskQueueUnit[];
+  nextCursor: string | null;
+  hasMore: boolean;
+} {
+  const limit = Math.max(1, Math.trunc(options.limit));
+  let startIndex = 0;
+  if (options.cursor) {
+    const cursorIndex = units.findIndex(
+      (unit) => queueUnitCursor(unit) === options.cursor,
+    );
+    startIndex = cursorIndex >= 0 ? cursorIndex + 1 : 0;
+  }
+
+  // Units are already isolated cards or complete chain groups, so taking N
+  // units never splits a chain mid-card. Limit may still be exceeded only if
+  // a future caller flattens members — keep groups atomic by construction.
+  const page = units.slice(startIndex, startIndex + limit);
+  const endIndex = startIndex + page.length;
+  const hasMore = endIndex < units.length;
+  const last = page[page.length - 1];
+  return {
+    units: page,
+    nextCursor: hasMore && last ? queueUnitCursor(last) : null,
+    hasMore,
+  };
 }

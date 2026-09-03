@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTag = vi.fn();
+const listKioskQueueSectionPageRepo = vi.fn();
 const startSubTaskRepo = vi.fn();
 const stopSubTaskRepo = vi.fn();
 const startChainRepo = vi.fn();
@@ -16,22 +17,21 @@ vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
 }));
 
+vi.mock("@/lib/kiosk/load-session-idle", () => ({
+  loadKioskLiveChainIntervalSeconds: vi.fn(async () => 300),
+}));
+
 vi.mock("@/lib/repos/kiosk-subtasks", () => ({
   listAssignedSubTasks: vi.fn(),
+  listKioskQueueSectionPage: (...args: unknown[]) =>
+    listKioskQueueSectionPageRepo(...args),
   startSubTask: (...args: unknown[]) => startSubTaskRepo(...args),
   stopSubTask: (...args: unknown[]) => stopSubTaskRepo(...args),
 }));
 
 vi.mock("@/lib/repos/material-flags", () => ({
-  releaseFlagsForSubTask: vi.fn(),
-}));
-
-vi.mock("@/lib/repos/tasks", () => ({
-  getSubTaskById: vi.fn(),
-}));
-
-vi.mock("@/lib/repos/subtask-lifecycle", () => ({
-  runTaskSubTaskSyncRoutine: vi.fn(),
+  releaseMaterialFlag: vi.fn(),
+  refreshKioskMaterialFlags: vi.fn(),
 }));
 
 vi.mock("@/lib/repos/kiosk-chains", () => ({
@@ -45,12 +45,39 @@ describe("kiosk/[colaboratorId]/actions drizzle", () => {
   beforeEach(() => {
     vi.resetModules();
     revalidateTag.mockReset();
+    listKioskQueueSectionPageRepo.mockReset();
     startSubTaskRepo.mockReset();
     stopSubTaskRepo.mockReset();
     startChainRepo.mockReset();
     advanceChainRunRepo.mockReset();
     confirmChainStopRepo.mockReset();
     joinLiveChainRepo.mockReset();
+  });
+
+  it("fetchKioskQueueSectionPage delegates to repo", async () => {
+    listKioskQueueSectionPageRepo.mockResolvedValue({
+      section: "liberadas",
+      producingUnits: [],
+      units: [],
+      nextCursor: null,
+      hasMore: false,
+      openRuns: [],
+      subTasks: [],
+      catalog: [],
+      queuePageSize: 15,
+    });
+    const { fetchKioskQueueSectionPage } = await import("./actions");
+    const result = await fetchKioskQueueSectionPage({
+      colaboratorId: "col-1",
+      section: "liberadas",
+    });
+    expect(listKioskQueueSectionPageRepo).toHaveBeenCalledWith({
+      colaboratorId: "col-1",
+      section: "liberadas",
+      cursor: undefined,
+      liveChainIntervalSeconds: 300,
+    });
+    expect(result.section).toBe("liberadas");
   });
 
   it("startSubTask delegates to repo and revalidates drizzle tags", async () => {

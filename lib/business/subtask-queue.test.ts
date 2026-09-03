@@ -210,6 +210,48 @@ describe("canStartSubTask", () => {
     ];
     expect(canStartSubTask(peerProducing, "a")).toBe(true);
   });
+
+  it("allows resuming a paused unlocked subtask when none active", () => {
+    const paused = [
+      {
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "paused" as const,
+        activationStatus: "unlocked" as const,
+      },
+    ];
+    expect(canStartSubTask(paused, "a")).toBe(true);
+  });
+
+  it("blocks resuming a paused locked subtask", () => {
+    const paused = [
+      {
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "paused" as const,
+        activationStatus: "locked" as const,
+      },
+    ];
+    expect(canStartSubTask(paused, "a")).toBe(false);
+  });
+
+  it("blocks start when qty-sharing subtask has no remaining pieces", () => {
+    const full = [
+      {
+        documentId: "a",
+        name: "A",
+        index: 0,
+        status: "paused" as const,
+        activationStatus: "unlocked" as const,
+        sharingType: "qty" as const,
+        targetQty: 2,
+        completedQty: 2,
+      },
+    ];
+    expect(canStartSubTask(full, "a")).toBe(false);
+  });
 });
 
 describe("isFinishedSubTask", () => {

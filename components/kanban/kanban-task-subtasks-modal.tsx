@@ -1521,7 +1521,7 @@ export function KanbanTaskSubtasksModal({
               <MaterialFlagHintList
                 dependencyFlags={infoSubtask.dependencyFlags}
                 assignedFlagCodes={infoSubtask.assignedFlagCodes}
-                onRelease={
+                onReleaseAll={
                   onReleaseFlags &&
                   (infoSubtask.assignedFlagCodes?.length ?? 0) > 0
                     ? () => onReleaseFlags(infoSubtask.documentId)

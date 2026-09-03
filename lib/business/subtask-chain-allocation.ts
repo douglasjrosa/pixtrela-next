@@ -15,6 +15,10 @@ export type ChainStopAnswer = {
   completed?: boolean;
   qty?: number;
   flagIds?: string[];
+  /** Explicit Sem bandeira after refresh found none available. */
+  semBandeira?: boolean;
+  /** Latest available flag count after optional refresh. */
+  availableFlagCount?: number;
 };
 
 export type AllocationSegment = {
@@ -24,13 +28,104 @@ export type AllocationSegment = {
   stoppedAt: Date;
 };
 
+export type ChainMemberFlagGate = {
+  requiresMaterialFlagsOnFinish?: boolean;
+  categoryId?: string | null;
+  availableFlagCount?: number;
+  /** Explicit Sem bandeira after refresh found none available. */
+  semBandeiraSelected?: boolean;
+  targetQty?: number;
+  completedQty?: number;
+};
+
 export function isChainMemberAnswerComplete(
   sharingType: AllocationSharingType,
   answer: ChainStopAnswer | undefined,
+  flagGate?: ChainMemberFlagGate,
 ): boolean {
   if (!answer) return false;
-  if (sharingType === "duration") return typeof answer.completed === "boolean";
-  return typeof answer.qty === "number" && Number.isInteger(answer.qty) && answer.qty >= 0;
+  const baseOk =
+    sharingType === "duration"
+      ? typeof answer.completed === "boolean"
+      : typeof answer.qty === "number" &&
+        Number.isInteger(answer.qty) &&
+        answer.qty >= 0;
+  if (!baseOk) return false;
+
+  if (!flagGate?.requiresMaterialFlagsOnFinish) return true;
+
+  const willFinish =
+    sharingType === "duration"
+      ? answer.completed === true
+      : isFinishedThisRun(
+          {
+            documentId: answer.documentId,
+            expectedTime: 0,
+            sharingType,
+            targetQty: Math.max(1, flagGate.targetQty ?? 1),
+            completedQtyBefore: Math.max(0, flagGate.completedQty ?? 0),
+          },
+          answer,
+        );
+
+  if (!willFinish) return true;
+  if (!flagGate.categoryId) return true;
+  const available = flagGate.availableFlagCount ?? 0;
+  if (available > 0) return (answer.flagIds?.length ?? 0) >= 1;
+  return answer.semBandeira === true || flagGate.semBandeiraSelected === true;
+}
+
+export function resolveInitialMaterialFlagIds(member: {
+  availableFlags?: ReadonlyArray<{ id: string; code: string }>;
+  assignedFlagCodes?: readonly string[];
+}): string[] {
+  const codes = new Set(member.assignedFlagCodes ?? []);
+  return (member.availableFlags ?? [])
+    .filter((flag) => codes.has(flag.code))
+    .map((flag) => flag.id);
+}
+
+export function buildInitialChainStopAnswers(
+  members: readonly {
+    documentId: string;
+    sharingType: AllocationSharingType;
+    status: string;
+    targetQty: number;
+    completedQty: number;
+    availableFlags?: ReadonlyArray<{ id: string; code: string }>;
+    assignedFlagCodes?: readonly string[];
+  }[],
+): Record<string, ChainStopAnswer> {
+  const answers: Record<string, ChainStopAnswer> = {};
+  for (const member of members) {
+  const flagIds = resolveInitialMaterialFlagIds(member);
+  const flagPayload = {
+    ...(flagIds.length > 0 ? { flagIds } : {}),
+    availableFlagCount: member.availableFlags?.length ?? 0,
+  };
+    if (member.sharingType === "duration") {
+      if (member.status === "finished") {
+        answers[member.documentId] = {
+          documentId: member.documentId,
+          completed: true,
+          ...flagPayload,
+        };
+      }
+      continue;
+    }
+    const remaining = Math.max(
+      0,
+      member.targetQty - Math.max(0, member.completedQty),
+    );
+    if (remaining === 0) {
+      answers[member.documentId] = {
+        documentId: member.documentId,
+        qty: 0,
+        ...flagPayload,
+      };
+    }
+  }
+  return answers;
 }
 
 export function isFinishedThisRun(

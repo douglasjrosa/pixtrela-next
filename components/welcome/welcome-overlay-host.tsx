@@ -16,31 +16,30 @@ import {
   type WelcomePayload,
 } from "@/lib/welcome/welcome-session";
 
-/** Mount once in the app shell; shows a pending welcome modal after navigation. */
+/**
+ * Mount once in the app shell; shows a pending welcome modal after navigation.
+ * Payload is read only after mount so SSR HTML matches the first client paint
+ * (sessionStorage is unavailable on the server).
+ */
 export function WelcomeOverlayHost() {
   const pathname = usePathname();
   const [payload, setPayload] = useState<WelcomePayload | null>(null);
   const [destinationReady, setDestinationReady] = useState(true);
-  const [prevPathname, setPrevPathname] = useState<string | null>(null);
-  if (pathname !== prevPathname) {
-    setPrevPathname(pathname);
+
+  useEffect(() => {
     resetKioskColaboratorReady();
     const next = peekWelcomePayload();
-    if (next) setPayload(next);
+    setPayload(next);
     const waitForQueue = isKioskColaboratorPanelPath(pathname);
     setDestinationReady(!waitForQueue || isKioskColaboratorReady());
-  } else if (
-    payload &&
-    isKioskColaboratorPanelPath(pathname) &&
-    isKioskColaboratorReady() &&
-    !destinationReady
-  ) {
-    setDestinationReady(true);
-  }
+  }, [pathname]);
 
   useEffect(() => {
     if (!payload || !isKioskColaboratorPanelPath(pathname)) return;
-    if (isKioskColaboratorReady()) return;
+    if (isKioskColaboratorReady()) {
+      setDestinationReady(true);
+      return;
+    }
     function onReady(): void {
       setDestinationReady(true);
     }

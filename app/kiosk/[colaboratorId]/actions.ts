@@ -3,7 +3,9 @@
 import { revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
+import type { KioskQueueSectionKey } from "@/lib/business/kiosk-queue-units";
 import { getRemainingSubTaskQty } from "@/lib/business/subtask-queue";
+import { loadKioskLiveChainIntervalSeconds } from "@/lib/kiosk/load-session-idle";
 import {
   startChain as startChainRepo,
   advanceChainRun as advanceChainRunRepo,
@@ -11,12 +13,15 @@ import {
   joinLiveChain as joinLiveChainRepo,
 } from "@/lib/repos/kiosk-chains";
 import {
+  listKioskQueueSectionPage,
   startSubTask as startSubTaskRepo,
   stopSubTask as stopSubTaskRepo,
+  type KioskQueueSectionPage,
 } from "@/lib/repos/kiosk-subtasks";
-import { releaseFlagsForSubTask as releaseFlagsForSubTaskRepo } from "@/lib/repos/material-flags";
-import { getSubTaskById } from "@/lib/repos/tasks";
-import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
+import {
+  refreshKioskMaterialFlags,
+  releaseMaterialFlag as releaseMaterialFlagRepo,
+} from "@/lib/repos/material-flags";
 import { activityFormSchema } from "@/lib/schemas/activity";
 import { parseChainStopAnswers } from "@/lib/schemas/kiosk-chain-stop";
 import {
@@ -38,6 +43,33 @@ async function assertKioskSession(): Promise<void> {
   if (session?.user?.role !== "kiosk") {
     throw new Error("forbidden");
   }
+}
+
+const SECTION_KEYS = new Set<KioskQueueSectionKey>([
+  "liberadas",
+  "bloqueadas",
+  "finalizadas_hoje",
+]);
+
+export async function fetchKioskQueueSectionPage(input: {
+  colaboratorId: string;
+  section: KioskQueueSectionKey;
+  cursor?: string | null;
+}): Promise<KioskQueueSectionPage> {
+  await assertKioskSession();
+  if (!SECTION_KEYS.has(input.section)) {
+    throw new Error("invalidSection");
+  }
+  if (!input.colaboratorId.trim()) {
+    throw new Error("forbidden");
+  }
+  const liveChainIntervalSeconds = await loadKioskLiveChainIntervalSeconds();
+  return listKioskQueueSectionPage({
+    colaboratorId: input.colaboratorId,
+    section: input.section,
+    cursor: input.cursor,
+    liveChainIntervalSeconds,
+  });
 }
 
 export async function startSubTask(
@@ -123,14 +155,20 @@ export async function confirmChainStop(
   invalidateActivityData();
 }
 
-export async function releaseSubTaskFlags(
-  subTaskDocumentId: string,
-): Promise<void> {
+export async function refreshMaterialFlags(subTaskDocumentId: string): Promise<{
+  categoryId: string | null;
+  flags: Array<{ id: string; code: string }>;
+  requiresMaterialFlagsOnFinish: boolean;
+}> {
   await assertKioskSession();
-  await releaseFlagsForSubTaskRepo(subTaskDocumentId);
-  const subtask = await getSubTaskById(subTaskDocumentId);
-  if (subtask) {
-    await runTaskSubTaskSyncRoutine(subtask.taskId);
-  }
+  const result = await refreshKioskMaterialFlags(subTaskDocumentId);
+  invalidateActivityData();
+  return result;
+}
+
+/** Release one material flag (consumer frees a predecessor flag). */
+export async function releaseMaterialFlag(flagId: string): Promise<void> {
+  await assertKioskSession();
+  await releaseMaterialFlagRepo(flagId);
   invalidateActivityData();
 }

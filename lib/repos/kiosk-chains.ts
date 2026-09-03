@@ -47,6 +47,7 @@ import {
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import {
   assignFlagsToSubTask,
+  listAvailableFlagsForCategory,
   listFlagIdsForSubTask,
   loadHasAssignedFlagsBySubTaskId,
   releaseProducerFlagsWhenConsumersFinished,
@@ -150,6 +151,100 @@ async function loadRunActivities(
 function principalIdFromRun(rows: ChainActivityRow[]): string | null {
   const started = rows.find((row) => row.action === "started");
   return started?.colaboratorId ?? null;
+}
+
+export function resolveOpenPrincipalForChainMembers(
+  runRows: readonly ChainActivityRow[],
+  memberSubTaskIds: ReadonlySet<string>,
+): string | null {
+  return (
+    resolveOpenChainRunForMembers(runRows, memberSubTaskIds)?.principalId ??
+    null
+  );
+}
+
+export function resolveOpenChainRunForMembers(
+  runRows: readonly ChainActivityRow[],
+  memberSubTaskIds: ReadonlySet<string>,
+): OpenChainRunRef | null {
+  const scopedRows = runRows.filter((row) =>
+    memberSubTaskIds.has(row.subTaskId),
+  );
+  return resolveOpenChainRunFromActivityRows(
+    scopedRows.map((row) => ({
+      chainRunId: row.chainRunId,
+      colaboratorId: row.colaboratorId,
+      action: row.action,
+      timestamp: row.timestamp,
+      subTaskId: row.subTaskId,
+    })),
+  );
+}
+
+type ChainRunScope = {
+  sub: Awaited<ReturnType<typeof loadChainContext>>["sub"];
+  siblings: Awaited<ReturnType<typeof loadChainContext>>["siblings"];
+  chain: Awaited<ReturnType<typeof loadChainContext>>["chain"];
+  byId: Awaited<ReturnType<typeof loadChainContext>>["byId"];
+  memberIds: Set<string>;
+  scopedRows: ChainActivityRow[];
+  principalId: string;
+  runStartedAt: Date;
+};
+
+async function resolveChainRunScope(
+  runRows: ChainActivityRow[],
+  db: Db,
+  options?: {
+    preferredAnchorSubTaskId?: string;
+    requireOpenPrincipal?: boolean;
+  },
+): Promise<ChainRunScope> {
+  const orderedAnchors = options?.preferredAnchorSubTaskId
+    ? [
+        options.preferredAnchorSubTaskId,
+        ...new Set(
+          runRows
+            .map((row) => row.subTaskId)
+            .filter((id) => id !== options.preferredAnchorSubTaskId),
+        ),
+      ]
+    : [...new Set(runRows.map((row) => row.subTaskId))];
+
+  for (const subTaskId of orderedAnchors) {
+    let context: Awaited<ReturnType<typeof loadChainContext>>;
+    try {
+      context = await loadChainContext(subTaskId, db);
+    } catch {
+      continue;
+    }
+    const { chain } = context;
+    if (chain.memberIds.length <= 1) continue;
+
+    const memberIds = new Set(chain.memberIds);
+    const scopedRows = runRows.filter((row) => memberIds.has(row.subTaskId));
+    if (scopedRows.length === 0) continue;
+
+    const openRun = resolveOpenChainRunForMembers(runRows, memberIds);
+    const principalId =
+      openRun?.principalId ?? principalIdFromRun(scopedRows);
+    if (!principalId) continue;
+    if (options?.requireOpenPrincipal && !openRun) continue;
+
+    const runStartedAt =
+      openRun?.runStartedAt ?? runStartedAtFromRows(scopedRows);
+    if (!runStartedAt) continue;
+
+    return {
+      ...context,
+      memberIds,
+      scopedRows,
+      principalId,
+      runStartedAt,
+    };
+  }
+
+  throw new Error("notFound");
 }
 
 function runStartedAtFromRows(rows: ChainActivityRow[]): Date | null {
@@ -339,13 +434,10 @@ export async function advanceChainRun(
   now: Date = new Date(),
 ): Promise<void> {
   const runRows = await loadRunActivities(chainRunId, db);
-  const principalId = principalIdFromRun(runRows);
-  const runStartedAt = runStartedAtFromRows(runRows);
-  if (!principalId || !runStartedAt) throw new Error("notFound");
+  if (runRows.length === 0) return;
 
-  const firstSubTaskId = runRows[0]?.subTaskId;
-  if (!firstSubTaskId) return;
-  const { sub, chain, byId } = await loadChainContext(firstSubTaskId, db);
+  const { sub, chain, byId, principalId, runStartedAt } =
+    await resolveChainRunScope(runRows, db, { requireOpenPrincipal: true });
   const remaining = remainingExecutableMembers(chain, byId);
   const expectedById = new Map(
     (await listSubTasksWithRelationsForTask(sub.taskId, db)).map((row) => [
@@ -505,24 +597,28 @@ async function applyCreditDeltas(
   }
 }
 
+type ReallocateChainRunHints = {
+  preferredAnchorSubTaskId?: string;
+  principalId?: string;
+};
+
 async function reallocateChainRunInternal(
   chainRunId: string,
   answers: ChainStopMemberAnswer[],
   stopAt: Date,
   db: Db,
   extraHelperSeconds: number,
+  hints?: ReallocateChainRunHints,
 ): Promise<void> {
   const runRows = await loadRunActivities(chainRunId, db);
-  const principalId = principalIdFromRun(runRows);
-  const runStartedAt = runStartedAtFromRows(runRows);
-  if (!principalId || !runStartedAt) throw new Error("notFound");
-
-  const firstSubTaskId = runRows[0]?.subTaskId;
-  if (!firstSubTaskId) throw new Error("notFound");
-  const { sub, siblings, chain, byId } = await loadChainContext(
-    firstSubTaskId,
-    db,
-  );
+  const scope = await resolveChainRunScope(runRows, db, {
+    preferredAnchorSubTaskId:
+      hints?.preferredAnchorSubTaskId ?? answers[0]?.documentId,
+    requireOpenPrincipal: Boolean(hints?.principalId),
+  });
+  const principalId = hints?.principalId ?? scope.principalId;
+  const runStartedAt = scope.runStartedAt;
+  const { sub, siblings, chain, byId, scopedRows } = scope;
   const [task] = await db
     .select()
     .from(tasks)
@@ -537,7 +633,7 @@ async function reallocateChainRunInternal(
         .map((id) => byId.get(id))
         .filter((item): item is NonNullable<typeof item> => item != null)
         .filter((item) =>
-          runRows.some((row) => row.subTaskId === item.documentId),
+          scopedRows.some((row) => row.subTaskId === item.documentId),
         );
 
   const siblingById = new Map(siblings.map((row) => [row.id, row]));
@@ -684,19 +780,36 @@ async function reallocateChainRunInternal(
   });
   const creditDeltas = diffChainRunCredits(nextAwards, previousAwards);
 
+  const finishFlagIdsByMember = new Map<string, string[]>();
+
   for (const member of formMembers) {
-    if (pendingIds.has(member.documentId)) continue;
-    if (helperOpenBySubTask.has(member.documentId)) continue;
     const sibling = siblingById.get(member.documentId);
     if (!sibling) continue;
     const flagIds = answersById.get(member.documentId)?.flagIds ?? [];
     const existingFlagIds = await listFlagIdsForSubTask(member.documentId, db);
+    const mergedFlagIds = mergeFlagIds(existingFlagIds, flagIds);
     const hasDependents = await subTaskHasDependents(member.documentId, db);
+    const categoryForFinish = sibling.subTaskCategoryId ?? null;
+    const willFinish =
+      !pendingIds.has(member.documentId) &&
+      !helperOpenBySubTask.has(member.documentId);
+    let availableCount = 0;
+    if (categoryForFinish) {
+      const available = await listAvailableFlagsForCategory(
+        categoryForFinish,
+        member.documentId,
+        db,
+      );
+      availableCount = available.length;
+    }
+    finishFlagIdsByMember.set(member.documentId, flagIds);
+
     assertFinishFlagsAllowed({
-      willFinish: true,
+      willFinish,
       hasDependents,
-      categoryId: sibling.subTaskCategoryId,
-      totalFlagCount: mergeFlagIds(existingFlagIds, flagIds).length,
+      categoryId: categoryForFinish,
+      totalFlagCount: mergedFlagIds.length,
+      availableCount,
     });
   }
 
@@ -778,6 +891,15 @@ async function reallocateChainRunInternal(
             updatedAt: stopAt,
           })
           .where(eq(subTasks.id, member.documentId));
+        const pendingFlagIds =
+          finishFlagIdsByMember.get(member.documentId) ?? [];
+        if (pendingFlagIds.length > 0) {
+          await assignFlagsToSubTask(
+            member.documentId,
+            pendingFlagIds,
+            tx as unknown as Db,
+          );
+        }
         continue;
       }
 
@@ -798,11 +920,11 @@ async function reallocateChainRunInternal(
           updatedAt: stopAt,
         })
         .where(eq(subTasks.id, member.documentId));
-      const flagIds = answersById.get(member.documentId)?.flagIds ?? [];
-      if (flagIds.length > 0 && !helperOpen) {
+      const finishFlagIds = finishFlagIdsByMember.get(member.documentId) ?? [];
+      if (finishFlagIds.length > 0) {
         await assignFlagsToSubTask(
           member.documentId,
-          flagIds,
+          finishFlagIds,
           tx as unknown as Db,
         );
       }
@@ -832,9 +954,17 @@ export async function confirmChainStop(
   timestamp: Date = new Date(),
 ): Promise<void> {
   const runRows = await loadRunActivities(chainRunId, db);
-  const principalId = principalIdFromRun(runRows);
-  if (principalId !== colaboratorId) throw new Error("forbidden");
-  await reallocateChainRunInternal(chainRunId, answers, timestamp, db, 0);
+  const anchorSubTaskId = answers[0]?.documentId ?? runRows[0]?.subTaskId;
+  if (!anchorSubTaskId) throw new Error("notFound");
+
+  const { chain } = await loadChainContext(anchorSubTaskId, db);
+  const memberIds = new Set(chain.memberIds);
+  const principalId = resolveOpenPrincipalForChainMembers(runRows, memberIds);
+  if (!principalId || principalId !== colaboratorId) throw new Error("forbidden");
+  await reallocateChainRunInternal(chainRunId, answers, timestamp, db, 0, {
+    preferredAnchorSubTaskId: anchorSubTaskId,
+    principalId,
+  });
 }
 
 export async function reallocateChainRunAfterHelperStop(
@@ -843,14 +973,14 @@ export async function reallocateChainRunAfterHelperStop(
   db: Db = getDb(),
 ): Promise<void> {
   const runRows = await loadRunActivities(chainRunId, db);
-  const principalId = principalIdFromRun(runRows);
-  if (!principalId) throw new Error("notFound");
-  const principalStillOpen = runRows.some((row) =>
+  const scope = await resolveChainRunScope(runRows, db);
+  const { scopedRows, principalId } = scope;
+  const principalStillOpen = scopedRows.some((row) =>
     hasOpenSession(runRows, principalId, row.subTaskId),
   );
   if (principalStillOpen) return;
 
-  const principalLastStop = [...runRows]
+  const principalLastStop = [...scopedRows]
     .reverse()
     .find(
       (row) => row.colaboratorId === principalId && row.action === "stoped",
@@ -859,12 +989,12 @@ export async function reallocateChainRunAfterHelperStop(
   const extra = elapsedSecondsBetween(stopAt, helperStoppedAt);
   const answers: ChainStopMemberAnswer[] = [];
   const finishedIds = new Set(
-    runRows
+    scopedRows
       .filter((row) => row.action === "stoped" && row.colaboratorId === principalId)
       .map((row) => row.subTaskId),
   );
   for (const subTaskId of finishedIds) {
-    const qty = runRows
+    const qty = scopedRows
       .filter(
         (row) =>
           row.subTaskId === subTaskId &&
@@ -878,7 +1008,10 @@ export async function reallocateChainRunAfterHelperStop(
       qty: qty > 0 ? qty : undefined,
     });
   }
-  await reallocateChainRunInternal(chainRunId, answers, stopAt, db, extra);
+  await reallocateChainRunInternal(chainRunId, answers, stopAt, db, extra, {
+    preferredAnchorSubTaskId: answers[0]?.documentId,
+    principalId,
+  });
 }
 
 export async function attachHelperStartToOpenRun(

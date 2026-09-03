@@ -39,6 +39,7 @@ export async function upsertKioskSettings(
   input: {
     sessionIdleSeconds: number;
     maxSimultaneousSubtaskIntervalSeconds: number;
+    queuePageSize: number;
   },
   db: Db = getDb(),
 ) {
@@ -50,6 +51,7 @@ export async function upsertKioskSettings(
         sessionIdleSeconds: input.sessionIdleSeconds,
         maxSimultaneousSubtaskIntervalSeconds:
           input.maxSimultaneousSubtaskIntervalSeconds,
+        queuePageSize: input.queuePageSize,
       })
       .returning();
     return created;
@@ -60,6 +62,7 @@ export async function upsertKioskSettings(
       sessionIdleSeconds: input.sessionIdleSeconds,
       maxSimultaneousSubtaskIntervalSeconds:
         input.maxSimultaneousSubtaskIntervalSeconds,
+      queuePageSize: input.queuePageSize,
       updatedAt: new Date(),
     })
     .where(eq(kioskSettings.id, existing.id))
