@@ -112,6 +112,64 @@ export async function listTemplateSubTasks(
     .orderBy(asc(templateSubTasks.index));
 }
 
+export type TemplateWithSubTasks = {
+  template: TemplateTaskRecord;
+  subTasks: Awaited<ReturnType<typeof listTemplateSubTasks>>;
+};
+
+/**
+ * Returns template + subtasks when the code exists and has at least one subtask.
+ * Empty shells are treated as missing (null).
+ */
+export async function findTemplateWithSubTasksByCode(
+  code: string,
+  db: Db = getDb(),
+): Promise<TemplateWithSubTasks | null> {
+  const template = await findTemplateByCode(code, db);
+  if (!template) return null;
+  const subTasks = await listTemplateSubTasks(template.id, db);
+  if (subTasks.length === 0) return null;
+  return { template, subTasks };
+}
+
+/**
+ * Creates a new template-task by copying subtasks from an existing code.
+ */
+export async function cloneTemplateTaskByCode(
+  input: {
+    fromCode: string;
+    toCode: string;
+    name: string;
+  },
+  db: Db = getDb(),
+): Promise<TemplateTaskRecord> {
+  const source = await findTemplateWithSubTasksByCode(input.fromCode, db);
+  if (!source) {
+    throw new Error("templateSourceNotFound");
+  }
+
+  const subTasks: TemplateSubTaskInput[] = source.subTasks.map((row) => ({
+    name: row.name,
+    qty: row.qty,
+    index: row.index,
+    expectedTime: row.expectedTime,
+    sharingType: row.sharingType,
+    maxSameTimeWorkers: row.maxSameTimeWorkers,
+    dependencyIndexes: row.dependencyIndexes ?? [],
+    linkedToPrevious: row.linkedToPrevious,
+    subTaskCategoryId: row.subTaskCategoryId ?? null,
+  }));
+
+  return createTemplateTask(
+    {
+      code: input.toCode,
+      name: input.name,
+      subTasks,
+    },
+    db,
+  );
+}
+
 const SUB_TASK_COUNT_EXPR = sql<number>`
   coalesce(count(${templateSubTasks.id}), 0)
 `;

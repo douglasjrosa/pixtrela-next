@@ -56,21 +56,42 @@ Header: HMAC-SHA256 of the raw JSON body, `sha256=<hex>`
 {
   "pedidoId": 123,
   "Bpedido": "B-456",
-  "itens": [],
+  "itens": [
+    {
+      "Qtd": 10,
+      "prodId": 1277,
+      "nomeProd": "Caixotona",
+      "versions": ["1234", "1255", "1266"]
+    }
+  ],
   "dataEntrega": "2026-07-15",
   "empresaNome": "Cliente X"
 }
 ```
 
+### Item `versions` (product lineage)
+
+- Chronological array of **replaced** legacy product ids (oldest → newest).
+- Does **not** include the current `prodId`.
+- Populated by CRM/RBX when a product is edited (new id replaces old).
+- Optional; missing/`[]` keeps previous behaviour (RBX fallback).
+
 ## Behaviour
 
 1. CRM fires webhook on `pedido` create/update when `Bpedido` is set.
 2. Plugin validates signature and payload schema.
-3. For each item: ensure `template-task` for `prodId` (legacy RBX if missing).
+3. For each **new** item, ensure a `template-task` for `prodId`:
+   1. Template with code = current `prodId` (and subtasks) → reuse.
+   2. Else walk `versions` newest → oldest; if a template with subtasks
+      exists, **clone** it to the new code (preserves manual edits).
+   3. Else fetch RBX `?templateData=` and build from presets.
 4. **Create** task when `crmItemKey` (`pedidoId:index`) does not exist.
 5. **Update** existing task fields `name`, `qty`, `deliveryDate` only.
 6. Template subtasks are copied from the template on first create.
 7. `revalidateTag(drizzle:tasks)` invalidates board/tasks cache when tasks change.
+
+Manual re-import from RBX remains available via **Carregar modelo** on
+`/templates/tasks/[id]`.
 
 Duplicate webhooks upsert via `crmItemKey`. Items removed in CRM are **not**
 auto-deactivated.

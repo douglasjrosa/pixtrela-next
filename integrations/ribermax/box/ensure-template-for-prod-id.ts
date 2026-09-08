@@ -5,8 +5,9 @@ import {
 import { fetchBoxTemplateData } from "@/integrations/ribermax/rbx/rbx-client";
 import { findSubTaskPresetByName } from "@/lib/repos/sub-task-presets";
 import {
+  cloneTemplateTaskByCode,
   createTemplateTask,
-  findTemplateByCode,
+  findTemplateWithSubTasksByCode,
   updateTemplateTask,
 } from "@/lib/repos/templates";
 import type {
@@ -56,15 +57,55 @@ async function resolvePresetsForPayload(
 }
 
 /**
+ * Codes to try when resolving a template: current prodId, then versions
+ * newest-to-oldest (excluding duplicates of the current id).
+ */
+export function resolveTemplateSourceCodes(
+  prodId: number,
+  versions: readonly string[] = [],
+): string[] {
+  const current = String(prodId);
+  const seen = new Set<string>([current]);
+  const codes = [current];
+
+  for (let i = versions.length - 1; i >= 0; i -= 1) {
+    const raw = versions[i];
+    if (typeof raw !== "string" && typeof raw !== "number") continue;
+    const code = String(raw).trim();
+    if (!code || !/^\d+$/.test(code) || seen.has(code)) continue;
+    seen.add(code);
+    codes.push(code);
+  }
+
+  return codes;
+}
+
+/**
  * Ensures a template-task exists for the given legacy prodId and has subtasks.
+ * Prefers an existing/current template, then clones from ancestral codes in
+ * `versions` (newest first), and only then fetches from legacy RBX.
  */
 export async function ensureTemplateTaskForProdId(
   prodId: number,
   fallbackName: string,
+  versions: readonly string[] = [],
 ): Promise<string> {
   const code = String(prodId);
-  const existing = await findTemplateByCode(code);
-  if (existing) return existing.id;
+  const codes = resolveTemplateSourceCodes(prodId, versions);
+
+  const current = await findTemplateWithSubTasksByCode(code);
+  if (current) return current.template.id;
+
+  for (const ancestorCode of codes.slice(1)) {
+    const ancestor = await findTemplateWithSubTasksByCode(ancestorCode);
+    if (!ancestor) continue;
+    const cloned = await cloneTemplateTaskByCode({
+      fromCode: ancestorCode,
+      toCode: code,
+      name: fallbackName,
+    });
+    return cloned.id;
+  }
 
   const created = await createTemplateTask({
     code,

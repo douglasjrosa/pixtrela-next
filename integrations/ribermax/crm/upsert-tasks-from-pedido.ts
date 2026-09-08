@@ -121,7 +121,7 @@ export async function upsertTasksFromPedido(
       continue;
     }
 
-    await ensureTemplateTaskForProdId(draft.prodId, draft.name);
+    await ensureTemplateTaskForProdId(draft.prodId, draft.name, draft.versions);
     const index = getNextTaskIndex(taskIndexes.map((value) => ({ index: value })));
     taskIndexes.push(index);
     const external = toExternalTaskDraft(draft);

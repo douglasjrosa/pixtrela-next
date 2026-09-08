@@ -25,8 +25,27 @@ describe("mapPedidoToTaskDrafts", () => {
         deliveryDate: "2026-07-15",
         templateTaskCode: "123",
         prodId: 123,
+        versions: [],
       },
     ]);
+  });
+
+  it("propagates versions from pedido items", () => {
+    const drafts = mapPedidoToTaskDrafts({
+      id: 42,
+      itens: [
+        {
+          Qtd: 1,
+          prodId: 1277,
+          nomeProd: "Caixa",
+          versions: ["1234", "1266"],
+        },
+      ],
+      dataEntrega: null,
+      empresaNome: "Max Brasil",
+    });
+
+    expect(drafts[0]?.versions).toEqual(["1234", "1266"]);
   });
 
   it("builds stable item keys per pedido index", () => {
@@ -36,7 +55,7 @@ describe("mapPedidoToTaskDrafts", () => {
   it("builds task name from empresa and box name without qty", () => {
     expect(
       buildTaskNameFromPedidoItem(
-        { qty: 5, prodId: 1, nomeProd: "Base" },
+        { qty: 5, prodId: 1, nomeProd: "Base", versions: [] },
         "Empresa X",
       ),
     ).toBe("Empresa X - Base");

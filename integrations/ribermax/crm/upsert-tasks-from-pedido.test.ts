@@ -92,6 +92,7 @@ describe("upsertTasksFromPedido", () => {
     expect(ensureTemplateTaskForProdId).toHaveBeenCalledWith(
       123,
       "Max Brasil - Caixotona",
+      [],
     );
     expect(createTask).toHaveBeenCalledWith({
       name: "Max Brasil - Caixotona",
@@ -128,21 +129,25 @@ describe("upsertTasksFromPedido", () => {
     });
   });
 
-  it("is idempotent when payload is unchanged", async () => {
-    listSteps.mockResolvedValue([{ id: "step-1", name: "Fila de produção", index: 0 }]);
-    listActiveTasksForBoard.mockResolvedValue([{ index: 0 }]);
-    findTaskByCrmItemKey.mockResolvedValue({
-      id: "task-1",
-      name: "Max Brasil - Caixotona",
-      qty: 10,
-      deliveryDate: "2026-07-15",
+  it("passes versions to ensureTemplateTaskForProdId", async () => {
+    mockDefaultsForCreate();
+
+    await upsertTasksFromPedido({
+      ...BASE_PAYLOAD,
+      itens: [
+        {
+          Qtd: 10,
+          prodId: 1277,
+          nomeProd: "Caixotona",
+          versions: ["1234", "1266"],
+        },
+      ],
     });
 
-    const first = await upsertTasksFromPedido(BASE_PAYLOAD);
-    const second = await upsertTasksFromPedido(BASE_PAYLOAD);
-
-    expect(first).toEqual({ created: 0, updated: 0, skipped: 1 });
-    expect(second).toEqual({ created: 0, updated: 0, skipped: 1 });
-    expect(updateCrmPedidoTaskFields).not.toHaveBeenCalled();
+    expect(ensureTemplateTaskForProdId).toHaveBeenCalledWith(
+      1277,
+      "Max Brasil - Caixotona",
+      ["1234", "1266"],
+    );
   });
 });

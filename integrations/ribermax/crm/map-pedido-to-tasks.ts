@@ -17,6 +17,7 @@ export interface CrmTaskDraft {
   deliveryDate: string | null;
   templateTaskCode: string;
   prodId: number;
+  versions: string[];
 }
 
 export function toExternalTaskDraft(draft: CrmTaskDraft): ExternalTaskDraft {
@@ -52,5 +53,6 @@ export function mapPedidoToTaskDrafts(pedido: CrmPedidoEntity): CrmTaskDraft[] {
     deliveryDate: pedido.dataEntrega ?? null,
     templateTaskCode: String(item.prodId),
     prodId: item.prodId,
+    versions: item.versions,
   }));
 }

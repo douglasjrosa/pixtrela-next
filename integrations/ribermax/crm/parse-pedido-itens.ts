@@ -2,6 +2,7 @@ export interface CrmPedidoItem {
   qty: number;
   prodId: number;
   nomeProd: string;
+  versions: string[];
 }
 
 function toPositiveInt(value: unknown): number | null {
@@ -21,6 +22,36 @@ function toNonEmptyString(value: unknown): string {
   return String(value).trim();
 }
 
+/**
+ * Normalizes CRM `versions` to a chronological list of product id strings.
+ */
+export function normalizeProdutoVersions(value: unknown): string[] {
+  let rows: unknown[] = [];
+  if (Array.isArray(value)) {
+    rows = value;
+  } else if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === "null") return [];
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) rows = parsed;
+    } catch {
+      return [];
+    }
+  }
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const entry of rows) {
+    if (typeof entry !== "string" && typeof entry !== "number") continue;
+    const code = String(entry).trim();
+    if (!code || !/^\d+$/.test(code) || seen.has(code)) continue;
+    seen.add(code);
+    out.push(code);
+  }
+  return out;
+}
+
 function normalizeRawItem(raw: unknown): CrmPedidoItem | null {
   if (typeof raw !== "object" || raw === null) return null;
 
@@ -33,7 +64,12 @@ function normalizeRawItem(raw: unknown): CrmPedidoItem | null {
     toNonEmptyString(record.nomeProd) || toNonEmptyString(record.titulo);
   if (!nomeProd) return null;
 
-  return { qty, prodId, nomeProd };
+  return {
+    qty,
+    prodId,
+    nomeProd,
+    versions: normalizeProdutoVersions(record.versions),
+  };
 }
 
 /**
