@@ -135,12 +135,6 @@ describe("ensureTemplateTaskForProdId", () => {
       actionUnitTime: 1,
       subTaskCategoryId: null,
     });
-    updateTemplateTask.mockResolvedValue({
-      id: "tpl-new",
-      code: "1277",
-      name: "Empresa - Caixa",
-      active: true,
-    });
 
     const id = await ensureTemplateTaskForProdId(1277, "Empresa - Caixa", [
       "1266",
@@ -148,7 +142,15 @@ describe("ensureTemplateTaskForProdId", () => {
 
     expect(id).toBe("tpl-new");
     expect(fetchBoxTemplateData).toHaveBeenCalledWith(1277);
-    expect(updateTemplateTask).toHaveBeenCalled();
+    expect(createTemplateTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "1277",
+        subTasks: expect.arrayContaining([
+          expect.objectContaining({ name: "Corte" }),
+        ]),
+      }),
+    );
+    expect(updateTemplateTask).not.toHaveBeenCalled();
   });
 
   it("reuses an empty shell template instead of creating again", async () => {
@@ -219,12 +221,6 @@ describe("ensureTemplateTaskForProdId", () => {
       }
       return null;
     });
-    updateTemplateTask.mockResolvedValue({
-      id: "tpl-new",
-      code: "50",
-      name: "Empresa - Caixa",
-      active: true,
-    });
 
     await ensureTemplateTaskForProdId(50, "Empresa - Caixa");
 
@@ -232,6 +228,6 @@ describe("ensureTemplateTaskForProdId", () => {
     expect(findSubTaskPresetByName).toHaveBeenCalledWith(
       "Corte dos pés da base (viga)",
     );
-    expect(updateTemplateTask).toHaveBeenCalled();
+    expect(createTemplateTask).toHaveBeenCalled();
   });
 });

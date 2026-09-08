@@ -127,27 +127,30 @@ export async function ensureTemplateTaskForProdId(
     return cloned.id;
   }
 
-  const existingShell = await findTemplateByCode(code);
-  const target =
-    existingShell ??
-    (await createTemplateTask({
-      code,
-      name: fallbackName,
-      subTasks: [],
-    }));
-
+  // Fetch RBX before writing so a timeout/abort cannot leave an empty shell
+  // without a matching production task.
   const data = await fetchBoxTemplateData(prodId);
   const presetsByName = await resolvePresetsForPayload(data);
   const draft = buildTemplateFromBox(data, presetsByName);
+  const subTasks = toRepoSubTasks(draft.subTask ?? []);
 
-  await updateTemplateTask({
-    id: target.id,
-    name: draft.name,
+  const existingShell = await findTemplateByCode(code);
+  if (existingShell) {
+    await updateTemplateTask({
+      id: existingShell.id,
+      name: draft.name,
+      code: draft.code,
+      subTasks,
+    });
+    return existingShell.id;
+  }
+
+  const created = await createTemplateTask({
     code: draft.code,
-    subTasks: toRepoSubTasks(draft.subTask ?? []),
+    name: draft.name,
+    subTasks,
   });
-
-  return target.id;
+  return created.id;
 }
 
 /** Loads a box template draft from RBX using current plugin mapping. */

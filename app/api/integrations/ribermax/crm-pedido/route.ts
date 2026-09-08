@@ -6,6 +6,7 @@ import { processCrmPedidoWebhook } from "@/integrations/ribermax";
 import { CRM_WEBHOOK_SIGNATURE_HEADER } from "@/integrations/ribermax/crm/crm-webhook-http";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 async function getWebhookSecret(): Promise<string> {
   const secret = await getCrmWebhookSecret();
