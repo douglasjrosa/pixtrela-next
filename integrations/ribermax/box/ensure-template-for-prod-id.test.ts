@@ -4,6 +4,7 @@ const findTemplateWithSubTasksByCode = vi.fn();
 const cloneTemplateTaskByCode = vi.fn();
 const createTemplateTask = vi.fn();
 const updateTemplateTask = vi.fn();
+const findTemplateByCode = vi.fn();
 const findSubTaskPresetByName = vi.fn();
 const fetchBoxTemplateData = vi.fn();
 
@@ -14,6 +15,7 @@ vi.mock("@/lib/repos/templates", () => ({
     cloneTemplateTaskByCode(...args),
   createTemplateTask: (...args: unknown[]) => createTemplateTask(...args),
   updateTemplateTask: (...args: unknown[]) => updateTemplateTask(...args),
+  findTemplateByCode: (...args: unknown[]) => findTemplateByCode(...args),
 }));
 
 vi.mock("@/lib/repos/sub-task-presets", () => ({
@@ -57,6 +59,7 @@ describe("ensureTemplateTaskForProdId", () => {
     cloneTemplateTaskByCode.mockReset();
     createTemplateTask.mockReset();
     updateTemplateTask.mockReset();
+    findTemplateByCode.mockReset();
     findSubTaskPresetByName.mockReset();
     fetchBoxTemplateData.mockReset();
   });
@@ -111,6 +114,7 @@ describe("ensureTemplateTaskForProdId", () => {
 
   it("falls back to RBX when no ancestral template exists", async () => {
     findTemplateWithSubTasksByCode.mockResolvedValue(null);
+    findTemplateByCode.mockResolvedValue(null);
     createTemplateTask.mockResolvedValue({
       id: "tpl-new",
       code: "1277",
@@ -144,6 +148,90 @@ describe("ensureTemplateTaskForProdId", () => {
 
     expect(id).toBe("tpl-new");
     expect(fetchBoxTemplateData).toHaveBeenCalledWith(1277);
+    expect(updateTemplateTask).toHaveBeenCalled();
+  });
+
+  it("reuses an empty shell template instead of creating again", async () => {
+    findTemplateWithSubTasksByCode.mockResolvedValue(null);
+    findTemplateByCode.mockResolvedValue({
+      id: "tpl-shell",
+      code: "1277",
+      name: "Shell",
+      active: true,
+    });
+    fetchBoxTemplateData.mockResolvedValue({
+      prodId: 1277,
+      empresaNome: "Empresa",
+      boxName: "Caixa",
+      subtasks: [{ presetName: "Corte", qty: 1, actionUnits: 10 }],
+    });
+    findSubTaskPresetByName.mockResolvedValue({
+      id: "p1",
+      name: "Corte",
+      sharingType: "duration",
+      maxSameTimeWorkers: 1,
+      actionUnitTime: 1,
+      subTaskCategoryId: null,
+    });
+    updateTemplateTask.mockResolvedValue({
+      id: "tpl-shell",
+      code: "1277",
+      name: "Empresa - Caixa",
+      active: true,
+    });
+
+    const id = await ensureTemplateTaskForProdId(1277, "Empresa - Caixa");
+
+    expect(id).toBe("tpl-shell");
+    expect(createTemplateTask).not.toHaveBeenCalled();
+    expect(updateTemplateTask).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "tpl-shell" }),
+    );
+  });
+
+  it("resolves legacy feet-cut preset name via production aliases", async () => {
+    findTemplateWithSubTasksByCode.mockResolvedValue(null);
+    findTemplateByCode.mockResolvedValue(null);
+    createTemplateTask.mockResolvedValue({
+      id: "tpl-new",
+      code: "50",
+      name: "Empresa - Caixa",
+      active: true,
+    });
+    fetchBoxTemplateData.mockResolvedValue({
+      prodId: 50,
+      empresaNome: "Empresa",
+      boxName: "Caixa",
+      subtasks: [
+        { presetName: "Corte dos pés da base", qty: 1, actionUnits: 36 },
+      ],
+    });
+    findSubTaskPresetByName.mockImplementation(async (name: string) => {
+      if (name === "Corte dos pés da base (viga)") {
+        return {
+          id: "p-viga",
+          name: "Corte dos pés da base (viga)",
+          sharingType: "duration" as const,
+          maxSameTimeWorkers: 1,
+          actionUnitTime: 1.66,
+          subTaskCategoryId: null,
+        };
+      }
+      return null;
+    });
+    updateTemplateTask.mockResolvedValue({
+      id: "tpl-new",
+      code: "50",
+      name: "Empresa - Caixa",
+      active: true,
+    });
+
+    await ensureTemplateTaskForProdId(50, "Empresa - Caixa");
+
+    expect(findSubTaskPresetByName).toHaveBeenCalledWith("Corte dos pés da base");
+    expect(findSubTaskPresetByName).toHaveBeenCalledWith(
+      "Corte dos pés da base (viga)",
+    );
     expect(updateTemplateTask).toHaveBeenCalled();
   });
 });

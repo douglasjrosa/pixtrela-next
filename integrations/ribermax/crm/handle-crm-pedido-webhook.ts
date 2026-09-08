@@ -54,7 +54,7 @@ export async function processCrmPedidoWebhook(
       status: 500,
       body: {
         error: "processing_failed",
-        ...(process.env.NODE_ENV === "development" ? { detail: message } : {}),
+        detail: message,
       },
     };
   }

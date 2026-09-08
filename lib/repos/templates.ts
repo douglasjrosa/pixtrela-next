@@ -160,6 +160,19 @@ export async function cloneTemplateTaskByCode(
     subTaskCategoryId: row.subTaskCategoryId ?? null,
   }));
 
+  const existingTarget = await findTemplateByCode(input.toCode, db);
+  if (existingTarget) {
+    return updateTemplateTask(
+      {
+        id: existingTarget.id,
+        code: input.toCode,
+        name: input.name,
+        subTasks,
+      },
+      db,
+    );
+  }
+
   return createTemplateTask(
     {
       code: input.toCode,

@@ -12,8 +12,14 @@ export type RbxBoxTemplatePresetSeed = {
 export const RBX_BOX_TEMPLATE_PRESET_SEEDS: readonly RbxBoxTemplatePresetSeed[] =
   [
     {
-      name: "Corte dos pés da base",
+      name: "Corte dos pés da base (viga)",
       actionName: "Cortar viga",
+      sharingType: "duration",
+      maxSameTimeWorkers: 1,
+    },
+    {
+      name: "Corte dos pés da base (sarrafos)",
+      actionName: "Cortar tábua",
       sharingType: "duration",
       maxSameTimeWorkers: 1,
     },

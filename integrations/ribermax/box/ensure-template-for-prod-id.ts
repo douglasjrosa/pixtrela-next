@@ -7,6 +7,7 @@ import { findSubTaskPresetByName } from "@/lib/repos/sub-task-presets";
 import {
   cloneTemplateTaskByCode,
   createTemplateTask,
+  findTemplateByCode,
   findTemplateWithSubTasksByCode,
   updateTemplateTask,
 } from "@/lib/repos/templates";
@@ -16,6 +17,14 @@ import type {
 } from "@/lib/schemas/template-task";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 import type { BoxTemplateData } from "@/integrations/ribermax/rbx/rbx-types";
+
+/** Legacy RBX names → production preset names (prefer first match). */
+const PRESET_NAME_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  "Corte dos pés da base": [
+    "Corte dos pés da base (viga)",
+    "Corte dos pés da base (sarrafos)",
+  ],
+};
 
 function dependencyIndexesFrom(
   dependencies: TemplateSubTaskComponentInput["dependencies"],
@@ -37,6 +46,17 @@ function toRepoSubTasks(subTasks: TemplateSubTaskComponentInput[]) {
   }));
 }
 
+async function resolvePresetByName(name: string): Promise<SubTaskPreset | null> {
+  const direct = await findSubTaskPresetByName(name);
+  if (direct) return direct;
+
+  for (const alias of PRESET_NAME_ALIASES[name] ?? []) {
+    const found = await findSubTaskPresetByName(alias);
+    if (found) return found;
+  }
+  return null;
+}
+
 async function resolvePresetsForPayload(
   data: BoxTemplateData,
 ): Promise<Map<string, SubTaskPreset>> {
@@ -47,7 +67,7 @@ async function resolvePresetsForPayload(
   ];
   const presetsByName = new Map<string, SubTaskPreset>();
   for (const name of names) {
-    const preset = await findSubTaskPresetByName(name);
+    const preset = await resolvePresetByName(name);
     if (!preset) {
       throw new Error(`${PRESET_NOT_FOUND_PREFIX}${name}`);
     }
@@ -107,24 +127,27 @@ export async function ensureTemplateTaskForProdId(
     return cloned.id;
   }
 
-  const created = await createTemplateTask({
-    code,
-    name: fallbackName,
-    subTasks: [],
-  });
+  const existingShell = await findTemplateByCode(code);
+  const target =
+    existingShell ??
+    (await createTemplateTask({
+      code,
+      name: fallbackName,
+      subTasks: [],
+    }));
 
   const data = await fetchBoxTemplateData(prodId);
   const presetsByName = await resolvePresetsForPayload(data);
   const draft = buildTemplateFromBox(data, presetsByName);
 
   await updateTemplateTask({
-    id: created.id,
+    id: target.id,
     name: draft.name,
     code: draft.code,
     subTasks: toRepoSubTasks(draft.subTask ?? []),
   });
 
-  return created.id;
+  return target.id;
 }
 
 /** Loads a box template draft from RBX using current plugin mapping. */

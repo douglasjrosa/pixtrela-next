@@ -7,7 +7,7 @@ import {
 
 describe("applyTemplateSubTaskDependencies", () => {
   const subtasks = [
-    { name: "Corte dos pés da base", index: 0 },
+    { name: "Corte dos pés da base (viga)", index: 0 },
     { name: "Corte das tábuas da base", index: 1 },
     { name: TEMPLATE_SARRAFOS_CUT_NAME, index: 2 },
     { name: "Corte das chapas das laterais", index: 3 },
@@ -29,7 +29,7 @@ describe("applyTemplateSubTaskDependencies", () => {
     const withDeps = applyTemplateSubTaskDependencies(subtasks);
     const byName = Object.fromEntries(withDeps.map((row) => [row.name, row]));
 
-    expect(byName["Corte dos pés da base"]?.dependencies).toBeNull();
+    expect(byName["Corte dos pés da base (viga)"]?.dependencies).toBeNull();
     expect(byName["Montagem dos pés"]?.dependencies).toEqual([0]);
     expect(byName["Montagem da base"]?.dependencies).toEqual([1, 6]);
     expect(byName["Montagem dos quadros das laterais"]?.dependencies).toEqual([2]);

@@ -141,7 +141,8 @@ Canonical preset names (from the former the app mapper):
 
 | presetName | Typical qty | Old PHP source |
 |------------|-------------|----------------|
-| `Corte dos pés da base` | 1 | if `base.pe` or `base.toco` exists |
+| `Corte dos pés da base (viga)` | 1 | if `base.viga` exists |
+| `Corte dos pés da base (sarrafos)` | 1 | if `base.pe` / `base.toco` (no `viga`) |
 | `Corte das tábuas da base` | 1 | if `base.tabua` exists |
 | `Corte dos sarrafos da embalagem` | 1 | if `lateral` / `cabeceira` / `tampa` exists |
 | `Corte das chapas das laterais` | 2 | if `lateral` exists |
@@ -197,7 +198,7 @@ building the array:
 
 | Subtask | Depends on |
 |---------|------------|
-| `Montagem dos pés` | `Corte dos pés da base` |
+| `Montagem dos pés` | `Corte dos pés da base (viga)` or `(sarrafos)` |
 | `Montagem da base` | `Corte das tábuas da base`, `Montagem dos pés` |
 | `Montagem dos quadros das laterais` | `Corte dos sarrafos da embalagem` |
 | `Montagem dos quadros das cabeceiras` | `Corte dos sarrafos da embalagem` |
@@ -222,7 +223,7 @@ dependency graph must stay intact.
   "empresaNome": "Cliente ABC",
   "boxName": "Caixa Exportação 120x80",
   "subtasks": [
-    { "presetName": "Corte dos pés da base", "qty": 1, "actionUnits": 1 },
+    { "presetName": "Corte dos pés da base (viga)", "qty": 1, "actionUnits": 1 },
     { "presetName": "Corte das tábuas da base", "qty": 1, "actionUnits": 1 },
     { "presetName": "Corte dos sarrafos da embalagem", "qty": 1, "actionUnits": 36 },
     { "presetName": "Corte das chapas das laterais", "qty": 2, "actionUnits": 1 },
