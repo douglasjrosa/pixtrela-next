@@ -6,10 +6,12 @@ import { useTranslations } from "next-intl";
 import { MediaPickerModal } from "@/components/settings/media-picker-modal";
 import { AppImage } from "@/components/media/app-image";
 import { Button } from "@/components/ui/button";
+import { isSvgImageSrc } from "@/lib/media/image-optimization";
 import type { MediaAssetRecord } from "@/lib/repos/media";
+import { cn } from "@/lib/utils";
 
 const PREVIEW_IMAGE_CLASS =
-  "h-24 w-24 shrink-0 rounded-md border object-cover";
+  "h-24 w-24 shrink-0 rounded-md border";
 
 export interface MediaImageFieldProps {
   selectedId?: string | number | null;
@@ -20,6 +22,8 @@ export interface MediaImageFieldProps {
   onRemove: () => void;
   onListImages: () => Promise<MediaAssetRecord[]>;
   onUploadImage: (formData: FormData) => Promise<MediaAssetRecord>;
+  onUseDefault?: () => void;
+  useDefaultLabel?: string;
 }
 
 export function MediaImageField({
@@ -31,11 +35,13 @@ export function MediaImageField({
   onRemove,
   onListImages,
   onUploadImage,
+  onUseDefault,
+  useDefaultLabel,
 }: MediaImageFieldProps) {
   const tCommon = useTranslations("common");
   const [pickerOpen, setPickerOpen] = useState(false);
   const selectedKey = selectedId == null ? null : String(selectedId);
-  const hasSelection = selectedKey !== null && selectedKey.length > 0;
+  const hasPreview = Boolean(previewUrl);
 
   return (
     <>
@@ -45,7 +51,10 @@ export function MediaImageField({
             src={previewUrl}
             width={96}
             height={96}
-            className={PREVIEW_IMAGE_CLASS}
+            className={cn(
+              PREVIEW_IMAGE_CLASS,
+              isSvgImageSrc(previewUrl) ? "object-contain p-1" : "object-cover",
+            )}
           />
         ) : null}
         <div className="min-w-0 flex-1 space-y-2">
@@ -57,10 +66,20 @@ export function MediaImageField({
             >
               {tCommon("imageChoose")}
             </Button>
+            {onUseDefault && useDefaultLabel ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={disabled}
+                onClick={onUseDefault}
+              >
+                {useDefaultLabel}
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"
-              disabled={disabled || !hasSelection}
+              disabled={disabled || !hasPreview}
               onClick={onRemove}
             >
               {tCommon("imageRemove")}
@@ -69,7 +88,7 @@ export function MediaImageField({
           <p className="text-xs text-muted-foreground">
             {tCommon("imageHint")}
           </p>
-          {hasSelection ? (
+          {hasPreview ? (
             <p className="text-xs text-muted-foreground">
               {attachedLabel ?? tCommon("imageAttached")}
             </p>

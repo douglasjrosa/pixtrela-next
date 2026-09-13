@@ -57,7 +57,7 @@ describeWithDb("sub-task-presets repo", () => {
     expect(updated?.actionId).toBe(actionId);
     expect(updated?.actionName).toBe(`Action ${suffix}`);
 
-    await archiveSubTaskPresetById(id);
+    await archiveSubTaskPresetById(id, "x".repeat(100));
     const db = getDb();
     const [row] = await db
       .select({ id: subTaskPresets.id, active: subTaskPresets.active })

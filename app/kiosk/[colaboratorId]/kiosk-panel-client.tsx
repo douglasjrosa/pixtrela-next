@@ -311,7 +311,7 @@ export function KioskPanelClient({
       } catch (error) {
         rethrowIfNavigationError(error);
         setState((current) => ({ ...current, loading: false }));
-        showErrorToast(t("exitFailed"));
+        showErrorToast(t("queueLoadFailed"));
       } finally {
         loadingMoreRef.current = false;
       }
@@ -362,7 +362,7 @@ export function KioskPanelClient({
           expanded: false,
           loading: false,
         }));
-        showErrorToast(t("exitFailed"));
+        showErrorToast(t("queueLoadFailed"));
       }
     })();
   }, [bloqueadas.expanded, bloqueadas.loadedOnce, colaboratorId, t]);
@@ -398,7 +398,7 @@ export function KioskPanelClient({
           expanded: false,
           loading: false,
         }));
-        showErrorToast(t("exitFailed"));
+        showErrorToast(t("queueLoadFailed"));
       }
     })();
   }, [colaboratorId, finalizadas.expanded, finalizadas.loadedOnce, t]);

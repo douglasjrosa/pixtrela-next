@@ -4,7 +4,7 @@ const PROBE_TIMEOUT_MS = 15_000;
 const CRM_HANDSHAKE_PATH = "/api/pixtrela/handshake";
 
 /**
- * Probes the CRM (sys-rbx-frontend) handshake with the shared webhook secret.
+ * Probes the CRM (sys-rbx-frontend) handshake with the shared API secret.
  * Success only when the remote validates Token and returns HTTP 2xx.
  */
 export async function probeCrmWebhookSecret(

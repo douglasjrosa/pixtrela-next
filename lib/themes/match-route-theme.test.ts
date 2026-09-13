@@ -21,6 +21,8 @@ import {
   normalizeSurfaceColor,
   pageMarginFromStoredIndex,
   pageMarginToStoredIndex,
+  routeThemeImagePaintStyle,
+  routeThemeImageBackdropRgba,
   routeThemeLayeredStyle,
   type RouteThemeView,
 } from "./match-route-theme";
@@ -38,6 +40,8 @@ const baseTheme = {
   foregroundColor: "#002555",
   surfaceColor: "#ffffff",
   surfaceColorOpacity: 100,
+  backgroundImageColor: null,
+  usesDefaultBackgroundImage: false,
 };
 
 const themes: RouteThemeView[] = [
@@ -67,6 +71,8 @@ const themes: RouteThemeView[] = [
     foregroundColor: "#002555",
     surfaceColor: "#ffffff",
     surfaceColorOpacity: 100,
+    backgroundImageColor: null,
+    usesDefaultBackgroundImage: false,
   },
   {
     documentId: "3",
@@ -149,14 +155,16 @@ describe("routeThemeLayeredStyle", () => {
     });
   });
 
-  it("shows the image without a solid color veil at 100% opacity", () => {
+  it("paints the route color behind a full-opacity background image", () => {
     expect(
       routeThemeLayeredStyle({
         ...themes[1],
+        backgroundColor: "#0044cc",
         backgroundColorOpacity: 100,
       }),
     ).toEqual({
       backgroundImage: 'url("https://cdn.example/bg.png")',
+      backgroundColor: "rgba(0, 68, 204, 1)",
       backgroundSize: "contain",
       backgroundPosition: "top",
       backgroundRepeat: "repeat",
@@ -184,6 +192,86 @@ describe("routeThemeLayeredStyle", () => {
     expect(routeThemeLayeredStyle(themes[0])).toEqual({
       backgroundColor: "rgba(17, 34, 51, 1)",
     });
+  });
+});
+
+describe("routeThemeImagePaintStyle", () => {
+  it("keeps a photo background when no semantic tint is set", () => {
+    expect(routeThemeImagePaintStyle(themes[1])).toEqual({
+      backgroundImage: 'url("https://cdn.example/bg.png")',
+      backgroundSize: "contain",
+      backgroundPosition: "top",
+      backgroundRepeat: "repeat",
+      backgroundAttachment: "scroll",
+    });
+  });
+
+  it("does not tint a library photo even when a color is set", () => {
+    expect(
+      routeThemeImagePaintStyle({
+        ...themes[1],
+        backgroundImageColor: "#112233",
+        usesDefaultBackgroundImage: false,
+      }),
+    ).toEqual({
+      backgroundImage: 'url("https://cdn.example/bg.png")',
+      backgroundSize: "contain",
+      backgroundPosition: "top",
+      backgroundRepeat: "repeat",
+      backgroundAttachment: "scroll",
+    });
+  });
+
+  it("masks the bundled default SVG with muted-foreground when no color is stored", () => {
+    expect(
+      routeThemeImagePaintStyle({
+        ...themes[1],
+        backgroundImageUrl: "/images/star-sheet.svg",
+        usesDefaultBackgroundImage: true,
+      }),
+    ).toEqual({
+      backgroundColor: "var(--muted-foreground)",
+      WebkitMaskImage: 'url("/images/star-sheet.svg")',
+      maskImage: 'url("/images/star-sheet.svg")',
+      WebkitMaskSize: "contain",
+      maskSize: "contain",
+      WebkitMaskPosition: "top",
+      maskPosition: "top",
+      WebkitMaskRepeat: "repeat",
+      maskRepeat: "repeat",
+      maskMode: "alpha",
+    });
+  });
+
+  it("masks the bundled default SVG with a stored custom color", () => {
+    expect(
+      routeThemeImagePaintStyle({
+        ...themes[1],
+        backgroundImageUrl: "/images/star-sheet.svg",
+        backgroundImageColor: "#ff5500",
+        usesDefaultBackgroundImage: true,
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        backgroundColor: "#ff5500",
+      }),
+    );
+  });
+
+  it("exports a backdrop color for full-opacity images", () => {
+    expect(
+      routeThemeImageBackdropRgba({
+        ...themes[1],
+        backgroundColor: "#0044cc",
+        backgroundColorOpacity: 100,
+      }),
+    ).toBe("rgba(0, 68, 204, 1)");
+    expect(
+      routeThemeImageBackdropRgba({
+        ...themes[1],
+        backgroundColorOpacity: 40,
+      }),
+    ).toBeNull();
   });
 });
 

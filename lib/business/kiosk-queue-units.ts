@@ -270,10 +270,16 @@ function isLockedQueueUnit(unit: KioskQueueUnit): boolean {
 }
 
 function isProducingQueueUnit(unit: KioskQueueUnit): boolean {
-  if (unit.type === "isolated") return unit.subTask.status === "producing";
+  if (unit.type === "isolated") {
+    return (
+      unit.subTask.status === "producing" || Boolean(unit.subTask.startedAt)
+    );
+  }
   return (
     unit.principalActive ||
-    unit.members.some((item) => item.status === "producing")
+    unit.members.some(
+      (item) => item.status === "producing" || Boolean(item.startedAt),
+    )
   );
 }
 

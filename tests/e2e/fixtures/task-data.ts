@@ -16,7 +16,7 @@ function formatDatePtBr(date: Date): string {
 
 /**
  * Task payload for create-task E2E.
- * deliveryDate stays inside the default list lookback window (today − 30d).
+ * deliveryDate stays inside the default list window (today − 30d … today + 30d).
  */
 function buildCreateTaskE2ePayload(now: Date = new Date()) {
   const delivery = new Date(now.getTime());

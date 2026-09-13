@@ -31,6 +31,25 @@ describe("mergeBoardSubtaskLiveState", () => {
     ]);
   });
 
+  it("promotes waiting status when live producers exist", () => {
+    const current = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+      }),
+    ];
+
+    const merged = mergeBoardSubtaskLiveState(current, {
+      "st-1": {
+        producingColaboratorIds: ["u-1"],
+        openActivityStartedAts: ["2026-07-16T11:00:00.000Z"],
+      },
+    });
+
+    expect(merged[0]?.status).toBe("producing");
+  });
+
   it("clears live fields when the map has no entry", () => {
     const current = [
       boardSubTaskSummaryStub({

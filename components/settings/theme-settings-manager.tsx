@@ -11,10 +11,13 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { MediaImageField } from "@/components/media/media-image-field";
 import { AppImage } from "@/components/media/app-image";
+import { SemanticColorField } from "@/components/settings/semantic-color-field";
 import { SettingsSectionHeading } from "@/components/settings/settings-section-heading";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isSvgImageSrc } from "@/lib/media/image-optimization";
+import { DEFAULT_ROUTE_BACKGROUND_IMAGE_PATH } from "@/lib/themes/default-route-background";
 import { NATIVE_SELECT_TALL_CLASS_NAME } from "@/lib/ui/native-select";
 import type { RouteThemeFormInput } from "@/lib/schemas/route-theme";
 import {
@@ -52,6 +55,7 @@ import type { MediaAssetRecord } from "@/lib/repos/media";
 
 export interface ThemeSettingsManagerProps {
   themes: RouteThemeView[];
+  defaultIllustrationColor: string;
   onSave: (documentId: string, values: RouteThemeFormInput) => Promise<void>;
   onListImages: () => Promise<MediaAssetRecord[]>;
   onUploadImage: (formData: FormData) => Promise<MediaAssetRecord>;
@@ -63,6 +67,7 @@ interface ThemeDraft {
   imageId: number | string | null;
   previewUrl: string | null;
   clearImage: boolean;
+  useDefaultImage: boolean;
   size: BackgroundSize;
   position: BackgroundPosition;
   repeat: BackgroundRepeat;
@@ -73,16 +78,21 @@ interface ThemeDraft {
   contentMarginDesktop: PageMargin;
   surfaceColor: string;
   surfaceOpacity: number;
+  imageColor: string;
   message: string | null;
 }
 
-function draftFromTheme(theme: RouteThemeView): ThemeDraft {
+function draftFromTheme(
+  theme: RouteThemeView,
+  defaultIllustrationColor: string,
+): ThemeDraft {
   return {
     color: theme.backgroundColor ?? "",
     opacity: theme.backgroundColorOpacity,
     imageId: null,
     previewUrl: theme.backgroundImageUrl,
     clearImage: false,
+    useDefaultImage: theme.usesDefaultBackgroundImage,
     size: theme.backgroundSize || DEFAULT_BACKGROUND_SIZE,
     position: theme.backgroundPosition || DEFAULT_BACKGROUND_POSITION,
     repeat: theme.backgroundRepeat || DEFAULT_BACKGROUND_REPEAT,
@@ -95,6 +105,9 @@ function draftFromTheme(theme: RouteThemeView): ThemeDraft {
       theme.contentMarginDesktop || DEFAULT_PAGE_MARGIN_DESKTOP,
     surfaceColor: theme.surfaceColor || DEFAULT_SURFACE_COLOR,
     surfaceOpacity: theme.surfaceColorOpacity ?? DEFAULT_SURFACE_COLOR_OPACITY,
+    imageColor: theme.usesDefaultBackgroundImage
+      ? (theme.backgroundImageColor ?? defaultIllustrationColor)
+      : defaultIllustrationColor,
     message: null,
   };
 }
@@ -161,7 +174,14 @@ function ImagePreviewRect({
       )}
     >
       {url ? (
-        <AppImage src={url} alt="" fill className="object-cover" />
+        <AppImage
+          src={url}
+          alt=""
+          fill
+          className={
+            isSvgImageSrc(url) ? "object-contain p-1" : "object-cover"
+          }
+        />
       ) : null}
     </span>
   );
@@ -169,6 +189,7 @@ function ImagePreviewRect({
 
 export function ThemeSettingsManager({
   themes,
+  defaultIllustrationColor,
   onSave,
   onListImages,
   onUploadImage,
@@ -177,7 +198,12 @@ export function ThemeSettingsManager({
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   const [committed, setCommitted] = useState<Record<string, ThemeDraft>>(() =>
-    Object.fromEntries(themes.map((theme) => [theme.documentId, draftFromTheme(theme)])),
+    Object.fromEntries(
+      themes.map((theme) => [
+        theme.documentId,
+        draftFromTheme(theme, defaultIllustrationColor),
+      ]),
+    ),
   );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ThemeDraft | null>(null);
@@ -188,7 +214,9 @@ export function ThemeSettingsManager({
     themes.find((theme) => theme.documentId === editingId) ?? null;
 
   function openTheme(theme: RouteThemeView): void {
-    const base = committed[theme.documentId] ?? draftFromTheme(theme);
+    const base =
+      committed[theme.documentId] ??
+      draftFromTheme(theme, defaultIllustrationColor);
     setEditingId(theme.documentId);
     setDraft({ ...base, message: null });
   }
@@ -208,6 +236,7 @@ export function ThemeSettingsManager({
       imageId: asset.id,
       previewUrl: asset.browserUrl,
       clearImage: false,
+      useDefaultImage: false,
       message: null,
     });
   }
@@ -217,6 +246,18 @@ export function ThemeSettingsManager({
       clearImage: true,
       previewUrl: null,
       imageId: null,
+      useDefaultImage: false,
+      message: null,
+    });
+  }
+
+  function handleUseDefaultImage(): void {
+    patchDraft({
+      imageId: null,
+      previewUrl: DEFAULT_ROUTE_BACKGROUND_IMAGE_PATH,
+      clearImage: false,
+      useDefaultImage: true,
+      imageColor: defaultIllustrationColor,
       message: null,
     });
   }
@@ -230,8 +271,10 @@ export function ThemeSettingsManager({
       await onSave(documentId, {
         backgroundColor: values.color,
         backgroundColorOpacity: values.opacity,
-        backgroundImageId: values.imageId,
+        backgroundImageId: values.useDefaultImage ? null : values.imageId,
         clearBackgroundImage: values.clearImage,
+        useDefaultBackgroundImage:
+          values.useDefaultImage && !values.clearImage,
         backgroundSize: values.size,
         backgroundPosition: values.position,
         backgroundRepeat: values.repeat,
@@ -242,6 +285,10 @@ export function ThemeSettingsManager({
         contentMarginDesktop: values.contentMarginDesktop,
         surfaceColor: values.surfaceColor,
         surfaceColorOpacity: values.surfaceOpacity,
+        backgroundImageColor:
+          values.useDefaultImage && !values.clearImage
+            ? values.imageColor
+            : null,
       });
       setCommitted((current) => ({
         ...current,
@@ -279,6 +326,9 @@ export function ThemeSettingsManager({
   }
 
   const showImageOptions = Boolean(draft?.previewUrl && !draft.clearImage);
+  const showImageColorOptions = Boolean(
+    showImageOptions && draft?.useDefaultImage,
+  );
   const selectedImageId =
     draft?.imageId ??
     (draft?.previewUrl && !draft.clearImage ? "current" : null);
@@ -607,6 +657,8 @@ export function ThemeSettingsManager({
                   attachedLabel={t("themesImageSelected")}
                   onSelect={handleImageSelect}
                   onRemove={handleImageRemove}
+                  onUseDefault={handleUseDefaultImage}
+                  useDefaultLabel={t("themesDefaultImage")}
                   onListImages={onListImages}
                   onUploadImage={onUploadImage}
                 />
@@ -614,6 +666,18 @@ export function ThemeSettingsManager({
             </div>
 
             {showImageOptions ? (
+              <div className="space-y-4">
+                {showImageColorOptions ? (
+                  <SemanticColorField
+                    id="theme-image-color"
+                    label={t("themesImageColor")}
+                    value={draft.imageColor}
+                    disabled={busy}
+                    onChange={(value) =>
+                      patchDraft({ imageColor: value, message: null })
+                    }
+                  />
+                ) : null}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-2">
                   <Label htmlFor="theme-size">{t("themesImageSize")}</Label>
@@ -701,6 +765,7 @@ export function ThemeSettingsManager({
                     ))}
                   </select>
                 </div>
+              </div>
               </div>
             ) : null}
 

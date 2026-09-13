@@ -32,6 +32,8 @@ const themes: RouteThemeView[] = [
     foregroundColor: "#002555",
     surfaceColor: "#ffffff",
     surfaceColorOpacity: 100,
+    backgroundImageColor: null,
+    usesDefaultBackgroundImage: false,
   },
   {
     documentId: "doc-kiosk",
@@ -51,12 +53,17 @@ const themes: RouteThemeView[] = [
     foregroundColor: "#002555",
     surfaceColor: "#ffffff",
     surfaceColorOpacity: 100,
+    backgroundImageColor: null,
+    usesDefaultBackgroundImage: false,
   },
 ];
+
+const DEFAULT_ILLUSTRATION_COLOR = "#737373";
 
 describe("ThemeSettingsManager", () => {
   const defaultProps = {
     themes,
+    defaultIllustrationColor: DEFAULT_ILLUSTRATION_COLOR,
     onSave: vi.fn(),
     onListImages: vi.fn().mockResolvedValue([]),
     onUploadImage: vi.fn(),
@@ -108,6 +115,46 @@ describe("ThemeSettingsManager", () => {
       within(dialog).getByLabelText("Margem da página (desktop)"),
     ).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Cor do container")).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Imagem padrão" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByLabelText("Cor da ilustração"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("applies the default SVG with Texto suave and allows custom illustration color", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderWithIntl(
+      <ThemeSettingsManager {...defaultProps} onSave={onSave} />,
+    );
+
+    await user.click(screen.getAllByRole("button", { name: /Editar tema de Totem/i })[0]);
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Imagem padrão" }));
+
+    expect(
+      dialog.querySelector('img[src="/images/star-sheet.svg"]'),
+    ).not.toBeNull();
+    const colorField = within(dialog).getByRole("textbox", {
+      name: "Cor da ilustração",
+    });
+    expect(colorField).toHaveValue(DEFAULT_ILLUSTRATION_COLOR);
+
+    await user.clear(colorField);
+    await user.type(colorField, "#ff5500");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      "doc-kiosk",
+      expect.objectContaining({
+        useDefaultBackgroundImage: true,
+        clearBackgroundImage: false,
+        backgroundImageId: null,
+        backgroundImageColor: "#ff5500",
+      }),
+    );
   });
 
   it("closes the modal after a successful save", async () => {
@@ -152,6 +199,30 @@ describe("ThemeSettingsManager", () => {
       expect.objectContaining({
         contentMarginMobile: "xl",
         contentMarginDesktop: "sm",
+      }),
+    );
+  });
+
+  it("does not show illustration color picker for a library photo", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderWithIntl(
+      <ThemeSettingsManager {...defaultProps} onSave={onSave} />,
+    );
+
+    await user.click(
+      screen.getAllByRole("button", { name: /Editar tema de Login/i })[0],
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).queryByLabelText("Cor da ilustração"),
+    ).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      "doc-login",
+      expect.objectContaining({
+        useDefaultBackgroundImage: false,
       }),
     );
   });

@@ -6,7 +6,9 @@ const revalidatePath = vi.fn();
 const createFactoryActionRepo = vi.fn();
 const updateFactoryActionRepo = vi.fn();
 const archiveFactoryActionById = vi.fn();
+const archiveFactoryActions = vi.fn();
 const searchFactoryActionsByName = vi.fn();
+const getFactoryActionById = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: (...args: unknown[]) => auth(...args),
@@ -24,6 +26,9 @@ vi.mock("@/lib/repos/factory-actions", () => ({
     updateFactoryActionRepo(...args),
   archiveFactoryActionById: (...args: unknown[]) =>
     archiveFactoryActionById(...args),
+  archiveFactoryActions: (...args: unknown[]) =>
+    archiveFactoryActions(...args),
+  getFactoryActionById: (...args: unknown[]) => getFactoryActionById(...args),
   searchFactoryActionsByName: (...args: unknown[]) =>
     searchFactoryActionsByName(...args),
 }));
@@ -40,6 +45,8 @@ describe("factory-actions actions", () => {
     createFactoryActionRepo.mockReset();
     updateFactoryActionRepo.mockReset();
     archiveFactoryActionById.mockReset();
+    archiveFactoryActions.mockReset();
+    getFactoryActionById.mockReset();
     searchFactoryActionsByName.mockReset();
     auth.mockResolvedValue({ user: { role: "manager" } });
     vi.resetModules();
@@ -68,9 +75,10 @@ describe("factory-actions actions", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/templates/actions");
   });
 
-  it("deleteFactoryAction deletes by id", async () => {
+  it("deleteFactoryAction archives by id with reason", async () => {
+    const reason = "x".repeat(100);
     const { deleteFactoryAction } = await import("./actions");
-    await deleteFactoryAction("a1");
-    expect(archiveFactoryActionById).toHaveBeenCalledWith("a1");
+    await deleteFactoryAction("a1", reason);
+    expect(archiveFactoryActionById).toHaveBeenCalledWith("a1", reason);
   });
 });

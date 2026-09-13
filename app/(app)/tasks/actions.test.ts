@@ -4,6 +4,7 @@ const revalidateTag = vi.fn();
 const createTaskRepo = vi.fn();
 const updateTaskFields = vi.fn();
 const setTaskActive = vi.fn();
+const archiveTasks = vi.fn();
 const deleteTaskById = vi.fn();
 const listTasksRepo = vi.fn();
 const getTaskById = vi.fn();
@@ -22,6 +23,7 @@ vi.mock("@/lib/repos/tasks", () => ({
   createTask: (...args: unknown[]) => createTaskRepo(...args),
   updateTaskFields: (...args: unknown[]) => updateTaskFields(...args),
   setTaskActive: (...args: unknown[]) => setTaskActive(...args),
+  archiveTasks: (...args: unknown[]) => archiveTasks(...args),
   deleteTaskById: (...args: unknown[]) => deleteTaskById(...args),
   listTasks: (...args: unknown[]) => listTasksRepo(...args),
   getTaskById: (...args: unknown[]) => getTaskById(...args),
@@ -47,6 +49,7 @@ describe("tasks/actions drizzle CRUD", () => {
     createTaskRepo.mockReset();
     updateTaskFields.mockReset();
     setTaskActive.mockReset();
+    archiveTasks.mockReset();
     deleteTaskById.mockReset();
     listTasksRepo.mockReset();
     getTaskById.mockReset();
@@ -108,11 +111,17 @@ describe("tasks/actions drizzle CRUD", () => {
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks", "default");
   });
 
-  it("deactivateTask sets active false via repo", async () => {
+  it("deactivateTask archives via shared reason table", async () => {
     const reason = "x".repeat(100);
     const { deactivateTask } = await import("./actions");
     await deactivateTask("task-1", reason);
-    expect(setTaskActive).toHaveBeenCalledWith("task-1", false, reason);
+    expect(archiveTasks).toHaveBeenCalledWith(["task-1"], reason);
+  });
+
+  it("reactivateTask sets active true without reason", async () => {
+    const { reactivateTask } = await import("./actions");
+    await reactivateTask("task-1");
+    expect(setTaskActive).toHaveBeenCalledWith("task-1", true);
   });
 
   it("deleteTask hard-deletes via repo", async () => {
@@ -121,14 +130,13 @@ describe("tasks/actions drizzle CRUD", () => {
     expect(deleteTaskById).toHaveBeenCalledWith("task-1");
   });
 
-  it("bulkDeactivateTasks archives each selected task with shared reason", async () => {
+  it("bulkDeactivateTasks archives selected tasks once with shared reason", async () => {
     getTaskById.mockResolvedValue({ active: true });
     const reason = "x".repeat(50);
     const { bulkDeactivateTasks } = await import("./actions");
     await bulkDeactivateTasks(["task-1", "task-2"], reason);
-    expect(setTaskActive).toHaveBeenCalledTimes(2);
-    expect(setTaskActive).toHaveBeenCalledWith("task-1", false, reason);
-    expect(setTaskActive).toHaveBeenCalledWith("task-2", false, reason);
+    expect(archiveTasks).toHaveBeenCalledTimes(1);
+    expect(archiveTasks).toHaveBeenCalledWith(["task-1", "task-2"], reason);
   });
 
   it("bulkDeleteTasks deletes only inactive tasks", async () => {

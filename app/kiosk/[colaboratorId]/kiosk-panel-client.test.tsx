@@ -346,4 +346,34 @@ describe("KioskPanelClient", () => {
     ]);
     expect(showSuccessToast).toHaveBeenCalledWith("Saída registrada.");
   });
+
+  it("shows queue load error when accordion fetch fails", async () => {
+    const user = userEvent.setup();
+    fetchSectionPage.mockRejectedValue(new Error("forbidden"));
+
+    renderWithIntl(
+      <KioskPanelClient
+        colaboratorId="u-1"
+        colaboratorName="Ana"
+        initialLiberadas={liberadasPage([
+          {
+            type: "isolated",
+            subTask: waitingTask(),
+            helperMode: false,
+            showStart: true,
+          },
+        ])}
+        readOnly
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Bloqueadas" }));
+
+    expect(showErrorToast).toHaveBeenCalledWith(
+      "Não foi possível carregar a fila. Tente novamente.",
+    );
+    expect(showErrorToast).not.toHaveBeenCalledWith(
+      "Não foi possível sair da subtarefa. Tente novamente.",
+    );
+  });
 });

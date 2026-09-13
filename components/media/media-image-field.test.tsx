@@ -69,4 +69,40 @@ describe("MediaImageField", () => {
     await user.click(screen.getByRole("button", { name: "Remover imagem" }));
     expect(onRemove).toHaveBeenCalled();
   });
+
+  it("calls onUseDefault from the default-image action", async () => {
+    const user = userEvent.setup();
+    const onUseDefault = vi.fn();
+
+    renderWithIntl(
+      <MediaImageField
+        onSelect={vi.fn()}
+        onRemove={vi.fn()}
+        onListImages={vi.fn(async () => [])}
+        onUploadImage={vi.fn()}
+        onUseDefault={onUseDefault}
+        useDefaultLabel="Imagem padrão"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Imagem padrão" }));
+    expect(onUseDefault).toHaveBeenCalledOnce();
+  });
+
+  it("fits an SVG preview with object-contain", () => {
+    renderWithIntl(
+      <MediaImageField
+        selectedId={sampleAsset.id}
+        previewUrl="/api/media/star-sheet.svg"
+        onSelect={vi.fn()}
+        onRemove={vi.fn()}
+        onListImages={vi.fn(async () => [])}
+        onUploadImage={vi.fn()}
+      />,
+    );
+
+    const img = document.querySelector('img[src="/api/media/star-sheet.svg"]');
+    expect(img).toHaveClass("object-contain");
+    expect(img).not.toHaveClass("object-cover");
+  });
 });

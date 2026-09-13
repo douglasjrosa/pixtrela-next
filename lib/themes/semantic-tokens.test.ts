@@ -5,6 +5,7 @@ import {
   SEMANTIC_TOKEN_GROUPS,
   SEMANTIC_TOKEN_KEYS,
   buildSemanticThemeCss,
+  isSemanticTokenKey,
   mergeSemanticTokens,
   normalizeSemanticHexColor,
   resolveSelectOptionCssVars,
@@ -12,6 +13,12 @@ import {
 import { parseSemanticTokens } from "@/lib/schemas/semantic-theme";
 
 describe("semantic-tokens", () => {
+  it("recognizes semantic token keys", () => {
+    expect(isSemanticTokenKey("foreground")).toBe(true);
+    expect(isSemanticTokenKey("star-gold")).toBe(true);
+    expect(isSemanticTokenKey("not-a-token")).toBe(false);
+  });
+
   it("covers every token key in groups", () => {
     const grouped = new Set(
       SEMANTIC_TOKEN_GROUPS.flatMap((group) => group.keys),

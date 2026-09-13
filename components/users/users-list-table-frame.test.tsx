@@ -188,10 +188,15 @@ describe("UsersListTableFrame", () => {
     expect(
       screen.getByText(/Tem certeza de que deseja desativar/),
     ).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Sim" }));
+    const reason = "x".repeat(100);
+    await user.type(
+      screen.getByLabelText("Motivo do arquivamento"),
+      reason,
+    );
+    await user.click(screen.getByRole("button", { name: "Desativar" }));
 
     await waitFor(() => {
-      expect(bulkDeactivateUsers).toHaveBeenCalledWith(["u1"]);
+      expect(bulkDeactivateUsers).toHaveBeenCalledWith(["u1"], reason);
     });
     expect(showSuccessToast).toHaveBeenCalled();
   });

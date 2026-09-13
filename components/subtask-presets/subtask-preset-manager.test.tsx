@@ -94,7 +94,9 @@ describe("SubTaskPresetManager", () => {
     await user.click(screen.getByRole("button", { name: "Corte" }));
     expect(screen.getByRole("heading", { name: "Editar" })).toBeInTheDocument();
     expect(screen.getByDisplayValue("Corte")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Excluir" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Salvar" })).toBeInTheDocument();
   });
 

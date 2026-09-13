@@ -10,6 +10,7 @@ import {
   loadMoreFactoryActions,
 } from "@/app/(app)/factory-actions/actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
+import { ArchiveReasonModal } from "@/components/ui/archive-reason-modal";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
@@ -129,10 +130,10 @@ export function FactoryActionListTableFrame({
     setSelectedIds([]);
   }
 
-  function handleArchiveConfirm(): void {
+  function handleArchiveConfirm(reason: string): void {
     startTransition(async () => {
       try {
-        await bulkArchiveFactoryActions(selectedIds);
+        await bulkArchiveFactoryActions(selectedIds, reason);
         showSuccessToast(tActions("bulkArchived"));
         setArchiveOpen(false);
         clearSelection();
@@ -218,17 +219,16 @@ export function FactoryActionListTableFrame({
           onClick={handleLoadMore}
         />
 
-        <ConfirmDialog
+        <ArchiveReasonModal
           open={archiveOpen}
           title={tActions("bulkArchiveTitle")}
           description={tActions.rich("bulkArchiveConfirm", {
             count: selectedActions.length,
             b: (chunks) => <b>{chunks}</b>,
           })}
-          confirmLabel={tCommon("yes")}
-          cancelLabel={tCommon("cancel")}
-          confirmVariant="default"
+          count={selectedIds.length}
           disabled={isPending}
+          titleId="factory-actions-bulk-archive-title"
           onConfirm={handleArchiveConfirm}
           onClose={() => setArchiveOpen(false)}
         />

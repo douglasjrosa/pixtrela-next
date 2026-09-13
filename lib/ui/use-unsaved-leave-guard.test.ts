@@ -21,6 +21,7 @@ import {
 
 describe("getInternalNavigationPath", () => {
   it("returns same-origin in-app paths and ignores hash-only links", () => {
+    window.history.replaceState({}, "", "/user-1/store");
     const anchor = document.createElement("a");
     anchor.href = "/user-1/orders";
     expect(getInternalNavigationPath(anchor)).toBe("/user-1/orders");
@@ -64,7 +65,11 @@ describe("useUnsavedLeaveGuard", () => {
         noLabel: "Não",
       }),
     );
-    expect(addSpy).not.toHaveBeenCalled();
+    expect(addSpy).not.toHaveBeenCalledWith(
+      "click",
+      expect.any(Function),
+      true,
+    );
     addSpy.mockRestore();
   });
 

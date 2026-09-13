@@ -1,6 +1,7 @@
 import {
   calculateDurationCurrencyCredits,
   calculateQtySessionCurrency,
+  toActivityCurrencyAward,
   type WorkSharingType,
 } from "@/lib/domain/work-currency";
 
@@ -62,7 +63,7 @@ export function calculateChainRunCredits(input: {
         awards.push({
           colaboratorId: row.colaboratorId,
           subTaskId: member.documentId,
-          amount,
+          amount: toActivityCurrencyAward(amount),
         });
       }
       continue;
@@ -82,7 +83,7 @@ export function calculateChainRunCredits(input: {
       awards.push({
         colaboratorId: credit.colaboratorId,
         subTaskId: member.documentId,
-        amount: credit.amount,
+        amount: toActivityCurrencyAward(credit.amount),
       });
     }
   }

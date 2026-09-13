@@ -170,7 +170,7 @@ describe("AwardsListTableFrame", () => {
     expect(button.parentElement).toHaveClass("justify-center");
   });
 
-  it("archives selected awards after simple confirmation", async () => {
+  it("archives selected awards after reason confirmation", async () => {
     bulkArchiveAwards.mockResolvedValue(undefined);
     const user = userEvent.setup();
 
@@ -203,10 +203,15 @@ describe("AwardsListTableFrame", () => {
     expect(
       screen.getByText(/Tem certeza de que deseja arquivar/),
     ).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Sim" }));
+    const reason = "x".repeat(100);
+    await user.type(
+      screen.getByLabelText("Motivo do arquivamento"),
+      reason,
+    );
+    await user.click(screen.getByRole("button", { name: "Arquivar" }));
 
     await waitFor(() => {
-      expect(bulkArchiveAwards).toHaveBeenCalledWith(["a1"]);
+      expect(bulkArchiveAwards).toHaveBeenCalledWith(["a1"], reason);
     });
     expect(showSuccessToast).toHaveBeenCalled();
   });

@@ -1,17 +1,11 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import {
-  deactivateTask,
-  deleteTask,
-  reactivateTask,
-  updateTask,
-} from "@/app/(app)/tasks/actions";
+import { updateTask } from "@/app/(app)/tasks/actions";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { resolveDefaultStepDocumentId } from "@/lib/business/default-task-step";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
@@ -35,8 +29,6 @@ export interface TaskDetailEditorProps {
   steps: StepOption[];
   subtasks: SubTaskRow[];
   teams: TeamAssignmentOption[];
-  canDeactivate: boolean;
-  canDelete: boolean;
   loadSessions?: (
     subTaskDocumentId: string,
   ) => Promise<import("@/lib/business/task-progress").ActivitySession[]>;
@@ -74,8 +66,6 @@ export function TaskDetailEditor({
   steps,
   subtasks,
   teams,
-  canDeactivate,
-  canDelete,
   loadSessions,
   onCreateSubTask,
   onUpdateSubTask,
@@ -88,7 +78,6 @@ export function TaskDetailEditor({
   const subtaskManagerRef = useRef<SubTaskManagerHandle>(null);
   const saveInFlightRef = useRef(false);
   const [isPending, startTransition] = useTransition();
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   function handleSubmit(values: TaskFormInput): void {
     if (saveInFlightRef.current || isPending) return;
@@ -112,51 +101,6 @@ export function TaskDetailEditor({
     showErrorToast(tManage("validationError"));
   }
 
-  function handleDeactivate(reasonForDeactivation: string): void {
-    startTransition(async () => {
-      try {
-        await deactivateTask(task.documentId, reasonForDeactivation);
-        showSuccessToast(tManage("deactivated"));
-        router.refresh();
-      } catch (error) {
-        rethrowIfNavigationError(error);
-        showErrorToast(tManage("error"));
-      }
-    });
-  }
-
-  function handleReactivate(reasonForDeactivation: string): void {
-    startTransition(async () => {
-      try {
-        await reactivateTask(task.documentId, reasonForDeactivation);
-        showSuccessToast(tManage("reactivated"));
-        router.refresh();
-      } catch (error) {
-        rethrowIfNavigationError(error);
-        showErrorToast(tManage("error"));
-      }
-    });
-  }
-
-  function handleDeleteRequest(): void {
-    setIsDeleteDialogOpen(true);
-  }
-
-  function handleDeleteConfirm(): void {
-    setIsDeleteDialogOpen(false);
-    startTransition(async () => {
-      try {
-        await deleteTask(task.documentId);
-        showSuccessToast(tManage("deleted"));
-        router.push("/tasks");
-        router.refresh();
-      } catch (error) {
-        rethrowIfNavigationError(error);
-        showErrorToast(tManage("error"));
-      }
-    });
-  }
-
   return (
     <div className="space-y-8 pb-24">
       <TaskForm
@@ -165,15 +109,8 @@ export function TaskDetailEditor({
         hideActions
         defaultValues={toFormValues(task, steps)}
         isPending={isPending}
-        active={task.active}
-        reasonForDeactivation={task.reasonForDeactivation}
-        canDeactivate={canDeactivate}
-        canDelete={canDelete}
         onSubmit={handleSubmit}
         onInvalid={handleInvalid}
-        onDeactivate={handleDeactivate}
-        onReactivate={handleReactivate}
-        onDelete={handleDeleteRequest}
       />
 
       <SubTaskManager
@@ -190,15 +127,6 @@ export function TaskDetailEditor({
         onDelete={onDeleteSubTask}
       />
 
-      <ConfirmDialog
-        open={isDeleteDialogOpen}
-        title={tManage("deleteTitle")}
-        description={tManage("deleteConfirm")}
-        confirmLabel={tManage("delete")}
-        disabled={isPending}
-        onConfirm={handleDeleteConfirm}
-        onClose={() => setIsDeleteDialogOpen(false)}
-      />
 
       <div className="fixed right-6 bottom-6 z-50">
         <Button

@@ -10,6 +10,7 @@ import {
   loadMoreTeams,
 } from "@/app/(app)/teams/actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
+import { ArchiveReasonModal } from "@/components/ui/archive-reason-modal";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
@@ -128,10 +129,10 @@ export function TeamsListTableFrame({
     setSelectedIds([]);
   }
 
-  function handleArchiveConfirm(): void {
+  function handleArchiveConfirm(reason: string): void {
     startTransition(async () => {
       try {
-        await bulkArchiveTeams(selectedIds);
+        await bulkArchiveTeams(selectedIds, reason);
         showSuccessToast(tTeams("bulkArchived"));
         setArchiveOpen(false);
         clearSelection();
@@ -226,17 +227,16 @@ export function TeamsListTableFrame({
           onClick={handleLoadMore}
         />
 
-        <ConfirmDialog
+        <ArchiveReasonModal
           open={archiveOpen}
           title={tTeams("bulkArchiveTitle")}
           description={tTeams.rich("bulkArchiveConfirm", {
             count: selectedTeams.length,
             b: (chunks) => <b>{chunks}</b>,
           })}
-          confirmLabel={tCommon("yes")}
-          cancelLabel={tCommon("cancel")}
-          confirmVariant="default"
+          count={selectedIds.length}
           disabled={isPending}
+          titleId="teams-bulk-archive-title"
           onConfirm={handleArchiveConfirm}
           onClose={() => setArchiveOpen(false)}
         />

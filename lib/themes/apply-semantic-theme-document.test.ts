@@ -11,6 +11,9 @@ describe("applySemanticThemeToDocument", () => {
   beforeEach(() => {
     document.documentElement.removeAttribute("style");
     document.getElementById(SEMANTIC_THEME_STYLE_ID)?.remove();
+    document
+      .querySelectorAll('style[href="semantic-theme"]')
+      .forEach((node) => node.remove());
   });
 
   it("updates the semantic theme style tag when present", () => {
@@ -25,6 +28,19 @@ describe("applySemanticThemeToDocument", () => {
 
     expect(style.textContent).toContain("--primary: #6d28d9;");
     expect(style.textContent).toContain("color-scheme: light;");
+  });
+
+  it("updates every semantic theme style tag in the document", () => {
+    const hoisted = document.createElement("style");
+    hoisted.setAttribute("href", "semantic-theme");
+    document.head.appendChild(hoisted);
+
+    applySemanticThemeToDocument({
+      ...DEFAULT_SEMANTIC_TOKENS,
+      primary: "#6d28d9",
+    });
+
+    expect(hoisted.textContent).toContain("--primary: #6d28d9;");
   });
 
   it("sets color-scheme from background luminance when style tag is missing", () => {

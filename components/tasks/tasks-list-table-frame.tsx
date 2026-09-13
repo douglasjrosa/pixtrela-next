@@ -256,6 +256,7 @@ export function TasksListTableFrame({
         <TasksBulkArchiveModal
           open={archiveOpen}
           disabled={isPending}
+          count={selectedIds.length}
           onClose={() => setArchiveOpen(false)}
           onConfirm={handleArchiveConfirm}
         />

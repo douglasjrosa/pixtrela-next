@@ -11,8 +11,10 @@ import {
 } from "drizzle-orm";
 
 import { awardPrices, awards, currencies, mediaAssets } from "@/drizzle/schema";
+import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
 import { getDb, type Db } from "@/lib/db/client";
 import { roundCurrencyRate } from "@/lib/format/currency-rate";
+import { archiveRecords } from "@/lib/repos/deactivation-reasons";
 import type { AwardListSort } from "@/lib/schemas/award-list-sort";
 
 export type AwardRecord = {
@@ -366,14 +368,33 @@ export async function createCurrency(
   return row;
 }
 
-export async function archiveCurrency(
-  id: string,
+export async function archiveCurrencies(
+  ids: string[],
+  reason: string,
   db: Db = getDb(),
 ): Promise<void> {
-  await db
-    .update(currencies)
-    .set({ active: false, updatedAt: new Date() })
-    .where(eq(currencies.id, id));
+  await archiveRecords(
+    {
+      tableName: DEACTIVATION_TABLE.currencies,
+      recordIds: ids,
+      text: reason,
+      setInactive: async (recordIds, tx) => {
+        await tx
+          .update(currencies)
+          .set({ active: false, updatedAt: new Date() })
+          .where(inArray(currencies.id, recordIds));
+      },
+    },
+    db,
+  );
+}
+
+export async function archiveCurrency(
+  id: string,
+  reason: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await archiveCurrencies([id], reason, db);
 }
 
 export async function hardDeleteCurrency(
@@ -446,11 +467,33 @@ export async function findAwardById(
   };
 }
 
-export async function deleteAward(id: string, db: Db = getDb()): Promise<void> {
-  await db
-    .update(awards)
-    .set({ active: false, updatedAt: new Date() })
-    .where(eq(awards.id, id));
+export async function archiveAwards(
+  ids: string[],
+  reason: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await archiveRecords(
+    {
+      tableName: DEACTIVATION_TABLE.awards,
+      recordIds: ids,
+      text: reason,
+      setInactive: async (recordIds, tx) => {
+        await tx
+          .update(awards)
+          .set({ active: false, updatedAt: new Date() })
+          .where(inArray(awards.id, recordIds));
+      },
+    },
+    db,
+  );
+}
+
+export async function deleteAward(
+  id: string,
+  reason: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await archiveAwards([id], reason, db);
 }
 
 export async function hardDeleteAward(

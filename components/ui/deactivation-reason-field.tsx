@@ -4,7 +4,10 @@ import { useTranslations } from "next-intl";
 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { DEACTIVATION_REASON_MIN_LENGTH_KEY } from "@/lib/schemas/deactivation-reason";
+import {
+  BULK_DEACTIVATION_REASON_MIN_LENGTH_KEY,
+  DEACTIVATION_REASON_MIN_LENGTH_KEY,
+} from "@/lib/schemas/deactivation-reason";
 
 export interface DeactivationReasonFieldProps {
   id: string;
@@ -36,8 +39,9 @@ export function DeactivationReasonField({
       />
       {errorMessage ? (
         <p className="text-sm text-destructive">
-          {errorMessage === DEACTIVATION_REASON_MIN_LENGTH_KEY
-            ? tCommon(DEACTIVATION_REASON_MIN_LENGTH_KEY)
+          {errorMessage === DEACTIVATION_REASON_MIN_LENGTH_KEY ||
+          errorMessage === BULK_DEACTIVATION_REASON_MIN_LENGTH_KEY
+            ? tCommon(errorMessage)
             : errorMessage}
         </p>
       ) : null}

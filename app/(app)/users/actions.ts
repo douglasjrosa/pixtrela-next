@@ -17,7 +17,7 @@ import { storeMedia } from "@/lib/media/store-media";
 import { insertMediaAsset } from "@/lib/repos/media";
 import {
   createUser as createUserRepo,
-  deactivateUser as deactivateUserRepo,
+  deactivateUsers,
   hardDeleteUser,
   reactivateUser,
   findUserById,
@@ -28,6 +28,7 @@ import {
   updateUserAccount,
   type UserRole,
 } from "@/lib/repos/users";
+import { parseArchiveReason } from "@/lib/schemas/archive-with-reason";
 import {
   buildUserFormSchema,
   bulkUserIdsSchema,
@@ -43,7 +44,6 @@ export type UserImageType = "avatar" | "facePhoto";
 export type UserId = number | string;
 
 const FACE_DESCRIPTOR_LENGTH = 128;
-const USER_DEACTIVATION_REASON = "deactivated_by_manager";
 
 function parseFaceVectorFromFormData(formData: FormData): number[] | null {
   const raw = formData.get("faceVector");
@@ -177,15 +177,8 @@ export async function updateUser(
 
   if (canDeleteUsers(actorRole) && data.active !== undefined) {
     const current = await findUserById(toUserIdString(userId));
-    if (current) {
-      if (data.active && !current.active) {
-        await reactivateUser(toUserIdString(userId));
-      } else if (!data.active && current.active) {
-        await deactivateUserRepo(
-          toUserIdString(userId),
-          USER_DEACTIVATION_REASON,
-        );
-      }
+    if (current && data.active && !current.active) {
+      await reactivateUser(toUserIdString(userId));
     }
   }
 
@@ -229,14 +222,18 @@ export async function pairUserTag(
   return { ok: true, userTag };
 }
 
-export async function deactivateUser(userId: UserId): Promise<void> {
+export async function deactivateUser(
+  userId: UserId,
+  reason: string,
+): Promise<void> {
   const actorRole = await assertCanView();
   const currentRole = await loadUserRole(userId);
   if (!canManageRole(actorRole, currentRole)) {
     throw new Error("forbidden");
   }
 
-  await deactivateUserRepo(toUserIdString(userId), USER_DEACTIVATION_REASON);
+  const text = parseArchiveReason(reason, 1);
+  await deactivateUsers([toUserIdString(userId)], text);
   invalidateUsers();
 }
 
@@ -251,16 +248,20 @@ export async function deleteUser(userId: UserId): Promise<void> {
   invalidateUsers();
 }
 
-export async function bulkDeactivateUsers(userIds: string[]): Promise<void> {
+export async function bulkDeactivateUsers(
+  userIds: string[],
+  reason: string,
+): Promise<void> {
   const actorRole = await assertCanView();
   const ids = bulkUserIdsSchema.parse(userIds);
+  const text = parseArchiveReason(reason, ids.length);
   for (const userId of ids) {
     const currentRole = await loadUserRole(userId);
     if (!canManageRole(actorRole, currentRole)) {
       throw new Error("forbidden");
     }
-    await deactivateUserRepo(userId, USER_DEACTIVATION_REASON);
   }
+  await deactivateUsers(ids, text);
   invalidateUsers();
 }
 

@@ -246,8 +246,10 @@ export type UpdateRouteThemeInput = {
   foregroundColor: string;
   surfaceColor: string;
   surfaceColorOpacity: number;
+  backgroundImageColor?: string | null;
   backgroundImageMediaId?: string | null;
   clearBackgroundImage?: boolean;
+  useDefaultBackgroundImage?: boolean;
 };
 
 export async function updateRouteTheme(
@@ -278,8 +280,19 @@ export async function updateRouteTheme(
   };
   if (input.clearBackgroundImage) {
     patch.backgroundImageMediaId = null;
+    patch.useDefaultBackgroundImage = false;
+    patch.backgroundImageColorKey = null;
+  } else if (input.useDefaultBackgroundImage) {
+    patch.useDefaultBackgroundImage = true;
+    patch.backgroundImageMediaId = null;
+    patch.backgroundImageColorKey = input.backgroundImageColor ?? null;
   } else if (input.backgroundImageMediaId) {
+    patch.useDefaultBackgroundImage = false;
     patch.backgroundImageMediaId = input.backgroundImageMediaId;
+    patch.backgroundImageColorKey = null;
+  } else {
+    patch.useDefaultBackgroundImage = false;
+    patch.backgroundImageColorKey = null;
   }
   await db
     .update(routeThemes)

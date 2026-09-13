@@ -17,6 +17,7 @@ import {
   uploadCategoryImageAsset,
 } from "@/lib/media/category-image-assets";
 import {
+  archiveCurrencies,
   archiveCurrency as archiveCurrencyRepo,
   createCurrency as createCurrencyRepo,
   findCurrencyById,
@@ -24,6 +25,7 @@ import {
   listCurrencies as listCurrenciesRepo,
 } from "@/lib/repos/awards";
 import type { MediaAssetRecord } from "@/lib/repos/media";
+import { parseArchiveReason } from "@/lib/schemas/archive-with-reason";
 import {
   getCurrencyForSubtasks,
   upsertCurrencyForSubtasks,
@@ -136,13 +138,17 @@ export async function updateCurrency(
   invalidateCurrencies();
 }
 
-export async function archiveCurrency(documentId: string): Promise<void> {
+export async function archiveCurrency(
+  documentId: string,
+  reason: string,
+): Promise<void> {
   await assertCanManage();
   const all = await listAllCurrencies();
   const assignedId = await assignedCurrencyId();
   assertNotProtected(documentId, all, assignedId);
   await reassignSubtasksCurrencyIfNeeded(documentId);
-  await archiveCurrencyRepo(documentId);
+  const text = parseArchiveReason(reason, 1);
+  await archiveCurrencyRepo(documentId, text);
   invalidateCurrencies();
 }
 
@@ -159,6 +165,7 @@ export async function deleteCurrency(documentId: string): Promise<void> {
 
 export async function bulkArchiveCurrencies(
   documentIds: string[],
+  reason: string,
 ): Promise<void> {
   await assertCanManage();
   const ids = bulkCurrencyIdsSchema.parse(documentIds);
@@ -171,10 +178,11 @@ export async function bulkArchiveCurrencies(
     throw new Error("primaryCurrencyProtected");
   }
 
+  const text = parseArchiveReason(reason, archivable.length);
   for (const documentId of archivable) {
     await reassignSubtasksCurrencyIfNeeded(documentId);
-    await archiveCurrencyRepo(documentId);
   }
+  await archiveCurrencies(archivable, text);
   invalidateCurrencies();
 }
 

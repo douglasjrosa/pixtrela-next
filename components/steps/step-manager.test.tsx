@@ -49,7 +49,6 @@ describe("StepManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onReorder={vi.fn()}
-        onDelete={vi.fn()}
       />,
     );
     expect(screen.getByText("Fila")).toBeInTheDocument();
@@ -65,7 +64,6 @@ describe("StepManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onReorder={vi.fn()}
-        onDelete={vi.fn()}
       />,
     );
 
@@ -80,7 +78,6 @@ describe("StepManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onReorder={vi.fn()}
-        onDelete={vi.fn()}
       />,
     );
     expect(screen.queryByRole("button", { name: "Excluir" })).not.toBeInTheDocument();
@@ -94,7 +91,6 @@ describe("StepManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onReorder={vi.fn()}
-        onDelete={vi.fn()}
       />,
     );
 
@@ -109,7 +105,7 @@ describe("StepManager", () => {
     expect(screen.queryByLabelText("Ordem")).not.toBeInTheDocument();
   });
 
-  it("opens edit modal when clicking a row and shows Excluir", async () => {
+  it("opens edit modal without Excluir", async () => {
     const user = userEvent.setup();
     renderWithIntl(
       <StepManager
@@ -117,19 +113,14 @@ describe("StepManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onReorder={vi.fn()}
-        onDelete={vi.fn()}
       />,
     );
 
     await user.click(screen.getByText("Fila"));
-
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Editar" })).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Fila")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Fechar" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Salvar" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
-    expect(screen.queryByLabelText("Ordem")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Excluir" }),
+    ).not.toBeInTheDocument();
   });
 
   it("closes modal when close button is clicked", async () => {
@@ -140,7 +131,6 @@ describe("StepManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onReorder={vi.fn()}
-        onDelete={vi.fn()}
       />,
     );
 
@@ -165,7 +155,6 @@ describe("StepManager", () => {
         onCreate={onCreate}
         onUpdate={vi.fn()}
         onReorder={vi.fn()}
-        onDelete={vi.fn()}
       />,
     );
 
@@ -187,31 +176,5 @@ describe("StepManager", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
     expect(screen.getByText("Corte")).toBeInTheDocument();
-  });
-
-  it("removes a step from the list after confirm delete", async () => {
-    const user = userEvent.setup();
-    const onDelete = vi.fn().mockResolvedValue(undefined);
-    renderWithIntl(
-      <StepManager
-        steps={steps}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onReorder={vi.fn()}
-        onDelete={onDelete}
-      />,
-    );
-
-    await user.click(screen.getByText("Fila"));
-    await user.click(screen.getByRole("button", { name: "Excluir" }));
-    await user.click(screen.getByRole("button", { name: "Confirmar" }));
-
-    await waitFor(() => {
-      expect(onDelete).toHaveBeenCalledWith("s1");
-    });
-    await waitFor(() => {
-      expect(screen.queryByText("Fila")).not.toBeInTheDocument();
-    });
-    expect(screen.getByText("Produção")).toBeInTheDocument();
   });
 });

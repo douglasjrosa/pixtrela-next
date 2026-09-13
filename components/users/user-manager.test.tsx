@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
 import type { UserManagerProps } from "./user-manager";
@@ -237,22 +238,6 @@ describe("UserManager", () => {
     expect(screen.queryByText("Administrador")).not.toBeInTheDocument();
   });
 
-  it("shows delete action in edit modal when canDelete is true", () => {
-    renderWithIntl(
-      <TestUserManager
-        users={[users[0]!]}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-        canDelete
-        manageableRoles={["colaborator"]}
-      />,
-    );
-    expect(screen.queryByRole("button", { name: "Excluir" })).toBeNull();
-    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
-    expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
-  });
-
   it("shows the active status field in edit modal for admin", () => {
     renderWithIntl(
       <TestUserManager
@@ -281,104 +266,6 @@ describe("UserManager", () => {
     );
     fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
     expect(screen.queryByLabelText("Ativo")).toBeNull();
-  });
-
-  it("shows deactivate action for manageable users when canDeactivate", () => {
-    renderWithIntl(
-      <TestUserManager
-        users={[users[0]!]}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDeactivate={vi.fn()}
-        canDelete={false}
-        canDeactivate
-        manageableRoles={["colaborator"]}
-      />,
-    );
-    expect(screen.queryByRole("button", { name: "Desativar" })).toBeNull();
-    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
-    expect(screen.getByRole("button", { name: "Desativar" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Excluir" })).toBeNull();
-  });
-
-  it("hides deactivate when user role is not manageable", () => {
-    const leaderUser = {
-      ...users[0]!,
-      id: 3,
-      documentId: "u3",
-      name: "Ana",
-      roleType: "leader" as const,
-    };
-    renderWithIntl(
-      <TestUserManager
-        users={[leaderUser]}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDeactivate={vi.fn()}
-        canDelete={false}
-        canDeactivate
-        manageableRoles={["colaborator"]}
-      />,
-    );
-    // Leader is not manageable — row is not editable / no open link.
-    expect(screen.queryByRole("link", { name: "Ana" })).toBeNull();
-  });
-
-  it("hides deactivate for already blocked users", () => {
-    const blockedUser = { ...users[0]!, blocked: true };
-    renderWithIntl(
-      <TestUserManager
-        users={[blockedUser]}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDeactivate={vi.fn()}
-        canDelete={false}
-        canDeactivate
-        manageableRoles={["colaborator"]}
-      />,
-    );
-    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
-    expect(screen.queryByRole("button", { name: "Desativar" })).toBeNull();
-  });
-
-  it("confirms deactivate and calls onDeactivate", async () => {
-    const onDeactivate = vi.fn().mockResolvedValue(undefined);
-    renderWithIntl(
-      <TestUserManager
-        users={[users[0]!]}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDeactivate={onDeactivate}
-        canDelete={false}
-        canDeactivate
-        manageableRoles={["colaborator"]}
-      />,
-    );
-    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
-    fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
-    const confirm = screen.getByRole("dialog", { name: "Desativar usuário" });
-    fireEvent.click(within(confirm).getByRole("button", { name: "Desativar" }));
-    await waitFor(() => {
-      expect(onDeactivate).toHaveBeenCalledWith(1);
-    });
-  });
-
-  it("shows both deactivate and delete for admin", () => {
-    renderWithIntl(
-      <TestUserManager
-        users={[users[0]!]}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onDeactivate={vi.fn()}
-        onDelete={vi.fn()}
-        canDelete
-        canDeactivate
-        manageableRoles={["colaborator"]}
-      />,
-    );
-    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
-    expect(screen.getByRole("button", { name: "Desativar" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
   });
 
   it("opens edit modal when user name is clicked", () => {

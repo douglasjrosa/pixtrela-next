@@ -12,12 +12,12 @@ import { TaskDetailEditor } from "@/components/tasks/task-detail-editor";
 import type { StepOption, TaskRow } from "@/components/tasks/task-manager";
 import type { Role } from "@/lib/auth/nav";
 import {
-  canDeactivateTasks,
-  canDeleteTasks,
   canManageTasks,
 } from "@/lib/auth/permissions";
 import { countFinishedSubTasksForTask } from "@/lib/business/task-subtask-completion-count";
+import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
+import { findLatestDeactivationReason } from "@/lib/repos/deactivation-reasons";
 import { listSteps } from "@/lib/repos/steps";
 import {
   getTaskById,
@@ -51,6 +51,9 @@ async function loadTask(taskDocumentId: string): Promise<TaskRow | null> {
     const completion = countFinishedSubTasksForTask(
       await listSubTaskCompletionSnapshotsForTasks([task.id]),
     );
+    const deactivation = task.active
+      ? null
+      : await findLatestDeactivationReason(DEACTIVATION_TABLE.tasks, task.id);
     return {
       documentId: task.id,
       name: task.name,
@@ -59,7 +62,7 @@ async function loadTask(taskDocumentId: string): Promise<TaskRow | null> {
       index: task.index,
       status: task.status,
       active: task.active,
-      reasonForDeactivation: task.reasonForDeactivation ?? "",
+      reasonForDeactivation: deactivation?.text ?? "",
       templateTaskCode: task.templateTaskCode,
       totalExpectedTime: task.totalExpectedTime,
       totalTimeSpent: task.totalTimeSpent,
@@ -191,8 +194,6 @@ export default async function TaskDetailPage({ params }: PageProps) {
         steps={steps}
         subtasks={subtasks}
         teams={teams}
-        canDeactivate={canDeactivateTasks(role)}
-        canDelete={canDeleteTasks(role)}
         loadSessions={loadSubTaskSessionsAction}
         onCreateSubTask={handleCreate}
         onUpdateSubTask={handleUpdateSubTask}

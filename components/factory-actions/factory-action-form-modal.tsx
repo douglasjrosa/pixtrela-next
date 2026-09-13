@@ -13,10 +13,8 @@ export interface FactoryActionFormModalProps {
   formId: string;
   defaultValues: FactoryActionFormInput;
   saving?: boolean;
-  showDelete?: boolean;
   onClose: () => void;
   onSave: (values: FactoryActionFormInput) => void;
-  onDelete?: () => void;
 }
 
 export function FactoryActionFormModal({
@@ -25,10 +23,8 @@ export function FactoryActionFormModal({
   formId,
   defaultValues,
   saving = false,
-  showDelete = false,
   onClose,
   onSave,
-  onDelete,
 }: FactoryActionFormModalProps) {
   const tCommon = useTranslations("common");
 
@@ -40,18 +36,6 @@ export function FactoryActionFormModal({
       fillBody={false}
       disabled={saving}
       onClose={onClose}
-      footerStart={
-        showDelete && onDelete ? (
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={saving}
-            onClick={onDelete}
-          >
-            {tCommon("delete")}
-          </Button>
-        ) : undefined
-      }
       footerEnd={
         <Button type="submit" form={formId} disabled={saving}>
           {tCommon("save")}

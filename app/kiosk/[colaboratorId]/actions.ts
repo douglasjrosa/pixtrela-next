@@ -3,6 +3,8 @@
 import { revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
+import { canPreviewKioskColaborator } from "@/lib/auth/permissions";
+import type { Role } from "@/lib/auth/nav";
 import type { KioskQueueSectionKey } from "@/lib/business/kiosk-queue-units";
 import { getRemainingSubTaskQty } from "@/lib/business/subtask-queue";
 import { loadKioskLiveChainIntervalSeconds } from "@/lib/kiosk/load-session-idle";
@@ -45,6 +47,15 @@ async function assertKioskSession(): Promise<void> {
   }
 }
 
+async function assertKioskQueueReader(): Promise<void> {
+  const session = await auth();
+  const role = session?.user?.role as Role | undefined;
+  if (role === "kiosk" || canPreviewKioskColaborator(role)) {
+    return;
+  }
+  throw new Error("forbidden");
+}
+
 const SECTION_KEYS = new Set<KioskQueueSectionKey>([
   "liberadas",
   "bloqueadas",
@@ -56,7 +67,7 @@ export async function fetchKioskQueueSectionPage(input: {
   section: KioskQueueSectionKey;
   cursor?: string | null;
 }): Promise<KioskQueueSectionPage> {
-  await assertKioskSession();
+  await assertKioskQueueReader();
   if (!SECTION_KEYS.has(input.section)) {
     throw new Error("invalidSection");
   }

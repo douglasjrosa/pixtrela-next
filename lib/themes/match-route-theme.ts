@@ -1,3 +1,12 @@
+import {
+  DEFAULT_ROUTE_BACKGROUND_IMAGE_COLOR_KEY,
+  isDefaultRouteBackgroundImage,
+} from "@/lib/themes/default-route-background";
+import {
+  normalizeSemanticHexColor,
+  type SemanticTokenKey,
+} from "@/lib/themes/semantic-tokens";
+
 export const ROUTE_THEME_KEYS = [
   "login",
   "staff-home",
@@ -156,6 +165,8 @@ export interface RouteThemeView {
   foregroundColor: string;
   surfaceColor: string;
   surfaceColorOpacity: number;
+  backgroundImageColor: string | null;
+  usesDefaultBackgroundImage: boolean;
 }
 
 /** Static path prefixes ordered longest-first for matching. */
@@ -437,6 +448,45 @@ export function hexToRgba(hex: string, opacityPercent: number): string | null {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
 }
 
+export function normalizeBackgroundImageColor(
+  value: string | null | undefined,
+): string | null {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return null;
+  return normalizeSemanticHexColor(trimmed);
+}
+
+export function hasRouteThemeImageTint(
+  theme: Pick<
+    RouteThemeView,
+    "backgroundImageUrl" | "usesDefaultBackgroundImage"
+  > | null,
+): boolean {
+  if (!theme?.backgroundImageUrl) return false;
+  return (
+    theme.usesDefaultBackgroundImage ||
+    isDefaultRouteBackgroundImage(theme.backgroundImageUrl)
+  );
+}
+
+export function resolveRouteThemeImagePaintColor(
+  theme: Pick<
+    RouteThemeView,
+    | "backgroundImageUrl"
+    | "backgroundImageColor"
+    | "usesDefaultBackgroundImage"
+  > | null,
+): string | null {
+  if (!hasRouteThemeImageTint(theme)) return null;
+  const stored = normalizeBackgroundImageColor(theme?.backgroundImageColor);
+  if (stored) return stored;
+  return semanticTokenCssVar(DEFAULT_ROUTE_BACKGROUND_IMAGE_COLOR_KEY);
+}
+
+export function semanticTokenCssVar(key: SemanticTokenKey): string {
+  return `var(--${key})`;
+}
+
 function backgroundCssUrl(raw: string): string {
   const escaped = raw.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   return `url("${escaped}")`;
@@ -447,6 +497,15 @@ function skipsSolidColorOverBackgroundImage(theme: RouteThemeView): boolean {
     Boolean(theme.backgroundImageUrl) &&
     normalizeOpacity(theme.backgroundColorOpacity) >= 100
   );
+}
+
+/** Solid route color behind a transparent image (SVG) when there is no veil. */
+export function routeThemeImageBackdropRgba(
+  theme: RouteThemeView | null,
+): string | null {
+  if (!theme?.backgroundImageUrl || !theme.backgroundColor) return null;
+  if (!skipsSolidColorOverBackgroundImage(theme)) return null;
+  return hexToRgba(theme.backgroundColor, 100) ?? theme.backgroundColor;
 }
 
 function colorOverlayGradient(theme: RouteThemeView): string | null {
@@ -496,12 +555,14 @@ export function routeThemeLayeredStyle(theme: RouteThemeView | null): {
   }
 
   if (imageLayer) {
+    const backdrop = routeThemeImageBackdropRgba(theme);
     return {
       backgroundImage: imageLayer,
       backgroundSize: size,
       backgroundPosition: position,
       backgroundRepeat: repeat,
       backgroundAttachment: attachment,
+      ...(backdrop ? { backgroundColor: backdrop } : {}),
     };
   }
 
@@ -535,6 +596,47 @@ export function routeThemeImageOnlyStyle(theme: RouteThemeView | null): {
     backgroundPosition: position,
     backgroundRepeat: repeat,
     backgroundAttachment: motion === "fixed" ? "fixed" : "scroll",
+  };
+}
+
+/** Paints a monochrome SVG/image with a semantic token via CSS mask. */
+export function routeThemeImagePaintStyle(theme: RouteThemeView | null): {
+  backgroundImage?: string;
+  backgroundSize?: string;
+  backgroundPosition?: string;
+  backgroundRepeat?: string;
+  backgroundAttachment?: string;
+  backgroundColor?: string;
+  WebkitMaskImage?: string;
+  maskImage?: string;
+  WebkitMaskSize?: string;
+  maskSize?: string;
+  WebkitMaskPosition?: string;
+  maskPosition?: string;
+  WebkitMaskRepeat?: string;
+  maskRepeat?: string;
+  maskMode?: "alpha";
+} {
+  const imageOnly = routeThemeImageOnlyStyle(theme);
+  if (!theme?.backgroundImageUrl || !imageOnly.backgroundImage) return {};
+  const paintColor = resolveRouteThemeImagePaintColor(theme);
+  if (!paintColor) return imageOnly;
+
+  const maskUrl = imageOnly.backgroundImage;
+  const size = imageOnly.backgroundSize;
+  const position = imageOnly.backgroundPosition;
+  const repeat = imageOnly.backgroundRepeat;
+  return {
+    backgroundColor: paintColor,
+    WebkitMaskImage: maskUrl,
+    maskImage: maskUrl,
+    WebkitMaskSize: size,
+    maskSize: size,
+    WebkitMaskPosition: position,
+    maskPosition: position,
+    WebkitMaskRepeat: repeat,
+    maskRepeat: repeat,
+    maskMode: "alpha",
   };
 }
 

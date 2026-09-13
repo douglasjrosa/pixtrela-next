@@ -80,6 +80,32 @@ describe("kiosk/[colaboratorId]/actions drizzle", () => {
     expect(result.section).toBe("liberadas");
   });
 
+  it("fetchKioskQueueSectionPage allows admin preview readers", async () => {
+    const { auth } = await import("@/auth");
+    vi.mocked(auth).mockResolvedValueOnce({
+      user: { role: "admin", id: "admin-1" },
+    } as never);
+    listKioskQueueSectionPageRepo.mockResolvedValue({
+      section: "bloqueadas",
+      producingUnits: [],
+      units: [],
+      nextCursor: null,
+      hasMore: false,
+      openRuns: [],
+      subTasks: [],
+      catalog: [],
+      queuePageSize: 15,
+    });
+
+    const { fetchKioskQueueSectionPage } = await import("./actions");
+    const result = await fetchKioskQueueSectionPage({
+      colaboratorId: "col-1",
+      section: "bloqueadas",
+    });
+
+    expect(result.section).toBe("bloqueadas");
+  });
+
   it("startSubTask delegates to repo and revalidates drizzle tags", async () => {
     startSubTaskRepo.mockResolvedValue(undefined);
 

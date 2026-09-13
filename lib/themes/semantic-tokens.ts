@@ -175,6 +175,10 @@ export const DEFAULT_SEMANTIC_TOKENS: SemanticTokens = {
 
 const HEX_COLOR_PATTERN = /^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$/;
 
+export function isSemanticTokenKey(value: string): value is SemanticTokenKey {
+  return (SEMANTIC_TOKEN_KEYS as readonly string[]).includes(value);
+}
+
 export function isValidSemanticHexColor(value: string): boolean {
   return HEX_COLOR_PATTERN.test(value.trim());
 }

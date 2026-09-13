@@ -11,8 +11,8 @@ import {
   isBalanceAdjustmentDateInRange,
 } from "@/lib/dashboard/balance-adjustment-date";
 import { Button } from "@/components/ui/button";
+import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberInput } from "@/components/ui/number-input";
 import { NATIVE_SELECT_TALL_CLASS_NAME } from "@/lib/ui/native-select";
@@ -157,15 +157,14 @@ function BalanceAdjustmentForm({
           <Label htmlFor="balance-adjustment-date">
             {t("balanceAdjustmentDate")}
           </Label>
-          <Input
+          <DatePtBrInput
             id="balance-adjustment-date"
-            type="date"
-            className="w-full text-center"
+            className="w-full"
             value={date}
             min={minDate}
             max={maxDate}
             disabled={isPending}
-            onChange={(event) => setDate(event.target.value)}
+            onChange={setDate}
           />
         </div>
 

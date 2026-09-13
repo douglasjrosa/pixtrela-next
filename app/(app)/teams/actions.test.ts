@@ -4,6 +4,7 @@ const revalidateTag = vi.fn();
 const createTeamRepo = vi.fn();
 const updateTeamRepo = vi.fn();
 const deleteTeamRepo = vi.fn();
+const archiveTeams = vi.fn();
 const findTeamById = vi.fn();
 const hardDeleteTeam = vi.fn();
 
@@ -19,6 +20,7 @@ vi.mock("@/lib/repos/teams", () => ({
   createTeam: (...args: unknown[]) => createTeamRepo(...args),
   updateTeam: (...args: unknown[]) => updateTeamRepo(...args),
   deleteTeam: (...args: unknown[]) => deleteTeamRepo(...args),
+  archiveTeams: (...args: unknown[]) => archiveTeams(...args),
   findTeamById: (...args: unknown[]) => findTeamById(...args),
   hardDeleteTeam: (...args: unknown[]) => hardDeleteTeam(...args),
 }));
@@ -36,6 +38,7 @@ describe("teams/actions drizzle CRUD", () => {
     createTeamRepo.mockReset();
     updateTeamRepo.mockReset();
     deleteTeamRepo.mockReset();
+    archiveTeams.mockReset();
     findTeamById.mockReset();
     hardDeleteTeam.mockReset();
     loadTeamListPageMock.mockReset();
@@ -97,9 +100,10 @@ describe("teams/actions drizzle CRUD", () => {
   });
 
   it("deleteTeam archives via repo for manager+", async () => {
+    const reason = "x".repeat(100);
     const { deleteTeam } = await import("./actions");
-    await deleteTeam("team-1");
-    expect(deleteTeamRepo).toHaveBeenCalledWith("team-1");
+    await deleteTeam("team-1", reason);
+    expect(deleteTeamRepo).toHaveBeenCalledWith("team-1", reason);
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:teams", "default");
   });
 
@@ -118,13 +122,13 @@ describe("teams/actions drizzle CRUD", () => {
     expect(hardDeleteTeam).not.toHaveBeenCalled();
   });
 
-  it("bulkArchiveTeams archives each selected team", async () => {
+  it("bulkArchiveTeams archives selected teams once", async () => {
     findTeamById.mockResolvedValue({ id: "team-1", active: true });
+    const reason = "x".repeat(50);
     const { bulkArchiveTeams } = await import("./actions");
-    await bulkArchiveTeams(["team-1", "team-2"]);
-    expect(deleteTeamRepo).toHaveBeenCalledTimes(2);
-    expect(deleteTeamRepo).toHaveBeenCalledWith("team-1");
-    expect(deleteTeamRepo).toHaveBeenCalledWith("team-2");
+    await bulkArchiveTeams(["team-1", "team-2"], reason);
+    expect(archiveTeams).toHaveBeenCalledTimes(1);
+    expect(archiveTeams).toHaveBeenCalledWith(["team-1", "team-2"], reason);
   });
 
   it("bulkDeleteTeams hard-deletes archived teams only", async () => {

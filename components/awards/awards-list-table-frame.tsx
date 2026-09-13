@@ -10,6 +10,7 @@ import {
   loadMoreAwards,
 } from "@/app/(app)/awards/actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
+import { ArchiveReasonModal } from "@/components/ui/archive-reason-modal";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
@@ -133,10 +134,10 @@ export function AwardsListTableFrame({
     setSelectedIds([]);
   }
 
-  function handleArchiveConfirm(): void {
+  function handleArchiveConfirm(reason: string): void {
     startTransition(async () => {
       try {
-        await bulkArchiveAwards(selectedIds);
+        await bulkArchiveAwards(selectedIds, reason);
         showSuccessToast(tAwards("bulkArchived"));
         setArchiveOpen(false);
         clearSelection();
@@ -223,17 +224,16 @@ export function AwardsListTableFrame({
           onClick={handleLoadMore}
         />
 
-        <ConfirmDialog
+        <ArchiveReasonModal
           open={archiveOpen}
           title={tAwards("bulkArchiveTitle")}
           description={tAwards.rich("bulkArchiveConfirm", {
             count: selectedAwards.length,
             b: (chunks) => <b>{chunks}</b>,
           })}
-          confirmLabel={tCommon("yes")}
-          cancelLabel={tCommon("cancel")}
-          confirmVariant="default"
+          count={selectedIds.length}
           disabled={isPending}
+          titleId="awards-bulk-archive-title"
           onConfirm={handleArchiveConfirm}
           onClose={() => setArchiveOpen(false)}
         />

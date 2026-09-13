@@ -5,6 +5,7 @@ const revalidatePath = vi.fn();
 const createAwardRepo = vi.fn();
 const replaceAwardPrices = vi.fn();
 const deleteAwardRepo = vi.fn();
+const archiveAwards = vi.fn();
 const findAwardById = vi.fn();
 const hardDeleteAward = vi.fn();
 const getDb = vi.fn();
@@ -25,6 +26,7 @@ vi.mock("@/lib/repos/awards", () => ({
   createAward: (...args: unknown[]) => createAwardRepo(...args),
   replaceAwardPrices: (...args: unknown[]) => replaceAwardPrices(...args),
   deleteAward: (...args: unknown[]) => deleteAwardRepo(...args),
+  archiveAwards: (...args: unknown[]) => archiveAwards(...args),
   findAwardById: (...args: unknown[]) => findAwardById(...args),
   hardDeleteAward: (...args: unknown[]) => hardDeleteAward(...args),
 }));
@@ -69,6 +71,7 @@ describe("awards/actions drizzle CRUD", () => {
     createAwardRepo.mockReset();
     replaceAwardPrices.mockReset();
     deleteAwardRepo.mockReset();
+    archiveAwards.mockReset();
     findAwardById.mockReset();
     hardDeleteAward.mockReset();
     storeMedia.mockReset();
@@ -142,9 +145,10 @@ describe("awards/actions drizzle CRUD", () => {
   });
 
   it("deleteAward archives through repo for manager+", async () => {
+    const reason = "x".repeat(100);
     const { deleteAward } = await import("./actions");
-    await deleteAward("award-1");
-    expect(deleteAwardRepo).toHaveBeenCalledWith("award-1");
+    await deleteAward("award-1", reason);
+    expect(deleteAwardRepo).toHaveBeenCalledWith("award-1", reason);
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:awards", "default");
   });
 
@@ -167,13 +171,13 @@ describe("awards/actions drizzle CRUD", () => {
     expect(hardDeleteAward).not.toHaveBeenCalled();
   });
 
-  it("bulkArchiveAwards archives each selected award", async () => {
+  it("bulkArchiveAwards archives selected awards once", async () => {
     findAwardById.mockResolvedValue({ id: "award-1", active: true });
+    const reason = "x".repeat(50);
     const { bulkArchiveAwards } = await import("./actions");
-    await bulkArchiveAwards(["award-1", "award-2"]);
-    expect(deleteAwardRepo).toHaveBeenCalledTimes(2);
-    expect(deleteAwardRepo).toHaveBeenCalledWith("award-1");
-    expect(deleteAwardRepo).toHaveBeenCalledWith("award-2");
+    await bulkArchiveAwards(["award-1", "award-2"], reason);
+    expect(archiveAwards).toHaveBeenCalledTimes(1);
+    expect(archiveAwards).toHaveBeenCalledWith(["award-1", "award-2"], reason);
   });
 
   it("bulkDeleteAwards hard-deletes archived awards only", async () => {

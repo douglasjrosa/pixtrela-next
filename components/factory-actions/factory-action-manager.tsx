@@ -6,12 +6,10 @@ import { useTranslations } from "next-intl";
 
 import {
   createFactoryAction,
-  deleteFactoryAction,
   updateFactoryAction,
 } from "@/app/(app)/factory-actions/actions";
 import { FactoryActionFormModal } from "@/components/factory-actions/factory-action-form-modal";
 import { useRegisterTemplatesPageCreateAction } from "@/components/templates/templates-page-actions-context";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { FactoryAction } from "@/lib/business/factory-action";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { FactoryActionFormInput } from "@/lib/schemas/factory-action";
@@ -40,7 +38,6 @@ export function FactoryActionManager({ children }: FactoryActionManagerProps) {
   const tActions = useTranslations("factoryActions");
   const router = useRouter();
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const openCreate = useCallback(() => {
@@ -51,7 +48,6 @@ export function FactoryActionManager({ children }: FactoryActionManagerProps) {
 
   function closeModal(): void {
     setModal({ mode: "closed" });
-    setDeleteOpen(false);
   }
 
   function handleSave(values: FactoryActionFormInput): void {
@@ -72,25 +68,6 @@ export function FactoryActionManager({ children }: FactoryActionManagerProps) {
     });
   }
 
-  function handleConfirmDelete(): void {
-    if (modal.mode !== "edit") return;
-    const documentId = modal.action.documentId;
-    startTransition(async () => {
-      try {
-        await deleteFactoryAction(documentId);
-        showSuccessToast(tActions("deleted"));
-        closeModal();
-        router.refresh();
-      } catch (error) {
-        rethrowIfNavigationError(error);
-        const message =
-          error instanceof Error && error.message === "actionInUse"
-            ? tActions("inUse")
-            : tActions("error");
-        showErrorToast(message);
-      }
-    });
-  }
 
   const formId =
     modal.mode === "edit"
@@ -119,20 +96,10 @@ export function FactoryActionManager({ children }: FactoryActionManagerProps) {
         formId={formId}
         defaultValues={defaultValues}
         saving={isPending}
-        showDelete={modal.mode === "edit"}
         onClose={closeModal}
         onSave={handleSave}
-        onDelete={() => setDeleteOpen(true)}
       />
 
-      <ConfirmDialog
-        open={deleteOpen}
-        title={tActions("deleteTitle")}
-        description={tActions("deleteConfirm")}
-        disabled={isPending}
-        onClose={() => setDeleteOpen(false)}
-        onConfirm={handleConfirmDelete}
-      />
     </FactoryActionListProvider>
   );
 }

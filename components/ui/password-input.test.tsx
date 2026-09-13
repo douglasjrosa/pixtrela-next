@@ -75,4 +75,21 @@ describe("PasswordInput", () => {
 
     expect(field).toHaveValue("abc");
   });
+
+  it("accepts plaintext autofill via change while masked", () => {
+    const onChange = vi.fn();
+    renderWithIntl(
+      <PasswordInput id="password" aria-label="Senha" onChange={onChange} />,
+    );
+
+    const field = screen.getByLabelText("Senha");
+    fireEvent.change(field, { target: { value: "secret1" } });
+
+    expect(onChange).toHaveBeenCalled();
+    const event = onChange.mock.calls.at(-1)?.[0] as {
+      target: { value: string };
+    };
+    expect(event.target.value).toBe("secret1");
+    expect(document.getElementById("password-value")).toHaveValue("secret1");
+  });
 });

@@ -166,7 +166,7 @@ describe("TeamsListTableFrame", () => {
     expect(button.parentElement).toHaveClass("justify-center");
   });
 
-  it("archives selected teams after simple confirmation", async () => {
+  it("archives selected teams after reason confirmation", async () => {
     bulkArchiveTeams.mockResolvedValue(undefined);
     const user = userEvent.setup();
 
@@ -198,10 +198,15 @@ describe("TeamsListTableFrame", () => {
     expect(
       screen.getByText(/Tem certeza de que deseja arquivar/),
     ).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Sim" }));
+    const reason = "x".repeat(100);
+    await user.type(
+      screen.getByLabelText("Motivo do arquivamento"),
+      reason,
+    );
+    await user.click(screen.getByRole("button", { name: "Arquivar" }));
 
     await waitFor(() => {
-      expect(bulkArchiveTeams).toHaveBeenCalledWith(["t1"]);
+      expect(bulkArchiveTeams).toHaveBeenCalledWith(["t1"], reason);
     });
     expect(showSuccessToast).toHaveBeenCalled();
   });

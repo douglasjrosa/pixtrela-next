@@ -1,4 +1,5 @@
 import {
+  TASK_LIST_DEFAULT_LOOKAHEAD_DAYS,
   TASK_LIST_DEFAULT_LOOKBACK_DAYS,
   TASK_LIST_DEFAULT_STATUSES,
   TASK_LIST_NAME_MIN_CHARS,
@@ -44,11 +45,19 @@ export function defaultTaskListFrom(now: Date = new Date()): string {
   return formatDateOnly(from);
 }
 
+/** Default `to` = today plus lookahead days (local calendar). */
+export function defaultTaskListTo(now: Date = new Date()): string {
+  const to = new Date(now.getTime());
+  to.setHours(0, 0, 0, 0);
+  to.setTime(to.getTime() + TASK_LIST_DEFAULT_LOOKAHEAD_DAYS * MS_PER_DAY);
+  return formatDateOnly(to);
+}
+
 export function defaultTaskListFilters(now: Date = new Date()): TaskListFilters {
   return taskListFiltersSchema.parse({
     statuses: [...TASK_LIST_DEFAULT_STATUSES],
     from: defaultTaskListFrom(now),
-    to: formatDateOnly(now),
+    to: defaultTaskListTo(now),
     showArchived: false,
   });
 }
@@ -79,7 +88,7 @@ function parseSortDirection(
 
 /**
  * Parses URL search params into task list filters.
- * Missing params use defaults (finished off, from = today−30, no to/q).
+ * Missing params use defaults (finished off, from = today−30, to = today+30).
  */
 export function parseTaskListSearchParams(
   params: SearchParamsRecord,
@@ -96,7 +105,7 @@ export function parseTaskListSearchParams(
   const result = taskListFiltersSchema.safeParse({
     statuses: statuses ?? [...TASK_LIST_DEFAULT_STATUSES],
     from,
-    to: toRaw || formatDateOnly(now),
+    to: toRaw || defaultTaskListTo(now),
     q:
       qRaw && qRaw.length >= TASK_LIST_NAME_MIN_CHARS
         ? qRaw

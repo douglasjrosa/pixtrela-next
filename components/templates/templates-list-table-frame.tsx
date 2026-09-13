@@ -10,6 +10,7 @@ import {
   loadMoreTemplates,
 } from "@/app/(app)/templates/template-task-actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
+import { ArchiveReasonModal } from "@/components/ui/archive-reason-modal";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
@@ -131,10 +132,10 @@ export function TemplatesListTableFrame({
     setSelectedIds([]);
   }
 
-  function handleArchiveConfirm(): void {
+  function handleArchiveConfirm(reason: string): void {
     startTransition(async () => {
       try {
-        await bulkArchiveTemplates(selectedIds);
+        await bulkArchiveTemplates(selectedIds, reason);
         showSuccessToast(tTemplates("bulkArchived"));
         setArchiveOpen(false);
         clearSelection();
@@ -222,17 +223,16 @@ export function TemplatesListTableFrame({
           onClick={handleLoadMore}
         />
 
-        <ConfirmDialog
+        <ArchiveReasonModal
           open={archiveOpen}
           title={tTemplates("bulkArchiveTitle")}
           description={tTemplates.rich("bulkArchiveConfirm", {
             count: selectedTemplates.length,
             b: (chunks) => <b>{chunks}</b>,
           })}
-          confirmLabel={tCommon("yes")}
-          cancelLabel={tCommon("cancel")}
-          confirmVariant="default"
+          count={selectedIds.length}
           disabled={isPending}
+          titleId="templates-bulk-archive-title"
           onConfirm={handleArchiveConfirm}
           onClose={() => setArchiveOpen(false)}
         />

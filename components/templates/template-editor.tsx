@@ -1,19 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
 import {
-  deleteTemplate,
   loadTemplateFromLegacy,
   updateTemplate,
 } from "@/app/(app)/templates/template-task-actions";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
@@ -54,7 +51,6 @@ export function TemplateEditor({
     setPrevInitialSubtasks(initialSubtasks);
     setSubtasks(initialSubtasks);
   }
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const {
     register,
@@ -126,20 +122,6 @@ export function TemplateEditor({
     });
   }
 
-  function handleDeleteConfirm(): void {
-    setIsDeleteDialogOpen(false);
-    startTransition(async () => {
-      try {
-        await deleteTemplate(documentId);
-        showSuccessToast(tTemplates("deleted"));
-        router.push("/templates/tasks");
-        router.refresh();
-      } catch (error) {
-        rethrowIfNavigationError(error);
-        showErrorToast(tTemplates("error"));
-      }
-    });
-  }
 
   return (
     <div className="space-y-8 pb-24">
@@ -148,19 +130,9 @@ export function TemplateEditor({
         onSubmit={handleSubmit(handleSave, handleInvalid)}
         className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2"
       >
-        <div className="sm:col-span-2 flex items-start justify-between gap-3">
-          <h2 className="text-lg font-semibold">{tTemplates("editTemplate")}</h2>
-          <Button
-            type="button"
-            variant="destructive"
-            size="icon"
-            disabled={isPending}
-            aria-label={tTemplates("deleteTitle")}
-            onClick={() => setIsDeleteDialogOpen(true)}
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </Button>
-        </div>
+        <h2 className="text-lg font-semibold sm:col-span-2">
+          {tTemplates("editTemplate")}
+        </h2>
 
         <div className="space-y-2">
           <Label htmlFor="template-name">{tTemplates("name")}</Label>
@@ -218,14 +190,6 @@ export function TemplateEditor({
         </Button>
       </div>
 
-      <ConfirmDialog
-        open={isDeleteDialogOpen}
-        title={tTemplates("deleteTitle")}
-        description={tTemplates("deleteConfirm")}
-        disabled={isPending}
-        onConfirm={handleDeleteConfirm}
-        onClose={() => setIsDeleteDialogOpen(false)}
-      />
     </div>
   );
 }

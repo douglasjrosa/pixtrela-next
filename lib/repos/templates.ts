@@ -1,7 +1,9 @@
-import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 
 import { templateSubTasks, templateTasks } from "@/drizzle/schema";
+import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
 import { getDb, type Db } from "@/lib/db/client";
+import { archiveRecords } from "@/lib/repos/deactivation-reasons";
 import type { TemplateListSort } from "@/lib/schemas/template-list-sort";
 
 export type TemplateTaskRecord = {
@@ -312,14 +314,33 @@ export async function updateTemplateTask(
   });
 }
 
-export async function deleteTemplateTask(
-  id: string,
+export async function archiveTemplateTasks(
+  ids: string[],
+  reason: string,
   db: Db = getDb(),
 ): Promise<void> {
-  await db
-    .update(templateTasks)
-    .set({ active: false, updatedAt: new Date() })
-    .where(eq(templateTasks.id, id));
+  await archiveRecords(
+    {
+      tableName: DEACTIVATION_TABLE.templateTasks,
+      recordIds: ids,
+      text: reason,
+      setInactive: async (recordIds, tx) => {
+        await tx
+          .update(templateTasks)
+          .set({ active: false, updatedAt: new Date() })
+          .where(inArray(templateTasks.id, recordIds));
+      },
+    },
+    db,
+  );
+}
+
+export async function deleteTemplateTask(
+  id: string,
+  reason: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await archiveTemplateTasks([id], reason, db);
 }
 
 export async function hardDeleteTemplateTask(
