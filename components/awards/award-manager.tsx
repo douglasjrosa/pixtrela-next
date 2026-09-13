@@ -347,7 +347,6 @@ export function AwardManager({
   onUploadImage,
   canManage = true,
 }: AwardManagerProps) {
-  const tCommon = useTranslations("common");
   const tAwards = useTranslations("awards");
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);

@@ -29,11 +29,6 @@ const activeAward: AwardRow = {
   values: [{ numberOf: 50, currencyDocumentId: "c1" }],
 };
 
-const archivedAward: AwardRow = {
-  ...activeAward,
-  active: false,
-};
-
 const noopUpload = vi.fn().mockResolvedValue({
   id: "media-1",
   storageKey: "media-1.png",

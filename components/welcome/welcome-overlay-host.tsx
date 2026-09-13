@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { usePathname } from "next/navigation";
 
 import { KioskFaceWelcome } from "@/components/kiosk/kiosk-face-welcome";
@@ -25,19 +25,24 @@ export function WelcomeOverlayHost() {
   const pathname = usePathname();
   const [payload, setPayload] = useState<WelcomePayload | null>(null);
   const [destinationReady, setDestinationReady] = useState(true);
+  const [, startTransition] = useTransition();
 
   useEffect(() => {
     resetKioskColaboratorReady();
     const next = peekWelcomePayload();
-    setPayload(next);
     const waitForQueue = isKioskColaboratorPanelPath(pathname);
-    setDestinationReady(!waitForQueue || isKioskColaboratorReady());
+    startTransition(() => {
+      setPayload(next);
+      setDestinationReady(!waitForQueue || isKioskColaboratorReady());
+    });
   }, [pathname]);
 
   useEffect(() => {
     if (!payload || !isKioskColaboratorPanelPath(pathname)) return;
     if (isKioskColaboratorReady()) {
-      setDestinationReady(true);
+      startTransition(() => {
+        setDestinationReady(true);
+      });
       return;
     }
     function onReady(): void {

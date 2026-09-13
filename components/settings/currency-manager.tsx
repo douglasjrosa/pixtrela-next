@@ -24,7 +24,6 @@ import {
   toggleIdInSet,
   toggleSelectAllRows,
 } from "@/lib/business/list-selection";
-import { isProtectedCurrencyDocument } from "@/lib/business/primary-currency";
 import {
   formatCurrencyPerSecond,
   formatExchangeRate,
@@ -115,7 +114,6 @@ function actionErrorMessage(
 
 export function CurrencyManager({
   currencies,
-  protectedCurrencyId = null,
   onCreate,
   onUpdate,
   onBulkArchive,

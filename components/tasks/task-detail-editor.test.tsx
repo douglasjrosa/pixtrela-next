@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
@@ -14,7 +14,7 @@ vi.mock("@/app/(app)/settings/subtasks/actions", () => ({
 
 import { TaskDetailEditor } from "./task-detail-editor";
 
-const updateTask = vi.fn();
+const updateTask = vi.fn();
 const showSuccessToast = vi.fn();
 const showErrorToast = vi.fn();
 const refresh = vi.fn();
@@ -51,7 +51,7 @@ const editorProps = {
   task,
   steps,
   subtasks: [] as const,
-  teams: [] as const,
+  teams: [] as const,
   onCreateSubTask: vi.fn(),
   onUpdateSubTask: vi.fn(),
   onReorderSubTasks: vi.fn(),
@@ -60,12 +60,12 @@ const editorProps = {
 
 describe("TaskDetailEditor", () => {
   beforeEach(() => {
-    updateTask.mockReset();
+    updateTask.mockReset();
     showSuccessToast.mockReset();
     showErrorToast.mockReset();
     refresh.mockReset();
     push.mockReset();
-    updateTask.mockResolvedValue(undefined);
+    updateTask.mockResolvedValue(undefined);
   });
 
   it("shows a single floating save button", () => {

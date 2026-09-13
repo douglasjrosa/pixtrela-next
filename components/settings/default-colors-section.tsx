@@ -71,7 +71,8 @@ export function DefaultColorsSection({
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const savedBaselineRef = useRef(initialTokens);
+  const [savedBaseline, setSavedBaseline] = useState(initialTokens);
+  const savedBaselineRef = useRef(savedBaseline);
   const initialKey = JSON.stringify(initialTokens);
   const [prevInitialKey, setPrevInitialKey] = useState(initialKey);
   if (initialKey !== prevInitialKey) {
@@ -80,11 +81,11 @@ export function DefaultColorsSection({
       shouldReplaceDraftFromServer({
         serverTokens: initialTokens,
         draft,
-        savedBaseline: savedBaselineRef.current,
+        savedBaseline,
       })
     ) {
       setDraft(initialTokens);
-      savedBaselineRef.current = initialTokens;
+      setSavedBaseline(initialTokens);
     }
   }
   const busy = isPending || isSaving;
@@ -107,6 +108,10 @@ export function DefaultColorsSection({
   function toggleAllGroups(): void {
     setExpandedGroups(allGroupsExpanded ? new Set() : createExpandedGroupSet());
   }
+
+  useLayoutEffect(() => {
+    savedBaselineRef.current = savedBaseline;
+  }, [savedBaseline]);
 
   useLayoutEffect(() => {
     applySemanticThemePreview(draft);
@@ -140,7 +145,7 @@ export function DefaultColorsSection({
     setIsSaving(true);
     try {
       await onSave(draft);
-      savedBaselineRef.current = draft;
+      setSavedBaseline(draft);
       reloadCurrentDocument();
     } catch {
       setMessage(t("error"));

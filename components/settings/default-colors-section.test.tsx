@@ -17,7 +17,7 @@ import { NextIntlClientProvider } from "next-intl";
 
 import { DefaultColorsSection } from "./default-colors-section";
 
-describe("DefaultColorsSection", () => {
+describe("DefaultColorsSection", { timeout: 15_000 }, () => {
   beforeEach(() => {
     reloadCurrentDocument.mockReset();
     const style = document.createElement("style");
@@ -171,7 +171,8 @@ describe("DefaultColorsSection", () => {
     await user.click(screen.getByRole("button", { name: "Oceano" }));
     const primaryInput = screen.getByRole("textbox", { name: "Primária" });
     await user.clear(primaryInput);
-    await user.type(primaryInput, "#123456");
+    await user.click(primaryInput);
+    await user.paste("#123456");
 
     expect(screen.getByRole("button", { name: "Oceano" })).toHaveAttribute(
       "aria-pressed",

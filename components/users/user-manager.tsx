@@ -495,7 +495,6 @@ export function UserManager({
   canEditActive = false,
   onPairUserTag,
 }: UserManagerProps) {
-  const tCommon = useTranslations("common");
   const tUsers = useTranslations("users");
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
