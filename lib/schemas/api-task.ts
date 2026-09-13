@@ -1,12 +1,14 @@
 import { z } from "zod";
 
-const legacyNumberSchema = z.union([z.number(), z.string(), z.null()]).optional();
+import type { BoxTemplateData } from "@/integrations/ribermax/rbx/rbx-types";
+
+const legacyNumberSchema = z.union([z.number(), z.string(), z.null()]);
 
 export const boxTemplateSubtaskSchema = z.object({
   presetId: z.string().trim().min(1).optional(),
   presetName: z.string().trim().min(1),
-  qty: legacyNumberSchema,
-  actionUnits: legacyNumberSchema,
+  qty: legacyNumberSchema.nullish(),
+  actionUnits: legacyNumberSchema.nullish(),
 });
 
 export const boxTemplateDataSchema = z.object({
@@ -34,6 +36,24 @@ export const apiTaskPatchSchema = z.object({
 
 export type ApiTaskUpsertInput = z.infer<typeof apiTaskUpsertSchema>;
 export type ApiTaskPatchInput = z.infer<typeof apiTaskPatchSchema>;
+
+/** Maps validated API JSON to the Ribermax box template contract. */
+export function toBoxTemplateData(
+  template: ApiTaskUpsertInput["template"],
+): BoxTemplateData | null {
+  if (!template) return null;
+  return {
+    prodId: template.prodId,
+    empresaNome: template.empresaNome,
+    boxName: template.boxName,
+    subtasks: template.subtasks.map((row) => ({
+      presetName: row.presetName,
+      presetId: row.presetId,
+      qty: row.qty,
+      actionUnits: row.actionUnits,
+    })),
+  };
+}
 
 /** Extracts numeric pedido id from externalKey prefix when `pedidoId:index`. */
 export function crmPedidoIdFromExternalKey(externalKey: string): number | null {

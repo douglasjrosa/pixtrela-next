@@ -351,7 +351,9 @@ export function ThemeSettingsManager({
           aria-label={t("routeThemesTitle")}
         >
           {themes.map((theme) => {
-            const row = committed[theme.documentId] ?? draftFromTheme(theme);
+            const row =
+              committed[theme.documentId] ??
+              draftFromTheme(theme, defaultIllustrationColor);
             return (
               <li
                 key={theme.documentId}

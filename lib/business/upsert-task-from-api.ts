@@ -3,7 +3,10 @@ import { applyAutoStepTaskOrderingAfterTaskChange } from "@/lib/business/apply-s
 import { resolveDefaultStepDocumentId } from "@/lib/business/default-task-step";
 import { getNextTaskIndex } from "@/lib/business/task-order";
 import type { ApiTaskUpsertInput } from "@/lib/schemas/api-task";
-import { crmPedidoIdFromExternalKey } from "@/lib/schemas/api-task";
+import {
+  crmPedidoIdFromExternalKey,
+  toBoxTemplateData,
+} from "@/lib/schemas/api-task";
 import { listSteps } from "@/lib/repos/steps";
 import {
   createTask,
@@ -80,7 +83,7 @@ export async function upsertTaskFromApi(
     code: input.templateTaskCode,
     fallbackName: input.name,
     versions: (input.versions ?? []).map(String),
-    template: input.template ?? null,
+    template: toBoxTemplateData(input.template),
   });
 
   const defaultStepId = await loadDefaultStepId();
