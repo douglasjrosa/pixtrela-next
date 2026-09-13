@@ -4,9 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { removeFlag, saveFlag } from "@/app/(app)/settings/subtasks/actions";
+import { saveFlag } from "@/app/(app)/settings/subtasks/actions";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
@@ -31,7 +30,6 @@ export function FlagEditForm({
   const router = useRouter();
   const [categoryId, setCategoryId] = useState(initialCategoryId);
   const [index, setIndex] = useState(initialIndex);
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function handleSave(): void {
@@ -51,24 +49,6 @@ export function FlagEditForm({
     });
   }
 
-  function handleDelete(): void {
-    startTransition(async () => {
-      try {
-        await removeFlag(documentId);
-        showSuccessToast(t("flagDeleted"));
-        setDeleteOpen(false);
-        router.push("/settings/subtasks/flags");
-        router.refresh();
-      } catch (error) {
-        rethrowIfNavigationError(error);
-        const message =
-          error instanceof Error && error.message === "flagOccupied"
-            ? t("flagOccupiedError")
-            : t("error");
-        showErrorToast(message);
-      }
-    });
-  }
 
   return (
     <form
@@ -113,24 +93,7 @@ export function FlagEditForm({
         <Button type="submit" disabled={isPending}>
           {tCommon("save")}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={isPending}
-          onClick={() => setDeleteOpen(true)}
-        >
-          {tCommon("delete")}
-        </Button>
       </div>
-      <ConfirmDialog
-        open={deleteOpen}
-        title={t("editFlag")}
-        description={tCommon("delete")}
-        confirmLabel={tCommon("delete")}
-        onConfirm={handleDelete}
-        onClose={() => setDeleteOpen(false)}
-        disabled={isPending}
-      />
     </form>
   );
 }

@@ -14,9 +14,13 @@ export function applySemanticThemeToDocument(tokens: SemanticTokens): void {
   if (typeof document === "undefined") return;
 
   const css = buildSemanticThemeCss(tokens);
-  const style = document.getElementById(SEMANTIC_THEME_STYLE_ID);
-  if (style) {
-    style.textContent = css;
+  const styleNodes = document.querySelectorAll<HTMLStyleElement>(
+    `#${SEMANTIC_THEME_STYLE_ID}, style[href="semantic-theme"]`,
+  );
+  if (styleNodes.length > 0) {
+    for (const style of styleNodes) {
+      style.textContent = css;
+    }
     return;
   }
 

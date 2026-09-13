@@ -161,9 +161,9 @@ describe("TasksListTableFrame", () => {
 
     await user.click(screen.getAllByRole("checkbox")[0]);
     await user.click(screen.getByRole("button", { name: "Arquivar selecionadas" }));
-    const reason = "x".repeat(50);
+    const reason = "x".repeat(100);
     await user.type(
-      screen.getByLabelText("Motivo da desativação"),
+      screen.getByLabelText("Motivo do arquivamento"),
       reason,
     );
     await user.click(screen.getByRole("button", { name: "Arquivar" }));

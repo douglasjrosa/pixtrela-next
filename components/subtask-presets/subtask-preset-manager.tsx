@@ -6,12 +6,10 @@ import { useTranslations } from "next-intl";
 
 import {
   createSubTaskPreset,
-  deleteSubTaskPreset,
   updateSubTaskPreset,
 } from "@/app/(app)/sub-task-presets/actions";
 import { SubTaskPresetFormModal } from "@/components/subtask-presets/subtask-preset-form-modal";
 import { useRegisterTemplatesPageCreateAction } from "@/components/templates/templates-page-actions-context";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { SubTaskPresetFormInput } from "@/lib/schemas/sub-task-preset";
@@ -41,7 +39,6 @@ export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
   const tPresets = useTranslations("subTaskPresets");
   const router = useRouter();
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const openCreate = useCallback(() => {
@@ -52,7 +49,6 @@ export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
 
   function closeModal(): void {
     setModal({ mode: "closed" });
-    setDeleteOpen(false);
   }
 
   function handleSave(values: SubTaskPresetFormInput): void {
@@ -73,21 +69,6 @@ export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
     });
   }
 
-  function handleConfirmDelete(): void {
-    if (modal.mode !== "edit") return;
-    const documentId = modal.preset.documentId;
-    startTransition(async () => {
-      try {
-        await deleteSubTaskPreset(documentId);
-        showSuccessToast(tPresets("deleted"));
-        closeModal();
-        router.refresh();
-      } catch (error) {
-        rethrowIfNavigationError(error);
-        showErrorToast(tPresets("error"));
-      }
-    });
-  }
 
   const formId =
     modal.mode === "edit"
@@ -120,20 +101,10 @@ export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
         defaultValues={defaultValues}
         actionName={actionName}
         saving={isPending}
-        showDelete={modal.mode === "edit"}
         onClose={closeModal}
         onSave={handleSave}
-        onDelete={() => setDeleteOpen(true)}
       />
 
-      <ConfirmDialog
-        open={deleteOpen}
-        title={tPresets("deleteTitle")}
-        description={tPresets("deleteConfirm")}
-        disabled={isPending}
-        onClose={() => setDeleteOpen(false)}
-        onConfirm={handleConfirmDelete}
-      />
     </SubTaskPresetListProvider>
   );
 }

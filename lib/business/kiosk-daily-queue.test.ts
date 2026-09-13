@@ -113,17 +113,36 @@ describe('filterKioskDailyQueue', () => {
 });
 
 describe('sortKioskDailyQueue', () => {
-  it('orders producing first, then pending, then finished', () => {
+  it('orders by task index then subtask index regardless of status', () => {
     const sorted = sortKioskDailyQueue([
       row({ documentId: 'done', status: 'finished', index: 0 }),
       row({ documentId: 'wait', status: 'waiting', index: 1 }),
       row({ documentId: 'run', status: 'producing', index: 2 }),
     ]);
     expect(sorted.map((item) => item.documentId)).toEqual([
-      'run',
-      'wait',
       'done',
+      'wait',
+      'run',
     ]);
+  });
+
+  it('keeps the same relative order after stop demotes producing to waiting', () => {
+    const beforeStart = sortKioskDailyQueue([
+      row({ documentId: 'first', status: 'waiting', taskIndex: 0, index: 0 }),
+      row({ documentId: 'second', status: 'waiting', taskIndex: 1, index: 0 }),
+    ]);
+    const whileRunning = sortKioskDailyQueue([
+      row({ documentId: 'first', status: 'producing', taskIndex: 0, index: 0 }),
+      row({ documentId: 'second', status: 'waiting', taskIndex: 1, index: 0 }),
+    ]);
+    const afterStop = sortKioskDailyQueue([
+      row({ documentId: 'first', status: 'waiting', taskIndex: 0, index: 0 }),
+      row({ documentId: 'second', status: 'waiting', taskIndex: 1, index: 0 }),
+    ]);
+
+    expect(beforeStart.map((item) => item.documentId)).toEqual(['first', 'second']);
+    expect(whileRunning.map((item) => item.documentId)).toEqual(['first', 'second']);
+    expect(afterStop.map((item) => item.documentId)).toEqual(['first', 'second']);
   });
 
   it('orders by task index then subtask index within pending group', () => {

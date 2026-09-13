@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   defaultTaskListFilters,
   defaultTaskListFrom,
+  defaultTaskListTo,
   parseTaskListSearchParams,
   parseTaskListSelectMode,
   serializeTaskListSearchParams,
@@ -17,12 +18,18 @@ describe("defaultTaskListFrom", () => {
   });
 });
 
+describe("defaultTaskListTo", () => {
+  it("returns today plus 30 days", () => {
+    expect(defaultTaskListTo(FIXED_NOW)).toBe("2026-08-14");
+  });
+});
+
 describe("parseTaskListSearchParams", () => {
   it("applies defaults when params are empty", () => {
     const filters = parseTaskListSearchParams({}, FIXED_NOW);
     expect(filters.statuses).toEqual(["paused", "producing", "waiting"]);
     expect(filters.from).toBe("2026-06-15");
-    expect(filters.to).toBe("2026-07-15");
+    expect(filters.to).toBe("2026-08-14");
     expect(filters.showArchived).toBe(false);
     expect(filters.q).toBeUndefined();
   });

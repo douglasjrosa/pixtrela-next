@@ -13,6 +13,7 @@ import { getNextTaskIndex } from "@/lib/business/task-order";
 import { applyAutoStepTaskOrderingAfterTaskChange } from "@/lib/business/apply-step-task-order";
 import { findTemplateByCode } from "@/lib/repos/templates";
 import {
+  archiveTasks,
   createTask as createTaskRepo,
   deleteTaskById,
   getTaskById,
@@ -20,10 +21,9 @@ import {
   setTaskActive,
   updateTaskFields,
 } from "@/lib/repos/tasks";
+import { parseArchiveReason } from "@/lib/schemas/archive-with-reason";
 import {
-  bulkTaskDeactivationSchema,
   bulkTaskIdsSchema,
-  taskDeactivationSchema,
   taskFormSchema,
   type TaskFormInput,
 } from "@/lib/schemas/task";
@@ -131,23 +131,17 @@ export async function updateTask(
 
 export async function deactivateTask(
   documentId: string,
-  reasonForDeactivation: string,
+  reason: string,
 ): Promise<void> {
   await assertCanDeactivate();
-  const parsed = taskDeactivationSchema.parse({ reasonForDeactivation });
-  const reason = parsed.reasonForDeactivation.trim();
-  await setTaskActive(documentId, false, reason);
+  const text = parseArchiveReason(reason, 1);
+  await archiveTasks([documentId], text);
   invalidateTasks();
 }
 
-export async function reactivateTask(
-  documentId: string,
-  reasonForDeactivation: string,
-): Promise<void> {
+export async function reactivateTask(documentId: string): Promise<void> {
   await assertCanDeactivate();
-  const parsed = taskDeactivationSchema.parse({ reasonForDeactivation });
-  const reason = parsed.reasonForDeactivation.trim();
-  await setTaskActive(documentId, true, reason);
+  await setTaskActive(documentId, true);
   invalidateTasks();
 }
 
@@ -180,18 +174,17 @@ export async function deleteTask(documentId: string): Promise<void> {
 
 export async function bulkDeactivateTasks(
   documentIds: string[],
-  reasonForDeactivation: string,
+  reason: string,
 ): Promise<void> {
   await assertCanDeactivate();
   const ids = bulkTaskIdsSchema.parse(documentIds);
-  const parsed = bulkTaskDeactivationSchema.parse({ reasonForDeactivation });
-  const reason = parsed.reasonForDeactivation.trim();
+  const text = parseArchiveReason(reason, ids.length);
 
   for (const documentId of ids) {
     const task = await getTaskById(documentId);
     if (!task) throw new Error("notFound");
-    await setTaskActive(documentId, false, reason);
   }
+  await archiveTasks(ids, text);
   invalidateTasks();
 }
 

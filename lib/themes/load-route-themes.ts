@@ -1,6 +1,7 @@
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { listRouteThemes as listRouteThemesRepo } from "@/lib/repos/settings";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
+import { resolveRouteThemeBackgroundImage } from "@/lib/themes/default-route-background";
 import {
   BACKGROUND_MOTIONS,
   BACKGROUND_POSITIONS,
@@ -19,6 +20,7 @@ import {
   DEFAULT_SURFACE_COLOR,
   DEFAULT_SURFACE_COLOR_OPACITY,
   isRouteThemeKey,
+  normalizeBackgroundImageColor,
   normalizeForegroundColor,
   normalizeOpacity,
   normalizeParallaxIntensity,
@@ -44,6 +46,29 @@ function asEnum<T extends string>(
   return fallback;
 }
 
+function mapBackgroundImage(row: {
+  useDefaultBackgroundImage: boolean;
+  backgroundImageUrl: string | null;
+  backgroundImageColorKey: string | null;
+}): Pick<
+  RouteThemeView,
+  | "backgroundImageUrl"
+  | "usesDefaultBackgroundImage"
+  | "backgroundImageColor"
+> {
+  const image = resolveRouteThemeBackgroundImage({
+    useDefaultBackgroundImage: Boolean(row.useDefaultBackgroundImage),
+    mediaUrl: toBrowserMediaUrl(row.backgroundImageUrl),
+  });
+  return {
+    backgroundImageUrl: image.url,
+    usesDefaultBackgroundImage: image.usesDefault,
+    backgroundImageColor: image.usesDefault
+      ? normalizeBackgroundImageColor(row.backgroundImageColorKey)
+      : null,
+  };
+}
+
 export async function loadRouteThemes(): Promise<RouteThemeView[]> {
   try {
     const rows = await listRouteThemesRepo();
@@ -58,7 +83,7 @@ export async function loadRouteThemes(): Promise<RouteThemeView[]> {
         backgroundColorOpacity: normalizeOpacity(
           row.backgroundColorOpacity ?? DEFAULT_BACKGROUND_COLOR_OPACITY,
         ),
-        backgroundImageUrl: toBrowserMediaUrl(row.backgroundImageUrl),
+        ...mapBackgroundImage(row),
         backgroundSize: asEnum(
           row.backgroundSize,
           BACKGROUND_SIZES,

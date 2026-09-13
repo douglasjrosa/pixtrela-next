@@ -44,8 +44,14 @@ export function mergeBoardSubtaskLiveState(
 ): BoardSubTaskSummary[] {
   return subtasks.map((subtask) => {
     const live = liveBySubTaskId[subtask.documentId];
+    const hasLiveProducers = (live?.producingColaboratorIds?.length ?? 0) > 0;
+    const status =
+      hasLiveProducers && subtask.status === "waiting"
+        ? "producing"
+        : subtask.status;
     return {
       ...subtask,
+      status,
       producingColaboratorIds: live?.producingColaboratorIds ?? [],
       openActivityStartedAts: live?.openActivityStartedAts ?? [],
     };

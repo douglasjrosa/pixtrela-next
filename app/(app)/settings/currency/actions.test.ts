@@ -5,6 +5,7 @@ const revalidatePath = vi.fn();
 const createCurrencyRepo = vi.fn();
 const listCurrenciesRepo = vi.fn();
 const archiveCurrencyRepo = vi.fn();
+const archiveCurrencies = vi.fn();
 const hardDeleteCurrencyRepo = vi.fn();
 const findCurrencyById = vi.fn();
 const getCurrencyForSubtasks = vi.fn();
@@ -27,6 +28,7 @@ vi.mock("@/lib/repos/awards", () => ({
   createCurrency: (...args: unknown[]) => createCurrencyRepo(...args),
   listCurrencies: (...args: unknown[]) => listCurrenciesRepo(...args),
   archiveCurrency: (...args: unknown[]) => archiveCurrencyRepo(...args),
+  archiveCurrencies: (...args: unknown[]) => archiveCurrencies(...args),
   hardDeleteCurrency: (...args: unknown[]) => hardDeleteCurrencyRepo(...args),
   findCurrencyById: (...args: unknown[]) => findCurrencyById(...args),
 }));
@@ -63,6 +65,7 @@ describe("settings/currency/actions drizzle CRUD", () => {
     createCurrencyRepo.mockReset();
     listCurrenciesRepo.mockReset();
     archiveCurrencyRepo.mockReset();
+    archiveCurrencies.mockReset();
     hardDeleteCurrencyRepo.mockReset();
     findCurrencyById.mockReset();
     getCurrencyForSubtasks.mockReset();
@@ -127,10 +130,11 @@ describe("settings/currency/actions drizzle CRUD", () => {
       { id: "cur-gem", active: true },
     ]);
     getCurrencyForSubtasks.mockResolvedValue({ currencyId: "cur-star" });
+    const reason = "x".repeat(100);
     const { bulkArchiveCurrencies } = await import("./actions");
-    await bulkArchiveCurrencies(["cur-star", "cur-gem"]);
-    expect(archiveCurrencyRepo).toHaveBeenCalledWith("cur-gem");
-    expect(archiveCurrencyRepo).not.toHaveBeenCalledWith("cur-star");
+    await bulkArchiveCurrencies(["cur-star", "cur-gem"], reason);
+    expect(archiveCurrencies).toHaveBeenCalledWith(["cur-gem"], reason);
+    expect(archiveCurrencyRepo).not.toHaveBeenCalled();
   });
 
   it("bulkDeleteCurrencies rejects an active currency", async () => {

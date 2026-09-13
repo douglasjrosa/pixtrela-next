@@ -6,6 +6,7 @@ import { taskListSortSchema } from "./task-list-sort";
 export const TASK_LIST_PAGE_SIZE = 10;
 export const TASK_LIST_NAME_MIN_CHARS = 3;
 export const TASK_LIST_DEFAULT_LOOKBACK_DAYS = 30;
+export const TASK_LIST_DEFAULT_LOOKAHEAD_DAYS = 30;
 export const TASK_LIST_SEARCH_DEBOUNCE_MS = 300;
 
 export const TASK_LIST_DEFAULT_STATUSES = [

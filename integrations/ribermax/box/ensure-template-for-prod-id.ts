@@ -1,9 +1,8 @@
 import {
-  buildTemplateFromBox,
+  buildTemplateFromBoxPayload,
   PRESET_NOT_FOUND_PREFIX,
-} from "@/integrations/ribermax/box/template-from-box";
+} from "@/lib/templates/build-template-from-box-payload";
 import { fetchBoxTemplateData } from "@/integrations/ribermax/rbx/rbx-client";
-import { findSubTaskPresetByName } from "@/lib/repos/sub-task-presets";
 import {
   createTemplateTask,
   findTemplateByCode,
@@ -13,8 +12,6 @@ import type {
   TemplateSubTaskComponentInput,
   TemplateTaskFormInput,
 } from "@/lib/schemas/template-task";
-import type { SubTaskPreset } from "@/lib/business/subtask-preset";
-import type { BoxTemplateData } from "@/integrations/ribermax/rbx/rbx-types";
 
 function dependencyIndexesFrom(
   dependencies: TemplateSubTaskComponentInput["dependencies"],
@@ -36,25 +33,6 @@ function toRepoSubTasks(subTasks: TemplateSubTaskComponentInput[]) {
   }));
 }
 
-async function resolvePresetsForPayload(
-  data: BoxTemplateData,
-): Promise<Map<string, SubTaskPreset>> {
-  const names = [
-    ...new Set(
-      data.subtasks.map((item) => item.presetName.trim()).filter(Boolean),
-    ),
-  ];
-  const presetsByName = new Map<string, SubTaskPreset>();
-  for (const name of names) {
-    const preset = await findSubTaskPresetByName(name);
-    if (!preset) {
-      throw new Error(`${PRESET_NOT_FOUND_PREFIX}${name}`);
-    }
-    presetsByName.set(name, preset);
-  }
-  return presetsByName;
-}
-
 /**
  * Ensures a template-task exists for the given legacy prodId and has subtasks.
  */
@@ -73,8 +51,7 @@ export async function ensureTemplateTaskForProdId(
   });
 
   const data = await fetchBoxTemplateData(prodId);
-  const presetsByName = await resolvePresetsForPayload(data);
-  const draft = buildTemplateFromBox(data, presetsByName);
+  const draft = await buildTemplateFromBoxPayload(data);
 
   await updateTemplateTask({
     id: created.id,
@@ -95,6 +72,7 @@ export async function loadRibermaxTemplateFromBoxCode(
     throw new Error("invalidCode");
   }
   const data = await fetchBoxTemplateData(boxId);
-  const presetsByName = await resolvePresetsForPayload(data);
-  return buildTemplateFromBox(data, presetsByName);
+  return buildTemplateFromBoxPayload(data);
 }
+
+export { PRESET_NOT_FOUND_PREFIX };

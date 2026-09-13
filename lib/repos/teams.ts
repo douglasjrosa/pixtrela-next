@@ -2,7 +2,9 @@ import { and, asc, count, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 
 import { teamMembers, teams, users } from "@/drizzle/schema";
 import { toCalendarDateKey } from "@/lib/business/datetime-timezone";
+import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
 import { getDb, type Db } from "@/lib/db/client";
+import { archiveRecords } from "@/lib/repos/deactivation-reasons";
 import type { TeamListSort } from "@/lib/schemas/team-list-sort";
 
 export type TeamRecord = {
@@ -292,18 +294,38 @@ export async function updateTeam(
   return row;
 }
 
-export async function deleteTeam(
-  id: string,
+export async function archiveTeams(
+  ids: string[],
+  reason: string,
   db: Db = getDb(),
 ): Promise<void> {
-  await db
-    .update(teams)
-    .set({
-      active: false,
-      until: toCalendarDateKey(new Date()),
-      updatedAt: new Date(),
-    })
-    .where(eq(teams.id, id));
+  const until = toCalendarDateKey(new Date());
+  await archiveRecords(
+    {
+      tableName: DEACTIVATION_TABLE.teams,
+      recordIds: ids,
+      text: reason,
+      setInactive: async (recordIds, tx) => {
+        await tx
+          .update(teams)
+          .set({
+            active: false,
+            until,
+            updatedAt: new Date(),
+          })
+          .where(inArray(teams.id, recordIds));
+      },
+    },
+    db,
+  );
+}
+
+export async function deleteTeam(
+  id: string,
+  reason: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await archiveTeams([id], reason, db);
 }
 
 export async function findTeamById(

@@ -49,6 +49,18 @@ export const routeThemeFormSchema = z.object({
     })
     .optional(),
   surfaceColorOpacity: z.number().int().min(0).max(100).optional(),
+  backgroundImageColor: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || HEX_COLOR.test(value), {
+      message: "invalidHex",
+    })
+    .optional()
+    .transform((value) => {
+      if (!value) return null;
+      return value;
+    }),
+  useDefaultBackgroundImage: z.boolean().optional(),
 });
 
 export type RouteThemeFormInput = z.infer<typeof routeThemeFormSchema>;

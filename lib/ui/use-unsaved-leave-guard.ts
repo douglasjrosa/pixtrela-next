@@ -13,13 +13,13 @@ export interface UnsavedLeaveGuardOptions {
 }
 
 export function isModifiedNavigationClick(event: MouseEvent): boolean {
-  return (
+  return Boolean(
     event.defaultPrevented ||
-    event.button !== 0 ||
-    event.metaKey ||
-    event.ctrlKey ||
-    event.shiftKey ||
-    event.altKey
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey,
   );
 }
 

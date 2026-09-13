@@ -10,6 +10,7 @@ import {
   tasks,
   users,
 } from "@/drizzle/schema";
+import { findSubTaskIdsNeedingProducingReconcile } from "@/lib/business/subtask-producing-reconcile";
 import { calculateActivityDurationSeconds } from "@/lib/business/activity-duration";
 import type { OpenChainRun } from "@/lib/business/kiosk-queue-units";
 import {
@@ -487,6 +488,43 @@ async function loadAssigneeAndDependencyMaps(
   return { assignedToIdsBySubTaskId, dependencyIdsBySubTaskId };
 }
 
+export async function reconcileProducingStatusFromOpenSessions(
+  rows: Array<{
+    id: string;
+    status: string | null;
+    taskId: string;
+  }>,
+  activeColaboratorIdsBySubTaskId: Map<string, string[]>,
+  db: Db,
+): Promise<void> {
+  const idsToProduce = findSubTaskIdsNeedingProducingReconcile(
+    rows,
+    activeColaboratorIdsBySubTaskId,
+  );
+  if (idsToProduce.length === 0) return;
+
+  const now = new Date();
+  await db
+    .update(subTasks)
+    .set({ status: PRODUCING_STATUS, updatedAt: now })
+    .where(inArray(subTasks.id, idsToProduce));
+
+  const taskIds = new Set(
+    rows
+      .filter((row) => idsToProduce.includes(row.id))
+      .map((row) => row.taskId),
+  );
+  for (const taskId of taskIds) {
+    await runTaskSubTaskSyncRoutine(taskId, db, now);
+  }
+
+  for (const row of rows) {
+    if (idsToProduce.includes(row.id)) {
+      row.status = PRODUCING_STATUS;
+    }
+  }
+}
+
 async function reconcileQtyCompletePausedSubTasks(
   rows: Array<{
     id: string;
@@ -564,6 +602,11 @@ export async function listAssignedSubTasks(
     loadAssigneeAndDependencyMaps(subTaskIds, db),
   ]);
 
+  await reconcileProducingStatusFromOpenSessions(
+    rows,
+    enrichment.activeColaboratorIdsBySubTaskId,
+    db,
+  );
   await reconcileQtyCompletePausedSubTasks(
     rows,
     enrichment.completedQtyBySubTaskId,

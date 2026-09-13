@@ -25,8 +25,6 @@ import { parseUserListSearchParams } from "@/lib/users/user-list-params";
 
 import {
   createUser,
-  deactivateUser,
-  deleteUser,
   pairUserTag,
   updateUser,
   updateUserImage,
@@ -108,10 +106,6 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
         onCreate={createUser}
         onUpdate={updateUser}
         onUpdateImage={updateUserImage}
-        onDelete={deleteUser}
-        onDeactivate={deactivateUser}
-        canDelete={canDeleteUsers(actorRole)}
-        canDeactivate
         manageableRoles={manageableTargetRoles(actorRole)}
         canPairUserTag={canPairUserTag(actorRole)}
         canPreviewKioskColaborator={canPreviewKioskColaborator(actorRole)}

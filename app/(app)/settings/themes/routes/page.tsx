@@ -1,11 +1,19 @@
 import { ThemeSettingsManager } from "@/components/settings/theme-settings-manager";
+import { resolveDefaultIllustrationColor } from "@/lib/themes/default-route-background";
+import { loadSemanticThemeForSettings } from "@/lib/themes/load-semantic-theme";
 import { loadSettingsRouteThemes } from "@/lib/themes/load-settings-route-themes";
 
 import { updateRouteTheme } from "../actions";
 import { listLibraryMedia, uploadLibraryMedia } from "../media-actions";
 
 export default async function SettingsThemeRoutesPage() {
-  const themes = await loadSettingsRouteThemes();
+  const [themes, semanticTokens] = await Promise.all([
+    loadSettingsRouteThemes(),
+    loadSemanticThemeForSettings(),
+  ]);
+  const defaultIllustrationColor = resolveDefaultIllustrationColor(
+    semanticTokens,
+  );
 
   async function handleSave(
     documentId: string,
@@ -35,6 +43,7 @@ export default async function SettingsThemeRoutesPage() {
   return (
     <ThemeSettingsManager
       themes={themes}
+      defaultIllustrationColor={defaultIllustrationColor}
       onSave={handleSave}
       onListImages={handleListImages}
       onUploadImage={handleUploadImage}

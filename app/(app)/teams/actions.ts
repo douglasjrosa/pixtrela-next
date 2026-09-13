@@ -10,6 +10,7 @@ import {
   canManageTeams,
 } from "@/lib/auth/permissions";
 import {
+  archiveTeams,
   createTeam as createTeamRepo,
   deleteTeam as deleteTeamRepo,
   findTeamById,
@@ -17,6 +18,7 @@ import {
   updateTeam as updateTeamRepo,
 } from "@/lib/repos/teams";
 import { toCalendarDateKey } from "@/lib/business/datetime-timezone";
+import { parseArchiveReason } from "@/lib/schemas/archive-with-reason";
 import { teamFormSchema, bulkTeamIdsSchema, type TeamFormInput } from "@/lib/schemas/team";
 import { teamListFiltersSchema } from "@/lib/schemas/team-list-filters";
 import {
@@ -94,9 +96,13 @@ export async function updateTeam(
   invalidateTeams();
 }
 
-export async function deleteTeam(documentId: string): Promise<void> {
+export async function deleteTeam(
+  documentId: string,
+  reason: string,
+): Promise<void> {
   await assertCanDeactivate();
-  await deleteTeamRepo(documentId);
+  const text = parseArchiveReason(reason, 1);
+  await deleteTeamRepo(documentId, text);
   invalidateTeams();
 }
 
@@ -109,15 +115,19 @@ export async function permanentlyDeleteTeam(documentId: string): Promise<void> {
   invalidateTeams();
 }
 
-export async function bulkArchiveTeams(documentIds: string[]): Promise<void> {
+export async function bulkArchiveTeams(
+  documentIds: string[],
+  reason: string,
+): Promise<void> {
   await assertCanDeactivate();
   const ids = bulkTeamIdsSchema.parse(documentIds);
+  const text = parseArchiveReason(reason, ids.length);
 
   for (const documentId of ids) {
     const team = await findTeamById(documentId);
     if (!team) throw new Error("notFound");
-    await deleteTeamRepo(documentId);
   }
+  await archiveTeams(ids, text);
   invalidateTeams();
 }
 

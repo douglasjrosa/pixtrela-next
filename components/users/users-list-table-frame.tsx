@@ -9,6 +9,7 @@ import {
   bulkDeleteUsers,
   loadMoreUsers,
 } from "@/app/(app)/users/actions";
+import { ArchiveReasonModal } from "@/components/ui/archive-reason-modal";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
@@ -116,10 +117,10 @@ export function UsersListTableFrame({
     setSelectedIds([]);
   }
 
-  function handleDeactivateConfirm(): void {
+  function handleDeactivateConfirm(reason: string): void {
     startTransition(async () => {
       try {
-        await bulkDeactivateUsers(selectedIds);
+        await bulkDeactivateUsers(selectedIds, reason);
         showSuccessToast(tUsers("bulkDeactivated"));
         setDeactivateOpen(false);
         clearSelection();
@@ -210,17 +211,17 @@ export function UsersListTableFrame({
           onClick={handleLoadMore}
         />
 
-        <ConfirmDialog
+        <ArchiveReasonModal
           open={deactivateOpen}
           title={tUsers("bulkDeactivateTitle")}
           description={tUsers.rich("bulkDeactivateConfirm", {
             count: selectedUsers.length,
             b: (chunks) => <b>{chunks}</b>,
           })}
-          confirmLabel={tCommon("yes")}
-          cancelLabel={tCommon("cancel")}
-          confirmVariant="default"
+          count={selectedIds.length}
+          confirmLabel={tUsers("deactivate")}
           disabled={isPending}
+          titleId="users-bulk-deactivate-title"
           onConfirm={handleDeactivateConfirm}
           onClose={() => setDeactivateOpen(false)}
         />

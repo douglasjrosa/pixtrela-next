@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { AppImage } from "@/components/media/app-image";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import type { MediaAssetRecord } from "@/lib/repos/media";
+import { isSvgImageSrc } from "@/lib/media/image-optimization";
 import {
   MEDIA_THUMBNAIL_FRAME_CLASS,
   MEDIA_THUMBNAIL_IMAGE_CLASS,
@@ -157,7 +158,11 @@ export function MediaPickerModal({
                         src={item.browserUrl}
                         alt={title}
                         fill
-                        className={MEDIA_THUMBNAIL_IMAGE_CLASS}
+                        className={
+                          isSvgImageSrc(item.browserUrl)
+                            ? "absolute inset-0 size-full object-contain p-1"
+                            : MEDIA_THUMBNAIL_IMAGE_CLASS
+                        }
                       />
                     ) : null}
                   </span>

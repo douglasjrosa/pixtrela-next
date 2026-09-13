@@ -276,59 +276,63 @@ describe("CurrencyManager", () => {
     expect(screen.queryByRole("button", { name: "Excluir" })).toBeNull();
   });
 
-  it("deletes a non-primary currency after confirmation", async () => {
-    const onDelete = vi.fn().mockResolvedValue(undefined);
-    renderManager({ onDelete });
+  it(
+    "archives the first-listed currency when another is assigned",
+    async () => {
+      const onBulkArchive = vi.fn().mockResolvedValue(undefined);
+      const user = userEvent.setup();
+      renderManager({
+        protectedCurrencyId: "cur-gem",
+        onBulkArchive,
+      });
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Abrir Gema" })[0]!);
-    fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
+      await user.click(
+        screen.getAllByRole("checkbox", { name: "Selecionar Estrela" })[0]!,
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Arquivar selecionadas" }),
+      );
+      const reason = "x".repeat(100);
+      await user.type(
+        screen.getByLabelText("Motivo do arquivamento"),
+        reason,
+      );
+      await user.click(screen.getByRole("button", { name: "Arquivar" }));
 
-    const confirm = screen.getByRole("dialog", { name: "Excluir moeda" });
-    fireEvent.click(within(confirm).getByRole("button", { name: "Excluir" }));
+      await waitFor(() => {
+        expect(onBulkArchive).toHaveBeenCalledWith(["cur-star"], reason);
+      });
+    },
+    15_000,
+  );
 
-    await waitFor(() => {
-      expect(onDelete).toHaveBeenCalledWith("cur-gem");
-    });
-    expect(showSuccessToast).toHaveBeenCalledWith("Moeda excluída.");
-  });
+  it(
+    "archives selected currencies after confirmation",
+    async () => {
+      const onBulkArchive = vi.fn().mockResolvedValue(undefined);
+      const user = userEvent.setup();
+      renderManager({ onBulkArchive });
 
-  it("archives the first-listed currency when another is assigned", async () => {
-    const onBulkArchive = vi.fn().mockResolvedValue(undefined);
-    renderManager({
-      protectedCurrencyId: "cur-gem",
-      onBulkArchive,
-    });
+      await user.click(
+        screen.getAllByRole("checkbox", { name: "Selecionar Gema" })[0]!,
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Arquivar selecionadas" }),
+      );
+      const reason = "x".repeat(100);
+      await user.type(
+        screen.getByLabelText("Motivo do arquivamento"),
+        reason,
+      );
+      await user.click(screen.getByRole("button", { name: "Arquivar" }));
 
-    fireEvent.click(
-      screen.getAllByRole("checkbox", { name: "Selecionar Estrela" })[0]!,
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Arquivar selecionadas" }),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Sim" }));
-
-    await waitFor(() => {
-      expect(onBulkArchive).toHaveBeenCalledWith(["cur-star"]);
-    });
-  });
-
-  it("archives selected currencies after confirmation", async () => {
-    const onBulkArchive = vi.fn().mockResolvedValue(undefined);
-    renderManager({ onBulkArchive });
-
-    fireEvent.click(
-      screen.getAllByRole("checkbox", { name: "Selecionar Gema" })[0]!,
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Arquivar selecionadas" }),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Sim" }));
-
-    await waitFor(() => {
-      expect(onBulkArchive).toHaveBeenCalledWith(["cur-gem"]);
-    });
-    expect(showSuccessToast).toHaveBeenCalledWith("Moedas arquivadas.");
-  });
+      await waitFor(() => {
+        expect(onBulkArchive).toHaveBeenCalledWith(["cur-gem"], reason);
+      });
+      expect(showSuccessToast).toHaveBeenCalledWith("Moedas arquivadas.");
+    },
+    15_000,
+  );
 
   it("shows only archived currencies when the toggle is on", () => {
     renderManager({

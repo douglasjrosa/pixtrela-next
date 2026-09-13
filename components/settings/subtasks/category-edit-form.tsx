@@ -4,9 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { removeCategory, saveCategory } from "@/app/(app)/settings/subtasks/actions";
+import { saveCategory } from "@/app/(app)/settings/subtasks/actions";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
@@ -29,7 +28,6 @@ export function CategoryEditForm({
   const [name, setName] = useState(initialName);
   const [ref, setRef] = useState(initialRef);
   const [description, setDescription] = useState(initialDescription);
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function handleSave(): void {
@@ -46,26 +44,6 @@ export function CategoryEditForm({
     });
   }
 
-  function handleDelete(): void {
-    startTransition(async () => {
-      try {
-        await removeCategory(documentId);
-        showSuccessToast(t("categoryDeleted"));
-        setDeleteOpen(false);
-        router.push("/settings/subtasks/categories");
-        router.refresh();
-      } catch (error) {
-        rethrowIfNavigationError(error);
-        const message =
-          error instanceof Error && error.message === "categoryHasFlags"
-            ? t("categoryHasFlags")
-            : error instanceof Error && error.message === "categoryInUse"
-              ? t("categoryInUse")
-              : t("error");
-        showErrorToast(message);
-      }
-    });
-  }
 
   return (
     <form
@@ -105,24 +83,7 @@ export function CategoryEditForm({
         <Button type="submit" disabled={isPending}>
           {tCommon("save")}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={isPending}
-          onClick={() => setDeleteOpen(true)}
-        >
-          {tCommon("delete")}
-        </Button>
       </div>
-      <ConfirmDialog
-        open={deleteOpen}
-        title={t("editCategory")}
-        description={tCommon("delete")}
-        confirmLabel={tCommon("delete")}
-        onConfirm={handleDelete}
-        onClose={() => setDeleteOpen(false)}
-        disabled={isPending}
-      />
     </form>
   );
 }

@@ -2,7 +2,6 @@
 
 import { useLayoutEffect, useRef, useState, useTransition } from "react";
 import { ChevronDown } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import {
   SemanticColorField,
   semanticColorFieldId,
 } from "@/components/settings/semantic-color-field";
+import { reloadCurrentDocument } from "@/lib/navigation/reload-document";
 import {
   matchSemanticThemePreset,
   SEMANTIC_THEME_PRESETS,
@@ -20,6 +20,7 @@ import {
   clearSemanticThemePreview,
   applySemanticThemePreview,
 } from "@/lib/themes/semantic-theme-preview";
+import { shouldReplaceDraftFromServer } from "@/lib/themes/semantic-theme-draft-sync";
 import {
   DEFAULT_SEMANTIC_TOKENS,
   SEMANTIC_TOKEN_GROUPS,
@@ -63,7 +64,6 @@ export function DefaultColorsSection({
   initialTokens,
   onSave,
 }: DefaultColorsSectionProps) {
-  const router = useRouter();
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   const [draft, setDraft] = useState<SemanticTokens>(initialTokens);
@@ -76,11 +76,17 @@ export function DefaultColorsSection({
   const [prevInitialKey, setPrevInitialKey] = useState(initialKey);
   if (initialKey !== prevInitialKey) {
     setPrevInitialKey(initialKey);
-    setDraft(initialTokens);
+    if (
+      shouldReplaceDraftFromServer({
+        serverTokens: initialTokens,
+        draft,
+        savedBaseline: savedBaselineRef.current,
+      })
+    ) {
+      setDraft(initialTokens);
+      savedBaselineRef.current = initialTokens;
+    }
   }
-  useLayoutEffect(() => {
-    savedBaselineRef.current = initialTokens;
-  }, [initialKey, initialTokens]);
   const busy = isPending || isSaving;
   const selectedPresetId = matchSemanticThemePreset(draft);
   const allGroupsExpanded =
@@ -104,7 +110,7 @@ export function DefaultColorsSection({
 
   useLayoutEffect(() => {
     applySemanticThemePreview(draft);
-  }, [draft]);
+  }, [draft, isPending, isSaving]);
 
   useLayoutEffect(() => {
     return () => {
@@ -135,9 +141,7 @@ export function DefaultColorsSection({
     try {
       await onSave(draft);
       savedBaselineRef.current = draft;
-      applySemanticThemePreview(draft);
-      setMessage(t("defaultColorsSaved"));
-      router.refresh();
+      reloadCurrentDocument();
     } catch {
       setMessage(t("error"));
     } finally {

@@ -108,7 +108,13 @@ export function calculateQtySessionCurrency(
     context.expectedTime,
     context.qty,
   );
-  return pieces * secondsPerPiece * rate;
+  return toActivityCurrencyAward(pieces * secondsPerPiece * rate);
+}
+
+/** Whole-star amount persisted on Activity.currencyAwarded (integer column). */
+export function toActivityCurrencyAward(amount: number): number {
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  return Math.round(amount);
 }
 
 export function calculateDurationCurrencyCredits(

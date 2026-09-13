@@ -6,16 +6,14 @@ import { renderWithIntl } from "@/test/test-utils";
 import type { TemplateSubTaskRow } from "@/lib/business/template-subtask-map";
 
 const updateTemplate = vi.fn();
-const loadTemplateFromLegacy = vi.fn();
-const deleteTemplate = vi.fn();
+const loadTemplateFromLegacy = vi.fn();
 const push = vi.fn();
 const refresh = vi.fn();
 
 vi.mock("@/app/(app)/templates/template-task-actions", () => ({
   updateTemplate: (...args: unknown[]) => updateTemplate(...args),
   loadTemplateFromLegacy: (...args: unknown[]) =>
-    loadTemplateFromLegacy(...args),
-  deleteTemplate: (...args: unknown[]) => deleteTemplate(...args),
+    loadTemplateFromLegacy(...args),
 }));
 
 vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
@@ -65,7 +63,7 @@ describe("TemplateEditor", () => {
     expect(saveButtons[0]).toHaveAttribute("form", "template-detail-form");
   });
 
-  it("shows edit title and delete control", () => {
+  it("shows edit title without delete control", () => {
     renderWithIntl(
       <TemplateEditor
         documentId="tpl-1"
@@ -78,8 +76,8 @@ describe("TemplateEditor", () => {
       screen.getByRole("heading", { name: "Editar modelo" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Excluir modelo" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Excluir modelo" }),
+    ).not.toBeInTheDocument();
   });
 
   it("persists metadata and subtasks when save is clicked", async () => {

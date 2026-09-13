@@ -177,6 +177,7 @@ describe("KioskChainGroupCard", () => {
     const card = screen.getByTestId("kiosk-chain-group");
     expect(card).toHaveClass("bg-success/10");
     expect(screen.queryByTestId("subtask-locked-overlay")).toBeNull();
+    expect(screen.getByRole("button", { name: "Parar" })).toBeEnabled();
   });
 
   it("collects member answers before confirming stop", async () => {

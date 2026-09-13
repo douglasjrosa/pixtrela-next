@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import bcrypt from "bcryptjs";
 
@@ -13,8 +13,10 @@ import {
   users,
 } from "@/drizzle/schema";
 import { canEstablishAppSession } from "@/lib/domain/auth-session";
+import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
 import { getDb, type Db } from "@/lib/db/client";
 import { normalizeEmail } from "@/lib/mail/deliverable-email";
+import { archiveRecords } from "@/lib/repos/deactivation-reasons";
 import { deleteMediaAsset } from "@/lib/repos/media";
 import type { UserFormOwner } from "@/lib/schemas/user";
 import type { UserListSort } from "@/lib/schemas/user-list-sort";
@@ -442,7 +444,6 @@ export async function updateUserAccount(
     patch.active = input.active;
     if (input.active) {
       patch.blocked = false;
-      patch.reasonForDeactivation = null;
     }
   }
   if (input.password) {
@@ -597,44 +598,65 @@ export async function authenticateUserByTag(
   return mapped;
 }
 
-export async function deactivateUser(
-  id: string,
-  reasonForDeactivation: string,
+export async function deactivateUsers(
+  ids: string[],
+  reason: string,
   db: Db = getDb(),
 ): Promise<void> {
-  const [row] = await db
+  if (ids.length === 0) return;
+
+  const rows = await db
     .select({
-      active: users.active,
+      id: users.id,
       facePhotoMediaId: users.facePhotoMediaId,
     })
     .from(users)
-    .where(eq(users.id, id))
-    .limit(1);
-  if (!row || !row.active) return;
+    .where(and(inArray(users.id, ids), eq(users.active, true)));
+  if (rows.length === 0) return;
 
-  const facePhotoMediaId = row.facePhotoMediaId;
+  const activeIds = rows.map((row) => row.id);
+  const facePhotoMediaIds = rows
+    .map((row) => row.facePhotoMediaId)
+    .filter((mediaId): mediaId is string => Boolean(mediaId));
 
-  await db
-    .update(users)
-    .set({
-      active: false,
-      blocked: true,
-      reasonForDeactivation,
-      facePhotoMediaId: null,
-      faceVector: null,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(users.id, id), eq(users.active, true)));
+  await archiveRecords(
+    {
+      tableName: DEACTIVATION_TABLE.users,
+      recordIds: activeIds,
+      text: reason,
+      setInactive: async (recordIds, tx) => {
+        await tx
+          .update(users)
+          .set({
+            active: false,
+            blocked: true,
+            facePhotoMediaId: null,
+            faceVector: null,
+            updatedAt: new Date(),
+          })
+          .where(and(inArray(users.id, recordIds), eq(users.active, true)));
+      },
+    },
+    db,
+  );
 
-  if (!facePhotoMediaId) return;
-
-  try {
-    await deleteMediaAsset(facePhotoMediaId, db);
-  } catch (error) {
-    if (!(error instanceof Error) || error.message !== "inUse") {
-      throw error;
+  for (const facePhotoMediaId of facePhotoMediaIds) {
+    try {
+      await deleteMediaAsset(facePhotoMediaId, db);
+    } catch (error) {
+      if (!(error instanceof Error) || error.message !== "inUse") {
+        throw error;
+      }
     }
   }
+}
+
+export async function deactivateUser(
+  id: string,
+  reason: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await deactivateUsers([id], reason, db);
 }
 
 export async function reactivateUser(
@@ -646,7 +668,6 @@ export async function reactivateUser(
     .set({
       active: true,
       blocked: false,
-      reasonForDeactivation: null,
       updatedAt: new Date(),
     })
     .where(eq(users.id, id));

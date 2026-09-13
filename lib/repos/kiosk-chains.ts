@@ -31,7 +31,10 @@ import {
 import { getKioskSettings } from "@/lib/repos/settings";
 import { DEFAULT_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS } from "@/lib/schemas/kiosk-setting";
 import { hasOpenStartedSessionFromActions } from "@/lib/business/subtask-active-workers";
-import { resolveSubTaskTargetQty } from "@/lib/domain/work-currency";
+import {
+  resolveSubTaskTargetQty,
+  toActivityCurrencyAward,
+} from "@/lib/domain/work-currency";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { getDb, type Db } from "@/lib/db/client";
 import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
@@ -294,13 +297,27 @@ export function resolveOpenChainRunFromActivityRows(
   for (const [chainRunId, list] of byRun) {
     const principal = list.find((row) => row.action === "started");
     if (!principal) continue;
-    const actions = list
-      .filter((row) => row.colaboratorId === principal.colaboratorId)
-      .map((row) => row.action);
-    if (!hasOpenStartedSessionFromActions(actions)) continue;
+
+    const principalId = principal.colaboratorId;
+    const subTaskIds = new Set(
+      list
+        .filter((row) => row.colaboratorId === principalId)
+        .map((row) => row.subTaskId),
+    );
+    const hasOpenPrincipalSession = [...subTaskIds].some((subTaskId) => {
+      const actions = list
+        .filter(
+          (row) =>
+            row.colaboratorId === principalId && row.subTaskId === subTaskId,
+        )
+        .map((row) => row.action);
+      return hasOpenStartedSessionFromActions(actions);
+    });
+    if (!hasOpenPrincipalSession) continue;
+
     return {
       chainRunId,
-      principalId: principal.colaboratorId,
+      principalId,
       runStartedAt: principal.timestamp,
     };
   }
@@ -823,11 +840,13 @@ async function reallocateChainRunInternal(
       );
       const award =
         event.action === "stoped"
-          ? (nextAwards.find(
-              (row) =>
-                row.subTaskId === event.subTaskId &&
-                row.colaboratorId === event.colaboratorId,
-            )?.amount ?? 0)
+          ? toActivityCurrencyAward(
+              nextAwards.find(
+                (row) =>
+                  row.subTaskId === event.subTaskId &&
+                  row.colaboratorId === event.colaboratorId,
+              )?.amount ?? 0,
+            )
           : 0;
       if (existing) {
         await tx
@@ -957,10 +976,10 @@ export async function confirmChainStop(
   const anchorSubTaskId = answers[0]?.documentId ?? runRows[0]?.subTaskId;
   if (!anchorSubTaskId) throw new Error("notFound");
 
-  const { chain } = await loadChainContext(anchorSubTaskId, db);
-  const memberIds = new Set(chain.memberIds);
-  const principalId = resolveOpenPrincipalForChainMembers(runRows, memberIds);
-  if (!principalId || principalId !== colaboratorId) throw new Error("forbidden");
+  const { principalId } = await resolveChainRunScope(runRows, db, {
+    preferredAnchorSubTaskId: anchorSubTaskId,
+  });
+  if (principalId !== colaboratorId) throw new Error("forbidden");
   await reallocateChainRunInternal(chainRunId, answers, timestamp, db, 0, {
     preferredAnchorSubTaskId: anchorSubTaskId,
     principalId,

@@ -103,7 +103,7 @@ export function KioskChainGroupCard({
   const showLockOverlay = unit.locked && !unit.principalActive;
   const showStart = !readOnly && unit.showStart;
   const showStop =
-    !readOnly && !unit.locked && unit.principalActive && !collecting;
+    !readOnly && unit.principalActive && !collecting;
   const persistedChainRunId = resolvePersistedChainRunId(
     unit.chainRunId,
     openRuns,
@@ -164,7 +164,8 @@ export function KioskChainGroupCard({
         ) : null}
         <ul className="space-y-3">
           {unit.members.map((member) => {
-            const isProducing = member.status === "producing";
+            const isProducing =
+              member.status === "producing" || Boolean(member.startedAt);
             return (
               <li
                 key={member.documentId}

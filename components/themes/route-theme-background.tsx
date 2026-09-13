@@ -12,11 +12,13 @@ import {
   computeParallaxOffset,
   DEFAULT_PARALLAX_DIRECTION,
   DEFAULT_PARALLAX_INTENSITY,
+  hasRouteThemeImageTint,
   matchRouteTheme,
   maxParallaxTravelPx,
   parallaxLayerPixelGeometry,
   routeThemeColorOverlayRgba,
-  routeThemeImageOnlyStyle,
+  routeThemeImageBackdropRgba,
+  routeThemeImagePaintStyle,
   routeThemeLayeredStyle,
   type RouteThemeView,
 } from "@/lib/themes/match-route-theme";
@@ -98,8 +100,9 @@ export function RouteThemeBackground({
   }, [useParallax, intensity, direction]);
 
   if (useParallax && theme) {
-    const imageStyle = routeThemeImageOnlyStyle(theme) as CSSProperties;
+    const imageStyle = routeThemeImagePaintStyle(theme) as CSSProperties;
     const overlayRgba = routeThemeColorOverlayRgba(theme);
+    const backdrop = routeThemeImageBackdropRgba(theme);
 
     return (
       <div
@@ -109,6 +112,7 @@ export function RouteThemeBackground({
           "pointer-events-none fixed inset-0 z-0 overflow-hidden",
           className,
         )}
+        style={backdrop ? { backgroundColor: backdrop } : undefined}
       >
         <div
           className="absolute inset-x-0 will-change-transform"
@@ -119,6 +123,34 @@ export function RouteThemeBackground({
             transform: `translate3d(0, ${parallaxOffset}px, 0)`,
           }}
         />
+        {overlayRgba ? (
+          <div
+            className="absolute inset-0"
+            style={{ backgroundColor: overlayRgba }}
+          />
+        ) : null}
+      </div>
+    );
+  }
+
+  const usesTint = hasRouteThemeImageTint(theme);
+
+  if (usesTint && theme) {
+    const imageStyle = routeThemeImagePaintStyle(theme) as CSSProperties;
+    const overlayRgba = routeThemeColorOverlayRgba(theme);
+    const backdrop = routeThemeImageBackdropRgba(theme);
+    return (
+      <div
+        aria-hidden
+        data-route-theme-background
+        className={cn(
+          "pointer-events-none z-0",
+          useFixed ? "fixed inset-0" : "absolute inset-0 min-h-full",
+          className,
+        )}
+        style={backdrop ? { backgroundColor: backdrop } : undefined}
+      >
+        <div className="absolute inset-0" style={imageStyle} />
         {overlayRgba ? (
           <div
             className="absolute inset-0"

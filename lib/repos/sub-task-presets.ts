@@ -1,9 +1,11 @@
-import { and, asc, count, desc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 
 import { factoryActions, subTaskPresets } from "@/drizzle/schema";
 import { parseActionUnitTime } from "@/lib/business/factory-action";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
+import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
 import { getDb, type Db } from "@/lib/db/client";
+import { archiveRecords } from "@/lib/repos/deactivation-reasons";
 import type { SubTaskPresetFormInput } from "@/lib/schemas/sub-task-preset";
 import type { SubtaskPresetListSort } from "@/lib/schemas/subtask-preset-list-sort";
 
@@ -220,14 +222,33 @@ export async function updateSubTaskPresetRepo(
     .where(eq(subTaskPresets.id, id));
 }
 
-export async function archiveSubTaskPresetById(
-  id: string,
+export async function archiveSubTaskPresets(
+  ids: string[],
+  reason: string,
   db: Db = getDb(),
 ): Promise<void> {
-  await db
-    .update(subTaskPresets)
-    .set({ active: false, updatedAt: new Date() })
-    .where(eq(subTaskPresets.id, id));
+  await archiveRecords(
+    {
+      tableName: DEACTIVATION_TABLE.subTaskPresets,
+      recordIds: ids,
+      text: reason,
+      setInactive: async (recordIds, tx) => {
+        await tx
+          .update(subTaskPresets)
+          .set({ active: false, updatedAt: new Date() })
+          .where(inArray(subTaskPresets.id, recordIds));
+      },
+    },
+    db,
+  );
+}
+
+export async function archiveSubTaskPresetById(
+  id: string,
+  reason: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await archiveSubTaskPresets([id], reason, db);
 }
 
 export async function hardDeleteSubTaskPresetById(
@@ -240,7 +261,8 @@ export async function hardDeleteSubTaskPresetById(
 /** @deprecated Use archiveSubTaskPresetById for soft delete. */
 export async function deleteSubTaskPresetById(
   id: string,
+  reason: string,
   db: Db = getDb(),
 ): Promise<void> {
-  await archiveSubTaskPresetById(id, db);
+  await archiveSubTaskPresetById(id, reason, db);
 }

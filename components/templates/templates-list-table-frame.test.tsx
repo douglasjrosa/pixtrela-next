@@ -123,7 +123,7 @@ describe("TemplatesListTableFrame", () => {
     expect(button.parentElement).toHaveClass("justify-center");
   });
 
-  it("archives selected templates after simple confirmation", async () => {
+  it("archives selected templates after reason confirmation", async () => {
     bulkArchiveTemplates.mockResolvedValue(undefined);
     const user = userEvent.setup();
 
@@ -149,12 +149,15 @@ describe("TemplatesListTableFrame", () => {
     expect(
       screen.getByText(/Tem certeza de que deseja arquivar/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sim" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Sim" }));
+    const reason = "x".repeat(100);
+    await user.type(
+      screen.getByLabelText("Motivo do arquivamento"),
+      reason,
+    );
+    await user.click(screen.getByRole("button", { name: "Arquivar" }));
 
     await waitFor(() => {
-      expect(bulkArchiveTemplates).toHaveBeenCalledWith(["tpl1"]);
+      expect(bulkArchiveTemplates).toHaveBeenCalledWith(["tpl1"], reason);
     });
     expect(showSuccessToast).toHaveBeenCalled();
   });
