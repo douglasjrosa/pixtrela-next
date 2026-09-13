@@ -1,3 +1,4 @@
+import { fetchBoxTemplateData } from "@/integrations/ribermax/rbx/rbx-client";
 import { buildTemplateFromBoxPayload } from "@/lib/templates/build-template-from-box-payload";
 import type { BoxTemplateData } from "@/integrations/ribermax/rbx/rbx-types";
 import type { TemplateSubTaskComponentInput } from "@/lib/schemas/template-task";
@@ -59,14 +60,15 @@ export function resolveTemplateSourceCodes(
 
 export type EnsureTemplateForTaskCodeResult = {
   templateId: string;
-  source: "legacy" | "existing" | "payload";
+  source: "legacy" | "existing" | "payload" | "rbx";
 };
 
 /**
  * Ensures a template exists for `code` using fixed priority:
  * 1. Ancestral template with subtasks (versions, newest first) → clone
  * 2. Existing template for code (including empty shell) → reuse, ignore payload
- * 3. Create from payload template
+ * 3. Create from CRM payload snapshot
+ * 4. Fetch from legacy RBX when no payload was sent
  */
 export async function ensureTemplateForTaskCode(input: {
   code: string;
@@ -97,15 +99,23 @@ export async function ensureTemplateForTaskCode(input: {
     return { templateId: existing.id, source: "existing" };
   }
 
-  if (!input.template) {
-    throw new Error("template_payload_required");
+  let templatePayload = input.template;
+  let source: "payload" | "rbx" = "payload";
+
+  if (!templatePayload) {
+    const boxId = Number(code);
+    if (!Number.isInteger(boxId) || boxId <= 0) {
+      throw new Error("template_payload_required");
+    }
+    templatePayload = await fetchBoxTemplateData(boxId);
+    source = "rbx";
   }
 
-  const draft = await buildTemplateFromBoxPayload(input.template);
+  const draft = await buildTemplateFromBoxPayload(templatePayload);
   const created = await createTemplateTask({
     code: draft.code,
     name: draft.name || input.fallbackName,
     subTasks: toRepoSubTasks(draft.subTask ?? []),
   });
-  return { templateId: created.id, source: "payload" };
+  return { templateId: created.id, source };
 }
