@@ -19,7 +19,7 @@ import {
 export type UpsertTaskFromApiResult = {
   action: "created" | "updated" | "skipped";
   taskId: string;
-  templateSource?: "legacy" | "existing" | "payload";
+  templateSource?: "legacy" | "existing" | "payload" | "rbx";
 };
 
 async function loadDefaultStepId(): Promise<string> {
