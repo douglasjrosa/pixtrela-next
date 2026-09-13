@@ -4,15 +4,14 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const SECRET_ENV_KEYS = [
-  "CRM_WEBHOOK_SECRET",
-  "LEGACY_RBX_URL",
+    "LEGACY_RBX_URL",
   "LEGACY_RBX_TOKEN",
 ];
 
 const SOURCE_FILES = [
-  "app/api/integrations/ribermax/crm-pedido/route.ts",
-  "app/api/webhooks/crm-pedido/route.ts",
+  "app/api/integrations/ribermax/sub-task-presets/route.ts",
   "integrations/ribermax/rbx/rbx-client.ts",
+  "integrations/ribermax/rbx/rbx-api-auth.ts",
   "integrations/ribermax/settings/connection-repo.ts",
   "integrations/crm/settings/repo.ts",
 ];

@@ -11,12 +11,14 @@ import {
   canManageTemplates,
 } from "@/lib/auth/permissions";
 import {
+  archiveTemplateTasks,
   createTemplateTask as createTemplateTaskRepo,
   deleteTemplateTask as deleteTemplateTaskRepo,
   findTemplateById,
   hardDeleteTemplateTask,
   updateTemplateTask as updateTemplateTaskRepo,
 } from "@/lib/repos/templates";
+import { parseArchiveReason } from "@/lib/schemas/archive-with-reason";
 import { templateListFiltersSchema } from "@/lib/schemas/template-list-filters";
 import {
   bulkTemplateIdsSchema,
@@ -119,23 +121,29 @@ export async function loadTemplateFromLegacy(
   await updateTemplate(documentId, draft);
 }
 
-export async function deleteTemplate(documentId: string): Promise<void> {
+export async function deleteTemplate(
+  documentId: string,
+  reason: string,
+): Promise<void> {
   await assertCanManage();
-  await deleteTemplateTaskRepo(documentId);
+  const text = parseArchiveReason(reason, 1);
+  await deleteTemplateTaskRepo(documentId, text);
   invalidateTemplates();
 }
 
 export async function bulkArchiveTemplates(
   documentIds: string[],
+  reason: string,
 ): Promise<void> {
   await assertCanDeactivate();
   const ids = bulkTemplateIdsSchema.parse(documentIds);
+  const text = parseArchiveReason(reason, ids.length);
 
   for (const documentId of ids) {
     const template = await findTemplateById(documentId);
     if (!template) throw new Error("notFound");
-    await deleteTemplateTaskRepo(documentId);
   }
+  await archiveTemplateTasks(ids, text);
   invalidateTemplates();
 }
 

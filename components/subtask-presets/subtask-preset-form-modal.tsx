@@ -15,10 +15,8 @@ export interface SubTaskPresetFormModalProps {
   defaultValues: SubTaskPresetFormInput;
   actionName?: string;
   saving?: boolean;
-  showDelete?: boolean;
   onClose: () => void;
   onSave: (values: SubTaskPresetFormInput) => void;
-  onDelete?: () => void;
 }
 
 export function SubTaskPresetFormModal({
@@ -28,10 +26,8 @@ export function SubTaskPresetFormModal({
   defaultValues,
   actionName = "",
   saving = false,
-  showDelete = false,
   onClose,
   onSave,
-  onDelete,
 }: SubTaskPresetFormModalProps) {
   const tCommon = useTranslations("common");
   const titleId = useId();
@@ -101,19 +97,7 @@ export function SubTaskPresetFormModal({
           />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4">
-          {showDelete && onDelete ? (
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={saving}
-              onClick={onDelete}
-            >
-              {tCommon("delete")}
-            </Button>
-          ) : (
-            <span />
-          )}
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t px-6 py-4">
           <Button type="submit" form={formId} disabled={saving}>
             {tCommon("save")}
           </Button>

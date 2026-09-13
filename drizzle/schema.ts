@@ -142,7 +142,6 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").notNull(),
   blocked: boolean("blocked").default(false).notNull(),
   active: boolean("active").default(true).notNull(),
-  reasonForDeactivation: text("reason_for_deactivation"),
   greetingGender: greetingGenderEnum("greeting_gender").default("neutral"),
   userTag: varchar("user_tag", { length: 64 }),
   faceVector: jsonb("face_vector").$type<number[] | null>(),
@@ -267,6 +266,12 @@ export const routeThemes = pgTable("route_themes", {
   backgroundImageMediaId: uuid("background_image_media_id").references(
     () => mediaAssets.id,
   ),
+  backgroundImageColorKey: varchar("background_image_color_key", {
+    length: 64,
+  }),
+  useDefaultBackgroundImage: boolean("use_default_background_image")
+    .default(false)
+    .notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -515,7 +520,6 @@ export const tasks = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     name: varchar("name", { length: 256 }).notNull(),
     active: boolean("active").default(true).notNull(),
-    reasonForDeactivation: text("reason_for_deactivation"),
     qty: integer("qty").default(1).notNull(),
     deliveryDate: date("delivery_date"),
     startedAt: timestamp("started_at", { withTimezone: true }),
@@ -803,4 +807,23 @@ export const exchanges = pgTable(
       .notNull(),
   },
   (table) => [index("exchanges_order_id_idx").on(table.orderId)],
+);
+
+export const reasonForDeactivation = pgTable(
+  "reason_for_deactivation",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tableName: varchar("table_name", { length: 128 }).notNull(),
+    recordIds: uuid("record_ids").array().notNull(),
+    text: text("text").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("reason_for_deactivation_table_name_idx").on(table.tableName),
+  ],
 );

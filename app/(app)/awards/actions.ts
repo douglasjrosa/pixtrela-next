@@ -18,6 +18,7 @@ import {
   uploadCategoryImageAsset,
 } from "@/lib/media/category-image-assets";
 import {
+  archiveAwards,
   createAward as createAwardRepo,
   deleteAward as deleteAwardRepo,
   findAwardById,
@@ -25,6 +26,7 @@ import {
   replaceAwardPrices,
 } from "@/lib/repos/awards";
 import type { MediaAssetRecord } from "@/lib/repos/media";
+import { parseArchiveReason } from "@/lib/schemas/archive-with-reason";
 import {
   awardFormSchema,
   bulkAwardIdsSchema,
@@ -160,9 +162,13 @@ export async function updateAward(
   invalidateAwards();
 }
 
-export async function deleteAward(documentId: string): Promise<void> {
+export async function deleteAward(
+  documentId: string,
+  reason: string,
+): Promise<void> {
   await assertCanDeactivate();
-  await deleteAwardRepo(documentId);
+  const text = parseArchiveReason(reason, 1);
+  await deleteAwardRepo(documentId, text);
   invalidateAwards();
 }
 
@@ -177,15 +183,17 @@ export async function permanentlyDeleteAward(documentId: string): Promise<void> 
 
 export async function bulkArchiveAwards(
   documentIds: string[],
+  reason: string,
 ): Promise<void> {
   await assertCanDeactivate();
   const ids = bulkAwardIdsSchema.parse(documentIds);
+  const text = parseArchiveReason(reason, ids.length);
 
   for (const documentId of ids) {
     const award = await findAwardById(documentId);
     if (!award) throw new Error("notFound");
-    await deleteAwardRepo(documentId);
   }
+  await archiveAwards(ids, text);
   invalidateAwards();
 }
 

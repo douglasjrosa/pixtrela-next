@@ -24,7 +24,6 @@ import { useTranslations } from "next-intl";
 
 import { StepFormModal } from "@/components/steps/step-form-modal";
 import { AddNewButton } from "@/components/ui/add-new-button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { reorderStepsByDrag } from "@/lib/business/step-order";
 import type { StepNameFormInput } from "@/lib/schemas/step";
 import { STEP_TASKS_PER_LOAD_DEFAULT } from "@/lib/schemas/step";
@@ -43,7 +42,6 @@ export interface StepManagerProps {
     values: StepNameFormInput,
   ) => void | Promise<void>;
   onReorder: (orderedDocumentIds: string[]) => void | Promise<void>;
-  onDelete: (documentId: string) => void | Promise<void>;
 }
 
 const EMPTY_FORM: StepNameFormInput = {
@@ -147,7 +145,6 @@ export function StepManager({
   onCreate,
   onUpdate,
   onReorder,
-  onDelete,
 }: StepManagerProps) {
   const router = useRouter();
   const tCommon = useTranslations("common");
@@ -159,7 +156,6 @@ export function StepManager({
     setOrderedSteps(steps);
   }
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
 
@@ -170,7 +166,6 @@ export function StepManager({
 
   function closeModal(): void {
     setModal({ mode: "closed" });
-    setDeleteOpen(false);
   }
 
   function openEdit(step: StepRow): void {
@@ -211,19 +206,6 @@ export function StepManager({
     });
   }
 
-  function handleConfirmDelete(): void {
-    if (modal.mode !== "edit") return;
-    const documentId = modal.step.documentId;
-    startTransition(async () => {
-      await onDelete(documentId);
-      setOrderedSteps((current) =>
-        current.filter((step) => step.documentId !== documentId),
-      );
-      setMessage(tSteps("deleted"));
-      closeModal();
-      refreshSteps();
-    });
-  }
 
   function handleDragEnd(event: DragEndEvent): void {
     const nextOrder = resolveStepReorder(
@@ -318,20 +300,10 @@ export function StepManager({
         formKey={formKey}
         defaultValues={defaultValues}
         saving={isPending}
-        showDelete={modal.mode === "edit"}
         onClose={closeModal}
         onSave={handleSave}
-        onDelete={() => setDeleteOpen(true)}
       />
 
-      <ConfirmDialog
-        open={deleteOpen}
-        title={tSteps("deleteTitle")}
-        description={tSteps("deleteConfirm")}
-        disabled={isPending}
-        onClose={() => setDeleteOpen(false)}
-        onConfirm={handleConfirmDelete}
-      />
     </div>
   );
 }

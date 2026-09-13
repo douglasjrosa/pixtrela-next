@@ -27,6 +27,12 @@ vi.mock("@/lib/db/client", () => ({
   getDb: () => getDb(),
 }));
 
+import {
+  changeOwnPassword,
+  updateOwnAvatar,
+  updateOwnPersonal,
+} from "@/app/[documentId]/profile/actions";
+
 describe("profile actions", () => {
   beforeEach(() => {
     authMock.mockReset();
@@ -42,9 +48,6 @@ describe("profile actions", () => {
       user: { id: "admin-1", role: "admin" },
     });
 
-    const { changeOwnPassword } = await import(
-      "@/app/[documentId]/profile/actions"
-    );
     const result = await changeOwnPassword({
       currentPassword: "oldpass1",
       password: "newpass1",
@@ -76,9 +79,6 @@ describe("profile actions", () => {
       }),
     });
 
-    const { updateOwnAvatar } = await import(
-      "@/app/[documentId]/profile/actions"
-    );
     const file = new File(["img"], "a.jpg", { type: "image/jpeg" });
     const result = await updateOwnAvatar(file);
     expect(result.ok).toBe(true);
@@ -97,9 +97,6 @@ describe("profile actions", () => {
       phone: "11987654321",
     });
 
-    const { updateOwnPersonal } = await import(
-      "@/app/[documentId]/profile/actions"
-    );
     const result = await updateOwnPersonal({
       name: "Ana",
       lastName: "Silva",
@@ -128,9 +125,6 @@ describe("profile actions", () => {
     });
     changeUserPassword.mockResolvedValue("ok");
 
-    const { changeOwnPassword } = await import(
-      "@/app/[documentId]/profile/actions"
-    );
     const result = await changeOwnPassword({
       currentPassword: "oldpass1",
       password: "newpass1",

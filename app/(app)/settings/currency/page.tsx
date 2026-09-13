@@ -16,7 +16,6 @@ import {
   bulkArchiveCurrencies,
   bulkDeleteCurrencies,
   createCurrency,
-  deleteCurrency,
   listCurrencyImages,
   updateCurrency,
   uploadCurrencyIcon,
@@ -60,7 +59,6 @@ export default async function SettingsCurrencyPage() {
         }
         onCreate={createCurrency}
         onUpdate={updateCurrency}
-        onDelete={deleteCurrency}
         onBulkArchive={bulkArchiveCurrencies}
         onBulkDelete={bulkDeleteCurrencies}
         onListImages={listCurrencyImages}

@@ -10,6 +10,8 @@ const listSubTaskPresetsRepo = vi.fn();
 const createSubTaskPresetRepo = vi.fn();
 const updateSubTaskPresetRepo = vi.fn();
 const archiveSubTaskPresetById = vi.fn();
+const archiveSubTaskPresets = vi.fn();
+const findSubTaskPresetById = vi.fn();
 const auth = vi.fn(async () => ({ user: { role: "manager" } }));
 const revalidateTag = vi.fn();
 const revalidatePath = vi.fn();
@@ -33,6 +35,9 @@ vi.mock("@/lib/repos/sub-task-presets", () => ({
     updateSubTaskPresetRepo(...args),
   archiveSubTaskPresetById: (...args: unknown[]) =>
     archiveSubTaskPresetById(...args),
+  archiveSubTaskPresets: (...args: unknown[]) =>
+    archiveSubTaskPresets(...args),
+  findSubTaskPresetById: (...args: unknown[]) => findSubTaskPresetById(...args),
 }));
 
 const loadSubtaskPresetListPageMock = vi.fn();
@@ -50,6 +55,8 @@ describe("sub-task-presets actions", () => {
     createSubTaskPresetRepo.mockReset();
     updateSubTaskPresetRepo.mockReset();
     archiveSubTaskPresetById.mockReset();
+    archiveSubTaskPresets.mockReset();
+    findSubTaskPresetById.mockReset();
     auth.mockReset();
     revalidateTag.mockReset();
     revalidatePath.mockReset();
@@ -137,10 +144,11 @@ describe("sub-task-presets actions", () => {
     );
   });
 
-  it("deleteSubTaskPreset deletes by id", async () => {
+  it("deleteSubTaskPreset archives by id with reason", async () => {
+    const reason = "x".repeat(100);
     const { deleteSubTaskPreset } = await import("./actions");
-    await deleteSubTaskPreset("p1");
-    expect(archiveSubTaskPresetById).toHaveBeenCalledWith("p1");
+    await deleteSubTaskPreset("p1", reason);
+    expect(archiveSubTaskPresetById).toHaveBeenCalledWith("p1", reason);
   });
 
   it("rejects leader from managing presets", async () => {

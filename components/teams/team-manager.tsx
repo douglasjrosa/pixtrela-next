@@ -8,7 +8,6 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { AddNewButton } from "@/components/ui/add-new-button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
@@ -35,10 +34,6 @@ export interface TeamManagerProps {
   children: ReactNode;
   onCreate: (values: TeamFormInput) => void | Promise<void>;
   onUpdate: (documentId: string, values: TeamFormInput) => void | Promise<void>;
-  onArchive: (documentId: string) => void | Promise<void>;
-  onHardDelete: (documentId: string) => void | Promise<void>;
-  canDeactivate?: boolean;
-  canDelete: boolean;
 }
 
 const EMPTY_FORM: TeamFormInput = {
@@ -72,10 +67,8 @@ interface TeamFormDialogProps {
   leaders: UserOption[];
   colaborators: UserOption[];
   isPending: boolean;
-  destructiveAction?: "archive" | "delete";
   onClose: () => void;
   onSubmit: (values: TeamFormInput) => void;
-  onDestructiveAction?: () => void;
 }
 
 function TeamFormDialog({
@@ -83,10 +76,8 @@ function TeamFormDialog({
   leaders,
   colaborators,
   isPending,
-  destructiveAction,
   onClose,
   onSubmit,
-  onDestructiveAction,
 }: TeamFormDialogProps) {
   const tCommon = useTranslations("common");
   const tTeams = useTranslations("teams");
@@ -111,20 +102,6 @@ function TeamFormDialog({
       titleId={formTitleId}
       onClose={onClose}
       disabled={isPending}
-      footerStart={
-        destructiveAction && onDestructiveAction ? (
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={isPending}
-            onClick={onDestructiveAction}
-          >
-            {destructiveAction === "archive"
-              ? tTeams("archive")
-              : tCommon("delete")}
-          </Button>
-        ) : undefined
-      }
       footerEnd={
         <Button type="submit" form={formId} disabled={isPending}>
           {isEditing ? tCommon("save") : tCommon("create")}
@@ -245,47 +222,29 @@ export function TeamManager({
   children,
   onCreate,
   onUpdate,
-  onArchive,
-  onHardDelete,
-  canDeactivate = false,
-  canDelete,
 }: TeamManagerProps) {
-  const tCommon = useTranslations("common");
   const tTeams = useTranslations("teams");
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<TeamRow | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
 
-  const destructiveAction = editingTeam
-    ? editingTeam.active
-      ? canDeactivate
-        ? ("archive" as const)
-        : undefined
-      : canDelete
-        ? ("delete" as const)
-        : undefined
-    : undefined;
 
   function closeForm(): void {
     setFormOpen(false);
     setEditingTeam(null);
-    setConfirmOpen(false);
   }
 
   function startCreate(): void {
     setEditingTeam(null);
     setMessage(null);
-    setConfirmOpen(false);
     setFormOpen(true);
   }
 
   function startEdit(team: TeamRow): void {
     setEditingTeam(team);
     setMessage(null);
-    setConfirmOpen(false);
     setFormOpen(true);
   }
 
@@ -302,20 +261,7 @@ export function TeamManager({
     });
   }
 
-  function handleConfirmDestructive(): void {
-    if (!editingTeam || !destructiveAction) return;
-    startTransition(async () => {
-      if (destructiveAction === "archive") {
-        await onArchive(editingTeam.documentId);
-        setMessage(tTeams("archived"));
-      } else {
-        await onHardDelete(editingTeam.documentId);
-        setMessage(tTeams("deleted"));
-      }
-      closeForm();
-      router.refresh();
-    });
-  }
+
 
   const formDialogKey = editingTeam?.documentId ?? "new";
 
@@ -346,36 +292,12 @@ export function TeamManager({
             leaders={leaders}
             colaborators={colaborators}
             isPending={isPending}
-            destructiveAction={destructiveAction}
             onClose={closeForm}
             onSubmit={onSubmit}
-            onDestructiveAction={
-              destructiveAction ? () => setConfirmOpen(true) : undefined
-            }
           />
         ) : null}
 
-        <ConfirmDialog
-          open={confirmOpen}
-          title={
-            destructiveAction === "archive"
-              ? tTeams("archiveTitle")
-              : tTeams("deleteTitle")
-          }
-          description={
-            destructiveAction === "archive"
-              ? tTeams("archiveConfirm")
-              : tTeams("deleteConfirm")
-          }
-          confirmLabel={
-            destructiveAction === "archive"
-              ? tTeams("archive")
-              : tCommon("delete")
-          }
-          disabled={isPending}
-          onConfirm={handleConfirmDestructive}
-          onClose={() => setConfirmOpen(false)}
-        />
+
 
         {children}
       </div>

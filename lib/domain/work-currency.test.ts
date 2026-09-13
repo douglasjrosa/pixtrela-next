@@ -93,6 +93,18 @@ describe("calculateQtySessionCurrency", () => {
       ),
     ).toBe(0);
   });
+
+  it("rounds fractional qty credits to whole stars", () => {
+    const context = {
+      expectedTime: 340,
+      qty: 2,
+      taskQty: 1,
+      sharingType: "qty" as const,
+    };
+    expect(
+      calculateQtySessionCurrency(context, { sessionQty: 2 }, { currencyPerSecond: 0.01 }),
+    ).toBe(3);
+  });
 });
 
 describe("calculateDurationCurrencyCredits", () => {

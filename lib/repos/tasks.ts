@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, max, type InferSelectModel } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, lte, max, or, sql, type InferSelectModel } from "drizzle-orm";
 
 import {
   activities,
@@ -22,10 +22,14 @@ import {
   scaleTemplateSubTaskForTask,
 } from "@/lib/domain/work-currency";
 import { getDb, type Db } from "@/lib/db/client";
+import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
 import type { TasksRevision } from "@/lib/tasks/tasks-revision";
-import { recordActivityViaKiosk } from "@/lib/repos/kiosk-subtasks";
+import { archiveRecords } from "@/lib/repos/deactivation-reasons";
+import { recordActivityViaKiosk, reconcileProducingStatusFromOpenSessions } from "@/lib/repos/kiosk-subtasks";
 import { listAssignedFlagsForSubTasks } from "@/lib/repos/material-flags";
 import { formatMaterialFlagCode } from "@/lib/business/material-flag-code";
+import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
+import type { TaskListSort } from "@/lib/schemas/task-list-sort";
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import {
   selectBoardColumnPage,
@@ -146,25 +150,218 @@ export async function listTasks(db: Db = getDb()) {
   return db.select().from(tasks).orderBy(asc(tasks.deliveryDate), asc(tasks.name));
 }
 
+/** Subtasks counted for list progress (DB enum `blocked` = domain `disabled`). */
+const COUNTED_SUBTASK_SQL = sql`${subTasks.activationStatus} is distinct from 'blocked'`;
+
+const FINISHED_SUBTASK_COUNT_EXPR = sql<number>`
+  coalesce(
+    count(${subTasks.id}) filter (
+      where ${COUNTED_SUBTASK_SQL} and ${subTasks.status} = 'finished'
+    ),
+    0
+  )
+`;
+
+const TOTAL_SUBTASK_COUNT_EXPR = sql<number>`
+  coalesce(count(${subTasks.id}) filter (where ${COUNTED_SUBTASK_SQL}), 0)
+`;
+
+const STATUS_SORT_EXPR = sql<number>`
+  case ${tasks.status}
+    when 'waiting' then 0
+    when 'producing' then 1
+    when 'paused' then 2
+    when 'finished' then 3
+    when 'reviewed' then 4
+    when 'delivered' then 5
+    else 6
+  end
+`;
+
+const CRM_ITEM_KEY_PEDIDO_EXPR = sql<number | null>`
+  case
+    when ${tasks.crmItemKey} ~ '^[0-9]+:[0-9]+$'
+    then split_part(${tasks.crmItemKey}, ':', 1)::bigint
+    else null
+  end
+`;
+
+const CRM_ITEM_KEY_ITEM_EXPR = sql<number | null>`
+  case
+    when ${tasks.crmItemKey} ~ '^[0-9]+:[0-9]+$'
+    then split_part(${tasks.crmItemKey}, ':', 2)::bigint
+    else null
+  end
+`;
+
+export type TaskListItem = {
+  id: string;
+  name: string;
+  qty: number;
+  deliveryDate: string | null;
+  status: InferSelectModel<typeof tasks>["status"];
+  active: boolean;
+  crmItemKey: string | null;
+  totalTimeSpent: number;
+  totalExpectedTime: number;
+  finishedSubTaskCount: number;
+  totalSubTaskCount: number;
+};
+
+function taskListWhere(options: {
+  q?: string;
+  showArchived?: boolean;
+  statuses: TaskListFilters["statuses"];
+  from: string;
+  to: string;
+}) {
+  const activeClause = eq(tasks.active, !options.showArchived);
+  const statusClause = inArray(tasks.status, options.statuses);
+  const deliveryClause = and(
+    or(isNull(tasks.deliveryDate), gte(tasks.deliveryDate, options.from)),
+    or(isNull(tasks.deliveryDate), lte(tasks.deliveryDate, options.to)),
+  );
+  const q = options.q?.trim();
+  const searchClause = q
+    ? or(ilike(tasks.name, `%${q}%`), ilike(tasks.crmItemKey, `%${q}%`))
+    : undefined;
+  return and(activeClause, statusClause, deliveryClause, searchClause);
+}
+
+function taskListOrderBy(sort: TaskListSort) {
+  const dir = sort.direction === "desc" ? desc : asc;
+  const tieBreakers = [asc(tasks.name), asc(tasks.id)] as const;
+
+  switch (sort.column) {
+    case "crmItemKey":
+      return [
+        dir(CRM_ITEM_KEY_PEDIDO_EXPR),
+        dir(CRM_ITEM_KEY_ITEM_EXPR),
+        ...tieBreakers,
+      ];
+    case "name":
+      return [dir(tasks.name), asc(tasks.id)];
+    case "qty":
+      return [dir(tasks.qty), ...tieBreakers];
+    case "deliveryDate":
+      return [dir(tasks.deliveryDate), ...tieBreakers];
+    case "totalTimeSpent":
+      return [dir(tasks.totalTimeSpent), ...tieBreakers];
+    case "finishedSubTasks":
+      return [
+        dir(FINISHED_SUBTASK_COUNT_EXPR),
+        dir(TOTAL_SUBTASK_COUNT_EXPR),
+        ...tieBreakers,
+      ];
+    case "status":
+      return [dir(STATUS_SORT_EXPR), ...tieBreakers];
+    default:
+      return [asc(tasks.deliveryDate), ...tieBreakers];
+  }
+}
+
+/**
+ * SQL-paged task list with only columns the /tasks page needs, plus
+ * aggregated subtask completion counts.
+ */
+export async function listTasksPaged(
+  options: {
+    q?: string;
+    page?: number;
+    pageSize?: number;
+    sort?: TaskListSort;
+    showArchived?: boolean;
+    statuses: TaskListFilters["statuses"];
+    from: string;
+    to: string;
+  },
+  db: Db = getDb(),
+): Promise<{ items: TaskListItem[]; total: number }> {
+  const page = Math.max(1, options.page ?? 1);
+  const pageSize = Math.max(1, options.pageSize ?? 10);
+  const offset = (page - 1) * pageSize;
+  const where = taskListWhere(options);
+  const sort = options.sort ?? {
+    column: "deliveryDate" as const,
+    direction: "asc" as const,
+  };
+
+  const [totalRow] = await db
+    .select({ total: count() })
+    .from(tasks)
+    .where(where);
+
+  const rows = await db
+    .select({
+      id: tasks.id,
+      name: tasks.name,
+      qty: tasks.qty,
+      deliveryDate: tasks.deliveryDate,
+      status: tasks.status,
+      active: tasks.active,
+      crmItemKey: tasks.crmItemKey,
+      totalTimeSpent: tasks.totalTimeSpent,
+      totalExpectedTime: tasks.totalExpectedTime,
+      finishedSubTaskCount: FINISHED_SUBTASK_COUNT_EXPR,
+      totalSubTaskCount: TOTAL_SUBTASK_COUNT_EXPR,
+    })
+    .from(tasks)
+    .leftJoin(subTasks, eq(subTasks.taskId, tasks.id))
+    .where(where)
+    .groupBy(
+      tasks.id,
+      tasks.name,
+      tasks.qty,
+      tasks.deliveryDate,
+      tasks.status,
+      tasks.active,
+      tasks.crmItemKey,
+      tasks.totalTimeSpent,
+      tasks.totalExpectedTime,
+    )
+    .orderBy(...taskListOrderBy(sort))
+    .limit(pageSize)
+    .offset(offset);
+
+  return {
+    items: rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      qty: row.qty,
+      deliveryDate: row.deliveryDate,
+      status: row.status,
+      active: row.active,
+      crmItemKey: row.crmItemKey,
+      totalTimeSpent: row.totalTimeSpent,
+      totalExpectedTime: row.totalExpectedTime,
+      finishedSubTaskCount: Number(row.finishedSubTaskCount),
+      totalSubTaskCount: Number(row.totalSubTaskCount),
+    })),
+    total: totalRow?.total ?? 0,
+  };
+}
+
 const E2E_TASK_DEACTIVATION_REASON =
   "E2E cleanup: deactivate duplicate create-task fixture so the manager " +
   "create flow can run repeatedly without leaving active clones.";
 
 export async function deactivateActiveTasksByName(
   name: string,
-  reasonForDeactivation: string = E2E_TASK_DEACTIVATION_REASON,
+  reason: string = E2E_TASK_DEACTIVATION_REASON,
   db: Db = getDb(),
 ): Promise<number> {
-  const result = await db
-    .update(tasks)
-    .set({
-      active: false,
-      reasonForDeactivation,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(tasks.name, name), eq(tasks.active, true)))
-    .returning({ id: tasks.id });
-  return result.length;
+  const active = await db
+    .select({ id: tasks.id })
+    .from(tasks)
+    .where(and(eq(tasks.name, name), eq(tasks.active, true)));
+  if (active.length === 0) return 0;
+
+  await archiveTasks(
+    active.map((row) => row.id),
+    reason,
+    db,
+  );
+  return active.length;
 }
 
 export async function listSubTasksForTask(taskId: string, db: Db = getDb()) {
@@ -185,6 +382,7 @@ export async function listSubTasksForTasks(
 
 const BOARD_SUBTASK_COLUMNS = {
   id: subTasks.id,
+  taskId: subTasks.taskId,
   name: subTasks.name,
   status: subTasks.status,
   sharingType: subTasks.sharingType,
@@ -373,7 +571,8 @@ export async function listBoardSubtaskCore(
   }
 
   const ids = rows.map((row) => row.id);
-  const [assigneeRows, assignedFlags, dependencyRows] = await Promise.all([
+  const [assigneeRows, assignedFlags, dependencyRows, openActivities] =
+    await Promise.all([
     listBoardSubtaskAssignees(ids, db),
     listAssignedFlagsForSubTasks(ids, db),
     db
@@ -383,7 +582,20 @@ export async function listBoardSubtaskCore(
       })
       .from(subTaskDependencies)
       .where(inArray(subTaskDependencies.subTaskId, ids)),
+    listBoardSubtaskOpenActivities(ids, db),
   ]);
+
+  const activeColaboratorIdsBySubTaskId = new Map<string, string[]>();
+  for (const activity of openActivities) {
+    const list = activeColaboratorIdsBySubTaskId.get(activity.subTaskId) ?? [];
+    list.push(activity.colaboratorId);
+    activeColaboratorIdsBySubTaskId.set(activity.subTaskId, list);
+  }
+  await reconcileProducingStatusFromOpenSessions(
+    rows,
+    activeColaboratorIdsBySubTaskId,
+    db,
+  );
 
   return {
     rows,
@@ -670,20 +882,39 @@ export async function updateTaskFields(
 export async function setTaskActive(
   id: string,
   active: boolean,
-  reasonForDeactivation: string,
   db: Db = getDb(),
 ) {
   const [row] = await db
     .update(tasks)
     .set({
       active,
-      reasonForDeactivation: reasonForDeactivation.trim(),
       updatedAt: new Date(),
     })
     .where(eq(tasks.id, id))
     .returning();
   if (!row) throw new Error("taskNotFound");
   return row;
+}
+
+export async function archiveTasks(
+  ids: string[],
+  reason: string,
+  db: Db = getDb(),
+) {
+  return archiveRecords(
+    {
+      tableName: DEACTIVATION_TABLE.tasks,
+      recordIds: ids,
+      text: reason,
+      setInactive: async (recordIds, tx) => {
+        await tx
+          .update(tasks)
+          .set({ active: false, updatedAt: new Date() })
+          .where(inArray(tasks.id, recordIds));
+      },
+    },
+    db,
+  );
 }
 
 export async function deleteTaskById(id: string, db: Db = getDb()): Promise<void> {

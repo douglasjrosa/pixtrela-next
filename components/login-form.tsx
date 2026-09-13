@@ -24,7 +24,7 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
-    formState: { isSubmitting },
+    formState: { isSubmitting, errors },
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
   async function onSubmit(values: LoginInput) {
@@ -56,8 +56,14 @@ export function LoginForm() {
           autoFocus
           placeholder={t("loginPlaceholder")}
           className="text-center"
+          aria-invalid={Boolean(errors.login)}
           {...register("login")}
         />
+        {errors.login ? (
+          <p role="alert" className="text-sm text-destructive">
+            {t("loginRequired")}
+          </p>
+        ) : null}
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">{t("password")}</Label>
@@ -65,8 +71,14 @@ export function LoginForm() {
           id="password"
           autoComplete="current-password"
           className="text-center"
+          aria-invalid={Boolean(errors.password)}
           {...register("password")}
         />
+        {errors.password ? (
+          <p role="alert" className="text-sm text-destructive">
+            {t("passwordRequired")}
+          </p>
+        ) : null}
       </div>
       {formError ? (
         <p role="alert" className="text-sm text-destructive">

@@ -19,12 +19,14 @@ import {
 } from "@/lib/factory-actions/load-factory-action-list-page";
 import {
   archiveFactoryActionById,
+  archiveFactoryActions,
   createFactoryActionRepo,
   getFactoryActionById,
   hardDeleteFactoryActionById,
   searchFactoryActionsByName,
   updateFactoryActionRepo,
 } from "@/lib/repos/factory-actions";
+import { parseArchiveReason } from "@/lib/schemas/archive-with-reason";
 import {
   factoryActionFormSchema,
   type FactoryActionFormInput,
@@ -93,23 +95,29 @@ export async function updateFactoryAction(
   invalidateActions();
 }
 
-export async function deleteFactoryAction(documentId: string): Promise<void> {
+export async function deleteFactoryAction(
+  documentId: string,
+  reason: string,
+): Promise<void> {
   await assertCanManageActions();
-  await archiveFactoryActionById(documentId);
+  const text = parseArchiveReason(reason, 1);
+  await archiveFactoryActionById(documentId, text);
   invalidateActions();
 }
 
 export async function bulkArchiveFactoryActions(
   documentIds: string[],
+  reason: string,
 ): Promise<void> {
   await assertCanDeactivateActions();
   const ids = bulkDocumentIdsSchema.parse(documentIds);
+  const text = parseArchiveReason(reason, ids.length);
 
   for (const documentId of ids) {
     const action = await getFactoryActionById(documentId);
     if (!action) throw new Error("notFound");
-    await archiveFactoryActionById(documentId);
   }
+  await archiveFactoryActions(ids, text);
   invalidateActions();
 }
 

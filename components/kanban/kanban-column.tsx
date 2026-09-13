@@ -50,7 +50,9 @@ export function KanbanColumn({
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const onLoadMoreRef = useRef(onLoadMore);
-  onLoadMoreRef.current = onLoadMore;
+  useEffect(() => {
+    onLoadMoreRef.current = onLoadMore;
+  }, [onLoadMore]);
 
   useEffect(() => {
     if (!hasMore || !onLoadMoreRef.current || loadingMore) return;

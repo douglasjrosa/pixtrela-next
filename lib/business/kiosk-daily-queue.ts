@@ -5,13 +5,6 @@ import {
 
 const FINISHED_STATUS = "finished";
 
-const STATUS_SORT_ORDER: Record<string, number> = {
-  producing: 0,
-  waiting: 1,
-  paused: 1,
-  finished: 2,
-};
-
 export type KioskQueueRow = {
   documentId: string;
   name: string;
@@ -55,17 +48,12 @@ export function filterKioskDailyQueue<T extends KioskQueueRow>(
   );
 }
 
-function resolveStatusSortOrder(status: string): number {
-  return STATUS_SORT_ORDER[status] ?? 1;
-}
-
+/**
+ * Stable kiosk queue order by board position only. Runtime state (producing,
+ * waiting, paused) is handled when splitting UI sections — not here.
+ */
 export function sortKioskDailyQueue<T extends KioskQueueRow>(rows: T[]): T[] {
   return [...rows].sort((left, right) => {
-    const statusDiff =
-      resolveStatusSortOrder(left.status) -
-      resolveStatusSortOrder(right.status);
-    if (statusDiff !== 0) return statusDiff;
-
     const taskDiff = left.taskIndex - right.taskIndex;
     if (taskDiff !== 0) return taskDiff;
 

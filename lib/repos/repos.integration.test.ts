@@ -265,7 +265,7 @@ describeWithDb("drizzle repos integration", () => {
         .where(eq(exchanges.userId, colaborator.id))
         .limit(1);
 
-      await deleteAward(award.id);
+      await deleteAward(award.id, "x".repeat(100));
       await hardDeleteAward(award.id);
 
       expect(await findAwardById(award.id)).toBeNull();

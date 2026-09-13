@@ -10,6 +10,7 @@ import {
   loadMoreSubTaskPresets,
 } from "@/app/(app)/sub-task-presets/actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
+import { ArchiveReasonModal } from "@/components/ui/archive-reason-modal";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
@@ -128,10 +129,10 @@ export function SubtaskPresetListTableFrame({
     setSelectedIds([]);
   }
 
-  function handleArchiveConfirm(): void {
+  function handleArchiveConfirm(reason: string): void {
     startTransition(async () => {
       try {
-        await bulkArchiveSubTaskPresets(selectedIds);
+        await bulkArchiveSubTaskPresets(selectedIds, reason);
         showSuccessToast(tPresets("bulkArchived"));
         setArchiveOpen(false);
         clearSelection();
@@ -217,17 +218,16 @@ export function SubtaskPresetListTableFrame({
           onClick={handleLoadMore}
         />
 
-        <ConfirmDialog
+        <ArchiveReasonModal
           open={archiveOpen}
           title={tPresets("bulkArchiveTitle")}
           description={tPresets.rich("bulkArchiveConfirm", {
             count: selectedPresets.length,
             b: (chunks) => <b>{chunks}</b>,
           })}
-          confirmLabel={tCommon("yes")}
-          cancelLabel={tCommon("cancel")}
-          confirmVariant="default"
+          count={selectedIds.length}
           disabled={isPending}
+          titleId="subtask-presets-bulk-archive-title"
           onConfirm={handleArchiveConfirm}
           onClose={() => setArchiveOpen(false)}
         />

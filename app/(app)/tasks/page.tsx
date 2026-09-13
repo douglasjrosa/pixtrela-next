@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { TasksListMobileList } from "@/components/tasks/tasks-list-mobile-list";
+import { TasksListSkeleton } from "@/components/tasks/tasks-list-skeleton";
 import { TasksListTableBody } from "@/components/tasks/tasks-list-table-body";
 import { TasksListTableFrame } from "@/components/tasks/tasks-list-table-frame";
 import { TasksListTableHeader } from "@/components/tasks/tasks-list-table-header";
@@ -27,10 +28,13 @@ import { listSteps as listStepsRepo } from "@/lib/repos/steps";
 import { loadTaskListPage } from "@/lib/tasks/load-task-list-page";
 import {
   parseTaskListSearchParams,
+  taskListFilterKey,
+  type SearchParamsRecord,
 } from "@/lib/tasks/task-list-params";
+import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
 
 interface TasksPageProps {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  searchParams: Promise<SearchParamsRecord>;
 }
 
 async function loadSteps(): Promise<StepOption[]> {
@@ -39,6 +43,65 @@ async function loadSteps(): Promise<StepOption[]> {
     documentId: step.id,
     name: step.name,
   }));
+}
+
+async function TasksListSection({
+  filters,
+  canDeactivate,
+  canDelete,
+}: {
+  filters: TaskListFilters;
+  canDeactivate: boolean;
+  canDelete: boolean;
+}) {
+  const tManage = await getTranslations("tasks.manage");
+  const pageResult = await loadTaskListPage(filters, 1).catch((error) => {
+    rethrowIfNavigationError(error);
+    return {
+      tasks: [],
+      page: 1,
+      pageCount: 1,
+      hasMore: false,
+    };
+  });
+
+  const bulkEnabled = canDeactivate || canDelete;
+  const showCheckboxColumn = bulkEnabled;
+  const sort = { column: filters.column, direction: filters.direction };
+
+  if (pageResult.tasks.length === 0) {
+    return <ListEmptyMessage>{tManage("empty")}</ListEmptyMessage>;
+  }
+
+  return (
+    <TasksListTableFrame
+      filters={filters}
+      initialTasks={pageResult.tasks}
+      initialPage={pageResult.page}
+      initialHasMore={pageResult.hasMore}
+      canDeactivate={canDeactivate}
+      canDelete={canDelete}
+      tableHeader={
+        <TasksListTableHeader
+          sort={sort}
+          filters={filters}
+          showCheckboxColumn={showCheckboxColumn}
+        />
+      }
+      tableBody={
+        <TasksListTableBody
+          tasks={pageResult.tasks}
+          showCheckboxColumn={showCheckboxColumn}
+        />
+      }
+      mobileList={
+        <TasksListMobileList
+          tasks={pageResult.tasks}
+          showCheckboxColumn={showCheckboxColumn}
+        />
+      }
+    />
+  );
 }
 
 export default async function TasksPage({ searchParams }: TasksPageProps) {
@@ -53,59 +116,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   const filters = parseTaskListSearchParams(params);
   const canDeactivate = canDeactivateTasks(role);
   const canDelete = canDeleteTasks(role);
-
-  const [steps, tManage, pageResult] = await Promise.all([
-    loadSteps(),
-    getTranslations("tasks.manage"),
-    loadTaskListPage(filters, 1).catch((error) => {
-      rethrowIfNavigationError(error);
-      return {
-        tasks: [],
-        page: 1,
-        pageCount: 1,
-        hasMore: false,
-      };
-    }),
-  ]);
-
-  const bulkEnabled = canDeactivate || canDelete;
-  const showCheckboxColumn = bulkEnabled;
-  const sort = { column: filters.column, direction: filters.direction };
-
-  let listContent;
-  if (pageResult.tasks.length === 0) {
-    listContent = <ListEmptyMessage>{tManage("empty")}</ListEmptyMessage>;
-  } else {
-    listContent = (
-      <TasksListTableFrame
-        filters={filters}
-        initialTasks={pageResult.tasks}
-        initialPage={pageResult.page}
-        initialHasMore={pageResult.hasMore}
-        canDeactivate={canDeactivate}
-        canDelete={canDelete}
-        tableHeader={
-          <TasksListTableHeader
-            sort={sort}
-            filters={filters}
-            showCheckboxColumn={showCheckboxColumn}
-          />
-        }
-        tableBody={
-          <TasksListTableBody
-            tasks={pageResult.tasks}
-            showCheckboxColumn={showCheckboxColumn}
-          />
-        }
-        mobileList={
-          <TasksListMobileList
-            tasks={pageResult.tasks}
-            showCheckboxColumn={showCheckboxColumn}
-          />
-        }
-      />
-    );
-  }
+  const steps = await loadSteps();
 
   return (
     <section className={APP_LIST_PAGE_SHELL_CLASS}>
@@ -115,7 +126,16 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
         <Suspense fallback={null}>
           <TasksToolbar />
         </Suspense>
-        {listContent}
+        <Suspense
+          key={taskListFilterKey(filters)}
+          fallback={<TasksListSkeleton />}
+        >
+          <TasksListSection
+            filters={filters}
+            canDeactivate={canDeactivate}
+            canDelete={canDelete}
+          />
+        </Suspense>
       </div>
     </section>
   );

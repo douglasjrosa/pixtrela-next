@@ -109,7 +109,7 @@ describe("TasksFilterModal", () => {
     ).not.toBeChecked();
   });
 
-  it("defaults the to date to today in pt-BR format", () => {
+  it("defaults the to date to today plus 30 days in pt-BR format", () => {
     renderWithIntl(
       <TasksFilterModal
         open
@@ -118,7 +118,7 @@ describe("TasksFilterModal", () => {
       />,
     );
 
-    expect(screen.getByLabelText("Até")).toHaveValue("15/07/2026");
+    expect(screen.getByLabelText("Até")).toHaveValue("14/08/2026");
   });
 
   it("blocks apply when the date range exceeds three months", async () => {

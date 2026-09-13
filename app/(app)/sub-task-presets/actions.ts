@@ -16,6 +16,7 @@ import {
 } from "@/lib/business/subtask-preset";
 import {
   archiveSubTaskPresetById,
+  archiveSubTaskPresets,
   createSubTaskPresetRepo,
   findSubTaskPresetById,
   hardDeleteSubTaskPresetById,
@@ -23,6 +24,7 @@ import {
   searchSubTaskPresetsByName,
   updateSubTaskPresetRepo,
 } from "@/lib/repos/sub-task-presets";
+import { parseArchiveReason } from "@/lib/schemas/archive-with-reason";
 import {
   subTaskPresetFormSchema,
   type SubTaskPresetFormInput,
@@ -107,23 +109,29 @@ export async function updateSubTaskPreset(
   invalidatePresets();
 }
 
-export async function deleteSubTaskPreset(documentId: string): Promise<void> {
+export async function deleteSubTaskPreset(
+  documentId: string,
+  reason: string,
+): Promise<void> {
   await assertCanManagePresets();
-  await archiveSubTaskPresetById(documentId);
+  const text = parseArchiveReason(reason, 1);
+  await archiveSubTaskPresetById(documentId, text);
   invalidatePresets();
 }
 
 export async function bulkArchiveSubTaskPresets(
   documentIds: string[],
+  reason: string,
 ): Promise<void> {
   await assertCanDeactivatePresets();
   const ids = bulkDocumentIdsSchema.parse(documentIds);
+  const text = parseArchiveReason(reason, ids.length);
 
   for (const documentId of ids) {
     const preset = await findSubTaskPresetById(documentId);
     if (!preset) throw new Error("notFound");
-    await archiveSubTaskPresetById(documentId);
   }
+  await archiveSubTaskPresets(ids, text);
   invalidatePresets();
 }
 

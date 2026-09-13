@@ -27,10 +27,8 @@ export interface StepFormModalProps {
   formKey: string;
   defaultValues: StepNameFormInput;
   saving?: boolean;
-  showDelete?: boolean;
   onClose: () => void;
   onSave: (values: StepNameFormInput) => void;
-  onDelete?: () => void;
 }
 
 export function StepFormModal({
@@ -39,10 +37,8 @@ export function StepFormModal({
   formKey,
   defaultValues,
   saving = false,
-  showDelete = false,
   onClose,
   onSave,
-  onDelete,
 }: StepFormModalProps) {
   const tCommon = useTranslations("common");
   const tSteps = useTranslations("steps");
@@ -170,19 +166,7 @@ export function StepFormModal({
             </div>
           </form>
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {showDelete && onDelete ? (
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={saving}
-                onClick={onDelete}
-              >
-                {tCommon("delete")}
-              </Button>
-            ) : (
-              <span />
-            )}
+          <div className="flex flex-wrap items-center justify-end gap-3">
             <Button type="submit" form={formId} disabled={saving}>
               {tCommon("save")}
             </Button>

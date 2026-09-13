@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const revalidateTag = vi.fn();
 const revalidatePath = vi.fn();
+const updateTag = vi.fn();
 const updateRouteThemeRepo = vi.fn();
 const upsertSemanticThemeSettings = vi.fn();
 const syncRouteThemeColorsFromSemanticTokens = vi.fn();
@@ -15,6 +16,8 @@ vi.mock("@/auth", () => ({
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
   revalidatePath: (...args: unknown[]) => revalidatePath(...args),
+  updateTag: (...args: unknown[]) => updateTag(...args),
+  unstable_cache: (fn: () => unknown) => fn,
 }));
 
 vi.mock("@/lib/repos/settings", () => ({
@@ -38,6 +41,7 @@ describe("settings/themes/actions drizzle paths", () => {
     vi.resetModules();
     revalidateTag.mockReset();
     revalidatePath.mockReset();
+    updateTag.mockReset();
     updateRouteThemeRepo.mockReset();
     upsertSemanticThemeSettings.mockReset();
     syncRouteThemeColorsFromSemanticTokens.mockReset();
@@ -69,7 +73,8 @@ describe("settings/themes/actions drizzle paths", () => {
     expect(syncRouteThemeColorsFromSemanticTokens).toHaveBeenCalledWith(
       expect.objectContaining({ primary: "#112233" }),
     );
-    expect(revalidateTag).toHaveBeenCalledWith(
+    expect(updateTag).toHaveBeenCalledWith("drizzle:semantic-theme");
+    expect(revalidateTag).not.toHaveBeenCalledWith(
       "drizzle:semantic-theme",
       "default",
     );

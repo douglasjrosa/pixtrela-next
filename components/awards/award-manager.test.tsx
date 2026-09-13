@@ -29,11 +29,6 @@ const activeAward: AwardRow = {
   values: [{ numberOf: 50, currencyDocumentId: "c1" }],
 };
 
-const archivedAward: AwardRow = {
-  ...activeAward,
-  active: false,
-};
-
 const noopUpload = vi.fn().mockResolvedValue({
   id: "media-1",
   storageKey: "media-1.png",
@@ -172,49 +167,6 @@ describe("AwardManager", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("Estrela")).toHaveValue(625);
     });
-  });
-
-  it("shows archive action for active awards when canDeactivate is true", () => {
-    renderManager({ canDeactivate: true, canDelete: false });
-    fireEvent.click(screen.getAllByRole("button", { name: "Arroz" })[0]!);
-    expect(screen.getByRole("button", { name: "Arquivar" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Excluir" })).not.toBeInTheDocument();
-  });
-
-  it("shows delete action for archived awards when canDelete is true", () => {
-    renderWithIntl(
-      <AwardManager
-        currencies={currencies}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        onArchive={vi.fn()}
-        onHardDelete={vi.fn()}
-        onListImages={noopListImages}
-        onUploadImage={noopUpload}
-        canDeactivate={false}
-        canDelete
-      >
-        <table>
-          <tbody>
-            <AwardListRowPresentational
-              award={archivedAward}
-              variant="table"
-              labels={{
-                cost: "50 Estrela",
-                actualPrice: "R$ 0,00",
-                stock: "10",
-                showInStore: "Sim",
-                inactive: "Inativo",
-                selectRow: "Selecionar Arroz",
-              }}
-            />
-          </tbody>
-        </table>
-      </AwardManager>,
-    );
-    fireEvent.click(screen.getAllByRole("button", { name: "Arroz" })[0]!);
-    expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Arquivar" })).not.toBeInTheDocument();
   });
 
   it("closes modal on cancel", () => {

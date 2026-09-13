@@ -97,6 +97,7 @@ export function KioskSubtaskPanel({
 
   useEffect(() => {
     if (!blockingUi && !exitBusy) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- idle cleanup
       setCollectingChainRunId(null);
     }
   }, [blockingUi, exitBusy]);

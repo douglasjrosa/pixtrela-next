@@ -17,7 +17,6 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { AddNewButton } from "@/components/ui/add-new-button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -73,12 +72,6 @@ export interface UserManagerProps {
     imageType: UserImageType,
     formData: FormData,
   ) => void | Promise<void>;
-  onDelete?: (userId: UserRow["id"]) => void | Promise<void>;
-  /** Soft-deactivate (blocked). Target must be a manageable role. */
-  onDeactivate?: (userId: UserRow["id"]) => void | Promise<void>;
-  canDelete: boolean;
-  /** Show deactivate for manageable active users. Hard delete uses `canDelete`. */
-  canDeactivate?: boolean;
   /** Precomputed on the server — do not pass predicate functions from RSC. */
   manageableRoles: UserFormInput["roleType"][];
   canPairUserTag?: boolean;
@@ -192,13 +185,9 @@ interface UserFormDialogProps {
   canPreviewKioskColaborator: boolean;
   canSetPassword: boolean;
   canEditUserLogin: boolean;
-  showDelete: boolean;
-  showDeactivate: boolean;
   onClose: () => void;
   onSubmit: (values: UserFormInput) => void;
   onInvalid: () => void;
-  onDelete?: () => void;
-  onDeactivate?: () => void;
   onPreviewKioskColaborator: (documentId: string) => void;
   onPairUserTag: (userId: UserRow["id"]) => Promise<void>;
   onUpdateImage?: (
@@ -221,13 +210,9 @@ function UserFormDialog({
   canPreviewKioskColaborator,
   canSetPassword,
   canEditUserLogin,
-  showDelete,
-  showDeactivate,
   onClose,
   onSubmit,
   onInvalid,
-  onDelete,
-  onDeactivate,
   onPreviewKioskColaborator,
   onPairUserTag,
   onUpdateImage,
@@ -340,32 +325,6 @@ function UserFormDialog({
       disabled={isPending}
       fillBody={false}
       headerActions={headerActions}
-      footerStart={
-        showDeactivate || showDelete ? (
-          <div className="flex flex-wrap gap-2">
-            {showDeactivate && onDeactivate ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isPending}
-                onClick={onDeactivate}
-              >
-                {tUsers("deactivate")}
-              </Button>
-            ) : null}
-            {showDelete && onDelete ? (
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={isPending}
-                onClick={onDelete}
-              >
-                {tCommon("delete")}
-              </Button>
-            ) : null}
-          </div>
-        ) : undefined
-      }
       footerEnd={
         <Button type="submit" form={formId} disabled={isPending}>
           {isEditing ? tCommon("save") : tCommon("create")}
@@ -527,10 +486,6 @@ export function UserManager({
   onCreate,
   onUpdate,
   onUpdateImage,
-  onDelete,
-  onDeactivate,
-  canDelete,
-  canDeactivate = false,
   manageableRoles,
   canPairUserTag = false,
   canPreviewKioskColaborator = false,
@@ -540,13 +495,10 @@ export function UserManager({
   canEditActive = false,
   onPairUserTag,
 }: UserManagerProps) {
-  const tCommon = useTranslations("common");
   const tUsers = useTranslations("users");
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [nfcPairing, setNfcPairing] = useState(false);
@@ -572,23 +524,17 @@ export function UserManager({
   function closeForm(): void {
     setFormOpen(false);
     setEditingUser(null);
-    setDeleteOpen(false);
-    setDeactivateOpen(false);
   }
 
   function startCreate(): void {
     setEditingUser(null);
     setMessage(null);
-    setDeleteOpen(false);
-    setDeactivateOpen(false);
     setFormOpen(true);
   }
 
   function startEdit(user: UserRow): void {
     setEditingUser(user);
     setMessage(null);
-    setDeleteOpen(false);
-    setDeactivateOpen(false);
     setFormOpen(true);
   }
 
@@ -626,30 +572,7 @@ export function UserManager({
     });
   }
 
-  function handleConfirmDelete(): void {
-    if (!onDelete || editingUserId === null) return;
-    startTransition(async () => {
-      await onDelete(editingUserId);
-      setMessage(tUsers("deleted"));
-      closeForm();
-      router.refresh();
-    });
-  }
 
-  function handleConfirmDeactivate(): void {
-    if (!onDeactivate || editingUserId === null) return;
-    startTransition(async () => {
-      try {
-        await onDeactivate(editingUserId);
-        setMessage(tUsers("deactivated"));
-        closeForm();
-        router.refresh();
-      } catch (error) {
-        rethrowIfNavigationError(error);
-        showErrorToast(tUsers("saveFailed"));
-      }
-    });
-  }
 
   async function handlePairUserTag(userId: UserRow["id"]): Promise<void> {
     if (isNfcOnCooldown()) {
@@ -724,13 +647,6 @@ export function UserManager({
 
   const roleOptions = roleOptionsForUser(editingUser, manageableRoles);
   const formDialogKey = editingUserId ?? "new";
-  const canDeactivateEditingUser = Boolean(
-    canDeactivate &&
-      onDeactivate &&
-      editingUser &&
-      !editingUser.blocked &&
-      manageableRoles.includes(editingUser.roleType),
-  );
 
   return (
     <UserListProvider
@@ -766,13 +682,9 @@ export function UserManager({
             canPreviewKioskColaborator={canPreviewKioskColaborator}
             canSetPassword={canSetPassword}
             canEditUserLogin={canEditUserLogin}
-            showDelete={Boolean(canDelete && onDelete && editingUser)}
-            showDeactivate={canDeactivateEditingUser}
             onClose={closeForm}
             onSubmit={onSubmit}
             onInvalid={handleInvalidForm}
-            onDelete={() => setDeleteOpen(true)}
-            onDeactivate={() => setDeactivateOpen(true)}
             onPreviewKioskColaborator={handlePreviewKioskColaborator}
             onPairUserTag={handlePairUserTag}
             onUpdateImage={onUpdateImage ? handleUpdateImage : undefined}
@@ -782,25 +694,7 @@ export function UserManager({
           />
         ) : null}
 
-        <ConfirmDialog
-          open={deleteOpen}
-          title={tUsers("deleteTitle")}
-          description={tUsers("deleteConfirm")}
-          confirmLabel={tCommon("delete")}
-          disabled={isPending}
-          onConfirm={handleConfirmDelete}
-          onClose={() => setDeleteOpen(false)}
-        />
 
-        <ConfirmDialog
-          open={deactivateOpen}
-          title={tUsers("deactivateTitle")}
-          description={tUsers("deactivateConfirm")}
-          confirmLabel={tUsers("deactivate")}
-          disabled={isPending}
-          onConfirm={handleConfirmDeactivate}
-          onClose={() => setDeactivateOpen(false)}
-        />
 
         {children}
       </div>

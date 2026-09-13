@@ -49,4 +49,31 @@ describe("MediaPickerModal", () => {
     await user.click(screen.getByRole("button", { name: "Usar selecionada" }));
     expect(onConfirm).toHaveBeenCalledWith(sampleAsset);
   });
+
+  it("fits SVG thumbnails with object-contain instead of cropping", async () => {
+    const svgAsset: MediaAssetRecord = {
+      ...sampleAsset,
+      id: "svg1",
+      storageKey: "star-sheet.svg",
+      url: "/api/media/star-sheet.svg",
+      browserUrl: "/api/media/star-sheet.svg",
+      mimeType: "image/svg+xml",
+      originalFilename: "star-sheet.svg",
+    };
+    const onListImages = vi.fn(async () => [svgAsset]);
+
+    renderWithIntl(
+      <MediaPickerModal
+        open
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        onListImages={onListImages}
+        onUploadImage={vi.fn()}
+      />,
+    );
+
+    const img = await screen.findByRole("img", { name: "star-sheet.svg" });
+    expect(img).toHaveClass("object-contain");
+    expect(img).not.toHaveClass("object-cover");
+  });
 });

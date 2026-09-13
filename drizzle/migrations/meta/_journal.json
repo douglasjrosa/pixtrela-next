@@ -232,6 +232,27 @@
       "when": 1788300000000,
       "tag": "0032_kiosk_queue_page_size",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1788350000000,
+      "tag": "0033_route_theme_image_color",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1788400000000,
+      "tag": "0034_reason_for_deactivation",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1788450000000,
+      "tag": "0035_route_theme_default_image",
+      "breakpoints": true
     }
   ]
 }

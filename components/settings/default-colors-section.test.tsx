@@ -2,21 +2,24 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-const refresh = vi.fn();
+const reloadCurrentDocument = vi.fn();
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh }),
+vi.mock("@/lib/navigation/reload-document", () => ({
+  reloadCurrentDocument: (...args: unknown[]) => reloadCurrentDocument(...args),
 }));
 
 import { renderWithIntl } from "@/test/test-utils";
 import { DEFAULT_SEMANTIC_TOKENS } from "@/lib/themes/semantic-tokens";
 import { getSemanticThemePreset } from "@/lib/themes/semantic-theme-presets";
 import { SEMANTIC_THEME_STYLE_ID } from "@/lib/themes/apply-semantic-theme-document";
+import messages from "@/messages/pt-BR.json";
+import { NextIntlClientProvider } from "next-intl";
 
 import { DefaultColorsSection } from "./default-colors-section";
 
-describe("DefaultColorsSection", () => {
+describe("DefaultColorsSection", { timeout: 15_000 }, () => {
   beforeEach(() => {
+    reloadCurrentDocument.mockReset();
     const style = document.createElement("style");
     style.id = SEMANTIC_THEME_STYLE_ID;
     document.head.appendChild(style);
@@ -99,7 +102,39 @@ describe("DefaultColorsSection", () => {
     );
     const style = document.getElementById(SEMANTIC_THEME_STYLE_ID);
     expect(style?.textContent).toContain("--primary: #6d28d9;");
-    expect(refresh).toHaveBeenCalled();
+    expect(reloadCurrentDocument).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the saved palette when a stale server snapshot arrives", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const oceanTokens = getSemanticThemePreset("ocean").tokens;
+
+    const view = renderWithIntl(
+      <DefaultColorsSection
+        initialTokens={DEFAULT_SEMANTIC_TOKENS}
+        onSave={onSave}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Oceano" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    view.rerender(
+      <NextIntlClientProvider locale="pt-BR" messages={messages}>
+        <DefaultColorsSection
+          initialTokens={DEFAULT_SEMANTIC_TOKENS}
+          onSave={onSave}
+        />
+      </NextIntlClientProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "Oceano" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    const style = document.getElementById(SEMANTIC_THEME_STYLE_ID);
+    expect(style?.textContent).toContain(`--primary: ${oceanTokens.primary};`);
   });
 
   it("highlights the preset that matches initial tokens on load", () => {
@@ -136,7 +171,8 @@ describe("DefaultColorsSection", () => {
     await user.click(screen.getByRole("button", { name: "Oceano" }));
     const primaryInput = screen.getByRole("textbox", { name: "Primária" });
     await user.clear(primaryInput);
-    await user.type(primaryInput, "#123456");
+    await user.click(primaryInput);
+    await user.paste("#123456");
 
     expect(screen.getByRole("button", { name: "Oceano" })).toHaveAttribute(
       "aria-pressed",

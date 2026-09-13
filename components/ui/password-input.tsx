@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { APP_LOCALE } from "@/lib/i18n/locale";
 import {
+  PASSWORD_MASK_CHAR,
   buildPasswordDisplay,
   createPasswordRevealState,
   deletePasswordRange,
@@ -61,6 +62,7 @@ export const PasswordInput = React.forwardRef<
   );
   const revealStateRef = React.useRef(revealState);
   const selectionRef = React.useRef({ start: 0, end: 0 });
+  const beforeInputHandledRef = React.useRef(false);
   const [showAll, setShowAll] = React.useState(false);
   const [, refreshMask] = React.useReducer((count) => count + 1, 0);
 
@@ -117,21 +119,95 @@ export const PasswordInput = React.forwardRef<
     }
   }
 
+  function isPlaintextPasswordFill(incoming: string): boolean {
+    if (incoming.length === 0) {
+      return false;
+    }
+    return ![...incoming].some((char) => char === PASSWORD_MASK_CHAR);
+  }
+
   function handleVisibleChange(
     event: React.ChangeEvent<HTMLInputElement>,
   ): void {
-    if (!showAll) {
+    const incoming = event.target.value;
+
+    if (showAll) {
+      const next = createPasswordRevealState(incoming);
+      syncValue(next, event.target.selectionStart ?? next.value.length);
       return;
     }
 
-    const next = createPasswordRevealState(event.target.value);
-    syncValue(next, event.target.selectionStart ?? next.value.length);
+    // Autofill / password managers set plaintext via input/change, not keydown.
+    if (!isPlaintextPasswordFill(incoming)) {
+      return;
+    }
+    if (incoming === revealStateRef.current.value) {
+      return;
+    }
+
+    syncValue(
+      createPasswordRevealState(incoming),
+      event.target.selectionStart ?? incoming.length,
+    );
+  }
+
+  function handleBeforeInput(
+    event: React.FormEvent<HTMLInputElement>,
+  ): void {
+    if (showAll || disabled) {
+      return;
+    }
+
+    const nativeEvent = event.nativeEvent as InputEvent;
+    if (typeof nativeEvent.inputType !== "string") {
+      return;
+    }
+
+    const { start, end } = selectionRef.current;
+    const current = revealStateRef.current;
+    const now = Date.now();
+
+    if (nativeEvent.inputType === "insertText" && nativeEvent.data) {
+      event.preventDefault();
+      beforeInputHandledRef.current = true;
+      syncValue(
+        replacePasswordRange(current, start, end, nativeEvent.data, now),
+        start + nativeEvent.data.length,
+      );
+      queueMicrotask(() => {
+        beforeInputHandledRef.current = false;
+      });
+      return;
+    }
+
+    if (
+      nativeEvent.inputType === "insertFromAutoFill" ||
+      nativeEvent.inputType === "insertReplacementText"
+    ) {
+      const text = nativeEvent.data ?? "";
+      if (!text) {
+        return;
+      }
+      event.preventDefault();
+      syncValue(createPasswordRevealState(text), text.length);
+    }
   }
 
   function handleVisibleKeyDown(
     event: React.KeyboardEvent<HTMLInputElement>,
   ): void {
     if (showAll || disabled) {
+      return;
+    }
+
+    if (beforeInputHandledRef.current) {
+      if (
+        event.key.length === 1 ||
+        event.key === "Backspace" ||
+        event.key === "Delete"
+      ) {
+        event.preventDefault();
+      }
       return;
     }
 
@@ -236,6 +312,7 @@ export const PasswordInput = React.forwardRef<
         disabled={disabled}
         value={displayValue}
         onChange={handleVisibleChange}
+        onBeforeInput={handleBeforeInput}
         onKeyDown={handleVisibleKeyDown}
         onPaste={handlePaste}
         onSelect={handleSelect}

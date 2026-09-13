@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag, updateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
@@ -20,6 +20,7 @@ import {
   parseSemanticTokens,
   type SemanticTokensInput,
 } from "@/lib/schemas/semantic-theme";
+import { SEMANTIC_THEME_CACHE_TAG } from "@/lib/themes/load-cached-semantic-theme";
 import {
   DEFAULT_BACKGROUND_COLOR_OPACITY,
   DEFAULT_BACKGROUND_MOTION,
@@ -33,6 +34,7 @@ import {
   DEFAULT_FOREGROUND_COLOR,
   DEFAULT_SURFACE_COLOR,
   DEFAULT_SURFACE_COLOR_OPACITY,
+  normalizeBackgroundImageColor,
   normalizeForegroundColor,
   normalizeOpacity,
   normalizeParallaxIntensity,
@@ -52,7 +54,7 @@ function invalidateThemes(): void {
 }
 
 function invalidateSemanticTheme(): void {
-  revalidateTag("drizzle:semantic-theme", "default");
+  updateTag(SEMANTIC_THEME_CACHE_TAG);
   revalidatePath("/", "layout");
 }
 
@@ -88,8 +90,14 @@ function buildRouteThemePayload(data: RouteThemeFormInput) {
     surfaceColorOpacity: normalizeOpacity(
       data.surfaceColorOpacity ?? DEFAULT_SURFACE_COLOR_OPACITY,
     ),
+    backgroundImageColor: normalizeBackgroundImageColor(
+      data.backgroundImageColor,
+    ),
+    useDefaultBackgroundImage: Boolean(data.useDefaultBackgroundImage),
   };
   if (data.clearBackgroundImage) {
+    payload.backgroundImage = null;
+  } else if (data.useDefaultBackgroundImage) {
     payload.backgroundImage = null;
   } else if (data.backgroundImageId) {
     payload.backgroundImage = data.backgroundImageId;
@@ -145,7 +153,10 @@ export async function updateRouteTheme(
     foregroundColor: payload.foregroundColor as string,
     surfaceColor: payload.surfaceColor as string,
     surfaceColorOpacity: payload.surfaceColorOpacity as number,
+    backgroundImageColor:
+      (payload.backgroundImageColor as string | null) ?? null,
     clearBackgroundImage: data.clearBackgroundImage,
+    useDefaultBackgroundImage: Boolean(data.useDefaultBackgroundImage),
     backgroundImageMediaId:
       typeof data.backgroundImageId === "string"
         ? data.backgroundImageId

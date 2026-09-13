@@ -4,6 +4,7 @@ import {
   extensionFromMime,
   isAllowedLibraryMime,
   isImageMime,
+  mimeFromStorageKey,
 } from "./media-mime";
 
 describe("media-mime", () => {
@@ -22,5 +23,11 @@ describe("media-mime", () => {
   it("detects image mime", () => {
     expect(isImageMime("image/svg+xml")).toBe(true);
     expect(isImageMime("application/pdf")).toBe(false);
+  });
+
+  it("maps storage keys to mime types", () => {
+    expect(mimeFromStorageKey("abc.svg")).toBe("image/svg+xml");
+    expect(mimeFromStorageKey("abc.PNG")).toBe("image/png");
+    expect(mimeFromStorageKey("abc")).toBeNull();
   });
 });

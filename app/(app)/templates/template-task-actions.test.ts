@@ -5,6 +5,7 @@ const revalidatePath = vi.fn();
 const createTemplateTaskRepo = vi.fn();
 const updateTemplateTaskRepo = vi.fn();
 const deleteTemplateTaskRepo = vi.fn();
+const archiveTemplateTasks = vi.fn();
 const findTemplateById = vi.fn();
 const hardDeleteTemplateTask = vi.fn();
 
@@ -21,6 +22,7 @@ vi.mock("@/lib/repos/templates", () => ({
   createTemplateTask: (...args: unknown[]) => createTemplateTaskRepo(...args),
   updateTemplateTask: (...args: unknown[]) => updateTemplateTaskRepo(...args),
   deleteTemplateTask: (...args: unknown[]) => deleteTemplateTaskRepo(...args),
+  archiveTemplateTasks: (...args: unknown[]) => archiveTemplateTasks(...args),
   findTemplateById: (...args: unknown[]) => findTemplateById(...args),
   hardDeleteTemplateTask: (...args: unknown[]) =>
     hardDeleteTemplateTask(...args),
@@ -42,6 +44,7 @@ describe("templates/actions drizzle CRUD", () => {
     createTemplateTaskRepo.mockReset();
     updateTemplateTaskRepo.mockReset();
     deleteTemplateTaskRepo.mockReset();
+    archiveTemplateTasks.mockReset();
     findTemplateById.mockReset();
     hardDeleteTemplateTask.mockReset();
   });
@@ -93,18 +96,22 @@ describe("templates/actions drizzle CRUD", () => {
   });
 
   it("deleteTemplate removes via repo", async () => {
+    const reason = "x".repeat(100);
     const { deleteTemplate } = await import("./template-task-actions");
-    await deleteTemplate("tpl-1");
-    expect(deleteTemplateTaskRepo).toHaveBeenCalledWith("tpl-1");
+    await deleteTemplate("tpl-1", reason);
+    expect(deleteTemplateTaskRepo).toHaveBeenCalledWith("tpl-1", reason);
   });
 
-  it("bulkArchiveTemplates archives each selected template", async () => {
+  it("bulkArchiveTemplates archives selected templates once", async () => {
     findTemplateById.mockResolvedValue({ active: true });
+    const reason = "x".repeat(50);
     const { bulkArchiveTemplates } = await import("./template-task-actions");
-    await bulkArchiveTemplates(["tpl-1", "tpl-2"]);
-    expect(deleteTemplateTaskRepo).toHaveBeenCalledTimes(2);
-    expect(deleteTemplateTaskRepo).toHaveBeenCalledWith("tpl-1");
-    expect(deleteTemplateTaskRepo).toHaveBeenCalledWith("tpl-2");
+    await bulkArchiveTemplates(["tpl-1", "tpl-2"], reason);
+    expect(archiveTemplateTasks).toHaveBeenCalledTimes(1);
+    expect(archiveTemplateTasks).toHaveBeenCalledWith(
+      ["tpl-1", "tpl-2"],
+      reason,
+    );
   });
 
   it("bulkDeleteTemplates hard-deletes only inactive templates", async () => {

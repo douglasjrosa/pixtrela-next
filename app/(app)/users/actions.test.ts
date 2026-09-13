@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const revalidateTag = vi.fn();
 const createUserRepo = vi.fn();
 const updateUserAccount = vi.fn();
-const deactivateUserRepo = vi.fn();
+const deactivateUsers = vi.fn();
 const hardDeleteUser = vi.fn();
 const reactivateUser = vi.fn();
 const findUserById = vi.fn();
@@ -35,7 +35,7 @@ vi.mock("@/lib/repos/users", async () => {
     ...actual,
     createUser: (...args: unknown[]) => createUserRepo(...args),
     updateUserAccount: (...args: unknown[]) => updateUserAccount(...args),
-    deactivateUser: (...args: unknown[]) => deactivateUserRepo(...args),
+    deactivateUsers: (...args: unknown[]) => deactivateUsers(...args),
     hardDeleteUser: (...args: unknown[]) => hardDeleteUser(...args),
     reactivateUser: (...args: unknown[]) => reactivateUser(...args),
     setUserTag: (...args: unknown[]) => setUserTag(...args),
@@ -71,7 +71,7 @@ describe("users/actions drizzle CRUD", () => {
     revalidateTag.mockReset();
     createUserRepo.mockReset();
     updateUserAccount.mockReset();
-    deactivateUserRepo.mockReset();
+    deactivateUsers.mockReset();
     hardDeleteUser.mockReset();
     reactivateUser.mockReset();
     findUserById.mockReset();
@@ -201,12 +201,10 @@ describe("users/actions drizzle CRUD", () => {
   });
 
   it("deactivateUser soft-blocks via repo", async () => {
+    const reason = "x".repeat(100);
     const { deactivateUser } = await import("./actions");
-    await deactivateUser("u1");
-    expect(deactivateUserRepo).toHaveBeenCalledWith(
-      "u1",
-      expect.any(String),
-    );
+    await deactivateUser("u1", reason);
+    expect(deactivateUsers).toHaveBeenCalledWith(["u1"], reason);
   });
 
   it("updateUser calls updateUserAccount", async () => {
@@ -225,10 +223,12 @@ describe("users/actions drizzle CRUD", () => {
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 
-  it("bulkDeactivateUsers deactivates each id", async () => {
+  it("bulkDeactivateUsers deactivates ids once with shared reason", async () => {
+    const reason = "x".repeat(50);
     const { bulkDeactivateUsers } = await import("./actions");
-    await bulkDeactivateUsers(["u1", "u2"]);
-    expect(deactivateUserRepo).toHaveBeenCalledTimes(2);
+    await bulkDeactivateUsers(["u1", "u2"], reason);
+    expect(deactivateUsers).toHaveBeenCalledTimes(1);
+    expect(deactivateUsers).toHaveBeenCalledWith(["u1", "u2"], reason);
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:users", "default");
   });
 

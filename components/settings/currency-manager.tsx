@@ -13,6 +13,7 @@ import { ListArchivedToggle } from "@/components/ui/list-archived-toggle";
 import { ListFiltersBar } from "@/components/ui/list-filters-bar";
 import { ListNameSearch } from "@/components/ui/list-name-search";
 import { CardBadge } from "@/components/ui/card";
+import { ArchiveReasonModal } from "@/components/ui/archive-reason-modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
@@ -23,7 +24,6 @@ import {
   toggleIdInSet,
   toggleSelectAllRows,
 } from "@/lib/business/list-selection";
-import { isProtectedCurrencyDocument } from "@/lib/business/primary-currency";
 import {
   formatCurrencyPerSecond,
   formatExchangeRate,
@@ -59,8 +59,10 @@ export interface CurrencyManagerProps {
     documentId: string,
     values: CurrencyFormInput,
   ) => void | Promise<void>;
-  onDelete: (documentId: string) => void | Promise<void>;
-  onBulkArchive: (documentIds: string[]) => void | Promise<void>;
+  onBulkArchive: (
+    documentIds: string[],
+    reason: string,
+  ) => void | Promise<void>;
   onBulkDelete: (documentIds: string[]) => void | Promise<void>;
   onListImages: () => Promise<MediaAssetRecord[]>;
   onUploadImage: (formData: FormData) => Promise<MediaAssetRecord>;
@@ -112,10 +114,8 @@ function actionErrorMessage(
 
 export function CurrencyManager({
   currencies,
-  protectedCurrencyId = null,
   onCreate,
   onUpdate,
-  onDelete,
   onBulkArchive,
   onBulkDelete,
   onListImages,
@@ -125,7 +125,6 @@ export function CurrencyManager({
   const tSettings = useTranslations("settings");
   const router = useRouter();
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -166,7 +165,6 @@ export function CurrencyManager({
 
   function closeModal(): void {
     setModal({ mode: "closed" });
-    setDeleteOpen(false);
   }
 
   function openEdit(currency: CurrencyRow): void {
@@ -205,32 +203,11 @@ export function CurrencyManager({
     });
   }
 
-  function handleConfirmDelete(): void {
-    if (modal.mode !== "edit") return;
-    const documentId = modal.currency.documentId;
-    startTransition(async () => {
-      try {
-        await onDelete(documentId);
-        showSuccessToast(tSettings("currencyDeleted"));
-        closeModal();
-        router.refresh();
-      } catch (error) {
-        rethrowIfNavigationError(error);
-        showErrorToast(
-          actionErrorMessage(
-            error,
-            tSettings("currencyDeleteError"),
-            tSettings("currencyPrimaryProtected"),
-          ),
-        );
-      }
-    });
-  }
 
-  function handleBulkArchiveConfirm(): void {
+  function handleBulkArchiveConfirm(reason: string): void {
     startTransition(async () => {
       try {
-        await onBulkArchive(selectedIds);
+        await onBulkArchive(selectedIds, reason);
         showSuccessToast(tSettings("bulkArchived"));
         setBulkArchiveOpen(false);
         clearSelection();
@@ -486,42 +463,23 @@ export function CurrencyManager({
           defaultValues={defaultValues}
           initialIconUrl={initialIconUrl}
           saving={isPending}
-          showDelete={
-            modal.mode === "edit" &&
-            !isProtectedCurrencyDocument(
-              modal.currency.documentId,
-              currencies,
-              protectedCurrencyId,
-            )
-          }
           onClose={closeModal}
           onSave={handleSave}
-          onDelete={() => setDeleteOpen(true)}
           onListImages={onListImages}
           onUploadImage={onUploadImage}
         />
 
-        <ConfirmDialog
-          open={deleteOpen}
-          title={tSettings("currencyDeleteTitle")}
-          description={tSettings("currencyDeleteConfirm")}
-          confirmLabel={tCommon("delete")}
-          disabled={isPending}
-          onConfirm={handleConfirmDelete}
-          onClose={() => setDeleteOpen(false)}
-        />
 
-        <ConfirmDialog
+        <ArchiveReasonModal
           open={bulkArchiveOpen}
           title={tSettings("bulkArchiveTitle")}
           description={tSettings.rich("bulkArchiveConfirm", {
             count: selectedCurrencies.length,
             b: (chunks) => <b>{chunks}</b>,
           })}
-          confirmLabel={tCommon("yes")}
-          cancelLabel={tCommon("cancel")}
-          confirmVariant="default"
+          count={selectedIds.length}
           disabled={isPending}
+          titleId="currencies-bulk-archive-title"
           onConfirm={handleBulkArchiveConfirm}
           onClose={() => setBulkArchiveOpen(false)}
         />

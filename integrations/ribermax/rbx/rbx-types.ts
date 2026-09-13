@@ -10,6 +10,8 @@
 export type LegacyNumber = number | string | null | undefined;
 
 export interface BoxTemplateSubtaskInput {
+  /** Pixtrela preset UUID when configured in RBX productivity map. */
+  presetId?: string;
   presetName: string;
   qty: LegacyNumber;
   actionUnits: LegacyNumber;

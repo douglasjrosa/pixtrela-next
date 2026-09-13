@@ -25,10 +25,8 @@ export interface CurrencyFormModalProps {
   defaultValues: CurrencyFormInput;
   initialIconUrl?: string | null;
   saving?: boolean;
-  showDelete?: boolean;
   onClose: () => void;
   onSave: (values: CurrencyFormInput) => void;
-  onDelete?: () => void;
   onListImages: () => Promise<MediaAssetRecord[]>;
   onUploadImage: (formData: FormData) => Promise<MediaAssetRecord>;
 }
@@ -46,10 +44,8 @@ function CurrencyFormModalContent({
   defaultValues,
   initialIconUrl = null,
   saving = false,
-  showDelete = false,
   onClose,
   onSave,
-  onDelete,
   onListImages,
   onUploadImage,
 }: Omit<CurrencyFormModalProps, "open"> & { open: true }) {
@@ -245,19 +241,7 @@ function CurrencyFormModalContent({
             </div>
           </form>
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {showDelete && onDelete ? (
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={saving}
-                onClick={onDelete}
-              >
-                {tCommon("delete")}
-              </Button>
-            ) : (
-              <span />
-            )}
+          <div className="flex flex-wrap items-center justify-end gap-3">
             <Button type="submit" form={formId} disabled={saving}>
               {tCommon("save")}
             </Button>

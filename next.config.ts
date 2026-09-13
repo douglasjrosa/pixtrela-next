@@ -21,6 +21,9 @@ const nextConfig: NextConfig = {
       {
         pathname: "/api/kiosk/face-media",
       },
+      {
+        pathname: "/images/**",
+      },
     ],
     remotePatterns: buildNextImageRemotePatterns(),
   },

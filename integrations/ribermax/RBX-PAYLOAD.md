@@ -152,29 +152,39 @@ Canonical preset names (from the former the app mapper):
 | `Montagem da base` | 1 | `actionUnits = montagem[2]` |
 | `Montagem dos quadros das laterais` | 2 | `actionUnits = montagem[3]` (staples per lateral) |
 | `Fixação das chapas das laterais` | 2 | `actionUnits = montagem[4]` |
-| `Fixação dos adesivos das laterais` | 2 | `actionUnits = adhesives per lateral` (0–2: `fragil` + `adExtra`) |
+| `Fixação dos adesivos das laterais` | `2 × adhesive types` | `qty = laterals × types per lateral` (`fragil` + `adExtra`); `actionUnits = 1` |
 | `Montagem dos quadros das cabeceiras` | 2 | `actionUnits = montagem[7]` |
 | `Fixação das chapas das cabeceiras` | 2 | `actionUnits = montagem[8]` |
-| `Fixação dos adesivos das cabeceiras` | 2 | `actionUnits = adhesives per headboard` |
+| `Fixação dos adesivos das cabeceiras` | `2 × adhesive types` | `qty = headboards × types per headboard`; `actionUnits = 1` |
 | `Montagem dos quadros da tampa` | 1 | `actionUnits = montagem[10]` |
 | `Fixação das chapas da tampa` | 1 | `actionUnits = montagem[11]` |
-| `Fixação dos adesivos da tampa` | 1 | `actionUnits = adhesives on lid |
+| `Fixação dos adesivos da tampa` | `1 × adhesive types` | `qty = lid × types on lid`; `actionUnits = 1` |
 
-**Cut presets (`sharingType = duration`):** old fixed time was 60 seconds. Now:
+**Cut presets (`sharingType = duration`):** one subtask **per cut-plan material**
+(same algorithm as `/imprimir` cut plan PDF).
 
-```
-actionUnits = round(desired_seconds / preset.action.unit_time)
-```
+- `actionUnits` = `almoxarifado.pcs_por_corte` for that material (`0` → `1`).
+- `qty` = total whole boards/beams (sum of the right-hand column in the cut-plan
+  bars). The cut-plan algorithm already accounts for `pcs_por_corte` when packing.
 
-Example: preset linked to action with `unit_time = 1.66` → for ~60 s,
-`actionUnits ≈ 36`.
+Example: Sarrafo 30×18mm with 4+1+2+5 boards and `pcs_por_corte = 10` →
+`qty: 12`, `actionUnits: 10`.
+
+**Loose accessories (`acessorioPart`):** `acessorioPart = loose` emits no subtask.
+
+| Collection | `acessorioPart` | Behaviour |
+|------------|-----------------|-----------|
+| `chapasAvulsas` | `side` / `head` / `lid` / `base` | Cut subtask per material (`cut:mat:{code}`); `qty` = sum of `qTot`; `actionUnits` = `pcs_por_corte` |
+| `itensAvulsos` | `side` / `head` / `lid` | Adds to `rbx:fixacao-adesivos-*` (`qty` += `qTot`, `actionUnits = 1`) |
+| `madeirasAvulsas` | any | No separate slot — included in the sarrafo cut plan |
 
 **Assembly / fastening presets (`sharingType = qty`):** `actionUnits` = raw value
 from `montagem[code]` (staples, nails, etc.) **per piece**.
 
-**Adhesives:** `actionUnits` = adhesive count **per piece** (1 or 2 when both
-`fragil` and `adExtra` exist). Do not multiply by `qty` inside `actionUnits`;
-`qty` already represents laterals / headboards / lid count.
+**Adhesives:** `qty` = panel count × adhesive types on that panel (1 per
+`fragil`, 1 per `adExtra`). `actionUnits` is always **1** per fixation.
+Example: 2 laterals with both `fragil` and `adExtra` → `qty: 4`, `actionUnits: 1`.
+Ignore loose/head accessories in `itensAvulsos` for this row.
 
 ---
 

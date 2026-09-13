@@ -1,11 +1,13 @@
-import { and, asc, count, desc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 
 import { factoryActions, subTaskPresets } from "@/drizzle/schema";
 import {
   parseActionUnitTime,
   type FactoryAction,
 } from "@/lib/business/factory-action";
+import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
 import { getDb, type Db } from "@/lib/db/client";
+import { archiveRecords } from "@/lib/repos/deactivation-reasons";
 import type { FactoryActionFormInput } from "@/lib/schemas/factory-action";
 import type { FactoryActionListSort } from "@/lib/schemas/factory-action-list-sort";
 
@@ -157,14 +159,33 @@ export async function updateFactoryActionRepo(
     .where(eq(factoryActions.id, id));
 }
 
-export async function archiveFactoryActionById(
-  id: string,
+export async function archiveFactoryActions(
+  ids: string[],
+  reason: string,
   db: Db = getDb(),
 ): Promise<void> {
-  await db
-    .update(factoryActions)
-    .set({ active: false, updatedAt: new Date() })
-    .where(eq(factoryActions.id, id));
+  await archiveRecords(
+    {
+      tableName: DEACTIVATION_TABLE.actions,
+      recordIds: ids,
+      text: reason,
+      setInactive: async (recordIds, tx) => {
+        await tx
+          .update(factoryActions)
+          .set({ active: false, updatedAt: new Date() })
+          .where(inArray(factoryActions.id, recordIds));
+      },
+    },
+    db,
+  );
+}
+
+export async function archiveFactoryActionById(
+  id: string,
+  reason: string,
+  db: Db = getDb(),
+): Promise<void> {
+  await archiveFactoryActions([id], reason, db);
 }
 
 export async function hardDeleteFactoryActionById(
@@ -184,7 +205,8 @@ export async function hardDeleteFactoryActionById(
 /** @deprecated Use archiveFactoryActionById for soft delete. */
 export async function deleteFactoryActionById(
   id: string,
+  reason: string,
   db: Db = getDb(),
 ): Promise<void> {
-  await archiveFactoryActionById(id, db);
+  await archiveFactoryActionById(id, reason, db);
 }

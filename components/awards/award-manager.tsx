@@ -15,7 +15,6 @@ import { useTranslations } from "next-intl";
 import { MediaImageField } from "@/components/media/media-image-field";
 import { Button } from "@/components/ui/button";
 import { AddNewButton } from "@/components/ui/add-new-button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
@@ -43,14 +42,10 @@ export interface AwardManagerProps {
   children: ReactNode;
   onCreate: (values: AwardFormInput) => void | Promise<void>;
   onUpdate: (documentId: string, values: AwardFormInput) => void | Promise<void>;
-  onArchive: (documentId: string) => void | Promise<void>;
-  onHardDelete: (documentId: string) => void | Promise<void>;
   onListImages: () => Promise<MediaAssetRecord[]>;
   onUploadImage: (formData: FormData) => Promise<MediaAssetRecord>;
   /** When false, catalog is read-only (manager view). */
   canManage?: boolean;
-  canDeactivate?: boolean;
-  canDelete: boolean;
 }
 
 function defaultValues(currencies: CurrencyOption[]): AwardFormInput {
@@ -91,10 +86,8 @@ interface AwardFormDialogProps {
   currencies: CurrencyOption[];
   isPending: boolean;
   readOnly: boolean;
-  destructiveAction?: "archive" | "delete";
   onClose: () => void;
   onSubmit: (values: AwardFormInput) => void;
-  onDestructiveAction?: () => void;
   onListImages: () => Promise<MediaAssetRecord[]>;
   onUploadImage: (formData: FormData) => Promise<MediaAssetRecord>;
 }
@@ -104,10 +97,8 @@ function AwardFormDialog({
   currencies,
   isPending,
   readOnly,
-  destructiveAction,
   onClose,
   onSubmit,
-  onDestructiveAction,
   onListImages,
   onUploadImage,
 }: AwardFormDialogProps) {
@@ -192,20 +183,6 @@ function AwardFormDialog({
       titleId={formTitleId}
       onClose={onClose}
       disabled={isPending}
-      footerStart={
-        destructiveAction && onDestructiveAction ? (
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={isPending}
-            onClick={onDestructiveAction}
-          >
-            {destructiveAction === "archive"
-              ? tAwards("archive")
-              : tCommon("delete")}
-          </Button>
-        ) : undefined
-      }
       footerEnd={
         readOnly ? undefined : (
           <Button
@@ -366,51 +343,33 @@ export function AwardManager({
   children,
   onCreate,
   onUpdate,
-  onArchive,
-  onHardDelete,
   onListImages,
   onUploadImage,
   canManage = true,
-  canDeactivate = false,
-  canDelete,
 }: AwardManagerProps) {
-  const tCommon = useTranslations("common");
   const tAwards = useTranslations("awards");
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
   const [editingAward, setEditingAward] = useState<AwardRow | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
 
-  const canOpenEdit = canManage || canDeactivate;
-  const destructiveAction = editingAward
-    ? editingAward.active
-      ? canDeactivate
-        ? ("archive" as const)
-        : undefined
-      : canDelete
-        ? ("delete" as const)
-        : undefined
-    : undefined;
+  const canOpenEdit = canManage;
 
   function closeForm(): void {
     setFormOpen(false);
     setEditingAward(null);
-    setConfirmOpen(false);
   }
 
   function startCreate(): void {
     setEditingAward(null);
     setMessage(null);
-    setConfirmOpen(false);
     setFormOpen(true);
   }
 
   function startEdit(award: AwardRow): void {
     setEditingAward(award);
     setMessage(null);
-    setConfirmOpen(false);
     setFormOpen(true);
   }
 
@@ -428,20 +387,7 @@ export function AwardManager({
     });
   }
 
-  function handleConfirmDestructive(): void {
-    if (!editingAward || !destructiveAction) return;
-    startTransition(async () => {
-      if (destructiveAction === "archive") {
-        await onArchive(editingAward.documentId);
-        setMessage(tAwards("archived"));
-      } else {
-        await onHardDelete(editingAward.documentId);
-        setMessage(tAwards("deleted"));
-      }
-      closeForm();
-      router.refresh();
-    });
-  }
+
 
   const formDialogKey = editingAward?.documentId ?? "new";
 
@@ -474,38 +420,14 @@ export function AwardManager({
             currencies={currencies}
             isPending={isPending}
             readOnly={!canManage}
-            destructiveAction={destructiveAction}
             onClose={closeForm}
             onSubmit={onSubmit}
-            onDestructiveAction={
-              destructiveAction ? () => setConfirmOpen(true) : undefined
-            }
             onListImages={onListImages}
             onUploadImage={onUploadImage}
           />
         ) : null}
 
-        <ConfirmDialog
-          open={confirmOpen}
-          title={
-            destructiveAction === "archive"
-              ? tAwards("archiveTitle")
-              : tAwards("deleteTitle")
-          }
-          description={
-            destructiveAction === "archive"
-              ? tAwards("archiveConfirm")
-              : tAwards("deleteConfirm")
-          }
-          confirmLabel={
-            destructiveAction === "archive"
-              ? tAwards("archive")
-              : tCommon("delete")
-          }
-          disabled={isPending}
-          onConfirm={handleConfirmDestructive}
-          onClose={() => setConfirmOpen(false)}
-        />
+
 
         {children}
       </div>

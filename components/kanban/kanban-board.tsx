@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -169,7 +169,9 @@ export function KanbanBoard({
   }
   const columns = controlledColumns ?? internalColumns;
   const columnsRef = useRef(columns);
-  columnsRef.current = columns;
+  useEffect(() => {
+    columnsRef.current = columns;
+  }, [columns]);
 
   const setColumns = useCallback(
     (next: BoardColumnState[]): void => {
