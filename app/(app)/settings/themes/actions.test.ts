@@ -64,6 +64,23 @@ describe("settings/themes/actions drizzle paths", () => {
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:route-themes", "default");
   });
 
+  it("updateRouteTheme accepts null backgroundImageColor for custom images", async () => {
+    const { updateRouteTheme } = await import("./actions");
+    await updateRouteTheme("theme-board", {
+      backgroundImageId: "550e8400-e29b-41d4-a716-446655440000",
+      backgroundImageColor: null,
+      useDefaultBackgroundImage: false,
+    });
+    expect(updateRouteThemeRepo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "theme-board",
+        backgroundImageMediaId: "550e8400-e29b-41d4-a716-446655440000",
+        backgroundImageColor: null,
+        useDefaultBackgroundImage: false,
+      }),
+    );
+  });
+
   it("updateSemanticTheme persists tokens and revalidates layout", async () => {
     const { updateSemanticTheme } = await import("./actions");
     await updateSemanticTheme({ primary: "#112233" });

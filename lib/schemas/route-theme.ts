@@ -50,11 +50,15 @@ export const routeThemeFormSchema = z.object({
     .optional(),
   surfaceColorOpacity: z.number().int().min(0).max(100).optional(),
   backgroundImageColor: z
-    .string()
-    .trim()
-    .refine((value) => value === "" || HEX_COLOR.test(value), {
-      message: "invalidHex",
-    })
+    .union([
+      z
+        .string()
+        .trim()
+        .refine((value) => value === "" || HEX_COLOR.test(value), {
+          message: "invalidHex",
+        }),
+      z.null(),
+    ])
     .optional()
     .transform((value) => {
       if (!value) return null;
