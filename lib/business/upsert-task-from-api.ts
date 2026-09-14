@@ -1,7 +1,6 @@
 import { ensureTemplateForTaskCode } from "@/lib/templates/ensure-template-for-task-code";
 import { applyAutoStepTaskOrderingAfterTaskChange } from "@/lib/business/apply-step-task-order";
 import { resolveDefaultStepDocumentId } from "@/lib/business/default-task-step";
-import { getNextTaskIndex } from "@/lib/business/task-order";
 import type { ApiTaskUpsertInput } from "@/lib/schemas/api-task";
 import {
   crmPedidoIdFromExternalKey,
@@ -11,8 +10,8 @@ import { listSteps } from "@/lib/repos/steps";
 import {
   createTask,
   findTaskByExternalKey,
+  getNextActiveTaskIndex,
   getTaskById,
-  listActiveTasksForBoard,
   updateCrmPedidoTaskFields,
 } from "@/lib/repos/tasks";
 
@@ -126,17 +125,9 @@ export async function upsertTaskFromApi(
   const defaultStepId = await loadDefaultStepId();
   pushStage(debugTrace, stepStartedAt, "load_default_step", defaultStepId);
 
-  const boardStartedAt = Date.now();
-  const boardTasks = await listActiveTasksForBoard();
-  pushStage(
-    debugTrace,
-    boardStartedAt,
-    "list_active_board_tasks",
-    `count=${boardTasks.length}`,
-  );
-  const index = getNextTaskIndex(
-    boardTasks.map((task) => ({ index: task.index })),
-  );
+  const indexStartedAt = Date.now();
+  const index = await getNextActiveTaskIndex();
+  pushStage(debugTrace, indexStartedAt, "next_task_index", String(index));
   const crmPedidoId = crmPedidoIdFromExternalKey(input.externalKey);
 
   const createStartedAt = Date.now();
@@ -154,14 +145,12 @@ export async function upsertTaskFromApi(
 
   pushStage(debugTrace, createStartedAt, "create_task", created.id);
 
-  const orderStartedAt = Date.now();
-  await applyAutoStepTaskOrderingAfterTaskChange({
-    after: {
-      stepId: defaultStepId,
-      deliveryDate: input.deliveryDate ?? null,
-    },
-  });
-  pushStage(debugTrace, orderStartedAt, "apply_step_ordering");
+  pushStage(
+    debugTrace,
+    startedAt,
+    "apply_step_ordering",
+    "skipped_for_crm_api",
+  );
 
   pushStage(debugTrace, startedAt, "upsert_done", ensured.source);
   // #region agent log

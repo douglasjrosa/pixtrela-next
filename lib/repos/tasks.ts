@@ -631,6 +631,16 @@ export async function listActiveTasksForBoard(db: Db = getDb()) {
     .orderBy(asc(tasks.index));
 }
 
+/** Next board index without loading every active task row. */
+export async function getNextActiveTaskIndex(db: Db = getDb()): Promise<number> {
+  const [row] = await db
+    .select({ value: max(tasks.index) })
+    .from(tasks)
+    .where(eq(tasks.active, true));
+  const currentMax = row?.value ?? 0;
+  return currentMax + 1;
+}
+
 export type BoardTaskOrderRow = {
   id: string;
   stepId: string | null;

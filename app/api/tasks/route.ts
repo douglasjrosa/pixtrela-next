@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 
@@ -31,10 +32,12 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   try {
     const result = await upsertTaskFromApi(parsed.data);
-    revalidateTag("drizzle:tasks", "default");
-    revalidateTag("drizzle:steps", "default");
-    revalidatePath("/board");
-    revalidatePath("/tasks");
+    after(() => {
+      revalidateTag("drizzle:tasks", "default");
+      revalidateTag("drizzle:steps", "default");
+      revalidatePath("/board");
+      revalidatePath("/tasks");
+    });
     return NextResponse.json(result, {
       status: result.action === "created" ? 201 : 200,
     });

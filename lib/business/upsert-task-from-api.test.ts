@@ -5,7 +5,7 @@ const findTaskByExternalKey = vi.fn();
 const updateCrmPedidoTaskFields = vi.fn();
 const createTask = vi.fn();
 const getTaskById = vi.fn();
-const listActiveTasksForBoard = vi.fn();
+const getNextActiveTaskIndex = vi.fn();
 const listSteps = vi.fn();
 const applyAutoStepTaskOrderingAfterTaskChange = vi.fn();
 
@@ -20,8 +20,8 @@ vi.mock("@/lib/repos/tasks", () => ({
     updateCrmPedidoTaskFields(...args),
   createTask: (...args: unknown[]) => createTask(...args),
   getTaskById: (...args: unknown[]) => getTaskById(...args),
-  listActiveTasksForBoard: (...args: unknown[]) =>
-    listActiveTasksForBoard(...args),
+  getNextActiveTaskIndex: (...args: unknown[]) =>
+    getNextActiveTaskIndex(...args),
 }));
 
 vi.mock("@/lib/repos/steps", () => ({
@@ -57,7 +57,7 @@ describe("upsertTaskFromApi", () => {
     updateCrmPedidoTaskFields.mockReset();
     createTask.mockReset();
     getTaskById.mockReset();
-    listActiveTasksForBoard.mockReset();
+    getNextActiveTaskIndex.mockReset();
     listSteps.mockReset();
     applyAutoStepTaskOrderingAfterTaskChange.mockReset();
   });
@@ -83,7 +83,8 @@ describe("upsertTaskFromApi", () => {
 
     const result = await upsertTaskFromApi(baseInput);
 
-    expect(result).toEqual({ action: "updated", taskId: "t1" });
+    expect(result.action).toBe("updated");
+    expect(result.taskId).toBe("t1");
     expect(ensureTemplateForTaskCode).not.toHaveBeenCalled();
     expect(updateCrmPedidoTaskFields).toHaveBeenCalledWith("t1", {
       name: baseInput.name,
@@ -99,22 +100,23 @@ describe("upsertTaskFromApi", () => {
       source: "payload",
     });
     listSteps.mockResolvedValue([{ id: "s1", name: "Fila" }]);
-    listActiveTasksForBoard.mockResolvedValue([{ index: 0 }]);
+    getNextActiveTaskIndex.mockResolvedValue(1);
     createTask.mockResolvedValue({ id: "new" });
 
     const result = await upsertTaskFromApi(baseInput);
 
-    expect(result).toEqual({
-      action: "created",
-      taskId: "new",
-      templateSource: "payload",
-    });
-    expect(ensureTemplateForTaskCode).toHaveBeenCalledWith({
-      code: "16378",
-      fallbackName: baseInput.name,
-      versions: ["16377"],
-      template: baseInput.template,
-    });
+    expect(result.action).toBe("created");
+    expect(result.taskId).toBe("new");
+    expect(result.templateSource).toBe("payload");
+    expect(applyAutoStepTaskOrderingAfterTaskChange).not.toHaveBeenCalled();
+    expect(ensureTemplateForTaskCode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "16378",
+        fallbackName: baseInput.name,
+        versions: ["16377"],
+        template: baseInput.template,
+      }),
+    );
     expect(createTask).toHaveBeenCalledWith(
       expect.objectContaining({
         crmItemKey: "123:0",
@@ -135,7 +137,8 @@ describe("upsertTaskFromApi", () => {
     });
 
     const result = await upsertTaskFromApi(baseInput);
-    expect(result).toEqual({ action: "skipped", taskId: "t1" });
+    expect(result.action).toBe("skipped");
+    expect(result.taskId).toBe("t1");
     expect(updateCrmPedidoTaskFields).not.toHaveBeenCalled();
   });
 });
