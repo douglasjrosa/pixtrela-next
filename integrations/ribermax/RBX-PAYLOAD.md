@@ -170,12 +170,19 @@ Canonical preset names (from the former the app mapper):
 Example: Sarrafo 30×18mm with 4+1+2+5 boards and `pcs_por_corte = 10` →
 `qty: 12`, `actionUnits: 10`.
 
-**Loose accessories (`acessorioPart`):** `acessorioPart = loose` emits no subtask.
+**Loose accessories (`acessorioPart`):** `itensAvulsos` with `loose` emits no subtask.
+`chapasAvulsas` always emit a cut row (`cut:mat:{code}`); fixation slots apply only when
+`acessorioPart` is not `loose`.
+
+**Cut order in `subtasks`:** sarrafos/madeiras (cut plan) → embedded panel chapas →
+`chapasAvulsas` cuts → assembly/fastening rows.
 
 | Collection | `acessorioPart` | Behaviour |
 |------------|-----------------|-----------|
-| `chapasAvulsas` | `side` / `head` / `lid` / `base` | Cut subtask per material (`cut:mat:{code}`); `qty` = sum of `qTot`; `actionUnits` = `pcs_por_corte` |
+| `chapasAvulsas` | any (incl. `loose`) | Cut subtask per material (`cut:mat:{code}`); `qty` = sum of `qTot`; `actionUnits` = `pcs_por_corte` |
+| `chapasAvulsas` | `side` / `head` / `lid` / `base` (not `loose`) | Also adds to `rbx:fixacao-chapas-*` (`qty` += `qTot`) |
 | `itensAvulsos` | `side` / `head` / `lid` | Adds to `rbx:fixacao-adesivos-*` (`qty` += `qTot`, `actionUnits = 1`) |
+| `itensAvulsos` | `loose` | No subtask |
 | `madeirasAvulsas` | any | No separate slot — included in the sarrafo cut plan |
 
 **Assembly / fastening presets (`sharingType = qty`):** `actionUnits` = raw value

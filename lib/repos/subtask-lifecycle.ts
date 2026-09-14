@@ -129,15 +129,17 @@ export async function runTaskSubTaskSyncRoutine(
   const activationRows = buildActivationSyncRows(siblings, activitiesBySubTaskId);
   const activationUpdates = resolveSubTaskActivationStatusUpdates(activationRows);
 
-  for (const [subTaskId, nextActivation] of activationUpdates) {
-    await db
-      .update(subTasks)
-      .set({
-        activationStatus: activationUpdateToDrizzle(nextActivation),
-        updatedAt: now,
-      })
-      .where(eq(subTasks.id, subTaskId));
-  }
+  await Promise.all(
+    Array.from(activationUpdates.entries()).map(([subTaskId, nextActivation]) =>
+      db
+        .update(subTasks)
+        .set({
+          activationStatus: activationUpdateToDrizzle(nextActivation),
+          updatedAt: now,
+        })
+        .where(eq(subTasks.id, subTaskId)),
+    ),
+  );
 
   const siblingsForCompletion = siblings.map((row) => ({
     status: row.status,

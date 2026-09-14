@@ -80,6 +80,32 @@ export async function upsertTaskFromApi(
   if (existing) {
     if (!taskNeedsUpdate(existing, input)) {
       pushStage(debugTrace, startedAt, "upsert_skipped", existing.id);
+      // #region agent log
+      fetch(
+        "http://127.0.0.1:7745/ingest/92e76b51-8514-4eb9-93ff-1a9f2e2f0e64",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "cb9202",
+          },
+          body: JSON.stringify({
+            sessionId: "cb9202",
+            runId: "pixtrela-upsert",
+            hypothesisId: "H6",
+            location: "upsert-task-from-api.ts:skipped",
+            message: "upsert skipped existing task",
+            data: {
+              externalKey: input.externalKey,
+              totalMs: Date.now() - startedAt,
+              debugTrace,
+            },
+            timestamp: Date.now(),
+          }),
+          signal: AbortSignal.timeout(300),
+        },
+      ).catch(() => {});
+      // #endregion
       return { action: "skipped", taskId: existing.id, debugTrace };
     }
     const before = await getTaskById(existing.id);
@@ -131,19 +157,23 @@ export async function upsertTaskFromApi(
   const crmPedidoId = crmPedidoIdFromExternalKey(input.externalKey);
 
   const createStartedAt = Date.now();
-  const created = await createTask({
-    name: input.name,
-    qty: input.qty,
-    deliveryDate: input.deliveryDate ?? null,
-    index,
-    status: "waiting",
-    templateTaskCode: input.templateTaskCode,
-    stepId: defaultStepId,
-    crmPedidoId,
-    crmItemKey: input.externalKey,
-  });
+  const created = await createTask(
+    {
+      name: input.name,
+      qty: input.qty,
+      deliveryDate: input.deliveryDate ?? null,
+      index,
+      status: "waiting",
+      templateTaskCode: input.templateTaskCode,
+      stepId: defaultStepId,
+      crmPedidoId,
+      crmItemKey: input.externalKey,
+    },
+    undefined,
+    { trace: debugTrace, rootStartedAt: createStartedAt },
+  );
 
-  pushStage(debugTrace, createStartedAt, "create_task", created.id);
+  pushStage(debugTrace, createStartedAt, "create_task_total", created.id);
 
   pushStage(
     debugTrace,
@@ -163,6 +193,28 @@ export async function upsertTaskFromApi(
       debugTrace,
     }),
   );
+  fetch("http://127.0.0.1:7745/ingest/92e76b51-8514-4eb9-93ff-1a9f2e2f0e64", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "cb9202",
+    },
+    body: JSON.stringify({
+      sessionId: "cb9202",
+      runId: "pixtrela-upsert",
+      hypothesisId: "H6",
+      location: "upsert-task-from-api.ts:created",
+      message: "upsert created task",
+      data: {
+        externalKey: input.externalKey,
+        templateSource: ensured.source,
+        totalMs: Date.now() - startedAt,
+        debugTrace,
+      },
+      timestamp: Date.now(),
+    }),
+    signal: AbortSignal.timeout(300),
+  }).catch(() => {});
   // #endregion
 
   return {

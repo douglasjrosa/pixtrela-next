@@ -49,11 +49,38 @@ export type CreateTaskInput = {
   crmItemKey?: string | null;
 };
 
+export type CreateTaskDebugStage = {
+  stage: string;
+  ms: number;
+  detail?: string;
+};
+
+export type CreateTaskInstrumentation = {
+  trace: CreateTaskDebugStage[];
+  rootStartedAt: number;
+};
+
+function pushCreateTaskStage(
+  instrumentation: CreateTaskInstrumentation | undefined,
+  stageStartedAt: number,
+  stage: string,
+  detail?: string,
+): void {
+  if (!instrumentation) return;
+  instrumentation.trace.push({
+    stage,
+    ms: Date.now() - stageStartedAt,
+    detail,
+  });
+}
+
 export async function createTask(
   input: CreateTaskInput,
-  db: Db = getDb(),
+  db?: Db,
+  instrumentation?: CreateTaskInstrumentation,
 ) {
-  return db.transaction(async (tx) => {
+  const resolvedDb = db ?? getDb();
+  return resolvedDb.transaction(async (tx) => {
     const qty = Math.max(1, input.qty ?? 1);
     const [task] = await tx
       .insert(tasks)
@@ -87,52 +114,85 @@ export async function createTask(
 
         const createdByIndex = new Map<number, string>();
         let totalExpected = 0;
-
-        for (const row of templateRows) {
+        const subTaskInsertStartedAt = Date.now();
+        const subTaskValues = templateRows.map((row) => {
           const scaled = scaleTemplateSubTaskForTask({
             templateQty: row.qty,
             templateExpectedTime: row.expectedTime,
             taskQty: qty,
           });
           totalExpected += scaled.expectedTime;
-          const [created] = await tx
-            .insert(subTasks)
-            .values({
-              taskId: task.id,
-              name: row.name,
-              qty: scaled.qty,
-              index: row.index,
-              expectedTime: scaled.expectedTime,
-              sharingType: row.sharingType,
-              maxSameTimeWorkers: row.maxSameTimeWorkers,
-              linkedToPrevious: row.linkedToPrevious,
-              subTaskCategoryId: row.subTaskCategoryId,
-            })
-            .returning({ id: subTasks.id, index: subTasks.index });
-          createdByIndex.set(created.index, created.id);
-        }
+          return {
+            taskId: task.id,
+            name: row.name,
+            qty: scaled.qty,
+            index: row.index,
+            expectedTime: scaled.expectedTime,
+            sharingType: row.sharingType,
+            maxSameTimeWorkers: row.maxSameTimeWorkers,
+            linkedToPrevious: row.linkedToPrevious,
+            subTaskCategoryId: row.subTaskCategoryId,
+          };
+        });
 
+        if (subTaskValues.length > 0) {
+          const createdRows = await tx
+            .insert(subTasks)
+            .values(subTaskValues)
+            .returning({ id: subTasks.id, index: subTasks.index });
+          for (const created of createdRows) {
+            createdByIndex.set(created.index, created.id);
+          }
+        }
+        pushCreateTaskStage(
+          instrumentation,
+          subTaskInsertStartedAt,
+          "create_task_insert_subtasks",
+          `count=${subTaskValues.length}`,
+        );
+
+        const depInsertStartedAt = Date.now();
+        const dependencyValues: Array<{
+          subTaskId: string;
+          dependsOnSubTaskId: string;
+        }> = [];
         for (const row of templateRows) {
           const subId = createdByIndex.get(row.index);
           if (!subId) continue;
           for (const depIndex of row.dependencyIndexes ?? []) {
             const depId = createdByIndex.get(depIndex);
             if (!depId) continue;
-            await tx.insert(subTaskDependencies).values({
+            dependencyValues.push({
               subTaskId: subId,
               dependsOnSubTaskId: depId,
             });
           }
         }
+        if (dependencyValues.length > 0) {
+          await tx.insert(subTaskDependencies).values(dependencyValues);
+        }
+        pushCreateTaskStage(
+          instrumentation,
+          depInsertStartedAt,
+          "create_task_insert_dependencies",
+          `count=${dependencyValues.length}`,
+        );
 
         await tx
           .update(tasks)
           .set({ totalExpectedTime: totalExpected, updatedAt: new Date() })
           .where(eq(tasks.id, task.id));
 
+        const syncStartedAt = Date.now();
         await runTaskSubTaskSyncRoutine(
           task.id,
           tx as unknown as Db,
+        );
+        pushCreateTaskStage(
+          instrumentation,
+          syncStartedAt,
+          "create_task_sync_routine",
+          `subtasks=${templateRows.length}`,
         );
       }
     }
