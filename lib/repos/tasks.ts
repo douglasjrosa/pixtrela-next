@@ -991,6 +991,21 @@ export async function deleteTaskById(id: string, db: Db = getDb()): Promise<void
   await db.delete(tasks).where(eq(tasks.id, id));
 }
 
+export async function deleteTasksByCrmPedidoId(
+  crmPedidoId: number,
+  db: Db = getDb(),
+): Promise<number> {
+  const rows = await db
+    .select({ id: tasks.id })
+    .from(tasks)
+    .where(eq(tasks.crmPedidoId, crmPedidoId));
+  if (rows.length === 0) {
+    return 0;
+  }
+  await db.delete(tasks).where(eq(tasks.crmPedidoId, crmPedidoId));
+  return rows.length;
+}
+
 export async function updateTaskBoardFields(
   id: string,
   input: { index: number; stepId?: string | null },

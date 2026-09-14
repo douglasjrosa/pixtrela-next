@@ -3,11 +3,38 @@ import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 
 import { verifyCrmApiToken } from "@/lib/api/crm-api-auth";
+import { deleteTasksFromApiByCrmPedidoId } from "@/lib/business/delete-tasks-from-api";
 import { upsertTaskFromApi } from "@/lib/business/upsert-task-from-api";
 import { apiTaskUpsertSchema } from "@/lib/schemas/api-task";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+export async function DELETE(request: Request): Promise<NextResponse> {
+  const auth = await verifyCrmApiToken(request);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const crmPedidoIdRaw = new URL(request.url).searchParams.get("crmPedidoId");
+  const crmPedidoId = Number(crmPedidoIdRaw);
+  if (!Number.isInteger(crmPedidoId) || crmPedidoId <= 0) {
+    return NextResponse.json({ error: "invalid_crm_pedido_id" }, { status: 400 });
+  }
+
+  try {
+    const result = await deleteTasksFromApiByCrmPedidoId(crmPedidoId);
+    after(() => {
+      revalidateTag("drizzle:tasks", "default");
+      revalidateTag("drizzle:steps", "default");
+      revalidatePath("/board");
+      revalidatePath("/tasks");
+    });
+    return NextResponse.json({ ok: true, ...result });
+  } catch {
+    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request): Promise<NextResponse> {
   const auth = await verifyCrmApiToken(request);

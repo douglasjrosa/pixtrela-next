@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const verifyCrmApiToken = vi.fn();
 const upsertTaskFromApi = vi.fn();
+const deleteTasksFromApiByCrmPedidoId = vi.fn();
 const revalidateTag = vi.fn();
 const revalidatePath = vi.fn();
 
@@ -13,15 +14,31 @@ vi.mock("@/lib/business/upsert-task-from-api", () => ({
   upsertTaskFromApi: (...args: unknown[]) => upsertTaskFromApi(...args),
 }));
 
+vi.mock("@/lib/business/delete-tasks-from-api", () => ({
+  deleteTasksFromApiByCrmPedidoId: (...args: unknown[]) =>
+    deleteTasksFromApiByCrmPedidoId(...args),
+}));
+
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
   revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return {
+    ...actual,
+    after: (fn: () => void) => {
+      fn();
+    },
+  };
+});
+
 describe("POST /api/tasks", () => {
   beforeEach(() => {
     verifyCrmApiToken.mockReset();
     upsertTaskFromApi.mockReset();
+    deleteTasksFromApiByCrmPedidoId.mockReset();
     revalidateTag.mockReset();
     revalidatePath.mockReset();
     vi.resetModules();
@@ -75,5 +92,29 @@ describe("POST /api/tasks", () => {
     expect(response.status).toBe(201);
     expect(upsertTaskFromApi).toHaveBeenCalledOnce();
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks", "default");
+  });
+});
+
+describe("DELETE /api/tasks", () => {
+  beforeEach(() => {
+    verifyCrmApiToken.mockReset();
+    deleteTasksFromApiByCrmPedidoId.mockReset();
+    revalidateTag.mockReset();
+    revalidatePath.mockReset();
+    vi.resetModules();
+  });
+
+  it("deletes tasks by crmPedidoId", async () => {
+    verifyCrmApiToken.mockResolvedValue({ ok: true });
+    deleteTasksFromApiByCrmPedidoId.mockResolvedValue({ deletedCount: 1 });
+    const { DELETE } = await import("./route");
+    const response = await DELETE(
+      new Request("http://localhost/api/tasks?crmPedidoId=123", {
+        method: "DELETE",
+        headers: { Token: "secret" },
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(deleteTasksFromApiByCrmPedidoId).toHaveBeenCalledWith(123);
   });
 });
