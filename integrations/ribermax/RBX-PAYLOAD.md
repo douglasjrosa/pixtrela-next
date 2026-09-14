@@ -150,6 +150,8 @@ Canonical preset names (from the former the app mapper):
 | `Corte da chapa da tampa` | 1 | if `tampa` exists |
 | `Montagem dos pés` | `max(1, info.qPes)` | `actionUnits = montagem[1]` (nails per foot) |
 | `Montagem da base` | 1 | `actionUnits = montagem[2]` |
+| `Fixação das chapas da base` | 1 (+ avulsos) | `actionUnits = montagem[5]` |
+| `Fixação dos adesivos da base` | `1 × adhesive types` (+ avulsos) | `qty` includes `itensAvulsos` on `base`; `actionUnits = 1` |
 | `Montagem dos quadros das laterais` | 2 | `actionUnits = montagem[3]` (staples per lateral) |
 | `Fixação das chapas das laterais` | 2 | `actionUnits = montagem[4]` |
 | `Fixação dos adesivos das laterais` | `2 × adhesive types` | `qty = laterals × types per lateral` (`fragil` + `adExtra`); `actionUnits = 1` |
@@ -181,7 +183,7 @@ Example: Sarrafo 30×18mm with 4+1+2+5 boards and `pcs_por_corte = 10` →
 |------------|-----------------|-----------|
 | `chapasAvulsas` | any (incl. `loose`) | Cut subtask per material (`cut:mat:{code}`); `qty` = sum of `qTot`; `actionUnits` = `pcs_por_corte` |
 | `chapasAvulsas` | `side` / `head` / `lid` / `base` (not `loose`) | Also adds to `rbx:fixacao-chapas-*` (`qty` += `qTot`) |
-| `itensAvulsos` | `side` / `head` / `lid` | Adds to `rbx:fixacao-adesivos-*` (`qty` += `qTot`, `actionUnits = 1`) |
+| `itensAvulsos` | `side` / `head` / `lid` / `base` | Adds to `rbx:fixacao-adesivos-*` (`qty` += `qTot`, `actionUnits = 1`) |
 | `itensAvulsos` | `loose` | No subtask |
 | `madeirasAvulsas` | any | No separate slot — included in the sarrafo cut plan |
 
