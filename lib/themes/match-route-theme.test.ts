@@ -14,6 +14,7 @@ import {
   routeThemeColorOverlayRgba,
   routeThemeContentFrameClass,
   routeThemeContentSurfaceRadiusClass,
+  routeThemeContentSurfaceTopRadiusClass,
   routeThemeForegroundStyle,
   routeThemeSurfaceBackgroundStyle,
   routeThemeSurfacePanelStyle,
@@ -89,6 +90,8 @@ describe("resolveRouteThemeKey", () => {
     expect(resolveRouteThemeKey("/")).toBe("staff-home");
     expect(resolveRouteThemeKey("/board")).toBe("board");
     expect(resolveRouteThemeKey("/tasks/abc")).toBe("tasks");
+    expect(resolveRouteThemeKey("/queues")).toBe("tasks");
+    expect(resolveRouteThemeKey("/queues/col-1")).toBe("tasks");
     expect(resolveRouteThemeKey("/kiosk")).toBe("kiosk");
     expect(resolveRouteThemeKey("/kiosk/user1")).toBe("kiosk");
     expect(resolveRouteThemeKey("/kiosk/staff/admin1")).toBe("kiosk-staff");
@@ -384,6 +387,29 @@ describe("routeThemeContentFrameClass", () => {
     expect(routeThemeContentFrameClass(null)).toBe(
       "flex flex-1 flex-col p-[calc(var(--spacing)*6)] sm:p-[calc(var(--spacing)*15)]",
     );
+  });
+});
+
+describe("routeThemeContentSurfaceTopRadiusClass", () => {
+  it("mirrors surface radius on the top edge only", () => {
+    expect(
+      routeThemeContentSurfaceTopRadiusClass({
+        contentMarginMobile: "none",
+        contentMarginDesktop: "none",
+      }),
+    ).toBe("rounded-t-none sm:rounded-t-none");
+    expect(
+      routeThemeContentSurfaceTopRadiusClass({
+        contentMarginMobile: "md",
+        contentMarginDesktop: "lg",
+      }),
+    ).toBe("rounded-t-2xl sm:rounded-t-2xl");
+    expect(
+      routeThemeContentSurfaceTopRadiusClass({
+        contentMarginMobile: "none",
+        contentMarginDesktop: "lg",
+      }),
+    ).toBe("rounded-t-none sm:rounded-t-2xl");
   });
 });
 

@@ -2,7 +2,7 @@ import { useTranslations } from "next-intl";
 
 import { ColaboratorDailyGain } from "@/components/colaborator/colaborator-daily-gain";
 import type { BalanceCurrencyOption } from "@/components/dashboard/balance-adjustment-modal";
-import type { BalanceAdjustmentResult } from "@/app/(app)/balance-adjustment-actions";
+import type { BalanceAdjustmentResult } from "@/lib/dashboard/apply-balance-adjustment";
 import type { Role } from "@/lib/auth/nav";
 import type {
   ColaboratorInsightsData,

@@ -27,6 +27,11 @@ vi.mock("@/lib/welcome/kiosk-welcome-ready", () => ({
   markKioskColaboratorReady: vi.fn(),
 }));
 
+vi.mock("@/app/kiosk/staff/[userId]/users/actions", () => ({
+  saveKioskColaboratorPassword: vi.fn(),
+  saveKioskColaboratorFacePhoto: vi.fn(),
+}));
+
 vi.mock("./actions", () => ({
   startSubTask: (...args: unknown[]) => startSubTask(...args),
   joinLiveChain: (...args: unknown[]) => joinLiveChain(...args),
@@ -154,7 +159,7 @@ describe("KioskPanelClient", () => {
     expect(screen.getByRole("heading", { name: "Liberadas" })).toBeInTheDocument();
     expect(screen.getByText("Cortar")).toBeInTheDocument();
     expect(screen.queryByText("Processando...")).not.toBeInTheDocument();
-    expect(startSubTask).toHaveBeenCalledWith("u-1", "st-1");
+    expect(startSubTask).toHaveBeenCalledWith("u-1", "st-1", undefined);
 
     await act(async () => {
       resolveStart();
@@ -271,7 +276,7 @@ describe("KioskPanelClient", () => {
       await Promise.resolve();
     });
 
-    expect(advanceChainRun).toHaveBeenCalledWith("run-1");
+    expect(advanceChainRun).toHaveBeenCalledWith("u-1", "run-1", undefined);
     const stopButton = screen.getByRole("button", { name: "Parar" });
     expect(stopButton).toBeEnabled();
     await user.click(stopButton);
@@ -340,10 +345,15 @@ describe("KioskPanelClient", () => {
     await user.click(yesButtons[1]!);
     await user.click(screen.getByRole("button", { name: "Confirmar saída" }));
 
-    expect(confirmChainStop).toHaveBeenCalledWith("u-1", "run-1", [
-      { documentId: "a", completed: true },
-      { documentId: "b", completed: true },
-    ]);
+    expect(confirmChainStop).toHaveBeenCalledWith(
+      "u-1",
+      "run-1",
+      [
+        { documentId: "a", completed: true },
+        { documentId: "b", completed: true },
+      ],
+      undefined,
+    );
     expect(showSuccessToast).toHaveBeenCalledWith("Saída registrada.");
   });
 

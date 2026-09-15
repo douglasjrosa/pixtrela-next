@@ -3,8 +3,10 @@ import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
+import { StaffSectionTabsBar } from "@/components/navigation/staff-section-tabs-bar";
 import { TemplatesLayoutClient } from "@/components/templates/templates-layout-client";
 import type { Role } from "@/lib/auth/nav";
+import { loadTasksSectionTabs } from "@/lib/auth/load-staff-section-tabs";
 import { canManageTemplates } from "@/lib/auth/permissions";
 
 export default async function TemplatesLayout({
@@ -20,17 +22,27 @@ export default async function TemplatesLayout({
     return <ForbiddenMessage />;
   }
 
+  const [sectionTabs, tNav] = await Promise.all([
+    loadTasksSectionTabs(role, {
+      tasks: "/tasks",
+      templates: "/templates/tasks",
+    }),
+    getTranslations("nav"),
+  ]);
+
   return (
-    <TemplatesLayoutClient
-      title={t("title")}
-      tabsAriaLabel={t("title")}
-      tabItems={[
-        { href: "/templates/tasks", label: t("tasksTab") },
-        { href: "/templates/subtasks", label: t("subtasksTab") },
-        { href: "/templates/actions", label: t("actionsTab") },
-      ]}
-    >
-      {children}
-    </TemplatesLayoutClient>
+    <StaffSectionTabsBar tabs={sectionTabs} ariaLabel={tNav("tasks")}>
+      <TemplatesLayoutClient
+        title={t("title")}
+        tabsAriaLabel={t("title")}
+        tabItems={[
+          { href: "/templates/tasks", label: t("tasksTab") },
+          { href: "/templates/subtasks", label: t("subtasksTab") },
+          { href: "/templates/actions", label: t("actionsTab") },
+        ]}
+      >
+        {children}
+      </TemplatesLayoutClient>
+    </StaffSectionTabsBar>
   );
 }

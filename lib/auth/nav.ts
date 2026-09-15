@@ -1,4 +1,10 @@
-import { canAccessOwnProfile } from "./profile-access";
+import {
+  canManageSettings,
+  canManageTasks,
+  canMoveBoardTasks,
+  canViewAwards,
+  canViewQueues,
+} from "./permissions";
 
 export type Role = "admin" | "manager" | "leader" | "colaborator" | "kiosk";
 
@@ -7,12 +13,27 @@ export interface NavItem {
   labelKey: string;
 }
 
-const RANK: Record<Role, number> = {
-  kiosk: 0,
-  colaborator: 1,
-  leader: 2,
-  manager: 3,
-  admin: 4,
+export interface ResolvedNavItem {
+  href: string;
+  label: string;
+}
+
+export interface StaffNavPaths {
+  panel: string;
+  board: string;
+  tasks: string;
+  queues: string;
+  awards: string;
+  settings: string;
+}
+
+export const APP_STAFF_NAV_PATHS: StaffNavPaths = {
+  panel: "/",
+  board: "/board",
+  tasks: "/tasks",
+  queues: "/queues",
+  awards: "/awards",
+  settings: "/settings/files",
 };
 
 interface NavRule {
@@ -20,29 +41,32 @@ interface NavRule {
   show: (role: Role) => boolean;
 }
 
-const NAV_RULES: NavRule[] = [
-  { item: { href: "/", labelKey: "panel" }, show: (r) => r !== "colaborator" },
-  { item: { href: "/board", labelKey: "board" }, show: (r) => r !== "colaborator" },
-  {
-    item: { href: "/tasks", labelKey: "tasks" },
-    show: (r) => r === "admin" || r === "manager" || r === "leader",
-  },
-  {
-    item: { href: "/templates/tasks", labelKey: "templates" },
-    show: (r) => RANK[r] >= RANK.manager,
-  },
-  { item: { href: "/teams", labelKey: "teams" }, show: (r) => RANK[r] >= RANK.manager },
-  { item: { href: "/awards", labelKey: "awards" }, show: (r) => RANK[r] >= RANK.manager },
-  {
-    item: { href: "/exchanges", labelKey: "exchange" },
-    show: (r) => RANK[r] >= RANK.leader,
-  },
-  { item: { href: "/users", labelKey: "users" }, show: (r) => RANK[r] >= RANK.leader },
-  {
-    item: { href: "/settings/files", labelKey: "settings" },
-    show: (r) => r === "admin",
-  },
-];
+function isStaffRole(role: Role): boolean {
+  return role !== "colaborator" && role !== "kiosk";
+}
+
+function staffNavRules(paths: StaffNavPaths): NavRule[] {
+  return [
+    { item: { href: paths.panel, labelKey: "panel" }, show: isStaffRole },
+    { item: { href: paths.board, labelKey: "board" }, show: canMoveBoardTasks },
+    {
+      item: { href: paths.tasks, labelKey: "tasks" },
+      show: (role) => canManageTasks(role),
+    },
+    {
+      item: { href: paths.queues, labelKey: "teams" },
+      show: (role) => canViewQueues(role),
+    },
+    {
+      item: { href: paths.awards, labelKey: "awards" },
+      show: (role) => canViewAwards(role),
+    },
+    {
+      item: { href: paths.settings, labelKey: "settings" },
+      show: (role) => canManageSettings(role),
+    },
+  ];
+}
 
 export interface NavItemsOptions {
   userId?: string;
@@ -86,14 +110,25 @@ export function navItemsForRole(
     ];
   }
 
-  const items = NAV_RULES.filter((rule) => rule.show(role)).map(
-    (rule) => rule.item,
-  );
-  if (canAccessOwnProfile(role) && options.userId) {
-    items.push({
-      href: `/${options.userId}/profile`,
-      labelKey: "profile",
-    });
-  }
-  return items;
+  return staffNavItemsForRole(role, APP_STAFF_NAV_PATHS);
+}
+
+/** Top-level staff navbar items (web or kiosk paths). */
+export function staffNavItemsForRole(
+  role: Role,
+  paths: StaffNavPaths,
+): NavItem[] {
+  return staffNavRules(paths)
+    .filter((rule) => rule.show(role))
+    .map((rule) => rule.item);
+}
+
+export function resolveNavItemLabels(
+  items: NavItem[],
+  labels: Record<string, string>,
+): ResolvedNavItem[] {
+  return items.map((item) => ({
+    href: item.href,
+    label: labels[item.labelKey] ?? item.labelKey,
+  }));
 }

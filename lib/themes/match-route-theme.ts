@@ -176,6 +176,7 @@ const PREFIX_RULES: { prefix: string; key: RouteThemeKey }[] = [
   { prefix: "/templates", key: "templates" },
   { prefix: "/board", key: "board" },
   { prefix: "/tasks", key: "tasks" },
+  { prefix: "/queues", key: "tasks" },
   { prefix: "/teams", key: "teams" },
   { prefix: "/awards", key: "awards" },
   { prefix: "/exchanges", key: "exchanges" },
@@ -189,6 +190,7 @@ const RESERVED_TOP_SEGMENTS = new Set([
   "kiosk",
   "board",
   "tasks",
+  "queues",
   "templates",
   "teams",
   "awards",
@@ -282,6 +284,21 @@ export function routeThemeContentSurfaceRadiusClass(
   return [
     mobile === "none" ? "rounded-none" : "rounded-2xl",
     desktop === "none" ? "sm:rounded-none" : "sm:rounded-2xl",
+  ].join(" ");
+}
+
+/** Top corners only — for sticky headers inside a rounded content surface. */
+export function routeThemeContentSurfaceTopRadiusClass(
+  theme: Pick<
+    RouteThemeView,
+    "contentMarginMobile" | "contentMarginDesktop"
+  > | null,
+): string {
+  const mobile = theme?.contentMarginMobile ?? DEFAULT_PAGE_MARGIN_MOBILE;
+  const desktop = theme?.contentMarginDesktop ?? DEFAULT_PAGE_MARGIN_DESKTOP;
+  return [
+    mobile === "none" ? "rounded-t-none" : "rounded-t-2xl",
+    desktop === "none" ? "sm:rounded-t-none" : "sm:rounded-t-2xl",
   ].join(" ");
 }
 

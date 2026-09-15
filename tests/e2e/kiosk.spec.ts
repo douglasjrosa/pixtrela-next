@@ -3,6 +3,7 @@ import { test, expect } from "@playwright/test";
 import { e2eUsers, loginAs } from "./fixtures/auth";
 import {
   seedKioskChainFixture,
+  seedKioskStaffFixture,
   seedKioskWorkflowFixture,
 } from "./fixtures/kiosk-workflow";
 
@@ -151,6 +152,75 @@ test.describe("Kiosk", () => {
     await stop.click();
 
     await expect(page.getByText(fixture.memberNames[0]!)).toBeVisible({
+      timeout: 30_000,
+    });
+  });
+
+  test("leader staff smoke: panel, board, queues and start/stop", async ({
+    page,
+  }) => {
+    test.skip(!isDrizzleE2e, "Drizzle-only kiosk workflow E2E");
+
+    const kioskLogin = process.env.E2E_KIOSK_LOGIN ?? "";
+    const kioskPassword = process.env.E2E_KIOSK_PASSWORD ?? "";
+    test.skip(
+      !kioskLogin || !kioskPassword,
+      "E2E_KIOSK_LOGIN and E2E_KIOSK_PASSWORD required",
+    );
+
+    test.setTimeout(180_000);
+
+    const fixture = await seedKioskStaffFixture("staff");
+
+    await loginAs(page, kioskLogin, kioskPassword);
+    await page.goto("/kiosk");
+    await expect(page).toHaveURL(/\/kiosk$/);
+
+    await page.getByRole("button", { name: /código|code/i }).click();
+    await page.getByLabel(/Código/i).fill(String(fixture.leaderCode));
+    await page.getByLabel(/Senha/i).fill(fixture.leaderPassword);
+    await page.getByRole("button", { name: /entrar|confirmar/i }).click();
+
+    await expect(page).toHaveURL(
+      new RegExp(`/kiosk/staff/${fixture.leaderId}`),
+      { timeout: 60_000 },
+    );
+
+    await page.getByRole("button", { name: "Abrir menu" }).click();
+    await page.getByRole("link", { name: "Quadro" }).click();
+    await expect(page).toHaveURL(
+      new RegExp(`/kiosk/staff/${fixture.leaderId}/board`),
+    );
+
+    await page.getByRole("button", { name: "Abrir menu" }).click();
+    await page.getByRole("link", { name: "Filas" }).click();
+    await expect(page).toHaveURL(
+      new RegExp(`/kiosk/staff/${fixture.leaderId}/queues`),
+    );
+    await expect(page.getByText(fixture.teamName)).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText(fixture.colaboratorName)).toBeVisible();
+
+    await page.getByRole("link", { name: fixture.colaboratorName }).click();
+    await expect(page).toHaveURL(
+      new RegExp(
+        `/kiosk/staff/${fixture.leaderId}/queues/${fixture.colaboratorId}`,
+      ),
+      { timeout: 60_000 },
+    );
+    await expect(page.getByText(fixture.subTaskName)).toBeVisible({
+      timeout: 60_000,
+    });
+
+    await page.getByRole("button", { name: /^Iniciar$/i }).click();
+    await expect(
+      page.getByRole("button", { name: /Sair da subtarefa/i }),
+    ).toBeVisible({ timeout: 30_000 });
+
+    await page.getByRole("button", { name: /Sair da subtarefa/i }).click();
+    await page.getByRole("button", { name: /Sim, concluí/i }).click();
+    await expect(page.getByText(fixture.subTaskName)).toBeVisible({
       timeout: 30_000,
     });
   });

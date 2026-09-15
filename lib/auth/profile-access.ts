@@ -1,4 +1,4 @@
-/** Own profile (password + avatar + personal): manager, leader, colaborator. */
+/** Own profile (password + avatar + personal): colaborator only. */
 export function canAccessOwnProfile(role: string | undefined): boolean {
-  return role === "colaborator" || role === "leader" || role === "manager";
+  return role === "colaborator";
 }

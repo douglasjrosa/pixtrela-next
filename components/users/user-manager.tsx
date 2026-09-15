@@ -11,7 +11,7 @@ import {
 } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Nfc, Eye } from "lucide-react";
+import { Nfc } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -23,7 +23,6 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { buildDefaultLogin } from "@/lib/business/default-login";
-import { buildKioskColaboratorPath } from "@/lib/kiosk/kiosk-link";
 import {
   getNfcCooldownRemainingMs,
   isNfcOnCooldown,
@@ -75,7 +74,6 @@ export interface UserManagerProps {
   /** Precomputed on the server — do not pass predicate functions from RSC. */
   manageableRoles: UserFormInput["roleType"][];
   canPairUserTag?: boolean;
-  canPreviewKioskColaborator?: boolean;
   /** Admin-only password field in create/edit modal. */
   canSetPassword?: boolean;
   /** Admin-only manual login override in create/edit modal. */
@@ -182,13 +180,11 @@ interface UserFormDialogProps {
   roleOptions: UserFormInput["roleType"][];
   isPending: boolean;
   canPairUserTag: boolean;
-  canPreviewKioskColaborator: boolean;
   canSetPassword: boolean;
   canEditUserLogin: boolean;
   onClose: () => void;
   onSubmit: (values: UserFormInput) => void;
   onInvalid: () => void;
-  onPreviewKioskColaborator: (documentId: string) => void;
   onPairUserTag: (userId: UserRow["id"]) => Promise<void>;
   onUpdateImage?: (
     userId: UserRow["id"],
@@ -207,13 +203,11 @@ function UserFormDialog({
   roleOptions,
   isPending,
   canPairUserTag,
-  canPreviewKioskColaborator,
   canSetPassword,
   canEditUserLogin,
   onClose,
   onSubmit,
   onInvalid,
-  onPreviewKioskColaborator,
   onPairUserTag,
   onUpdateImage,
   nfcPairDisabled,
@@ -286,34 +280,18 @@ function UserFormDialog({
   const formId = "user-form";
 
   const headerActions =
-    (canPreviewKioskColaborator || canPairUserTag) && editingUser ? (
-      <div className="flex shrink-0 gap-1">
-        {canPreviewKioskColaborator ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="size-8"
-            aria-label={tUsers("previewKioskColaborator")}
-            onClick={() => onPreviewKioskColaborator(editingUser.documentId)}
-          >
-            <Eye className="size-4" aria-hidden />
-          </Button>
-        ) : null}
-        {canPairUserTag ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="size-8"
-            aria-label={tUsers("pairUserTag")}
-            disabled={nfcPairDisabled}
-            onClick={() => void onPairUserTag(editingUser.id)}
-          >
-            <Nfc className="size-4" aria-hidden />
-          </Button>
-        ) : null}
-      </div>
+    canPairUserTag && editingUser ? (
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="size-8"
+        aria-label={tUsers("pairUserTag")}
+        disabled={nfcPairDisabled}
+        onClick={() => void onPairUserTag(editingUser.id)}
+      >
+        <Nfc className="size-4" aria-hidden />
+      </Button>
     ) : undefined;
 
   return (
@@ -488,7 +466,6 @@ export function UserManager({
   onUpdateImage,
   manageableRoles,
   canPairUserTag = false,
-  canPreviewKioskColaborator = false,
   canSetPassword = false,
   canEditUserLogin = false,
   canManageImages = false,
@@ -625,10 +602,6 @@ export function UserManager({
     }
   }
 
-  function handlePreviewKioskColaborator(documentId: string): void {
-    router.push(buildKioskColaboratorPath(documentId));
-  }
-
   async function handleUpdateImage(
     userId: UserRow["id"],
     imageType: UserImageType,
@@ -679,13 +652,11 @@ export function UserManager({
             roleOptions={roleOptions}
             isPending={isPending}
             canPairUserTag={canPairUserTag}
-            canPreviewKioskColaborator={canPreviewKioskColaborator}
             canSetPassword={canSetPassword}
             canEditUserLogin={canEditUserLogin}
             onClose={closeForm}
             onSubmit={onSubmit}
             onInvalid={handleInvalidForm}
-            onPreviewKioskColaborator={handlePreviewKioskColaborator}
             onPairUserTag={handlePairUserTag}
             onUpdateImage={onUpdateImage ? handleUpdateImage : undefined}
             nfcPairDisabled={nfcPairDisabled}

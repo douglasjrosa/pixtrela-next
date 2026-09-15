@@ -643,56 +643,6 @@ describe("UserManager", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows preview button for admin and navigates to kiosk panel", () => {
-    renderWithIntl(
-      <TestUserManager
-        users={users}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        canDelete={false}
-        manageableRoles={["colaborator"]}
-        canPreviewKioskColaborator
-      />,
-    );
-
-    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Visualizar painel do kiosk do colaborador",
-      }),
-    );
-
-    expect(push).toHaveBeenCalledWith("/kiosk/u1");
-    expect(
-      screen.queryByRole("button", { name: "Vincular chaveiro NFC" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("hides preview button when admin preview is not allowed", () => {
-    renderWithIntl(
-      <TestUserManager
-        users={users}
-        onCreate={vi.fn()}
-        onUpdate={vi.fn()}
-        canDelete={false}
-        manageableRoles={["colaborator"]}
-        canPairUserTag
-        onPairUserTag={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getAllByRole("button", { name: "Maria" })[0]!);
-
-    expect(
-      screen.queryByRole("button", {
-        name: "Visualizar painel do kiosk do colaborador",
-      }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Vincular chaveiro NFC" }),
-    ).toBeInTheDocument();
-  });
-
   it("pairs NFC tag when NFC button is clicked", async () => {
     const onPairUserTag = vi.fn().mockResolvedValue({ ok: true });
 

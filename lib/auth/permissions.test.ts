@@ -156,8 +156,8 @@ describe("canDeleteAwards", () => {
 });
 
 describe("canViewExchanges", () => {
-  it("allows leader and above", () => {
-    expect(canViewExchanges("leader")).toBe(true);
+  it("allows manager and above", () => {
+    expect(canViewExchanges("leader")).toBe(false);
     expect(canViewExchanges("manager")).toBe(true);
     expect(canViewExchanges("admin")).toBe(true);
     expect(canViewExchanges("colaborator")).toBe(false);
@@ -183,8 +183,10 @@ describe("canAccessRoute teams", () => {
 });
 
 describe("canViewUsers", () => {
-  it("allows leader and above", () => {
-    expect(canViewUsers("leader")).toBe(true);
+  it("allows manager and above", () => {
+    expect(canViewUsers("leader")).toBe(false);
+    expect(canViewUsers("manager")).toBe(true);
+    expect(canViewUsers("admin")).toBe(true);
     expect(canViewUsers("colaborator")).toBe(false);
     expect(canViewUsers("kiosk")).toBe(false);
   });
@@ -256,25 +258,25 @@ describe("canAccessRoute", () => {
     expect(canAccessRoute("leader", "/board")).toBe(true);
   });
 
-  it("allows exchanges for leader and above", () => {
-    expect(canAccessRoute("leader", "/exchanges")).toBe(true);
+  it("allows exchanges for manager and above", () => {
+    expect(canAccessRoute("leader", "/exchanges")).toBe(false);
     expect(canAccessRoute("manager", "/exchanges/batch-1")).toBe(true);
     expect(canAccessRoute("colaborator", "/exchanges", "col-1")).toBe(false);
   });
 
-  it("allows own profile for manager and leader", () => {
-    expect(canAccessRoute("manager", "/mgr-1/profile", "mgr-1")).toBe(true);
-    expect(canAccessRoute("leader", "/lead-1/profile", "lead-1")).toBe(true);
-    expect(canAccessRoute("manager", "/other/profile", "mgr-1")).toBe(false);
+  it("allows own profile for colaborator only", () => {
+    expect(canAccessRoute("colaborator", "/col-1/profile", "col-1")).toBe(true);
+    expect(canAccessRoute("manager", "/mgr-1/profile", "mgr-1")).toBe(false);
+    expect(canAccessRoute("leader", "/lead-1/profile", "lead-1")).toBe(false);
     expect(canAccessRoute("admin", "/admin-1/profile", "admin-1")).toBe(false);
   });
 });
 
 describe("canAccessOwnProfile", () => {
-  it("allows colaborator, leader and manager only", () => {
+  it("allows colaborator only", () => {
     expect(canAccessOwnProfile("colaborator")).toBe(true);
-    expect(canAccessOwnProfile("leader")).toBe(true);
-    expect(canAccessOwnProfile("manager")).toBe(true);
+    expect(canAccessOwnProfile("leader")).toBe(false);
+    expect(canAccessOwnProfile("manager")).toBe(false);
     expect(canAccessOwnProfile("admin")).toBe(false);
     expect(canAccessOwnProfile("kiosk")).toBe(false);
   });

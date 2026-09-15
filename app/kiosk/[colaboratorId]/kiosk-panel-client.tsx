@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useTranslations } from "next-intl";
 
+import {
+  saveKioskColaboratorFacePhoto,
+  saveKioskColaboratorPassword,
+  saveKioskOwnColaboratorPassword,
+  type KioskColaboratorPasswordResult,
+} from "@/app/kiosk/staff/[userId]/users/actions";
+import { KioskColaboratorFacePhotoForm } from "@/components/kiosk/kiosk-colaborator-face-photo-form";
 import { KioskColaboratorHeader } from "@/components/kiosk/kiosk-colaborator-header";
+import { KioskColaboratorPasswordForm } from "@/components/kiosk/kiosk-colaborator-password-form";
+import { BackLink } from "@/components/navigation/back-link";
 import {
   KioskDailyQueue,
   type KioskSectionState,
@@ -59,6 +68,20 @@ function kioskActionErrorMessage(
   if (code === "subTaskHasNoCategory") return t("subTaskHasNoCategory");
   if (code === "flagOccupied") return t("flagOccupied");
   return t("exitFailed");
+}
+
+type PasswordSaveError = Extract<
+  KioskColaboratorPasswordResult,
+  { ok: false }
+>["error"];
+
+function editPasswordErrorMessage(
+  error: PasswordSaveError,
+  t: (key: string) => string,
+): string {
+  if (error === "passwordMismatch") return t("staffPasswordMismatch");
+  if (error === "invalid") return t("staffPasswordInvalid");
+  return t("staffPasswordForbidden");
 }
 
 function sectionFromPage(
@@ -117,19 +140,34 @@ export interface KioskPanelClientProps {
   colaboratorId: string;
   colaboratorName: string;
   avatarUrl?: string | null;
+  facePhotoUrl?: string | null;
   initialLiberadas: KioskQueueSectionPage;
   maxSimultaneousSubtaskIntervalSeconds?: number;
   readOnly?: boolean;
+  staffUserId?: string;
+  allowFaceEdit?: boolean;
+  backHref?: string;
+  /** Matches parent content surface top corners when backHref is set. */
+  toolbarTopRadiusClass?: string;
 }
 
 export function KioskPanelClient({
   colaboratorId,
   colaboratorName,
   avatarUrl = null,
+  facePhotoUrl = null,
   initialLiberadas,
   readOnly = false,
+  staffUserId,
+  allowFaceEdit = false,
+  backHref,
+  toolbarTopRadiusClass = "rounded-t-2xl sm:rounded-t-2xl",
 }: KioskPanelClientProps) {
   const t = useTranslations("kiosk");
+  const tCommon = useTranslations("common");
+  const [editOpen, setEditOpen] = useState(false);
+  const [editPending, setEditPending] = useState(false);
+  const [currentFacePhotoUrl, setCurrentFacePhotoUrl] = useState(facePhotoUrl);
   const [queueBusy, setQueueBusy] = useState<"start" | "exit" | null>(null);
   const [optimisticStart, setOptimisticStart] =
     useState<OptimisticKioskStart | null>(null);
@@ -214,15 +252,17 @@ export function KioskPanelClient({
     const page = await fetchKioskQueueSectionPage({
       colaboratorId,
       section: "liberadas",
+      staffUserId,
     });
     applyPageToLiberadas(page);
-  }, [applyPageToLiberadas, colaboratorId]);
+  }, [applyPageToLiberadas, colaboratorId, staffUserId]);
 
   const refreshExpandedAccordions = useCallback(async (): Promise<void> => {
     if (bloqueadas.expanded) {
       const page = await fetchKioskQueueSectionPage({
         colaboratorId,
         section: "bloqueadas",
+        staffUserId,
       });
       setBloqueadas(sectionFromPage(page, true));
       setSubTasks((current) => mergeSubTasks(current, page.subTasks));
@@ -233,13 +273,14 @@ export function KioskPanelClient({
       const page = await fetchKioskQueueSectionPage({
         colaboratorId,
         section: "finalizadas_hoje",
+        staffUserId,
       });
       setFinalizadas(sectionFromPage(page, true));
       setSubTasks((current) => mergeSubTasks(current, page.subTasks));
       setCatalog(page.catalog);
       setOpenRuns(page.openRuns);
     }
-  }, [bloqueadas.expanded, colaboratorId, finalizadas.expanded]);
+  }, [bloqueadas.expanded, colaboratorId, finalizadas.expanded, staffUserId]);
 
   const refreshAfterMutation = useCallback(async (): Promise<void> => {
     await refreshLiberadas();
@@ -296,6 +337,7 @@ export function KioskPanelClient({
           colaboratorId,
           section,
           cursor: state.nextCursor,
+          staffUserId,
         });
         setState((current) => ({
           ...current,
@@ -316,7 +358,7 @@ export function KioskPanelClient({
         loadingMoreRef.current = false;
       }
     },
-    [colaboratorId, t],
+    [colaboratorId, staffUserId, t],
   );
 
   const handleLoadMoreLiberadas = useCallback(() => {
@@ -350,6 +392,7 @@ export function KioskPanelClient({
         const page = await fetchKioskQueueSectionPage({
           colaboratorId,
           section: "bloqueadas",
+          staffUserId,
         });
         setBloqueadas(sectionFromPage(page, true));
         setSubTasks((current) => mergeSubTasks(current, page.subTasks));
@@ -365,7 +408,7 @@ export function KioskPanelClient({
         showErrorToast(t("queueLoadFailed"));
       }
     })();
-  }, [bloqueadas.expanded, bloqueadas.loadedOnce, colaboratorId, t]);
+  }, [bloqueadas.expanded, bloqueadas.loadedOnce, colaboratorId, staffUserId, t]);
 
   const handleToggleFinalizadas = useCallback(() => {
     if (finalizadas.expanded) {
@@ -386,6 +429,7 @@ export function KioskPanelClient({
         const page = await fetchKioskQueueSectionPage({
           colaboratorId,
           section: "finalizadas_hoje",
+          staffUserId,
         });
         setFinalizadas(sectionFromPage(page, true));
         setSubTasks((current) => mergeSubTasks(current, page.subTasks));
@@ -401,7 +445,7 @@ export function KioskPanelClient({
         showErrorToast(t("queueLoadFailed"));
       }
     })();
-  }, [colaboratorId, finalizadas.expanded, finalizadas.loadedOnce, t]);
+  }, [colaboratorId, finalizadas.expanded, finalizadas.loadedOnce, staffUserId, t]);
 
   function handleStart(documentId: string): void {
     if (queueBusy) return;
@@ -413,9 +457,9 @@ export function KioskPanelClient({
     setQueueBusy("start");
     runBackgroundAction(async () => {
       if (mode === "join") {
-        await joinLiveChain(colaboratorId, documentId);
+        await joinLiveChain(colaboratorId, documentId, staffUserId);
       } else {
-        await startSubTask(colaboratorId, documentId);
+        await startSubTask(colaboratorId, documentId, staffUserId);
       }
       setQueueBusy(null);
     }, () => {
@@ -436,7 +480,7 @@ export function KioskPanelClient({
     });
     setQueueBusy("start");
     runBackgroundAction(async () => {
-      await startChain(colaboratorId, headId);
+      await startChain(colaboratorId, headId, staffUserId);
       setQueueBusy(null);
     }, () => {
       showErrorToast(t("startFailed"));
@@ -448,7 +492,7 @@ export function KioskPanelClient({
       if (queueBusy) return;
       void (async () => {
         try {
-          await advanceChainRun(chainRunId);
+          await advanceChainRun(colaboratorId, chainRunId, staffUserId);
           await refreshAfterMutation();
         } catch (error) {
           rethrowIfNavigationError(error);
@@ -456,7 +500,7 @@ export function KioskPanelClient({
         }
       })();
     },
-    [queueBusy, refreshAfterMutation, t],
+    [colaboratorId, queueBusy, refreshAfterMutation, staffUserId, t],
   );
 
   function handleConfirmChainStop(
@@ -490,7 +534,7 @@ export function KioskPanelClient({
       answers,
     });
     runExitAction(async () => {
-      await confirmChainStop(colaboratorId, persistedId, answers);
+      await confirmChainStop(colaboratorId, persistedId, answers, staffUserId);
       showSuccessToast(t("exitRecorded"));
     }, (error) => {
       setOptimisticChainStop(null);
@@ -521,6 +565,7 @@ export function KioskPanelClient({
         input,
         subTask.targetQty,
         subTask.completedQty,
+        staffUserId,
       );
       const names = formatRemainingWorkerNames(result.remainingWorkerNames);
       if (names) {
@@ -537,7 +582,7 @@ export function KioskPanelClient({
     if (queueBusy) return;
     setQueueBusy("exit");
     runBackgroundAction(async () => {
-      await releaseMaterialFlag(flagId);
+      await releaseMaterialFlag(flagId, colaboratorId, staffUserId);
       showSuccessToast(t("flagsReleased"));
       setQueueBusy(null);
     }, (error) => {
@@ -550,7 +595,53 @@ export function KioskPanelClient({
     categoryId: string | null;
     requiresMaterialFlagsOnFinish: boolean;
   }> {
-    return refreshMaterialFlags(subTaskId);
+    return refreshMaterialFlags(subTaskId, colaboratorId, staffUserId);
+  }
+
+  async function handleSaveEditPassword(input: {
+    password: string;
+    confirmPassword: string;
+  }): Promise<boolean> {
+    setEditPending(true);
+    try {
+      const result = staffUserId
+        ? await saveKioskColaboratorPassword(staffUserId, colaboratorId, input)
+        : await saveKioskOwnColaboratorPassword(colaboratorId, input);
+      if (!result.ok) {
+        showErrorToast(editPasswordErrorMessage(result.error, t));
+        return false;
+      }
+      showSuccessToast(t("staffPasswordSaved"));
+      setEditOpen(false);
+      return true;
+    } finally {
+      setEditPending(false);
+    }
+  }
+
+  async function handleSaveEditFacePhoto(
+    file: File,
+    options?: { faceVector: number[] },
+  ): Promise<boolean> {
+    if (!staffUserId) return false;
+    setEditPending(true);
+    try {
+      const result = await saveKioskColaboratorFacePhoto(
+        staffUserId,
+        colaboratorId,
+        file,
+        options?.faceVector,
+      );
+      if (!result.ok) {
+        showErrorToast(t("staffFacePhotoForbidden"));
+        return false;
+      }
+      setCurrentFacePhotoUrl(result.facePhotoUrl);
+      showSuccessToast(t("staffFacePhotoSaved"));
+      return true;
+    } finally {
+      setEditPending(false);
+    }
   }
 
   const allSubTasksForPanel = mergeSubTasks(
@@ -563,17 +654,66 @@ export function KioskPanelClient({
     ]),
   );
 
+  const showEdit = !readOnly;
+
+  const headerProps = {
+    name: colaboratorName,
+    avatarUrl,
+    showEdit,
+    editOpen,
+    onEditClick: () => setEditOpen((open) => !open),
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {colaboratorName ? (
-        <KioskColaboratorHeader
-          name={colaboratorName}
-          avatarUrl={avatarUrl}
-          className="sticky top-0 z-30 shrink-0 bg-background/95 backdrop-blur-sm"
-        />
+        backHref ? (
+          <div
+            className={
+              "sticky top-0 z-30 shrink-0 border-b bg-background/95 " +
+              `backdrop-blur-sm px-4 py-3 ${toolbarTopRadiusClass}`
+            }
+          >
+            <div className="flex items-center justify-between gap-3">
+              <BackLink href={backHref} className="shrink-0">
+                {tCommon("back")}
+              </BackLink>
+              <KioskColaboratorHeader
+                {...headerProps}
+                className="max-w-[min(100%,14rem)] shrink-0"
+              />
+            </div>
+          </div>
+        ) : (
+          <div
+            className={
+              "sticky top-0 z-30 shrink-0 border-b bg-background/95 " +
+              "backdrop-blur-sm px-4 py-3"
+            }
+          >
+            <KioskColaboratorHeader {...headerProps} className="w-full" />
+          </div>
+        )
       ) : null}
-      <div className="relative min-h-0 flex-1">
-        <KioskDailyQueue
+      {editOpen && showEdit ? (
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+          {allowFaceEdit ? (
+            <KioskColaboratorFacePhotoForm
+              facePhotoUrl={currentFacePhotoUrl}
+              disabled={editPending}
+              onSave={handleSaveEditFacePhoto}
+            />
+          ) : null}
+          <KioskColaboratorPasswordForm
+            colaboratorName={colaboratorName}
+            disabled={editPending}
+            onCancel={() => setEditOpen(false)}
+            onSave={handleSaveEditPassword}
+          />
+        </div>
+      ) : (
+        <div className="relative min-h-0 flex-1">
+          <KioskDailyQueue
           colaboratorId={colaboratorId}
           liberadas={liberadas}
           bloqueadas={bloqueadas}
@@ -602,8 +742,9 @@ export function KioskPanelClient({
             readOnly ? undefined : handleRefreshMaterialFlags
           }
           onChainRunNotReady={readOnly ? undefined : handleChainRunNotReady}
-        />
-      </div>
+          />
+        </div>
+      )}
     </div>
   );
 }

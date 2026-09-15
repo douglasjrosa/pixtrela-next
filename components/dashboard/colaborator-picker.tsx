@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import type { BalanceAdjustmentResult } from "@/app/(app)/balance-adjustment-actions";
+import type { BalanceAdjustmentResult } from "@/lib/dashboard/apply-balance-adjustment";
 import {
   BalanceAdjustmentModal,
   type BalanceCurrencyOption,

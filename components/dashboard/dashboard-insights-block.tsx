@@ -1,4 +1,4 @@
-import type { BalanceAdjustmentResult } from "@/app/(app)/balance-adjustment-actions";
+import type { BalanceAdjustmentResult } from "@/lib/dashboard/apply-balance-adjustment";
 import type { BalanceCurrencyOption } from "@/components/dashboard/balance-adjustment-modal";
 import type { Role } from "@/lib/auth/nav";
 import type {

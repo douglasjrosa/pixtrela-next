@@ -18,6 +18,7 @@ describe("isColaboratorPrivatePath", () => {
 
   it("rejects reserved and nested paths", () => {
     expect(isColaboratorPrivatePath("/board")).toBe(false);
+    expect(isColaboratorPrivatePath("/queues")).toBe(false);
     expect(isColaboratorPrivatePath("/kiosk")).toBe(false);
     expect(isColaboratorPrivatePath("/tasks/abc")).toBe(false);
   });
@@ -185,6 +186,14 @@ describe("resolveRouteAccess", () => {
         userId: "lead-1",
       }),
     ).toEqual({ action: "allow" });
+
+    expect(
+      resolveRouteAccess("/queues", {
+        isAuthenticated: true,
+        role: "leader",
+        userId: "lead-1",
+      }),
+    ).toEqual({ action: "allow" });
   });
 });
 
@@ -203,7 +212,7 @@ describe("isUserProfilePath", () => {
 });
 
 describe("resolveRouteAccess profile", () => {
-  it("allows colaborator, leader and manager on own profile", () => {
+  it("allows colaborator on own profile", () => {
     expect(
       resolveRouteAccess("/col-1/profile", {
         isAuthenticated: true,
@@ -211,17 +220,17 @@ describe("resolveRouteAccess profile", () => {
         userId: "col-1",
       }),
     ).toEqual({ action: "allow" });
+  });
 
+  it("redirects staff away from profile", () => {
     expect(
       resolveRouteAccess("/mgr-1/profile", {
         isAuthenticated: true,
         role: "manager",
         userId: "mgr-1",
       }),
-    ).toEqual({ action: "allow" });
-  });
+    ).toEqual({ action: "redirect", destination: "/" });
 
-  it("redirects admin and kiosk away from profile", () => {
     expect(
       resolveRouteAccess("/admin-1/profile", {
         isAuthenticated: true,
@@ -239,14 +248,14 @@ describe("resolveRouteAccess profile", () => {
     ).toEqual({ action: "redirect", destination: KIOSK_HOME_PATH });
   });
 
-  it("redirects to own profile when visiting another id", () => {
+  it("redirects staff to home when visiting any profile path", () => {
     expect(
       resolveRouteAccess("/other/profile", {
         isAuthenticated: true,
         role: "leader",
         userId: "lead-1",
       }),
-    ).toEqual({ action: "redirect", destination: "/lead-1/profile" });
+    ).toEqual({ action: "redirect", destination: "/" });
   });
 
   it("redirects unlogged profile visits to login with callback", () => {

@@ -13,10 +13,10 @@ describe("KioskColaboratorHeader", () => {
       />,
     );
 
+    expect(screen.getByText("Ana Silva")).toBeInTheDocument();
     expect(
-      screen.getByRole("banner", { name: "Colaborador Ana Silva" }),
+      screen.getByRole("group", { name: "Colaborador Ana Silva" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Ana Silva" })).toBeInTheDocument();
     expect(screen.getByRole("presentation").getAttribute("src")).toContain(
       encodeURIComponent("/api/media/ana.jpg"),
     );
@@ -24,15 +24,30 @@ describe("KioskColaboratorHeader", () => {
 
   it("renders a fallback icon when avatar is missing", () => {
     renderWithIntl(
+      <KioskColaboratorHeader name="Bruno" avatarUrl={null} />,
+    );
+
+    expect(screen.getByText("Bruno")).toBeInTheDocument();
+    expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
+  });
+
+  it("renders a single edit button with pencil icon when showEdit is true", () => {
+    renderWithIntl(
       <KioskColaboratorHeader
-        name="Bruno"
-        avatarUrl={null}
-        className="sticky top-0"
+        name="Ana"
+        showEdit
+        onEditClick={() => undefined}
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Bruno" })).toBeInTheDocument();
-    expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
-    expect(screen.getByRole("banner")).toHaveClass("sticky");
+    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
+    expect(screen.getByText("Ana")).toBeInTheDocument();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+  });
+
+  it("hides the edit button by default", () => {
+    renderWithIntl(<KioskColaboratorHeader name="Ana" />);
+
+    expect(screen.queryByRole("button", { name: "Editar" })).not.toBeInTheDocument();
   });
 });

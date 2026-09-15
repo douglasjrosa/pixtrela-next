@@ -47,10 +47,8 @@ describe("resolvePostLoginDestination", () => {
     expect(resolvePostLoginDestination("admin", "a1", "/login")).toBe("/");
   });
 
-  it("allows manager own profile callback", () => {
-    expect(resolvePostLoginDestination("manager", "m1", "/m1/profile")).toBe(
-      "/m1/profile",
-    );
+  it("rejects manager profile callback", () => {
+    expect(resolvePostLoginDestination("manager", "m1", "/m1/profile")).toBe("/");
   });
 
   it("falls back to home for staff without callback", () => {

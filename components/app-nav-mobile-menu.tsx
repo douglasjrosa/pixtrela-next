@@ -6,11 +6,11 @@ import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
-import type { NavItem } from "@/lib/auth/nav";
+import type { ResolvedNavItem } from "@/lib/auth/nav";
 
 export interface AppNavMobileMenuProps {
   open: boolean;
-  items: NavItem[];
+  items: ResolvedNavItem[];
   onOpenChange: (open: boolean) => void;
 }
 
@@ -91,7 +91,7 @@ export function AppNavMobileMenu({
                   }
                   onClick={close}
                 >
-                  {t(`nav.${item.labelKey}`)}
+                  {item.label}
                 </Link>
               </li>
             ))}

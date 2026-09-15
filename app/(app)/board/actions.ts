@@ -7,7 +7,6 @@ import {
   reorderSubTasks,
   updateSubTask,
 } from "@/app/(app)/tasks/[documentId]/actions";
-import { auth } from "@/auth";
 import type { BoardSubTaskSummary } from "@/components/kanban/types";
 import {
   applyChainLinkToggle,
@@ -23,12 +22,13 @@ import {
   type ChainAssigneeState,
   type ChainSubTask,
 } from "@/lib/business/subtask-chain";
-import type { Role } from "@/lib/auth/nav";
 import {
-  canManageTasks,
-  canMoveBoardTasks,
-} from "@/lib/auth/permissions";
-import { isAuthenticatedSession } from "@/lib/auth/session";
+  assertBoardActorCanManageSubtasks,
+  assertBoardActorCanMove,
+  requireAppBoardActor,
+  requireKioskStaffBoardActor,
+  type BoardActor,
+} from "@/lib/board/board-actor";
 import {
   buildStepKanbanLookup,
   mapStepsToKanbanSteps,
@@ -103,18 +103,22 @@ interface SubTaskEntity {
   assignedTo?: { documentId: string }[] | null;
 }
 
-async function assertCanMove(): Promise<void> {
-  const session = await auth();
-  if (!canMoveBoardTasks(session?.user?.role as Role | undefined)) {
-    throw new Error("forbidden");
-  }
+async function resolveBoardActor(staffUserId?: string): Promise<BoardActor> {
+  return staffUserId
+    ? requireKioskStaffBoardActor(staffUserId)
+    : requireAppBoardActor();
 }
 
-async function assertCanManageBoardSubtasks(): Promise<void> {
-  const session = await auth();
-  if (!canManageTasks(session?.user?.role as Role | undefined)) {
-    throw new Error("forbidden");
-  }
+async function assertCanMove(staffUserId?: string): Promise<void> {
+  assertBoardActorCanMove(await resolveBoardActor(staffUserId));
+}
+
+async function assertCanManageBoardSubtasks(staffUserId?: string): Promise<void> {
+  assertBoardActorCanManageSubtasks(await resolveBoardActor(staffUserId));
+}
+
+async function assertAuthenticatedActor(staffUserId?: string): Promise<void> {
+  await resolveBoardActor(staffUserId);
 }
 
 function invalidateBoardTasks(): void {
@@ -183,11 +187,9 @@ function mapBoardSubtasksFromCore(
 
 export async function pollBoardProgress(
   tasks: ReadonlyArray<{ documentId: string; status: KanbanProgressStatus }>,
+  staffUserId?: string,
 ): Promise<BoardProgressPollSnapshot> {
-  const session = await auth();
-  if (!isAuthenticatedSession(session)) {
-    throw new Error("unauthorized");
-  }
+  await assertAuthenticatedActor(staffUserId);
 
   const loadedDocumentIds = tasks.map((task) => task.documentId);
   const loadedTasks = tasks;
@@ -249,16 +251,18 @@ export async function pollBoardProgress(
 
 export async function loadBoardSubtasks(
   taskDocumentId: string,
+  staffUserId?: string,
 ): Promise<BoardSubTaskSummary[]> {
-  await assertCanManageBoardSubtasks();
+  await assertCanManageBoardSubtasks(staffUserId);
   const bundle = await loadCachedBoardSubtaskCore(taskDocumentId);
   return mapBoardSubtasksFromCore(bundle);
 }
 
 export async function loadBoardSubtaskLive(
   taskDocumentId: string,
+  staffUserId?: string,
 ): Promise<Record<string, BoardSubtaskLiveState>> {
-  await assertCanManageBoardSubtasks();
+  await assertCanManageBoardSubtasks(staffUserId);
   const rows = await listBoardSubTasksForTask(taskDocumentId);
   const openRows = await listBoardSubtaskOpenActivities(
     rows.map((row) => row.id),
@@ -268,8 +272,9 @@ export async function loadBoardSubtaskLive(
 
 export async function loadBoardSubtaskSessions(
   taskDocumentId: string,
+  staffUserId?: string,
 ): Promise<Record<string, ActivitySession[]>> {
-  await assertCanManageBoardSubtasks();
+  await assertCanManageBoardSubtasks(staffUserId);
   const rows = await listBoardSubTasksForTask(taskDocumentId);
   const finishedIds = rows
     .filter((row: { status: string }) => row.status === FINISHED_STATUS)
@@ -281,8 +286,9 @@ export async function loadBoardSubtaskSessions(
 
 export async function loadBoardSubtaskSession(
   subTaskDocumentId: string,
+  staffUserId?: string,
 ): Promise<ActivitySession[]> {
-  await assertCanManageBoardSubtasks();
+  await assertCanManageBoardSubtasks(staffUserId);
   return listSubTaskActivitySessions(subTaskDocumentId);
 }
 
@@ -328,8 +334,9 @@ function toSubTaskFormInput(
 export async function createBoardSubtask(
   taskDocumentId: string,
   values: SubTaskFormInput,
+  staffUserId?: string,
 ): Promise<void> {
-  await assertCanManageBoardSubtasks();
+  await assertCanManageBoardSubtasks(staffUserId);
   await createSubTask(taskDocumentId, values);
   invalidateBoardSubtaskReads(taskDocumentId);
 }
@@ -370,8 +377,9 @@ export async function reorderBoardSubtasks(
   taskDocumentId: string,
   orderedDocumentIds: string[],
   movedDocumentId: string,
+  staffUserId?: string,
 ): Promise<void> {
-  await assertCanManageBoardSubtasks();
+  await assertCanManageBoardSubtasks(staffUserId);
   const siblings = await listSubTasksWithRelationsForTask(taskDocumentId);
   const ordered = sortChainSubTasks(siblings.map(toChainSubTask));
   const pending = ordered.filter((row) => row.status !== FINISHED_STATUS);
@@ -410,8 +418,9 @@ export async function updateBoardSubtaskLink(
   taskDocumentId: string,
   subtaskDocumentId: string,
   linkedToPrevious: boolean,
+  staffUserId?: string,
 ): Promise<BoardSubtaskLinkResult> {
-  await assertCanManageBoardSubtasks();
+  await assertCanManageBoardSubtasks(staffUserId);
   const siblings = await listSubTasksWithRelationsForTask(taskDocumentId);
   const pending = sortChainSubTasks(siblings.map(toChainSubTask)).filter(
     (row) => row.status !== FINISHED_STATUS,
@@ -451,8 +460,9 @@ export async function updateBoardSubtaskAssignees(
   taskDocumentId: string,
   assignedToIds: string[],
   propagateChain = true,
+  staffUserId?: string,
 ): Promise<void> {
-  await assertCanManageBoardSubtasks();
+  await assertCanManageBoardSubtasks(staffUserId);
   const siblings = await listSubTasksWithRelationsForTask(taskDocumentId);
   const chainItems = siblings.map(toChainSubTask);
   const chains = resolveChains(chainItems);
@@ -530,9 +540,10 @@ export async function updateBoardSubtaskAssignees(
 
 export async function applyBoardTaskOrder(
   updates: { documentId: string; index: number; stepId: number | null }[],
+  staffUserId?: string,
 ): Promise<void> {
   if (updates.length === 0) return;
-  await assertCanMove();
+  await assertCanMove(staffUserId);
 
   const stepLookup = buildStepKanbanLookup(await listStepsRepo());
   const beforeByDocumentId = new Map<
@@ -601,8 +612,9 @@ function resolveOverTaskIdForPlacement(
 
 export async function applyBoardTaskRelativeMove(
   move: BoardTaskRelativeMove,
+  staffUserId?: string,
 ): Promise<void> {
-  await assertCanMove();
+  await assertCanMove(staffUserId);
 
   const stepRows = await listStepsRepo();
   const stepLookup = buildStepKanbanLookup(stepRows);
@@ -724,17 +736,21 @@ function sortStepsForLookup(
 
 export async function loadFirstBoardColumnPage(
   stepDocumentId: string,
+  staffUserId?: string,
 ): Promise<{
   stepDocumentId: string;
   totalCount: number;
   tasks: KanbanTask[];
   cursor: BoardColumnPageCursor | null;
 }> {
-  const result = await loadMoreBoardColumnTasks({
-    stepDocumentId,
-    cursor: null,
-    limit: 0,
-  });
+  const result = await loadMoreBoardColumnTasks(
+    {
+      stepDocumentId,
+      cursor: null,
+      limit: 0,
+    },
+    staffUserId,
+  );
   return {
     stepDocumentId,
     totalCount: result.totalCount,
@@ -743,19 +759,19 @@ export async function loadFirstBoardColumnPage(
   };
 }
 
-export async function loadMoreBoardColumnTasks(input: {
-  stepDocumentId: string;
-  cursor: BoardColumnPageCursor | null;
-  limit: number;
-}): Promise<{
+export async function loadMoreBoardColumnTasks(
+  input: {
+    stepDocumentId: string;
+    cursor: BoardColumnPageCursor | null;
+    limit: number;
+  },
+  staffUserId?: string,
+): Promise<{
   tasks: KanbanTask[];
   cursor: BoardColumnPageCursor | null;
   totalCount: number;
 }> {
-  const session = await auth();
-  if (!isAuthenticatedSession(session)) {
-    throw new Error("unauthorized");
-  }
+  await assertAuthenticatedActor(staffUserId);
 
   const stepRows = await listStepsRepo();
   const step = stepRows.find((row) => row.id === input.stepDocumentId);
@@ -824,13 +840,10 @@ export async function loadMoreBoardColumnTasks(input: {
   };
 }
 
-export async function syncBoardSteps(): Promise<{
+export async function syncBoardSteps(staffUserId?: string): Promise<{
   steps: ReturnType<typeof mapStepsToKanbanSteps>;
 }> {
-  const session = await auth();
-  if (!isAuthenticatedSession(session)) {
-    throw new Error("unauthorized");
-  }
+  await assertAuthenticatedActor(staffUserId);
   const stepRows = await listStepsRepo();
   return { steps: mapStepsToKanbanSteps(stepRows) };
 }
@@ -838,8 +851,9 @@ export async function syncBoardSteps(): Promise<{
 export async function moveTaskToStep(
   taskId: number,
   stepId: number,
+  staffUserId?: string,
 ): Promise<void> {
-  await assertCanMove();
+  await assertCanMove(staffUserId);
 
   const [taskDocumentId, stepLookup] = await Promise.all([
     resolveDrizzleTaskIdByKanbanNumericId(taskId),
@@ -871,8 +885,9 @@ export async function moveTaskToStep(
 
 export async function releaseBoardSubTaskFlags(
   subTaskDocumentId: string,
+  staffUserId?: string,
 ): Promise<void> {
-  await assertCanManageBoardSubtasks();
+  await assertCanManageBoardSubtasks(staffUserId);
   const subtask = await getSubTaskById(subTaskDocumentId);
   if (!subtask) throw new Error("notFound");
   await releaseFlagsForSubTask(subTaskDocumentId);

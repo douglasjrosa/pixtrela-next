@@ -14,7 +14,6 @@ import type { Role } from "@/lib/auth/nav";
 import {
   canEditUserLogin,
   canPairUserTag,
-  canPreviewKioskColaborator,
   canSetUserPassword,
   canViewUsers,
 } from "@/lib/auth/permissions";
@@ -108,7 +107,6 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
         onUpdateImage={updateUserImage}
         manageableRoles={manageableTargetRoles(actorRole)}
         canPairUserTag={canPairUserTag(actorRole)}
-        canPreviewKioskColaborator={canPreviewKioskColaborator(actorRole)}
         canSetPassword={canSetUserPassword(actorRole)}
         canEditUserLogin={canEditUserLogin(actorRole)}
         canManageImages={actorRole === "admin"}

@@ -8,20 +8,31 @@ const signOut = vi.fn();
 const LOGO_URL = "https://media.example/logo.png";
 
 vi.mock("next-auth/react", () => ({
-  useSession: () => ({
-    data: {
-      user: {
-        role: "admin",
-        name: "Admin",
-        id: "admin-1",
-        avatarUrl: null,
-      },
-    },
-  }),
   signOut: (...args: unknown[]) => signOut(...args),
 }));
 
-import { AppNav } from "./app-nav";
+import { AppNavClient } from "./app-nav-client";
+
+const adminItems = [
+  { href: "/", label: "Painel" },
+  { href: "/board", label: "Quadro" },
+  { href: "/tasks", label: "Tarefas" },
+  { href: "/queues", label: "Equipes" },
+  { href: "/awards", label: "Prêmios" },
+  { href: "/settings/files", label: "Configurações" },
+];
+
+function renderNav(items = adminItems) {
+  return renderWithIntl(
+    <AppNavClient
+      logoUrl={LOGO_URL}
+      homeHref="/"
+      profileHref={null}
+      userName="Admin"
+      items={items}
+    />,
+  );
+}
 
 function findBrandLink() {
   return screen.getAllByRole("link").find((link) =>
@@ -29,7 +40,7 @@ function findBrandLink() {
   );
 }
 
-describe("AppNav", () => {
+describe("AppNavClient", () => {
   beforeEach(() => {
     signOut.mockReset();
     Object.defineProperty(window, "innerWidth", {
@@ -44,7 +55,7 @@ describe("AppNav", () => {
   });
 
   it("renders fixed header with brand, desktop links, and user menu", () => {
-    renderWithIntl(<AppNav logoUrl={LOGO_URL} />);
+    renderNav();
 
     const header = screen.getByRole("banner");
     expect(header.className).toContain("fixed");
@@ -70,7 +81,7 @@ describe("AppNav", () => {
       value: 500,
     });
 
-    renderWithIntl(<AppNav logoUrl={LOGO_URL} />);
+    renderNav();
 
     const menuButton = screen.getByRole("button", { name: "Abrir menu" });
     const brandLink = findBrandLink();
@@ -92,7 +103,7 @@ describe("AppNav", () => {
       value: 500,
     });
 
-    renderWithIntl(<AppNav logoUrl={LOGO_URL} />);
+    renderNav();
 
     await user.click(screen.getByRole("button", { name: "Abrir menu" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();

@@ -25,10 +25,17 @@ import type {
 } from "@/lib/schemas/profile";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
+export interface ProfileClientActions {
+  changePassword: typeof changeOwnPassword;
+  updateAvatar: typeof updateOwnAvatar;
+  updatePersonal: typeof updateOwnPersonal;
+}
+
 export interface ProfileClientProps {
   userName: string;
   avatarUrl: string | null;
   personal: UpdateOwnPersonalInput;
+  actions?: ProfileClientActions;
 }
 
 function composeDisplayName(name: string, lastName: string): string {
@@ -39,7 +46,11 @@ export function ProfileClient({
   userName,
   avatarUrl,
   personal,
+  actions,
 }: ProfileClientProps) {
+  const changePassword = actions?.changePassword ?? changeOwnPassword;
+  const updateAvatar = actions?.updateAvatar ?? updateOwnAvatar;
+  const updatePersonal = actions?.updatePersonal ?? updateOwnPersonal;
   const t = useTranslations("profile");
   const tCommon = useTranslations("common");
   const personalRef = useRef<ProfilePersonalFormHandle>(null);
@@ -60,14 +71,14 @@ export function ProfileClient({
   }, []);
 
   async function handleAvatarUpload(file: File): Promise<boolean> {
-    const result = await updateOwnAvatar(file);
+    const result = await updateAvatar(file);
     return result.ok;
   }
 
   async function handlePersonalSave(
     input: UpdateOwnPersonalInput,
   ): Promise<{ ok: true } | { ok: false; error: string }> {
-    const result = await updateOwnPersonal(input);
+    const result = await updatePersonal(input);
     if (!result.ok) {
       return { ok: false, error: result.error };
     }
@@ -78,7 +89,7 @@ export function ProfileClient({
   async function handlePasswordSave(
     input: ChangeOwnPasswordInput,
   ): Promise<{ ok: true } | { ok: false; error: string }> {
-    const result = await changeOwnPassword(input);
+    const result = await changePassword(input);
     if (!result.ok) {
       if (
         result.error === "invalidCurrent" ||

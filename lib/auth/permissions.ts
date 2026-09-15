@@ -87,8 +87,13 @@ export function canViewAwards(role: Role | undefined): boolean {
   return isAtLeast(role, "manager");
 }
 
-/** Staff fulfillment / exchange batches: leader and above. */
+/** Staff fulfillment / exchange batches: manager and above. */
 export function canViewExchanges(role: Role | undefined): boolean {
+  return isAtLeast(role, "manager");
+}
+
+/** Kiosk/web staff queues: leader and above. */
+export function canViewQueues(role: Role | undefined): boolean {
   return isAtLeast(role, "leader");
 }
 
@@ -119,9 +124,9 @@ export function canViewBalance(role: Role | undefined): boolean {
   return role === "colaborator";
 }
 
-/** Users screen: leader and above. */
+/** Users screen: manager and above. */
 export function canViewUsers(role: Role | undefined): boolean {
-  return isAtLeast(role, "leader");
+  return isAtLeast(role, "manager");
 }
 
 /** Pair NFC key fob (userTag) on user edit: admin and manager only. */
@@ -156,6 +161,7 @@ export function canMoveBoardTasks(role: Role | undefined): boolean {
 
 const ROUTE_GUARDS: { prefix: string; check: (role: Role | undefined) => boolean }[] = [
   { prefix: "/balance", check: canViewBalance },
+  { prefix: "/queues", check: canViewQueues },
   { prefix: "/exchanges", check: canViewExchanges },
   { prefix: "/tasks", check: canManageTasks },
   { prefix: "/templates", check: canManageTemplates },

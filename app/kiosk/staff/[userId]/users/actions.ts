@@ -2,11 +2,11 @@
 
 import { auth } from "@/auth";
 import { storeMedia } from "@/lib/media/store-media";
-import {
-  assertStaffCanManageColaborator,
-} from "@/lib/repos/kiosk";
+import { assertStaffColaboratorEditAccess } from "@/lib/kiosk/staff-colaborator-edit-access";
+import { assertStaffCanManageColaborator } from "@/lib/repos/kiosk";
 import { insertMediaAsset } from "@/lib/repos/media";
 import {
+  findUserById,
   setColaboratorPasswordByStaff,
   setUserAvatarMedia,
   setUserFacePhotoMedia,
@@ -31,6 +31,36 @@ export async function saveKioskColaboratorPassword(
   colaboratorDocumentId: string,
   raw: unknown,
 ): Promise<KioskColaboratorPasswordResult> {
+  const parsed = kioskColaboratorPasswordSchema.safeParse(raw);
+  if (!parsed.success) {
+    const mismatch = parsed.error.issues.some(
+      (issue) => issue.message === "passwordMismatch",
+    );
+    return { ok: false, error: mismatch ? "passwordMismatch" : "invalid" };
+  }
+
+  try {
+    await assertStaffColaboratorEditAccess(staffUserId, colaboratorDocumentId);
+    await setColaboratorPasswordByStaff(
+      colaboratorDocumentId,
+      parsed.data.password,
+    );
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "forbidden" };
+  }
+}
+
+/**
+ * Self-service password change on the kiosk device. The colaborator is
+ * identified on the kiosk home screen (code + password), so no staff
+ * management assertion is required — only the kiosk device session plus a
+ * check that the target really is an active colaborator.
+ */
+export async function saveKioskOwnColaboratorPassword(
+  colaboratorId: string,
+  raw: unknown,
+): Promise<KioskColaboratorPasswordResult> {
   const session = await auth();
   if (session?.user?.role !== "kiosk") {
     return { ok: false, error: "forbidden" };
@@ -45,11 +75,16 @@ export async function saveKioskColaboratorPassword(
   }
 
   try {
-    await assertStaffCanManageColaborator(staffUserId, colaboratorDocumentId);
-    await setColaboratorPasswordByStaff(
-      colaboratorDocumentId,
-      parsed.data.password,
-    );
+    const target = await findUserById(colaboratorId);
+    if (
+      !target ||
+      target.role !== "colaborator" ||
+      !target.active ||
+      target.blocked
+    ) {
+      return { ok: false, error: "forbidden" };
+    }
+    await setColaboratorPasswordByStaff(colaboratorId, parsed.data.password);
     return { ok: true };
   } catch {
     return { ok: false, error: "forbidden" };
@@ -133,17 +168,12 @@ export async function saveKioskColaboratorFacePhoto(
   raw: unknown,
   faceVector?: number[],
 ): Promise<KioskColaboratorFacePhotoResult> {
-  const session = await auth();
-  if (session?.user?.role !== "kiosk") {
-    return { ok: false, error: "forbidden" };
-  }
-
   if (!(raw instanceof File) || raw.size === 0 || !raw.type.startsWith("image/")) {
     return { ok: false, error: "invalid" };
   }
 
   try {
-    await assertStaffCanManageColaborator(staffUserId, colaboratorDocumentId);
+    await assertStaffColaboratorEditAccess(staffUserId, colaboratorDocumentId);
     const facePhotoUrl = await storeFacePhotoForColaborator(
       colaboratorDocumentId,
       raw,

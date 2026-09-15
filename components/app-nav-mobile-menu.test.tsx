@@ -7,9 +7,9 @@ import { renderWithIntl } from "@/test/test-utils";
 import { AppNavMobileMenu } from "./app-nav-mobile-menu";
 
 const items = [
-  { href: "/", labelKey: "panel" },
-  { href: "/board", labelKey: "board" },
-  { href: "/tasks", labelKey: "tasks" },
+  { href: "/", label: "Painel" },
+  { href: "/board", label: "Quadro" },
+  { href: "/tasks", label: "Tarefas" },
 ];
 
 describe("AppNavMobileMenu", () => {

@@ -31,6 +31,7 @@ const RESERVED_ROOT_SEGMENTS = new Set([
   "balance",
   "exchange",
   "tasks",
+  "queues",
   "templates",
   "teams",
   "users",

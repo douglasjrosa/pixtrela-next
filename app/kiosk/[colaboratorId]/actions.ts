@@ -2,12 +2,13 @@
 
 import { revalidateTag } from "next/cache";
 
-import { auth } from "@/auth";
-import { canPreviewKioskColaborator } from "@/lib/auth/permissions";
-import type { Role } from "@/lib/auth/nav";
 import type { KioskQueueSectionKey } from "@/lib/business/kiosk-queue-units";
 import { getRemainingSubTaskQty } from "@/lib/business/subtask-queue";
 import { loadKioskLiveChainIntervalSeconds } from "@/lib/kiosk/load-session-idle";
+import {
+  assertQueueReader,
+  assertQueueStaffMutation,
+} from "@/lib/kiosk/queue-staff-access";
 import {
   startChain as startChainRepo,
   advanceChainRun as advanceChainRunRepo,
@@ -40,22 +41,6 @@ function invalidateActivityData(): void {
   revalidateTag("drizzle:tasks", "default");
 }
 
-async function assertKioskSession(): Promise<void> {
-  const session = await auth();
-  if (session?.user?.role !== "kiosk") {
-    throw new Error("forbidden");
-  }
-}
-
-async function assertKioskQueueReader(): Promise<void> {
-  const session = await auth();
-  const role = session?.user?.role as Role | undefined;
-  if (role === "kiosk" || canPreviewKioskColaborator(role)) {
-    return;
-  }
-  throw new Error("forbidden");
-}
-
 const SECTION_KEYS = new Set<KioskQueueSectionKey>([
   "liberadas",
   "bloqueadas",
@@ -66,8 +51,9 @@ export async function fetchKioskQueueSectionPage(input: {
   colaboratorId: string;
   section: KioskQueueSectionKey;
   cursor?: string | null;
+  staffUserId?: string;
 }): Promise<KioskQueueSectionPage> {
-  await assertKioskQueueReader();
+  await assertQueueReader(input.colaboratorId, input.staffUserId);
   if (!SECTION_KEYS.has(input.section)) {
     throw new Error("invalidSection");
   }
@@ -86,8 +72,9 @@ export async function fetchKioskQueueSectionPage(input: {
 export async function startSubTask(
   colaboratorId: string,
   subTaskDocumentId: string,
+  staffUserId?: string,
 ): Promise<void> {
-  await assertKioskSession();
+  await assertQueueStaffMutation(colaboratorId, staffUserId);
 
   activityFormSchema.parse({
     subTaskDocumentId,
@@ -105,8 +92,9 @@ export async function exitSubTask(
   rawExit: unknown,
   targetQty?: number,
   completedQty = 0,
+  staffUserId?: string,
 ): Promise<{ remainingWorkerNames: string[] }> {
-  await assertKioskSession();
+  await assertQueueStaffMutation(colaboratorId, staffUserId);
 
   const exitInput: KioskExitInput = parseKioskExitInput(sharingType, rawExit, {
     maxQty:
@@ -134,8 +122,9 @@ export async function exitSubTask(
 export async function startChain(
   colaboratorId: string,
   headId: string,
+  staffUserId?: string,
 ): Promise<void> {
-  await assertKioskSession();
+  await assertQueueStaffMutation(colaboratorId, staffUserId);
   await startChainRepo(colaboratorId, headId);
   invalidateActivityData();
 }
@@ -143,14 +132,19 @@ export async function startChain(
 export async function joinLiveChain(
   colaboratorId: string,
   subTaskDocumentId: string,
+  staffUserId?: string,
 ): Promise<void> {
-  await assertKioskSession();
+  await assertQueueStaffMutation(colaboratorId, staffUserId);
   await joinLiveChainRepo(colaboratorId, subTaskDocumentId);
   invalidateActivityData();
 }
 
-export async function advanceChainRun(chainRunId: string): Promise<void> {
-  await assertKioskSession();
+export async function advanceChainRun(
+  colaboratorId: string,
+  chainRunId: string,
+  staffUserId?: string,
+): Promise<void> {
+  await assertQueueStaffMutation(colaboratorId, staffUserId);
   await advanceChainRunRepo(chainRunId);
   invalidateActivityData();
 }
@@ -159,27 +153,36 @@ export async function confirmChainStop(
   colaboratorId: string,
   chainRunId: string,
   rawAnswers: unknown,
+  staffUserId?: string,
 ): Promise<void> {
-  await assertKioskSession();
+  await assertQueueStaffMutation(colaboratorId, staffUserId);
   const answers = parseChainStopAnswers(rawAnswers);
   await confirmChainStopRepo(colaboratorId, chainRunId, answers);
   invalidateActivityData();
 }
 
-export async function refreshMaterialFlags(subTaskDocumentId: string): Promise<{
+export async function refreshMaterialFlags(
+  subTaskDocumentId: string,
+  colaboratorId: string,
+  staffUserId?: string,
+): Promise<{
   categoryId: string | null;
   flags: Array<{ id: string; code: string }>;
   requiresMaterialFlagsOnFinish: boolean;
 }> {
-  await assertKioskSession();
+  await assertQueueStaffMutation(colaboratorId, staffUserId);
   const result = await refreshKioskMaterialFlags(subTaskDocumentId);
   invalidateActivityData();
   return result;
 }
 
 /** Release one material flag (consumer frees a predecessor flag). */
-export async function releaseMaterialFlag(flagId: string): Promise<void> {
-  await assertKioskSession();
+export async function releaseMaterialFlag(
+  flagId: string,
+  colaboratorId: string,
+  staffUserId?: string,
+): Promise<void> {
+  await assertQueueStaffMutation(colaboratorId, staffUserId);
   await releaseMaterialFlagRepo(flagId);
   invalidateActivityData();
 }
