@@ -93,7 +93,7 @@ export function KioskExitSubtaskForm({
 
   useEffect(() => {
     if (!onRefreshFlags) return;
-    if (initialFlags.length > 0 || initialRequiresFlags) return;
+    if (initialFlags.length > 0) return;
     let cancelled = false;
     startRefresh(async () => {
       const result = await onRefreshFlags();

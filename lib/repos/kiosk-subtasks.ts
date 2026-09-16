@@ -88,9 +88,9 @@ import {
   normalizeKioskQueuePageSize,
 } from "@/lib/schemas/kiosk-setting";
 import { formatMaterialFlagCode } from "@/lib/business/material-flag-code";
+import { buildDependencyFlagHintsForItem } from "@/lib/business/kiosk-dependency-flags";
 import {
   assertFinishFlagsAllowed,
-  isSemBandeiraHint,
   mergeFlagIds,
 } from "@/lib/business/subtask-material-flags";
 import {
@@ -177,7 +177,11 @@ async function attachKioskListingFlagFields(
 ): Promise<KioskSubTask[]> {
   if (items.length === 0) return items;
   const ids = items.map((item) => item.documentId);
-  const assignedRows = await listAssignedFlagsForSubTasks(ids, db);
+  const dependencyIds = [
+    ...new Set(items.flatMap((item) => item.dependencyIds ?? [])),
+  ];
+  const flagLookupIds = [...new Set([...ids, ...dependencyIds])];
+  const assignedRows = await listAssignedFlagsForSubTasks(flagLookupIds, db);
   const codesBySubTask = new Map<string, string[]>();
   const flagsBySubTask = new Map<
     string,
@@ -194,28 +198,43 @@ async function attachKioskListingFlagFields(
   }
 
   const byId = new Map(items.map((item) => [item.documentId, item]));
+  const missingDependencyIds = dependencyIds.filter((depId) => !byId.has(depId));
+  const predecessorsById = new Map(
+    items.map((item) => [
+      item.documentId,
+      {
+        name: item.name,
+        status: item.status,
+        subTaskCategoryId: item.subTaskCategoryId,
+      },
+    ]),
+  );
+  if (missingDependencyIds.length > 0) {
+    const rows = await db
+      .select({
+        id: subTasks.id,
+        name: subTasks.name,
+        status: subTasks.status,
+        subTaskCategoryId: subTasks.subTaskCategoryId,
+      })
+      .from(subTasks)
+      .where(inArray(subTasks.id, missingDependencyIds));
+    for (const row of rows) {
+      predecessorsById.set(row.id, {
+        name: row.name,
+        status: row.status,
+        subTaskCategoryId: row.subTaskCategoryId,
+      });
+    }
+  }
 
   return items.map((item) => {
-    const dependencyFlags = (item.dependencyIds ?? [])
-      .map((depId) => {
-        const predecessor = byId.get(depId);
-        const codes = codesBySubTask.get(depId) ?? [];
-        const flags = flagsBySubTask.get(depId) ?? [];
-        const semBandeira = isSemBandeiraHint({
-          categoryId: predecessor?.subTaskCategoryId ?? null,
-          status: predecessor?.status,
-          assignedFlagCodes: codes,
-        });
-        if (!semBandeira && codes.length === 0) return null;
-        return {
-          predecessorId: depId,
-          predecessorName: predecessor?.name ?? "",
-          codes,
-          flags,
-          semBandeira,
-        };
-      })
-      .filter((hint): hint is NonNullable<typeof hint> => Boolean(hint));
+    const dependencyFlags = buildDependencyFlagHintsForItem(
+      item.dependencyIds ?? [],
+      predecessorsById,
+      codesBySubTask,
+      flagsBySubTask,
+    );
 
     return {
       ...item,
