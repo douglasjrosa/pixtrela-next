@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { msUntilNextAutoAdvance } from "@/lib/business/subtask-chain-allocation";
 import type { KioskSubTask } from "@/lib/business/subtask-queue";
@@ -27,6 +27,11 @@ export function KioskChainAdvanceTimer({
     [members],
   );
 
+  const onAdvanceRef = useRef(onAdvance);
+  onAdvanceRef.current = onAdvance;
+  const remainingOrderedRef = useRef(remainingOrdered);
+  remainingOrderedRef.current = remainingOrdered;
+
   useEffect(() => {
     let cancelled = false;
     let timeoutId: number | undefined;
@@ -35,23 +40,23 @@ export function KioskChainAdvanceTimer({
       const delay = msUntilNextAutoAdvance({
         runStartedAt: new Date(runStartedAt),
         now: new Date(),
-        remainingOrdered,
+        remainingOrdered: remainingOrderedRef.current,
       });
       if (delay === null) return;
       timeoutId = window.setTimeout(() => {
         if (cancelled) return;
-        void onAdvance(chainRunId);
+        void onAdvanceRef.current(chainRunId);
       }, delay);
     }
 
-    void onAdvance(chainRunId);
+    void onAdvanceRef.current(chainRunId);
     schedule();
 
     return () => {
       cancelled = true;
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);
     };
-  }, [chainRunId, onAdvance, remainingOrdered, runStartedAt]);
+  }, [chainRunId, runStartedAt]);
 
   return null;
 }

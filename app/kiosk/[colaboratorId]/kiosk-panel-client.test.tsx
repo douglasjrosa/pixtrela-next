@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { act, screen } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
@@ -15,12 +15,12 @@ const startChain = vi.fn();
 const exitSubTask = vi.fn();
 const advanceChainRun = vi.fn();
 const confirmChainStop = vi.fn();
-const showSuccessToast = vi.fn();
-const showErrorToast = vi.fn();
+const showKioskSuccessToast = vi.fn();
+const showKioskErrorToast = vi.fn();
 
-vi.mock("@/lib/ui/app-toast", () => ({
-  showSuccessToast: (...args: unknown[]) => showSuccessToast(...args),
-  showErrorToast: (...args: unknown[]) => showErrorToast(...args),
+vi.mock("@/lib/kiosk/kiosk-toast", () => ({
+  showKioskSuccessToast: (...args: unknown[]) => showKioskSuccessToast(...args),
+  showKioskErrorToast: (...args: unknown[]) => showKioskErrorToast(...args),
 }));
 
 vi.mock("@/lib/welcome/kiosk-welcome-ready", () => ({
@@ -112,8 +112,8 @@ describe("KioskPanelClient", () => {
     advanceChainRun.mockResolvedValue(undefined);
     confirmChainStop.mockReset();
     confirmChainStop.mockResolvedValue(undefined);
-    showSuccessToast.mockReset();
-    showErrorToast.mockReset();
+    showKioskSuccessToast.mockReset();
+    showKioskErrorToast.mockReset();
   });
 
   it("shows the producing card immediately while start is in flight", async () => {
@@ -158,6 +158,7 @@ describe("KioskPanelClient", () => {
 
     expect(screen.getByRole("heading", { name: "Liberadas" })).toBeInTheDocument();
     expect(screen.getByText("Cortar")).toBeInTheDocument();
+    expect(screen.getByText("Produzindo")).toBeInTheDocument();
     expect(screen.queryByText("Processando...")).not.toBeInTheDocument();
     expect(startSubTask).toHaveBeenCalledWith("u-1", "st-1", undefined);
 
@@ -208,14 +209,16 @@ describe("KioskPanelClient", () => {
     await user.click(screen.getByRole("button", { name: "Sim, concluí" }));
 
     expect(screen.getByRole("heading", { name: "Liberadas" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Processando..." })).toBeDisabled();
-    expect(showSuccessToast).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: "Processando..." }),
+    ).not.toBeInTheDocument();
+    expect(showKioskSuccessToast).not.toHaveBeenCalled();
 
     await act(async () => {
       resolveExit();
       await Promise.resolve();
     });
-    expect(showSuccessToast).toHaveBeenCalledWith("Saída registrada.");
+    expect(showKioskSuccessToast).toHaveBeenCalledWith("Saída registrada.");
   });
 
   it("keeps chain stop enabled after background auto-advance", async () => {
@@ -354,7 +357,7 @@ describe("KioskPanelClient", () => {
       ],
       undefined,
     );
-    expect(showSuccessToast).toHaveBeenCalledWith("Saída registrada.");
+    expect(showKioskSuccessToast).toHaveBeenCalledWith("Saída registrada.");
   });
 
   it("shows queue load error when accordion fetch fails", async () => {
@@ -379,10 +382,12 @@ describe("KioskPanelClient", () => {
 
     await user.click(screen.getByRole("button", { name: "Bloqueadas" }));
 
-    expect(showErrorToast).toHaveBeenCalledWith(
-      "Não foi possível carregar a fila. Tente novamente.",
-    );
-    expect(showErrorToast).not.toHaveBeenCalledWith(
+    await waitFor(() => {
+      expect(showKioskErrorToast).toHaveBeenCalledWith(
+        "Não foi possível carregar a fila. Tente novamente.",
+      );
+    });
+    expect(showKioskErrorToast).not.toHaveBeenCalledWith(
       "Não foi possível sair da subtarefa. Tente novamente.",
     );
   });

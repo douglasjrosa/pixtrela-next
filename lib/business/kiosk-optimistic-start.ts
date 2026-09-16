@@ -1,6 +1,17 @@
-import type { OpenChainRun } from "@/lib/business/kiosk-queue-units";
+import {
+  isProducingQueueUnit,
+  type KioskGroupUnit,
+  type KioskIsolatedUnit,
+  type KioskQueueUnit,
+  type OpenChainRun,
+} from "@/lib/business/kiosk-queue-units";
 import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
-import type { KioskSubTask } from "@/lib/business/subtask-queue";
+import {
+  canStartSubTask,
+  hasActiveSubTask,
+  type KioskSubTask,
+} from "@/lib/business/subtask-queue";
+import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 
 export const OPTIMISTIC_CHAIN_RUN_PREFIX = "optimistic:";
 
@@ -153,4 +164,170 @@ export function isOptimisticChainStopSettled(
   return subTasks
     .filter((item) => memberIds.has(item.documentId))
     .every((item) => item.status !== "producing");
+}
+
+export type OptimisticKioskExit = {
+  documentId: string;
+  exit: KioskExitInput;
+};
+
+function resolveOptimisticExitStatus(
+  item: KioskSubTask,
+  exit: KioskExitInput,
+): KioskSubTask["status"] {
+  if (exit.sharingType === "duration") {
+    return exit.isCompleted ? "finished" : "waiting";
+  }
+  const qty = Math.max(0, Math.floor(exit.qtyCompleted));
+  return item.completedQty + qty >= item.targetQty ? "finished" : "waiting";
+}
+
+export function applyOptimisticKioskExitToSubTasks(
+  items: readonly KioskSubTask[],
+  exit: OptimisticKioskExit | null,
+): KioskSubTask[] {
+  if (!exit) return [...items];
+  return items.map((item) => {
+    if (item.documentId !== exit.documentId) return item;
+    const status = resolveOptimisticExitStatus(item, exit.exit);
+    const completedQty =
+      exit.exit.sharingType === "qty"
+        ? item.completedQty + Math.max(0, Math.floor(exit.exit.qtyCompleted))
+        : item.completedQty;
+    return {
+      ...item,
+      status,
+      completedQty,
+      startedAt: null,
+      activeWorkerCount: 0,
+    };
+  });
+}
+
+export function isOptimisticKioskExitSettled(
+  subTasks: readonly KioskSubTask[],
+  exit: OptimisticKioskExit,
+): boolean {
+  const row = subTasks.find((item) => item.documentId === exit.documentId);
+  if (!row) return true;
+  return row.status !== "producing" && !row.startedAt;
+}
+
+export type LiberadasSectionSnapshot = {
+  producingUnits: KioskQueueUnit[];
+  units: KioskQueueUnit[];
+};
+
+function subTasksById(
+  items: readonly KioskSubTask[],
+): Map<string, KioskSubTask> {
+  return new Map(items.map((item) => [item.documentId, item]));
+}
+
+function findOpenRunForGroup(
+  unit: KioskGroupUnit,
+  openRuns: readonly OpenChainRun[],
+): OpenChainRun | null {
+  return (
+    openRuns.find(
+      (run) =>
+        run.chainHeadId === unit.headId ||
+        unit.memberIds.includes(run.chainHeadId),
+    ) ?? null
+  );
+}
+
+function patchGroupUnit(
+  unit: KioskGroupUnit,
+  byId: Map<string, KioskSubTask>,
+  openRuns: readonly OpenChainRun[],
+  colaboratorId: string,
+): KioskGroupUnit {
+  const members = unit.memberIds.map(
+    (id) => byId.get(id) ?? unit.members.find((row) => row.documentId === id)!,
+  );
+  const openRun = findOpenRunForGroup(unit, openRuns);
+  const principalActive = openRun?.principalId === colaboratorId;
+  return {
+    ...unit,
+    members,
+    principalActive,
+    chainRunId: principalActive ? (openRun?.chainRunId ?? null) : unit.chainRunId,
+    runStartedAt: principalActive
+      ? (openRun?.runStartedAt ?? null)
+      : unit.runStartedAt,
+  };
+}
+
+function patchIsolatedUnit(
+  unit: KioskIsolatedUnit,
+  byId: Map<string, KioskSubTask>,
+): KioskIsolatedUnit {
+  const subTask = byId.get(unit.subTask.documentId) ?? unit.subTask;
+  return { ...unit, subTask };
+}
+
+function refreshPendingShowStart(
+  units: readonly KioskQueueUnit[],
+  queueContext: readonly KioskSubTask[],
+): KioskQueueUnit[] {
+  const hasActive = hasActiveSubTask(queueContext);
+  let idleStartGranted = false;
+
+  return units.map((unit) => {
+    if (unit.type === "group") {
+      const showStart =
+        !hasActive &&
+        !unit.locked &&
+        !unit.principalActive &&
+        !idleStartGranted;
+      if (showStart) idleStartGranted = true;
+      return { ...unit, showStart };
+    }
+
+    if (unit.helperMode) {
+      return {
+        ...unit,
+        showStart: canStartSubTask(queueContext, unit.subTask.documentId),
+      };
+    }
+
+    if (isProducingQueueUnit(unit)) {
+      return { ...unit, showStart: false };
+    }
+
+    const showStart =
+      !hasActive &&
+      !idleStartGranted &&
+      canStartSubTask(queueContext, unit.subTask.documentId);
+    if (showStart) idleStartGranted = true;
+    return { ...unit, showStart };
+  });
+}
+
+/** Re-splits liberadas cards so producing rows surface immediately during optimistic UI. */
+export function applyOptimisticStateToLiberadasSection(
+  section: LiberadasSectionSnapshot,
+  queueContext: readonly KioskSubTask[],
+  openRuns: readonly OpenChainRun[],
+  colaboratorId: string,
+): LiberadasSectionSnapshot {
+  const byId = subTasksById(queueContext);
+  const patched = [...section.producingUnits, ...section.units].map((unit) =>
+    unit.type === "group"
+      ? patchGroupUnit(unit, byId, openRuns, colaboratorId)
+      : patchIsolatedUnit(unit, byId),
+  );
+
+  const producingUnits: KioskQueueUnit[] = [];
+  const pendingUnits: KioskQueueUnit[] = [];
+  for (const unit of patched) {
+    if (isProducingQueueUnit(unit)) producingUnits.push(unit);
+    else pendingUnits.push(unit);
+  }
+
+  return {
+    producingUnits,
+    units: refreshPendingShowStart(pendingUnits, queueContext),
+  };
 }

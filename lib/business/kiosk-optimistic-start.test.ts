@@ -7,6 +7,7 @@ import {
   applyOptimisticChainStopToSubTasks,
   applyOptimisticKioskStartToOpenRuns,
   applyOptimisticKioskStartToSubTasks,
+  applyOptimisticStateToLiberadasSection,
   isOptimisticChainStopSettled,
   isOptimisticKioskStartSettled,
   OPTIMISTIC_CHAIN_RUN_PREFIX,
@@ -166,6 +167,43 @@ describe("kiosk optimistic start", () => {
         stop,
       ),
     ).toEqual([]);
+  });
+
+  it("moves a started card into producingUnits before the server refresh", () => {
+    const startedAt = "2026-08-17T23:00:00.000Z";
+    const waiting = stub();
+    const producing = applyOptimisticKioskStartToSubTasks([waiting], {
+      documentId: "st-1",
+      startedAt,
+      mode: "solo",
+    })[0]!;
+    const next = applyOptimisticStateToLiberadasSection(
+      {
+        producingUnits: [],
+        units: [
+          {
+            type: "isolated",
+            subTask: waiting,
+            helperMode: false,
+            showStart: true,
+          },
+        ],
+      },
+      producing ? [producing] : [],
+      [],
+      "user-1",
+    );
+
+    expect(next.producingUnits).toHaveLength(1);
+    expect(next.producingUnits[0]).toMatchObject({
+      type: "isolated",
+      subTask: {
+        documentId: "st-1",
+        status: "producing",
+        startedAt,
+      },
+    });
+    expect(next.units).toHaveLength(0);
   });
 
   it("settles chain stop when server queue no longer has the open run", () => {

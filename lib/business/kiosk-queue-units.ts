@@ -269,7 +269,7 @@ function isLockedQueueUnit(unit: KioskQueueUnit): boolean {
   return isLockedSubTask(unit.subTask);
 }
 
-function isProducingQueueUnit(unit: KioskQueueUnit): boolean {
+export function isProducingQueueUnit(unit: KioskQueueUnit): boolean {
   if (unit.type === "isolated") {
     return (
       unit.subTask.status === "producing" || Boolean(unit.subTask.startedAt)

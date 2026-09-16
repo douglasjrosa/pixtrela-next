@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -24,12 +32,16 @@ import type {
 import {
   applyOptimisticChainStopToOpenRuns,
   applyOptimisticChainStopToSubTasks,
+  applyOptimisticKioskExitToSubTasks,
   applyOptimisticKioskStartToOpenRuns,
   applyOptimisticKioskStartToSubTasks,
+  applyOptimisticStateToLiberadasSection,
   isOptimisticChainStopSettled,
+  isOptimisticKioskExitSettled,
   isOptimisticKioskStartSettled,
   resolvePersistedChainRunId,
   type OptimisticKioskChainStop,
+  type OptimisticKioskExit,
   type OptimisticKioskStart,
 } from "@/lib/business/kiosk-optimistic-start";
 import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
@@ -42,7 +54,10 @@ import { buildKioskQueueFingerprint } from "@/lib/kiosk/queue-fingerprint";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { KioskQueueSectionPage } from "@/lib/repos/kiosk-subtasks";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import {
+  showKioskErrorToast,
+  showKioskSuccessToast,
+} from "@/lib/kiosk/kiosk-toast";
 import { markKioskColaboratorReady } from "@/lib/welcome/kiosk-welcome-ready";
 
 import {
@@ -173,6 +188,8 @@ export function KioskPanelClient({
     useState<OptimisticKioskStart | null>(null);
   const [optimisticChainStop, setOptimisticChainStop] =
     useState<OptimisticKioskChainStop | null>(null);
+  const [optimisticExit, setOptimisticExit] =
+    useState<OptimisticKioskExit | null>(null);
   const [flashDocumentId, setFlashDocumentId] = useState<string | null>(null);
   const exitFingerprintRef = useRef<string | null>(null);
   const loadingMoreRef = useRef(false);
@@ -196,21 +213,39 @@ export function KioskPanelClient({
     () => initialLiberadas.catalog,
   );
 
-  const displaySubTasks = applyOptimisticChainStopToSubTasks(
-    applyOptimisticKioskStartToSubTasks(subTasks, optimisticStart),
-    optimisticChainStop,
+  const displaySubTasks = useMemo(
+    () =>
+      applyOptimisticKioskExitToSubTasks(
+        applyOptimisticChainStopToSubTasks(
+          applyOptimisticKioskStartToSubTasks(subTasks, optimisticStart),
+          optimisticChainStop,
+        ),
+        optimisticExit,
+      ),
+    [optimisticChainStop, optimisticExit, optimisticStart, subTasks],
   );
-  const displayCatalog = applyOptimisticChainStopToSubTasks(
-    applyOptimisticKioskStartToSubTasks(catalog, optimisticStart),
-    optimisticChainStop,
+  const displayCatalog = useMemo(
+    () =>
+      applyOptimisticKioskExitToSubTasks(
+        applyOptimisticChainStopToSubTasks(
+          applyOptimisticKioskStartToSubTasks(catalog, optimisticStart),
+          optimisticChainStop,
+        ),
+        optimisticExit,
+      ),
+    [catalog, optimisticChainStop, optimisticExit, optimisticStart],
   );
-  const displayOpenRuns = applyOptimisticChainStopToOpenRuns(
-    applyOptimisticKioskStartToOpenRuns(
-      openRuns,
-      optimisticStart,
-      colaboratorId,
-    ),
-    optimisticChainStop,
+  const displayOpenRuns = useMemo(
+    () =>
+      applyOptimisticChainStopToOpenRuns(
+        applyOptimisticKioskStartToOpenRuns(
+          openRuns,
+          optimisticStart,
+          colaboratorId,
+        ),
+        optimisticChainStop,
+      ),
+    [colaboratorId, openRuns, optimisticChainStop, optimisticStart],
   );
 
   if (
@@ -227,6 +262,21 @@ export function KioskPanelClient({
   ) {
     setOptimisticChainStop(null);
   }
+
+  if (optimisticExit && isOptimisticKioskExitSettled(subTasks, optimisticExit)) {
+    setOptimisticExit(null);
+  }
+
+  const displayLiberadas = useMemo(
+    () =>
+      applyOptimisticStateToLiberadasSection(
+        liberadas,
+        displaySubTasks,
+        displayOpenRuns,
+        colaboratorId,
+      ),
+    [colaboratorId, displayOpenRuns, displaySubTasks, liberadas],
+  );
 
   useEffect(() => {
     markKioskColaboratorReady();
@@ -284,7 +334,7 @@ export function KioskPanelClient({
 
   const refreshAfterMutation = useCallback(async (): Promise<void> => {
     await refreshLiberadas();
-    await refreshExpandedAccordions();
+    void refreshExpandedAccordions();
   }, [refreshExpandedAccordions, refreshLiberadas]);
 
   const runBackgroundAction = useCallback(
@@ -292,7 +342,9 @@ export function KioskPanelClient({
       void (async () => {
         try {
           await action();
-          await refreshAfterMutation();
+          setQueueBusy(null);
+          await refreshLiberadas();
+          void refreshExpandedAccordions();
         } catch (error) {
           rethrowIfNavigationError(error);
           setOptimisticStart(null);
@@ -302,7 +354,7 @@ export function KioskPanelClient({
         }
       })();
     },
-    [refreshAfterMutation],
+    [refreshExpandedAccordions, refreshLiberadas],
   );
 
   const runExitAction = useCallback(
@@ -310,7 +362,8 @@ export function KioskPanelClient({
       void (async () => {
         try {
           await action();
-          await refreshAfterMutation();
+          await refreshLiberadas();
+          void refreshExpandedAccordions();
         } catch (error) {
           rethrowIfNavigationError(error);
           onError?.(error);
@@ -320,7 +373,7 @@ export function KioskPanelClient({
         }
       })();
     },
-    [refreshAfterMutation],
+    [refreshExpandedAccordions, refreshLiberadas],
   );
 
   const loadMoreSection = useCallback(
@@ -353,7 +406,7 @@ export function KioskPanelClient({
       } catch (error) {
         rethrowIfNavigationError(error);
         setState((current) => ({ ...current, loading: false }));
-        showErrorToast(t("queueLoadFailed"));
+        showKioskErrorToast(t("queueLoadFailed"));
       } finally {
         loadingMoreRef.current = false;
       }
@@ -405,7 +458,7 @@ export function KioskPanelClient({
           expanded: false,
           loading: false,
         }));
-        showErrorToast(t("queueLoadFailed"));
+        showKioskErrorToast(t("queueLoadFailed"));
       }
     })();
   }, [bloqueadas.expanded, bloqueadas.loadedOnce, colaboratorId, staffUserId, t]);
@@ -442,7 +495,7 @@ export function KioskPanelClient({
           expanded: false,
           loading: false,
         }));
-        showErrorToast(t("queueLoadFailed"));
+        showKioskErrorToast(t("queueLoadFailed"));
       }
     })();
   }, [colaboratorId, finalizadas.expanded, finalizadas.loadedOnce, staffUserId, t]);
@@ -461,9 +514,8 @@ export function KioskPanelClient({
       } else {
         await startSubTask(colaboratorId, documentId, staffUserId);
       }
-      setQueueBusy(null);
     }, () => {
-      showErrorToast(t("startFailed"));
+      showKioskErrorToast(t("startFailed"));
     });
   }
 
@@ -481,9 +533,8 @@ export function KioskPanelClient({
     setQueueBusy("start");
     runBackgroundAction(async () => {
       await startChain(colaboratorId, headId, staffUserId);
-      setQueueBusy(null);
     }, () => {
-      showErrorToast(t("startFailed"));
+      showKioskErrorToast(t("startFailed"));
     });
   }
 
@@ -496,7 +547,7 @@ export function KioskPanelClient({
           await refreshAfterMutation();
         } catch (error) {
           rethrowIfNavigationError(error);
-          showErrorToast(t("exitFailed"));
+          showKioskErrorToast(t("exitFailed"));
         }
       })();
     },
@@ -512,11 +563,11 @@ export function KioskPanelClient({
       displayOpenRuns,
     );
     if (!persistedId) {
-      showErrorToast(t("chainRunNotReady"));
+      showKioskErrorToast(t("chainRunNotReady"));
       return;
     }
     if (queueBusy) {
-      showErrorToast(t("actionLoading"));
+      showKioskErrorToast(t("actionLoading"));
       return;
     }
     exitFingerprintRef.current = buildKioskQueueFingerprint(
@@ -535,15 +586,15 @@ export function KioskPanelClient({
     });
     runExitAction(async () => {
       await confirmChainStop(colaboratorId, persistedId, answers, staffUserId);
-      showSuccessToast(t("exitRecorded"));
+      showKioskSuccessToast(t("exitRecorded"));
     }, (error) => {
       setOptimisticChainStop(null);
-      showErrorToast(kioskActionErrorMessage(t, error));
+      showKioskErrorToast(kioskActionErrorMessage(t, error));
     });
   }
 
   function handleChainRunNotReady(): void {
-    showErrorToast(t("chainRunNotReady"));
+    showKioskErrorToast(t("chainRunNotReady"));
   }
 
   function handleExit(documentId: string, input: KioskExitInput): void {
@@ -556,6 +607,7 @@ export function KioskPanelClient({
       subTasks,
       openRuns,
     );
+    setOptimisticExit({ documentId, exit: input });
     setQueueBusy("exit");
     runExitAction(async () => {
       const result = await exitSubTask(
@@ -569,12 +621,13 @@ export function KioskPanelClient({
       );
       const names = formatRemainingWorkerNames(result.remainingWorkerNames);
       if (names) {
-        showSuccessToast(t("exitOthersStillActive", { name: names }));
+        showKioskSuccessToast(t("exitOthersStillActive", { name: names }));
         return;
       }
-      showSuccessToast(t("exitRecorded"));
+      showKioskSuccessToast(t("exitRecorded"));
     }, (error) => {
-      showErrorToast(kioskActionErrorMessage(t, error));
+      setOptimisticExit(null);
+      showKioskErrorToast(kioskActionErrorMessage(t, error));
     });
   }
 
@@ -583,10 +636,10 @@ export function KioskPanelClient({
     setQueueBusy("exit");
     runBackgroundAction(async () => {
       await releaseMaterialFlag(flagId, colaboratorId, staffUserId);
-      showSuccessToast(t("flagsReleased"));
+      showKioskSuccessToast(t("flagsReleased"));
       setQueueBusy(null);
     }, (error) => {
-      showErrorToast(kioskActionErrorMessage(t, error));
+      showKioskErrorToast(kioskActionErrorMessage(t, error));
     });
   }
 
@@ -608,10 +661,10 @@ export function KioskPanelClient({
         ? await saveKioskColaboratorPassword(staffUserId, colaboratorId, input)
         : await saveKioskOwnColaboratorPassword(colaboratorId, input);
       if (!result.ok) {
-        showErrorToast(editPasswordErrorMessage(result.error, t));
+        showKioskErrorToast(editPasswordErrorMessage(result.error, t));
         return false;
       }
-      showSuccessToast(t("staffPasswordSaved"));
+      showKioskSuccessToast(t("staffPasswordSaved"));
       setEditOpen(false);
       return true;
     } finally {
@@ -633,11 +686,11 @@ export function KioskPanelClient({
         options?.faceVector,
       );
       if (!result.ok) {
-        showErrorToast(t("staffFacePhotoForbidden"));
+        showKioskErrorToast(t("staffFacePhotoForbidden"));
         return false;
       }
       setCurrentFacePhotoUrl(result.facePhotoUrl);
-      showSuccessToast(t("staffFacePhotoSaved"));
+      showKioskSuccessToast(t("staffFacePhotoSaved"));
       return true;
     } finally {
       setEditPending(false);
@@ -715,7 +768,7 @@ export function KioskPanelClient({
         <div className="relative min-h-0 flex-1">
           <KioskDailyQueue
           colaboratorId={colaboratorId}
-          liberadas={liberadas}
+          liberadas={displayLiberadas}
           bloqueadas={bloqueadas}
           finalizadas={finalizadas}
           allSubTasks={allSubTasksForPanel}

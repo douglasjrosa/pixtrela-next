@@ -276,6 +276,7 @@ export function KioskSubtaskPanel({
                   }
                   onCancel={() => setExitingId(null)}
                   onConfirm={(input) => {
+                    setExitingId(null);
                     onExit(subTask.documentId, input);
                   }}
                 />
