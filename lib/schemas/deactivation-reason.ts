@@ -1,10 +1,10 @@
 import { z } from "zod";
 
-export const DEACTIVATION_REASON_MIN_LENGTH = 100;
+export const DEACTIVATION_REASON_MIN_LENGTH = 30;
 
 export const DEACTIVATION_REASON_MIN_LENGTH_KEY = "reasonMinLength";
 
-export const BULK_DEACTIVATION_REASON_MIN_LENGTH = 50;
+export const BULK_DEACTIVATION_REASON_MIN_LENGTH = 30;
 
 export const BULK_DEACTIVATION_REASON_MIN_LENGTH_KEY = "reasonMinLength50";
 

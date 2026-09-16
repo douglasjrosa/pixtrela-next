@@ -12,7 +12,7 @@ import {
 } from "./archive-with-reason";
 
 describe("archiveWithReasonSchema", () => {
-  it("requires 100 chars for a single record", () => {
+  it("requires 30 chars for a single record", () => {
     const result = archiveWithReasonSchema(1).safeParse({
       reasonForDeactivation: "a".repeat(DEACTIVATION_REASON_MIN_LENGTH - 1),
     });
@@ -23,7 +23,7 @@ describe("archiveWithReasonSchema", () => {
     );
   });
 
-  it("requires 50 chars for bulk (2+ records)", () => {
+  it("requires 30 chars for bulk (2+ records)", () => {
     const short = archiveWithReasonSchema(2).safeParse({
       reasonForDeactivation: "a".repeat(BULK_DEACTIVATION_REASON_MIN_LENGTH - 1),
     });

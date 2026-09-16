@@ -90,8 +90,8 @@ describe("resolveRouteThemeKey", () => {
     expect(resolveRouteThemeKey("/")).toBe("staff-home");
     expect(resolveRouteThemeKey("/board")).toBe("board");
     expect(resolveRouteThemeKey("/tasks/abc")).toBe("tasks");
-    expect(resolveRouteThemeKey("/queues")).toBe("tasks");
-    expect(resolveRouteThemeKey("/queues/col-1")).toBe("tasks");
+    expect(resolveRouteThemeKey("/queues")).toBe("queues");
+    expect(resolveRouteThemeKey("/queues/col-1")).toBe("queues");
     expect(resolveRouteThemeKey("/kiosk")).toBe("kiosk");
     expect(resolveRouteThemeKey("/kiosk/user1")).toBe("kiosk");
     expect(resolveRouteThemeKey("/kiosk/staff/admin1")).toBe("kiosk-staff");

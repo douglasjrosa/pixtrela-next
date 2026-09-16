@@ -3,6 +3,7 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
 import {
+  archiveTemplateTasks,
   cloneTemplateTaskByCode,
   createTemplateTask,
   findTemplateWithSubTasksByCode,
@@ -125,6 +126,30 @@ describeWithDb("templates clone", () => {
     expect(rows[1]?.dependencyIndexes).toEqual([0]);
 
     await hardDeleteTemplateTask(cloned.id);
+    await hardDeleteTemplateTask(source.id);
+  });
+
+  it("ignores archived templates when resolving clone sources", async () => {
+    const suffix = String(Date.now());
+    const source = await createTemplateTask({
+      code: `archived-${suffix}`,
+      name: "Archived source",
+      subTasks: [
+        {
+          name: "Cut",
+          qty: 1,
+          index: 0,
+          expectedTime: 10,
+          sharingType: "duration",
+          maxSameTimeWorkers: 1,
+          dependencyIndexes: [],
+        },
+      ],
+    });
+
+    await archiveTemplateTasks([source.id], "archived for version test");
+    expect(await findTemplateWithSubTasksByCode(source.code)).toBeNull();
+
     await hardDeleteTemplateTask(source.id);
   });
 

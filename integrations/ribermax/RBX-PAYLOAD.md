@@ -141,10 +141,9 @@ Canonical preset names (from the former the app mapper):
 
 | presetName | Typical qty | Old PHP source |
 |------------|-------------|----------------|
-| `Corte dos pés da base (viga)` | 1 | if `base.viga` exists |
-| `Corte dos pés da base (sarrafos)` | 1 | if `base.pe` / `base.toco` (no `viga`) |
-| `Corte das tábuas da base` | 1 | if `base.tabua` exists |
-| `Corte dos sarrafos da embalagem` | 1 | if `lateral` / `cabeceira` / `tampa` exists |
+| `Corte das vigas` | per material | viga materials (`ve*`, `viga` in label) |
+| `Corte dos sarrafos` | per material | sarrafo materials (default wood cut plan) |
+| `Corte das tábuas` | per material | tábua materials (`t*`, `tábua` in label) |
 | `Corte das chapas das laterais` | 2 | if `lateral` exists |
 | `Corte das chapas das cabeceiras` | 2 | if `cabeceira` exists |
 | `Corte da chapa da tampa` | 1 | if `tampa` exists |
@@ -165,12 +164,14 @@ Canonical preset names (from the former the app mapper):
 **Cut presets (`sharingType = duration`):** one subtask **per cut-plan material**
 (same algorithm as `/imprimir` cut plan PDF).
 
-- `actionUnits` = `almoxarifado.pcs_por_corte` for that material (`0` → `1`).
-- `qty` = total whole boards/beams (sum of the right-hand column in the cut-plan
-  bars). The cut-plan algorithm already accounts for `pcs_por_corte` when packing.
+**Wood cuts (sarrafos, vigas, tábuas):** atomic task = one full board cut per box
+template. `qty` is always **1** (one lote per packaging). `actionUnits` = total
+whole boards/beams from the cut plan (sum of the right-hand column in the PDF).
 
-Example: Sarrafo 30×18mm with 4+1+2+5 boards and `pcs_por_corte = 10` →
-`qty: 12`, `actionUnits: 10`.
+Example: Sarrafo plan with 3 whole boards → `qty: 1`, `actionUnits: 3`.
+
+**Sheet cuts** (panel chapas, `chapasAvulsas`): `qty` = piece count; `actionUnits`
+= `almoxarifado.pcs_por_corte` (`0` → `1`).
 
 **Loose accessories (`acessorioPart`):** `itensAvulsos` with `loose` emits no subtask.
 `chapasAvulsas` always emit a cut row (`cut:mat:{code}`); fixation slots apply only when
@@ -217,11 +218,11 @@ building the array:
 
 | Subtask | Depends on |
 |---------|------------|
-| `Montagem dos pés` | `Corte dos pés da base (viga)` or `(sarrafos)` |
-| `Montagem da base` | `Corte das tábuas da base`, `Montagem dos pés` |
-| `Montagem dos quadros das laterais` | `Corte dos sarrafos da embalagem` |
-| `Montagem dos quadros das cabeceiras` | `Corte dos sarrafos da embalagem` |
-| `Montagem dos quadros da tampa` | `Corte dos sarrafos da embalagem` |
+| `Montagem dos pés` | `Corte das vigas`, `Corte dos sarrafos` |
+| `Montagem da base` | `Corte das tábuas`, `Montagem dos pés` |
+| `Montagem dos quadros das laterais` | `Corte dos sarrafos` |
+| `Montagem dos quadros das cabeceiras` | `Corte dos sarrafos` |
+| `Montagem dos quadros da tampa` | `Corte dos sarrafos` |
 | `Fixação das chapas das laterais` | `Montagem dos quadros das laterais`, `Corte das chapas das laterais` |
 | `Fixação das chapas das cabeceiras` | `Montagem dos quadros das cabeceiras`, `Corte das chapas das cabeceiras` |
 | `Fixação das chapas da tampa` | `Montagem dos quadros da tampa`, `Corte da chapa da tampa` |
@@ -242,9 +243,9 @@ dependency graph must stay intact.
   "empresaNome": "Cliente ABC",
   "boxName": "Caixa Exportação 120x80",
   "subtasks": [
-    { "presetName": "Corte dos pés da base (viga)", "qty": 1, "actionUnits": 1 },
-    { "presetName": "Corte das tábuas da base", "qty": 1, "actionUnits": 1 },
-    { "presetName": "Corte dos sarrafos da embalagem", "qty": 1, "actionUnits": 36 },
+    { "presetName": "Corte das vigas", "qty": 1, "actionUnits": 2 },
+    { "presetName": "Corte das tábuas", "qty": 1, "actionUnits": 5 },
+    { "presetName": "Corte dos sarrafos", "qty": 1, "actionUnits": 12 },
     { "presetName": "Corte das chapas das laterais", "qty": 2, "actionUnits": 1 },
     { "presetName": "Corte das chapas das cabeceiras", "qty": 2, "actionUnits": 1 },
     { "presetName": "Corte da chapa da tampa", "qty": 1, "actionUnits": 1 },

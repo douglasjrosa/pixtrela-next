@@ -128,7 +128,7 @@ export async function findTemplateWithSubTasksByCode(
   db: Db = getDb(),
 ): Promise<TemplateWithSubTasks | null> {
   const template = await findTemplateByCode(code, db);
-  if (!template) return null;
+  if (!template || !template.active) return null;
   const subTasks = await listTemplateSubTasks(template.id, db);
   if (subTasks.length === 0) return null;
   return { template, subTasks };
@@ -312,6 +312,17 @@ export async function updateTemplateTask(
 
     return row;
   });
+}
+
+export async function archiveActiveTemplateByCode(
+  code: string,
+  reason: string,
+  db: Db = getDb(),
+): Promise<boolean> {
+  const template = await findTemplateByCode(code, db);
+  if (!template?.active) return false;
+  await archiveTemplateTasks([template.id], reason, db);
+  return true;
 }
 
 export async function archiveTemplateTasks(

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const findTemplateByCode = vi.fn();
 const findTemplateWithSubTasksByCode = vi.fn();
 const cloneTemplateTaskByCode = vi.fn();
+const archiveActiveTemplateByCode = vi.fn();
 const createTemplateTask = vi.fn();
 const buildTemplateFromBoxPayload = vi.fn();
 const fetchBoxTemplateData = vi.fn();
@@ -17,6 +18,8 @@ vi.mock("@/lib/repos/templates", () => ({
     findTemplateWithSubTasksByCode(...args),
   cloneTemplateTaskByCode: (...args: unknown[]) =>
     cloneTemplateTaskByCode(...args),
+  archiveActiveTemplateByCode: (...args: unknown[]) =>
+    archiveActiveTemplateByCode(...args),
   createTemplateTask: (...args: unknown[]) => createTemplateTask(...args),
 }));
 
@@ -45,6 +48,8 @@ describe("ensureTemplateForTaskCode", () => {
     findTemplateByCode.mockReset();
     findTemplateWithSubTasksByCode.mockReset();
     cloneTemplateTaskByCode.mockReset();
+    archiveActiveTemplateByCode.mockReset();
+    archiveActiveTemplateByCode.mockResolvedValue(true);
     createTemplateTask.mockReset();
     buildTemplateFromBoxPayload.mockReset();
     fetchBoxTemplateData.mockReset();
@@ -69,13 +74,82 @@ describe("ensureTemplateForTaskCode", () => {
       },
     });
 
-    expect(result).toEqual({ templateId: "cloned", source: "legacy" });
+    expect(result).toMatchObject({ templateId: "cloned", source: "legacy" });
+    expect(archiveActiveTemplateByCode).toHaveBeenCalledWith(
+      "20",
+      "Modelo arquivado devido a atualização de versão. " +
+        "Substituído pelo Modelo de código 30.",
+    );
     expect(createTemplateTask).not.toHaveBeenCalled();
+  });
+
+  it("skips archived ancestors and clones from the next active one", async () => {
+    findTemplateWithSubTasksByCode.mockImplementation(async (ancestorCode) => {
+      if (ancestorCode === "20") return null;
+      if (ancestorCode === "10") {
+        return {
+          template: { id: "legacy", code: "10", active: true },
+          subTasks: [{ id: "s1" }],
+        };
+      }
+      return null;
+    });
+    cloneTemplateTaskByCode.mockResolvedValue({ id: "cloned", code: "30" });
+
+    const result = await ensureTemplateForTaskCode({
+      code: "30",
+      fallbackName: "Box",
+      versions: ["10", "20"],
+    });
+
+    expect(result).toMatchObject({ templateId: "cloned", source: "legacy" });
+    expect(cloneTemplateTaskByCode).toHaveBeenCalledWith({
+      fromCode: "10",
+      toCode: "30",
+      name: "Box",
+    });
+    expect(archiveActiveTemplateByCode).toHaveBeenCalledWith(
+      "10",
+      "Modelo arquivado devido a atualização de versão. " +
+        "Substituído pelo Modelo de código 30.",
+    );
+  });
+
+  it("ignores archived shells for the current code", async () => {
+    findTemplateWithSubTasksByCode.mockResolvedValue(null);
+    findTemplateByCode.mockResolvedValue({
+      id: "archived-shell",
+      code: "30",
+      active: false,
+    });
+    buildTemplateFromBoxPayload.mockResolvedValue({
+      name: "X - Box",
+      code: "30",
+      subTask: [],
+    });
+    createTemplateTask.mockResolvedValue({ id: "new", code: "30" });
+
+    const result = await ensureTemplateForTaskCode({
+      code: "30",
+      fallbackName: "Box",
+      template: {
+        prodId: 30,
+        empresaNome: "X",
+        boxName: "Box",
+        subtasks: [],
+      },
+    });
+
+    expect(result).toMatchObject({ templateId: "new", source: "payload" });
   });
 
   it("reuses existing shell and ignores payload", async () => {
     findTemplateWithSubTasksByCode.mockResolvedValue(null);
-    findTemplateByCode.mockResolvedValue({ id: "shell", code: "30" });
+    findTemplateByCode.mockResolvedValue({
+      id: "shell",
+      code: "30",
+      active: true,
+    });
 
     const result = await ensureTemplateForTaskCode({
       code: "30",
@@ -88,7 +162,7 @@ describe("ensureTemplateForTaskCode", () => {
       },
     });
 
-    expect(result).toEqual({ templateId: "shell", source: "existing" });
+    expect(result).toMatchObject({ templateId: "shell", source: "existing" });
     expect(buildTemplateFromBoxPayload).not.toHaveBeenCalled();
   });
 
@@ -113,7 +187,7 @@ describe("ensureTemplateForTaskCode", () => {
       },
     });
 
-    expect(result).toEqual({ templateId: "new", source: "payload" });
+    expect(result).toMatchObject({ templateId: "new", source: "payload" });
   });
 
   it("fetches RBX when no payload and no existing template", async () => {
@@ -138,6 +212,6 @@ describe("ensureTemplateForTaskCode", () => {
     });
 
     expect(fetchBoxTemplateData).toHaveBeenCalledWith(30);
-    expect(result).toEqual({ templateId: "rbx-new", source: "rbx" });
+    expect(result).toMatchObject({ templateId: "rbx-new", source: "rbx" });
   });
 });

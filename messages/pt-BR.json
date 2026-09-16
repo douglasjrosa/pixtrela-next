@@ -29,8 +29,8 @@
     "ok": "OK",
     "yes": "Sim",
     "no": "Não",
-    "reasonMinLength": "Informe pelo menos 100 caracteres.",
-    "reasonMinLength50": "Informe pelo menos 50 caracteres.",
+    "reasonMinLength": "Informe pelo menos 30 caracteres.",
+    "reasonMinLength50": "Informe pelo menos 30 caracteres.",
     "archiveReason": {
       "label": "Motivo do arquivamento",
       "confirm": "Arquivar",
@@ -1005,6 +1005,7 @@
       "staff-home": "Início da equipe",
       "board": "Quadro",
       "tasks": "Tarefas",
+      "queues": "Filas",
       "templates": "Modelos",
       "teams": "Equipes",
       "awards": "Prêmios",

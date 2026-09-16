@@ -1,17 +1,23 @@
 import type { TemplateSubTaskComponentInput } from "@/lib/schemas/template-task";
 
-export const TEMPLATE_SARRAFOS_CUT_NAME = "Corte dos sarrafos da embalagem";
+export const TEMPLATE_SARRAFOS_CUT_NAME = "Corte dos sarrafos";
 
 /** Subtask name -> names of subtasks that must finish first (by index). */
 export const TEMPLATE_SUBTASK_DEPENDENCY_RULES: Readonly<
   Record<string, readonly string[]>
 > = {
   "Montagem dos pés": [
+    "Corte das vigas",
+    "Corte dos sarrafos",
     "Corte dos pés da base (viga)",
     "Corte dos pés da base (sarrafos)",
     "Corte dos pés da base",
   ],
-  "Montagem da base": ["Corte das tábuas da base", "Montagem dos pés"],
+  "Montagem da base": [
+    "Corte das tábuas",
+    "Corte das tábuas da base",
+    "Montagem dos pés",
+  ],
   "Montagem dos quadros das laterais": [TEMPLATE_SARRAFOS_CUT_NAME],
   "Montagem dos quadros das cabeceiras": [TEMPLATE_SARRAFOS_CUT_NAME],
   "Montagem dos quadros da tampa": [TEMPLATE_SARRAFOS_CUT_NAME],

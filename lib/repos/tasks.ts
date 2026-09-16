@@ -102,7 +102,7 @@ export async function createTask(
       const [template] = await tx
         .select()
         .from(templateTasks)
-        .where(eq(templateTasks.code, code))
+        .where(and(eq(templateTasks.code, code), eq(templateTasks.active, true)))
         .limit(1);
 
       if (template) {

@@ -8,7 +8,7 @@ describe("rbxSubTaskPresetsResponseSchema", () => {
       presets: [
         {
           id: "11111111-1111-4111-8111-111111111111",
-          name: "Corte dos sarrafos da embalagem",
+          name: "Corte dos sarrafos",
           sharingType: "duration",
           actionName: "Cortar sarrafo amarrado",
           actionUnitTime: 1.66,

@@ -12,26 +12,20 @@ export type RbxBoxTemplatePresetSeed = {
 export const RBX_BOX_TEMPLATE_PRESET_SEEDS: readonly RbxBoxTemplatePresetSeed[] =
   [
     {
-      name: "Corte dos pés da base (viga)",
+      name: "Corte dos sarrafos",
+      actionName: "Cortar sarrafo amarrado",
+      sharingType: "duration",
+      maxSameTimeWorkers: 1,
+    },
+    {
+      name: "Corte das vigas",
       actionName: "Cortar viga",
       sharingType: "duration",
       maxSameTimeWorkers: 1,
     },
     {
-      name: "Corte dos pés da base (sarrafos)",
+      name: "Corte das tábuas",
       actionName: "Cortar tábua",
-      sharingType: "duration",
-      maxSameTimeWorkers: 1,
-    },
-    {
-      name: "Corte das tábuas da base",
-      actionName: "Cortar tábua",
-      sharingType: "duration",
-      maxSameTimeWorkers: 1,
-    },
-    {
-      name: "Corte dos sarrafos da embalagem",
-      actionName: "Cortar sarrafo amarrado",
       sharingType: "duration",
       maxSameTimeWorkers: 1,
     },

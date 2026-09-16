@@ -12,7 +12,7 @@ const REASON_FIELD = "reasonForDeactivation" as const;
 
 /**
  * Builds a Zod schema for archive reason text.
- * Single-record archives use 100 chars; bulk (count >= 2) uses 50.
+ * Single-record and bulk archives require at least 30 chars.
  */
 export function archiveWithReasonSchema(recordCount: number) {
   const isBulk = recordCount >= 2;

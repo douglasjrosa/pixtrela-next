@@ -15,7 +15,7 @@ describe("refineDeactivationReason", () => {
         refineDeactivationReason(data.reason, ctx, ["reason"]);
       });
 
-    const result = schema.safeParse({ reason: "a".repeat(99) });
+    const result = schema.safeParse({ reason: "a".repeat(29) });
     expect(result.success).toBe(false);
     if (result.success) return;
     expect(result.error.issues[0]?.path).toEqual(["reason"]);

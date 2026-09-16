@@ -3,12 +3,14 @@ import { buildTemplateFromBoxPayload } from "@/lib/templates/build-template-from
 import type { BoxTemplateData } from "@/integrations/ribermax/rbx/rbx-types";
 import type { TemplateSubTaskComponentInput } from "@/lib/schemas/template-task";
 import {
+  archiveActiveTemplateByCode,
   cloneTemplateTaskByCode,
   createTemplateTask,
   findTemplateByCode,
   findTemplateWithSubTasksByCode,
   type TemplateSubTaskInput,
 } from "@/lib/repos/templates";
+import { buildTemplateVersionSupersededReason } from "@/lib/templates/template-version-superseded-reason";
 
 function dependencyIndexesFrom(
   dependencies: TemplateSubTaskComponentInput["dependencies"],
@@ -116,12 +118,16 @@ export async function ensureTemplateForTaskCode(input: {
       toCode: code,
       name: input.fallbackName,
     });
+    await archiveActiveTemplateByCode(
+      ancestorCode,
+      buildTemplateVersionSupersededReason(code),
+    );
     pushDebugStage(debugTrace, startedAt, "ensure_legacy_clone", ancestorCode);
     return { templateId: cloned.id, source: "legacy", debugTrace };
   }
 
   const existing = await findTemplateByCode(code);
-  if (existing) {
+  if (existing?.active) {
     pushDebugStage(debugTrace, startedAt, "ensure_existing_shell", code);
     return { templateId: existing.id, source: "existing", debugTrace };
   }
