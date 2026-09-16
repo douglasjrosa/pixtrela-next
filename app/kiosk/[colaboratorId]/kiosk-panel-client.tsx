@@ -268,13 +268,15 @@ export function KioskPanelClient({
   }
 
   const displayLiberadas = useMemo(
-    () =>
-      applyOptimisticStateToLiberadasSection(
+    () => ({
+      ...liberadas,
+      ...applyOptimisticStateToLiberadasSection(
         liberadas,
         displaySubTasks,
         displayOpenRuns,
         colaboratorId,
       ),
+    }),
     [colaboratorId, displayOpenRuns, displaySubTasks, liberadas],
   );
 
