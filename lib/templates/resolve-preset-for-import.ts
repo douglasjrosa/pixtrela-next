@@ -3,22 +3,10 @@ import {
   findSubTaskPresetById,
   findSubTaskPresetByName,
 } from "@/lib/repos/sub-task-presets";
+import { PRESET_NAME_ALIASES } from "@/lib/templates/preset-name-aliases";
+import { ensureRbxBoxTemplatePresetByImportName } from "@/lib/subtask-presets/rbx-box-template-presets";
 
-/** Canonical name → legacy preset names (prefer first match). */
-export const PRESET_NAME_ALIASES: Readonly<Record<string, readonly string[]>> = {
-  "Corte dos sarrafos": [
-    "Corte dos pés da base (sarrafos)",
-    "Corte dos sarrafos da embalagem",
-  ],
-  "Corte das vigas": ["Corte dos pés da base (viga)"],
-  "Corte das tábuas": ["Corte das tábuas da base"],
-  "Corte dos pés da base": [
-    "Corte das vigas",
-    "Corte dos sarrafos",
-    "Corte dos pés da base (viga)",
-    "Corte dos pés da base (sarrafos)",
-  ],
-};
+export { PRESET_NAME_ALIASES } from "@/lib/templates/preset-name-aliases";
 
 export async function resolvePresetByName(
   name: string,
@@ -48,5 +36,9 @@ export async function resolvePresetForImport(input: {
 
   const presetName = input.presetName?.trim() ?? "";
   if (!presetName) return null;
-  return resolvePresetByName(presetName);
+
+  const resolved = await resolvePresetByName(presetName);
+  if (resolved) return resolved;
+
+  return ensureRbxBoxTemplatePresetByImportName(presetName);
 }
