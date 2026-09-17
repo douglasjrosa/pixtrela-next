@@ -10,12 +10,21 @@ vi.mock("@/lib/repos/sub-task-presets", () => ({
     findSubTaskPresetByName(...args),
 }));
 
-vi.mock("@/lib/subtask-presets/rbx-box-template-presets", () => ({
-  ensureRbxBoxTemplatePresetByImportName: (...args: unknown[]) =>
-    ensureRbxBoxTemplatePresetByImportName(...args),
-}));
+vi.mock("@/lib/subtask-presets/rbx-box-template-presets", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("@/lib/subtask-presets/rbx-box-template-presets")
+  >();
+  return {
+    ...actual,
+    ensureRbxBoxTemplatePresetByImportName: (...args: unknown[]) =>
+      ensureRbxBoxTemplatePresetByImportName(...args),
+  };
+});
 
-import { resolvePresetForImport } from "./resolve-preset-for-import";
+import {
+  resolvePresetByName,
+  resolvePresetForImport,
+} from "./resolve-preset-for-import";
 
 const preset = {
   documentId: "p1",
@@ -56,6 +65,24 @@ describe("resolvePresetForImport", () => {
     });
     expect(result).toEqual(preset);
     expect(findSubTaskPresetByName).toHaveBeenCalledWith("Montagem dos pés");
+  });
+
+  it("resolves legacy RBX sub-task names to canonical presets", async () => {
+    findSubTaskPresetByName.mockImplementation(async (name: string) => {
+      if (name === "Corte dos sarrafos") {
+        return { ...preset, name: "Corte dos sarrafos", subTaskCategoryId: "cat-1" };
+      }
+      return null;
+    });
+
+    const result = await resolvePresetByName("Corte dos sarrafos da embalagem");
+
+    expect(result?.name).toBe("Corte dos sarrafos");
+    expect(result?.subTaskCategoryId).toBe("cat-1");
+    expect(findSubTaskPresetByName).toHaveBeenCalledWith(
+      "Corte dos sarrafos da embalagem",
+    );
+    expect(findSubTaskPresetByName).toHaveBeenCalledWith("Corte dos sarrafos");
   });
 
   it("seeds RBX catalog presets when lookup and aliases miss", async () => {

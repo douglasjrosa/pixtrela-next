@@ -90,6 +90,10 @@ import {
 import { formatMaterialFlagCode } from "@/lib/business/material-flag-code";
 import { buildDependencyFlagHintsForItem } from "@/lib/business/kiosk-dependency-flags";
 import {
+  loadPresetCategoryIdsBySubTaskName,
+  mergeSubTaskCategoryId,
+} from "@/lib/business/resolve-subtask-category-id";
+import {
   assertFinishFlagsAllowed,
   mergeFlagIds,
 } from "@/lib/business/subtask-material-flags";
@@ -228,16 +232,38 @@ async function attachKioskListingFlagFields(
     }
   }
 
+  const presetCategories = await loadPresetCategoryIdsBySubTaskName([
+    ...items.map((item) => item.name),
+    ...[...predecessorsById.values()].map((row) => row.name),
+  ]);
+
+  function withPresetCategory<
+    T extends { name: string; subTaskCategoryId?: string | null },
+  >(row: T): T {
+    return {
+      ...row,
+      subTaskCategoryId: mergeSubTaskCategoryId(
+        row.subTaskCategoryId,
+        presetCategories.get(row.name),
+      ),
+    };
+  }
+
+  for (const [id, row] of predecessorsById) {
+    predecessorsById.set(id, withPresetCategory(row));
+  }
+
   return items.map((item) => {
+    const enriched = withPresetCategory(item);
     const dependencyFlags = buildDependencyFlagHintsForItem(
-      item.dependencyIds ?? [],
+      enriched.dependencyIds ?? [],
       predecessorsById,
       codesBySubTask,
       flagsBySubTask,
     );
 
     return {
-      ...item,
+      ...enriched,
       assignedFlagCodes: codesBySubTask.get(item.documentId) ?? [],
       dependencyFlags,
       availableFlags: undefined,

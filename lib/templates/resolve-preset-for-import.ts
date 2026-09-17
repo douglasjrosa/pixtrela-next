@@ -4,17 +4,27 @@ import {
   findSubTaskPresetByName,
 } from "@/lib/repos/sub-task-presets";
 import { PRESET_NAME_ALIASES } from "@/lib/templates/preset-name-aliases";
-import { ensureRbxBoxTemplatePresetByImportName } from "@/lib/subtask-presets/rbx-box-template-presets";
+import {
+  canonicalRbxBoxImportPresetName,
+  ensureRbxBoxTemplatePresetByImportName,
+} from "@/lib/subtask-presets/rbx-box-template-presets";
 
 export { PRESET_NAME_ALIASES } from "@/lib/templates/preset-name-aliases";
 
 export async function resolvePresetByName(
   name: string,
 ): Promise<SubTaskPreset | null> {
-  const direct = await findSubTaskPresetByName(name);
+  const trimmed = name.trim();
+  const direct = await findSubTaskPresetByName(trimmed);
   if (direct) return direct;
 
-  for (const alias of PRESET_NAME_ALIASES[name] ?? []) {
+  const canonical = canonicalRbxBoxImportPresetName(trimmed);
+  if (canonical && canonical !== trimmed) {
+    const byCanonical = await findSubTaskPresetByName(canonical);
+    if (byCanonical) return byCanonical;
+  }
+
+  for (const alias of PRESET_NAME_ALIASES[trimmed] ?? []) {
     const found = await findSubTaskPresetByName(alias);
     if (found) return found;
   }

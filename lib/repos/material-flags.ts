@@ -8,6 +8,7 @@ import {
   subTasks,
 } from "@/drizzle/schema";
 import { formatMaterialFlagCode } from "@/lib/business/material-flag-code";
+import { resolveSubTaskCategoryId } from "@/lib/business/resolve-subtask-category-id";
 import { getDb, type Db } from "@/lib/db/client";
 import type { MaterialFlagFormInput, MaterialFlagListFilters } from "@/lib/schemas/material-flag";
 import { SETTINGS_ENTITY_LIST_PAGE_SIZE } from "@/lib/schemas/sub-task-category";
@@ -339,7 +340,23 @@ export async function resolveKioskMaterialFlagOptions(
   requiresMaterialFlagsOnFinish: boolean;
 }> {
   const hasDependents = await subTaskHasDependents(subTaskId, db);
-  const resolvedCategory = categoryId ?? null;
+  let resolvedCategory = categoryId ?? null;
+  if (!resolvedCategory) {
+    const [sub] = await db
+      .select({
+        name: subTasks.name,
+        categoryId: subTasks.subTaskCategoryId,
+      })
+      .from(subTasks)
+      .where(eq(subTasks.id, subTaskId))
+      .limit(1);
+    if (sub) {
+      resolvedCategory = await resolveSubTaskCategoryId(
+        sub.name,
+        sub.categoryId,
+      );
+    }
+  }
 
   if (!resolvedCategory) {
     return {
