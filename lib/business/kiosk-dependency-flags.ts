@@ -13,7 +13,7 @@ export function buildDependencyFlagHintsForItem(
   codesBySubTaskId: ReadonlyMap<string, readonly string[]>,
   flagsBySubTaskId: ReadonlyMap<
     string,
-    readonly Array<{ id: string; code: string }>
+    ReadonlyArray<{ id: string; code: string }>
   >,
 ): DependencyFlagHint[] {
   return dependencyIds
