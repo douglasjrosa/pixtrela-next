@@ -197,6 +197,7 @@ describe("kiosk optimistic start", () => {
     expect(next.producingUnits).toHaveLength(1);
     expect(next.producingUnits[0]).toMatchObject({
       type: "isolated",
+      showStart: false,
       subTask: {
         documentId: "st-1",
         status: "producing",

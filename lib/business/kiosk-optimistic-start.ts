@@ -327,7 +327,7 @@ export function applyOptimisticStateToLiberadasSection(
   }
 
   return {
-    producingUnits,
+    producingUnits: refreshPendingShowStart(producingUnits, queueContext),
     units: refreshPendingShowStart(pendingUnits, queueContext),
   };
 }
