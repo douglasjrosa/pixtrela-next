@@ -14,6 +14,7 @@ import {
   withBoardProgressPending,
 } from "@/lib/board/load-board-page-props";
 import type { SubtaskPaymentCurrency } from "@/lib/settings/load-currency-for-subtasks";
+import { loadSubTaskCategoryOptions } from "@/lib/subtasks/category-options";
 
 async function BoardWithProgress({
   steps,
@@ -23,6 +24,7 @@ async function BoardWithProgress({
   assignWarnMax,
   paymentCurrency,
   assigneePeople,
+  categoryOptions,
 }: {
   steps: KanbanStep[];
   columns: BoardColumnPage[];
@@ -31,6 +33,7 @@ async function BoardWithProgress({
   assignWarnMax: number;
   paymentCurrency: SubtaskPaymentCurrency;
   assigneePeople: { documentId: string; name: string }[];
+  categoryOptions: Awaited<ReturnType<typeof loadSubTaskCategoryOptions>>;
 }) {
   const loaded = await withBoardProgressLoaded(columns);
   return (
@@ -43,6 +46,7 @@ async function BoardWithProgress({
       assignedCountByColaboratorId={loaded.assignedCountByColaboratorId}
       paymentCurrency={paymentCurrency}
       assigneePeople={assigneePeople}
+      categoryOptions={categoryOptions}
     />
   );
 }
@@ -52,8 +56,13 @@ export default async function BoardPage() {
   const role = session?.user?.role as Role | undefined;
   const interactive = canMoveBoardTasks(role);
   const teamsLeaderId = role === "leader" ? session?.user?.id : undefined;
-  const { steps, columns, teams, assignWarnMax, paymentCurrency, assigneePeople } =
-    await loadBoardPageData({ interactive, teamsLeaderId });
+  const [
+    { steps, columns, teams, assignWarnMax, paymentCurrency, assigneePeople },
+    categoryOptions,
+  ] = await Promise.all([
+    loadBoardPageData({ interactive, teamsLeaderId }),
+    loadSubTaskCategoryOptions(),
+  ]);
 
   return (
     <div className={APP_BOARD_SHELL_CLASS}>
@@ -68,6 +77,7 @@ export default async function BoardPage() {
             assignedCountByColaboratorId={{}}
             paymentCurrency={paymentCurrency}
             assigneePeople={assigneePeople}
+            categoryOptions={categoryOptions}
           />
         }
       >
@@ -79,6 +89,7 @@ export default async function BoardPage() {
           assignWarnMax={assignWarnMax}
           paymentCurrency={paymentCurrency}
           assigneePeople={assigneePeople}
+          categoryOptions={categoryOptions}
         />
       </Suspense>
     </div>

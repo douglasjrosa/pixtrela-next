@@ -4,7 +4,9 @@ import { auth } from "@/auth";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { BackLink } from "@/components/navigation/back-link";
+import { SubTaskCategoryOptionsProvider } from "@/components/subtasks/subtask-category-options-context";
 import { TemplateEditor } from "@/components/templates/template-editor";
+import { loadSubTaskCategoryOptions } from "@/lib/subtasks/category-options";
 import { mapTemplateComponentsToRows } from "@/lib/business/template-subtask-map";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTemplates } from "@/lib/auth/permissions";
@@ -64,7 +66,10 @@ export default async function TemplateTaskDetailPage({ params }: PageProps) {
     return <ForbiddenMessage />;
   }
 
-  const template = await loadTemplate(documentId);
+  const [template, categoryOptions] = await Promise.all([
+    loadTemplate(documentId),
+    loadSubTaskCategoryOptions(),
+  ]);
 
   if (!template) {
     return (
@@ -81,11 +86,13 @@ export default async function TemplateTaskDetailPage({ params }: PageProps) {
     <section className="min-h-0 flex-1 space-y-8 overflow-y-auto">
       <BackLink href="/templates/tasks">{tCommon("back")}</BackLink>
 
-      <TemplateEditor
-        documentId={documentId}
-        template={{ name: template.name, code: template.code }}
-        initialSubtasks={subtasks}
-      />
+      <SubTaskCategoryOptionsProvider options={categoryOptions}>
+        <TemplateEditor
+          documentId={documentId}
+          template={{ name: template.name, code: template.code }}
+          initialSubtasks={subtasks}
+        />
+      </SubTaskCategoryOptionsProvider>
     </section>
   );
 }

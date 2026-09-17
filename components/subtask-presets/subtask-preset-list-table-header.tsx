@@ -19,6 +19,7 @@ export async function SubtaskPresetListTableHeader({
   showCheckboxColumn = false,
 }: SubtaskPresetListTableHeaderProps) {
   const tSubtasks = await getTranslations("subtasks");
+  const tSettings = await getTranslations("settings");
   const tCommon = await getTranslations("common");
 
   return (
@@ -55,6 +56,7 @@ export async function SubtaskPresetListTableHeader({
           filters={filters}
           align="center"
         />
+        <th className="py-2 text-center">{tSettings("subTaskCategory")}</th>
       </tr>
     </thead>
   );

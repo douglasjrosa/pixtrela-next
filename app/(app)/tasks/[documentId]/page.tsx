@@ -8,7 +8,9 @@ import type {
   SubTaskRow,
   TeamAssignmentOption,
 } from "@/components/subtasks/subtask-manager";
+import { SubTaskCategoryOptionsProvider } from "@/components/subtasks/subtask-category-options-context";
 import { TaskDetailEditor } from "@/components/tasks/task-detail-editor";
+import { loadSubTaskCategoryOptions } from "@/lib/subtasks/category-options";
 import type { StepOption, TaskRow } from "@/components/tasks/task-manager";
 import type { Role } from "@/lib/auth/nav";
 import {
@@ -143,11 +145,12 @@ export default async function TaskDetailPage({ params }: PageProps) {
     return <ForbiddenMessage />;
   }
 
-  const [task, steps, subtasks, teams] = await Promise.all([
+  const [task, steps, subtasks, teams, categoryOptions] = await Promise.all([
     loadTask(documentId),
     loadSteps(),
     loadSubTasks(documentId),
     loadTeamsForAssignment(),
+    loadSubTaskCategoryOptions(),
   ]);
 
   if (!task) {
@@ -189,17 +192,19 @@ export default async function TaskDetailPage({ params }: PageProps) {
     <section className="space-y-8 p-6">
       <BackLink href="/tasks">{tCommon("back")}</BackLink>
 
-      <TaskDetailEditor
-        task={task}
-        steps={steps}
-        subtasks={subtasks}
-        teams={teams}
-        loadSessions={loadSubTaskSessionsAction}
-        onCreateSubTask={handleCreate}
-        onUpdateSubTask={handleUpdateSubTask}
-        onReorderSubTasks={handleReorder}
-        onDeleteSubTask={handleDeleteSubTask}
-      />
+      <SubTaskCategoryOptionsProvider options={categoryOptions}>
+        <TaskDetailEditor
+          task={task}
+          steps={steps}
+          subtasks={subtasks}
+          teams={teams}
+          loadSessions={loadSubTaskSessionsAction}
+          onCreateSubTask={handleCreate}
+          onUpdateSubTask={handleUpdateSubTask}
+          onReorderSubTasks={handleReorder}
+          onDeleteSubTask={handleDeleteSubTask}
+        />
+      </SubTaskCategoryOptionsProvider>
     </section>
   );
 }

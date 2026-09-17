@@ -18,6 +18,7 @@ import {
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { loadSubtaskPresetListPage } from "@/lib/subtask-presets/load-subtask-preset-list-page";
 import { parseSubtaskPresetListSearchParams } from "@/lib/subtask-presets/subtask-preset-list-params";
+import { loadSubTaskCategoryOptions } from "@/lib/subtasks/category-options";
 
 interface TemplateSubtasksPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -42,6 +43,7 @@ export default async function TemplateSubtasksPage({
   const bulkEnabled = canDeactivate || canDelete;
   const showCheckboxColumn = bulkEnabled;
 
+  const categoryOptions = await loadSubTaskCategoryOptions();
   const pageResult = await loadSubtaskPresetListPage(filters, 1).catch(
     (error) => {
       rethrowIfNavigationError(error);
@@ -78,7 +80,7 @@ export default async function TemplateSubtasksPage({
   }
 
   return (
-    <SubTaskPresetManager>
+    <SubTaskPresetManager categoryOptions={categoryOptions}>
       <div className={APP_LIST_PAGE_STACK_CLASS}>
         <Suspense fallback={null}>
           <SubtaskPresetsToolbar />

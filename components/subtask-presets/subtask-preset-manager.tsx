@@ -15,10 +15,14 @@ import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { SubTaskPresetFormInput } from "@/lib/schemas/sub-task-preset";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
+import { SubTaskCategoryOptionsProvider } from "@/components/subtasks/subtask-category-options-context";
+import type { SubTaskCategoryOption } from "@/lib/subtasks/category-options";
+
 import { SubTaskPresetListProvider } from "./subtask-preset-list-context";
 
 export interface SubTaskPresetManagerProps {
   children: ReactNode;
+  categoryOptions: SubTaskCategoryOption[];
 }
 
 const EMPTY_FORM: SubTaskPresetFormInput = {
@@ -34,7 +38,10 @@ type ModalState =
   | { mode: "create" }
   | { mode: "edit"; preset: SubTaskPreset };
 
-export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
+export function SubTaskPresetManager({
+  children,
+  categoryOptions,
+}: SubTaskPresetManagerProps) {
   const tCommon = useTranslations("common");
   const tPresets = useTranslations("subTaskPresets");
   const router = useRouter();
@@ -89,12 +96,13 @@ export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
   const actionName = modal.mode === "edit" ? modal.preset.actionName : "";
 
   return (
-    <SubTaskPresetListProvider
-      openEdit={(preset) => setModal({ mode: "edit", preset })}
-    >
-      {children}
+    <SubTaskCategoryOptionsProvider options={categoryOptions}>
+      <SubTaskPresetListProvider
+        openEdit={(preset) => setModal({ mode: "edit", preset })}
+      >
+        {children}
 
-      <SubTaskPresetFormModal
+        <SubTaskPresetFormModal
         open={modal.mode !== "closed"}
         title={modal.mode === "edit" ? tCommon("edit") : tPresets("new")}
         formId={formId}
@@ -103,8 +111,8 @@ export function SubTaskPresetManager({ children }: SubTaskPresetManagerProps) {
         saving={isPending}
         onClose={closeModal}
         onSave={handleSave}
-      />
-
-    </SubTaskPresetListProvider>
+        />
+      </SubTaskPresetListProvider>
+    </SubTaskCategoryOptionsProvider>
   );
 }

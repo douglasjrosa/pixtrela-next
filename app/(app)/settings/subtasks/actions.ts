@@ -20,10 +20,10 @@ import {
 import {
   createSubTaskCategory,
   deleteSubTaskCategory,
-  listAllSubTaskCategories,
   listSubTaskCategories,
   updateSubTaskCategory,
 } from "@/lib/repos/sub-task-categories";
+import { loadSubTaskCategoryOptions } from "@/lib/subtasks/category-options";
 import {
   materialFlagBulkCreateSchema,
   materialFlagFormSchema,
@@ -128,6 +128,5 @@ export async function listCategoryOptions(): Promise<
   ) {
     throw new Error("forbidden");
   }
-  const rows = await listAllSubTaskCategories();
-  return rows.map((row) => ({ id: row.id, name: row.name }));
+  return loadSubTaskCategoryOptions();
 }

@@ -55,6 +55,7 @@ export function SubtaskPresetListTableFrame({
   const tTemplates = useTranslations("templates");
   const tCommon = useTranslations("common");
   const tSharing = useTranslations("subtasks.sharingType");
+  const tSettings = useTranslations("settings");
   const router = useRouter();
   const filterKey = subtaskPresetListFilterKey(filters);
   const bulkEnabled = canDeactivate || canDelete;
@@ -95,6 +96,9 @@ export function SubtaskPresetListTableFrame({
     return {
       sharingType: tSharing(preset.sharingType),
       actionName: preset.actionName,
+      categoryName: preset.subTaskCategoryName?.trim()
+        ? preset.subTaskCategoryName
+        : tSettings("noCategory"),
       inactive: tTemplates("inactive"),
       selectRow: tCommon("selectRow", { name: preset.name }),
     };

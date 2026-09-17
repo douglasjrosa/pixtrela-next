@@ -1,40 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { listCategoryOptions } from "@/app/(app)/settings/subtasks/actions";
 import { Label } from "@/components/ui/label";
+import type { SubTaskCategoryOption } from "@/lib/subtasks/category-options";
 import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
 
-export type SubTaskCategoryOption = {
-  id: string;
-  name: string;
-};
+import { useSubTaskCategoryOptions } from "./subtask-category-options-context";
+
+export type { SubTaskCategoryOption };
 
 export function SubTaskCategorySelect({
   id,
   value,
+  options,
   disabled,
   onChange,
 }: {
   id: string;
   value: string | null | undefined;
+  /** When omitted, uses options from SubTaskCategoryOptionsProvider. */
+  options?: SubTaskCategoryOption[];
   disabled?: boolean;
   onChange: (next: string | null) => void;
 }) {
   const t = useTranslations("settings");
-  const [options, setOptions] = useState<SubTaskCategoryOption[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void listCategoryOptions().then((next) => {
-      if (!cancelled) setOptions(next);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const contextOptions = useSubTaskCategoryOptions();
+  const resolvedOptions = options ?? contextOptions;
 
   return (
     <div className="space-y-2">
@@ -47,7 +39,7 @@ export function SubTaskCategorySelect({
         onChange={(event) => onChange(event.target.value || null)}
       >
         <option value="">{t("noCategory")}</option>
-        {options.map((option) => (
+        {resolvedOptions.map((option) => (
           <option key={option.id} value={option.id}>
             {option.name}
           </option>

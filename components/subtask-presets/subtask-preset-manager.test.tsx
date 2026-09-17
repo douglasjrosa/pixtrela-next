@@ -52,7 +52,7 @@ const presets: SubTaskPreset[] = [sampleSubTaskPreset()];
 
 function renderManagerWithRow() {
   return renderWithIntl(
-    <SubTaskPresetManager>
+    <SubTaskPresetManager categoryOptions={[]}>
       <table>
         <tbody>
           <SubtaskPresetListRowPresentational
@@ -61,6 +61,7 @@ function renderManagerWithRow() {
             labels={{
               sharingType: "Por quantidade",
               actionName: "Grampear quadro",
+              categoryName: "Sem categoria",
               inactive: "Inativo",
               selectRow: "Selecionar Corte",
             }}

@@ -1,6 +1,10 @@
 import { and, asc, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 
-import { factoryActions, subTaskPresets } from "@/drizzle/schema";
+import {
+  factoryActions,
+  subTaskCategories,
+  subTaskPresets,
+} from "@/drizzle/schema";
 import { parseActionUnitTime } from "@/lib/business/factory-action";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
@@ -18,6 +22,7 @@ type PresetJoinRow = {
   sharingType: "qty" | "duration";
   maxSameTimeWorkers: number;
   subTaskCategoryId: string | null;
+  subTaskCategoryName: string | null;
   active: boolean;
   actionId: string;
   actionName: string;
@@ -36,6 +41,7 @@ function mapPresetRow(row: PresetJoinRow): SubTaskPreset {
     actionUnitTime: parseActionUnitTime(row.actionUnitTime),
     actionQtyQuestion: row.actionQtyQuestion,
     subTaskCategoryId: row.subTaskCategoryId,
+    subTaskCategoryName: row.subTaskCategoryName,
     active: row.active,
   };
 }
@@ -46,6 +52,7 @@ const PRESET_SELECT = {
   sharingType: subTaskPresets.sharingType,
   maxSameTimeWorkers: subTaskPresets.maxSameTimeWorkers,
   subTaskCategoryId: subTaskPresets.subTaskCategoryId,
+  subTaskCategoryName: subTaskCategories.name,
   active: subTaskPresets.active,
   actionId: factoryActions.id,
   actionName: factoryActions.name,
@@ -95,6 +102,10 @@ export async function searchSubTaskPresetsByName(
     .select(PRESET_SELECT)
     .from(subTaskPresets)
     .innerJoin(factoryActions, eq(subTaskPresets.actionId, factoryActions.id))
+    .leftJoin(
+      subTaskCategories,
+      eq(subTaskPresets.subTaskCategoryId, subTaskCategories.id),
+    )
     .where(
       and(
         eq(subTaskPresets.active, true),
@@ -114,6 +125,10 @@ export async function findSubTaskPresetByName(
     .select(PRESET_SELECT)
     .from(subTaskPresets)
     .innerJoin(factoryActions, eq(subTaskPresets.actionId, factoryActions.id))
+    .leftJoin(
+      subTaskCategories,
+      eq(subTaskPresets.subTaskCategoryId, subTaskCategories.id),
+    )
     .where(
       and(
         eq(subTaskPresets.name, name.trim()),
@@ -132,6 +147,10 @@ export async function findSubTaskPresetById(
     .select(PRESET_SELECT)
     .from(subTaskPresets)
     .innerJoin(factoryActions, eq(subTaskPresets.actionId, factoryActions.id))
+    .leftJoin(
+      subTaskCategories,
+      eq(subTaskPresets.subTaskCategoryId, subTaskCategories.id),
+    )
     .where(eq(subTaskPresets.id, id))
     .limit(1);
   return row ? mapPresetRow(row) : null;
@@ -144,6 +163,10 @@ export async function listSubTaskPresetsRepo(
     .select(PRESET_SELECT)
     .from(subTaskPresets)
     .innerJoin(factoryActions, eq(subTaskPresets.actionId, factoryActions.id))
+    .leftJoin(
+      subTaskCategories,
+      eq(subTaskPresets.subTaskCategoryId, subTaskCategories.id),
+    )
     .where(eq(subTaskPresets.active, true))
     .orderBy(asc(subTaskPresets.name))
     .limit(SUBTASK_PRESET_LIST_LIMIT);
@@ -176,6 +199,10 @@ export async function listSubTaskPresetsPaged(
     .select(PRESET_SELECT)
     .from(subTaskPresets)
     .innerJoin(factoryActions, eq(subTaskPresets.actionId, factoryActions.id))
+    .leftJoin(
+      subTaskCategories,
+      eq(subTaskPresets.subTaskCategoryId, subTaskCategories.id),
+    )
     .where(where)
     .orderBy(...subtaskPresetListOrderBy(sort))
     .limit(pageSize)

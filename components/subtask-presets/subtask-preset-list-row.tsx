@@ -21,11 +21,15 @@ export function SubtaskPresetListRowView({
   showCheckboxColumn = false,
 }: SubtaskPresetListRowProps) {
   const tSharing = useTranslations("subtasks.sharingType");
+  const tSettings = useTranslations("settings");
   const tTemplates = useTranslations("templates");
   const tCommon = useTranslations("common");
   const labels: SubtaskPresetListRowLabels = {
     sharingType: tSharing(preset.sharingType),
     actionName: preset.actionName,
+    categoryName: preset.subTaskCategoryName?.trim()
+      ? preset.subTaskCategoryName
+      : tSettings("noCategory"),
     inactive: tTemplates("inactive"),
     selectRow: tCommon("selectRow", { name: preset.name }),
   };

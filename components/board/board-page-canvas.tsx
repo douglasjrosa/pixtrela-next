@@ -1,6 +1,8 @@
 "use client";
 
 import { BoardLiveProgress } from "@/components/board/board-live-progress";
+import { SubTaskCategoryOptionsProvider } from "@/components/subtasks/subtask-category-options-context";
+import type { SubTaskCategoryOption } from "@/lib/subtasks/category-options";
 import type { BoardActionsProps } from "@/components/board/board-actions";
 import type { KanbanStep } from "@/components/kanban/types";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
@@ -77,6 +79,7 @@ export function BoardPageCanvas({
   assignedCountByColaboratorId,
   paymentCurrency,
   assigneePeople,
+  categoryOptions = [],
   actions = DEFAULT_BOARD_ACTIONS,
 }: {
   steps: KanbanStep[];
@@ -87,10 +90,12 @@ export function BoardPageCanvas({
   assignedCountByColaboratorId: Record<string, number>;
   paymentCurrency: SubtaskPaymentCurrency;
   assigneePeople: { documentId: string; name: string }[];
+  categoryOptions?: SubTaskCategoryOption[];
   actions?: BoardCanvasActions;
 }) {
   return (
-    <BoardLiveProgress
+    <SubTaskCategoryOptionsProvider options={categoryOptions}>
+      <BoardLiveProgress
       columns={columns}
       steps={steps}
       teams={teams}
@@ -113,6 +118,7 @@ export function BoardPageCanvas({
       linkSubtask={actions.updateBoardSubtaskLink}
       createSubtask={actions.createBoardSubtask}
       releaseSubtaskFlags={actions.releaseBoardSubTaskFlags}
-    />
+      />
+    </SubTaskCategoryOptionsProvider>
   );
 }

@@ -20,6 +20,7 @@ import {
   withBoardProgressPending,
 } from "@/lib/board/load-board-page-props";
 import type { SubtaskPaymentCurrency } from "@/lib/settings/load-currency-for-subtasks";
+import { loadSubTaskCategoryOptions } from "@/lib/subtasks/category-options";
 
 import * as kioskBoard from "./actions";
 
@@ -84,6 +85,7 @@ async function KioskBoardWithProgress({
   assignWarnMax,
   paymentCurrency,
   assigneePeople,
+  categoryOptions,
   actions,
 }: {
   steps: KanbanStep[];
@@ -93,6 +95,7 @@ async function KioskBoardWithProgress({
   assignWarnMax: number;
   paymentCurrency: SubtaskPaymentCurrency;
   assigneePeople: { documentId: string; name: string }[];
+  categoryOptions: Awaited<ReturnType<typeof loadSubTaskCategoryOptions>>;
   actions: BoardCanvasActions;
 }) {
   const loaded = await withBoardProgressLoaded(columns);
@@ -106,6 +109,7 @@ async function KioskBoardWithProgress({
       assignedCountByColaboratorId={loaded.assignedCountByColaboratorId}
       paymentCurrency={paymentCurrency}
       assigneePeople={assigneePeople}
+      categoryOptions={categoryOptions}
       actions={actions}
     />
   );
@@ -120,8 +124,13 @@ export default async function KioskStaffBoardPage({ params }: PageProps) {
 
   const interactive = canKioskStaffAccessBoard(actor.staffRole);
   const teamsLeaderId = actor.staffRole === "leader" ? actor.staffUserId : undefined;
-  const { steps, columns, teams, assignWarnMax, paymentCurrency, assigneePeople } =
-    await loadBoardPageData({ interactive, teamsLeaderId });
+  const [
+    { steps, columns, teams, assignWarnMax, paymentCurrency, assigneePeople },
+    categoryOptions,
+  ] = await Promise.all([
+    loadBoardPageData({ interactive, teamsLeaderId }),
+    loadSubTaskCategoryOptions(),
+  ]);
   const actions = bindKioskBoardActions(userId);
 
   return (
@@ -138,6 +147,7 @@ export default async function KioskStaffBoardPage({ params }: PageProps) {
               assignedCountByColaboratorId={{}}
               paymentCurrency={paymentCurrency}
               assigneePeople={assigneePeople}
+              categoryOptions={categoryOptions}
               actions={actions}
             />
           }
@@ -150,6 +160,7 @@ export default async function KioskStaffBoardPage({ params }: PageProps) {
             assignWarnMax={assignWarnMax}
             paymentCurrency={paymentCurrency}
             assigneePeople={assigneePeople}
+            categoryOptions={categoryOptions}
             actions={actions}
           />
         </Suspense>

@@ -13,6 +13,7 @@ const CENTER_CELL_CLASS = "text-center";
 export type SubtaskPresetListRowLabels = {
   sharingType: string;
   actionName: string;
+  categoryName: string;
   inactive: string;
   selectRow: string;
 };
@@ -68,6 +69,7 @@ export function SubtaskPresetListRowPresentational({
         <td className="py-2">{nameCell}</td>
         <td className={CENTER_CELL_CLASS}>{labels.sharingType}</td>
         <td className={CENTER_CELL_CLASS}>{labels.actionName}</td>
+        <td className={CENTER_CELL_CLASS}>{labels.categoryName}</td>
       </tr>
     );
   }
@@ -86,6 +88,7 @@ export function SubtaskPresetListRowPresentational({
           <div className="text-base font-medium">{nameCell}</div>
           <div className="text-muted-foreground text-sm">{labels.sharingType}</div>
           <div className="text-muted-foreground text-sm">{labels.actionName}</div>
+          <div className="text-muted-foreground text-sm">{labels.categoryName}</div>
         </div>
       </div>
     </li>
