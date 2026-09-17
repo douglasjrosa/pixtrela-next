@@ -135,11 +135,11 @@ export function KioskSubtaskPanel({
         const helperMode = unit.helperMode;
         const finished = isFinishedSubTask(subTask);
         const locked = isLockedSubTask(subTask);
+        const isProducing = subTask.status === "producing";
         const showLockOverlay = locked;
         const showStart = !readOnly && unit.showStart && !isProducing;
         const showExit =
           !readOnly && shouldShowExitButton(queueContext, subTask);
-        const isProducing = subTask.status === "producing";
         const isExiting =
           exitingId === subTask.documentId && isProducing && onExit;
         const isFlashing = flashDocumentId === subTask.documentId;
