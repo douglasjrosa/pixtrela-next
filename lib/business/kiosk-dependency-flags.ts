@@ -21,8 +21,10 @@ export function buildDependencyFlagHintsForItem(
       const predecessor = predecessorsById.get(depId);
       const codes = [...(codesBySubTaskId.get(depId) ?? [])];
       const flags = [...(flagsBySubTaskId.get(depId) ?? [])];
+      const categoryId = predecessor?.subTaskCategoryId ?? null;
+      const missingCategory = !categoryId?.trim();
       const semBandeira = isSemBandeiraHint({
-        categoryId: predecessor?.subTaskCategoryId ?? null,
+        categoryId,
         status: predecessor?.status,
         assignedFlagCodes: codes,
       });
@@ -33,6 +35,7 @@ export function buildDependencyFlagHintsForItem(
         codes,
         flags,
         semBandeira,
+        missingCategory,
       };
     })
     .filter((hint): hint is NonNullable<typeof hint> => Boolean(hint));

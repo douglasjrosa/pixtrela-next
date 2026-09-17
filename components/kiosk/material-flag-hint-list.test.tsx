@@ -8,6 +8,8 @@ vi.mock("next-intl", () => ({
     const messages: Record<string, string> = {
       dependencyFlags: "Bandeiras",
       semBandeira: "Sem bandeira",
+      semBandeiraMissingCategoryInfo:
+        "Esta subtarefa ainda não possui categoria de bandeiras vinculada a ela.",
       releaseFlag: "Liberar",
       releaseFlags: "Liberar bandeiras",
     };
@@ -33,6 +35,27 @@ describe("MaterialFlagHintList", () => {
 
     expect(screen.getByText("C-3")).toHaveClass("font-bold");
     expect(screen.queryByRole("button", { name: "Liberar" })).not.toBeInTheDocument();
+  });
+
+  it("shows info icon when predecessor has no flag category", () => {
+    render(
+      <MaterialFlagHintList
+        dependencyFlags={[
+          {
+            predecessorName: "Corte",
+            codes: [],
+            semBandeira: true,
+            missingCategory: true,
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", {
+        name: "Esta subtarefa ainda não possui categoria de bandeiras vinculada a ela.",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("shows release action only when producing", () => {

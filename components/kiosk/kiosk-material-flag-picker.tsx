@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl";
 
 import type { MaterialFlagOption } from "@/lib/business/subtask-queue";
 
+import { SemBandeiraInfoBadge } from "./sem-bandeira-info-badge";
+
 export function KioskMaterialFlagPicker({
   flags,
   selectedIds,
@@ -45,12 +47,7 @@ export function KioskMaterialFlagPicker({
     return (
       <fieldset className="space-y-2">
         <legend className="text-base font-medium">{t("materialFlags")}</legend>
-        <span
-          aria-pressed
-          className="inline-flex rounded-full border border-primary bg-primary/10 px-3 py-1 text-sm"
-        >
-          {t("semBandeira")}
-        </span>
+        <SemBandeiraInfoBadge />
       </fieldset>
     );
   }

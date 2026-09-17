@@ -6,6 +6,8 @@ import { useTranslations } from "next-intl";
 import type { DependencyFlagHint } from "@/lib/business/subtask-queue";
 import { cn } from "@/lib/utils";
 
+import { SemBandeiraInfoBadge } from "./sem-bandeira-info-badge";
+
 function MaterialFlagBadge({
   code,
   children,
@@ -67,11 +69,20 @@ export function MaterialFlagHintList({
         const key = hint.predecessorId ?? hint.predecessorName;
         if (hint.semBandeira) {
           return (
-            <p key={key} className="text-sm text-muted-foreground">
-              {t("dependencyFlags")}: {hint.predecessorName} ·{" "}
-              <span className="rounded-full border bg-muted px-2 py-0.5 text-xs">
-                {t("semBandeira")}
+            <p
+              key={key}
+              className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground"
+            >
+              <span>
+                {t("dependencyFlags")}: {hint.predecessorName} ·
               </span>
+              {hint.missingCategory ? (
+                <SemBandeiraInfoBadge />
+              ) : (
+                <span className="rounded-full border bg-muted px-2 py-0.5 text-xs">
+                  {t("semBandeira")}
+                </span>
+              )}
             </p>
           );
         }

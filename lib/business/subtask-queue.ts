@@ -13,6 +13,8 @@ export type DependencyFlagHint = {
   codes: string[];
   flags?: Array<{ id: string; code: string }>;
   semBandeira?: boolean;
+  /** True when the predecessor sub-task has no linked flag category. */
+  missingCategory?: boolean;
 };
 
 const DEFAULT_ACTIVATION_STATUS: ActivationStatus = "locked";

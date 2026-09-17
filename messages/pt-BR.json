@@ -1217,6 +1217,7 @@
     "materialFlagHint": "Marque as bandeiras colocadas no palete ou carrinho.",
     "materialFlagsUnavailable": "Nenhuma bandeira livre no momento.",
     "semBandeira": "Sem bandeira",
+    "semBandeiraMissingCategoryInfo": "Esta subtarefa ainda não possui categoria de bandeiras vinculada a ela.",
     "refreshFlags": "Atualizar bandeiras",
     "releaseFlag": "Liberar",
     "releaseFlags": "Liberar bandeiras",

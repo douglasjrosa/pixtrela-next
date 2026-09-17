@@ -4,6 +4,7 @@ import {
   activities,
   currencies,
   currencyForSubtasks,
+  flags,
   subTaskAssignees,
   subTaskDependencies,
   subTasks,
@@ -90,12 +91,9 @@ import {
 import { formatMaterialFlagCode } from "@/lib/business/material-flag-code";
 import { buildDependencyFlagHintsForItem } from "@/lib/business/kiosk-dependency-flags";
 import {
-  loadPresetCategoryIdsBySubTaskName,
-  mergeSubTaskCategoryId,
-} from "@/lib/business/resolve-subtask-category-id";
-import {
   assertFinishFlagsAllowed,
   mergeFlagIds,
+  resolveCategoryIdFromFlagCategories,
 } from "@/lib/business/subtask-material-flags";
 import {
   attachHelperStartToOpenRun,
@@ -232,38 +230,16 @@ async function attachKioskListingFlagFields(
     }
   }
 
-  const presetCategories = await loadPresetCategoryIdsBySubTaskName([
-    ...items.map((item) => item.name),
-    ...[...predecessorsById.values()].map((row) => row.name),
-  ]);
-
-  function withPresetCategory<
-    T extends { name: string; subTaskCategoryId?: string | null },
-  >(row: T): T {
-    return {
-      ...row,
-      subTaskCategoryId: mergeSubTaskCategoryId(
-        row.subTaskCategoryId,
-        presetCategories.get(row.name),
-      ),
-    };
-  }
-
-  for (const [id, row] of predecessorsById) {
-    predecessorsById.set(id, withPresetCategory(row));
-  }
-
   return items.map((item) => {
-    const enriched = withPresetCategory(item);
     const dependencyFlags = buildDependencyFlagHintsForItem(
-      enriched.dependencyIds ?? [],
+      item.dependencyIds ?? [],
       predecessorsById,
       codesBySubTask,
       flagsBySubTask,
     );
 
     return {
-      ...enriched,
+      ...item,
       assignedFlagCodes: codesBySubTask.get(item.documentId) ?? [],
       dependencyFlags,
       availableFlags: undefined,
@@ -1232,7 +1208,17 @@ export async function stopSubTask(
   const existingFlagIds = await listFlagIdsForSubTask(subTaskId, db);
   const mergedFlagIds = mergeFlagIds(existingFlagIds, flagIds);
   const hasDependents = await subTaskHasDependents(subTaskId, db);
-  const categoryForFinish = sub.subTaskCategoryId ?? null;
+  let categoryForFinish = sub.subTaskCategoryId ?? null;
+  if (!categoryForFinish && flagIds.length > 0) {
+    const flagRows = await db
+      .select({ categoryId: flags.subTaskCategoryId })
+      .from(flags)
+      .where(inArray(flags.id, flagIds));
+    categoryForFinish = resolveCategoryIdFromFlagCategories(
+      null,
+      flagRows.map((row) => row.categoryId),
+    );
+  }
   let availableCount = 0;
   if (categoryForFinish) {
     const available = await listAvailableFlagsForCategory(

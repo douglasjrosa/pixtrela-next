@@ -27,6 +27,7 @@ describe("buildDependencyFlagHintsForItem", () => {
         codes: ["C-3"],
         flags: [{ id: "flag-1", code: "C-3" }],
         semBandeira: false,
+        missingCategory: false,
       },
     ]);
   });
@@ -42,5 +43,6 @@ describe("buildDependencyFlagHintsForItem", () => {
     );
 
     expect(hints[0]?.semBandeira).toBe(true);
+    expect(hints[0]?.missingCategory).toBe(true);
   });
 });

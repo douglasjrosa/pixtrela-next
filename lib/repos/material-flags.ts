@@ -8,7 +8,7 @@ import {
   subTasks,
 } from "@/drizzle/schema";
 import { formatMaterialFlagCode } from "@/lib/business/material-flag-code";
-import { resolveSubTaskCategoryId } from "@/lib/business/resolve-subtask-category-id";
+import { resolveCategoryIdFromFlagCategories } from "@/lib/business/subtask-material-flags";
 import { getDb, type Db } from "@/lib/db/client";
 import type { MaterialFlagFormInput, MaterialFlagListFilters } from "@/lib/schemas/material-flag";
 import { SETTINGS_ENTITY_LIST_PAGE_SIZE } from "@/lib/schemas/sub-task-category";
@@ -278,7 +278,6 @@ export async function assignFlagsToSubTask(
     .where(eq(subTasks.id, subTaskId))
     .limit(1);
   if (!sub) throw new Error("notFound");
-  if (!sub.categoryId) throw new Error("subTaskHasNoCategory");
 
   const rows = await db
     .select({
@@ -288,7 +287,21 @@ export async function assignFlagsToSubTask(
     .from(flags)
     .where(inArray(flags.id, uniqueIds));
   if (rows.length !== uniqueIds.length) throw new Error("flagNotFound");
-  if (rows.some((row) => row.categoryId !== sub.categoryId)) {
+
+  const resolvedCategory = resolveCategoryIdFromFlagCategories(
+    sub.categoryId,
+    rows.map((row) => row.categoryId),
+  );
+  if (!resolvedCategory) throw new Error("subTaskHasNoCategory");
+
+  if (!sub.categoryId) {
+    await db
+      .update(subTasks)
+      .set({ subTaskCategoryId: resolvedCategory, updatedAt: new Date() })
+      .where(eq(subTasks.id, subTaskId));
+  }
+
+  if (rows.some((row) => row.categoryId !== resolvedCategory)) {
     throw new Error("flagWrongCategory");
   }
 
@@ -340,23 +353,7 @@ export async function resolveKioskMaterialFlagOptions(
   requiresMaterialFlagsOnFinish: boolean;
 }> {
   const hasDependents = await subTaskHasDependents(subTaskId, db);
-  let resolvedCategory = categoryId ?? null;
-  if (!resolvedCategory) {
-    const [sub] = await db
-      .select({
-        name: subTasks.name,
-        categoryId: subTasks.subTaskCategoryId,
-      })
-      .from(subTasks)
-      .where(eq(subTasks.id, subTaskId))
-      .limit(1);
-    if (sub) {
-      resolvedCategory = await resolveSubTaskCategoryId(
-        sub.name,
-        sub.categoryId,
-      );
-    }
-  }
+  const resolvedCategory = categoryId ?? null;
 
   if (!resolvedCategory) {
     return {

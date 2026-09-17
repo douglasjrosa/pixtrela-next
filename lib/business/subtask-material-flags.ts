@@ -44,7 +44,7 @@ export function mergeFlagIds(
   return [...new Set([...existing, ...next].filter((id) => id.length > 0))];
 }
 
-/** Prefer stored category; otherwise first flag category (assign validation only). */
+/** Prefer stored category; otherwise first selected flag category. */
 export function resolveCategoryIdFromFlagCategories(
   categoryId: string | null | undefined,
   flagCategoryIds: readonly string[],
