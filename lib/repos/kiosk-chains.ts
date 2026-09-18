@@ -13,6 +13,15 @@ import {
   type ChainStopAnswer,
 } from "@/lib/business/subtask-chain-allocation";
 import {
+  DURATION_FINISHED_STOP_QTY,
+  chainExitMembersFromQueue,
+  dependencyEdgesWithinChain,
+  isDurationOnlySharing,
+  principalDeclaredFinishFromStopQty,
+  recomputeChainExitState,
+  validateChainStopCoherence,
+} from "@/lib/business/chain-exit-inference";
+import {
   calculateChainRunCredits,
   diffChainRunCredits,
 } from "@/lib/business/subtask-chain-credits";
@@ -32,6 +41,14 @@ import { getKioskSettings } from "@/lib/repos/settings";
 import { DEFAULT_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS } from "@/lib/schemas/kiosk-setting";
 import { hasOpenStartedSessionFromActions } from "@/lib/business/subtask-active-workers";
 import {
+  isQtyTargetFullyMet,
+  resolveDurationStop,
+  resolveKioskStopNextStatus,
+  resolveQtyStop,
+  shouldFinalizeSubTaskOnStop,
+} from "@/lib/business/kiosk-stop";
+import {
+  calculateQtySessionCurrency,
   resolveSubTaskTargetQty,
   toActivityCurrencyAward,
 } from "@/lib/domain/work-currency";
@@ -269,6 +286,106 @@ function hasOpenSession(
   return hasOpenStartedSessionFromActions(actions);
 }
 
+function pickChainJoinMember(
+  remaining: readonly ChainSubTask[],
+  colaboratorId: string,
+  siblings: readonly SubTaskWithAssignees[],
+  runRows: ChainActivityRow[],
+): ChainSubTask | null {
+  const sharingById = new Map(
+    siblings.map((row) => [row.id, row.sharingType === "qty" ? "qty" : "duration"]),
+  );
+  const qtyChain = remaining.some(
+    (item) => sharingById.get(item.documentId) === "qty",
+  );
+  const assigned = remaining.filter((item) =>
+    item.assignedToIds.includes(colaboratorId),
+  );
+  const withSpare = assigned.filter((item) => {
+    if (hasOpenSession(runRows, colaboratorId, item.documentId)) return false;
+    const openCount = countOpenWorkers(runRows, item.documentId);
+    return openCount < item.maxSameTimeWorkers;
+  });
+  const producing = withSpare.find((item) => item.status === PRODUCING_STATUS);
+  if (producing) return producing;
+  if (!qtyChain) return null;
+  return withSpare[0] ?? null;
+}
+
+function countOpenWorkers(
+  rows: ChainActivityRow[],
+  subTaskId: string,
+): number {
+  const ids = [
+    ...new Set(
+      rows
+        .filter((row) => row.subTaskId === subTaskId)
+        .map((row) => row.colaboratorId),
+    ),
+  ];
+  return ids.filter((id) => hasOpenSession(rows, id, subTaskId)).length;
+}
+
+function recordedQtyBySubTask(
+  rows: readonly ChainActivityRow[],
+): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const row of rows) {
+    if (row.action !== "stoped") continue;
+    map.set(row.subTaskId, (map.get(row.subTaskId) ?? 0) + Math.max(0, row.qty));
+  }
+  return map;
+}
+
+function colaboratorWorkedMemberIds(
+  rows: readonly ChainActivityRow[],
+  colaboratorId: string,
+): string[] {
+  return [
+    ...new Set(
+      rows
+        .filter(
+          (row) => row.colaboratorId === colaboratorId && row.action === "started",
+        )
+        .map((row) => row.subTaskId),
+    ),
+  ];
+}
+
+function mergeChainStopAnswers(
+  reconstructed: ChainStopMemberAnswer[],
+  incoming: ChainStopMemberAnswer[],
+): ChainStopMemberAnswer[] {
+  const byId = new Map(reconstructed.map((row) => [row.documentId, row]));
+  for (const answer of incoming) {
+    byId.set(answer.documentId, {
+      ...(byId.get(answer.documentId) ?? { documentId: answer.documentId }),
+      ...answer,
+    });
+  }
+  return [...byId.values()];
+}
+
+function othersStillActiveOnChain(
+  rows: ChainActivityRow[],
+  memberIds: readonly string[],
+  colaboratorId: string,
+): boolean {
+  for (const memberId of memberIds) {
+    const ids = [
+      ...new Set(
+        rows
+          .filter((row) => row.subTaskId === memberId)
+          .map((row) => row.colaboratorId),
+      ),
+    ];
+    if (ids.some((id) => id !== colaboratorId && hasOpenSession(rows, id, memberId))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export type OpenChainRunRef = {
   chainRunId: string;
   principalId: string;
@@ -295,30 +412,32 @@ export function resolveOpenChainRunFromActivityRows(
   }
 
   for (const [chainRunId, list] of byRun) {
-    const principal = list.find((row) => row.action === "started");
-    if (!principal) continue;
+    const firstStarted = list.find((row) => row.action === "started");
+    if (!firstStarted) continue;
 
-    const principalId = principal.colaboratorId;
-    const subTaskIds = new Set(
-      list
-        .filter((row) => row.colaboratorId === principalId)
-        .map((row) => row.subTaskId),
-    );
-    const hasOpenPrincipalSession = [...subTaskIds].some((subTaskId) => {
-      const actions = list
-        .filter(
-          (row) =>
-            row.colaboratorId === principalId && row.subTaskId === subTaskId,
-        )
-        .map((row) => row.action);
-      return hasOpenStartedSessionFromActions(actions);
+    const colaboratorIds = [...new Set(list.map((row) => row.colaboratorId))];
+    const hasOpenPeerSession = colaboratorIds.some((colaboratorId) => {
+      const subTaskIds = new Set(
+        list
+          .filter((row) => row.colaboratorId === colaboratorId)
+          .map((row) => row.subTaskId),
+      );
+      return [...subTaskIds].some((subTaskId) => {
+        const actions = list
+          .filter(
+            (row) =>
+              row.colaboratorId === colaboratorId && row.subTaskId === subTaskId,
+          )
+          .map((row) => row.action);
+        return hasOpenStartedSessionFromActions(actions);
+      });
     });
-    if (!hasOpenPrincipalSession) continue;
+    if (!hasOpenPeerSession) continue;
 
     return {
       chainRunId,
-      principalId,
-      runStartedAt: principal.timestamp,
+      principalId: firstStarted.colaboratorId,
+      runStartedAt: firstStarted.timestamp,
     };
   }
   return null;
@@ -401,10 +520,19 @@ export async function startChain(
   db: Db = getDb(),
   timestamp: Date = new Date(),
 ): Promise<{ chainRunId: string }> {
-  const { sub, items, chain, byId } = await loadChainContext(headId, db);
+  const { sub, items, chain, byId, siblings } = await loadChainContext(headId, db);
   const remaining = remainingExecutableMembers(chain, byId);
   if (remaining.length === 0) throw new Error("forbidden");
-  const startMember = remaining[0]!;
+  const assignedRemaining = remaining.filter((item) =>
+    item.assignedToIds.includes(colaboratorId),
+  );
+  const qtyChain = remaining.some((item) => {
+    const row = siblings.find((sibling) => sibling.id === item.documentId);
+    return row?.sharingType === "qty";
+  });
+  const startMember = qtyChain
+    ? (assignedRemaining[0] ?? remaining[0]!)
+    : remaining[0]!;
   if (
     chainHasExternalDependencyBlock(
       new Set(chain.memberIds),
@@ -422,7 +550,33 @@ export async function startChain(
     subTaskIds: chain.memberIds,
     db,
   });
-  if (open) throw new Error("forbidden");
+  if (open) {
+    const runRows = await loadRunActivities(open.chainRunId, db);
+    const joinMember = pickChainJoinMember(
+      remaining,
+      colaboratorId,
+      siblings,
+      runRows,
+    );
+    if (!joinMember) throw new Error("forbidden");
+    await db.transaction(async (tx) => {
+      await tx.insert(activities).values({
+        subTaskId: joinMember.documentId,
+        colaboratorId,
+        action: "started",
+        timestamp,
+        qty: 0,
+        currencyAwarded: 0,
+        chainRunId: open.chainRunId,
+      });
+      await tx
+        .update(subTasks)
+        .set({ status: PRODUCING_STATUS, updatedAt: timestamp })
+        .where(eq(subTasks.id, joinMember.documentId));
+      await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, timestamp);
+    });
+    return { chainRunId: open.chainRunId };
+  }
 
   const chainRunId = randomUUID();
   await db.transaction(async (tx) => {
@@ -453,9 +607,17 @@ export async function advanceChainRun(
   const runRows = await loadRunActivities(chainRunId, db);
   if (runRows.length === 0) return;
 
-  const { sub, chain, byId, principalId, runStartedAt } =
-    await resolveChainRunScope(runRows, db, { requireOpenPrincipal: true });
+  const { sub, chain, byId, runStartedAt, siblings } =
+    await resolveChainRunScope(runRows, db);
   const remaining = remainingExecutableMembers(chain, byId);
+  if (
+    remaining.some((item) => {
+      const row = siblings.find((sibling) => sibling.id === item.documentId);
+      return row?.sharingType === "qty";
+    })
+  ) {
+    return;
+  }
   const expectedById = new Map(
     (await listSubTasksWithRelationsForTask(sub.taskId, db)).map((row) => [
       row.id,
@@ -474,18 +636,33 @@ export async function advanceChainRun(
   });
   if (!advance.currentId) return;
 
-  const principalOpen = remaining.find((item) =>
-    hasOpenSession(runRows, principalId, item.documentId),
+  let actorId: string | null = null;
+  for (const item of remaining) {
+    const ids = [
+      ...new Set(
+        runRows
+          .filter((row) => row.subTaskId === item.documentId)
+          .map((row) => row.colaboratorId),
+      ),
+    ];
+    actorId =
+      ids.find((id) => hasOpenSession(runRows, id, item.documentId)) ?? null;
+    if (actorId) break;
+  }
+  if (!actorId) return;
+
+  const actorOpen = remaining.find((item) =>
+    hasOpenSession(runRows, actorId, item.documentId),
   );
-  const currentOpenId = principalOpen?.documentId ?? null;
+  const currentOpenId = actorOpen?.documentId ?? null;
   if (currentOpenId === advance.currentId) return;
 
   await db.transaction(async (tx) => {
     for (const completedId of advance.completedIds) {
-      if (hasOpenSession(runRows, principalId, completedId)) {
+      if (hasOpenSession(runRows, actorId, completedId)) {
         await tx.insert(activities).values({
           subTaskId: completedId,
-          colaboratorId: principalId,
+          colaboratorId: actorId,
           action: "stoped",
           timestamp: now,
           qty: 0,
@@ -502,7 +679,7 @@ export async function advanceChainRun(
         const helperOpen = runRows.some(
           (row) =>
             row.subTaskId === completedId &&
-            row.colaboratorId !== principalId &&
+            row.colaboratorId !== actorId &&
             hasOpenSession(runRows, row.colaboratorId, completedId),
         );
         await tx
@@ -517,11 +694,11 @@ export async function advanceChainRun(
 
     if (
       advance.currentId &&
-      !hasOpenSession(runRows, principalId, advance.currentId)
+      !hasOpenSession(runRows, actorId, advance.currentId)
     ) {
       await tx.insert(activities).values({
         subTaskId: advance.currentId,
-        colaboratorId: principalId,
+        colaboratorId: actorId,
         action: "started",
         timestamp: now,
         qty: 0,
@@ -617,6 +794,8 @@ async function applyCreditDeltas(
 type ReallocateChainRunHints = {
   preferredAnchorSubTaskId?: string;
   principalId?: string;
+  skipFinishFlagAssertion?: boolean;
+  requireOpenPrincipal?: boolean;
 };
 
 async function reallocateChainRunInternal(
@@ -631,7 +810,7 @@ async function reallocateChainRunInternal(
   const scope = await resolveChainRunScope(runRows, db, {
     preferredAnchorSubTaskId:
       hints?.preferredAnchorSubTaskId ?? answers[0]?.documentId,
-    requireOpenPrincipal: Boolean(hints?.principalId),
+    requireOpenPrincipal: hints?.requireOpenPrincipal === true,
   });
   const principalId = hints?.principalId ?? scope.principalId;
   const runStartedAt = scope.runStartedAt;
@@ -670,12 +849,34 @@ async function reallocateChainRunInternal(
     });
   }
 
+  const exitMembers = chainExitMembersFromQueue(
+    allocationMembers.map((allocation) => {
+      const chainMember = byId.get(allocation.documentId);
+      return {
+        documentId: allocation.documentId,
+        index: chainMember?.index ?? 0,
+        sharingType: allocation.sharingType,
+        targetQty: allocation.targetQty,
+        completedQty: allocation.completedQtyBefore,
+        dependencyIds: chainMember?.dependencyIds ?? [],
+      };
+    }),
+  );
+  validateChainStopCoherence(
+    exitMembers,
+    dependencyEdgesWithinChain(exitMembers),
+    answers,
+  );
+
   const finishedThisRun = allocationMembers.filter((member) =>
     isFinishedThisRun(member, answersById.get(member.documentId)),
   );
   const pendingIds = new Set(
     allocationMembers
-      .filter((member) => !isFinishedThisRun(member, answersById.get(member.documentId)))
+      .filter(
+        (member) =>
+          !isFinishedThisRun(member, answersById.get(member.documentId)),
+      )
       .map((member) => member.documentId),
   );
 
@@ -690,6 +891,13 @@ async function reallocateChainRunInternal(
     if (typeof answer.qty === "number") {
       qtyBySubTaskId[answer.documentId] = answer.qty;
     }
+  }
+  for (const member of allocationMembers) {
+    if (member.sharingType !== "duration") continue;
+    if (!isFinishedThisRun(member, answersById.get(member.documentId))) {
+      continue;
+    }
+    qtyBySubTaskId[member.documentId] = DURATION_FINISHED_STOP_QTY;
   }
   const planned = planPrincipalSegmentActivities({
     principalId,
@@ -821,13 +1029,18 @@ async function reallocateChainRunInternal(
     }
     finishFlagIdsByMember.set(member.documentId, flagIds);
 
-    assertFinishFlagsAllowed({
-      willFinish,
-      hasDependents,
-      categoryId: categoryForFinish,
-      totalFlagCount: mergedFlagIds.length,
-      availableCount,
-    });
+    const answer = answersById.get(member.documentId);
+    if (!hints?.skipFinishFlagAssertion) {
+      assertFinishFlagsAllowed({
+        willFinish,
+        hasDependents,
+        categoryId: categoryForFinish,
+        totalFlagCount: mergedFlagIds.length,
+        availableCount,
+        inferred: answer?.inferred,
+        semBandeira: answer?.semBandeira,
+      });
+    }
   }
 
   await db.transaction(async (tx) => {
@@ -965,6 +1178,228 @@ async function reallocateChainRunInternal(
   });
 }
 
+async function recordPeerChainExit(input: {
+  colaboratorId: string;
+  chainRunId: string;
+  answers: ChainStopMemberAnswer[];
+  timestamp: Date;
+  db: Db;
+  runRows: ChainActivityRow[];
+  scope: ChainRunScope;
+  othersStillActive: boolean;
+  workedMemberIds: readonly string[];
+}): Promise<void> {
+  const { sub, siblings, chain, byId, scopedRows } = input.scope;
+  const siblingById = new Map(siblings.map((row) => [row.id, row]));
+  const answersById = new Map(
+    input.answers.map((row) => [row.documentId, row]),
+  );
+  const recordedById = recordedQtyBySubTask(scopedRows);
+  const remaining = remainingExecutableMembers(chain, byId);
+  const formMembers =
+    remaining.length > 0
+      ? remaining
+      : chain.memberIds
+          .map((id) => byId.get(id))
+          .filter((item): item is NonNullable<typeof item> => item != null);
+
+  const [task] = await input.db
+    .select()
+    .from(tasks)
+    .where(eq(tasks.id, sub.taskId))
+    .limit(1);
+  if (!task) throw new Error("notFound");
+
+  const exitMembers: Parameters<typeof chainExitMembersFromQueue>[0] = [];
+  for (const member of formMembers) {
+    const row = siblingById.get(member.documentId);
+    if (!row) continue;
+    const completedQtyBefore = await sumStoppedQtyExcludingRun(
+      member.documentId,
+      input.chainRunId,
+      input.db,
+    );
+    exitMembers.push({
+      documentId: member.documentId,
+      index: member.index,
+      sharingType: row.sharingType === "qty" ? "qty" : "duration",
+      targetQty: resolveSubTaskTargetQty(row.qty),
+      completedQty: completedQtyBefore + (recordedById.get(member.documentId) ?? 0),
+      dependencyIds: member.dependencyIds ?? [],
+      recordedQtyThisRun: recordedById.get(member.documentId) ?? 0,
+    });
+  }
+  const mapped = chainExitMembersFromQueue(exitMembers);
+  validateChainStopCoherence(
+    mapped,
+    dependencyEdgesWithinChain(mapped),
+    input.answers,
+    {
+      workedMemberIds: input.workedMemberIds,
+      othersStillActive: input.othersStillActive,
+    },
+  );
+  const expected = recomputeChainExitState(
+    mapped,
+    dependencyEdgesWithinChain(mapped),
+    Object.fromEntries(input.answers.map((row) => [row.documentId, row])),
+    {
+      workedMemberIds: input.workedMemberIds,
+      othersStillActive: input.othersStillActive,
+    },
+  );
+
+  const membersToClose = formMembers.filter((member) =>
+    hasOpenSession(input.runRows, input.colaboratorId, member.documentId),
+  );
+  const currency = await resolvePaymentCurrency(input.db);
+
+  await input.db.transaction(async (tx) => {
+    for (const member of membersToClose) {
+      const row = siblingById.get(member.documentId);
+      if (!row) continue;
+      const answer =
+        answersById.get(member.documentId) ??
+        expected.answers[member.documentId];
+      const sharingType = row.sharingType === "qty" ? "qty" : "duration";
+      const sessionQty =
+        sharingType === "qty"
+          ? Math.max(0, answer?.qty ?? 0)
+          : answer?.completed === true
+            ? DURATION_FINISHED_STOP_QTY
+            : 0;
+      const remainingPeers =
+        countOpenWorkers(input.runRows, member.documentId) - 1;
+      const priorQty =
+        (await sumStoppedQtyExcludingRun(
+          member.documentId,
+          input.chainRunId,
+          tx as unknown as Db,
+        )) + (recordedById.get(member.documentId) ?? 0);
+      const targetQty = resolveSubTaskTargetQty(row.qty);
+      const baseStopResult =
+        sharingType === "qty"
+          ? resolveQtyStop(targetQty, priorQty, sessionQty)
+          : resolveDurationStop(answer?.completed === true);
+      const qtyTargetMet =
+        sharingType === "qty" &&
+        isQtyTargetFullyMet(targetQty, priorQty + sessionQty);
+      const wouldComplete =
+        !input.othersStillActive &&
+        remainingPeers <= 0 &&
+        shouldFinalizeSubTaskOnStop(baseStopResult, qtyTargetMet);
+      const resolved = resolveKioskStopNextStatus({
+        baseStopResult,
+        shouldFinalize: wouldComplete,
+        isHelper: false,
+        hasOpenRun: input.othersStillActive,
+        remainingPeerCount: Math.max(0, remainingPeers),
+      });
+      const nextStatus = resolved.nextStatus;
+      const openStart = [...input.runRows]
+        .reverse()
+        .find(
+          (activity) =>
+            activity.colaboratorId === input.colaboratorId &&
+            activity.subTaskId === member.documentId &&
+            activity.action === "started",
+        );
+      const sessionSeconds = openStart
+        ? elapsedSecondsBetween(openStart.timestamp, input.timestamp)
+        : 0;
+      const flagIds = answer?.flagIds ?? [];
+      const existingFlagIds = await listFlagIdsForSubTask(
+        member.documentId,
+        tx as unknown as Db,
+      );
+      const mergedFlagIds = mergeFlagIds(existingFlagIds, flagIds);
+      const hasDependents = await subTaskHasDependents(
+        member.documentId,
+        tx as unknown as Db,
+      );
+      let availableCount = 0;
+      const categoryForFinish = row.subTaskCategoryId ?? null;
+      if (categoryForFinish) {
+        const available = await listAvailableFlagsForCategory(
+          categoryForFinish,
+          member.documentId,
+          tx as unknown as Db,
+        );
+        availableCount = available.length;
+      }
+      assertFinishFlagsAllowed({
+        willFinish: nextStatus === FINISHED_STATUS,
+        hasDependents,
+        categoryId: categoryForFinish,
+        totalFlagCount: mergedFlagIds.length,
+        availableCount,
+        inferred: answer?.inferred,
+        semBandeira: answer?.semBandeira,
+      });
+
+      let currencyAwarded = 0;
+      if (
+        sharingType === "qty" &&
+        sessionQty > 0 &&
+        currency
+      ) {
+        currencyAwarded = calculateQtySessionCurrency(
+          {
+            expectedTime: row.expectedTime,
+            qty: row.qty,
+            taskQty: task.qty,
+            sharingType: "qty",
+          },
+          { sessionQty },
+          { currencyPerSecond: Number(currency.currencyPerSecond) },
+        );
+      }
+
+      await tx.insert(activities).values({
+        subTaskId: member.documentId,
+        colaboratorId: input.colaboratorId,
+        action: "stoped",
+        timestamp: input.timestamp,
+        qty: sessionQty,
+        currencyAwarded: toActivityCurrencyAward(currencyAwarded),
+        chainRunId: input.chainRunId,
+      });
+      await tx
+        .update(subTasks)
+        .set({
+          status: nextStatus,
+          timeSpent: row.timeSpent + sessionSeconds,
+          updatedAt: input.timestamp,
+        })
+        .where(eq(subTasks.id, member.documentId));
+      if (flagIds.length > 0) {
+        await assignFlagsToSubTask(
+          member.documentId,
+          flagIds,
+          tx as unknown as Db,
+        );
+      }
+      if (currencyAwarded !== 0) {
+        await applyCreditDeltas(
+          [{ colaboratorId: input.colaboratorId, delta: currencyAwarded }],
+          input.timestamp,
+          tx as unknown as Db,
+        );
+      }
+    }
+
+    await runTaskSubTaskSyncRoutine(
+      sub.taskId,
+      tx as unknown as Db,
+      input.timestamp,
+    );
+    await releaseProducerFlagsWhenConsumersFinished(
+      sub.taskId,
+      tx as unknown as Db,
+    );
+  });
+}
+
 export async function confirmChainStop(
   colaboratorId: string,
   chainRunId: string,
@@ -976,13 +1411,62 @@ export async function confirmChainStop(
   const anchorSubTaskId = answers[0]?.documentId ?? runRows[0]?.subTaskId;
   if (!anchorSubTaskId) throw new Error("notFound");
 
-  const { principalId } = await resolveChainRunScope(runRows, db, {
+  const scope = await resolveChainRunScope(runRows, db, {
     preferredAnchorSubTaskId: anchorSubTaskId,
   });
-  if (principalId !== colaboratorId) throw new Error("forbidden");
-  await reallocateChainRunInternal(chainRunId, answers, timestamp, db, 0, {
-    preferredAnchorSubTaskId: anchorSubTaskId,
-    principalId,
+  const { principalId, siblings, chain } = scope;
+  const hasOpen = chain.memberIds.some((id) =>
+    hasOpenSession(runRows, colaboratorId, id),
+  );
+  if (!hasOpen) throw new Error("forbidden");
+
+  const othersStillActive = othersStillActiveOnChain(
+    runRows,
+    chain.memberIds,
+    colaboratorId,
+  );
+  const workedMemberIds = colaboratorWorkedMemberIds(runRows, colaboratorId);
+  const sharingMembers = siblings
+    .filter((row) => chain.memberIds.includes(row.id))
+    .map((row) => ({
+      sharingType: (row.sharingType === "qty" ? "qty" : "duration") as const,
+    }));
+  const hasDurationCompleted = answers.some(
+    (answer) => typeof answer.completed === "boolean",
+  );
+
+  if (
+    isDurationOnlySharing(sharingMembers) &&
+    (hasDurationCompleted || !othersStillActive)
+  ) {
+    const merged = othersStillActive
+      ? answers
+      : mergeChainStopAnswers(
+          reconstructChainStopAnswersFromPrincipalStops(
+            chain.memberIds,
+            siblings,
+            scope.scopedRows,
+            principalId,
+          ),
+          answers,
+        );
+    await reallocateChainRunInternal(chainRunId, merged, timestamp, db, 0, {
+      preferredAnchorSubTaskId: anchorSubTaskId,
+      principalId,
+    });
+    return;
+  }
+
+  await recordPeerChainExit({
+    colaboratorId,
+    chainRunId,
+    answers,
+    timestamp,
+    db,
+    runRows,
+    scope,
+    othersStillActive,
+    workedMemberIds,
   });
 }
 
@@ -1006,30 +1490,49 @@ export async function reallocateChainRunAfterHelperStop(
     );
   const stopAt = principalLastStop?.timestamp ?? helperStoppedAt;
   const extra = elapsedSecondsBetween(stopAt, helperStoppedAt);
-  const answers: ChainStopMemberAnswer[] = [];
-  const finishedIds = new Set(
-    scopedRows
-      .filter((row) => row.action === "stoped" && row.colaboratorId === principalId)
-      .map((row) => row.subTaskId),
+  const answers = reconstructChainStopAnswersFromPrincipalStops(
+    scope.chain.memberIds,
+    scope.siblings,
+    scopedRows,
+    principalId,
   );
-  for (const subTaskId of finishedIds) {
-    const qty = scopedRows
-      .filter(
-        (row) =>
-          row.subTaskId === subTaskId &&
-          row.action === "stoped" &&
-          row.colaboratorId === principalId,
-      )
-      .reduce((sum, row) => sum + row.qty, 0);
-    answers.push({
-      documentId: subTaskId,
-      completed: true,
-      qty: qty > 0 ? qty : undefined,
-    });
-  }
   await reallocateChainRunInternal(chainRunId, answers, stopAt, db, extra, {
     preferredAnchorSubTaskId: answers[0]?.documentId,
     principalId,
+    skipFinishFlagAssertion: true,
+  });
+}
+
+function reconstructChainStopAnswersFromPrincipalStops(
+  memberIds: readonly string[],
+  siblings: readonly SubTaskWithAssignees[],
+  scopedRows: readonly ChainActivityRow[],
+  principalId: string,
+): ChainStopMemberAnswer[] {
+  const siblingById = new Map(siblings.map((row) => [row.id, row]));
+  return memberIds.map((subTaskId) => {
+    const sibling = siblingById.get(subTaskId);
+    const sharingType = sibling?.sharingType === "qty" ? "qty" : "duration";
+    const principalStopQty = scopedRows
+      .filter(
+        (row) =>
+          row.subTaskId === subTaskId &&
+          row.colaboratorId === principalId &&
+          row.action === "stoped",
+      )
+      .reduce((sum, row) => sum + row.qty, 0);
+    if (sharingType === "qty") {
+      return { documentId: subTaskId, qty: principalStopQty };
+    }
+    return {
+      documentId: subTaskId,
+      completed: principalDeclaredFinishFromStopQty({
+        sharingType,
+        targetQty: resolveSubTaskTargetQty(sibling?.qty ?? 1),
+        completedQtyBefore: 0,
+        principalStopQty,
+      }),
+    };
   });
 }
 

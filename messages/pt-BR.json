@@ -1224,6 +1224,8 @@
     "releaseFlags": "Liberar bandeiras",
     "flagsReleased": "Bandeira liberada.",
     "flagsRequired": "Selecione ao menos uma bandeira para finalizar.",
+    "chainStopInconsistent": "As quantidades da cadeia não conferem. Revise as respostas.",
+    "chainRunRecorded": "Já registrado: {summary}",
     "subTaskHasNoCategory": "Defina a categoria da subtarefa antes de finalizar.",
     "flagOccupied": "Uma das bandeiras já está em uso.",
     "dependencyFlags": "Material",

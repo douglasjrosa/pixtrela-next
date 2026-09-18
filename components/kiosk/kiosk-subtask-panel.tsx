@@ -150,9 +150,10 @@ export function KioskSubtaskPanel({
         const helperMode = unit.helperMode;
         const finished = isFinishedSubTask(subTask);
         const locked = isLockedSubTask(subTask);
-        const isProducing = subTask.status === "producing";
+        const hasOwnSession = Boolean(subTask.startedAt);
+        const isProducing = subTask.status === "producing" || hasOwnSession;
         const showLockOverlay = locked;
-        const showStart = !readOnly && unit.showStart && !isProducing;
+        const showStart = !readOnly && unit.showStart && !hasOwnSession;
         const showExit =
           !readOnly && shouldShowExitButton(queueContext, subTask);
         const isExiting =

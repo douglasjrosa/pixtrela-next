@@ -191,11 +191,11 @@ describe("kiosk/[colaboratorId]/actions drizzle", () => {
     confirmChainStopRepo.mockResolvedValue(undefined);
     const { confirmChainStop } = await import("./actions");
     await confirmChainStop("col-1", "run-1", [
-      { documentId: "a", completed: true },
+      { documentId: "a", completed: true, inferred: true, semBandeira: true },
       { documentId: "b", completed: false },
     ]);
     expect(confirmChainStopRepo).toHaveBeenCalledWith("col-1", "run-1", [
-      { documentId: "a", completed: true },
+      { documentId: "a", completed: true, inferred: true, semBandeira: true },
       { documentId: "b", completed: false },
     ]);
   });

@@ -6,3 +6,8 @@ export const TABLE_HEAD_CELL_CENTER_CLASS = `${TABLE_HEAD_CELL_CLASS} text-cente
 
 /** Sortable list column header link label color. */
 export const LIST_SORT_HEADER_LINK_CLASS = "text-primary";
+
+/** Active sort column uses semibold; inactive columns stay medium. */
+export function listSortHeaderFontClass(active: boolean): string {
+  return active ? "font-semibold" : "font-medium";
+}

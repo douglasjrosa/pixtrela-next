@@ -62,14 +62,61 @@ describe("buildKioskQueueUnits", () => {
     });
   });
 
-  it("shows helpers only the spare-capacity member while the principal runs", () => {
+  it("keeps join start when the viewer already has an open qty session", () => {
     const units = buildKioskQueueUnits({
-      viewerId: "helper",
+      viewerId: "u1",
+      subTasks: [
+        subTask({
+          documentId: "a",
+          name: "Chapas",
+          index: 0,
+          sharingType: "qty",
+          qty: 100,
+          targetQty: 100,
+          status: "producing",
+          startedAt: "2026-08-16T12:00:00.000Z",
+          activeWorkerCount: 1,
+          maxSameTimeWorkers: 2,
+          assignedToIds: ["u1", "peer"],
+        }),
+        subTask({
+          documentId: "b",
+          name: "Adesivos",
+          index: 1,
+          linkedToPrevious: true,
+          sharingType: "qty",
+          qty: 100,
+          targetQty: 100,
+          maxSameTimeWorkers: 2,
+          assignedToIds: ["u1", "peer"],
+          dependencyIds: ["a"],
+        }),
+      ],
+      openRuns: [
+        {
+          chainHeadId: "a",
+          chainRunId: "run-1",
+          principalId: "u1",
+          runStartedAt: "2026-08-16T12:00:00.000Z",
+        },
+      ],
+    });
+    expect(units[0]).toMatchObject({
+      type: "group",
+      principalActive: true,
+      showStart: true,
+    });
+  });
+
+  it("shows the second assignee the same group card while the session is open", () => {
+    const units = buildKioskQueueUnits({
+      viewerId: "peer",
       subTasks: chained.map((item) => ({
         ...item,
-        assignedToIds: ["u1", "helper"],
+        assignedToIds: ["u1", "peer"],
         status: item.documentId === "a" ? "producing" : "waiting",
         activeWorkerCount: item.documentId === "a" ? 1 : 0,
+        maxSameTimeWorkers: 2,
       })),
       openRuns: [
         {
@@ -82,9 +129,11 @@ describe("buildKioskQueueUnits", () => {
     });
     expect(units).toEqual([
       expect.objectContaining({
-        type: "isolated",
-        helperMode: true,
-        subTask: expect.objectContaining({ documentId: "b" }),
+        type: "group",
+        headId: "a",
+        chainRunId: "run-1",
+        principalActive: false,
+        showStart: true,
       }),
     ]);
   });

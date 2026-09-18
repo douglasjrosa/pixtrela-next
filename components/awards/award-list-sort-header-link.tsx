@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowDown, ArrowUp } from "lucide-react";
 
-import { LIST_SORT_HEADER_LINK_CLASS } from "@/lib/ui/table-head-styles";
+import { LIST_SORT_HEADER_LINK_CLASS, listSortHeaderFontClass } from "@/lib/ui/table-head-styles";
 import { cn } from "@/lib/utils";
 import type {
   AwardListSort,
@@ -43,7 +43,8 @@ export function AwardListSortHeaderLink({
         href={href}
         scroll={false}
         className={cn(
-          "flex w-full items-center gap-1 rounded-md px-2 py-1 font-medium",
+          "flex w-full items-center gap-1 rounded-md px-2 py-1",
+          listSortHeaderFontClass(active),
           "transition-colors hover:bg-muted focus-visible:outline-none",
           "focus-visible:ring-2 focus-visible:ring-ring",
           align === "center" ? "justify-center" : "justify-start",

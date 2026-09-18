@@ -82,6 +82,7 @@ function kioskActionErrorMessage(
   if (code === "flagsRequired") return t("flagsRequired");
   if (code === "subTaskHasNoCategory") return t("subTaskHasNoCategory");
   if (code === "flagOccupied") return t("flagOccupied");
+  if (code === "chainStopInconsistent") return t("chainStopInconsistent");
   return t("exitFailed");
 }
 

@@ -59,6 +59,29 @@ describe("assertFinishFlagsAllowed", () => {
     ).toThrow("flagsRequired");
   });
 
+  it("allows inferred or Sem bandeira finish without selected flags", () => {
+    expect(() =>
+      assertFinishFlagsAllowed({
+        willFinish: true,
+        hasDependents: true,
+        categoryId: CATEGORY_ID,
+        totalFlagCount: 0,
+        availableCount: 2,
+        inferred: true,
+      }),
+    ).not.toThrow();
+    expect(() =>
+      assertFinishFlagsAllowed({
+        willFinish: true,
+        hasDependents: true,
+        categoryId: CATEGORY_ID,
+        totalFlagCount: 0,
+        availableCount: 2,
+        semBandeira: true,
+      }),
+    ).not.toThrow();
+  });
+
   it("allows finish when at least one flag is selected", () => {
     expect(() =>
       assertFinishFlagsAllowed({

@@ -19,6 +19,8 @@ export type ChainStopAnswer = {
   semBandeira?: boolean;
   /** Latest available flag count after optional refresh. */
   availableFlagCount?: number;
+  /** Filled by consumer→supplier inference; skip flag prompts. */
+  inferred?: boolean;
 };
 
 export type AllocationSegment = {
@@ -51,6 +53,7 @@ export function isChainMemberAnswerComplete(
         Number.isInteger(answer.qty) &&
         answer.qty >= 0;
   if (!baseOk) return false;
+  if (answer.inferred === true) return true;
 
   if (!flagGate?.requiresMaterialFlagsOnFinish) return true;
 

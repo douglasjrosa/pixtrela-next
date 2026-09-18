@@ -4,8 +4,11 @@ export function assertFinishFlagsAllowed(input: {
   categoryId: string | null | undefined;
   totalFlagCount: number;
   availableCount: number;
+  inferred?: boolean;
+  semBandeira?: boolean;
 }): void {
   if (!input.willFinish || !input.hasDependents) return;
+  if (input.inferred === true || input.semBandeira === true) return;
   if (!input.categoryId) return;
   if (input.availableCount <= 0) return;
   if (input.totalFlagCount < 1) throw new Error("flagsRequired");
