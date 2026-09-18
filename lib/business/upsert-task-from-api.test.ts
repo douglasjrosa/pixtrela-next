@@ -125,11 +125,6 @@ describe("upsertTaskFromApi", () => {
         stepId: "s1",
         index: 1,
       }),
-      undefined,
-      expect.objectContaining({
-        trace: expect.any(Array),
-        rootStartedAt: expect.any(Number),
-      }),
     );
   });
 

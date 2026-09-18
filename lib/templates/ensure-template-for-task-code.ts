@@ -60,16 +60,9 @@ export function resolveTemplateSourceCodes(
   return codes;
 }
 
-export type TemplateEnsureDebugStage = {
-  stage: string;
-  ms: number;
-  detail?: string;
-};
-
 export type EnsureTemplateForTaskCodeResult = {
   templateId: string;
   source: "legacy" | "existing" | "payload" | "rbx";
-  debugTrace?: TemplateEnsureDebugStage[];
 };
 
 /**
@@ -79,36 +72,18 @@ export type EnsureTemplateForTaskCodeResult = {
  * 3. Create from CRM payload snapshot
  * 4. Fetch from legacy RBX when no payload was sent
  */
-function pushDebugStage(
-  trace: TemplateEnsureDebugStage[],
-  startedAt: number,
-  stage: string,
-  detail?: string,
-): void {
-  trace.push({ stage, ms: Date.now() - startedAt, detail });
-}
-
 export async function ensureTemplateForTaskCode(input: {
   code: string;
   fallbackName: string;
   versions?: readonly string[];
   template?: BoxTemplateData | null;
-  debugTrace?: TemplateEnsureDebugStage[];
 }): Promise<EnsureTemplateForTaskCodeResult> {
-  const startedAt = Date.now();
-  const debugTrace = input.debugTrace ?? [];
   const code = input.code.trim();
   if (!code) {
     throw new Error("template_code_required");
   }
 
   const codes = resolveTemplateSourceCodes(code, input.versions ?? []);
-  pushDebugStage(
-    debugTrace,
-    startedAt,
-    "ensure_start",
-    `code=${code} hasPayload=${Boolean(input.template)}`,
-  );
 
   for (const ancestorCode of codes.slice(1)) {
     const ancestor = await findTemplateWithSubTasksByCode(ancestorCode);
@@ -122,14 +97,12 @@ export async function ensureTemplateForTaskCode(input: {
       ancestorCode,
       buildTemplateVersionSupersededReason(code),
     );
-    pushDebugStage(debugTrace, startedAt, "ensure_legacy_clone", ancestorCode);
-    return { templateId: cloned.id, source: "legacy", debugTrace };
+    return { templateId: cloned.id, source: "legacy" };
   }
 
   const existing = await findTemplateByCode(code);
   if (existing?.active) {
-    pushDebugStage(debugTrace, startedAt, "ensure_existing_shell", code);
-    return { templateId: existing.id, source: "existing", debugTrace };
+    return { templateId: existing.id, source: "existing" };
   }
 
   let templatePayload = input.template;
@@ -140,40 +113,15 @@ export async function ensureTemplateForTaskCode(input: {
     if (!Number.isInteger(boxId) || boxId <= 0) {
       throw new Error("template_payload_required");
     }
-    pushDebugStage(debugTrace, startedAt, "rbx_fetch_start", `boxId=${boxId}`);
-    const rbxStartedAt = Date.now();
     templatePayload = await fetchBoxTemplateData(boxId);
-    pushDebugStage(
-      debugTrace,
-      rbxStartedAt,
-      "rbx_fetch_done",
-      `subtasks=${templatePayload.subtasks.length}`,
-    );
     source = "rbx";
-  } else {
-    pushDebugStage(
-      debugTrace,
-      startedAt,
-      "ensure_payload_received",
-      `subtasks=${templatePayload.subtasks.length}`,
-    );
   }
 
-  const buildStartedAt = Date.now();
   const draft = await buildTemplateFromBoxPayload(templatePayload);
-  pushDebugStage(
-    debugTrace,
-    buildStartedAt,
-    "build_template_from_payload",
-    `subTasks=${draft.subTask?.length ?? 0}`,
-  );
-  const createStartedAt = Date.now();
   const created = await createTemplateTask({
     code: draft.code,
     name: draft.name || input.fallbackName,
     subTasks: toRepoSubTasks(draft.subTask ?? []),
   });
-  pushDebugStage(debugTrace, createStartedAt, "create_template_task", code);
-  pushDebugStage(debugTrace, startedAt, "ensure_done", source);
-  return { templateId: created.id, source, debugTrace };
+  return { templateId: created.id, source };
 }
