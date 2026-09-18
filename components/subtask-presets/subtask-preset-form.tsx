@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
 import { FactoryActionSearchField } from "@/components/factory-actions/factory-action-search-field";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { SubTaskCategorySelect } from "@/components/subtasks/subtask-category-select";
+import {
+  SubTaskDependenciesModal,
+  type SubTaskDependencyOption,
+} from "@/components/subtasks/subtask-dependencies-modal";
 import { SHARING_TYPES } from "@/lib/schemas/sub-task";
 import {
   subTaskPresetFormSchema,
@@ -20,6 +25,8 @@ export interface SubTaskPresetFormProps {
   formId: string;
   defaultValues: SubTaskPresetFormInput;
   actionName?: string;
+  currentPresetId?: string;
+  dependencyOptions: SubTaskDependencyOption[];
   disabled?: boolean;
   onSubmit: (values: SubTaskPresetFormInput) => void;
 }
@@ -28,18 +35,22 @@ export function SubTaskPresetForm({
   formId,
   defaultValues,
   actionName = "",
+  currentPresetId,
+  dependencyOptions,
   disabled = false,
   onSubmit,
 }: SubTaskPresetFormProps) {
   const tSubtasks = useTranslations("subtasks");
   const tSharing = useTranslations("subtasks.sharingType");
   const [selectedActionName, setSelectedActionName] = useState(actionName);
+  const [dependenciesOpen, setDependenciesOpen] = useState(false);
 
   const {
     register,
     control,
     handleSubmit,
     setValue,
+    watch,
     clearErrors,
     formState: { errors, submitCount },
   } = useForm<SubTaskPresetFormInput>({
@@ -48,6 +59,15 @@ export function SubTaskPresetForm({
     ) as Resolver<SubTaskPresetFormInput>,
     defaultValues,
   });
+
+  const dependencyPresetIds = watch("defaultDependencyPresetIds") ?? [];
+  const selectableDependencyOptions = useMemo(
+    () =>
+      dependencyOptions.filter(
+        (option) => option.documentId !== currentPresetId,
+      ),
+    [currentPresetId, dependencyOptions],
+  );
 
   return (
     <form
@@ -148,6 +168,32 @@ export function SubTaskPresetForm({
           )}
         />
       </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          onClick={() => setDependenciesOpen(true)}
+        >
+          {tSubtasks("dependencies")}
+        </Button>
+        <span className="text-sm text-muted-foreground">
+          {tSubtasks("dependenciesCount", {
+            count: dependencyPresetIds.length,
+          })}
+        </span>
+      </div>
+
+      <SubTaskDependenciesModal
+        open={dependenciesOpen}
+        options={selectableDependencyOptions}
+        selectedIds={dependencyPresetIds}
+        onClose={() => setDependenciesOpen(false)}
+        onConfirm={(ids) =>
+          setValue("defaultDependencyPresetIds", ids, { shouldDirty: true })
+        }
+      />
     </form>
   );
 }

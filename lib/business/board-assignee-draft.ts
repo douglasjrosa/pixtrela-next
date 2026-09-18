@@ -1,6 +1,10 @@
 import type { BoardSubTaskSummary } from "@/components/kanban/types";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import { adjustAssignedCount } from "@/lib/business/assign-warn";
+import {
+  resolveDraftLinkedToPrevious,
+  type BoardLinkDraftState,
+} from "@/lib/business/board-link-queue";
 
 export type AssigneeDraftUpdate = {
   documentId: string;
@@ -148,15 +152,34 @@ export function resolveAssigneeNames(
   return mergeAssigneesByIds([], assignedToIds, directory);
 }
 
+export type MergeLoadedSubtasksDraftOptions = {
+  linkDraft?: BoardLinkDraftState;
+};
+
 export function mergeLoadedSubtasksWithDraft(
   loaded: BoardSubTaskSummary[],
   draft: BoardSubTaskSummary[],
+  options?: MergeLoadedSubtasksDraftOptions,
 ): BoardSubTaskSummary[] {
   const draftById = new Map(draft.map((item) => [item.documentId, item]));
+  const linkDraft = options?.linkDraft;
   return loaded.map((item) => {
     const existing = draftById.get(item.documentId);
-    if (!existing) return item;
-    return { ...item, assignedTo: existing.assignedTo };
+    const linkedToPrevious = linkDraft
+      ? resolveDraftLinkedToPrevious(
+          item.linkedToPrevious,
+          item.documentId,
+          existing,
+          linkDraft,
+        )
+      : item.linkedToPrevious;
+    const linkChanged = linkedToPrevious !== item.linkedToPrevious;
+    if (!existing && !linkChanged) return item;
+    return {
+      ...item,
+      ...(existing ? { assignedTo: existing.assignedTo } : {}),
+      ...(linkChanged ? { linkedToPrevious } : {}),
+    };
   });
 }
 

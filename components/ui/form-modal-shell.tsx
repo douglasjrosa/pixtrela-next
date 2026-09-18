@@ -44,7 +44,7 @@ export interface FormModalShellProps {
   disabled?: boolean;
   size?: keyof typeof SIZE_CLASS;
   /** Full-viewport on small screens; constrained dialog from `sm` up. */
-  layout?: "default" | "viewport";
+  layout?: "default" | "viewport" | "floating";
   /** Use `nested` when this shell opens on top of another form modal. */
   layer?: "base" | "nested";
   /**
@@ -60,6 +60,10 @@ export interface FormModalShellProps {
   bodyClassName?: string;
   /** Extra classes for the footer bar. */
   footerClassName?: string;
+  /** Extra classes for the header bar. */
+  headerClassName?: string;
+  /** Extra classes for the title heading. */
+  titleClassName?: string;
   headerActions?: ReactNode;
   footerStart?: ReactNode;
   footerEnd?: ReactNode;
@@ -79,6 +83,8 @@ export function FormModalShell({
   bodyScroll = true,
   bodyClassName,
   footerClassName,
+  headerClassName,
+  titleClassName,
   headerActions,
   footerStart,
   footerEnd,
@@ -91,7 +97,9 @@ export function FormModalShell({
   const onCloseRef = useRef(onClose);
   const disabledRef = useRef(disabled);
   const showFooter = footerStart != null || footerEnd != null;
+  const splitFooter = footerStart != null;
   const isViewport = layout === "viewport";
+  const isFloating = layout === "floating";
   const overlayZ =
     layer === "nested"
       ? FORM_MODAL_NESTED_OVERLAY_Z_CLASS
@@ -131,7 +139,7 @@ export function FormModalShell({
         overlayZ,
         isViewport
           ? "items-start justify-center p-0 sm:px-4 sm:pb-4 sm:pt-[4.5rem]"
-          : "items-center justify-center p-4 pt-[4.5rem]",
+          : "items-center justify-center p-4",
       )}
       role="presentation"
       onClick={disabled ? undefined : onClose}
@@ -142,18 +150,23 @@ export function FormModalShell({
         aria-labelledby={titleId}
         className={cn(
           "flex w-full flex-col overflow-hidden bg-background shadow-lg",
-          isViewport
+          isFloating
             ? cn(
-                "h-dvh max-w-none rounded-none border-0",
-                bodyScroll
-                  ? "sm:h-auto sm:max-h-[min(85vh,calc(100dvh-5.5rem))] sm:rounded-lg sm:border"
-                  : "sm:h-[min(85vh,calc(100dvh-5.5rem))] sm:max-h-[min(85vh,calc(100dvh-5.5rem))] sm:rounded-lg sm:border",
+                "h-[82vh] max-h-[82vh] rounded-lg border",
                 SIZE_CLASS[size],
               )
-            : cn(
-                "max-h-[min(85vh,calc(100dvh-5.5rem))] rounded-lg border",
-                SIZE_CLASS[size],
-              ),
+            : isViewport
+              ? cn(
+                  "h-dvh max-w-none rounded-none border-0",
+                  bodyScroll
+                    ? "sm:h-auto sm:max-h-[min(85vh,calc(100dvh-5.5rem))] sm:rounded-lg sm:border"
+                    : "sm:h-[min(85vh,calc(100dvh-5.5rem))] sm:max-h-[min(85vh,calc(100dvh-5.5rem))] sm:rounded-lg sm:border",
+                  SIZE_CLASS[size],
+                )
+              : cn(
+                  "max-h-[min(85vh,calc(100dvh-5.5rem))] rounded-lg border",
+                  SIZE_CLASS[size],
+                ),
         )}
         onClick={(event) => event.stopPropagation()}
       >
@@ -161,9 +174,13 @@ export function FormModalShell({
           className={cn(
             "flex shrink-0 items-center justify-between gap-2 border-b",
             "px-4 py-3",
+            headerClassName,
           )}
         >
-          <h2 id={titleId} className="min-w-0 text-lg font-semibold">
+          <h2
+            id={titleId}
+            className={cn("min-w-0 text-lg font-semibold", titleClassName)}
+          >
             {title}
           </h2>
           <div className="flex shrink-0 items-center gap-1">
@@ -204,15 +221,23 @@ export function FormModalShell({
           <div
             data-slot="form-modal-footer"
             className={cn(
-              "flex shrink-0 flex-wrap items-center justify-between gap-3",
+              "flex shrink-0 flex-wrap items-center gap-3",
               "border-t bg-background px-4 py-3",
+              splitFooter ? "justify-between" : "justify-center",
               footerClassName,
             )}
           >
-            <div className="flex flex-wrap gap-2">
-              {footerStart ?? <span />}
+            {splitFooter ? (
+              <div className="flex flex-wrap gap-2">{footerStart}</div>
+            ) : null}
+            <div
+              className={cn(
+                "flex flex-wrap gap-2",
+                !splitFooter && "w-full justify-center",
+              )}
+            >
+              {footerEnd}
             </div>
-            <div className="flex flex-wrap gap-2">{footerEnd}</div>
           </div>
         ) : null}
       </div>

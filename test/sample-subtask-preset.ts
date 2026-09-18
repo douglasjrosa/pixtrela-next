@@ -14,6 +14,7 @@ export function sampleSubTaskPreset(
     actionName: "Grampear quadro",
     actionUnitTime: 1,
     actionQtyQuestion: "Quantos grampos serão fixados no total?",
+    defaultDependencyPresetIds: [],
     active: true,
     ...overrides,
   };

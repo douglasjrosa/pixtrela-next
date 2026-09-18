@@ -272,5 +272,10 @@ export async function seedRbxBoxTemplatePresets(
     inserted += 1;
   }
 
+  const { seedRbxPresetDefaultDependencies } = await import(
+    "@/lib/subtask-presets/preset-default-dependencies-seed"
+  );
+  await seedRbxPresetDefaultDependencies(db);
+
   return inserted;
 }

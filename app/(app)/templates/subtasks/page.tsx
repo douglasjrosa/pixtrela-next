@@ -18,6 +18,7 @@ import {
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { loadSubtaskPresetListPage } from "@/lib/subtask-presets/load-subtask-preset-list-page";
 import { parseSubtaskPresetListSearchParams } from "@/lib/subtask-presets/subtask-preset-list-params";
+import { listSubTaskPresetsRepo } from "@/lib/repos/sub-task-presets";
 import { loadSubTaskCategoryOptions } from "@/lib/subtasks/category-options";
 
 interface TemplateSubtasksPageProps {
@@ -43,7 +44,14 @@ export default async function TemplateSubtasksPage({
   const bulkEnabled = canDeactivate || canDelete;
   const showCheckboxColumn = bulkEnabled;
 
-  const categoryOptions = await loadSubTaskCategoryOptions();
+  const [categoryOptions, presetCatalog] = await Promise.all([
+    loadSubTaskCategoryOptions(),
+    listSubTaskPresetsRepo(),
+  ]);
+  const dependencyOptions = presetCatalog.map((preset) => ({
+    documentId: preset.documentId,
+    name: preset.name,
+  }));
   const pageResult = await loadSubtaskPresetListPage(filters, 1).catch(
     (error) => {
       rethrowIfNavigationError(error);
@@ -80,7 +88,10 @@ export default async function TemplateSubtasksPage({
   }
 
   return (
-    <SubTaskPresetManager categoryOptions={categoryOptions}>
+    <SubTaskPresetManager
+      categoryOptions={categoryOptions}
+      dependencyOptions={dependencyOptions}
+    >
       <div className={APP_LIST_PAGE_STACK_CLASS}>
         <Suspense fallback={null}>
           <SubtaskPresetsToolbar />

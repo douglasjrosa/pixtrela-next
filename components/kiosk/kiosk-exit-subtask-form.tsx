@@ -14,7 +14,11 @@ import { KioskActionButton } from "./kiosk-action-button";
 import { KioskMaterialFlagPicker } from "./kiosk-material-flag-picker";
 import { KioskQtyStepper } from "./kiosk-qty-stepper";
 
+const INLINE_SHELL_CLASS = "space-y-3 rounded-2xl border bg-muted p-3";
+const MODAL_SHELL_CLASS = "flex min-h-0 flex-1 flex-col gap-3";
+
 export interface KioskExitSubtaskFormProps {
+  variant?: "inline" | "modal";
   sharingType: SubTaskFormInput["sharingType"];
   maxQty?: number;
   /** When false, duration completion and qty-based finish are blocked by peers. */
@@ -35,6 +39,7 @@ export interface KioskExitSubtaskFormProps {
 }
 
 export function KioskExitSubtaskForm({
+  variant = "inline",
   sharingType,
   maxQty = 1,
   allowComplete = true,
@@ -71,6 +76,8 @@ export function KioskExitSubtaskForm({
   );
   const [refreshPending, startRefresh] = useTransition();
   const actionsDisabled = disabled || busy;
+  const shellClassName =
+    variant === "modal" ? MODAL_SHELL_CLASS : INLINE_SHELL_CLASS;
 
   function applyFlagRefresh(result: {
     flags: MaterialFlagOption[];
@@ -141,6 +148,7 @@ export function KioskExitSubtaskForm({
       onSemBandeiraChange={setSemBandeiraSelected}
       onRefresh={onRefreshFlags ? handleRefresh : undefined}
       refreshing={refreshPending}
+      scrollableFlags={variant === "modal"}
       onChange={setFlagIds}
     />
   );
@@ -148,7 +156,7 @@ export function KioskExitSubtaskForm({
   if (sharingType === "duration") {
     if (!allowComplete) {
       return (
-        <div className="space-y-3 rounded-2xl border bg-muted p-3">
+        <div className={shellClassName}>
           <p className="text-base font-medium">{t("exitWithoutCompleteHint")}</p>
           {flagPicker}
           <div className="flex flex-col gap-2">
@@ -176,7 +184,7 @@ export function KioskExitSubtaskForm({
     }
 
     return (
-      <div className="space-y-3 rounded-2xl border bg-muted p-3">
+      <div className={shellClassName}>
         <p className="text-base font-medium">{t("exitConfirmDuration")}</p>
         {flagPicker}
         <div className="flex flex-col gap-2">
@@ -218,7 +226,7 @@ export function KioskExitSubtaskForm({
     allowComplete && (safeMaxQty === 0 || qtyCompleted >= safeMaxQty);
 
   return (
-    <div className="space-y-3 rounded-2xl border bg-muted p-3">
+    <div className={shellClassName}>
       {!allowComplete ? (
         <p className="text-base text-muted-foreground">
           {t("exitQtyWithoutCompleteHint")}

@@ -27,6 +27,9 @@ import type { SubtaskPresetListFilters } from "@/lib/schemas/subtask-preset-list
 import { subtaskPresetListFilterKey } from "@/lib/subtask-presets/subtask-preset-list-params";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
+import { useSubTaskCategoryOptions } from "@/components/subtasks/subtask-category-options-context";
+import { resolveSubTaskCategoryDisplayName } from "@/lib/subtasks/resolve-category-display-name";
+
 import {
   SubtaskPresetListRowPresentational,
   type SubtaskPresetListRowLabels,
@@ -56,6 +59,7 @@ export function SubtaskPresetListTableFrame({
   const tCommon = useTranslations("common");
   const tSharing = useTranslations("subtasks.sharingType");
   const tSettings = useTranslations("settings");
+  const categoryOptions = useSubTaskCategoryOptions();
   const router = useRouter();
   const filterKey = subtaskPresetListFilterKey(filters);
   const bulkEnabled = canDeactivate || canDelete;
@@ -96,9 +100,12 @@ export function SubtaskPresetListTableFrame({
     return {
       sharingType: tSharing(preset.sharingType),
       actionName: preset.actionName,
-      categoryName: preset.subTaskCategoryName?.trim()
-        ? preset.subTaskCategoryName
-        : tSettings("noCategory"),
+      categoryName: resolveSubTaskCategoryDisplayName(
+        preset.subTaskCategoryId,
+        categoryOptions,
+        preset.subTaskCategoryName,
+        tSettings("noCategory"),
+      ),
       inactive: tTemplates("inactive"),
       selectRow: tCommon("selectRow", { name: preset.name }),
     };

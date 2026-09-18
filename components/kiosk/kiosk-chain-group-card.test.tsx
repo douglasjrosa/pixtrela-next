@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type { KioskGroupUnit } from "@/lib/business/kiosk-queue-units";
@@ -111,7 +111,7 @@ describe("KioskChainGroupCard", () => {
     expect(screen.getByRole("button", { name: "Parar" })).toBeEnabled();
   });
 
-  it("hides stop and keeps member forms enabled while collecting", async () => {
+  it("opens a wizard modal while collecting chain stop answers", async () => {
     const user = userEvent.setup();
     const members = [
       kioskSubTask({
@@ -141,9 +141,24 @@ describe("KioskChainGroupCard", () => {
     expect(
       screen.queryByRole("button", { name: "Parar" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancelar" })).toBeEnabled();
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Cortar" })).toBeInTheDocument();
     expect(
-      screen.getAllByRole("button", { name: "Sim, concluí" })[0],
+      within(dialog).getByRole("button", { name: "Cancelar" }),
+    ).toBeEnabled();
+    expect(
+      within(dialog).getByRole("button", { name: "Continuar" }),
+    ).toBeDisabled();
+    expect(
+      within(dialog).queryByRole("button", { name: "Voltar" }),
+    ).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("progressbar")).toHaveAttribute(
+      "aria-valuemax",
+      "2",
+    );
+    expect(
+      within(dialog).getByRole("button", { name: "SIM" }),
     ).toBeEnabled();
   });
 
@@ -207,22 +222,43 @@ describe("KioskChainGroupCard", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Parar" }));
-    expect(screen.getAllByText("A subtarefa foi concluída?")).toHaveLength(2);
+
+    const dialog = screen.getByRole("dialog");
     expect(
-      screen.queryByRole("button", { name: "Confirmar saída" }),
+      within(dialog).queryByRole("button", { name: "Confirmar saída" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("button", { name: "Voltar" }),
     ).not.toBeInTheDocument();
 
-    const yesButtons = screen.getAllByRole("button", { name: "Sim, concluí" });
-    await user.click(yesButtons[0]!);
-    await user.click(yesButtons[1]!);
+    await user.click(
+      within(dialog).getByRole("button", { name: "SIM" }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Continuar" }));
 
-    const confirm = screen.getByRole("button", { name: "Confirmar saída" });
+    expect(screen.getByRole("heading", { name: "Embalar" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Voltar" })).toBeEnabled();
+    expect(
+      within(dialog).queryByRole("button", { name: "Cancelar" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("button", { name: "Continuar" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole("button", { name: "SIM" }),
+    );
+
+    const confirm = within(dialog).getByRole("button", {
+      name: "Confirmar saída",
+    });
     expect(confirm).toBeEnabled();
     await user.click(confirm);
     expect(onConfirmChainStop).toHaveBeenCalledWith("run-1", [
       { documentId: "a", completed: true },
       { documentId: "b", completed: true },
     ]);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
 

@@ -23,13 +23,13 @@ import { templateListFiltersSchema } from "@/lib/schemas/template-list-filters";
 import {
   bulkTemplateIdsSchema,
   templateTaskFormSchema,
-  type TemplateSubTaskComponentInput,
   type TemplateTaskFormInput,
 } from "@/lib/schemas/template-task";
 import {
   loadTemplateListPage,
   type TemplateListPageResult,
 } from "@/lib/templates/load-template-list-page";
+import { toTemplateRepoSubTasks } from "@/lib/templates/to-template-repo-subtasks";
 
 async function assertCanManage(): Promise<void> {
   const session = await auth();
@@ -43,26 +43,6 @@ async function assertCanDeactivate(): Promise<void> {
   if (!canDeactivateTemplates(session?.user?.role as Role | undefined)) {
     throw new Error("forbidden");
   }
-}
-
-function dependencyIndexesFrom(
-  dependencies: TemplateSubTaskComponentInput["dependencies"],
-): number[] {
-  if (!Array.isArray(dependencies)) return [];
-  return dependencies.filter((value): value is number => typeof value === "number");
-}
-
-function toRepoSubTasks(subTasks: TemplateSubTaskComponentInput[]) {
-  return subTasks.map((row, index) => ({
-    name: row.name,
-    qty: row.qty,
-    sharingType: row.sharingType,
-    maxSameTimeWorkers: row.maxSameTimeWorkers,
-    index,
-    expectedTime: row.expectedTime,
-    dependencyIndexes: dependencyIndexesFrom(row.dependencies),
-    linkedToPrevious: row.linkedToPrevious ?? false,
-  }));
 }
 
 function invalidateTemplates(): void {
@@ -107,7 +87,7 @@ export async function updateTemplate(
     id: documentId,
     name: data.name,
     code: data.code,
-    subTasks: toRepoSubTasks(data.subTask ?? []),
+    subTasks: toTemplateRepoSubTasks(data.subTask ?? []) ?? [],
   });
   invalidateTemplates();
 }

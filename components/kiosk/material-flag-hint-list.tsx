@@ -1,38 +1,57 @@
 "use client";
 
+import { useState } from "react";
 import { FlagTriangleRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { DependencyFlagHint } from "@/lib/business/subtask-queue";
 import { cn } from "@/lib/utils";
 
 import { SemBandeiraInfoBadge } from "./sem-bandeira-info-badge";
 
+const FLAG_BADGE_CLASS =
+  "inline-flex items-center gap-2 rounded-md bg-slate-800 px-3 py-1.5 " +
+  "text-white shadow-sm";
+
 function MaterialFlagBadge({
   code,
-  children,
-  className,
+  onPress,
+  disabled = false,
 }: {
   code: string;
-  children?: React.ReactNode;
-  className?: string;
+  onPress?: () => void;
+  disabled?: boolean;
 }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border bg-muted px-2 py-0.5",
-        className,
-      )}
-    >
+  const content = (
+    <>
       <FlagTriangleRight
-        className="size-3.5 shrink-0 text-muted-foreground"
+        className="size-4 shrink-0 text-white/80"
         aria-hidden
         strokeWidth={2}
       />
       <span className="font-mono text-sm font-bold">{code}</span>
-      {children}
-    </span>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        className={cn(
+          FLAG_BADGE_CLASS,
+          "cursor-pointer transition-opacity hover:opacity-90",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+        )}
+        onClick={onPress}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <span className={FLAG_BADGE_CLASS}>{content}</span>;
 }
 
 export function MaterialFlagHintList({
@@ -53,6 +72,11 @@ export function MaterialFlagHintList({
   canReleaseFlags?: boolean;
 }) {
   const t = useTranslations("kiosk");
+  const tCommon = useTranslations("common");
+  const [pendingRelease, setPendingRelease] = useState<{
+    id: string;
+    code: string;
+  } | null>(null);
   const hints = dependencyFlags ?? [];
   const assigned = assignedFlagCodes ?? [];
   const releaseAllowed =
@@ -63,75 +87,97 @@ export function MaterialFlagHintList({
   );
   if (!hasHints && assigned.length === 0) return null;
 
+  function confirmRelease(): void {
+    if (!pendingRelease || !onReleaseFlag) return;
+    onReleaseFlag(pendingRelease.id);
+    setPendingRelease(null);
+  }
+
   return (
-    <div className="space-y-2">
-      {hints.map((hint) => {
-        const key = hint.predecessorId ?? hint.predecessorName;
-        if (hint.semBandeira) {
-          return (
-            <p
-              key={key}
-              className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground"
-            >
-              <span>
-                {t("dependencyFlags")}: {hint.predecessorName} ·
-              </span>
-              {hint.missingCategory ? (
-                <SemBandeiraInfoBadge />
-              ) : (
-                <span className="rounded-full border bg-muted px-2 py-0.5 text-xs">
-                  {t("semBandeira")}
+    <>
+      <div className="space-y-2">
+        {hints.map((hint) => {
+          const key = hint.predecessorId ?? hint.predecessorName;
+          if (hint.semBandeira) {
+            return (
+              <p
+                key={key}
+                className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground"
+              >
+                <span>
+                  {t("dependencyFlags")}: {hint.predecessorName} ·
                 </span>
-              )}
-            </p>
-          );
-        }
-        if (hint.codes.length === 0) return null;
-        const flagEntries =
-          hint.flags && hint.flags.length > 0
-            ? hint.flags
-            : hint.codes.map((code) => ({ id: "", code }));
-        return (
-          <div key={key} className="space-y-1">
-            <p className="text-sm text-muted-foreground">
-              {t("dependencyFlags")}: {hint.predecessorName}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              {flagEntries.map((flag) => (
-                <MaterialFlagBadge key={flag.id || flag.code} code={flag.code}>
-                  {showRelease && onReleaseFlag && flag.id ? (
-                    <button
-                      type="button"
-                      className="ml-0.5 text-xs underline"
-                      disabled={releaseDisabled}
-                      onClick={() => onReleaseFlag(flag.id)}
-                    >
-                      {t("releaseFlag")}
-                    </button>
-                  ) : null}
-                </MaterialFlagBadge>
-              ))}
+                {hint.missingCategory ? (
+                  <SemBandeiraInfoBadge />
+                ) : (
+                  <span className="rounded-md bg-slate-800 px-3 py-1.5 text-xs text-white">
+                    {t("semBandeira")}
+                  </span>
+                )}
+              </p>
+            );
+          }
+          if (hint.codes.length === 0) return null;
+          const flagEntries =
+            hint.flags && hint.flags.length > 0
+              ? hint.flags
+              : hint.codes.map((code) => ({ id: "", code }));
+          return (
+            <div key={key} className="space-y-1">
+              <p className="text-sm text-muted-foreground">
+                {t("dependencyFlags")}: {hint.predecessorName}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                {flagEntries.map((flag) => (
+                  <MaterialFlagBadge
+                    key={flag.id || flag.code}
+                    code={flag.code}
+                    disabled={releaseDisabled}
+                    onPress={
+                      showRelease && onReleaseFlag && flag.id
+                        ? () => setPendingRelease({ id: flag.id, code: flag.code })
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
             </div>
+          );
+        })}
+        {assigned.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {assigned.map((code) => (
+              <MaterialFlagBadge key={code} code={code} />
+            ))}
+            {showRelease && onReleaseAll ? (
+              <button
+                type="button"
+                className="text-sm underline"
+                disabled={releaseDisabled}
+                onClick={onReleaseAll}
+              >
+                {t("releaseFlags")}
+              </button>
+            ) : null}
           </div>
-        );
-      })}
-      {assigned.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {assigned.map((code) => (
-            <MaterialFlagBadge key={code} code={code} />
-          ))}
-          {showRelease && onReleaseAll ? (
-            <button
-              type="button"
-              className="text-sm underline"
-              disabled={releaseDisabled}
-              onClick={onReleaseAll}
-            >
-              {t("releaseFlags")}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
+        ) : null}
+      </div>
+
+      <ConfirmDialog
+        open={pendingRelease !== null}
+        title={
+          pendingRelease
+            ? t("releaseFlagConfirmTitle", { code: pendingRelease.code })
+            : ""
+        }
+        description=""
+        confirmLabel={tCommon("yes")}
+        cancelLabel={tCommon("cancel")}
+        confirmVariant="default"
+        disabled={releaseDisabled}
+        onConfirm={confirmRelease}
+        onClose={() => setPendingRelease(null)}
+      />
+    </>
   );
 }

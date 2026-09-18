@@ -1,10 +1,10 @@
 import { calculateExpectedTimeFromAction } from "@/lib/actions/default-actions";
-import { applyTemplateSubTaskDependencies } from "@/integrations/ribermax/box/template-subtask-dependencies";
 import type {
   BoxTemplateData,
   LegacyNumber,
 } from "@/integrations/ribermax/rbx/rbx-types";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
+import { applyTemplateDependenciesFromPresets } from "@/lib/templates/apply-template-dependencies-from-presets";
 import type {
   TemplateSubTaskComponentInput,
   TemplateTaskFormInput,
@@ -39,6 +39,8 @@ export function buildTemplateFromBox(
   data: BoxTemplateData,
   presetsByName: ReadonlyMap<string, SubTaskPreset>,
 ): TemplateTaskFormInput {
+  const presetIds: string[] = [];
+  const defaultDependencyIdsByPreset = new Map<string, string[]>();
   const drafts: TemplateSubTaskComponentInput[] = data.subtasks.map(
     (item, index) => {
       const presetName = item.presetName.trim();
@@ -46,6 +48,11 @@ export function buildTemplateFromBox(
       if (!preset) {
         throw presetNotFoundError(presetName);
       }
+      presetIds.push(preset.documentId);
+      defaultDependencyIdsByPreset.set(
+        preset.documentId,
+        preset.defaultDependencyPresetIds,
+      );
       const qty = toPositiveInt(item.qty);
       const actionUnits = toNumber(item.actionUnits);
       return {
@@ -67,6 +74,10 @@ export function buildTemplateFromBox(
   return {
     name: buildTemplateName(data.empresaNome, data.boxName),
     code: String(data.prodId),
-    subTask: applyTemplateSubTaskDependencies(drafts),
+    subTask: applyTemplateDependenciesFromPresets(
+      drafts,
+      presetIds,
+      defaultDependencyIdsByPreset,
+    ),
   };
 }

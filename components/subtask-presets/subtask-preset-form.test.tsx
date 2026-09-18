@@ -40,8 +40,12 @@ describe("SubTaskPresetForm", () => {
           maxSameTimeWorkers: 1,
           actionId: SAMPLE_ACTION_ID,
           subTaskCategoryId: null,
+          defaultDependencyPresetIds: [],
         }}
         actionName="Cortar compensado"
+        dependencyOptions={[
+          { documentId: "preset-cut", name: "Corte das vigas" },
+        ]}
         onSubmit={vi.fn()}
       />,
     );

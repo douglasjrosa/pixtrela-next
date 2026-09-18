@@ -14,6 +14,7 @@ export interface SubTaskPreset {
   actionQtyQuestion: string;
   subTaskCategoryId?: string | null;
   subTaskCategoryName?: string | null;
+  defaultDependencyPresetIds: string[];
   active: boolean;
 }
 

@@ -76,6 +76,31 @@ describe("PasswordInput", () => {
     expect(field).toHaveValue("abc");
   });
 
+  it("accepts virtual keyboard append after the display is masked", () => {
+    const onChange = vi.fn();
+    renderWithIntl(
+      <PasswordInput id="password" aria-label="Senha" onChange={onChange} />,
+    );
+
+    const field = screen.getByLabelText("Senha");
+    act(() => {
+      fireEvent.keyDown(field, { key: "1" });
+    });
+    act(() => {
+      vi.advanceTimersByTime(1001);
+    });
+    expect(field).toHaveValue("•");
+
+    act(() => {
+      fireEvent.change(field, {
+        target: { value: "•2", selectionStart: 2, selectionEnd: 2 },
+      });
+    });
+
+    expect(document.getElementById("password-value")).toHaveValue("12");
+    expect(field).toHaveValue("•2");
+  });
+
   it("accepts plaintext autofill via change while masked", () => {
     const onChange = vi.fn();
     renderWithIntl(

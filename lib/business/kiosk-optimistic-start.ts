@@ -1,5 +1,6 @@
 import {
   isProducingQueueUnit,
+  queueUnitCursor,
   type KioskGroupUnit,
   type KioskIsolatedUnit,
   type KioskQueueUnit,
@@ -305,6 +306,18 @@ function refreshPendingShowStart(
   });
 }
 
+function dedupeQueueUnits(units: readonly KioskQueueUnit[]): KioskQueueUnit[] {
+  const seen = new Set<string>();
+  const unique: KioskQueueUnit[] = [];
+  for (const unit of units) {
+    const key = queueUnitCursor(unit);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(unit);
+  }
+  return unique;
+}
+
 /** Re-splits liberadas cards so producing rows surface immediately during optimistic UI. */
 export function applyOptimisticStateToLiberadasSection(
   section: LiberadasSectionSnapshot,
@@ -313,7 +326,10 @@ export function applyOptimisticStateToLiberadasSection(
   colaboratorId: string,
 ): LiberadasSectionSnapshot {
   const byId = subTasksById(queueContext);
-  const patched = [...section.producingUnits, ...section.units].map((unit) =>
+  const patched = dedupeQueueUnits([
+    ...section.producingUnits,
+    ...section.units,
+  ]).map((unit) =>
     unit.type === "group"
       ? patchGroupUnit(unit, byId, openRuns, colaboratorId)
       : patchIsolatedUnit(unit, byId),

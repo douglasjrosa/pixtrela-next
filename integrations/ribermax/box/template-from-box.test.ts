@@ -8,7 +8,7 @@ import {
   buildTemplateFromBox,
   PRESET_NOT_FOUND_PREFIX,
 } from "./template-from-box";
-import { TEMPLATE_SARRAFOS_CUT_NAME } from "./template-subtask-dependencies";
+const SARRAFOS_CUT_NAME = "Corte dos sarrafos";
 
 const assembleLaterals = sampleSubTaskPreset({
   documentId: "p-lat",
@@ -17,11 +17,12 @@ const assembleLaterals = sampleSubTaskPreset({
   maxSameTimeWorkers: 2,
   actionUnitTime: 1.04,
   actionQtyQuestion: "Quantos grampos?",
+  defaultDependencyPresetIds: ["p-cut"],
 });
 
 const cutSarrafos = sampleSubTaskPreset({
   documentId: "p-cut",
-  name: TEMPLATE_SARRAFOS_CUT_NAME,
+  name: SARRAFOS_CUT_NAME,
   sharingType: "duration",
   maxSameTimeWorkers: 1,
   actionUnitTime: 1.66,
@@ -39,7 +40,7 @@ function baseData(overrides: Partial<BoxTemplateData> = {}): BoxTemplateData {
     boxName: "Caixotona",
     subtasks: [
       {
-        presetName: TEMPLATE_SARRAFOS_CUT_NAME,
+        presetName: SARRAFOS_CUT_NAME,
         qty: 1,
         actionUnits: 10,
       },
@@ -74,7 +75,7 @@ describe("buildTemplateFromBox", () => {
       (template.subTask ?? []).map((row) => [row.name, row]),
     );
 
-    expect(byName[TEMPLATE_SARRAFOS_CUT_NAME]).toMatchObject({
+    expect(byName[SARRAFOS_CUT_NAME]).toMatchObject({
       qty: 1,
       sharingType: "duration",
       maxSameTimeWorkers: 1,
@@ -88,7 +89,7 @@ describe("buildTemplateFromBox", () => {
     });
   });
 
-  it("applies named dependency rules when the preset name is known", () => {
+  it("applies preset default dependencies when building the template", () => {
     const template = buildTemplateFromBox(baseData(), presetsByName);
     const laterals = (template.subTask ?? []).find(
       (row) => row.name === "Montagem dos quadros das laterais",

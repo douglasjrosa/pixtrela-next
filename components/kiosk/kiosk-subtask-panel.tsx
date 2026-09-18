@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { KioskQueueUnit, OpenChainRun } from "@/lib/business/kiosk-queue-units";
+import { queueUnitCursor } from "@/lib/business/kiosk-queue-units";
 import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
 import {
   canCompleteSubTaskOnExit,
@@ -21,7 +22,7 @@ import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskChainGroupCard } from "./kiosk-chain-group-card";
-import { KioskExitSubtaskForm } from "./kiosk-exit-subtask-form";
+import { KioskExitSubtaskModal } from "./kiosk-exit-subtask-modal";
 import { MaterialFlagHintList } from "./material-flag-hint-list";
 import { KioskSubtaskEarnedCredits } from "./kiosk-subtask-earned-credits";
 import { KioskSubtaskRemainingQtyBadge } from "./kiosk-subtask-remaining-qty-badge";
@@ -94,6 +95,19 @@ export function KioskSubtaskPanel({
   );
   const queueContext = allSubTasks ?? subTasks;
   const resolvedUnits = units ?? unitsFromSubTasks(subTasks);
+  const exitingContext = (() => {
+    if (!exitingId || !onExit) return null;
+    const unit = resolvedUnits.find(
+      (item) =>
+        item.type === "isolated" && item.subTask.documentId === exitingId,
+    );
+    if (!unit || unit.type !== "isolated") return null;
+    if (unit.subTask.status !== "producing") return null;
+    return {
+      subTask: unit.subTask,
+      helperMode: unit.helperMode,
+    };
+  })();
 
   useEffect(() => {
     if (!blockingUi && !exitBusy) {
@@ -103,12 +117,13 @@ export function KioskSubtaskPanel({
   }, [blockingUi, exitBusy]);
 
   return (
+    <>
     <ul className="space-y-3">
       {resolvedUnits.map((unit) => {
         if (unit.type === "group") {
           return (
             <KioskChainGroupCard
-              key={`group-${unit.chainRunId ?? unit.headId}-${unit.principalActive ? "active" : "idle"}`}
+              key={`group-${queueUnitCursor(unit)}`}
               unit={unit}
               openRuns={openRuns}
               readOnly={readOnly}
@@ -177,10 +192,14 @@ export function KioskSubtaskPanel({
                 ) : null}
                 <p className="text-lg font-bold leading-snug">{subTask.name}</p>
                 {!compactFinishedCards ? (
-                  <KioskSubtaskStatusBadge status={subTask.status} />
-                ) : null}
-                {showRemainingQtyBadge ? (
-                  <KioskSubtaskRemainingQtyBadge remainingQty={remainingQty} />
+                  <div className="flex w-full items-center justify-between gap-2">
+                    <KioskSubtaskStatusBadge status={subTask.status} />
+                    {showRemainingQtyBadge ? (
+                      <KioskSubtaskRemainingQtyBadge
+                        remainingQty={remainingQty}
+                      />
+                    ) : null}
+                  </div>
                 ) : null}
                 {isProducing && subTask.startedAt ? (
                   <KioskSubtaskProducingMetrics
@@ -248,43 +267,48 @@ export function KioskSubtaskPanel({
                 />
               </div>
             ) : null}
-            {isExiting && onExit ? (
-              <div className="mt-4">
-                <KioskExitSubtaskForm
-                  sharingType={subTask.sharingType}
-                  allowComplete={allowComplete}
-                  maxQty={
-                    subTask.sharingType === "qty"
-                      ? getRemainingSubTaskQty(
-                          subTask.targetQty,
-                          subTask.completedQty,
-                        )
-                      : undefined
-                  }
-                  disabled={blockingUi}
-                  busy={exitBusy}
-                  availableFlags={subTask.availableFlags}
-                  assignedFlagCodes={subTask.assignedFlagCodes}
-                  subTaskCategoryId={subTask.subTaskCategoryId}
-                  requiresMaterialFlagsOnFinish={
-                    subTask.requiresMaterialFlagsOnFinish
-                  }
-                  onRefreshFlags={
-                    onRefreshMaterialFlags
-                      ? () => onRefreshMaterialFlags(subTask.documentId)
-                      : undefined
-                  }
-                  onCancel={() => setExitingId(null)}
-                  onConfirm={(input) => {
-                    setExitingId(null);
-                    onExit(subTask.documentId, input);
-                  }}
-                />
-              </div>
-            ) : null}
           </li>
         );
       })}
     </ul>
+    {exitingContext ? (
+      <KioskExitSubtaskModal
+        open
+        title={exitingContext.subTask.name}
+        sharingType={exitingContext.subTask.sharingType}
+        allowComplete={
+          exitingContext.helperMode
+            ? false
+            : canCompleteSubTaskOnExit(exitingContext.subTask)
+        }
+        maxQty={
+          exitingContext.subTask.sharingType === "qty"
+            ? getRemainingSubTaskQty(
+                exitingContext.subTask.targetQty,
+                exitingContext.subTask.completedQty,
+              )
+            : undefined
+        }
+        disabled={blockingUi}
+        busy={exitBusy}
+        availableFlags={exitingContext.subTask.availableFlags}
+        assignedFlagCodes={exitingContext.subTask.assignedFlagCodes}
+        subTaskCategoryId={exitingContext.subTask.subTaskCategoryId}
+        requiresMaterialFlagsOnFinish={
+          exitingContext.subTask.requiresMaterialFlagsOnFinish
+        }
+        onRefreshFlags={
+          onRefreshMaterialFlags
+            ? () => onRefreshMaterialFlags(exitingContext.subTask.documentId)
+            : undefined
+        }
+        onClose={() => setExitingId(null)}
+        onConfirm={(input) => {
+          setExitingId(null);
+          onExit(exitingContext.subTask.documentId, input);
+        }}
+      />
+    ) : null}
+    </>
   );
 }

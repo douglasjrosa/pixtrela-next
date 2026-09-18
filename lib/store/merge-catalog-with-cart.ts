@@ -33,6 +33,19 @@ export type MergedStoreCard = {
   prices: MergedAwardPrice[];
 };
 
+function minStoreCardUnitCost(card: MergedStoreCard): number {
+  return Math.min(...card.prices.map((price) => price.unitCost));
+}
+
+export function compareStoreCardsByPrice(
+  left: MergedStoreCard,
+  right: MergedStoreCard,
+): number {
+  const priceDiff = minStoreCardUnitCost(left) - minStoreCardUnitCost(right);
+  if (priceDiff !== 0) return priceDiff;
+  return left.title.localeCompare(right.title, "pt-BR");
+}
+
 export function mergeCatalogWithCart(
   rows: ReadonlyArray<CatalogAwardPriceRow>,
   storeCurrencies: ReadonlyArray<StoreCurrencyView>,
@@ -79,5 +92,5 @@ export function mergeCatalogWithCart(
 
   return [...cards.values()]
     .filter((card) => card.prices.length > 0)
-    .sort((left, right) => left.title.localeCompare(right.title, "pt-BR"));
+    .sort(compareStoreCardsByPrice);
 }

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { SubTaskPresetForm } from "@/components/subtask-presets/subtask-preset-form";
 import { Button } from "@/components/ui/button";
+import type { SubTaskDependencyOption } from "@/components/subtasks/subtask-dependencies-modal";
 import type { SubTaskPresetFormInput } from "@/lib/schemas/sub-task-preset";
 
 export interface SubTaskPresetFormModalProps {
@@ -14,6 +15,8 @@ export interface SubTaskPresetFormModalProps {
   formId: string;
   defaultValues: SubTaskPresetFormInput;
   actionName?: string;
+  currentPresetId?: string;
+  dependencyOptions: SubTaskDependencyOption[];
   saving?: boolean;
   onClose: () => void;
   onSave: (values: SubTaskPresetFormInput) => void;
@@ -25,6 +28,8 @@ export function SubTaskPresetFormModal({
   formId,
   defaultValues,
   actionName = "",
+  currentPresetId,
+  dependencyOptions,
   saving = false,
   onClose,
   onSave,
@@ -92,6 +97,8 @@ export function SubTaskPresetFormModal({
             formId={formId}
             defaultValues={defaultValues}
             actionName={actionName}
+            currentPresetId={currentPresetId}
+            dependencyOptions={dependencyOptions}
             disabled={saving}
             onSubmit={onSave}
           />

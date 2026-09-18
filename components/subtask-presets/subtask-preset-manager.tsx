@@ -10,6 +10,7 @@ import {
 } from "@/app/(app)/sub-task-presets/actions";
 import { SubTaskPresetFormModal } from "@/components/subtask-presets/subtask-preset-form-modal";
 import { useRegisterTemplatesPageCreateAction } from "@/components/templates/templates-page-actions-context";
+import type { SubTaskDependencyOption } from "@/components/subtasks/subtask-dependencies-modal";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { SubTaskPresetFormInput } from "@/lib/schemas/sub-task-preset";
@@ -23,6 +24,7 @@ import { SubTaskPresetListProvider } from "./subtask-preset-list-context";
 export interface SubTaskPresetManagerProps {
   children: ReactNode;
   categoryOptions: SubTaskCategoryOption[];
+  dependencyOptions: SubTaskDependencyOption[];
 }
 
 const EMPTY_FORM: SubTaskPresetFormInput = {
@@ -31,6 +33,7 @@ const EMPTY_FORM: SubTaskPresetFormInput = {
   maxSameTimeWorkers: 2,
   actionId: "",
   subTaskCategoryId: null,
+  defaultDependencyPresetIds: [],
 };
 
 type ModalState =
@@ -41,6 +44,7 @@ type ModalState =
 export function SubTaskPresetManager({
   children,
   categoryOptions,
+  dependencyOptions,
 }: SubTaskPresetManagerProps) {
   const tCommon = useTranslations("common");
   const tPresets = useTranslations("subTaskPresets");
@@ -90,10 +94,14 @@ export function SubTaskPresetManager({
           maxSameTimeWorkers: modal.preset.maxSameTimeWorkers,
           actionId: modal.preset.actionId,
           subTaskCategoryId: modal.preset.subTaskCategoryId ?? null,
+          defaultDependencyPresetIds:
+            modal.preset.defaultDependencyPresetIds ?? [],
         }
       : EMPTY_FORM;
 
   const actionName = modal.mode === "edit" ? modal.preset.actionName : "";
+  const currentPresetId =
+    modal.mode === "edit" ? modal.preset.documentId : undefined;
 
   return (
     <SubTaskCategoryOptionsProvider options={categoryOptions}>
@@ -108,6 +116,8 @@ export function SubTaskPresetManager({
         formId={formId}
         defaultValues={defaultValues}
         actionName={actionName}
+        currentPresetId={currentPresetId}
+        dependencyOptions={dependencyOptions}
         saving={isPending}
         onClose={closeModal}
         onSave={handleSave}

@@ -445,6 +445,68 @@ describe("BoardActions", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("keeps optimistic chain link when modal refresh resolves late", async () => {
+    const user = userEvent.setup();
+    let finishRefresh!: (
+      value: ReturnType<typeof boardSubTaskSummaryStub>[],
+    ) => void;
+    const initial = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        index: 1,
+        assignedTo: [],
+      }),
+    ];
+    const loadSubtasks = vi
+      .fn()
+      .mockResolvedValueOnce(initial)
+      .mockImplementation(
+        () =>
+          new Promise<typeof initial>((resolve) => {
+            finishRefresh = resolve;
+          }),
+      );
+    const linkSubtask = vi.fn().mockResolvedValue({
+      documentId: "st-2",
+      linkedToPrevious: true,
+      assignedTo: [{ documentId: "u-1", name: "Ana" }],
+    });
+
+    renderBoard({ loadSubtasks, linkSubtask });
+    await user.click(screen.getByText("1 - Tarefa A"));
+    await screen.findByRole("button", { name: "Ligar à anterior" });
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByText("1 - Tarefa A"));
+    const toggles = await screen.findAllByRole("button", {
+      name: "Ligar à anterior",
+    });
+    const enabled = toggles.find((toggle) => !toggle.hasAttribute("disabled"));
+    expect(enabled).toBeTruthy();
+    fireEvent.click(enabled!);
+
+    expect(
+      await screen.findByRole("button", { name: "Desligar da anterior" }),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      finishRefresh(initial);
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Desligar da anterior" }),
+    ).toBeInTheDocument();
+  });
+
   it("persists link-to-previous from the subtasks modal", async () => {
     const user = userEvent.setup();
     let finishLink = (): void => undefined;

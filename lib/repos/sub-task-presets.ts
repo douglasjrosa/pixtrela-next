@@ -10,6 +10,7 @@ import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
 import { getDb, type Db } from "@/lib/db/client";
 import { archiveRecords } from "@/lib/repos/deactivation-reasons";
+import { normalizeDefaultDependencyPresetIds } from "@/lib/subtask-presets/preset-default-dependencies-seed";
 import type { SubTaskPresetFormInput } from "@/lib/schemas/sub-task-preset";
 import type { SubtaskPresetListSort } from "@/lib/schemas/subtask-preset-list-sort";
 
@@ -28,6 +29,7 @@ type PresetJoinRow = {
   actionName: string;
   actionUnitTime: string;
   actionQtyQuestion: string;
+  defaultDependencyPresetIds: string[];
 };
 
 function mapPresetRow(row: PresetJoinRow): SubTaskPreset {
@@ -42,6 +44,7 @@ function mapPresetRow(row: PresetJoinRow): SubTaskPreset {
     actionQtyQuestion: row.actionQtyQuestion,
     subTaskCategoryId: row.subTaskCategoryId,
     subTaskCategoryName: row.subTaskCategoryName,
+    defaultDependencyPresetIds: row.defaultDependencyPresetIds ?? [],
     active: row.active,
   };
 }
@@ -58,6 +61,7 @@ const PRESET_SELECT = {
   actionName: factoryActions.name,
   actionUnitTime: factoryActions.unitTime,
   actionQtyQuestion: factoryActions.qtyQuestion,
+  defaultDependencyPresetIds: subTaskPresets.defaultDependencyPresetIds,
 };
 
 function subtaskPresetListOrderBy(sort: SubtaskPresetListSort) {
@@ -226,6 +230,9 @@ export async function createSubTaskPresetRepo(
       maxSameTimeWorkers: input.maxSameTimeWorkers,
       actionId: input.actionId,
       subTaskCategoryId: input.subTaskCategoryId || null,
+      defaultDependencyPresetIds: normalizeDefaultDependencyPresetIds(
+        input.defaultDependencyPresetIds,
+      ),
     })
     .returning({ id: subTaskPresets.id });
   return row.id;
@@ -244,6 +251,10 @@ export async function updateSubTaskPresetRepo(
       maxSameTimeWorkers: input.maxSameTimeWorkers,
       actionId: input.actionId,
       subTaskCategoryId: input.subTaskCategoryId || null,
+      defaultDependencyPresetIds: normalizeDefaultDependencyPresetIds(
+        input.defaultDependencyPresetIds,
+        id,
+      ),
       updatedAt: new Date(),
     })
     .where(eq(subTaskPresets.id, id));

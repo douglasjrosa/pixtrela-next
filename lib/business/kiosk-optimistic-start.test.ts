@@ -207,6 +207,34 @@ describe("kiosk optimistic start", () => {
     expect(next.units).toHaveLength(0);
   });
 
+  it("dedupes a group present in both producing and pending lists", () => {
+    const groupUnit = {
+      type: "group" as const,
+      headId: "st-1",
+      memberIds: ["st-1", "st-2"],
+      members: [
+        stub({ documentId: "st-1", status: "waiting" }),
+        stub({ documentId: "st-2", name: "Embalar", index: 1 }),
+      ],
+      locked: false,
+      principalActive: false,
+      chainRunId: null,
+      runStartedAt: null,
+      showStart: true,
+    };
+    const next = applyOptimisticStateToLiberadasSection(
+      {
+        producingUnits: [groupUnit],
+        units: [groupUnit],
+      },
+      groupUnit.members,
+      [],
+      "user-1",
+    );
+
+    expect([...next.producingUnits, ...next.units]).toHaveLength(1);
+  });
+
   it("settles chain stop when server queue no longer has the open run", () => {
     const stop = {
       chainRunId: "run-1",

@@ -213,25 +213,12 @@ name string.
 
 ## Subtask dependencies (the app-side only)
 
-RBX does **not** send `dependencies`. the app applies them by preset name after
-building the array:
+RBX does **not** send `dependencies`. the app copies them from each preset's
+`defaultDependencyPresetIds` (configured in `/templates/subtasks`) when the
+template is created.
 
-| Subtask | Depends on |
-|---------|------------|
-| `Montagem dos pés` | `Corte das vigas`, `Corte dos sarrafos` |
-| `Montagem da base` | `Corte das tábuas`, `Montagem dos pés` |
-| `Montagem dos quadros das laterais` | `Corte dos sarrafos` |
-| `Montagem dos quadros das cabeceiras` | `Corte dos sarrafos` |
-| `Montagem dos quadros da tampa` | `Corte dos sarrafos` |
-| `Fixação das chapas das laterais` | `Montagem dos quadros das laterais`, `Corte das chapas das laterais` |
-| `Fixação das chapas das cabeceiras` | `Montagem dos quadros das cabeceiras`, `Corte das chapas das cabeceiras` |
-| `Fixação das chapas da tampa` | `Montagem dos quadros da tampa`, `Corte da chapa da tampa` |
-| `Fixação dos adesivos das laterais` | `Fixação das chapas das laterais` |
-| `Fixação dos adesivos das cabeceiras` | `Fixação das chapas das cabeceiras` |
-
-Dependencies resolve by **index in `subtasks`**. If a predecessor is omitted,
-that dependency link is skipped silently. Include predecessors when the
-dependency graph must stay intact.
+Dependencies resolve by **index in `subtasks`**. If a predecessor preset is
+omitted from the CRM payload, that dependency link is skipped silently.
 
 ---
 
@@ -289,7 +276,8 @@ With action `Grampear quadro` (`unit_time = 1.00`) and `actionUnits = 30` →
 |------|---------|
 | `integrations/ribermax/rbx/rbx-types.ts` | Payload TypeScript types |
 | `integrations/ribermax/box/template-from-box.ts` | Consumption and time math |
-| `integrations/ribermax/box/template-subtask-dependencies.ts` | Dependency graph |
+| `lib/subtask-presets/preset-default-dependencies-seed.ts` | Legacy RBX seed data |
+| `lib/templates/apply-template-dependencies-from-presets.ts` | Template import resolver |
 | `integrations/ribermax/rbx/rbx-client.ts` | HTTP client + validation |
 | `integrations/ribermax/README.md` | Short integration overview |
 | `lib/actions/default-actions.ts` | Factory action catalog (`unit_time`) |

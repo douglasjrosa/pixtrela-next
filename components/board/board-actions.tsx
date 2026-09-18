@@ -31,7 +31,10 @@ import {
   mergeLoadedSubtasksWithDraft,
 } from "@/lib/business/board-assignee-draft";
 import {
+  hasPendingLinkDraft,
+  reconcileLoadedSubtaskLinks,
   shouldFlushBoardLink,
+  type BoardLinkDraftState,
   type BoardSubtaskLinkResult,
 } from "@/lib/business/board-link-queue";
 import {
@@ -225,6 +228,35 @@ export function BoardActions({
     subtaskCacheRef.current.invalidate(taskDocumentId);
   }
 
+  function linkDraftState(): BoardLinkDraftState {
+    return {
+      pendingLinks: desiredLinkRef.current,
+      inFlightLinkIds: inFlightLinkRef.current,
+    };
+  }
+
+  function reconcileLoadedSubtasks(
+    loaded: BoardSubTaskSummary[],
+  ): BoardSubTaskSummary[] {
+    return reconcileLoadedSubtaskLinks(loaded, ackedLinkRef.current);
+  }
+
+  function rememberAckedLinksFromLoaded(
+    loaded: BoardSubTaskSummary[],
+    linkDraft: BoardLinkDraftState,
+  ): void {
+    for (const item of loaded) {
+      const id = item.documentId;
+      if (
+        linkDraft.pendingLinks.has(id) ||
+        linkDraft.inFlightLinkIds.has(id)
+      ) {
+        continue;
+      }
+      ackedLinkRef.current.set(id, item.linkedToPrevious);
+    }
+  }
+
   function applyCacheEntry(entry: SubtaskListCacheEntry): void {
     applyLoadedSubtasks(entry.subtasks);
     setAssigneesBaseline(entry.assigneesBaseline);
@@ -254,14 +286,32 @@ export function BoardActions({
   function applyLoadedSubtasks(loaded: BoardSubTaskSummary[]): void {
     ingestSubtasksIntoAssigneeDirectory(nameDirectoryRef.current, loaded);
     rememberAssigneeNames();
-    ackedLinkRef.current.clear();
+    const linkDraft = linkDraftState();
+    if (hasPendingLinkDraft(linkDraft)) {
+      const merged = reconcileLoadedSubtasks(
+        mergeLoadedSubtasksWithDraft(loaded, subtasksRef.current, {
+          linkDraft,
+        }),
+      );
+      rememberAckedLinksFromLoaded(loaded, linkDraft);
+      setSubtasks(merged);
+      if (
+        !hasAssigneeDraftChanges(merged, assigneesBaselineRef.current)
+      ) {
+        setAssigneesBaseline(buildAssigneesSnapshot(merged));
+      }
+      return;
+    }
+
+    const reconciled = reconcileLoadedSubtasks(loaded);
     desiredLinkRef.current.clear();
     inFlightLinkRef.current.clear();
-    for (const item of loaded) {
+    ackedLinkRef.current.clear();
+    for (const item of reconciled) {
       ackedLinkRef.current.set(item.documentId, item.linkedToPrevious);
     }
-    setSubtasks(loaded);
-    setAssigneesBaseline(buildAssigneesSnapshot(loaded));
+    setSubtasks(reconciled);
+    setAssigneesBaseline(buildAssigneesSnapshot(reconciled));
   }
 
   function applyFetchedSubtasks(
@@ -271,30 +321,45 @@ export function BoardActions({
     const entry = createSubtaskListCacheEntry(loaded);
     const taskDocumentId =
       options?.taskDocumentId ?? selectedTaskRef.current?.documentId;
-    if (taskDocumentId) {
-      subtaskCacheRef.current.set(taskDocumentId, entry);
-    }
     setSubtasksLoadedAt(entry.loadedAt);
     ingestSubtasksIntoAssigneeDirectory(nameDirectoryRef.current, loaded);
 
-    if (options?.keepDraftAssignees) {
-      setSubtasks((current) => mergeLoadedSubtasksWithDraft(loaded, current));
-      setAssigneesBaseline((current) => mergeAssigneesBaseline(current, loaded));
-      return;
-    }
-
-    if (
+    const linkDraft = linkDraftState();
+    const shouldMergeDraft =
+      options?.keepDraftAssignees ||
       hasAssigneeDraftChanges(
         subtasksRef.current,
         assigneesBaselineRef.current,
-      )
-    ) {
-      setSubtasks((current) => mergeLoadedSubtasksWithDraft(loaded, current));
-      setAssigneesBaseline((current) => mergeAssigneesBaseline(current, loaded));
+      ) ||
+      hasPendingLinkDraft(linkDraft);
+
+    if (shouldMergeDraft) {
+      const merged = reconcileLoadedSubtasks(
+        mergeLoadedSubtasksWithDraft(loaded, subtasksRef.current, {
+          linkDraft,
+        }),
+      );
+      const nextBaseline = mergeAssigneesBaseline(
+        assigneesBaselineRef.current,
+        loaded,
+      );
+      if (taskDocumentId) {
+        subtaskCacheRef.current.set(taskDocumentId, {
+          ...entry,
+          subtasks: merged,
+          assigneesBaseline: nextBaseline,
+        });
+      }
+      rememberAckedLinksFromLoaded(loaded, linkDraft);
+      setSubtasks(merged);
+      setAssigneesBaseline(nextBaseline);
       return;
     }
 
     applyLoadedSubtasks(loaded);
+    if (taskDocumentId) {
+      subtaskCacheRef.current.set(taskDocumentId, entry);
+    }
   }
 
   async function applyLiveState(

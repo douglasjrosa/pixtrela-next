@@ -1,10 +1,51 @@
 "use client";
 
+import { FlagTriangleRight, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { Button } from "@/components/ui/button";
 import type { MaterialFlagOption } from "@/lib/business/subtask-queue";
+import { cn } from "@/lib/utils";
 
 import { SemBandeiraInfoBadge } from "./sem-bandeira-info-badge";
+
+function MaterialFlagsFieldsetHeader({
+  title,
+  onRefresh,
+  disabled,
+  refreshing,
+  refreshLabel,
+  loadingLabel,
+}: {
+  title: string;
+  onRefresh?: () => void;
+  disabled?: boolean;
+  refreshing?: boolean;
+  refreshLabel: string;
+  loadingLabel: string;
+}) {
+  return (
+    <legend className="flex w-full items-center justify-between gap-2 text-base font-medium">
+      <span>{title}</span>
+      {onRefresh ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="shrink-0"
+          disabled={disabled || refreshing}
+          aria-label={refreshing ? loadingLabel : refreshLabel}
+          onClick={onRefresh}
+        >
+          <RefreshCw
+            className={cn(refreshing && "animate-spin")}
+            aria-hidden
+          />
+        </Button>
+      ) : null}
+    </legend>
+  );
+}
 
 export function KioskMaterialFlagPicker({
   flags,
@@ -18,10 +59,12 @@ export function KioskMaterialFlagPicker({
   onSemBandeiraChange,
   onRefresh,
   refreshing = false,
+  scrollableFlags = false,
 }: {
   flags: MaterialFlagOption[];
   selectedIds: string[];
   disabled?: boolean;
+  scrollableFlags?: boolean;
   onChange: (next: string[]) => void;
   categoryId?: string | null;
   requiresMaterialFlagsOnFinish?: boolean;
@@ -43,10 +86,21 @@ export function KioskMaterialFlagPicker({
 
   if (showOptionalEmpty) return null;
 
+  const fieldsetHeader = (
+    <MaterialFlagsFieldsetHeader
+      title={t("materialFlags")}
+      onRefresh={onRefresh}
+      disabled={disabled}
+      refreshing={refreshing}
+      refreshLabel={t("refreshFlags")}
+      loadingLabel={t("actionLoading")}
+    />
+  );
+
   if (lockedSemBandeira) {
     return (
       <fieldset className="space-y-2">
-        <legend className="text-base font-medium">{t("materialFlags")}</legend>
+        {fieldsetHeader}
         <SemBandeiraInfoBadge />
       </fieldset>
     );
@@ -55,31 +109,21 @@ export function KioskMaterialFlagPicker({
   if (showRefreshEmpty) {
     return (
       <fieldset className="space-y-2">
-        <legend className="text-base font-medium">{t("materialFlags")}</legend>
+        {fieldsetHeader}
         <p className="text-sm text-muted-foreground">
           {t("materialFlagsUnavailable")}
         </p>
-        {onRefresh ? (
-          <button
-            type="button"
-            disabled={disabled || refreshing}
-            className="text-sm font-medium underline"
-            onClick={onRefresh}
-          >
-            {refreshing ? t("actionLoading") : t("refreshFlags")}
-          </button>
-        ) : null}
         {allowSemBandeiraOption ? (
           <button
             type="button"
             disabled={disabled}
             aria-pressed={semBandeiraSelected}
-            className={
-              "rounded-full border px-3 py-1 text-sm " +
-              (semBandeiraSelected
+            className={cn(
+              "rounded-md border px-3 py-1 text-sm",
+              semBandeiraSelected
                 ? "border-primary bg-primary/10"
-                : "bg-background")
-            }
+                : "bg-background",
+            )}
             onClick={() => onSemBandeiraChange?.(!semBandeiraSelected)}
           >
             {t("semBandeira")}
@@ -102,9 +146,15 @@ export function KioskMaterialFlagPicker({
 
   return (
     <fieldset className="space-y-2">
-      <legend className="text-base font-medium">{t("materialFlags")}</legend>
+      {fieldsetHeader}
       <p className="text-sm text-muted-foreground">{t("materialFlagHint")}</p>
-      <div className="flex flex-wrap gap-2">
+      <div
+        className={cn(
+          scrollableFlags &&
+            "min-h-0 max-h-[min(32vh,14rem)] overflow-y-auto overscroll-contain",
+        )}
+      >
+        <div className="flex flex-wrap gap-2">
         {flags.map((flag) => {
           const isOn = selected.has(flag.id);
           return (
@@ -113,27 +163,27 @@ export function KioskMaterialFlagPicker({
               type="button"
               disabled={disabled}
               aria-pressed={isOn}
-              className={
-                "rounded-full border px-3 py-1 font-mono text-sm " +
-                (isOn ? "border-primary bg-primary/10" : "bg-background")
-              }
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border px-3 py-1",
+                "font-mono text-sm",
+                isOn ? "border-primary bg-primary/10" : "bg-background",
+              )}
               onClick={() => toggle(flag.id)}
             >
+              <FlagTriangleRight
+                className={cn(
+                  "size-4 shrink-0",
+                  isOn ? "text-primary" : "text-muted-foreground",
+                )}
+                aria-hidden
+                strokeWidth={2}
+              />
               {flag.code}
             </button>
           );
         })}
+        </div>
       </div>
-      {onRefresh ? (
-        <button
-          type="button"
-          disabled={disabled || refreshing}
-          className="text-sm underline"
-          onClick={onRefresh}
-        >
-          {refreshing ? t("actionLoading") : t("refreshFlags")}
-        </button>
-      ) : null}
     </fieldset>
   );
 }

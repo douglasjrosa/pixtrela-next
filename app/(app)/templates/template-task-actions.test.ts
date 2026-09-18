@@ -77,6 +77,7 @@ describe("templates/actions drizzle CRUD", () => {
           index: 0,
           expectedTime: 60,
           dependencies: null,
+          subTaskCategoryId: "d9d2cf80-ee99-46a1-877c-0cb1ecc4941a",
         },
       ],
     });
@@ -89,6 +90,7 @@ describe("templates/actions drizzle CRUD", () => {
             index: 0,
             expectedTime: 60,
             linkedToPrevious: false,
+            subTaskCategoryId: "d9d2cf80-ee99-46a1-877c-0cb1ecc4941a",
           }),
         ],
       }),

@@ -2,7 +2,9 @@
 
 import { useTranslations } from "next-intl";
 
+import { useSubTaskCategoryOptions } from "@/components/subtasks/subtask-category-options-context";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
+import { resolveSubTaskCategoryDisplayName } from "@/lib/subtasks/resolve-category-display-name";
 
 import {
   SubtaskPresetListRowPresentational,
@@ -24,12 +26,16 @@ export function SubtaskPresetListRowView({
   const tSettings = useTranslations("settings");
   const tTemplates = useTranslations("templates");
   const tCommon = useTranslations("common");
+  const categoryOptions = useSubTaskCategoryOptions();
   const labels: SubtaskPresetListRowLabels = {
     sharingType: tSharing(preset.sharingType),
     actionName: preset.actionName,
-    categoryName: preset.subTaskCategoryName?.trim()
-      ? preset.subTaskCategoryName
-      : tSettings("noCategory"),
+    categoryName: resolveSubTaskCategoryDisplayName(
+      preset.subTaskCategoryId,
+      categoryOptions,
+      preset.subTaskCategoryName,
+      tSettings("noCategory"),
+    ),
     inactive: tTemplates("inactive"),
     selectRow: tCommon("selectRow", { name: preset.name }),
   };

@@ -444,6 +444,10 @@ export const subTaskPresets = pgTable("sub_task_presets", {
     () => subTaskCategories.id,
     { onDelete: "set null" },
   ),
+  defaultDependencyPresetIds: jsonb("default_dependency_preset_ids")
+    .$type<string[]>()
+    .default([])
+    .notNull(),
   active: boolean("active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

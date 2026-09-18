@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { APP_LOCALE } from "@/lib/i18n/locale";
 import {
   PASSWORD_MASK_CHAR,
+  appendPasswordChars,
   buildPasswordDisplay,
   createPasswordRevealState,
   deletePasswordRange,
@@ -113,10 +114,53 @@ export const PasswordInput = React.forwardRef<
     if (cursorPos != null) {
       const safePos = Math.max(0, Math.min(cursorPos, next.value.length));
       selectionRef.current = { start: safePos, end: safePos };
+      const visible = visibleRef.current;
+      if (visible) {
+        visible.setSelectionRange(safePos, safePos);
+      }
       requestAnimationFrame(() => {
         visibleRef.current?.setSelectionRange(safePos, safePos);
       });
     }
+  }
+
+  function tryHandleMaskedValueChange(
+    incoming: string,
+    input: HTMLInputElement,
+  ): boolean {
+    if (showAll) {
+      return false;
+    }
+
+    const now = Date.now();
+    const current = revealStateRef.current;
+    const display = buildPasswordDisplay(current, false, now);
+
+    if (incoming === display) {
+      return true;
+    }
+
+    if (isPlaintextPasswordFill(incoming)) {
+      if (incoming !== current.value) {
+        syncValue(
+          createPasswordRevealState(incoming),
+          input.selectionStart ?? incoming.length,
+        );
+      }
+      return true;
+    }
+
+    // Mobile virtual keyboards often emit change/input with the masked display
+    // plus the new plaintext character (e.g. "•2" after the first char masked).
+    if (incoming.length > display.length && incoming.startsWith(display)) {
+      const added = incoming.slice(display.length);
+      if (isPlaintextPasswordFill(added)) {
+        syncValue(appendPasswordChars(current, added, now), incoming.length);
+        return true;
+      }
+    }
+
+    return false;
   }
 
   function isPlaintextPasswordFill(incoming: string): boolean {
@@ -137,18 +181,39 @@ export const PasswordInput = React.forwardRef<
       return;
     }
 
-    // Autofill / password managers set plaintext via input/change, not keydown.
-    if (!isPlaintextPasswordFill(incoming)) {
-      return;
-    }
-    if (incoming === revealStateRef.current.value) {
+    tryHandleMaskedValueChange(incoming, event.target);
+  }
+
+  function handleInput(event: React.FormEvent<HTMLInputElement>): void {
+    if (showAll || disabled || beforeInputHandledRef.current) {
       return;
     }
 
-    syncValue(
-      createPasswordRevealState(incoming),
-      event.target.selectionStart ?? incoming.length,
-    );
+    const input = event.currentTarget;
+    if (tryHandleMaskedValueChange(input.value, input)) {
+      return;
+    }
+
+    const nativeEvent = event.nativeEvent as InputEvent;
+    if (
+      nativeEvent.inputType === "insertText" &&
+      nativeEvent.data &&
+      isPlaintextPasswordFill(nativeEvent.data)
+    ) {
+      const end = input.selectionStart ?? nativeEvent.data.length;
+      const start = Math.max(0, end - nativeEvent.data.length);
+      selectionRef.current = { start, end };
+      syncValue(
+        replacePasswordRange(
+          revealStateRef.current,
+          start,
+          end,
+          nativeEvent.data,
+          Date.now(),
+        ),
+        end,
+      );
+    }
   }
 
   function handleBeforeInput(
@@ -163,7 +228,12 @@ export const PasswordInput = React.forwardRef<
       return;
     }
 
-    const { start, end } = selectionRef.current;
+    const input = event.currentTarget;
+    const domStart = input.selectionStart;
+    const domEnd = input.selectionEnd;
+    const start = domStart ?? selectionRef.current.start;
+    const end = domEnd ?? selectionRef.current.end;
+    selectionRef.current = { start, end };
     const current = revealStateRef.current;
     const now = Date.now();
 
@@ -312,6 +382,7 @@ export const PasswordInput = React.forwardRef<
         disabled={disabled}
         value={displayValue}
         onChange={handleVisibleChange}
+        onInput={handleInput}
         onBeforeInput={handleBeforeInput}
         onKeyDown={handleVisibleKeyDown}
         onPaste={handlePaste}

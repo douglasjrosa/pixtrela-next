@@ -4,11 +4,11 @@ import type {
   TemplateSubTaskComponentInput,
   TemplateTaskFormInput,
 } from "@/lib/schemas/template-task";
-import { applyTemplateSubTaskDependencies } from "@/integrations/ribermax/box/template-subtask-dependencies";
 import type {
   BoxTemplateData,
   LegacyNumber,
 } from "@/integrations/ribermax/rbx/rbx-types";
+import { applyTemplateDependenciesFromPresets } from "@/lib/templates/apply-template-dependencies-from-presets";
 import { resolvePresetForImport } from "@/lib/templates/resolve-preset-for-import";
 
 export const PRESET_NOT_FOUND_PREFIX = "presetNotFound:";
@@ -65,6 +65,8 @@ export async function buildTemplateFromBoxPayload(
   data: BoxTemplateData,
 ): Promise<TemplateTaskFormInput> {
   const drafts: TemplateSubTaskComponentInput[] = [];
+  const presetIds: string[] = [];
+  const defaultDependencyIdsByPreset = new Map<string, string[]>();
 
   for (let index = 0; index < data.subtasks.length; index += 1) {
     const item = data.subtasks[index];
@@ -76,6 +78,11 @@ export async function buildTemplateFromBoxPayload(
       const label = item.presetId?.trim() || item.presetName.trim() || "unknown";
       throw presetNotFoundError(label);
     }
+    presetIds.push(preset.documentId);
+    defaultDependencyIdsByPreset.set(
+      preset.documentId,
+      preset.defaultDependencyPresetIds,
+    );
     drafts.push(
       draftFromPreset(
         preset,
@@ -89,6 +96,10 @@ export async function buildTemplateFromBoxPayload(
   return {
     name: buildTemplateName(data.empresaNome, data.boxName),
     code: String(data.prodId),
-    subTask: applyTemplateSubTaskDependencies(drafts),
+    subTask: applyTemplateDependenciesFromPresets(
+      drafts,
+      presetIds,
+      defaultDependencyIdsByPreset,
+    ),
   };
 }

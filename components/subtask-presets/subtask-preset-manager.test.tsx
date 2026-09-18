@@ -52,7 +52,7 @@ const presets: SubTaskPreset[] = [sampleSubTaskPreset()];
 
 function renderManagerWithRow() {
   return renderWithIntl(
-    <SubTaskPresetManager categoryOptions={[]}>
+    <SubTaskPresetManager categoryOptions={[]} dependencyOptions={[]}>
       <table>
         <tbody>
           <SubtaskPresetListRowPresentational
@@ -99,6 +99,14 @@ describe("SubTaskPresetManager", () => {
       screen.queryByRole("button", { name: "Excluir" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Salvar" })).toBeInTheDocument();
+  });
+
+  it("shows dependency controls in the edit modal", async () => {
+    const user = userEvent.setup();
+    renderManagerWithRow();
+
+    await user.click(screen.getByRole("button", { name: "Corte" }));
+    expect(screen.getByRole("button", { name: "Dependências" })).toBeInTheDocument();
   });
 
   it("saves edits through updateSubTaskPreset", async () => {

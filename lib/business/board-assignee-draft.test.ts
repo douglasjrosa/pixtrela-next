@@ -180,6 +180,39 @@ describe("board-assignee-draft", () => {
     ]);
   });
 
+  it("preserves pending chain link while merging a refreshed list", () => {
+    const loaded = [
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        linkedToPrevious: false,
+      }),
+    ];
+    const draft = [
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        linkedToPrevious: true,
+      }),
+    ];
+
+    expect(
+      mergeLoadedSubtasksWithDraft(loaded, draft, {
+        linkDraft: {
+          pendingLinks: new Map([["st-2", true]]),
+          inFlightLinkIds: new Set(["st-2"]),
+        },
+      }),
+    ).toEqual([
+      {
+        ...loaded[0],
+        linkedToPrevious: true,
+      },
+    ]);
+  });
+
   it("merges baseline keys for kept and newly loaded subtasks", () => {
     expect(
       mergeAssigneesBaseline(
