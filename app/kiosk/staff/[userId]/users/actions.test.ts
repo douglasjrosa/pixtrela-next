@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const assertStaffCanManageColaborator = vi.fn();
+const assertStaffColaboratorEditAccess = vi.fn();
 const setColaboratorPasswordByStaff = vi.fn();
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "kiosk" }, jwt: "jwt" })),
 }));
 
-vi.mock("@/lib/repos/kiosk", () => ({
-  assertStaffCanManageColaborator: (...args: unknown[]) =>
-    assertStaffCanManageColaborator(...args),
+vi.mock("@/lib/kiosk/staff-colaborator-edit-access", () => ({
+  assertStaffColaboratorEditAccess: (...args: unknown[]) =>
+    assertStaffColaboratorEditAccess(...args),
 }));
 
 vi.mock("@/lib/repos/users", () => ({
@@ -21,9 +21,9 @@ vi.mock("@/lib/repos/users", () => ({
 describe("kiosk staff users/actions drizzle", () => {
   beforeEach(() => {
     vi.resetModules();
-    assertStaffCanManageColaborator.mockReset();
+    assertStaffColaboratorEditAccess.mockReset();
     setColaboratorPasswordByStaff.mockReset();
-    assertStaffCanManageColaborator.mockResolvedValue(undefined);
+    assertStaffColaboratorEditAccess.mockResolvedValue(undefined);
     setColaboratorPasswordByStaff.mockResolvedValue(undefined);
   });
 
@@ -34,7 +34,7 @@ describe("kiosk staff users/actions drizzle", () => {
       confirmPassword: "newpass1",
     });
     expect(result).toEqual({ ok: true });
-    expect(assertStaffCanManageColaborator).toHaveBeenCalledWith(
+    expect(assertStaffColaboratorEditAccess).toHaveBeenCalledWith(
       "staff-1",
       "col-1",
     );

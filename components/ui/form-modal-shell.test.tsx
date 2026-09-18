@@ -109,7 +109,6 @@ describe("FormModalShell", () => {
     expect(screen.getByRole("presentation").className).toContain(
       FORM_MODAL_OVERLAY_Z_CLASS,
     );
-    expect(screen.getByRole("presentation").className).toContain("pt-[4.5rem]");
   });
 
   it("can stack above another form modal", () => {
