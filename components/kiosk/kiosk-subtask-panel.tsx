@@ -306,7 +306,7 @@ export function KioskSubtaskPanel({
         onClose={() => setExitingId(null)}
         onConfirm={(input) => {
           setExitingId(null);
-          onExit(exitingContext.subTask.documentId, input);
+          onExit?.(exitingContext.subTask.documentId, input);
         }}
       />
     ) : null}
