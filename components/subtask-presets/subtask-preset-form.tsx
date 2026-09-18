@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Controller, useForm, type Resolver } from "react-hook-form";
+import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
@@ -50,7 +50,6 @@ export function SubTaskPresetForm({
     control,
     handleSubmit,
     setValue,
-    watch,
     clearErrors,
     formState: { errors, submitCount },
   } = useForm<SubTaskPresetFormInput>({
@@ -60,7 +59,8 @@ export function SubTaskPresetForm({
     defaultValues,
   });
 
-  const dependencyPresetIds = watch("defaultDependencyPresetIds") ?? [];
+  const dependencyPresetIds =
+    useWatch({ control, name: "defaultDependencyPresetIds" }) ?? [];
   const selectableDependencyOptions = useMemo(
     () =>
       dependencyOptions.filter(

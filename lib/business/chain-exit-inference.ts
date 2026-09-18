@@ -246,7 +246,7 @@ export function recomputeChainExitState(
   const order = resolveChainExitWizardOrder(members, edges).filter((id) =>
     worked.has(id),
   );
-  let answers = stripInferredAnswers(answersDraft);
+  const answers = stripInferredAnswers(answersDraft);
   if (options?.changedMemberId) {
     for (const supplierId of reachableSuppliers(options.changedMemberId, edges)) {
       if (worked.has(supplierId)) delete answers[supplierId];

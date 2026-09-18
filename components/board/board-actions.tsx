@@ -19,7 +19,6 @@ import type { BoardTaskRelativeMove } from "@/lib/business/board-task-relative-m
 import type { LoadMoreBoardColumnResult } from "@/components/kanban/kanban-board";
 import {
   applyAssigneeDraftDeltasToCounts,
-  assigneeIdsKey,
   buildAssigneesSnapshot,
   collectDirtyAssigneeUpdates,
   hasAssigneeDraftChanges,

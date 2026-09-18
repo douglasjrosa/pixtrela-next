@@ -49,35 +49,9 @@ export type CreateTaskInput = {
   crmItemKey?: string | null;
 };
 
-export type CreateTaskDebugStage = {
-  stage: string;
-  ms: number;
-  detail?: string;
-};
-
-export type CreateTaskInstrumentation = {
-  trace: CreateTaskDebugStage[];
-  rootStartedAt: number;
-};
-
-function pushCreateTaskStage(
-  instrumentation: CreateTaskInstrumentation | undefined,
-  stageStartedAt: number,
-  stage: string,
-  detail?: string,
-): void {
-  if (!instrumentation) return;
-  instrumentation.trace.push({
-    stage,
-    ms: Date.now() - stageStartedAt,
-    detail,
-  });
-}
-
 export async function createTask(
   input: CreateTaskInput,
   db?: Db,
-  instrumentation?: CreateTaskInstrumentation,
 ) {
   const resolvedDb = db ?? getDb();
   return resolvedDb.transaction(async (tx) => {
@@ -114,7 +88,6 @@ export async function createTask(
 
         const createdByIndex = new Map<number, string>();
         let totalExpected = 0;
-        const subTaskInsertStartedAt = Date.now();
         const subTaskValues = templateRows.map((row) => {
           const scaled = scaleTemplateSubTaskForTask({
             templateQty: row.qty,
@@ -144,14 +117,7 @@ export async function createTask(
             createdByIndex.set(created.index, created.id);
           }
         }
-        pushCreateTaskStage(
-          instrumentation,
-          subTaskInsertStartedAt,
-          "create_task_insert_subtasks",
-          `count=${subTaskValues.length}`,
-        );
 
-        const depInsertStartedAt = Date.now();
         const dependencyValues: Array<{
           subTaskId: string;
           dependsOnSubTaskId: string;
@@ -171,28 +137,15 @@ export async function createTask(
         if (dependencyValues.length > 0) {
           await tx.insert(subTaskDependencies).values(dependencyValues);
         }
-        pushCreateTaskStage(
-          instrumentation,
-          depInsertStartedAt,
-          "create_task_insert_dependencies",
-          `count=${dependencyValues.length}`,
-        );
 
         await tx
           .update(tasks)
           .set({ totalExpectedTime: totalExpected, updatedAt: new Date() })
           .where(eq(tasks.id, task.id));
 
-        const syncStartedAt = Date.now();
         await runTaskSubTaskSyncRoutine(
           task.id,
           tx as unknown as Db,
-        );
-        pushCreateTaskStage(
-          instrumentation,
-          syncStartedAt,
-          "create_task_sync_routine",
-          `subtasks=${templateRows.length}`,
         );
       }
     }
