@@ -76,6 +76,53 @@ function siblingsById(
   );
 }
 
+function viewerIsActiveOnMembers(
+  members: readonly KioskSubTask[],
+): boolean {
+  return members.some(
+    (item) => item.status === "producing" && Boolean(item.startedAt),
+  );
+}
+
+export function groupHasJoinSlot(
+  members: readonly KioskSubTask[],
+  viewerId: string,
+): boolean {
+  const qtyChain = members.some((item) => item.sharingType === "qty");
+  return members.some((item) => {
+    if (!(item.assignedToIds ?? []).includes(viewerId)) return false;
+    if (item.startedAt) return false;
+    if (isFinishedChainMember(toChainItem(item))) return false;
+    if (!qtyChain && item.status !== "producing") return false;
+    return !isSubTaskAtWorkerCapacity(
+      item.maxSameTimeWorkers ?? 1,
+      item.activeWorkerCount,
+    );
+  });
+}
+
+export function chainHasOtherActiveWorkers(
+  members: readonly KioskSubTask[],
+): boolean {
+  return members.some((item) => {
+    const viewerHere = Boolean(item.startedAt);
+    const activeCount = item.activeWorkerCount ?? 0;
+    if (viewerHere) return activeCount > 1;
+    return activeCount > 0 || item.status === "producing";
+  });
+}
+
+export function viewerWorkedChainMemberIds(
+  members: readonly KioskSubTask[],
+): string[] {
+  const worked = members.filter(
+    (item) => item.viewerWorkedThisRun === true || Boolean(item.startedAt),
+  );
+  if (worked.length > 0) {
+    return worked.map((item) => item.documentId);
+  }
+  return members.map((item) => item.documentId);
+}
 function findOpenRun(
   chain: SubTaskChain,
   openRuns: readonly OpenChainRun[],
@@ -92,8 +139,8 @@ function findOpenRun(
 }
 
 /**
- * Builds kiosk cards: multi-member chains as one group for the principal
- * (or before start); helpers only see spare-capacity members in isolation.
+ * Builds kiosk cards: multi-member chains as one group for every assignee
+ * in the shared session (no helper isolation).
  */
 export function buildKioskQueueUnits(input: {
   viewerId: string;
@@ -109,7 +156,6 @@ export function buildKioskQueueUnits(input: {
     catalog.map((item) => [item.documentId, toChainItem(item)]),
   );
   const openRuns = input.openRuns ?? [];
-  const viewerIds = new Set(input.subTasks.map((item) => item.documentId));
   const consumed = new Set<string>();
   const units: KioskQueueUnit[] = [];
   const siblings = siblingsById(catalog);
@@ -135,8 +181,7 @@ export function buildKioskQueueUnits(input: {
       .map((item) => byId.get(item.documentId))
       .filter((item): item is KioskSubTask => Boolean(item));
     const openRun = findOpenRun(chain, openRuns);
-    const principalActive = Boolean(openRun);
-    const viewerIsPrincipal = openRun?.principalId === input.viewerId;
+    const viewerActive = viewerIsActiveOnMembers(remainingSubTasks);
     const locked = chainHasExternalDependencyBlock(
       new Set(chain.memberIds),
       remaining,
@@ -156,39 +201,22 @@ export function buildKioskQueueUnits(input: {
       continue;
     }
 
-    if (principalActive && !viewerIsPrincipal) {
-      if (
-        isFinishedChainMember(toChainItem(subTask)) ||
-        !viewerIds.has(subTask.documentId)
-      ) {
+    const viewerAssigned = remainingSubTasks.some((item) =>
+      (item.assignedToIds ?? []).includes(input.viewerId),
+    );
+    if (!viewerAssigned) {
+      consumed.add(subTask.documentId);
+      continue;
+    }
+    if (!openRun) {
+      const remainingHead = remainingSubTasks[0];
+      const viewerOnHead = Boolean(
+        remainingHead?.assignedToIds?.includes(input.viewerId),
+      );
+      if (!viewerOnHead) {
         consumed.add(subTask.documentId);
         continue;
       }
-      const maxWorkers = subTask.maxSameTimeWorkers ?? 1;
-      const atCapacity = isSubTaskAtWorkerCapacity(
-        maxWorkers,
-        subTask.activeWorkerCount,
-      );
-      const hasSpare = maxWorkers > 1 && !atCapacity;
-      consumed.add(subTask.documentId);
-      if (hasSpare) {
-        units.push({
-          type: "isolated",
-          subTask,
-          helperMode: true,
-          showStart: false,
-        });
-      }
-      continue;
-    }
-
-    const remainingHead = remainingSubTasks[0];
-    const viewerOnRemainingHead = Boolean(
-      remainingHead?.assignedToIds?.includes(input.viewerId),
-    );
-    if (!principalActive && !viewerOnRemainingHead) {
-      consumed.add(subTask.documentId);
-      continue;
     }
 
     for (const member of remainingSubTasks) {
@@ -201,11 +229,9 @@ export function buildKioskQueueUnits(input: {
       memberIds: remainingSubTasks.map((item) => item.documentId),
       members: remainingSubTasks,
       locked,
-      principalActive: viewerIsPrincipal,
-      chainRunId: viewerIsPrincipal ? (openRun?.chainRunId ?? null) : null,
-      runStartedAt: viewerIsPrincipal
-        ? (openRun?.runStartedAt ?? null)
-        : null,
+      principalActive: viewerActive,
+      chainRunId: openRun?.chainRunId ?? null,
+      runStartedAt: openRun?.runStartedAt ?? null,
       showStart: false,
     });
   }
@@ -235,11 +261,17 @@ function applyStartVisibility(
 
   return units.map((unit) => {
     if (unit.type === "group") {
+      if (unit.chainRunId) {
+        return {
+          ...unit,
+          showStart: !unit.locked && groupHasJoinSlot(unit.members, input.viewerId),
+        };
+      }
+      if (unit.principalActive) {
+        return { ...unit, showStart: false };
+      }
       const showStart =
-        !hasActive &&
-        !unit.locked &&
-        !unit.principalActive &&
-        !idleStartGranted;
+        !hasActive && !unit.locked && !idleStartGranted;
       if (showStart) idleStartGranted = true;
       return { ...unit, showStart };
     }
@@ -277,6 +309,7 @@ export function isProducingQueueUnit(unit: KioskQueueUnit): boolean {
   }
   return (
     unit.principalActive ||
+    Boolean(unit.chainRunId) ||
     unit.members.some(
       (item) => item.status === "producing" || Boolean(item.startedAt),
     )

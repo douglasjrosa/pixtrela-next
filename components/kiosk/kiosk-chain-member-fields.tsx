@@ -20,7 +20,9 @@ export interface KioskChainMemberFieldsProps {
   variant?: "inline" | "modal";
   showName?: boolean;
   sharingType: SubTaskFormInput["sharingType"];
+  minQty?: number;
   maxQty?: number;
+  defaultQty?: number;
   availableFlags?: MaterialFlagOption[];
   subTaskCategoryId?: string | null;
   requiresMaterialFlagsOnFinish?: boolean;
@@ -44,7 +46,9 @@ export function KioskChainMemberFields({
   variant = "inline",
   showName = true,
   sharingType,
+  minQty = 0,
   maxQty = 1,
+  defaultQty,
   availableFlags: initialFlags = [],
   subTaskCategoryId = null,
   requiresMaterialFlagsOnFinish = false,
@@ -58,18 +62,30 @@ export function KioskChainMemberFields({
   const t = useTranslations("kiosk");
   const qtyInputRef = useRef<HTMLInputElement>(null);
   const safeMaxQty = Math.max(0, maxQty);
+  const safeMinQty = Math.min(safeMaxQty, Math.max(0, minQty));
   const showWizardProgress =
     variant === "modal" &&
     wizardStepCount != null &&
     wizardStepIndex != null &&
     wizardStepCount > 1;
-  const [availableFlags, setAvailableFlags] =
-    useState<MaterialFlagOption[]>(initialFlags);
-  const [categoryId, setCategoryId] = useState<string | null>(
-    subTaskCategoryId,
-  );
-  const [allowSemBandeiraOption, setAllowSemBandeiraOption] = useState(false);
+  const [refreshByMemberId, setRefreshByMemberId] = useState<
+    Record<
+      string,
+      {
+        flags: MaterialFlagOption[];
+        categoryId: string | null;
+        allowSemBandeiraOption: boolean;
+      }
+    >
+  >({});
   const [refreshPending, startRefresh] = useTransition();
+
+  const refreshOverride = refreshByMemberId[documentId] ?? null;
+  const availableFlags = refreshOverride?.flags ?? initialFlags;
+  const categoryId = refreshOverride?.categoryId ?? subTaskCategoryId;
+  const allowSemBandeiraOption =
+    refreshOverride?.allowSemBandeiraOption ??
+    (initialFlags.length === 0 && Boolean(subTaskCategoryId));
 
   function patch(next: Partial<ChainStopAnswer>): void {
     onChange({
@@ -88,21 +104,20 @@ export function KioskChainMemberFields({
     if (!onRefreshFlags) return;
     startRefresh(async () => {
       const result = await onRefreshFlags();
-      setAvailableFlags(result.flags);
-      setCategoryId(result.categoryId);
-      if (result.flags.length === 0) {
-        setAllowSemBandeiraOption(Boolean(result.categoryId));
-        patch({
-          availableFlagCount: 0,
-          semBandeira: false,
-        });
-      } else {
-        setAllowSemBandeiraOption(false);
-        patch({
-          availableFlagCount: result.flags.length,
-          semBandeira: false,
-        });
-      }
+      const nextAllowSemBandeira =
+        result.flags.length === 0 && Boolean(result.categoryId);
+      setRefreshByMemberId((current) => ({
+        ...current,
+        [documentId]: {
+          flags: result.flags,
+          categoryId: result.categoryId,
+          allowSemBandeiraOption: nextAllowSemBandeira,
+        },
+      }));
+      patch({
+        availableFlagCount: result.flags.length,
+        semBandeira: false,
+      });
     });
   }
 
@@ -201,9 +216,15 @@ export function KioskChainMemberFields({
             id={`kiosk-chain-qty-${documentId}`}
             type="number"
             inputMode="numeric"
-            min={0}
+            min={safeMinQty}
             max={safeMaxQty}
-            value={value?.qty !== undefined ? String(value.qty) : ""}
+            value={
+              value?.qty !== undefined
+                ? String(value.qty)
+                : defaultQty !== undefined
+                  ? String(defaultQty)
+                  : ""
+            }
             disabled={disabled}
             className="h-14 rounded-2xl text-center text-lg"
             onChange={(event) => {
@@ -220,25 +241,30 @@ export function KioskChainMemberFields({
           </p>
         </div>
       )}
-      <KioskMaterialFlagPicker
-        flags={availableFlags}
-        selectedIds={value?.flagIds ?? []}
-        disabled={disabled}
-        categoryId={categoryId}
-        requiresMaterialFlagsOnFinish={requiresMaterialFlagsOnFinish}
-        allowSemBandeiraOption={allowSemBandeiraOption}
-        semBandeiraSelected={
-          value?.semBandeira === true ||
-          (requiresMaterialFlagsOnFinish && !categoryId)
-        }
-        scrollableFlags={variant === "modal"}
-        onSemBandeiraChange={(selected) =>
-          patch({ semBandeira: selected, flagIds: selected ? [] : value?.flagIds })
-        }
-        onRefresh={onRefreshFlags ? handleRefresh : undefined}
-        refreshing={refreshPending}
-        onChange={(flagIds) => patch({ flagIds, semBandeira: false })}
-      />
+      {value?.inferred === true ? null : (
+        <KioskMaterialFlagPicker
+          flags={availableFlags}
+          selectedIds={value?.flagIds ?? []}
+          disabled={disabled}
+          categoryId={categoryId}
+          requiresMaterialFlagsOnFinish={requiresMaterialFlagsOnFinish}
+          allowSemBandeiraOption={allowSemBandeiraOption}
+          semBandeiraSelected={
+            value?.semBandeira === true ||
+            (requiresMaterialFlagsOnFinish && !categoryId)
+          }
+          scrollableFlags={variant === "modal"}
+          onSemBandeiraChange={(selected) =>
+            patch({
+              semBandeira: selected,
+              flagIds: selected ? [] : value?.flagIds,
+            })
+          }
+          onRefresh={onRefreshFlags ? handleRefresh : undefined}
+          refreshing={refreshPending}
+          onChange={(flagIds) => patch({ flagIds, semBandeira: false })}
+        />
+      )}
     </div>
   );
 }

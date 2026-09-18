@@ -47,6 +47,10 @@ export interface KioskSubTask extends QueuedSubTask {
   viewerParticipated?: boolean;
   /** Currency credited to the viewer from their stop activities. */
   viewerCurrencyAwarded?: number;
+  /** Stopped qty already recorded on the open chain run (all peers). */
+  recordedQtyThisRun?: number;
+  /** Viewer has a started activity on the open chain run. */
+  viewerWorkedThisRun?: boolean;
   activeWorkerCount: number;
   linkedToPrevious?: boolean;
   maxSameTimeWorkers?: number;

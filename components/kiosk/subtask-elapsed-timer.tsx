@@ -29,6 +29,7 @@ export function SubtaskElapsedTimer({
 
   return (
     <span
+      suppressHydrationWarning
       className={cn(
         isOverExpected && "font-semibold text-destructive",
       )}

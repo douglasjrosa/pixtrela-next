@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import type { KioskSubTask } from "@/lib/business/subtask-queue";
+import type { ChainExitFieldConstraints } from "@/lib/business/chain-exit-inference";
 import {
   isChainMemberAnswerComplete,
   type ChainStopAnswer,
@@ -18,6 +19,7 @@ export interface KioskChainExitWizardModalProps {
   members: KioskSubTask[];
   stepIndex: number;
   answers: Record<string, ChainStopAnswer>;
+  fieldConstraints?: Record<string, ChainExitFieldConstraints>;
   disabled?: boolean;
   busy?: boolean;
   onStepChange: (nextIndex: number) => void;
@@ -38,6 +40,7 @@ export function KioskChainExitWizardModal({
   members,
   stepIndex,
   answers,
+  fieldConstraints = {},
   disabled = false,
   busy = false,
   onStepChange,
@@ -69,6 +72,12 @@ export function KioskChainExitWizardModal({
       completedQty: member.completedQty,
     },
   );
+
+  const constraints = fieldConstraints[member.documentId];
+  const remainingQty =
+    member.sharingType === "qty"
+      ? getRemainingSubTaskQty(member.targetQty, member.completedQty)
+      : undefined;
 
   const footerButtonClass = "min-w-0 flex-1";
 
@@ -122,6 +131,7 @@ export function KioskChainExitWizardModal({
       }
     >
       <KioskChainMemberFields
+        key={member.documentId}
         documentId={member.documentId}
         name={member.name}
         sharingType={member.sharingType}
@@ -129,11 +139,13 @@ export function KioskChainExitWizardModal({
         showName={false}
         wizardStepCount={members.length}
         wizardStepIndex={stepIndex}
+        minQty={constraints?.min}
         maxQty={
           member.sharingType === "qty"
-            ? getRemainingSubTaskQty(member.targetQty, member.completedQty)
+            ? constraints?.max ?? remainingQty
             : undefined
         }
+        defaultQty={constraints?.defaultQty}
         availableFlags={member.availableFlags}
         subTaskCategoryId={member.subTaskCategoryId}
         requiresMaterialFlagsOnFinish={member.requiresMaterialFlagsOnFinish}

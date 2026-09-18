@@ -102,7 +102,7 @@ export function KioskSubtaskPanel({
         item.type === "isolated" && item.subTask.documentId === exitingId,
     );
     if (!unit || unit.type !== "isolated") return null;
-    if (unit.subTask.status !== "producing") return null;
+    if (!shouldShowExitButton(queueContext, unit.subTask)) return null;
     return {
       subTask: unit.subTask,
       helperMode: unit.helperMode,
@@ -150,9 +150,10 @@ export function KioskSubtaskPanel({
         const helperMode = unit.helperMode;
         const finished = isFinishedSubTask(subTask);
         const locked = isLockedSubTask(subTask);
-        const isProducing = subTask.status === "producing";
+        const hasOwnSession = Boolean(subTask.startedAt);
+        const isProducing = subTask.status === "producing" || hasOwnSession;
         const showLockOverlay = locked;
-        const showStart = !readOnly && unit.showStart && !isProducing;
+        const showStart = !readOnly && unit.showStart && !hasOwnSession;
         const showExit =
           !readOnly && shouldShowExitButton(queueContext, subTask);
         const isExiting =
@@ -232,7 +233,7 @@ export function KioskSubtaskPanel({
                   releaseDisabled={blockingUi}
                 />
               </div>
-              {!finished && !isExiting ? (
+              {(!finished || showExit) && !isExiting ? (
                 <div className="flex w-full flex-col gap-2">
                   {showStart ? (
                     <KioskActionButton

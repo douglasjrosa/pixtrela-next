@@ -507,24 +507,14 @@ describe("BoardActions", () => {
     ).toBeInTheDocument();
   });
 
-  it("persists link-to-previous from the subtasks modal", async () => {
+  it("keeps link toggles local until save is clicked", async () => {
     const user = userEvent.setup();
-    let finishLink = (): void => undefined;
-    const linkSubtask = vi.fn(
-      () =>
-        new Promise<{
-          documentId: string;
-          linkedToPrevious: boolean;
-          assignedTo: { documentId: string; name: string }[];
-        }>((resolve) => {
-          finishLink = () =>
-            resolve({
-              documentId: "st-2",
-              linkedToPrevious: true,
-              assignedTo: [{ documentId: "u-1", name: "Ana" }],
-            });
-        }),
-    );
+    const linkSubtask = vi.fn().mockResolvedValue({
+      documentId: "st-2",
+      linkedToPrevious: true,
+      assignedTo: [{ documentId: "u-1", name: "Ana" }],
+    });
+    const updateSubtaskAssignees = vi.fn().mockResolvedValue(undefined);
     const loadSubtasks = vi.fn().mockResolvedValue([
       boardSubTaskSummaryStub({
         documentId: "st-1",
@@ -542,7 +532,7 @@ describe("BoardActions", () => {
       }),
     ]);
 
-    renderBoard({ loadSubtasks, linkSubtask });
+    renderBoard({ loadSubtasks, linkSubtask, updateSubtaskAssignees });
     await user.click(screen.getByText("1 - Tarefa A"));
     const toggles = await screen.findAllByRole("button", {
       name: "Ligar à anterior",
@@ -552,38 +542,30 @@ describe("BoardActions", () => {
     );
     expect(enabled).toBeTruthy();
     fireEvent.click(enabled!);
-    fireEvent.click(enabled!);
-    expect(linkSubtask).toHaveBeenCalledTimes(1);
-    expect(linkSubtask).toHaveBeenCalledWith("task-10", "st-2", true);
-    await act(async () => {
-      finishLink();
+
+    expect(
+      await screen.findByRole("button", { name: "Desligar da anterior" }),
+    ).toBeInTheDocument();
+    expect(linkSubtask).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: "Salvar" }),
+    ).not.toHaveAttribute("disabled");
+
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await vi.waitFor(() => {
+      expect(linkSubtask).toHaveBeenCalledWith("task-10", "st-2", true);
     });
-    expect(loadSubtasks).toHaveBeenCalledTimes(1);
+    expect(updateSubtaskAssignees).not.toHaveBeenCalled();
   });
 
-  it("flushes the last desired link after an in-flight toggle", async () => {
+  it("persists only the final link state after rapid toggles", async () => {
     const user = userEvent.setup();
-    const finishQueue: Array<() => void> = [];
-    const linkSubtask = vi.fn(
-      (
-        _taskId: string,
-        _subtaskId: string,
-        linkedToPrevious: boolean,
-      ) =>
-        new Promise<{
-          documentId: string;
-          linkedToPrevious: boolean;
-          assignedTo: { documentId: string; name: string }[];
-        }>((resolve) => {
-          finishQueue.push(() =>
-            resolve({
-              documentId: "st-2",
-              linkedToPrevious,
-              assignedTo: [{ documentId: "u-1", name: "Ana" }],
-            }),
-          );
-        }),
-    );
+    const linkSubtask = vi.fn().mockResolvedValue({
+      documentId: "st-2",
+      linkedToPrevious: false,
+      assignedTo: [{ documentId: "u-1", name: "Ana" }],
+    });
     const loadSubtasks = vi.fn().mockResolvedValue([
       boardSubTaskSummaryStub({
         documentId: "st-1",
@@ -597,31 +579,31 @@ describe("BoardActions", () => {
         name: "Cortar",
         status: "waiting",
         index: 1,
-        assignedTo: [],
+        linkedToPrevious: true,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
       }),
     ]);
 
     renderBoard({ loadSubtasks, linkSubtask });
     await user.click(screen.getByText("1 - Tarefa A"));
-    const linkButton = await screen.findByRole("button", {
-      name: "Ligar à anterior",
-    });
-    fireEvent.click(linkButton);
-    await vi.waitFor(() => {
-      expect(linkSubtask).toHaveBeenCalledTimes(1);
-    });
     const unlinkButton = await screen.findByRole("button", {
       name: "Desligar da anterior",
     });
     fireEvent.click(unlinkButton);
-    expect(linkSubtask).toHaveBeenCalledTimes(1);
-    await act(async () => {
-      finishQueue[0]?.();
-    });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Ligar à anterior" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Desligar da anterior" }),
+    );
+    expect(linkSubtask).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
     await vi.waitFor(() => {
-      expect(linkSubtask).toHaveBeenCalledTimes(2);
+      expect(linkSubtask).toHaveBeenCalledTimes(1);
     });
-    expect(linkSubtask).toHaveBeenLastCalledWith("task-10", "st-2", false);
+    expect(linkSubtask).toHaveBeenCalledWith("task-10", "st-2", false);
   });
 
   it("keeps loaded assignee names that are not on a team", async () => {
@@ -653,24 +635,8 @@ describe("BoardActions", () => {
     expect(screen.queryByText(liveWorkerId)).not.toBeInTheDocument();
   });
 
-  it("keeps inherited assignees when the link response returns stale originals", async () => {
+  it("inherits head assignees locally when linking before save", async () => {
     const user = userEvent.setup();
-    let finishLink = (): void => undefined;
-    const linkSubtask = vi.fn(
-      () =>
-        new Promise<{
-          documentId: string;
-          linkedToPrevious: boolean;
-          assignedTo: { documentId: string; name: string }[];
-        }>((resolve) => {
-          finishLink = () =>
-            resolve({
-              documentId: "st-2",
-              linkedToPrevious: true,
-              assignedTo: [{ documentId: "u-2", name: "Bia" }],
-            });
-        }),
-    );
     const loadSubtasks = vi.fn().mockResolvedValue([
       boardSubTaskSummaryStub({
         documentId: "st-1",
@@ -688,19 +654,13 @@ describe("BoardActions", () => {
       }),
     ]);
 
-    renderBoard({ loadSubtasks, linkSubtask });
+    renderBoard({ loadSubtasks });
     await user.click(screen.getByText("1 - Tarefa A"));
     expect(await screen.findByText("Bia")).toBeInTheDocument();
     const linkButton = await screen.findByRole("button", {
       name: "Ligar à anterior",
     });
     fireEvent.click(linkButton);
-    expect(screen.getAllByText("Ana").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Bia")).not.toBeInTheDocument();
-
-    await act(async () => {
-      finishLink();
-    });
     expect(screen.getAllByText("Ana").length).toBeGreaterThan(0);
     expect(screen.queryByText("Bia")).not.toBeInTheDocument();
   });

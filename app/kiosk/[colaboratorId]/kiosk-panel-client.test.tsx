@@ -32,6 +32,10 @@ vi.mock("@/app/kiosk/staff/[userId]/users/actions", () => ({
   saveKioskColaboratorFacePhoto: vi.fn(),
 }));
 
+vi.mock("@/hooks/use-kiosk-queue-poll", () => ({
+  useKioskQueuePoll: vi.fn(),
+}));
+
 vi.mock("./actions", () => ({
   startSubTask: (...args: unknown[]) => startSubTask(...args),
   joinLiveChain: (...args: unknown[]) => joinLiveChain(...args),
@@ -343,9 +347,9 @@ describe("KioskPanelClient", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Parar" }));
-    const yesButtons = screen.getAllByRole("button", { name: "Sim, concluí" });
-    await user.click(yesButtons[0]!);
-    await user.click(yesButtons[1]!);
+    await user.click(screen.getByRole("button", { name: "SIM" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.click(screen.getByRole("button", { name: "SIM" }));
     await user.click(screen.getByRole("button", { name: "Confirmar saída" }));
 
     expect(confirmChainStop).toHaveBeenCalledWith(

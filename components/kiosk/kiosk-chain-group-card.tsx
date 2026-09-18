@@ -1,12 +1,23 @@
 "use client";
 
-import { Lock } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Lock } from "lucide-react";
 
 import type { KioskGroupUnit } from "@/lib/business/kiosk-queue-units";
 import type { OpenChainRun } from "@/lib/business/kiosk-queue-units";
+import {
+  chainHasOtherActiveWorkers,
+  viewerWorkedChainMemberIds,
+} from "@/lib/business/kiosk-queue-units";
 import { resolvePersistedChainRunId } from "@/lib/business/kiosk-optimistic-start";
+import {
+  chainExitMembersFromQueue,
+  dependencyEdgesWithinChain,
+  isDurationOnlySharing,
+  recomputeChainExitState,
+  type ChainExitRecomputeOptions,
+} from "@/lib/business/chain-exit-inference";
 import {
   buildInitialChainStopAnswers,
   type ChainStopAnswer,
@@ -73,6 +84,67 @@ export function KioskChainGroupCard({
   const collecting = collectingProp ?? collectingInternal;
   const [chainStepIndex, setChainStepIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, ChainStopAnswer>>({});
+  const othersStillActive = chainHasOtherActiveWorkers(unit.members);
+  const includeDurationQuestions =
+    !othersStillActive ||
+    unit.members.some(
+      (item) =>
+        item.sharingType === "duration" &&
+        item.viewerWorkedThisRun === true &&
+        !item.startedAt,
+    );
+  const workedMemberIds = useMemo(() => {
+    const worked = viewerWorkedChainMemberIds(unit.members);
+    if (includeDurationQuestions) {
+      const durationIds = unit.members
+        .filter((item) => item.sharingType === "duration")
+        .map((item) => item.documentId);
+      return [...new Set([...worked, ...durationIds])];
+    }
+    return worked.filter((id) => {
+      const member = unit.members.find((item) => item.documentId === id);
+      return member?.sharingType !== "duration";
+    });
+  }, [includeDurationQuestions, unit.members]);
+  const exitOptions: ChainExitRecomputeOptions = useMemo(
+    () => ({
+      workedMemberIds,
+      othersStillActive,
+    }),
+    [othersStillActive, workedMemberIds],
+  );
+  const exitMembers = useMemo(
+    () => chainExitMembersFromQueue(unit.members),
+    [unit.members],
+  );
+  const exitEdges = useMemo(
+    () => dependencyEdgesWithinChain(exitMembers),
+    [exitMembers],
+  );
+  const exitState = useMemo(
+    () => recomputeChainExitState(exitMembers, exitEdges, answers, exitOptions),
+    [answers, exitEdges, exitMembers, exitOptions],
+  );
+  const recordedSummary = unit.members
+    .filter((member) => (member.recordedQtyThisRun ?? 0) > 0)
+    .map((member) => `${member.recordedQtyThisRun} ${member.name}`)
+    .join(", ");
+  const visibleMembers = useMemo(
+    () =>
+      exitState.steps
+        .filter((step) => step.visible)
+        .map((step) =>
+          unit.members.find((member) => member.documentId === step.documentId),
+        )
+        .filter((member): member is (typeof unit.members)[number] =>
+          Boolean(member),
+        ),
+    [exitState.steps, unit.members],
+  );
+  const safeStepIndex = Math.min(
+    chainStepIndex,
+    Math.max(0, visibleMembers.length - 1),
+  );
 
   function setCollecting(next: boolean): void {
     if (onCollectingChange) {
@@ -98,34 +170,76 @@ export function KioskChainGroupCard({
     setAnswers({});
   }
 
-  function handleStopClick(): void {
-    setAnswers(buildInitialChainStopAnswers(unit.members));
-    setChainStepIndex(0);
-    setCollecting(true);
+  function payloadFromState(
+    draft: Record<string, ChainStopAnswer>,
+  ): ChainStopAnswer[] {
+    const merged = recomputeChainExitState(
+      exitMembers,
+      exitEdges,
+      draft,
+      exitOptions,
+    );
+    return unit.members
+      .map((member) => {
+        const answer = merged.answers[member.documentId];
+        if (!answer) return null;
+        return {
+          documentId: answer.documentId,
+          ...(typeof answer.completed === "boolean"
+            ? { completed: answer.completed }
+            : {}),
+          ...(typeof answer.qty === "number" ? { qty: answer.qty } : {}),
+          ...(answer.flagIds && answer.flagIds.length > 0
+            ? { flagIds: answer.flagIds }
+            : {}),
+          ...(answer.semBandeira === true ? { semBandeira: true } : {}),
+          ...(answer.inferred === true ? { inferred: true } : {}),
+        };
+      })
+      .filter((answer): answer is ChainStopAnswer => answer != null);
   }
 
-  function handleConfirmStop(): void {
+  function confirmPayload(draft: Record<string, ChainStopAnswer>): void {
     if (blockingUi) return;
     if (!persistedChainRunId) {
       onChainRunNotReady?.();
       return;
     }
-    const payload = unit.members.map((member) => {
-      const answer =
-        answers[member.documentId] ?? { documentId: member.documentId };
-      return {
-        documentId: answer.documentId,
-        ...(typeof answer.completed === "boolean"
-          ? { completed: answer.completed }
-          : {}),
-        ...(typeof answer.qty === "number" ? { qty: answer.qty } : {}),
-        ...(answer.flagIds && answer.flagIds.length > 0
-          ? { flagIds: answer.flagIds }
-          : {}),
-      };
-    });
     resetCollecting();
-    onConfirmChainStop?.(persistedChainRunId, payload);
+    onConfirmChainStop?.(persistedChainRunId, payloadFromState(draft));
+  }
+
+  function handleStopClick(): void {
+    const initial = buildInitialChainStopAnswers(unit.members);
+    const next = recomputeChainExitState(
+      exitMembers,
+      exitEdges,
+      initial,
+      exitOptions,
+    );
+    const visibleCount = next.steps.filter((step) => step.visible).length;
+    if (visibleCount === 0) {
+      confirmPayload(next.answers);
+      return;
+    }
+    setAnswers(next.answers);
+    setChainStepIndex(0);
+    setCollecting(true);
+  }
+
+  function handleAnswerChange(documentId: string, answer: ChainStopAnswer): void {
+    setAnswers((current) =>
+      recomputeChainExitState(
+        exitMembers,
+        exitEdges,
+        { ...current, [documentId]: { ...answer, inferred: false } },
+        { ...exitOptions, changedMemberId: documentId },
+      ).answers,
+    );
+  }
+
+  function handleConfirmStop(): void {
+    confirmPayload(answers);
   }
 
   return (
@@ -143,6 +257,11 @@ export function KioskChainGroupCard({
         {taskName ? (
           <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
             {taskName}
+          </p>
+        ) : null}
+        {recordedSummary ? (
+          <p className="text-sm text-muted-foreground">
+            {t("chainRunRecorded", { summary: recordedSummary })}
           </p>
         ) : null}
         <ul className="space-y-3">
@@ -228,7 +347,10 @@ export function KioskChainGroupCard({
           />
         </div>
       ) : null}
-      {persistedChainRunId && unit.runStartedAt && onAdvanceChain ? (
+      {persistedChainRunId &&
+      unit.runStartedAt &&
+      onAdvanceChain &&
+      isDurationOnlySharing(unit.members) ? (
         <KioskChainAdvanceTimer
           chainRunId={persistedChainRunId}
           runStartedAt={unit.runStartedAt}
@@ -239,18 +361,14 @@ export function KioskChainGroupCard({
       {collecting ? (
         <KioskChainExitWizardModal
           open
-          members={unit.members}
-          stepIndex={chainStepIndex}
-          answers={answers}
+          members={visibleMembers}
+          stepIndex={safeStepIndex}
+          answers={exitState.answers}
+          fieldConstraints={exitState.fieldConstraints}
           disabled={blockingUi}
           busy={exitBusy}
           onStepChange={setChainStepIndex}
-          onAnswerChange={(documentId, answer) =>
-            setAnswers((current) => ({
-              ...current,
-              [documentId]: answer,
-            }))
-          }
+          onAnswerChange={handleAnswerChange}
           onConfirm={handleConfirmStop}
           onCancel={resetCollecting}
           onRefreshFlags={onRefreshMaterialFlags}

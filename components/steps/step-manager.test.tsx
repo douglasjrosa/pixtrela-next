@@ -11,6 +11,8 @@ vi.mock("next/navigation", () => ({
 import { renderWithIntl } from "@/test/test-utils";
 import { resolveStepReorder, StepManager } from "./step-manager";
 
+const noopBulkDelete = vi.fn();
+
 const steps = [
   {
     documentId: "s1",
@@ -49,6 +51,7 @@ describe("StepManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onReorder={vi.fn()}
+        onBulkDelete={noopBulkDelete}
       />,
     );
     expect(screen.getByText("Fila")).toBeInTheDocument();
@@ -64,6 +67,7 @@ describe("StepManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onReorder={vi.fn()}
+        onBulkDelete={noopBulkDelete}
       />,
     );
 
@@ -78,6 +82,7 @@ describe("StepManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onReorder={vi.fn()}
+        onBulkDelete={noopBulkDelete}
       />,
     );
     expect(screen.queryByRole("button", { name: "Excluir" })).not.toBeInTheDocument();
@@ -91,6 +96,7 @@ describe("StepManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onReorder={vi.fn()}
+        onBulkDelete={noopBulkDelete}
       />,
     );
 
@@ -113,6 +119,7 @@ describe("StepManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onReorder={vi.fn()}
+        onBulkDelete={noopBulkDelete}
       />,
     );
 
@@ -131,6 +138,7 @@ describe("StepManager", () => {
         onCreate={vi.fn()}
         onUpdate={vi.fn()}
         onReorder={vi.fn()}
+        onBulkDelete={noopBulkDelete}
       />,
     );
 
@@ -155,6 +163,7 @@ describe("StepManager", () => {
         onCreate={onCreate}
         onUpdate={vi.fn()}
         onReorder={vi.fn()}
+        onBulkDelete={noopBulkDelete}
       />,
     );
 
@@ -176,5 +185,52 @@ describe("StepManager", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
     expect(screen.getByText("Corte")).toBeInTheDocument();
+  });
+
+  it("shows bulk delete after selecting a step", async () => {
+    const user = userEvent.setup();
+    renderWithIntl(
+      <StepManager
+        steps={steps}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onReorder={vi.fn()}
+        onBulkDelete={noopBulkDelete}
+      />,
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: "Selecionar Fila" }));
+
+    expect(
+      screen.getByRole("button", { name: "Excluir selecionadas" }),
+    ).toBeInTheDocument();
+  });
+
+  it("bulk deletes selected steps after confirmation", async () => {
+    const user = userEvent.setup();
+    const onBulkDelete = vi.fn().mockResolvedValue(undefined);
+    renderWithIntl(
+      <StepManager
+        steps={steps}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onReorder={vi.fn()}
+        onBulkDelete={onBulkDelete}
+      />,
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: "Selecionar Fila" }));
+    await user.click(
+      screen.getByRole("button", { name: "Excluir selecionadas" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => {
+      expect(onBulkDelete).toHaveBeenCalledWith(["s1"]);
+    });
+    await waitFor(() => {
+      expect(screen.queryByText("Fila")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Produção")).toBeInTheDocument();
   });
 });

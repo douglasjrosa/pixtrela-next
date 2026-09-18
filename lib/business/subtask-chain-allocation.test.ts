@@ -76,7 +76,7 @@ describe("isChainMemberAnswerComplete", () => {
     expect(
       isChainMemberAnswerComplete(
         "duration",
-        { documentId: "a", completed: true, flagIds: ["f1"] },
+        { documentId: "a", completed: true, inferred: true },
         {
           requiresMaterialFlagsOnFinish: true,
           categoryId,

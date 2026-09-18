@@ -24,6 +24,9 @@ describe("SubtaskElapsedTimer", () => {
     );
 
     act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    act(() => {
       vi.advanceTimersByTime(60_000);
     });
 
@@ -41,6 +44,9 @@ describe("SubtaskElapsedTimer", () => {
     );
 
     act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    act(() => {
       vi.advanceTimersByTime(31_000);
     });
 
@@ -56,6 +62,9 @@ describe("SubtaskElapsedTimer", () => {
       />,
     );
 
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
     act(() => {
       vi.advanceTimersByTime(10_000);
     });

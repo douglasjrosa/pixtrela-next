@@ -18,11 +18,14 @@ import {
 const comfortaa = Comfortaa({
   variable: "--font-comfortaa",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const merriweatherSans = Merriweather_Sans({
   variable: "--font-merriweather-sans",
   subsets: ["latin"],
+  display: "swap",
+  preload: false,
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -66,7 +69,9 @@ export default async function RootLayout({
       <head>
         <SemanticThemeStyle />
       </head>
-      <body className="flex min-h-full flex-col font-sans">
+      <body
+        className={`${comfortaa.className} flex min-h-full flex-col font-sans`}
+      >
         <SerwistProvider swUrl="/serwist/sw.js">
           <NextIntlClientProvider locale={locale} messages={messages}>
             <Providers>{children}</Providers>

@@ -9,6 +9,7 @@ export const chainStopAnswerSchema = z.object({
   flagIds: z.array(z.string().min(1)).optional(),
   semBandeira: z.boolean().optional(),
   availableFlagCount: z.number().int().min(0).optional(),
+  inferred: z.boolean().optional(),
 });
 
 export const chainStopAnswersSchema = z.array(chainStopAnswerSchema).min(1);

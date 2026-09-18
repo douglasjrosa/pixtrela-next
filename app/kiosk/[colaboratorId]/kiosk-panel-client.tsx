@@ -58,6 +58,7 @@ import {
   showKioskErrorToast,
   showKioskSuccessToast,
 } from "@/lib/kiosk/kiosk-toast";
+import { useKioskQueuePoll } from "@/hooks/use-kiosk-queue-poll";
 import { markKioskColaboratorReady } from "@/lib/welcome/kiosk-welcome-ready";
 
 import {
@@ -81,7 +82,9 @@ function kioskActionErrorMessage(
   const code = error instanceof Error ? error.message : "";
   if (code === "flagsRequired") return t("flagsRequired");
   if (code === "subTaskHasNoCategory") return t("subTaskHasNoCategory");
+  if (code === "flagWrongCategory") return t("flagWrongCategory");
   if (code === "flagOccupied") return t("flagOccupied");
+  if (code === "chainStopInconsistent") return t("chainStopInconsistent");
   return t("exitFailed");
 }
 
@@ -338,6 +341,15 @@ export function KioskPanelClient({
     await refreshLiberadas();
     void refreshExpandedAccordions();
   }, [refreshExpandedAccordions, refreshLiberadas]);
+
+  const queuePollPaused =
+    queueBusy !== null ||
+    optimisticStart !== null ||
+    optimisticChainStop !== null ||
+    optimisticExit !== null ||
+    editOpen;
+
+  useKioskQueuePoll(refreshAfterMutation, queuePollPaused);
 
   const runBackgroundAction = useCallback(
     (action: () => Promise<void>, onError?: (error: unknown) => void): void => {

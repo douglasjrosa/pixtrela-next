@@ -19,7 +19,15 @@ describe("subtask-producing-reconcile", () => {
         ["c", ["col-1"]],
       ]),
     );
-    expect(ids).toEqual(["a", "b"]);
+    expect(ids).toEqual(["a", "b", "c"]);
+  });
+
+  it("skips producing rows even with open sessions", () => {
+    const ids = findSubTaskIdsNeedingProducingReconcile(
+      [{ id: "a", status: "producing", taskId: "task-1" }],
+      new Map([["a", ["col-1"]]]),
+    );
+    expect(ids).toEqual([]);
   });
 
   it("treats startedAt as actively producing for display", () => {

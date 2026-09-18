@@ -19,6 +19,7 @@ import {
   updateStepFields,
   updateStepIndex,
 } from "@/lib/repos/steps";
+import { bulkDocumentIdsSchema } from "@/lib/schemas/bulk-ids";
 import {
   stepNameFormSchema,
   type StepNameFormInput,
@@ -121,5 +122,17 @@ export async function reorderSteps(
 export async function deleteStep(documentId: string): Promise<void> {
   await assertCanManage();
   await deleteStepRepo(documentId);
+  invalidateSteps();
+}
+
+export async function bulkDeleteSteps(documentIds: string[]): Promise<void> {
+  await assertCanManage();
+  const ids = bulkDocumentIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const step = await getStepById(documentId);
+    if (!step) throw new Error("notFound");
+    await deleteStepRepo(documentId);
+  }
   invalidateSteps();
 }

@@ -3,66 +3,101 @@ import { describe, expect, it } from "vitest";
 import { boardSubTaskSummaryStub } from "@/lib/business/board-subtask-summary";
 
 import {
-  reconcileLoadedSubtaskLinks,
-  resolveDraftLinkedToPrevious,
-  shouldFlushBoardLink,
+  buildLinksSnapshot,
+  collectDirtyLinkUpdates,
+  hasLinkDraftChanges,
+  mergeLinksBaseline,
 } from "./board-link-queue";
 
-describe("shouldFlushBoardLink", () => {
-  it("skips while a request is in flight", () => {
-    expect(shouldFlushBoardLink(true, true, false)).toBe(false);
-  });
-
-  it("skips when there is no desired value", () => {
-    expect(shouldFlushBoardLink(undefined, false, false)).toBe(false);
-  });
-
-  it("skips when desired already matches the last ack", () => {
-    expect(shouldFlushBoardLink(true, false, true)).toBe(false);
-  });
-
-  it("flushes when desired differs from the last ack", () => {
-    expect(shouldFlushBoardLink(true, false, false)).toBe(true);
-    expect(shouldFlushBoardLink(false, false, undefined)).toBe(true);
-  });
-});
-
-describe("resolveDraftLinkedToPrevious", () => {
-  it("prefers pending desired link over loaded value", () => {
+describe("buildLinksSnapshot", () => {
+  it("maps document ids to linkedToPrevious", () => {
     expect(
-      resolveDraftLinkedToPrevious(
-        false,
-        "st-2",
+      buildLinksSnapshot([
+        boardSubTaskSummaryStub({
+          documentId: "st-1",
+          name: "Soldar",
+          linkedToPrevious: false,
+        }),
         boardSubTaskSummaryStub({
           documentId: "st-2",
           name: "Cortar",
           linkedToPrevious: true,
         }),
-        {
-          pendingLinks: new Map([["st-2", true]]),
-          inFlightLinkIds: new Set(),
-        },
+      ]),
+    ).toEqual({
+      "st-1": false,
+      "st-2": true,
+    });
+  });
+});
+
+describe("collectDirtyLinkUpdates", () => {
+  it("returns pending subtasks whose link flag differs from baseline", () => {
+    const subtasks = [
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        linkedToPrevious: true,
+      }),
+    ];
+    expect(
+      collectDirtyLinkUpdates(subtasks, { "st-2": false }),
+    ).toEqual([{ documentId: "st-2", linkedToPrevious: true }]);
+  });
+
+  it("ignores finished subtasks", () => {
+    const subtasks = [
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "finished",
+        linkedToPrevious: true,
+      }),
+    ];
+    expect(collectDirtyLinkUpdates(subtasks, { "st-2": false })).toEqual([]);
+  });
+});
+
+describe("hasLinkDraftChanges", () => {
+  it("is true when any pending link differs from baseline", () => {
+    expect(
+      hasLinkDraftChanges(
+        [
+          boardSubTaskSummaryStub({
+            documentId: "st-2",
+            name: "Cortar",
+            status: "waiting",
+            linkedToPrevious: true,
+          }),
+        ],
+        { "st-2": false },
       ),
     ).toBe(true);
   });
 });
 
-describe("reconcileLoadedSubtaskLinks", () => {
-  it("keeps acked link when loaded list is stale", () => {
-    const loaded = [
-      boardSubTaskSummaryStub({
-        documentId: "st-2",
-        name: "Cortar",
-        linkedToPrevious: false,
-      }),
-    ];
+describe("mergeLinksBaseline", () => {
+  it("keeps baseline keys for loaded subtasks and adds new ones", () => {
     expect(
-      reconcileLoadedSubtaskLinks(loaded, new Map([["st-2", true]])),
-    ).toEqual([
-      {
-        ...loaded[0],
-        linkedToPrevious: true,
-      },
-    ]);
+      mergeLinksBaseline(
+        { "st-1": false, "st-gone": true },
+        [
+          boardSubTaskSummaryStub({
+            documentId: "st-1",
+            name: "Soldar",
+            linkedToPrevious: true,
+          }),
+          boardSubTaskSummaryStub({
+            documentId: "st-3",
+            name: "Nova",
+            linkedToPrevious: false,
+          }),
+        ],
+      ),
+    ).toEqual({
+      "st-1": false,
+      "st-3": false,
+    });
   });
 });

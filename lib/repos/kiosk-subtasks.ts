@@ -784,11 +784,73 @@ export async function listKioskQueueData(
     });
   }
 
+  const [subTasksWithPeer, catalogWithPeer] = await Promise.all([
+    attachOpenRunPeerFields(subTasks, openRuns, colaboratorId, db),
+    attachOpenRunPeerFields(
+      catalogWithFlags.length > 0 ? catalogWithFlags : subTasks,
+      openRuns,
+      colaboratorId,
+      db,
+    ),
+  ]);
+
   return {
-    subTasks,
-    catalog: catalogWithFlags.length > 0 ? catalogWithFlags : subTasks,
+    subTasks: subTasksWithPeer,
+    catalog: catalogWithPeer,
     openRuns,
   };
+}
+
+async function attachOpenRunPeerFields(
+  items: readonly KioskSubTask[],
+  openRuns: readonly OpenChainRun[],
+  colaboratorId: string,
+  db: Db,
+): Promise<KioskSubTask[]> {
+  const runIds = [
+    ...new Set(
+      openRuns
+        .map((run) => run.chainRunId)
+        .filter((id) => id.length > 0),
+    ),
+  ];
+  if (runIds.length === 0 || items.length === 0) return [...items];
+
+  const rows = await db
+    .select({
+      chainRunId: activities.chainRunId,
+      subTaskId: activities.subTaskId,
+      colaboratorId: activities.colaboratorId,
+      action: activities.action,
+      qty: activities.qty,
+    })
+    .from(activities)
+    .where(
+      and(
+        inArray(activities.chainRunId, runIds),
+        inArray(activities.action, ["started", "stoped"]),
+      ),
+    );
+
+  const recordedBySubTask = new Map<string, number>();
+  const worked = new Set<string>();
+  for (const row of rows) {
+    if (row.action === "stoped") {
+      recordedBySubTask.set(
+        row.subTaskId,
+        (recordedBySubTask.get(row.subTaskId) ?? 0) + Math.max(0, row.qty),
+      );
+    }
+    if (row.action === "started" && row.colaboratorId === colaboratorId) {
+      worked.add(row.subTaskId);
+    }
+  }
+
+  return items.map((item) => ({
+    ...item,
+    recordedQtyThisRun: recordedBySubTask.get(item.documentId) ?? 0,
+    viewerWorkedThisRun: worked.has(item.documentId),
+  }));
 }
 
 function flattenUnitsToSubTasks(units: readonly KioskQueueUnit[]): KioskSubTask[] {
@@ -1194,16 +1256,15 @@ export async function stopSubTask(
     (id) => id !== colaboratorId,
   );
   const openRun = await findOpenChainRunForSubTask(subTaskId, db);
-  const helperRunId =
-    openRun?.principalId === colaboratorId
-      ? null
-      : (openRun?.chainRunId ??
-        (await findLatestChainRunIdForSubTask(subTaskId, colaboratorId, db)));
-  const isHelper = Boolean(helperRunId);
+  const chainRunId =
+    openRun?.chainRunId ??
+    (await findLatestChainRunIdForSubTask(subTaskId, colaboratorId, db));
   const qtyTargetMet =
     sharingType === "qty" &&
     isQtyTargetFullyMet(resolveSubTaskTargetQty(sub.qty), totalStoppedQty);
-  const wouldComplete = shouldFinalizeSubTaskOnStop(baseStopResult, qtyTargetMet);
+  const wouldComplete =
+    remainingActiveIds.length === 0 &&
+    shouldFinalizeSubTaskOnStop(baseStopResult, qtyTargetMet);
   const flagIds = body.flagIds ?? [];
   const existingFlagIds = await listFlagIdsForSubTask(subTaskId, db);
   const mergedFlagIds = mergeFlagIds(existingFlagIds, flagIds);
@@ -1242,7 +1303,7 @@ export async function stopSubTask(
   const resolvedStop = resolveKioskStopNextStatus({
     baseStopResult,
     shouldFinalize: wouldComplete,
-    isHelper,
+    isHelper: false,
     hasOpenRun: Boolean(openRun),
     remainingPeerCount: remainingActiveIds.length,
   });
@@ -1278,7 +1339,7 @@ export async function stopSubTask(
         timestamp,
         qty: stopResult.qty,
         currencyAwarded: 0,
-        chainRunId: helperRunId ?? openRun?.chainRunId,
+        chainRunId: chainRunId ?? undefined,
       })
       .returning({ id: activities.id });
 
@@ -1290,8 +1351,7 @@ export async function stopSubTask(
       tx as unknown as Db,
     );
 
-    const stampChainRunId = helperRunId ?? undefined;
-    if (!stampChainRunId) {
+    if (sharingType === "qty" || !chainRunId) {
       await creditStopCurrency(
         {
           subTaskId,
@@ -1310,8 +1370,16 @@ export async function stopSubTask(
     }
   });
 
-  if (isHelper && helperRunId && !openRun) {
-    await reallocateChainRunAfterHelperStop(helperRunId, timestamp, db);
+  const stillOpen = chainRunId
+    ? await findOpenChainRunForSubTask(subTaskId, db)
+    : null;
+  if (
+    chainRunId &&
+    sharingType !== "qty" &&
+    remainingActiveIds.length === 0 &&
+    !stillOpen
+  ) {
+    await reallocateChainRunAfterHelperStop(chainRunId, timestamp, db);
   }
 
   void activityId;

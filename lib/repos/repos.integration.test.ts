@@ -804,6 +804,448 @@ describeWithDb("drizzle repos integration", () => {
   );
 
   it(
+    "finishes the supplier when the last helper exits after principal finish",
+    async () => {
+      const suffix = String(Date.now());
+      const worker = await createUser({
+        username: `hsup-${suffix}`,
+        password: "Secret123!",
+        name: "Helper Supplier Principal",
+        role: "colaborator",
+        code: Number(suffix.slice(-5)),
+      });
+      const helper = await createUser({
+        username: `hsuph-${suffix}`,
+        password: "Secret123!",
+        name: "Helper On Cut",
+        role: "colaborator",
+        code: Number(String(Number(suffix.slice(-5)) + 1).slice(-5)),
+      });
+
+      await createTemplateTask({
+        code: `HS${suffix.slice(-6)}`,
+        name: "Helper supplier template",
+        subTasks: [
+          {
+            name: "Cut",
+            expectedTime: 10,
+            index: 0,
+            maxSameTimeWorkers: 2,
+          },
+          {
+            name: "Pack",
+            expectedTime: 10,
+            index: 1,
+            linkedToPrevious: true,
+            dependencyIndexes: [0],
+          },
+        ],
+      });
+
+      const step = await createStep({ name: `HSup ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `HSup task ${suffix}`,
+        qty: 1,
+        stepId: step.id,
+        templateTaskCode: `HS${suffix.slice(-6)}`,
+      });
+      const subs = await listSubTasksForTask(task.id);
+      expect(subs).toHaveLength(2);
+
+      await assignColaboratorsToSubTask(subs[0]!.id, [worker.id, helper.id]);
+      await assignColaboratorsToSubTask(subs[1]!.id, [worker.id]);
+
+      const { chainRunId } = await startChain(
+        worker.id,
+        subs[0]!.id,
+        undefined,
+        new Date("2026-08-16T11:00:00Z"),
+      );
+      await startSubTask(
+        helper.id,
+        subs[0]!.id,
+        undefined,
+        new Date("2026-08-16T11:00:05Z"),
+      );
+
+      await confirmChainStop(
+        worker.id,
+        chainRunId,
+        [
+          {
+            documentId: subs[0]!.id,
+            completed: true,
+            inferred: true,
+            semBandeira: true,
+          },
+          { documentId: subs[1]!.id, completed: true },
+        ],
+        undefined,
+        new Date("2026-08-16T11:00:20Z"),
+      );
+
+      const afterConfirm = await listSubTasksForTask(task.id);
+      expect(afterConfirm.find((row) => row.id === subs[0]!.id)?.status).toBe(
+        "producing",
+      );
+      expect(afterConfirm.find((row) => row.id === subs[1]!.id)?.status).toBe(
+        "finished",
+      );
+
+      await stopSubTask(
+        helper.id,
+        subs[0]!.id,
+        { isCompleted: false },
+        undefined,
+        new Date("2026-08-16T11:00:25Z"),
+      );
+
+      const afterHelper = await listSubTasksForTask(task.id);
+      expect(afterHelper.find((row) => row.id === subs[0]!.id)?.status).toBe(
+        "finished",
+      );
+    },
+    60_000,
+  );
+
+  it(
+    "keeps the supplier open when helper exits without principal finish",
+    async () => {
+      const suffix = String(Date.now());
+      const worker = await createUser({
+        username: `hpend-${suffix}`,
+        password: "Secret123!",
+        name: "Pending Principal",
+        role: "colaborator",
+        code: Number(suffix.slice(-5)),
+      });
+      const helper = await createUser({
+        username: `hpendh-${suffix}`,
+        password: "Secret123!",
+        name: "Pending Helper",
+        role: "colaborator",
+        code: Number(String(Number(suffix.slice(-5)) + 1).slice(-5)),
+      });
+
+      await createTemplateTask({
+        code: `HP${suffix.slice(-6)}`,
+        name: "Helper pending template",
+        subTasks: [
+          {
+            name: "Cut",
+            expectedTime: 10,
+            index: 0,
+            maxSameTimeWorkers: 2,
+          },
+          {
+            name: "Pack",
+            expectedTime: 10,
+            index: 1,
+            linkedToPrevious: true,
+            dependencyIndexes: [0],
+          },
+        ],
+      });
+
+      const step = await createStep({ name: `HPend ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `HPend task ${suffix}`,
+        qty: 1,
+        stepId: step.id,
+        templateTaskCode: `HP${suffix.slice(-6)}`,
+      });
+      const subs = await listSubTasksForTask(task.id);
+
+      await assignColaboratorsToSubTask(subs[0]!.id, [worker.id, helper.id]);
+      await assignColaboratorsToSubTask(subs[1]!.id, [worker.id]);
+
+      const { chainRunId } = await startChain(
+        worker.id,
+        subs[0]!.id,
+        undefined,
+        new Date("2026-08-16T12:00:00Z"),
+      );
+      await startSubTask(
+        helper.id,
+        subs[0]!.id,
+        undefined,
+        new Date("2026-08-16T12:00:05Z"),
+      );
+
+      await confirmChainStop(
+        worker.id,
+        chainRunId,
+        [
+          { documentId: subs[0]!.id, completed: false },
+          { documentId: subs[1]!.id, completed: false },
+        ],
+        undefined,
+        new Date("2026-08-16T12:00:20Z"),
+      );
+
+      await stopSubTask(
+        helper.id,
+        subs[0]!.id,
+        { isCompleted: false },
+        undefined,
+        new Date("2026-08-16T12:00:25Z"),
+      );
+
+      const afterHelper = await listSubTasksForTask(task.id);
+      expect(afterHelper.find((row) => row.id === subs[0]!.id)?.status).not.toBe(
+        "finished",
+      );
+    },
+    60_000,
+  );
+
+  it(
+    "records personal qty for two peers and keeps the line open below the target",
+    async () => {
+      const suffix = String(Date.now());
+      const first = await createUser({
+        username: `peerh-${suffix}`,
+        password: "Secret123!",
+        name: "Peer H",
+        role: "colaborator",
+        code: Number(suffix.slice(-5)),
+      });
+      const second = await createUser({
+        username: `peerm-${suffix}`,
+        password: "Secret123!",
+        name: "Peer M",
+        role: "colaborator",
+        code: Number(String(Number(suffix.slice(-5)) + 1).slice(-5)),
+      });
+
+      await createTemplateTask({
+        code: `PQ${suffix.slice(-6)}`,
+        name: "Peer qty template",
+        subTasks: [
+          {
+            name: "Chapas",
+            expectedTime: 10,
+            index: 0,
+            qty: 100,
+            sharingType: "qty",
+            maxSameTimeWorkers: 2,
+          },
+          {
+            name: "Adesivos",
+            expectedTime: 10,
+            index: 1,
+            qty: 100,
+            sharingType: "qty",
+            linkedToPrevious: true,
+            maxSameTimeWorkers: 2,
+            dependencyIndexes: [0],
+          },
+        ],
+      });
+
+      const step = await createStep({ name: `PQty ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `PQty task ${suffix}`,
+        qty: 1,
+        stepId: step.id,
+        templateTaskCode: `PQ${suffix.slice(-6)}`,
+      });
+      const subs = await listSubTasksForTask(task.id);
+      const chapas = subs[0]!;
+      const adesivos = subs[1]!;
+      await assignColaboratorsToSubTask(chapas.id, [first.id, second.id]);
+      await assignColaboratorsToSubTask(adesivos.id, [first.id, second.id]);
+
+      const { chainRunId } = await startChain(
+        first.id,
+        chapas.id,
+        undefined,
+        new Date("2026-08-16T13:00:00Z"),
+      );
+      await startChain(
+        first.id,
+        chapas.id,
+        undefined,
+        new Date("2026-08-16T13:00:05Z"),
+      );
+      await startChain(
+        second.id,
+        chapas.id,
+        undefined,
+        new Date("2026-08-16T13:00:10Z"),
+      );
+      await startChain(
+        second.id,
+        chapas.id,
+        undefined,
+        new Date("2026-08-16T13:00:15Z"),
+      );
+
+      await confirmChainStop(
+        first.id,
+        chainRunId,
+        [
+          { documentId: chapas.id, qty: 10 },
+          { documentId: adesivos.id, qty: 20 },
+        ],
+        undefined,
+        new Date("2026-08-16T13:10:00Z"),
+      );
+
+      await confirmChainStop(
+        second.id,
+        chainRunId,
+        [
+          { documentId: chapas.id, qty: 40 },
+          { documentId: adesivos.id, qty: 30 },
+        ],
+        undefined,
+        new Date("2026-08-16T13:20:00Z"),
+      );
+
+      const db = getDb();
+      const runRows = await db
+        .select()
+        .from(activities)
+        .where(eq(activities.chainRunId, chainRunId));
+      const stoppedQty = (colaboratorId: string, subTaskId: string) =>
+        runRows
+          .filter(
+            (row) =>
+              row.colaboratorId === colaboratorId &&
+              row.subTaskId === subTaskId &&
+              row.action === "stoped",
+          )
+          .reduce((sum, row) => sum + row.qty, 0);
+      expect(stoppedQty(first.id, chapas.id)).toBe(10);
+      expect(stoppedQty(first.id, adesivos.id)).toBe(20);
+      expect(stoppedQty(second.id, chapas.id)).toBe(40);
+      expect(stoppedQty(second.id, adesivos.id)).toBe(30);
+
+      const after = await listSubTasksForTask(task.id);
+      expect(after.find((row) => row.id === chapas.id)?.status).not.toBe(
+        "finished",
+      );
+      expect(after.find((row) => row.id === adesivos.id)?.status).not.toBe(
+        "finished",
+      );
+    },
+    60_000,
+  );
+
+  it(
+    "finishes qty members when the last peer closes the target",
+    async () => {
+      const suffix = String(Date.now());
+      const first = await createUser({
+        username: `finh-${suffix}`,
+        password: "Secret123!",
+        name: "Finish H",
+        role: "colaborator",
+        code: Number(suffix.slice(-5)),
+      });
+      const second = await createUser({
+        username: `finm-${suffix}`,
+        password: "Secret123!",
+        name: "Finish M",
+        role: "colaborator",
+        code: Number(String(Number(suffix.slice(-5)) + 1).slice(-5)),
+      });
+
+      await createTemplateTask({
+        code: `PF${suffix.slice(-6)}`,
+        name: "Peer finish template",
+        subTasks: [
+          {
+            name: "Chapas",
+            expectedTime: 10,
+            index: 0,
+            qty: 50,
+            sharingType: "qty",
+            maxSameTimeWorkers: 2,
+          },
+          {
+            name: "Adesivos",
+            expectedTime: 10,
+            index: 1,
+            qty: 50,
+            sharingType: "qty",
+            linkedToPrevious: true,
+            maxSameTimeWorkers: 2,
+            dependencyIndexes: [0],
+          },
+        ],
+      });
+
+      const step = await createStep({ name: `PFin ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `PFin task ${suffix}`,
+        qty: 1,
+        stepId: step.id,
+        templateTaskCode: `PF${suffix.slice(-6)}`,
+      });
+      const subs = await listSubTasksForTask(task.id);
+      const chapas = subs[0]!;
+      const adesivos = subs[1]!;
+      await assignColaboratorsToSubTask(chapas.id, [first.id, second.id]);
+      await assignColaboratorsToSubTask(adesivos.id, [first.id, second.id]);
+
+      const { chainRunId } = await startChain(
+        first.id,
+        chapas.id,
+        undefined,
+        new Date("2026-08-16T14:00:00Z"),
+      );
+      await startChain(
+        first.id,
+        chapas.id,
+        undefined,
+        new Date("2026-08-16T14:00:05Z"),
+      );
+      await startChain(
+        second.id,
+        chapas.id,
+        undefined,
+        new Date("2026-08-16T14:00:10Z"),
+      );
+      await startChain(
+        second.id,
+        chapas.id,
+        undefined,
+        new Date("2026-08-16T14:00:15Z"),
+      );
+
+      await confirmChainStop(
+        first.id,
+        chainRunId,
+        [
+          { documentId: chapas.id, qty: 10 },
+          { documentId: adesivos.id, qty: 20 },
+        ],
+        undefined,
+        new Date("2026-08-16T14:10:00Z"),
+      );
+      await confirmChainStop(
+        second.id,
+        chainRunId,
+        [
+          { documentId: chapas.id, qty: 40 },
+          { documentId: adesivos.id, qty: 30 },
+        ],
+        undefined,
+        new Date("2026-08-16T14:20:00Z"),
+      );
+
+      const after = await listSubTasksForTask(task.id);
+      expect(after.find((row) => row.id === chapas.id)?.status).toBe("finished");
+      expect(after.find((row) => row.id === adesivos.id)?.status).toBe(
+        "finished",
+      );
+    },
+    60_000,
+  );
+
+  it(
     "closes carts after team last day and scopes batches for leaders",
     async () => {
       const suffix = String(Date.now());

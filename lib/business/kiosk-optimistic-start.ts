@@ -1,6 +1,7 @@
 import {
   isProducingQueueUnit,
   queueUnitCursor,
+  groupHasJoinSlot,
   type KioskGroupUnit,
   type KioskIsolatedUnit,
   type KioskQueueUnit,
@@ -244,19 +245,19 @@ function patchGroupUnit(
   openRuns: readonly OpenChainRun[],
   colaboratorId: string,
 ): KioskGroupUnit {
+  const openRun = findOpenRunForGroup(unit, openRuns);
   const members = unit.memberIds.map(
     (id) => byId.get(id) ?? unit.members.find((row) => row.documentId === id)!,
   );
-  const openRun = findOpenRunForGroup(unit, openRuns);
-  const principalActive = openRun?.principalId === colaboratorId;
+  const viewerActive = members.some(
+    (item) => item.status === "producing" && Boolean(item.startedAt),
+  );
   return {
     ...unit,
     members,
-    principalActive,
-    chainRunId: principalActive ? (openRun?.chainRunId ?? null) : unit.chainRunId,
-    runStartedAt: principalActive
-      ? (openRun?.runStartedAt ?? null)
-      : unit.runStartedAt,
+    principalActive: viewerActive,
+    chainRunId: openRun?.chainRunId ?? unit.chainRunId,
+    runStartedAt: openRun?.runStartedAt ?? unit.runStartedAt,
   };
 }
 
@@ -271,17 +272,25 @@ function patchIsolatedUnit(
 function refreshPendingShowStart(
   units: readonly KioskQueueUnit[],
   queueContext: readonly KioskSubTask[],
+  viewerId: string,
 ): KioskQueueUnit[] {
   const hasActive = hasActiveSubTask(queueContext);
   let idleStartGranted = false;
 
   return units.map((unit) => {
     if (unit.type === "group") {
+      if (unit.chainRunId) {
+        return {
+          ...unit,
+          showStart:
+            !unit.locked && groupHasJoinSlot(unit.members, viewerId),
+        };
+      }
+      if (unit.principalActive) {
+        return { ...unit, showStart: false };
+      }
       const showStart =
-        !hasActive &&
-        !unit.locked &&
-        !unit.principalActive &&
-        !idleStartGranted;
+        !hasActive && !unit.locked && !idleStartGranted;
       if (showStart) idleStartGranted = true;
       return { ...unit, showStart };
     }
@@ -343,7 +352,11 @@ export function applyOptimisticStateToLiberadasSection(
   }
 
   return {
-    producingUnits: refreshPendingShowStart(producingUnits, queueContext),
-    units: refreshPendingShowStart(pendingUnits, queueContext),
+    producingUnits: refreshPendingShowStart(
+      producingUnits,
+      queueContext,
+      colaboratorId,
+    ),
+    units: refreshPendingShowStart(pendingUnits, queueContext, colaboratorId),
   };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { screen, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type { KioskGroupUnit } from "@/lib/business/kiosk-queue-units";
@@ -34,6 +34,8 @@ function kioskSubTask(
     maxSameTimeWorkers: overrides.maxSameTimeWorkers ?? 1,
     assignedToIds: overrides.assignedToIds ?? ["u1"],
     dependencyIds: overrides.dependencyIds ?? [],
+    recordedQtyThisRun: overrides.recordedQtyThisRun,
+    viewerWorkedThisRun: overrides.viewerWorkedThisRun,
   };
 }
 
@@ -259,6 +261,187 @@ describe("KioskChainGroupCard", () => {
       { documentId: "b", completed: true },
     ]);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("hides inferred suppliers and still sends them in the payload", async () => {
+    const user = userEvent.setup();
+    const onConfirmChainStop = vi.fn();
+    const members = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Cortar",
+        sharingType: "qty",
+        qty: 10,
+        targetQty: 10,
+        completedQty: 0,
+        status: "producing",
+        startedAt: "2026-08-16T12:00:00.000Z",
+        viewerWorkedThisRun: true,
+      }),
+      kioskSubTask({
+        documentId: "b",
+        name: "Montar",
+        index: 1,
+        linkedToPrevious: true,
+        sharingType: "qty",
+        qty: 5,
+        targetQty: 5,
+        completedQty: 0,
+        dependencyIds: ["a"],
+        status: "waiting",
+        viewerWorkedThisRun: true,
+      }),
+      kioskSubTask({
+        documentId: "c",
+        name: "Embalar",
+        index: 2,
+        linkedToPrevious: true,
+        status: "waiting",
+      }),
+    ];
+    renderWithIntl(
+      <KioskChainGroupCard
+        unit={activeGroupProps(members)}
+        onConfirmChainStop={onConfirmChainStop}
+        onAdvanceChain={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Parar" }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(screen.getByRole("heading", { name: "Montar" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("progressbar")).toHaveAttribute(
+      "aria-valuemax",
+      "3",
+    );
+
+    fireEvent.change(
+      within(dialog).getByLabelText("Quantas peças você concluiu?"),
+      { target: { value: "5" } },
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Continuar" }));
+
+    expect(screen.getByRole("heading", { name: "Cortar" })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Continuar" }));
+
+    expect(screen.getByRole("heading", { name: "Embalar" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Cortar" }),
+    ).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("progressbar")).toHaveAttribute(
+      "aria-valuemax",
+      "3",
+    );
+
+    await user.click(within(dialog).getByRole("button", { name: "SIM" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Confirmar saída" }),
+    );
+
+    expect(onConfirmChainStop).toHaveBeenCalledWith("run-1", [
+      { documentId: "a", qty: 5 },
+      { documentId: "b", qty: 5 },
+      { documentId: "c", completed: true },
+    ]);
+  });
+
+  it("lets the second peer stop from the group card", () => {
+    const members = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Chapas",
+        sharingType: "qty",
+        qty: 100,
+        targetQty: 100,
+        status: "producing",
+        startedAt: "2026-08-16T12:00:00.000Z",
+        recordedQtyThisRun: 10,
+        viewerWorkedThisRun: true,
+      }),
+      kioskSubTask({
+        documentId: "b",
+        name: "Adesivos",
+        index: 1,
+        linkedToPrevious: true,
+        sharingType: "qty",
+        qty: 100,
+        targetQty: 100,
+        dependencyIds: ["a"],
+        status: "producing",
+        startedAt: "2026-08-16T12:01:00.000Z",
+        recordedQtyThisRun: 20,
+        viewerWorkedThisRun: true,
+      }),
+    ];
+    renderWithIntl(
+      <KioskChainGroupCard
+        unit={activeGroupProps(members)}
+        onConfirmChainStop={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Parar" })).toBeEnabled();
+    expect(
+      screen.getByText("Já registrado: 10 Chapas, 20 Adesivos"),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the supplier step when min equals max for the last peer", async () => {
+    const user = userEvent.setup();
+    const onConfirmChainStop = vi.fn();
+    const members = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Chapas",
+        sharingType: "qty",
+        qty: 50,
+        targetQty: 50,
+        completedQty: 10,
+        recordedQtyThisRun: 10,
+        viewerWorkedThisRun: true,
+        status: "producing",
+        startedAt: "2026-08-16T12:00:00.000Z",
+      }),
+      kioskSubTask({
+        documentId: "b",
+        name: "Adesivos",
+        index: 1,
+        linkedToPrevious: true,
+        sharingType: "qty",
+        qty: 50,
+        targetQty: 50,
+        completedQty: 20,
+        recordedQtyThisRun: 20,
+        dependencyIds: ["a"],
+        viewerWorkedThisRun: true,
+        status: "producing",
+        startedAt: "2026-08-16T12:01:00.000Z",
+      }),
+    ];
+    renderWithIntl(
+      <KioskChainGroupCard
+        unit={activeGroupProps(members)}
+        onConfirmChainStop={onConfirmChainStop}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Parar" }));
+    const dialog = screen.getByRole("dialog");
+    expect(screen.getByRole("heading", { name: "Adesivos" })).toBeInTheDocument();
+    fireEvent.change(
+      within(dialog).getByLabelText("Quantas peças você concluiu?"),
+      { target: { value: "30" } },
+    );
+    expect(
+      screen.queryByRole("heading", { name: "Chapas" }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      within(dialog).getByRole("button", { name: "Confirmar saída" }),
+    );
+    expect(onConfirmChainStop).toHaveBeenCalledWith("run-1", [
+      { documentId: "a", qty: 40, inferred: true, semBandeira: true },
+      { documentId: "b", qty: 30 },
+    ]);
   });
 });
 
