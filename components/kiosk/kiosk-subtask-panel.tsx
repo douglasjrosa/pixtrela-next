@@ -147,7 +147,6 @@ export function KioskSubtaskPanel({
         }
 
         const subTask = unit.subTask;
-        const helperMode = unit.helperMode;
         const finished = isFinishedSubTask(subTask);
         const locked = isLockedSubTask(subTask);
         const hasOwnSession = Boolean(subTask.startedAt);
@@ -159,9 +158,6 @@ export function KioskSubtaskPanel({
         const isExiting =
           exitingId === subTask.documentId && isProducing && onExit;
         const isFlashing = flashDocumentId === subTask.documentId;
-        const allowComplete = helperMode
-          ? false
-          : canCompleteSubTaskOnExit(subTask);
         const remainingQty = getRemainingSubTaskQty(
           subTask.targetQty,
           subTask.completedQty,

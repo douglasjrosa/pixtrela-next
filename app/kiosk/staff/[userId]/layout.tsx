@@ -51,7 +51,6 @@ export default async function KioskStaffLayout({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <KioskStaffNav
-        userId={actor.staffUserId}
         userName={actor.name}
         avatarUrl={actor.avatarUrl}
         homeHref={paths.panel}

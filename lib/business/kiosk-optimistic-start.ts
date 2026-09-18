@@ -243,7 +243,6 @@ function patchGroupUnit(
   unit: KioskGroupUnit,
   byId: Map<string, KioskSubTask>,
   openRuns: readonly OpenChainRun[],
-  colaboratorId: string,
 ): KioskGroupUnit {
   const openRun = findOpenRunForGroup(unit, openRuns);
   const members = unit.memberIds.map(
@@ -340,7 +339,7 @@ export function applyOptimisticStateToLiberadasSection(
     ...section.units,
   ]).map((unit) =>
     unit.type === "group"
-      ? patchGroupUnit(unit, byId, openRuns, colaboratorId)
+      ? patchGroupUnit(unit, byId, openRuns)
       : patchIsolatedUnit(unit, byId),
   );
 

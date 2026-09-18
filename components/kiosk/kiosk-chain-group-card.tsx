@@ -129,17 +129,18 @@ export function KioskChainGroupCard({
     .filter((member) => (member.recordedQtyThisRun ?? 0) > 0)
     .map((member) => `${member.recordedQtyThisRun} ${member.name}`)
     .join(", ");
+  const chainMembers = unit.members;
   const visibleMembers = useMemo(
     () =>
       exitState.steps
         .filter((step) => step.visible)
         .map((step) =>
-          unit.members.find((member) => member.documentId === step.documentId),
+          chainMembers.find((member) => member.documentId === step.documentId),
         )
-        .filter((member): member is (typeof unit.members)[number] =>
+        .filter((member): member is (typeof chainMembers)[number] =>
           Boolean(member),
         ),
-    [exitState.steps, unit.members],
+    [chainMembers, exitState.steps],
   );
   const safeStepIndex = Math.min(
     chainStepIndex,

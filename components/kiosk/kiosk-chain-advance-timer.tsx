@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
 import { msUntilNextAutoAdvance } from "@/lib/business/subtask-chain-allocation";
 import type { KioskSubTask } from "@/lib/business/subtask-queue";
@@ -28,9 +28,12 @@ export function KioskChainAdvanceTimer({
   );
 
   const onAdvanceRef = useRef(onAdvance);
-  onAdvanceRef.current = onAdvance;
   const remainingOrderedRef = useRef(remainingOrdered);
-  remainingOrderedRef.current = remainingOrdered;
+
+  useLayoutEffect(() => {
+    onAdvanceRef.current = onAdvance;
+    remainingOrderedRef.current = remainingOrdered;
+  }, [onAdvance, remainingOrdered]);
 
   useEffect(() => {
     let cancelled = false;
