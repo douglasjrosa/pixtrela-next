@@ -619,6 +619,11 @@
     "deleted": "Etapa excluída.",
     "deleteTitle": "Excluir etapa",
     "deleteConfirm": "Excluir permanentemente esta etapa?",
+    "deleteSelected": "Excluir selecionadas",
+    "bulkDeleted": "Etapas excluídas.",
+    "bulkDeleteTitle": "Excluir etapas",
+    "bulkDeleteConfirm": "Excluir permanentemente as etapas selecionadas?",
+    "error": "Não foi possível concluir a operação.",
     "empty": "Nenhuma etapa cadastrada."
   },
   "subtasks": {
@@ -1227,6 +1232,7 @@
     "chainStopInconsistent": "As quantidades da cadeia não conferem. Revise as respostas.",
     "chainRunRecorded": "Já registrado: {summary}",
     "subTaskHasNoCategory": "Defina a categoria da subtarefa antes de finalizar.",
+    "flagWrongCategory": "A bandeira selecionada não pertence à categoria desta subtarefa.",
     "flagOccupied": "Uma das bandeiras já está em uso.",
     "dependencyFlags": "Material",
     "exitCompletedYes": "Sim, concluí",

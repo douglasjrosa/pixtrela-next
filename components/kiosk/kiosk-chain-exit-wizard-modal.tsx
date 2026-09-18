@@ -131,6 +131,7 @@ export function KioskChainExitWizardModal({
       }
     >
       <KioskChainMemberFields
+        key={member.documentId}
         documentId={member.documentId}
         name={member.name}
         sharingType={member.sharingType}

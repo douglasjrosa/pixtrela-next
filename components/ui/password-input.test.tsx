@@ -101,6 +101,31 @@ describe("PasswordInput", () => {
     expect(field).toHaveValue("•2");
   });
 
+  it("uses native password input on coarse pointers", () => {
+    const matchMedia = vi
+      .spyOn(window, "matchMedia")
+      .mockImplementation((query: string) => ({
+        matches: query === "(pointer: coarse)",
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+    renderWithIntl(<PasswordInput id="password" aria-label="Senha" />);
+
+    const field = screen.getByLabelText("Senha");
+    expect(field).toHaveAttribute("type", "password");
+    fireEvent.change(field, { target: { value: "secret1" } });
+    expect(field).toHaveValue("secret1");
+    expect(document.getElementById("password-value")).toHaveValue("secret1");
+
+    matchMedia.mockRestore();
+  });
+
   it("accepts plaintext autofill via change while masked", () => {
     const onChange = vi.fn();
     renderWithIntl(

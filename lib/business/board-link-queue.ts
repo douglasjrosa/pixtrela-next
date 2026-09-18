@@ -6,49 +6,61 @@ export type BoardSubtaskLinkResult = {
   assignedTo: { documentId: string; name: string }[];
 };
 
-export type BoardLinkDraftState = {
-  pendingLinks: ReadonlyMap<string, boolean>;
-  inFlightLinkIds: ReadonlySet<string>;
+const FINISHED_STATUS = "finished";
+
+export type LinkDraftUpdate = {
+  documentId: string;
+  linkedToPrevious: boolean;
 };
 
-export function hasPendingLinkDraft(state: BoardLinkDraftState): boolean {
-  return state.pendingLinks.size > 0 || state.inFlightLinkIds.size > 0;
+export function buildLinksSnapshot(
+  subtasks: readonly BoardSubTaskSummary[],
+): Record<string, boolean> {
+  return Object.fromEntries(
+    subtasks.map((subtask) => [
+      subtask.documentId,
+      subtask.linkedToPrevious,
+    ]),
+  );
 }
 
-export function resolveDraftLinkedToPrevious(
-  loaded: boolean,
-  documentId: string,
-  draft: BoardSubTaskSummary | undefined,
-  state: BoardLinkDraftState,
-): boolean {
-  const desired = state.pendingLinks.get(documentId);
-  if (desired !== undefined) return desired;
-  if (state.inFlightLinkIds.has(documentId) && draft) {
-    return draft.linkedToPrevious;
+export function collectDirtyLinkUpdates(
+  subtasks: readonly BoardSubTaskSummary[],
+  baseline: Readonly<Record<string, boolean>>,
+): LinkDraftUpdate[] {
+  const updates: LinkDraftUpdate[] = [];
+  for (const subtask of subtasks) {
+    if (subtask.status === FINISHED_STATUS) continue;
+    const baselineLink = baseline[subtask.documentId] ?? false;
+    if (subtask.linkedToPrevious === baselineLink) continue;
+    updates.push({
+      documentId: subtask.documentId,
+      linkedToPrevious: subtask.linkedToPrevious,
+    });
   }
-  return loaded;
+  return updates;
 }
 
-/** Prefer last acked link when a stale list fetch lags behind a recent save. */
-export function reconcileLoadedSubtaskLinks(
-  loaded: readonly BoardSubTaskSummary[],
-  ackedLinks: ReadonlyMap<string, boolean>,
-): BoardSubTaskSummary[] {
-  return loaded.map((item) => {
-    const acked = ackedLinks.get(item.documentId);
-    if (acked !== undefined && acked !== item.linkedToPrevious) {
-      return { ...item, linkedToPrevious: acked };
-    }
-    return item;
-  });
-}
-
-export function shouldFlushBoardLink(
-  desired: boolean | undefined,
-  inFlight: boolean,
-  acked: boolean | undefined,
+export function hasLinkDraftChanges(
+  subtasks: readonly BoardSubTaskSummary[],
+  baseline: Readonly<Record<string, boolean>>,
 ): boolean {
-  if (inFlight) return false;
-  if (desired === undefined) return false;
-  return acked !== desired;
+  return collectDirtyLinkUpdates(subtasks, baseline).length > 0;
+}
+
+export function mergeLinksBaseline(
+  baseline: Record<string, boolean>,
+  loaded: readonly BoardSubTaskSummary[],
+): Record<string, boolean> {
+  const keepIds = new Set(loaded.map((item) => item.documentId));
+  const next: Record<string, boolean> = {};
+  for (const [id, linked] of Object.entries(baseline)) {
+    if (keepIds.has(id)) next[id] = linked;
+  }
+  for (const item of loaded) {
+    if (!(item.documentId in next)) {
+      next[item.documentId] = item.linkedToPrevious;
+    }
+  }
+  return next;
 }

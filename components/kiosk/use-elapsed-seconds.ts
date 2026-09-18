@@ -11,15 +11,18 @@ export function useElapsedSeconds(
   baseSeconds = 0,
   paused = false,
 ): number | null {
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [nowMs, setNowMs] = useState<number | null>(null);
 
   useEffect(() => {
+    const syncNow = () => setNowMs(Date.now());
+    syncNow();
     if (!startedAt || paused) return undefined;
-    const id = window.setInterval(() => setNowMs(Date.now()), TICK_MS);
+    const id = window.setInterval(syncNow, TICK_MS);
     return () => window.clearInterval(id);
   }, [startedAt, paused]);
 
   if (!startedAt) return null;
+  if (nowMs === null) return baseSeconds;
 
   return baseSeconds + elapsedSecondsSince(startedAt, nowMs);
 }

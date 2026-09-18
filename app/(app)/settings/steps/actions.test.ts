@@ -123,4 +123,23 @@ describe("settings/steps/actions drizzle CRUD", () => {
     expect(deleteStepRepo).toHaveBeenCalledWith("s1");
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps", "default");
   });
+
+  it("bulkDeleteSteps hard-deletes each selected step", async () => {
+    getStepById.mockResolvedValue({
+      id: "s1",
+      name: "A",
+      index: 0,
+      taskOrderBy: "manual",
+      tasksPerLoad: 10,
+    });
+
+    const { bulkDeleteSteps } = await import("./actions");
+    await bulkDeleteSteps(["s1", "s2"]);
+
+    expect(getStepById).toHaveBeenCalledWith("s1");
+    expect(getStepById).toHaveBeenCalledWith("s2");
+    expect(deleteStepRepo).toHaveBeenCalledWith("s1");
+    expect(deleteStepRepo).toHaveBeenCalledWith("s2");
+    expect(revalidateTag).toHaveBeenCalledWith("drizzle:steps", "default");
+  });
 });

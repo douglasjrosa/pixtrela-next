@@ -198,14 +198,7 @@ describe("board-assignee-draft", () => {
       }),
     ];
 
-    expect(
-      mergeLoadedSubtasksWithDraft(loaded, draft, {
-        linkDraft: {
-          pendingLinks: new Map([["st-2", true]]),
-          inFlightLinkIds: new Set(["st-2"]),
-        },
-      }),
-    ).toEqual([
+    expect(mergeLoadedSubtasksWithDraft(loaded, draft)).toEqual([
       {
         ...loaded[0],
         linkedToPrevious: true,

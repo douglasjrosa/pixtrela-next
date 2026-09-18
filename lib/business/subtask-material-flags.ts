@@ -59,3 +59,34 @@ export function resolveCategoryIdFromFlagCategories(
   if (unique.length === 0) return null;
   return unique[0]!;
 }
+
+/**
+ * Resolves the category to use when assigning flags. Adopts the selected flag
+ * category when the stored category is stale and no conflicting flags exist yet.
+ */
+export function resolveSubTaskFlagCategory(input: {
+  storedCategoryId: string | null;
+  selectedFlagCategoryIds: readonly string[];
+  existingFlagCategoryIds: readonly string[];
+}): string | null {
+  const selected = [
+    ...new Set(
+      input.selectedFlagCategoryIds.filter((id) => id.trim().length > 0),
+    ),
+  ];
+  if (selected.length !== 1) return null;
+  const flagCategory = selected[0]!;
+
+  if (!input.storedCategoryId) return flagCategory;
+  if (input.storedCategoryId === flagCategory) return flagCategory;
+
+  const existing = [
+    ...new Set(
+      input.existingFlagCategoryIds.filter((id) => id.trim().length > 0),
+    ),
+  ];
+  if (existing.length === 0) return flagCategory;
+  if (existing.length === 1 && existing[0] === flagCategory) return flagCategory;
+
+  return null;
+}

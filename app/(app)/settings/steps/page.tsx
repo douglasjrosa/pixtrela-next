@@ -2,7 +2,12 @@ import { StepManager, type StepRow } from "@/components/steps/step-manager";
 import { loadCachedSettingsSteps } from "@/lib/steps/load-settings-steps";
 import { mapStepRecordToSettingsRow } from "@/lib/steps/map-settings-step";
 
-import { createStep, reorderSteps, updateStep } from "./actions";
+import {
+  bulkDeleteSteps,
+  createStep,
+  reorderSteps,
+  updateStep,
+} from "./actions";
 
 async function loadSteps(): Promise<StepRow[]> {
   const rows = await loadCachedSettingsSteps();
@@ -18,6 +23,7 @@ export default async function SettingsStepsPage() {
       onCreate={createStep}
       onUpdate={updateStep}
       onReorder={reorderSteps}
+      onBulkDelete={bulkDeleteSteps}
     />
   );
 }

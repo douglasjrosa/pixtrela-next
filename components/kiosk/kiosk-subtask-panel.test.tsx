@@ -330,6 +330,32 @@ describe("KioskSubtaskPanel", () => {
     expect(screen.getAllByRole("button", { name: "Iniciar" })).toHaveLength(1);
   });
 
+  it("shows exit on finished subtask when viewer still has an open session", () => {
+    const finishedWithSession = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Tarefa A",
+        status: "finished",
+        timeSpent: 125,
+        startedAt: "2026-06-05T10:00:00.000Z",
+        activeWorkerCount: 1,
+      }),
+    ];
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={finishedWithSession}
+        allSubTasks={finishedWithSession}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Sair da subtarefa" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Iniciar" })).toBeNull();
+  });
+
   it("calls onStart when start is clicked", () => {
     const onStart = vi.fn();
     renderWithIntl(

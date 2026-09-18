@@ -68,13 +68,24 @@ export function KioskChainMemberFields({
     wizardStepCount != null &&
     wizardStepIndex != null &&
     wizardStepCount > 1;
-  const [availableFlags, setAvailableFlags] =
-    useState<MaterialFlagOption[]>(initialFlags);
-  const [categoryId, setCategoryId] = useState<string | null>(
-    subTaskCategoryId,
-  );
-  const [allowSemBandeiraOption, setAllowSemBandeiraOption] = useState(false);
+  const [refreshByMemberId, setRefreshByMemberId] = useState<
+    Record<
+      string,
+      {
+        flags: MaterialFlagOption[];
+        categoryId: string | null;
+        allowSemBandeiraOption: boolean;
+      }
+    >
+  >({});
   const [refreshPending, startRefresh] = useTransition();
+
+  const refreshOverride = refreshByMemberId[documentId] ?? null;
+  const availableFlags = refreshOverride?.flags ?? initialFlags;
+  const categoryId = refreshOverride?.categoryId ?? subTaskCategoryId;
+  const allowSemBandeiraOption =
+    refreshOverride?.allowSemBandeiraOption ??
+    (initialFlags.length === 0 && Boolean(subTaskCategoryId));
 
   function patch(next: Partial<ChainStopAnswer>): void {
     onChange({
@@ -93,21 +104,20 @@ export function KioskChainMemberFields({
     if (!onRefreshFlags) return;
     startRefresh(async () => {
       const result = await onRefreshFlags();
-      setAvailableFlags(result.flags);
-      setCategoryId(result.categoryId);
-      if (result.flags.length === 0) {
-        setAllowSemBandeiraOption(Boolean(result.categoryId));
-        patch({
-          availableFlagCount: 0,
-          semBandeira: false,
-        });
-      } else {
-        setAllowSemBandeiraOption(false);
-        patch({
-          availableFlagCount: result.flags.length,
-          semBandeira: false,
-        });
-      }
+      const nextAllowSemBandeira =
+        result.flags.length === 0 && Boolean(result.categoryId);
+      setRefreshByMemberId((current) => ({
+        ...current,
+        [documentId]: {
+          flags: result.flags,
+          categoryId: result.categoryId,
+          allowSemBandeiraOption: nextAllowSemBandeira,
+        },
+      }));
+      patch({
+        availableFlagCount: result.flags.length,
+        semBandeira: false,
+      });
     });
   }
 

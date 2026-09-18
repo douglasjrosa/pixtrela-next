@@ -32,6 +32,10 @@ vi.mock("@/app/kiosk/staff/[userId]/users/actions", () => ({
   saveKioskColaboratorFacePhoto: vi.fn(),
 }));
 
+vi.mock("@/hooks/use-kiosk-queue-poll", () => ({
+  useKioskQueuePoll: vi.fn(),
+}));
+
 vi.mock("./actions", () => ({
   startSubTask: (...args: unknown[]) => startSubTask(...args),
   joinLiveChain: (...args: unknown[]) => joinLiveChain(...args),

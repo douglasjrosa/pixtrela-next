@@ -6,6 +6,7 @@ import {
   isSemBandeiraHint,
   mergeFlagIds,
   resolveCategoryIdFromFlagCategories,
+  resolveSubTaskFlagCategory,
 } from "./subtask-material-flags";
 
 const CATEGORY_ID = "11111111-1111-4111-8111-111111111111";
@@ -232,6 +233,38 @@ describe("isSemBandeiraHint", () => {
 describe("mergeFlagIds", () => {
   it("uniques existing and next ids", () => {
     expect(mergeFlagIds(["a", "b"], ["b", "c"])).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("resolveSubTaskFlagCategory", () => {
+  it("adopts selected flag category when stored category is stale", () => {
+    expect(
+      resolveSubTaskFlagCategory({
+        storedCategoryId: "cat-a",
+        selectedFlagCategoryIds: ["cat-b"],
+        existingFlagCategoryIds: [],
+      }),
+    ).toBe("cat-b");
+  });
+
+  it("rejects mixed selected flag categories", () => {
+    expect(
+      resolveSubTaskFlagCategory({
+        storedCategoryId: null,
+        selectedFlagCategoryIds: ["cat-a", "cat-b"],
+        existingFlagCategoryIds: [],
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects when existing flags conflict with selected category", () => {
+    expect(
+      resolveSubTaskFlagCategory({
+        storedCategoryId: "cat-a",
+        selectedFlagCategoryIds: ["cat-b"],
+        existingFlagCategoryIds: ["cat-c"],
+      }),
+    ).toBeNull();
   });
 });
 

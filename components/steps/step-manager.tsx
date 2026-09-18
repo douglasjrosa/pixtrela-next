@@ -24,10 +24,22 @@ import { useTranslations } from "next-intl";
 
 import { StepFormModal } from "@/components/steps/step-form-modal";
 import { AddNewButton } from "@/components/ui/add-new-button";
+import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
+import { ListSelectionProvider } from "@/components/ui/list-selection-context";
+import {
+  areAllRowsSelected,
+  selectedRowsFromList,
+  toggleIdInSet,
+  toggleSelectAllRows,
+} from "@/lib/business/list-selection";
 import { reorderStepsByDrag } from "@/lib/business/step-order";
+import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { StepNameFormInput } from "@/lib/schemas/step";
 import { STEP_TASKS_PER_LOAD_DEFAULT } from "@/lib/schemas/step";
 import type { SettingsStepRow } from "@/lib/steps/map-settings-step";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 import { TABLE_HEAD_CELL_CLASS } from "@/lib/ui/table-head-styles";
 
 export type StepRow = SettingsStepRow;
@@ -42,6 +54,7 @@ export interface StepManagerProps {
     values: StepNameFormInput,
   ) => void | Promise<void>;
   onReorder: (orderedDocumentIds: string[]) => void | Promise<void>;
+  onBulkDelete: (documentIds: string[]) => void | Promise<void>;
 }
 
 const EMPTY_FORM: StepNameFormInput = {
@@ -71,6 +84,7 @@ interface SortableStepRowProps {
   dragLabel: string;
   openLabel: string;
   orderByLabel: string;
+  selectRowLabel: string;
   disabled: boolean;
   onOpen: (step: StepRow) => void;
 }
@@ -80,6 +94,7 @@ function SortableStepRow({
   dragLabel,
   openLabel,
   orderByLabel,
+  selectRowLabel,
   disabled,
   onOpen,
 }: SortableStepRowProps) {
@@ -111,6 +126,11 @@ function SortableStepRow({
       }
       onClick={() => onOpen(step)}
     >
+      <ListRowCheckbox
+        documentId={step.documentId}
+        variant="table"
+        ariaLabel={selectRowLabel}
+      />
       <td className="w-10 py-2">
         <button
           type="button"
@@ -145,19 +165,31 @@ export function StepManager({
   onCreate,
   onUpdate,
   onReorder,
+  onBulkDelete,
 }: StepManagerProps) {
   const router = useRouter();
   const tCommon = useTranslations("common");
   const tSteps = useTranslations("steps");
   const [orderedSteps, setOrderedSteps] = useState(steps);
   const [prevSteps, setPrevSteps] = useState(steps);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const listResetKey = steps.map((step) => step.documentId).join(",");
+  const [prevListResetKey, setPrevListResetKey] = useState(listResetKey);
   if (steps !== prevSteps) {
     setPrevSteps(steps);
     setOrderedSteps(steps);
   }
+  if (listResetKey !== prevListResetKey) {
+    setPrevListResetKey(listResetKey);
+    setSelectedIds([]);
+  }
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+
+  const selectedSteps = selectedRowsFromList(orderedSteps, selectedIds);
+  const hasSelection = selectedSteps.length > 0;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -171,6 +203,37 @@ export function StepManager({
   function openEdit(step: StepRow): void {
     setMessage(null);
     setModal({ mode: "edit", step });
+  }
+
+  function handleToggleSelect(documentId: string): void {
+    setSelectedIds((current) => toggleIdInSet(current, documentId));
+  }
+
+  function handleToggleSelectAll(): void {
+    setSelectedIds((current) => toggleSelectAllRows(orderedSteps, current));
+  }
+
+  function clearSelection(): void {
+    setSelectedIds([]);
+  }
+
+  function handleBulkDeleteConfirm(): void {
+    startTransition(async () => {
+      try {
+        await onBulkDelete(selectedIds);
+        const deleted = new Set(selectedIds);
+        setOrderedSteps((current) =>
+          current.filter((step) => !deleted.has(step.documentId)),
+        );
+        showSuccessToast(tSteps("bulkDeleted"));
+        setBulkDeleteOpen(false);
+        clearSelection();
+        refreshSteps();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tSteps("error"));
+      }
+    });
   }
 
   function refreshSteps(): void {
@@ -236,18 +299,39 @@ export function StepManager({
         }
       : EMPTY_FORM;
 
+  const selectionValue = {
+    selectedIds,
+    allSelected: areAllRowsSelected(orderedSteps, selectedIds),
+    onToggleSelect: handleToggleSelect,
+    onToggleSelectAll: handleToggleSelectAll,
+  };
+
   return (
-    <div className="space-y-6">
+    <ListSelectionProvider value={selectionValue}>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">{tSteps("title")}</h2>
-        <AddNewButton
-          label={tSteps("newStep")}
-          disabled={isPending}
-          onClick={() => {
-            setMessage(null);
-            setModal({ mode: "create" });
-          }}
-        />
+        <div className="flex items-center gap-2">
+          {orderedSteps.length > 0 ? (
+            <BulkListToolbar
+              showArchive={false}
+              showDelete={hasSelection}
+              archiveLabel={tSteps("deleteSelected")}
+              deleteLabel={tSteps("deleteSelected")}
+              disabled={isPending}
+              onArchive={() => undefined}
+              onDelete={() => setBulkDeleteOpen(true)}
+            />
+          ) : null}
+          <AddNewButton
+            label={tSteps("newStep")}
+            disabled={isPending}
+            onClick={() => {
+              setMessage(null);
+              setModal({ mode: "create" });
+            }}
+          />
+        </div>
       </div>
 
       {message ? (
@@ -268,6 +352,14 @@ export function StepManager({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left">
+                <th className="w-10 py-2 text-center">
+                  <ListRowCheckbox
+                    documentId=""
+                    variant="table-header"
+                    selectAll
+                    ariaLabel={tCommon("selectAll")}
+                  />
+                </th>
                 <th className="w-10 py-2" aria-hidden />
                 <th className={TABLE_HEAD_CELL_CLASS}>{tSteps("name")}</th>
               </tr>
@@ -284,6 +376,7 @@ export function StepManager({
                     dragLabel={tSteps("dragToReorder")}
                     openLabel={tSteps("openStep")}
                     orderByLabel={tSteps(`orderByOptions.${step.orderBy}`)}
+                    selectRowLabel={tCommon("selectRow", { name: step.name })}
                     disabled={isPending}
                     onOpen={openEdit}
                   />
@@ -304,6 +397,15 @@ export function StepManager({
         onSave={handleSave}
       />
 
-    </div>
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        title={tSteps("bulkDeleteTitle")}
+        description={tSteps("bulkDeleteConfirm")}
+        disabled={isPending}
+        onConfirm={handleBulkDeleteConfirm}
+        onClose={() => setBulkDeleteOpen(false)}
+      />
+      </div>
+    </ListSelectionProvider>
   );
 }

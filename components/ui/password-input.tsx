@@ -21,6 +21,13 @@ import { cn } from "@/lib/utils";
 const INPUT_CLASS =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
+function prefersCoarsePointer(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false;
+  }
+  return window.matchMedia("(pointer: coarse)").matches;
+}
+
 function emitInputChange(
   onChange: React.ChangeEventHandler<HTMLInputElement> | undefined,
   target: HTMLInputElement,
@@ -65,6 +72,7 @@ export const PasswordInput = React.forwardRef<
   const selectionRef = React.useRef({ start: 0, end: 0 });
   const beforeInputHandledRef = React.useRef(false);
   const [showAll, setShowAll] = React.useState(false);
+  const [useNativePasswordField] = React.useState(prefersCoarsePointer);
   const [, refreshMask] = React.useReducer((count) => count + 1, 0);
 
   revealStateRef.current = revealState;
@@ -358,6 +366,69 @@ export const PasswordInput = React.forwardRef<
   function toggleShowAll(): void {
     setShowAll((current) => !current);
     visibleRef.current?.focus();
+  }
+
+  function handleNativeChange(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): void {
+    const next = createPasswordRevealState(event.target.value);
+    revealStateRef.current = next;
+    setRevealState(next);
+    const hidden = hiddenRef.current;
+    if (hidden) {
+      hidden.value = next.value;
+    }
+    emitInputChange(onChange, event.target, next.value);
+  }
+
+  if (useNativePasswordField) {
+    return (
+      <div className="relative">
+        <input
+          ref={hiddenRef}
+          type="hidden"
+          name={name}
+          id={id ? `${id}-value` : undefined}
+          value={revealState.value}
+          tabIndex={-1}
+          aria-hidden
+          readOnly
+        />
+        <input
+          {...props}
+          ref={visibleRef}
+          id={id}
+          type={showAll ? "text" : "password"}
+          lang={APP_LOCALE}
+          autoComplete={autoComplete}
+          disabled={disabled}
+          value={revealState.value}
+          onChange={handleNativeChange}
+          onBlur={onBlur}
+          className={cn(INPUT_CLASS, "pr-10", className)}
+        />
+        <button
+          type="button"
+          className={cn(
+            "absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1",
+            "text-muted-foreground hover:text-foreground",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            disabled && "pointer-events-none opacity-50",
+          )}
+          onClick={toggleShowAll}
+          aria-label={showAll ? t("hidePassword") : t("showPassword")}
+          aria-pressed={showAll}
+          disabled={disabled}
+          tabIndex={-1}
+        >
+          {showAll ? (
+            <EyeOff className="size-4" aria-hidden strokeWidth={1.75} />
+          ) : (
+            <Eye className="size-4" aria-hidden strokeWidth={1.75} />
+          )}
+        </button>
+      </div>
+    );
   }
 
   return (

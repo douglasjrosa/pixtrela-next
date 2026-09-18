@@ -8,7 +8,7 @@ import {
   subTasks,
 } from "@/drizzle/schema";
 import { formatMaterialFlagCode } from "@/lib/business/material-flag-code";
-import { resolveCategoryIdFromFlagCategories } from "@/lib/business/subtask-material-flags";
+import { resolveSubTaskFlagCategory } from "@/lib/business/subtask-material-flags";
 import { getDb, type Db } from "@/lib/db/client";
 import type { MaterialFlagFormInput, MaterialFlagListFilters } from "@/lib/schemas/material-flag";
 import { SETTINGS_ENTITY_LIST_PAGE_SIZE } from "@/lib/schemas/sub-task-category";
@@ -219,6 +219,7 @@ export async function listAssignedFlagsForSubTasks(
       subTaskId: subTaskFlags.subTaskId,
       flagId: flags.id,
       index: flags.index,
+      categoryId: flags.subTaskCategoryId,
       categoryRef: subTaskCategories.ref,
     })
     .from(subTaskFlags)
@@ -288,21 +289,29 @@ export async function assignFlagsToSubTask(
     .where(inArray(flags.id, uniqueIds));
   if (rows.length !== uniqueIds.length) throw new Error("flagNotFound");
 
-  const resolvedCategory = resolveCategoryIdFromFlagCategories(
-    sub.categoryId,
-    rows.map((row) => row.categoryId),
-  );
-  if (!resolvedCategory) throw new Error("subTaskHasNoCategory");
+  const existingFlagIds = await listFlagIdsForSubTask(subTaskId, db);
+  const existingFlagCategoryIds =
+    existingFlagIds.length === 0
+      ? []
+      : (
+          await db
+            .select({ categoryId: flags.subTaskCategoryId })
+            .from(flags)
+            .where(inArray(flags.id, existingFlagIds))
+        ).map((row) => row.categoryId);
 
-  if (!sub.categoryId) {
+  const resolvedCategory = resolveSubTaskFlagCategory({
+    storedCategoryId: sub.categoryId,
+    selectedFlagCategoryIds: rows.map((row) => row.categoryId),
+    existingFlagCategoryIds,
+  });
+  if (!resolvedCategory) throw new Error("flagWrongCategory");
+
+  if (sub.categoryId !== resolvedCategory) {
     await db
       .update(subTasks)
       .set({ subTaskCategoryId: resolvedCategory, updatedAt: new Date() })
       .where(eq(subTasks.id, subTaskId));
-  }
-
-  if (rows.some((row) => row.categoryId !== resolvedCategory)) {
-    throw new Error("flagWrongCategory");
   }
 
   const occupied = await db
@@ -375,6 +384,7 @@ export async function resolveKioskMaterialFlagOptions(
     });
   }
   for (const row of assignedRows) {
+    if (row.categoryId !== resolvedCategory) continue;
     if (!byId.has(row.flagId)) {
       byId.set(row.flagId, {
         id: row.flagId,

@@ -102,7 +102,7 @@ export function KioskSubtaskPanel({
         item.type === "isolated" && item.subTask.documentId === exitingId,
     );
     if (!unit || unit.type !== "isolated") return null;
-    if (unit.subTask.status !== "producing") return null;
+    if (!shouldShowExitButton(queueContext, unit.subTask)) return null;
     return {
       subTask: unit.subTask,
       helperMode: unit.helperMode,
@@ -233,7 +233,7 @@ export function KioskSubtaskPanel({
                   releaseDisabled={blockingUi}
                 />
               </div>
-              {!finished && !isExiting ? (
+              {(!finished || showExit) && !isExiting ? (
                 <div className="flex w-full flex-col gap-2">
                   {showStart ? (
                     <KioskActionButton

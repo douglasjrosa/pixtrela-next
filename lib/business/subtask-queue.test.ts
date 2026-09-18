@@ -427,6 +427,20 @@ describe("shouldShowExitButton", () => {
     expect(shouldShowExitButton(active, active[0]!)).toBe(true);
     expect(shouldShowExitButton(active, active[1]!)).toBe(false);
   });
+
+  it("shows exit on finished subtask when viewer still has an open session", () => {
+    const finishedWithSession = {
+      documentId: "a",
+      name: "A",
+      index: 0,
+      status: "finished" as const,
+      activationStatus: "unlocked" as const,
+      startedAt: "2026-07-15T10:00:00.000Z",
+    };
+    expect(shouldShowExitButton([finishedWithSession], finishedWithSession)).toBe(
+      true,
+    );
+  });
 });
 
 describe("formatRemainingWorkerNames", () => {
