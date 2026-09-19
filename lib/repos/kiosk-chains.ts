@@ -10,6 +10,7 @@ import {
   resolveChainAutoAdvance,
   statusAfterChainTimeAdvance,
   type AllocationMember,
+  type AllocationSharingType,
   type ChainStopAnswer,
 } from "@/lib/business/subtask-chain-allocation";
 import {
@@ -95,6 +96,16 @@ type ChainActivityRow = {
   qty: number;
   currencyAwarded: number;
   chainRunId: string | null;
+};
+
+type ChainExitQueueMember = {
+  documentId: string;
+  index: number;
+  sharingType: AllocationSharingType;
+  targetQty: number;
+  completedQty: number;
+  dependencyIds?: readonly string[];
+  recordedQtyThisRun?: number;
 };
 
 function toChainItem(row: SubTaskWithAssignees): ChainSubTask {
@@ -1230,7 +1241,7 @@ async function recordPeerChainExit(input: {
     .limit(1);
   if (!task) throw new Error("notFound");
 
-  const exitMembers: Parameters<typeof chainExitMembersFromQueue>[0] = [];
+  const exitMembers: ChainExitQueueMember[] = [];
   for (const member of formMembers) {
     const row = siblingById.get(member.documentId);
     if (!row) continue;
@@ -1448,8 +1459,8 @@ export async function confirmChainStop(
   const workedMemberIds = colaboratorWorkedMemberIds(runRows, colaboratorId);
   const sharingMembers = siblings
     .filter((row) => chain.memberIds.includes(row.id))
-    .map((row) => ({
-      sharingType: (row.sharingType === "qty" ? "qty" : "duration") as const,
+    .map((row): { sharingType: AllocationSharingType } => ({
+      sharingType: row.sharingType === "qty" ? "qty" : "duration",
     }));
   const hasDurationCompleted = answers.some(
     (answer) => typeof answer.completed === "boolean",
