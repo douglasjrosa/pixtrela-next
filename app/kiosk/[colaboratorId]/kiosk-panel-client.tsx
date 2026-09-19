@@ -175,6 +175,7 @@ export function KioskPanelClient({
   avatarUrl = null,
   facePhotoUrl = null,
   initialLiberadas,
+  maxSimultaneousSubtaskIntervalSeconds = 0,
   readOnly = false,
   staffUserId,
   allowFaceEdit = false,
@@ -278,9 +279,16 @@ export function KioskPanelClient({
         displaySubTasks,
         displayOpenRuns,
         colaboratorId,
+        maxSimultaneousSubtaskIntervalSeconds,
       ),
     }),
-    [colaboratorId, displayOpenRuns, displaySubTasks, liberadas],
+    [
+      colaboratorId,
+      displayOpenRuns,
+      displaySubTasks,
+      liberadas,
+      maxSimultaneousSubtaskIntervalSeconds,
+    ],
   );
 
   useEffect(() => {

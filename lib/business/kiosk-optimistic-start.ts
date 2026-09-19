@@ -1,18 +1,14 @@
 import {
+  applyQueueUnitStartVisibility,
   isProducingQueueUnit,
   queueUnitCursor,
-  groupHasJoinSlot,
   type KioskGroupUnit,
   type KioskIsolatedUnit,
   type KioskQueueUnit,
   type OpenChainRun,
 } from "@/lib/business/kiosk-queue-units";
 import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
-import {
-  canStartSubTask,
-  hasActiveSubTask,
-  type KioskSubTask,
-} from "@/lib/business/subtask-queue";
+import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 
 export const OPTIMISTIC_CHAIN_RUN_PREFIX = "optimistic:";
@@ -268,52 +264,6 @@ function patchIsolatedUnit(
   return { ...unit, subTask };
 }
 
-function refreshPendingShowStart(
-  units: readonly KioskQueueUnit[],
-  queueContext: readonly KioskSubTask[],
-  viewerId: string,
-): KioskQueueUnit[] {
-  const hasActive = hasActiveSubTask(queueContext);
-  let idleStartGranted = false;
-
-  return units.map((unit) => {
-    if (unit.type === "group") {
-      if (unit.chainRunId) {
-        return {
-          ...unit,
-          showStart:
-            !unit.locked && groupHasJoinSlot(unit.members, viewerId),
-        };
-      }
-      if (unit.principalActive) {
-        return { ...unit, showStart: false };
-      }
-      const showStart =
-        !hasActive && !unit.locked && !idleStartGranted;
-      if (showStart) idleStartGranted = true;
-      return { ...unit, showStart };
-    }
-
-    if (unit.helperMode) {
-      return {
-        ...unit,
-        showStart: canStartSubTask(queueContext, unit.subTask.documentId),
-      };
-    }
-
-    if (isProducingQueueUnit(unit)) {
-      return { ...unit, showStart: false };
-    }
-
-    const showStart =
-      !hasActive &&
-      !idleStartGranted &&
-      canStartSubTask(queueContext, unit.subTask.documentId);
-    if (showStart) idleStartGranted = true;
-    return { ...unit, showStart };
-  });
-}
-
 function dedupeQueueUnits(units: readonly KioskQueueUnit[]): KioskQueueUnit[] {
   const seen = new Set<string>();
   const unique: KioskQueueUnit[] = [];
@@ -332,6 +282,7 @@ export function applyOptimisticStateToLiberadasSection(
   queueContext: readonly KioskSubTask[],
   openRuns: readonly OpenChainRun[],
   colaboratorId: string,
+  maxSimultaneousSubtaskIntervalSeconds = 0,
 ): LiberadasSectionSnapshot {
   const byId = subTasksById(queueContext);
   const patched = dedupeQueueUnits([
@@ -342,20 +293,19 @@ export function applyOptimisticStateToLiberadasSection(
       ? patchGroupUnit(unit, byId, openRuns)
       : patchIsolatedUnit(unit, byId),
   );
+  const withStart = applyQueueUnitStartVisibility(patched, {
+    viewerId: colaboratorId,
+    subTasks: queueContext,
+    allTaskSubTasks: queueContext,
+    maxSimultaneousSubtaskIntervalSeconds,
+  });
 
   const producingUnits: KioskQueueUnit[] = [];
   const pendingUnits: KioskQueueUnit[] = [];
-  for (const unit of patched) {
+  for (const unit of withStart) {
     if (isProducingQueueUnit(unit)) producingUnits.push(unit);
     else pendingUnits.push(unit);
   }
 
-  return {
-    producingUnits: refreshPendingShowStart(
-      producingUnits,
-      queueContext,
-      colaboratorId,
-    ),
-    units: refreshPendingShowStart(pendingUnits, queueContext, colaboratorId),
-  };
+  return { producingUnits, units: pendingUnits };
 }

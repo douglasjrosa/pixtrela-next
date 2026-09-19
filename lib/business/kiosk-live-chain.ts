@@ -7,7 +7,7 @@ import {
   isDisabledChainMember,
   isFinishedChainMember,
   remainingExecutableMembers,
-  resolveChains,
+  resolveChainsByTask,
   type ChainSubTask,
 } from "@/lib/business/subtask-chain";
 import {
@@ -53,7 +53,9 @@ export function canJoinLiveChain(input: {
   return total <= input.maxIntervalSeconds;
 }
 
-function toChainItem(subTask: KioskSubTask): ChainSubTask {
+function toChainItem(
+  subTask: KioskSubTask,
+): ChainSubTask & { taskDocumentId: string } {
   return {
     documentId: subTask.documentId,
     index: subTask.index,
@@ -63,6 +65,7 @@ function toChainItem(subTask: KioskSubTask): ChainSubTask {
     maxSameTimeWorkers: subTask.maxSameTimeWorkers ?? 1,
     assignedToIds: subTask.assignedToIds ?? [],
     dependencyIds: subTask.dependencyIds ?? [],
+    taskDocumentId: subTask.taskDocumentId,
   };
 }
 
@@ -76,7 +79,7 @@ export function liveChainMembersForViewer(input: {
   const active = input.subTasks.find((item) => hasViewerSession(item));
   if (!active) return [];
 
-  const chains = resolveChains(catalog.map(toChainItem));
+  const chains = resolveChainsByTask(catalog.map(toChainItem));
   const chain = chains.find((item) =>
     item.memberIds.includes(active.documentId),
   );
