@@ -126,6 +126,7 @@ export function viewerWorkedChainMemberIds(
   }
   return members.map((item) => item.documentId);
 }
+
 function findOpenRun(
   chain: SubTaskChain,
   openRuns: readonly OpenChainRun[],
