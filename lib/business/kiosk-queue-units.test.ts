@@ -191,6 +191,99 @@ describe("buildKioskQueueUnits", () => {
     expect(units[0]?.type).toBe("isolated");
   });
 
+  it("renders a leftover single remaining chain member as isolated", () => {
+    const units = buildKioskQueueUnits({
+      viewerId: "u1",
+      subTasks: [
+        subTask({
+          documentId: "b",
+          name: "Pack",
+          index: 1,
+          linkedToPrevious: true,
+        }),
+      ],
+      allTaskSubTasks: [
+        subTask({
+          documentId: "a",
+          name: "Cut",
+          index: 0,
+          status: "finished",
+        }),
+        subTask({
+          documentId: "b",
+          name: "Pack",
+          index: 1,
+          linkedToPrevious: true,
+        }),
+      ],
+    });
+    expect(units).toEqual([
+      expect.objectContaining({
+        type: "isolated",
+        subTask: expect.objectContaining({ documentId: "b" }),
+        showStart: true,
+      }),
+    ]);
+  });
+
+  it("grants only one idle start across a producing leftover and a waiting leftover", () => {
+    const units = buildKioskQueueUnits({
+      viewerId: "u1",
+      subTasks: [
+        subTask({
+          documentId: "cut",
+          name: "Cut",
+          index: 0,
+          status: "producing",
+        }),
+        subTask({
+          documentId: "pack",
+          name: "Pack",
+          index: 2,
+        }),
+      ],
+      allTaskSubTasks: [
+        subTask({
+          documentId: "cut-head",
+          name: "Prep",
+          index: 0,
+          status: "finished",
+          taskDocumentId: "task-1",
+        }),
+        subTask({
+          documentId: "cut",
+          name: "Cut",
+          index: 1,
+          linkedToPrevious: true,
+          status: "producing",
+        }),
+        subTask({
+          documentId: "pack-head",
+          name: "Glue",
+          index: 2,
+          status: "finished",
+        }),
+        subTask({
+          documentId: "pack",
+          name: "Pack",
+          index: 3,
+          linkedToPrevious: true,
+        }),
+      ],
+    });
+    expect(units.map((unit) => unit.type)).toEqual(["isolated", "isolated"]);
+    expect(
+      units.map((unit) =>
+        unit.type === "isolated"
+          ? { id: unit.subTask.documentId, showStart: unit.showStart }
+          : null,
+      ),
+    ).toEqual([
+      { id: "cut", showStart: false },
+      { id: "pack", showStart: true },
+    ]);
+  });
+
   it("shows start only on the first idle isolated card", () => {
     const units = buildKioskQueueUnits({
       viewerId: "u1",

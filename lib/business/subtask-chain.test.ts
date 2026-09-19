@@ -13,6 +13,7 @@ import {
   reconcileChainReorder,
   remainingExecutableMembers,
   resolveChains,
+  resolveChainsByTask,
   nextChainSubtaskClick,
   chainIdsForClickSelection,
   shouldPropagateHeadAssigneeSave,
@@ -55,6 +56,31 @@ describe("resolveChains", () => {
     expect(resolveChains(items).map((chain) => chain.memberIds)).toEqual([
       ["a"],
       ["b"],
+    ]);
+  });
+
+  it("does not link rows from different tasks that share an index", () => {
+    const items = [
+      {
+        ...item({ documentId: "a0", index: 0 }),
+        taskDocumentId: "task-a",
+      },
+      {
+        ...item({ documentId: "a1", index: 1, linkedToPrevious: true }),
+        taskDocumentId: "task-a",
+      },
+      {
+        ...item({ documentId: "b0", index: 0 }),
+        taskDocumentId: "task-b",
+      },
+      {
+        ...item({ documentId: "b1", index: 1, linkedToPrevious: true }),
+        taskDocumentId: "task-b",
+      },
+    ];
+    expect(resolveChainsByTask(items).map((chain) => chain.memberIds)).toEqual([
+      ["a0", "a1"],
+      ["b0", "b1"],
     ]);
   });
 });

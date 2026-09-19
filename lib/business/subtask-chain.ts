@@ -74,6 +74,19 @@ export function resolveChains(
   return chains;
 }
 
+/** Resolve chains inside each task so indexes never mix across tasks. */
+export function resolveChainsByTask(
+  items: readonly (ChainSubTask & { taskDocumentId: string })[],
+): SubTaskChain[] {
+  const byTask = new Map<string, ChainSubTask[]>();
+  for (const item of items) {
+    const group = byTask.get(item.taskDocumentId) ?? [];
+    group.push(item);
+    byTask.set(item.taskDocumentId, group);
+  }
+  return [...byTask.values()].flatMap((group) => resolveChains(group));
+}
+
 export function findChainContaining(
   chains: readonly SubTaskChain[],
   documentId: string,
