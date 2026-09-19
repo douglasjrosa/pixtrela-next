@@ -235,6 +235,58 @@ describe("kiosk optimistic start", () => {
     expect([...next.producingUnits, ...next.units]).toHaveLength(1);
   });
 
+  it("does not grant a second idle start on a waiting card while another is producing", () => {
+    const producing = stub({
+      documentId: "st-1",
+      status: "producing",
+      startedAt: null,
+      activeWorkerCount: 1,
+    });
+    const waiting = stub({
+      documentId: "st-2",
+      name: "Embalar",
+      index: 1,
+    });
+    const next = applyOptimisticStateToLiberadasSection(
+      {
+        producingUnits: [
+          {
+            type: "isolated",
+            subTask: producing,
+            helperMode: false,
+            showStart: true,
+          },
+        ],
+        units: [
+          {
+            type: "isolated",
+            subTask: waiting,
+            helperMode: false,
+            showStart: true,
+          },
+        ],
+      },
+      [producing, waiting],
+      [],
+      "user-1",
+    );
+
+    expect(
+      next.producingUnits.map((unit) =>
+        unit.type === "isolated"
+          ? { id: unit.subTask.documentId, showStart: unit.showStart }
+          : null,
+      ),
+    ).toEqual([{ id: "st-1", showStart: false }]);
+    expect(
+      next.units.map((unit) =>
+        unit.type === "isolated"
+          ? { id: unit.subTask.documentId, showStart: unit.showStart }
+          : null,
+      ),
+    ).toEqual([{ id: "st-2", showStart: true }]);
+  });
+
   it("settles chain stop when server queue no longer has the open run", () => {
     const stop = {
       chainRunId: "run-1",

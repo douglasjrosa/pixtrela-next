@@ -28,6 +28,7 @@ import {
 import {
   chainHasExternalDependencyBlock,
   findChainContaining,
+  isMultiMemberChain,
   remainingExecutableMembers,
   resolveChains,
   type ChainSubTask,
@@ -544,6 +545,25 @@ export async function startChain(
   }
   if (!startMember.assignedToIds.includes(colaboratorId)) {
     throw new Error("forbidden");
+  }
+
+  if (!isMultiMemberChain(chain)) {
+    await db.transaction(async (tx) => {
+      await tx.insert(activities).values({
+        subTaskId: startMember.documentId,
+        colaboratorId,
+        action: "started",
+        timestamp,
+        qty: 0,
+        currencyAwarded: 0,
+      });
+      await tx
+        .update(subTasks)
+        .set({ status: PRODUCING_STATUS, updatedAt: timestamp })
+        .where(eq(subTasks.id, startMember.documentId));
+      await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, timestamp);
+    });
+    return { chainRunId: startMember.documentId };
   }
 
   const open = await findOpenChainRunId({
