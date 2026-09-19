@@ -23,7 +23,7 @@ export function getSubtaskAssigneeIds(subtask: BoardSubTaskSummary): string[] {
 }
 
 export function buildAssigneesSnapshot(
-  subtasks: BoardSubTaskSummary[],
+  subtasks: readonly BoardSubTaskSummary[],
 ): Record<string, string> {
   return Object.fromEntries(
     subtasks.map((subtask) => [
@@ -34,8 +34,8 @@ export function buildAssigneesSnapshot(
 }
 
 export function collectDirtyAssigneeUpdates(
-  subtasks: BoardSubTaskSummary[],
-  baseline: Record<string, string>,
+  subtasks: readonly BoardSubTaskSummary[],
+  baseline: Readonly<Record<string, string>>,
 ): AssigneeDraftUpdate[] {
   const updates: AssigneeDraftUpdate[] = [];
   for (const subtask of subtasks) {
@@ -49,8 +49,8 @@ export function collectDirtyAssigneeUpdates(
 }
 
 export function hasAssigneeDraftChanges(
-  subtasks: BoardSubTaskSummary[],
-  baseline: Record<string, string>,
+  subtasks: readonly BoardSubTaskSummary[],
+  baseline: Readonly<Record<string, string>>,
 ): boolean {
   return collectDirtyAssigneeUpdates(subtasks, baseline).length > 0;
 }
