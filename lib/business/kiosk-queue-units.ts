@@ -292,8 +292,24 @@ export function applyQueueUnitStartVisibility(
       return { ...unit, showStart: true };
     }
 
-    if (isProducingQueueUnit(unit)) {
+    if (unit.subTask.startedAt) {
       return { ...unit, showStart: false };
+    }
+
+    if (isProducingQueueUnit(unit)) {
+      const activeCount = unit.subTask.activeWorkerCount ?? 0;
+      const atCapacity = isSubTaskAtWorkerCapacity(
+        unit.subTask.maxSameTimeWorkers ?? 1,
+        activeCount,
+      );
+      const showStart =
+        !hasActive &&
+        !idleStartGranted &&
+        activeCount > 0 &&
+        !atCapacity &&
+        canStartSubTask(queue, unit.subTask.documentId);
+      if (showStart) idleStartGranted = true;
+      return { ...unit, showStart };
     }
 
     const idleStart =
