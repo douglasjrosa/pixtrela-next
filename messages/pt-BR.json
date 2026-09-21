@@ -87,6 +87,8 @@
     "tagNotFound": "Chaveiro não reconhecido. Tente novamente ou use outro método.",
     "code": "Código",
     "enter": "Entrar",
+    "passwordMinLength": "A senha deve ter pelo menos 6 caracteres.",
+    "invalidCode": "Informe um código válido.",
     "forbidden": "Não foi possível identificar o usuário."
   },
   "nav": {
@@ -1212,6 +1214,8 @@
     "code": "Código",
     "password": "Senha",
     "enter": "Entrar",
+    "passwordMinLength": "A senha deve ter pelo menos 6 caracteres.",
+    "invalidCode": "Informe um código válido.",
     "invalidCredentials": "Código ou senha inválidos.",
     "forbidden": "Não foi possível identificar o colaborador.",
     "start": "Iniciar",

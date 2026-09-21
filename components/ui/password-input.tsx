@@ -30,18 +30,29 @@ function prefersCoarsePointer(): boolean {
 
 function emitInputChange(
   onChange: React.ChangeEventHandler<HTMLInputElement> | undefined,
-  target: HTMLInputElement,
+  fieldName: string | undefined,
   value: string,
 ): void {
+  const field = { value, name: fieldName ?? "", type: "text" };
   onChange?.({
-    target: { ...target, value, name: target.name },
-    currentTarget: { ...target, value, name: target.name },
+    target: field,
+    currentTarget: field,
   } as React.ChangeEvent<HTMLInputElement>);
+}
+
+function displayIsFullyMasked(display: string): boolean {
+  if (display.length === 0) return false;
+  for (const char of display) {
+    if (char !== PASSWORD_MASK_CHAR) return false;
+  }
+  return true;
 }
 
 export const PasswordInput = React.forwardRef<
   HTMLInputElement,
-  Omit<React.ComponentProps<"input">, "type" | "value">
+  Omit<React.ComponentProps<"input">, "type" | "value"> & {
+    forceNative?: boolean;
+  }
 >(function PasswordInput(
   {
     className,
@@ -52,6 +63,7 @@ export const PasswordInput = React.forwardRef<
     disabled,
     autoComplete,
     defaultValue,
+    forceNative = false,
     ...props
   },
   ref,
@@ -72,7 +84,9 @@ export const PasswordInput = React.forwardRef<
   const selectionRef = React.useRef({ start: 0, end: 0 });
   const beforeInputHandledRef = React.useRef(false);
   const [showAll, setShowAll] = React.useState(false);
-  const [useNativePasswordField] = React.useState(prefersCoarsePointer);
+  const [useNativePasswordField] = React.useState(
+    () => forceNative || prefersCoarsePointer(),
+  );
   const [, refreshMask] = React.useReducer((count) => count + 1, 0);
 
   revealStateRef.current = revealState;
@@ -118,7 +132,7 @@ export const PasswordInput = React.forwardRef<
       return;
     }
     hidden.value = next.value;
-    emitInputChange(onChange, hidden, next.value);
+    emitInputChange(onChange, name, next.value);
     if (cursorPos != null) {
       const safePos = Math.max(0, Math.min(cursorPos, next.value.length));
       selectionRef.current = { start: safePos, end: safePos };
@@ -148,16 +162,6 @@ export const PasswordInput = React.forwardRef<
       return true;
     }
 
-    if (isPlaintextPasswordFill(incoming)) {
-      if (incoming !== current.value) {
-        syncValue(
-          createPasswordRevealState(incoming),
-          input.selectionStart ?? incoming.length,
-        );
-      }
-      return true;
-    }
-
     // Mobile virtual keyboards often emit change/input with the masked display
     // plus the new plaintext character (e.g. "•2" after the first char masked).
     if (incoming.length > display.length && incoming.startsWith(display)) {
@@ -166,6 +170,29 @@ export const PasswordInput = React.forwardRef<
         syncValue(appendPasswordChars(current, added, now), incoming.length);
         return true;
       }
+    }
+
+    // After masking, some keyboards replace the whole field with the new char.
+    if (
+      incoming.length === 1 &&
+      isPlaintextPasswordFill(incoming) &&
+      displayIsFullyMasked(display)
+    ) {
+      syncValue(
+        appendPasswordChars(current, incoming, now),
+        current.value.length + 1,
+      );
+      return true;
+    }
+
+    if (isPlaintextPasswordFill(incoming)) {
+      if (incoming !== current.value) {
+        syncValue(
+          createPasswordRevealState(incoming),
+          input.selectionStart ?? incoming.length,
+        );
+      }
+      return true;
     }
 
     return false;
@@ -378,7 +405,7 @@ export const PasswordInput = React.forwardRef<
     if (hidden) {
       hidden.value = next.value;
     }
-    emitInputChange(onChange, event.target, next.value);
+    emitInputChange(onChange, name, next.value);
   }
 
   if (useNativePasswordField) {

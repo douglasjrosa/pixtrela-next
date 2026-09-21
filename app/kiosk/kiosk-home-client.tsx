@@ -18,9 +18,9 @@ import {
   type EntryAccessByDevice,
   type EntryAccessMethods,
 } from "@/lib/business/entry-access";
+import { resolveKioskPathForIdentifiedUser } from "@/lib/business/kiosk-identify-route";
 import { useEntryAccessDevice } from "@/lib/entry-access/use-entry-access-device";
 import { FACE_1N_NONE_MESSAGE_MS } from "@/lib/kiosk/face/face-match-constants";
-import { buildKioskColaboratorPath } from "@/lib/kiosk/kiosk-link";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 import { stashWelcomePayload } from "@/lib/welcome/welcome-session";
 
@@ -53,7 +53,6 @@ export function KioskHomeClient({
     ? pickEntryAccessMethods(accessSettings, device)
     : { username: false, code: true, face: true, nfc: true };
   const {
-    startAuthCountdown,
     clearAuthCountdown,
     setAuthCancelHandler,
   } = useKioskIdleContext();
@@ -103,10 +102,7 @@ export function KioskHomeClient({
     setUnidentifiedMessage(null);
     setErrorKey(null);
     setStep("code");
-    startAuthCountdown(() => {
-      goHome();
-    });
-  }, [clearNoneMessageTimer, goHome, methods.code, startAuthCountdown]);
+  }, [clearNoneMessageTimer, goHome, methods.code]);
 
   const openCamera = useCallback(() => {
     if (!methods.face) return;
@@ -116,18 +112,7 @@ export function KioskHomeClient({
     setUnidentifiedMessage(null);
     setErrorKey(null);
     setStep("face1n");
-    startAuthCountdown(() => {
-      if (methods.code) openCode();
-      else goHome();
-    });
-  }, [
-    clearNoneMessageTimer,
-    goHome,
-    methods.code,
-    methods.face,
-    openCode,
-    startAuthCountdown,
-  ]);
+  }, [clearNoneMessageTimer, methods.face]);
 
   useEffect(() => {
     if (!methods.face) return;
@@ -201,8 +186,8 @@ export function KioskHomeClient({
     };
   }, [clearAuthCountdown, clearNoneMessageTimer, goHome, setAuthCancelHandler]);
 
-  const navigateToColaborator = useCallback(
-    (member: KioskFaceIdentifyCandidate) => {
+  const navigateToIdentifiedUser = useCallback(
+    (member: KioskFaceIdentifyCandidate, path?: string) => {
       clearAuthCountdown({ navigatingAway: true });
       stashWelcomePayload({
         name: member.name,
@@ -210,7 +195,10 @@ export function KioskHomeClient({
         avatarUrl: toBrowserMediaUrl(member.avatarUrl),
         facePhotoUrl: toBrowserMediaUrl(member.facePhotoUrl),
       });
-      router.replace(buildKioskColaboratorPath(member.documentId));
+      router.replace(
+        path ??
+          resolveKioskPathForIdentifiedUser(member.documentId, member.role),
+      );
     },
     [clearAuthCountdown, router],
   );
@@ -228,8 +216,8 @@ export function KioskHomeClient({
 
   const handleFaceSuccess = useCallback(() => {
     if (!selectedMember) return;
-    navigateToColaborator(selectedMember);
-  }, [navigateToColaborator, selectedMember]);
+    navigateToIdentifiedUser(selectedMember);
+  }, [navigateToIdentifiedUser, selectedMember]);
 
   async function handleProbeReady(descriptor: number[]): Promise<void> {
     setPending(true);
@@ -250,7 +238,7 @@ export function KioskHomeClient({
       clearNoneMessageTimer();
       setSelectedMember(result.match);
       setUnidentifiedMessage(null);
-      navigateToColaborator(result.match);
+      navigateToIdentifiedUser(result.match, result.path);
       return;
     }
 

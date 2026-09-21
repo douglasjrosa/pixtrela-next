@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
 import { KioskHomeClient } from "@/app/kiosk/kiosk-home-client";
+import { KioskIdleLockIndicator } from "@/components/kiosk/kiosk-idle-lock-indicator";
 import { KioskIdleProvider } from "@/components/kiosk/kiosk-idle-provider";
 
 vi.mock("@/components/kiosk/kiosk-face-1n-capture", () => ({
@@ -79,6 +80,7 @@ function renderHome() {
   return renderWithIntl(
     <KioskIdleProvider sessionIdleMs={60_000}>
       <KioskHomeClient />
+      <KioskIdleLockIndicator />
     </KioskIdleProvider>,
   );
 }
@@ -113,6 +115,7 @@ describe("KioskHomeClient", () => {
     identifyKioskUserByFace.mockResolvedValue({
       ok: true,
       status: "match",
+      path: "/kiosk/c1",
       match: {
         documentId: "c1",
         name: "Ana Silva",
@@ -196,6 +199,77 @@ describe("KioskHomeClient", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("Código")).toBeInTheDocument();
       expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+    });
+  });
+
+  it("keeps the home lock after choosing code entry", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    expect(
+      screen.getByRole("img", { name: "Totem aguardando identificação" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Código e senha" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Código")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByRole("img", { name: "Totem aguardando identificação" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Encerrar sessão do totem" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("identifies by code and navigates to the colaborator panel", async () => {
+    const user = userEvent.setup();
+    identifyKioskUserByCode.mockResolvedValue({
+      ok: true,
+      documentId: "c1",
+      role: "colaborator",
+      path: "/kiosk/c1",
+      welcome: null,
+    });
+
+    renderHome();
+    await user.click(screen.getByRole("button", { name: "Código e senha" }));
+    await user.type(screen.getByLabelText("Código"), "1111");
+    await user.type(screen.getByLabelText("Senha"), "111111");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    await waitFor(() => {
+      expect(identifyKioskUserByCode).toHaveBeenCalledWith(1111, "111111");
+      expect(replace).toHaveBeenCalledWith("/kiosk/c1");
+    });
+  });
+
+  it("routes an admin face match to the staff area", async () => {
+    const user = userEvent.setup();
+    identifyKioskUserByFace.mockResolvedValue({
+      ok: true,
+      status: "match",
+      path: "/kiosk/staff/admin-1",
+      match: {
+        documentId: "admin-1",
+        name: "Admin",
+        greetingGender: "masculine",
+        avatarUrl: null,
+        facePhotoUrl: "/uploads/a.jpg",
+        role: "admin",
+      },
+    });
+
+    renderHome();
+    await user.click(
+      screen.getByRole("button", { name: "Reconhecimento facial" }),
+    );
+    await user.click(screen.getByRole("button", { name: "mock-probe" }));
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith("/kiosk/staff/admin-1");
     });
   });
 

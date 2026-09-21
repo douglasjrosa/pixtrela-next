@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import {
   resolveKioskPathAfterIdentify,
+  resolveKioskPathForIdentifiedUser,
   type KioskIdentifiedRole,
 } from "@/lib/business/kiosk-identify-route";
 import {
@@ -13,7 +14,7 @@ import {
 } from "@/lib/kiosk/load-directory";
 import { FACE_DESCRIPTOR_LENGTH } from "@/lib/kiosk/face/face-match-constants";
 import {
-  identifyColaboratorsByFace,
+  identifyAppUsersByFace,
   identifyUserAtKioskByCode,
   identifyUserAtKioskByTag,
   loadKioskWelcomeProfile,
@@ -148,10 +149,16 @@ export type KioskFaceIdentifyCandidate = {
   avatarUrl: string | null;
   facePhotoUrl: string | null;
   faceVector?: number[];
+  role?: KioskIdentifiedRole;
 };
 
 export type KioskFaceIdentifyResult =
-  | { ok: true; status: "match"; match: KioskFaceIdentifyCandidate }
+  | {
+      ok: true;
+      status: "match";
+      match: KioskFaceIdentifyCandidate;
+      path: string;
+    }
   | {
       ok: true;
       status: "ambiguous";
@@ -186,12 +193,14 @@ export async function identifyKioskUserByFace(
     return { ok: false, error: "invalid" };
   }
 
-  const outcome = await identifyColaboratorsByFace(descriptor);
+  const outcome = await identifyAppUsersByFace(descriptor);
   if (outcome.status === "match") {
+    const match = resolveCandidateMedia(outcome.match);
     return {
       ok: true,
       status: "match",
-      match: resolveCandidateMedia(outcome.match),
+      match,
+      path: resolveKioskPathForIdentifiedUser(match.documentId, match.role),
     };
   }
   if (outcome.status === "ambiguous") {

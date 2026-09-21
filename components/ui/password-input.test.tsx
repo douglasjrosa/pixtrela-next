@@ -101,6 +101,33 @@ describe("PasswordInput", () => {
     expect(field).toHaveValue("•2");
   });
 
+  it("appends when a masked field is replaced with a single character", () => {
+    renderWithIntl(<PasswordInput id="password" aria-label="Senha" />);
+
+    const field = screen.getByLabelText("Senha");
+    act(() => {
+      fireEvent.keyDown(field, { key: "1" });
+    });
+    act(() => {
+      vi.advanceTimersByTime(1001);
+    });
+    expect(field).toHaveValue("•");
+
+    act(() => {
+      fireEvent.change(field, { target: { value: "2" } });
+    });
+
+    expect(document.getElementById("password-value")).toHaveValue("12");
+  });
+
+  it("uses a native password field when forceNative is set", () => {
+    renderWithIntl(
+      <PasswordInput id="password" aria-label="Senha" forceNative />,
+    );
+
+    expect(screen.getByLabelText("Senha")).toHaveAttribute("type", "password");
+  });
+
   it("uses native password input on coarse pointers", () => {
     const matchMedia = vi
       .spyOn(window, "matchMedia")

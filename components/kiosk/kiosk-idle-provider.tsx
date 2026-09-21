@@ -28,7 +28,7 @@ type KioskIdleContextValue = {
   phase: KioskIdlePhase;
   reset: () => void;
   lockSession: () => void;
-  /** Fixed countdown (no activity reset). Used on home camera/code flows. */
+  /** No-op. Home identify must not run the idle gauge. */
   startAuthCountdown: (onExpire: () => void) => void;
   clearAuthCountdown: (options?: { navigatingAway?: boolean }) => void;
   setAuthCancelHandler: (handler: (() => void) | null) => void;
@@ -120,32 +120,9 @@ export function KioskIdleProvider({
     [clearController, pathname, setPhaseSafe],
   );
 
-  const startAuthCountdown = useCallback(
-    (onExpire: () => void) => {
-      if (pathname !== KIOSK_HOME_PATH) return;
-      isExpiringRef.current = false;
-      authExpireRef.current = onExpire;
-      clearController();
-      setPhaseSafe("auth");
-      setProgress(0);
-
-      const controller = createKioskIdleController({
-        durationMs: sessionIdleMs,
-        onProgress: (value) => {
-          setProgress(value);
-        },
-        onIdle: () => {
-          const expire = authExpireRef.current;
-          authExpireRef.current = null;
-          clearController();
-          expire?.();
-        },
-      });
-      controllerRef.current = controller;
-      controller.reset();
-    },
-    [clearController, pathname, sessionIdleMs, setPhaseSafe],
-  );
+  const startAuthCountdown = useCallback((_onExpire: () => void) => {
+    // Home identify steps must not start the idle gauge or turn the lock green.
+  }, []);
 
   const setAuthCancelHandler = useCallback((handler: (() => void) | null) => {
     authCancelRef.current = handler;

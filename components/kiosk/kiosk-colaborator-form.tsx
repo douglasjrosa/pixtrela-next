@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm, type Resolver } from "react-hook-form";
+import { Controller, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
+  KIOSK_IDENTIFY_INVALID_CODE_KEY,
+  KIOSK_IDENTIFY_PASSWORD_MIN_LENGTH_KEY,
   kioskIdentifySchema,
   type KioskIdentifyInput,
 } from "@/lib/schemas/kiosk-identify";
@@ -20,6 +22,24 @@ export interface KioskColaboratorFormProps {
   messagesNamespace?: "kiosk" | "auth";
 }
 
+type IdentifyFieldErrorKey =
+  | typeof KIOSK_IDENTIFY_INVALID_CODE_KEY
+  | typeof KIOSK_IDENTIFY_PASSWORD_MIN_LENGTH_KEY;
+
+function identifyFieldErrorKey(
+  field: "code" | "password",
+  message: string | undefined,
+): IdentifyFieldErrorKey {
+  if (message === KIOSK_IDENTIFY_INVALID_CODE_KEY) {
+    return KIOSK_IDENTIFY_INVALID_CODE_KEY;
+  }
+  if (message === KIOSK_IDENTIFY_PASSWORD_MIN_LENGTH_KEY) {
+    return KIOSK_IDENTIFY_PASSWORD_MIN_LENGTH_KEY;
+  }
+  if (field === "code") return KIOSK_IDENTIFY_INVALID_CODE_KEY;
+  return KIOSK_IDENTIFY_PASSWORD_MIN_LENGTH_KEY;
+}
+
 export function KioskColaboratorForm({
   onSubmit,
   pending,
@@ -29,6 +49,7 @@ export function KioskColaboratorForm({
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<KioskIdentifyInput>({
@@ -59,7 +80,9 @@ export function KioskColaboratorForm({
           {...register("code")}
         />
         {errors.code ? (
-          <p className="text-sm text-destructive">{errors.code.message}</p>
+          <p className="text-sm text-destructive" role="alert">
+            {t(identifyFieldErrorKey("code", errors.code.message))}
+          </p>
         ) : null}
       </div>
 
@@ -67,14 +90,26 @@ export function KioskColaboratorForm({
         <Label htmlFor="password" className="text-base">
           {t("password")}
         </Label>
-        <PasswordInput
-          id="password"
-          autoComplete="current-password"
-          className="h-14 rounded-2xl text-center text-lg"
-          {...register("password")}
+        <Controller
+          name="password"
+          control={control}
+          render={({ field }) => (
+            <PasswordInput
+              id="password"
+              autoComplete="current-password"
+              className="h-14 rounded-2xl text-center text-lg"
+              forceNative
+              name={field.name}
+              onBlur={field.onBlur}
+              ref={field.ref}
+              onChange={(event) => field.onChange(event.target.value)}
+            />
+          )}
         />
         {errors.password ? (
-          <p className="text-sm text-destructive">{errors.password.message}</p>
+          <p className="text-sm text-destructive" role="alert">
+            {t(identifyFieldErrorKey("password", errors.password.message))}
+          </p>
         ) : null}
       </div>
 

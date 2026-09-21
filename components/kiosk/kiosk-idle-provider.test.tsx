@@ -89,11 +89,11 @@ describe("KioskIdleProvider", () => {
     vi.useRealTimers();
   });
 
-  it("keeps session phase active after auth clear races with colaborator navigation", async () => {
+  it("keeps session phase active after identify navigation", async () => {
     const ui = buildTree();
     const view = render(ui);
 
-    await navigateToColaboratorPanel(view, ui, "home");
+    await navigateToColaboratorPanel(view, buildTree(), "navigate");
 
     expect(screen.getByTestId("phase")).toHaveTextContent("active");
   });
@@ -117,5 +117,27 @@ describe("KioskIdleProvider", () => {
     });
 
     expect(replace).toHaveBeenCalledWith(KIOSK_HOME_PATH);
+  });
+
+  it("does not start the idle gauge on the home screen", async () => {
+    const ui = buildTree(true);
+    renderWithIntl(ui);
+
+    expect(screen.getByTestId("phase")).toHaveTextContent("home");
+    expect(
+      screen.getByRole("img", { name: "Totem aguardando identificação" }),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "start-auth" }));
+    });
+
+    expect(screen.getByTestId("phase")).toHaveTextContent("home");
+    expect(
+      screen.getByRole("img", { name: "Totem aguardando identificação" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Encerrar sessão do totem" }),
+    ).not.toBeInTheDocument();
   });
 });

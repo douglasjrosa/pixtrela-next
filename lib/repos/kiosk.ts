@@ -44,6 +44,7 @@ export type KioskFaceCandidate = {
   avatarUrl: string | null;
   facePhotoUrl: string | null;
   faceVector?: number[];
+  role: KioskIdentifiedRole;
 };
 
 export type KioskFaceIdentifyOutcome =
@@ -212,9 +213,10 @@ async function loadFaceCandidateRows(
   db: Db,
 ): Promise<
   Array<{
-    id: string;
+      id: string;
     name: string;
     greetingGender: string | null;
+    role: string;
     faceVector: unknown;
     avatarMediaId: string | null;
     facePhotoMediaId: string | null;
@@ -230,6 +232,7 @@ async function loadFaceCandidateRows(
       id: users.id,
       name: users.name,
       greetingGender: users.greetingGender,
+      role: users.role,
       faceVector: users.faceVector,
       avatarMediaId: users.avatarMediaId,
       facePhotoMediaId: users.facePhotoMediaId,
@@ -271,6 +274,7 @@ async function mapFaceCandidates(
         ? (urlById.get(row.facePhotoMediaId) ?? null)
         : null,
       faceVector: includeFaceVector && vector ? vector : undefined,
+      role: isKioskIdentifiableRole(row.role) ? row.role : "colaborator",
     });
   }
   return byId;
