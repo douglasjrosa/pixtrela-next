@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { CartEditor } from "@/components/store/cart-editor";
 import { StoreMyListCard } from "@/components/store/store-my-list-card";
 import { StoreWindowInfoCard } from "@/components/store/store-window-info-card";
@@ -19,7 +19,7 @@ interface PageProps {
 export default async function ColaboratorStorePage({ params }: PageProps) {
   const tStore = await getTranslations("store");
   const tCart = await getTranslations("cart");
-  const session = await auth();
+  const session = await getAppSession();
   const { documentId } = await params;
 
   if (session?.user?.role !== "colaborator" || !session.user.id) {

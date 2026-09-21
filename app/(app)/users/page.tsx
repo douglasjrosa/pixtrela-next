@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { APP_LIST_PAGE_SHELL_CLASS } from "@/components/layout/app-page-layout";
@@ -34,7 +34,7 @@ interface UsersPageProps {
 }
 
 export default async function UsersPage({ searchParams }: UsersPageProps) {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
 
   if (!canViewUsers(role)) {

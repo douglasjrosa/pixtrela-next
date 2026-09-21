@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import {
   APP_LIST_PAGE_HEADER_ROW_CLASS,
@@ -16,7 +16,7 @@ import { listBatchesForStaff } from "@/lib/repos/exchange-batches";
 import { closeOpenCartsForCycle } from "@/lib/repos/exchange-close";
 
 export default async function ExchangesPage() {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
   const userId = session?.user?.id;
 

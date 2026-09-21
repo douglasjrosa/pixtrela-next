@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
 import { COLABORATOR_CONTENT_SURFACE_CLASS } from "@/components/colaborator/colaborator-content-surface";
-import { loadRouteThemes } from "@/lib/themes/load-route-themes";
+import { loadKioskRouteTheme } from "@/lib/themes/load-route-themes";
 import { cn } from "@/lib/utils";
 import {
   routeThemeContentSurfaceRadiusClass,
@@ -18,8 +18,7 @@ export async function KioskContentSurface({
   children,
   className,
 }: KioskContentSurfaceProps) {
-  const themes = await loadRouteThemes();
-  const theme = themes.find((entry) => entry.routeKey === "kiosk") ?? null;
+  const theme = await loadKioskRouteTheme();
   const panelStyle = routeThemeSurfacePanelStyle(theme) as CSSProperties;
 
   return (

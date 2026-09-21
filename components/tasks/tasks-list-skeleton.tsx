@@ -1,8 +1,8 @@
 import { getTranslations } from "next-intl/server";
 
-import { ListLoadingMessage } from "@/components/ui/list-loading-message";
+import { AppPageSkeleton } from "@/components/layout/app-page-skeleton";
 
 export async function TasksListSkeleton() {
   const t = await getTranslations("tasks.manage");
-  return <ListLoadingMessage>{t("listLoading")}</ListLoadingMessage>;
+  return <AppPageSkeleton label={t("listLoading")} />;
 }

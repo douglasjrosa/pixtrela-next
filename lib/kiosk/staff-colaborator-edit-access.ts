@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import type { Role } from "@/lib/auth/nav";
 import {
   assertKioskStaffCanManageColaborator,
@@ -11,7 +11,7 @@ export async function assertStaffColaboratorEditAccess(
   staffUserId: string,
   colaboratorDocumentId: string,
 ): Promise<void> {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
 
   if (role === "kiosk") {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { buttonVariants } from "@/components/ui/button";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
 import { buildOrderPath, buildOrdersPath } from "@/lib/orders/orders-path";
@@ -17,7 +17,7 @@ interface PageProps {
 export default async function ColaboratorOrdersPage({ params }: PageProps) {
   const t = await getTranslations("orders");
   const tStore = await getTranslations("store");
-  const session = await auth();
+  const session = await getAppSession();
   const { documentId } = await params;
 
   if (session?.user?.role !== "colaborator" || !session.user.id) {

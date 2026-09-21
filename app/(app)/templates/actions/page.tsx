@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { APP_LIST_PAGE_STACK_CLASS } from "@/components/layout/app-page-layout";
 import { FactoryActionListTableFrame } from "@/components/factory-actions/factory-action-list-table-frame";
@@ -26,7 +26,7 @@ interface TemplateActionsPageProps {
 export default async function TemplateActionsPage({
   searchParams,
 }: TemplateActionsPageProps) {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
 
   if (!canManageTemplates(role)) {

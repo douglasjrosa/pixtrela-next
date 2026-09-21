@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { adjustColaboratorBalance } from "@/app/(app)/balance-adjustment-actions";
 import { StaffDashboardView } from "@/components/dashboard/staff-dashboard-view";
 import type { Role } from "@/lib/auth/nav";
@@ -9,7 +9,7 @@ interface DashboardPageProps {
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
   const params = await searchParams;
 

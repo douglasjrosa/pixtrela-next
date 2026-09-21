@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { StarBalanceDetails } from "@/components/colaborator/star-balance-details";
 import { StarBalanceHero } from "@/components/colaborator/star-balance-hero";
 import { DashboardInsightsBlock } from "@/components/dashboard/dashboard-insights-block";
@@ -23,7 +23,7 @@ export default async function ColaboratorPrivatePage({ params }: PageProps) {
   const tBalance = await getTranslations("balance");
   const tExchange = await getTranslations("exchange");
   const tOrders = await getTranslations("orders");
-  const session = await auth();
+  const session = await getAppSession();
   const { documentId } = await params;
 
   if (session?.user?.role !== "colaborator") {

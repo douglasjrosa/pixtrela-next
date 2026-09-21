@@ -1,18 +1,12 @@
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import type { Role } from "@/lib/auth/nav";
 import { canPreviewKioskColaborator } from "@/lib/auth/permissions";
 import {
+  assertKioskDeviceSession,
   assertKioskStaffCanManageColaborator,
   isKioskStaffRole,
 } from "@/lib/business/kiosk-staff-access";
 import { assertStaffCanManageColaborator } from "@/lib/repos/kiosk";
-
-async function assertKioskDeviceSession(): Promise<void> {
-  const session = await auth();
-  if (session?.user?.role !== "kiosk") {
-    throw new Error("forbidden");
-  }
-}
 
 /**
  * Queue mutations from the kiosk device (self-service), kiosk staff URL, or
@@ -27,7 +21,7 @@ export async function assertQueueStaffMutation(
     return;
   }
 
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
 
   if (role === "kiosk") {
@@ -47,7 +41,7 @@ export async function assertQueueReader(
   colaboratorId: string,
   staffUserId?: string,
 ): Promise<void> {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
 
   if (role === "kiosk" || canPreviewKioskColaborator(role)) {

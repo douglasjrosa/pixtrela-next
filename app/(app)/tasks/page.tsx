@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { TasksListMobileList } from "@/components/tasks/tasks-list-mobile-list";
 import { TasksListSkeleton } from "@/components/tasks/tasks-list-skeleton";
@@ -105,7 +105,7 @@ async function TasksListSection({
 }
 
 export default async function TasksPage({ searchParams }: TasksPageProps) {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
 
   if (!canManageTasks(role)) {

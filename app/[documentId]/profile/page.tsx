@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { ProfileClient } from "@/components/profile/profile-client";
 import { canAccessOwnProfile } from "@/lib/auth/profile-access";
 import type { Role } from "@/lib/auth/nav";
@@ -13,7 +13,7 @@ interface PageProps {
 }
 
 export default async function ProfilePage({ params }: PageProps) {
-  const session = await auth();
+  const session = await getAppSession();
   const { documentId } = await params;
   const role = session?.user?.role as Role | undefined;
 

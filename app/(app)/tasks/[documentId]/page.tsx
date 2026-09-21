@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { BackLink } from "@/components/navigation/back-link";
@@ -136,7 +136,7 @@ async function loadTeamsForAssignment(): Promise<TeamAssignmentOption[]> {
 
 export default async function TaskDetailPage({ params }: PageProps) {
   const { documentId } = await params;
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
   const tCommon = await getTranslations("common");
   const tManage = await getTranslations("tasks.manage");

@@ -139,3 +139,8 @@ export const loadRouteThemes = cache(async (): Promise<RouteThemeView[]> => {
     return [];
   }
 });
+
+export async function loadKioskRouteTheme(): Promise<RouteThemeView | null> {
+  const themes = await loadRouteThemes();
+  return themes.find((entry) => entry.routeKey === "kiosk") ?? null;
+}

@@ -5,7 +5,7 @@ import { ColaboratorHeader } from "@/components/colaborator/colaborator-header";
 import { ColaboratorSurface } from "@/components/colaborator/colaborator-surface";
 import { RouteThemeBackground } from "@/components/themes/route-theme-background";
 import { RouteThemeMatchedMain } from "@/components/themes/route-theme-matched-main";
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import type { Role } from "@/lib/auth/nav";
 import { loadBrandingForLayout } from "@/lib/themes/load-branding";
 import { loadRouteThemes } from "@/lib/themes/load-route-themes";
@@ -15,7 +15,7 @@ export default async function DocumentIdLayout({
 }: {
   children: ReactNode;
 }) {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
   const branding = await loadBrandingForLayout();
   const menuLogo = branding.menu_logo;

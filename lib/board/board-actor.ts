@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTasks, canMoveBoardTasks } from "@/lib/auth/permissions";
 import { isAuthenticatedSession } from "@/lib/auth/session";
@@ -15,7 +15,7 @@ export type BoardActor =
 
 /** Resolve the board actor from the current authenticated app session. */
 export async function requireAppBoardActor(): Promise<BoardActor> {
-  const session = await auth();
+  const session = await getAppSession();
   if (!isAuthenticatedSession(session) || !session?.user) {
     throw new Error("unauthorized");
   }

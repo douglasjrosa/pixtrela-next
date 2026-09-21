@@ -1,4 +1,6 @@
-import { auth } from "@/auth";
+import { cache } from "react";
+
+import { getAppSession } from "@/lib/auth/app-session";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTasks, canMoveBoardTasks } from "@/lib/auth/permissions";
 import { assertStaffCanManageColaborator } from "@/lib/repos/kiosk";
@@ -43,25 +45,25 @@ export function canKioskStaffManageBoardSubtasks(
 }
 
 export async function assertKioskDeviceSession(): Promise<void> {
-  const session = await auth();
+  const session = await getAppSession();
   if (session?.user?.role !== "kiosk") {
     throw new Error("forbidden");
   }
 }
 
-export async function loadKioskStaffActor(
-  staffUserId: string,
-): Promise<KioskStaffActor | null> {
-  const user = await findUserById(staffUserId);
-  if (!user || user.blocked || !user.active) return null;
-  if (!isKioskStaffRole(user.role)) return null;
-  return {
-    staffUserId: user.id,
-    staffRole: user.role,
-    name: user.name,
-    avatarUrl: user.avatarUrl ?? null,
-  };
-}
+export const loadKioskStaffActor = cache(
+  async (staffUserId: string): Promise<KioskStaffActor | null> => {
+    const user = await findUserById(staffUserId);
+    if (!user || user.blocked || !user.active) return null;
+    if (!isKioskStaffRole(user.role)) return null;
+    return {
+      staffUserId: user.id,
+      staffRole: user.role,
+      name: user.name,
+      avatarUrl: user.avatarUrl ?? null,
+    };
+  },
+);
 
 /** Device must be kiosk; URL staff must be an active leader+. */
 export async function assertKioskStaffActor(

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { BoardPageCanvas } from "@/components/board/board-page-canvas";
 import type { KanbanStep } from "@/components/kanban/types";
 import { APP_BOARD_SHELL_CLASS } from "@/components/layout/app-page-layout";
@@ -52,7 +52,7 @@ async function BoardWithProgress({
 }
 
 export default async function BoardPage() {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
   const interactive = canMoveBoardTasks(role);
   const teamsLeaderId = role === "leader" ? session?.user?.id : undefined;

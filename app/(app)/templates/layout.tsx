@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { StaffSectionTabsBar } from "@/components/navigation/staff-section-tabs-bar";
 import { TemplatesLayoutClient } from "@/components/templates/templates-layout-client";
@@ -14,7 +14,7 @@ export default async function TemplatesLayout({
 }: {
   children: ReactNode;
 }) {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
   const t = await getTranslations("templates");
 

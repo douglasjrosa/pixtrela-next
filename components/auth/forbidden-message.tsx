@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { buttonVariants } from "@/components/ui/button";
 import { homeHrefForRole, type Role } from "@/lib/auth/nav";
 import { cn } from "@/lib/utils";
 
 export async function ForbiddenMessage() {
   const t = await getTranslations("errors");
-  const session = await auth();
+  const session = await getAppSession();
   const role = (session?.user?.role ?? "colaborator") as Role;
   const homeHref = homeHrefForRole(role, session?.user?.id);
 

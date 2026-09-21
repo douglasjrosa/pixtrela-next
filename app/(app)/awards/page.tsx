@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { AwardsListMobileList } from "@/components/awards/awards-list-mobile-list";
@@ -51,7 +51,7 @@ async function loadCurrencies(): Promise<CurrencyOption[]> {
 }
 
 export default async function AwardsPage({ searchParams }: AwardsPageProps) {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
 
   if (!canViewAwards(role)) {

@@ -4,7 +4,7 @@ import { KioskContentSurface } from "@/components/kiosk/kiosk-content-surface";
 import { KioskQueueColaboratorPage } from "@/components/kiosk/kiosk-queue-colaborator-page";
 import { assertKioskStaffCanManageColaborator } from "@/lib/business/kiosk-staff-access";
 import { staffQueuesPath } from "@/lib/business/kiosk-staff-paths";
-import { loadRouteThemes } from "@/lib/themes/load-route-themes";
+import { loadKioskRouteTheme } from "@/lib/themes/load-route-themes";
 import { routeThemeContentSurfaceTopRadiusClass } from "@/lib/themes/match-route-theme";
 
 interface PageProps {
@@ -22,8 +22,7 @@ export default async function KioskStaffQueueColaboratorPage({
     notFound();
   }
 
-  const themes = await loadRouteThemes();
-  const kioskTheme = themes.find((entry) => entry.routeKey === "kiosk") ?? null;
+  const kioskTheme = await loadKioskRouteTheme();
   const toolbarTopRadiusClass =
     routeThemeContentSurfaceTopRadiusClass(kioskTheme);
 

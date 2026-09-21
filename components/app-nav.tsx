@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { AppNavClient } from "@/components/app-nav-client";
 import { canAccessOwnProfile } from "@/lib/auth/profile-access";
 import {
@@ -24,7 +24,7 @@ export async function AppNav({
   menuLogoBackgroundColor = null,
   menuLogoBackgroundColorOpacity = null,
 }: AppNavProps) {
-  const session = await auth();
+  const session = await getAppSession();
   const role = (session?.user?.role ?? "colaborator") as Role;
   const userId = session?.user?.id;
   const tNav = await getTranslations("nav");

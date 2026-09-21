@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import type { Role } from "@/lib/auth/nav";
 import {
   canDeactivateTemplates,
@@ -24,7 +24,7 @@ interface TemplateTasksPageProps {
 export default async function TemplateTasksPage({
   searchParams,
 }: TemplateTasksPageProps) {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
   const params = await searchParams;
   const filters = parseTemplateListSearchParams(params);

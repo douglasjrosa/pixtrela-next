@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
-import { loadRouteThemes } from "@/lib/themes/load-route-themes";
+import { getAppSession } from "@/lib/auth/app-session";
+import { loadKioskRouteTheme } from "@/lib/themes/load-route-themes";
 
 import { KioskContentSurface } from "./kiosk-content-surface";
 import { KioskHomeHeading } from "./kiosk-home-heading";
@@ -13,12 +13,11 @@ export interface KioskEntryScreenProps {
 
 /** Kiosk identify home: title above the content card. */
 export async function KioskEntryScreen({ children }: KioskEntryScreenProps) {
-  const [themes, tRoutes, session] = await Promise.all([
-    loadRouteThemes(),
+  const [theme, tRoutes, session] = await Promise.all([
+    loadKioskRouteTheme(),
     getTranslations("settings.themeRoutes"),
-    auth(),
+    getAppSession(),
   ]);
-  const theme = themes.find((entry) => entry.routeKey === "kiosk") ?? null;
   const title = theme?.label ?? tRoutes("kiosk");
   const totemName = session?.user?.name ?? null;
 

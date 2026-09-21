@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { DeliverySheetsPrint } from "@/components/exchanges/delivery-sheets-print";
 import { ShoppingListPrint } from "@/components/exchanges/shopping-list-print";
@@ -22,7 +22,7 @@ interface PageProps {
 }
 
 export default async function ExchangeBatchDetailPage({ params }: PageProps) {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
   const userId = session?.user?.id;
 

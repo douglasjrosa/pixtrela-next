@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/app-session";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import {
   APP_LIST_PAGE_CHROME_CLASS,
@@ -17,7 +17,7 @@ export default async function SettingsLayout({
 }: {
   children: ReactNode;
 }) {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
   const t = await getTranslations("settings");
 
