@@ -48,7 +48,7 @@ test.describe("Queues /queues/[colaboratorId]", () => {
     await expect(
       page.getByRole("button", { name: /Sair da subtarefa/i }),
     ).toBeVisible({ timeout: 30_000 });
-    await expectStartCount(page, 0);
+    await expectStartCount(page, 1);
 
     await page.getByRole("button", { name: /Sair da subtarefa/i }).click();
     await page.getByLabel(/Quantas peças você concluiu/i).fill("5");
@@ -130,13 +130,17 @@ test.describe("Queues /queues/[colaboratorId]", () => {
     await expectStartCount(page, 1);
 
     await page.getByRole("button", { name: /^Iniciar$/i }).click();
+    await expect(page.getByRole("button", { name: /^Parar$/i })).toBeVisible({
+      timeout: 30_000,
+    });
+    await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: /^Parar$/i }).click({
       timeout: 30_000,
     });
     await answerChainDuration(page, false);
     await page.getByRole("button", { name: /^Continuar$/i }).click();
     await answerChainDuration(page, false);
-    await page.getByRole("button", { name: /^Confirmar saída$/i }).click();
+    await confirmChainExit(page);
     await expect(page.getByRole("button", { name: /^Iniciar$/i })).toBeVisible({
       timeout: 30_000,
     });
@@ -149,7 +153,7 @@ test.describe("Queues /queues/[colaboratorId]", () => {
     await answerChainDuration(page, true);
     await page.getByRole("button", { name: /^Continuar$/i }).click();
     await answerChainDuration(page, true);
-    await page.getByRole("button", { name: /^Confirmar saída$/i }).click();
+    await confirmChainExit(page);
     await expect(page.getByText("E2E Chain A")).toBeVisible({
       timeout: 30_000,
     });
@@ -228,10 +232,16 @@ async function expectStartCount(page: Page, count: number): Promise<void> {
   );
 }
 
+async function confirmChainExit(page: Page): Promise<void> {
+  const confirm = page.getByRole("button", { name: /^Confirmar saída$/i });
+  await expect(confirm).toBeEnabled({ timeout: 30_000 });
+  await confirm.click();
+}
+
 async function answerChainDuration(
   page: Page,
   completed: boolean,
 ): Promise<void> {
-  const name = completed ? /Sim, concluí/i : /Não, ainda não/i;
+  const name = completed ? /^SIM$/i : /^NÃO$/i;
   await page.getByRole("button", { name }).click();
 }

@@ -283,6 +283,7 @@ export function applyOptimisticStateToLiberadasSection(
   openRuns: readonly OpenChainRun[],
   colaboratorId: string,
   maxSimultaneousSubtaskIntervalSeconds = 0,
+  catalog: readonly KioskSubTask[] = queueContext,
 ): LiberadasSectionSnapshot {
   const byId = subTasksById(queueContext);
   const patched = dedupeQueueUnits([
@@ -296,7 +297,7 @@ export function applyOptimisticStateToLiberadasSection(
   const withStart = applyQueueUnitStartVisibility(patched, {
     viewerId: colaboratorId,
     subTasks: queueContext,
-    allTaskSubTasks: queueContext,
+    allTaskSubTasks: catalog.length > 0 ? catalog : queueContext,
     maxSimultaneousSubtaskIntervalSeconds,
   });
 

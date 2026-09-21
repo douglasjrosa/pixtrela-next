@@ -32,11 +32,12 @@ function uniqueStamp(label: string): string {
 }
 
 function uniqueRef(stamp: string): string {
-  const letters = `${stamp}${Date.now().toString(36)}`
-    .replace(/[^a-z]/gi, "")
-    .toUpperCase()
-    .slice(0, 10);
-  return letters.length > 0 ? letters : "QTESTX";
+  const entropy = `${stamp}${Date.now()}${Math.random()}${Math.random()}`;
+  const letters = entropy.replace(/[^a-z0-9]/gi, "").toUpperCase();
+  if (letters.length >= 6) {
+    return letters.slice(-10);
+  }
+  return `Q${Date.now().toString(36).toUpperCase().slice(-8)}`;
 }
 
 let codeCursor = Date.now() % 80_000_000;

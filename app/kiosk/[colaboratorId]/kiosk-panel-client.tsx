@@ -280,11 +280,13 @@ export function KioskPanelClient({
         displayOpenRuns,
         colaboratorId,
         maxSimultaneousSubtaskIntervalSeconds,
+        displayCatalog,
       ),
     }),
     [
       colaboratorId,
       displayOpenRuns,
+      displayCatalog,
       displaySubTasks,
       liberadas,
       maxSimultaneousSubtaskIntervalSeconds,
@@ -527,8 +529,16 @@ export function KioskPanelClient({
     setFlashDocumentId(documentId);
     window.setTimeout(() => setFlashDocumentId(null), START_FLASH_MS);
     const startedAt = new Date().toISOString();
-    const mode = hasActiveSubTask(subTasks) ? "join" : "solo";
-    setOptimisticStart({ documentId, startedAt, mode });
+    const activeSource = catalog.length > 0 ? catalog : subTasks;
+    const mode = hasActiveSubTask(activeSource) ? "join" : "solo";
+    const optimistic = { documentId, startedAt, mode };
+    setOptimisticStart(optimistic);
+    setSubTasks((current) =>
+      applyOptimisticKioskStartToSubTasks(current, optimistic),
+    );
+    setCatalog((current) =>
+      applyOptimisticKioskStartToSubTasks(current, optimistic),
+    );
     setQueueBusy("start");
     runBackgroundAction(async () => {
       if (mode === "join") {
@@ -546,12 +556,19 @@ export function KioskPanelClient({
     setFlashDocumentId(headId);
     window.setTimeout(() => setFlashDocumentId(null), START_FLASH_MS);
     const startedAt = new Date().toISOString();
-    setOptimisticStart({
+    const optimistic = {
       documentId: headId,
       startedAt,
-      mode: "chain",
+      mode: "chain" as const,
       chainHeadId: headId,
-    });
+    };
+    setOptimisticStart(optimistic);
+    setSubTasks((current) =>
+      applyOptimisticKioskStartToSubTasks(current, optimistic),
+    );
+    setCatalog((current) =>
+      applyOptimisticKioskStartToSubTasks(current, optimistic),
+    );
     setQueueBusy("start");
     runBackgroundAction(async () => {
       await startChain(colaboratorId, headId, staffUserId);

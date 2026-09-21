@@ -248,15 +248,16 @@ export function applyQueueUnitStartVisibility(
     maxSimultaneousSubtaskIntervalSeconds?: number;
   },
 ): KioskQueueUnit[] {
-  const hasActive = hasActiveSubTask(input.subTasks);
+  const queueContext = input.allTaskSubTasks ?? input.subTasks;
+  const hasActive = hasActiveSubTask(queueContext);
   const joinable = nextJoinableSubTask({
     viewerId: input.viewerId,
     subTasks: input.subTasks,
-    catalog: input.allTaskSubTasks ?? input.subTasks,
+    catalog: queueContext,
     maxIntervalSeconds: input.maxSimultaneousSubtaskIntervalSeconds ?? 0,
   });
   const joinableId = joinable?.documentId ?? null;
-  const queue = [...input.subTasks];
+  const queue = [...queueContext];
   let idleStartGranted = false;
 
   return units.map((unit) => {
