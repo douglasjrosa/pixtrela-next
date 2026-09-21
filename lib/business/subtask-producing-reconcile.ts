@@ -32,3 +32,54 @@ export function isSubTaskActivelyProducing(input: {
   if (input.status === PRODUCING_STATUS) return true;
   return Boolean(input.startedAt);
 }
+
+export type QtyCompleteReconcileRow = {
+  id: string;
+  status: string | null;
+  qty: number;
+  sharingType: string | null;
+  taskId: string;
+};
+
+/**
+ * Rows that may need a producing-status write: open viewer sessions or
+ * any sub-task that already has active workers.
+ */
+export function selectRowsForProducingReconcile<T extends { id: string }>(
+  rows: readonly T[],
+  input: {
+    openSessionIds: readonly string[];
+    activeColaboratorIdsBySubTaskId: ReadonlyMap<string, readonly string[]>;
+  },
+): T[] {
+  const openIds = new Set(input.openSessionIds);
+  return rows.filter((row) => {
+    if (openIds.has(row.id)) return true;
+    return (input.activeColaboratorIdsBySubTaskId.get(row.id) ?? []).length > 0;
+  });
+}
+
+/**
+ * Qty rows that may need a finished write: paused/waiting, no active
+ * workers, and completed qty already meeting the target.
+ */
+export function selectRowsForQtyCompleteReconcile<
+  T extends QtyCompleteReconcileRow,
+>(
+  rows: readonly T[],
+  input: {
+    completedQtyBySubTaskId: ReadonlyMap<string, number>;
+    activeColaboratorIdsBySubTaskId: ReadonlyMap<string, readonly string[]>;
+  },
+): T[] {
+  return rows.filter((row) => {
+    if (row.sharingType !== "qty") return false;
+    const status = String(row.status ?? "");
+    if (status !== "paused" && status !== "waiting") return false;
+    if ((input.activeColaboratorIdsBySubTaskId.get(row.id) ?? []).length > 0) {
+      return false;
+    }
+    const completed = input.completedQtyBySubTaskId.get(row.id) ?? 0;
+    return completed >= Math.max(1, row.qty);
+  });
+}

@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   findSubTaskIdsNeedingProducingReconcile,
   isSubTaskActivelyProducing,
+  selectRowsForProducingReconcile,
+  selectRowsForQtyCompleteReconcile,
 } from "./subtask-producing-reconcile";
 
 describe("subtask-producing-reconcile", () => {
@@ -37,5 +39,62 @@ describe("subtask-producing-reconcile", () => {
     expect(isSubTaskActivelyProducing({ status: "waiting", startedAt: null })).toBe(
       false,
     );
+  });
+
+  it("scopes producing reconcile to open sessions and active workers", () => {
+    const idle = { id: "idle", status: "waiting", taskId: "task-1" };
+    const orphan = { id: "orphan", status: "paused", taskId: "task-1" };
+    const peerActive = { id: "peer", status: "waiting", taskId: "task-2" };
+    const scoped = selectRowsForProducingReconcile(
+      [idle, orphan, peerActive],
+      {
+        openSessionIds: ["orphan"],
+        activeColaboratorIdsBySubTaskId: new Map([["peer", ["col-2"]]]),
+      },
+    );
+    expect(scoped.map((row) => row.id).sort()).toEqual(["orphan", "peer"]);
+  });
+
+  it("scopes qty complete reconcile to idle qty rows without active workers", () => {
+    const idleQty = {
+      id: "qty-idle",
+      status: "paused",
+      qty: 10,
+      sharingType: "qty",
+      taskId: "task-1",
+    };
+    const duration = {
+      id: "dur",
+      status: "paused",
+      qty: 1,
+      sharingType: "duration",
+      taskId: "task-1",
+    };
+    const producingQty = {
+      id: "qty-run",
+      status: "paused",
+      qty: 10,
+      sharingType: "qty",
+      taskId: "task-1",
+    };
+    const waitingIncomplete = {
+      id: "qty-open",
+      status: "waiting",
+      qty: 10,
+      sharingType: "qty",
+      taskId: "task-1",
+    };
+    const scoped = selectRowsForQtyCompleteReconcile(
+      [idleQty, duration, producingQty, waitingIncomplete],
+      {
+        completedQtyBySubTaskId: new Map([
+          ["qty-idle", 10],
+          ["qty-run", 10],
+          ["qty-open", 3],
+        ]),
+        activeColaboratorIdsBySubTaskId: new Map([["qty-run", ["col-1"]]]),
+      },
+    );
+    expect(scoped.map((row) => row.id)).toEqual(["qty-idle"]);
   });
 });

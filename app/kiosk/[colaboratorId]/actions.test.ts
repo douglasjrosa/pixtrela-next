@@ -19,6 +19,11 @@ vi.mock("next/cache", () => ({
 
 vi.mock("@/lib/kiosk/load-session-idle", () => ({
   loadKioskLiveChainIntervalSeconds: vi.fn(async () => 300),
+  loadKioskSettings: vi.fn(async () => ({
+    sessionIdleSeconds: 60,
+    maxSimultaneousSubtaskIntervalSeconds: 300,
+    queuePageSize: 15,
+  })),
 }));
 
 vi.mock("@/lib/repos/kiosk-subtasks", () => ({
@@ -76,6 +81,8 @@ describe("kiosk/[colaboratorId]/actions drizzle", () => {
       section: "liberadas",
       cursor: undefined,
       liveChainIntervalSeconds: 300,
+      queuePageSize: 15,
+      catalogMode: "slim",
     });
     expect(result.section).toBe("liberadas");
   });

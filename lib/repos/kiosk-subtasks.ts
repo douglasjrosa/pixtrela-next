@@ -11,8 +11,16 @@ import {
   tasks,
   users,
 } from "@/drizzle/schema";
-import { findSubTaskIdsNeedingProducingReconcile } from "@/lib/business/subtask-producing-reconcile";
+import {
+  findSubTaskIdsNeedingProducingReconcile,
+  selectRowsForProducingReconcile,
+  selectRowsForQtyCompleteReconcile,
+} from "@/lib/business/subtask-producing-reconcile";
 import { calculateActivityDurationSeconds } from "@/lib/business/activity-duration";
+import {
+  collectKioskQueueCatalogScope,
+  filterCatalogByScope,
+} from "@/lib/business/kiosk-queue-catalog-scope";
 import type { OpenChainRun } from "@/lib/business/kiosk-queue-units";
 import {
   buildKioskQueueUnits,
@@ -596,27 +604,17 @@ async function reconcileQtyCompletePausedSubTasks(
   }
 }
 
-export async function listAssignedSubTasks(
+type AssignedSubTaskRow = Awaited<
+  ReturnType<typeof fetchAssignedSubTaskRows>
+>[number];
+
+async function hydrateAssignedSubTaskRows(
+  rows: AssignedSubTaskRow[],
   colaboratorId: string,
-  db: Db = getDb(),
+  openSessionIds: readonly string[],
+  db: Db,
 ): Promise<KioskSubTask[]> {
-  const [colaborator] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.id, colaboratorId))
-    .limit(1);
-  if (!colaborator) return [];
-
-  const assignedRows = await fetchAssignedSubTaskRows(colaboratorId, db);
-  const assignedIds = new Set(assignedRows.map((row) => row.id));
-  const openSessionIds = await fetchOpenStartedSubTaskIdsForColaborator(
-    colaboratorId,
-    db,
-  );
-  const orphanIds = openSessionIds.filter((id) => !assignedIds.has(id));
-  const orphanRows = await fetchSubTaskRowsByIds(orphanIds, db);
-  const rows = [...assignedRows, ...orphanRows];
-
+  if (rows.length === 0) return [];
   const subTaskIds = rows.map((row) => row.id);
   const [enrichment, relationMaps] = await Promise.all([
     loadActivityEnrichment(subTaskIds, colaboratorId, db),
@@ -624,12 +622,18 @@ export async function listAssignedSubTasks(
   ]);
 
   await reconcileProducingStatusFromOpenSessions(
-    rows,
+    selectRowsForProducingReconcile(rows, {
+      openSessionIds,
+      activeColaboratorIdsBySubTaskId: enrichment.activeColaboratorIdsBySubTaskId,
+    }),
     enrichment.activeColaboratorIdsBySubTaskId,
     db,
   );
   await reconcileQtyCompletePausedSubTasks(
-    rows,
+    selectRowsForQtyCompleteReconcile(rows, {
+      completedQtyBySubTaskId: enrichment.completedQtyBySubTaskId,
+      activeColaboratorIdsBySubTaskId: enrichment.activeColaboratorIdsBySubTaskId,
+    }),
     enrichment.completedQtyBySubTaskId,
     enrichment.activeColaboratorIdsBySubTaskId,
     db,
@@ -670,8 +674,11 @@ export async function listAssignedSubTasks(
   );
 
   const sorted = sortKioskDailyQueue(filterKioskDailyQueue(mapped, now));
+  const categoryById = new Map(
+    rows.map((row) => [row.id, row.subTaskCategoryId ?? null]),
+  );
 
-  const withRelations = sorted.map((row) => ({
+  return sorted.map((row) => ({
     documentId: row.documentId,
     name: row.name,
     index: row.index,
@@ -695,11 +702,39 @@ export async function listAssignedSubTasks(
     maxSameTimeWorkers: row.maxSameTimeWorkers,
     assignedToIds: row.assignedToIds,
     dependencyIds: row.dependencyIds,
-    subTaskCategoryId:
-      rows.find((item) => item.id === row.documentId)?.subTaskCategoryId ??
-      null,
+    subTaskCategoryId: categoryById.get(row.documentId) ?? null,
   }));
-  return attachKioskFlagFields(withRelations, db);
+}
+
+export async function listAssignedSubTasks(
+  colaboratorId: string,
+  db: Db = getDb(),
+  options?: { attachFlags?: boolean },
+): Promise<KioskSubTask[]> {
+  const [colaborator] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.id, colaboratorId))
+    .limit(1);
+  if (!colaborator) return [];
+
+  const assignedRows = await fetchAssignedSubTaskRows(colaboratorId, db);
+  const assignedIds = new Set(assignedRows.map((row) => row.id));
+  const openSessionIds = await fetchOpenStartedSubTaskIdsForColaborator(
+    colaboratorId,
+    db,
+  );
+  const orphanIds = openSessionIds.filter((id) => !assignedIds.has(id));
+  const orphanRows = await fetchSubTaskRowsByIds(orphanIds, db);
+  const rows = [...assignedRows, ...orphanRows];
+  const mapped = await hydrateAssignedSubTaskRows(
+    rows,
+    colaboratorId,
+    openSessionIds,
+    db,
+  );
+  if (options?.attachFlags === false) return mapped;
+  return attachKioskFlagFields(mapped, db);
 }
 
 export type KioskQueueData = {
@@ -708,49 +743,64 @@ export type KioskQueueData = {
   openRuns: OpenChainRun[];
 };
 
-export async function listKioskQueueData(
+export type KioskQueueCatalogMode = "slim" | "full";
+
+function siblingRowToCatalogItem(
+  row: Awaited<ReturnType<typeof listSubTasksWithRelationsForTasks>>[number],
+  existing: KioskSubTask | undefined,
+): KioskSubTask {
+  if (existing) return existing;
+  return {
+    documentId: row.id,
+    name: row.name,
+    index: row.index,
+    status: row.status as KioskSubTask["status"],
+    activationStatus: fromDrizzleActivationStatus(row.activationStatus),
+    qty: row.qty,
+    targetQty: row.qty,
+    completedQty: 0,
+    sharingType: row.sharingType === "qty" ? "qty" : "duration",
+    timeSpent: row.timeSpent,
+    startedAt: null,
+    expectedTime: row.expectedTime,
+    taskDocumentId: row.taskId,
+    taskName: "",
+    taskIndex: 0,
+    finishedAt: null,
+    activeWorkerCount: 0,
+    linkedToPrevious: row.linkedToPrevious,
+    maxSameTimeWorkers: row.maxSameTimeWorkers,
+    assignedToIds: row.assignedToIds,
+    dependencyIds: row.dependencyIds,
+    subTaskCategoryId: row.subTaskCategoryId,
+  };
+}
+
+async function assembleKioskQueueData(
+  subTasks: KioskSubTask[],
   colaboratorId: string,
-  db: Db = getDb(),
+  db: Db,
+  options?: { attachCatalogFlags?: boolean },
 ): Promise<KioskQueueData> {
-  const subTasks = await listAssignedSubTasks(colaboratorId, db);
   const taskIds = [...new Set(subTasks.map((item) => item.taskDocumentId))];
-  const siblingRows = await listSubTasksWithRelationsForTasks(taskIds, db);
+  const siblingRows =
+    taskIds.length > 0
+      ? await listSubTasksWithRelationsForTasks(taskIds, db)
+      : [];
   const assignedById = new Map(
     subTasks.map((item) => [item.documentId, item]),
   );
-  const catalog: KioskSubTask[] = siblingRows.map((row) => {
-    const existing = assignedById.get(row.id);
-    if (existing) return existing;
-    return {
-      documentId: row.id,
-      name: row.name,
-      index: row.index,
-      status: row.status as KioskSubTask["status"],
-      activationStatus: fromDrizzleActivationStatus(row.activationStatus),
-      qty: row.qty,
-      targetQty: row.qty,
-      completedQty: 0,
-      sharingType: row.sharingType === "qty" ? "qty" : "duration",
-      timeSpent: row.timeSpent,
-      startedAt: null,
-      expectedTime: row.expectedTime,
-      taskDocumentId: row.taskId,
-      taskName: "",
-      taskIndex: 0,
-      finishedAt: null,
-      activeWorkerCount: 0,
-      linkedToPrevious: row.linkedToPrevious,
-      maxSameTimeWorkers: row.maxSameTimeWorkers,
-      assignedToIds: row.assignedToIds,
-      dependencyIds: row.dependencyIds,
-      subTaskCategoryId: row.subTaskCategoryId,
-    };
-  });
+  const catalog: KioskSubTask[] = siblingRows.map((row) =>
+    siblingRowToCatalogItem(row, assignedById.get(row.id)),
+  );
 
-  const catalogWithFlags = await attachKioskFlagFields(catalog, db);
+  const catalogForChains =
+    options?.attachCatalogFlags === false
+      ? catalog
+      : await attachKioskFlagFields(catalog, db);
 
   const chains = resolveChains(
-    catalogWithFlags.map((item) => ({
+    catalogForChains.map((item) => ({
       documentId: item.documentId,
       index: item.index,
       status: item.status,
@@ -787,7 +837,7 @@ export async function listKioskQueueData(
   const [subTasksWithPeer, catalogWithPeer] = await Promise.all([
     attachOpenRunPeerFields(subTasks, openRuns, colaboratorId, db),
     attachOpenRunPeerFields(
-      catalogWithFlags.length > 0 ? catalogWithFlags : subTasks,
+      catalogForChains.length > 0 ? catalogForChains : subTasks,
       openRuns,
       colaboratorId,
       db,
@@ -799,6 +849,17 @@ export async function listKioskQueueData(
     catalog: catalogWithPeer,
     openRuns,
   };
+}
+
+export async function listKioskQueueData(
+  colaboratorId: string,
+  db: Db = getDb(),
+  options?: { attachCatalogFlags?: boolean },
+): Promise<KioskQueueData> {
+  const subTasks = await listAssignedSubTasks(colaboratorId, db, {
+    attachFlags: options?.attachCatalogFlags !== false,
+  });
+  return assembleKioskQueueData(subTasks, colaboratorId, db, options);
 }
 
 async function attachOpenRunPeerFields(
@@ -886,6 +947,26 @@ async function enrichProducingUnits(
   );
 }
 
+function applySubTasksToUnits(
+  units: KioskQueueUnit[],
+  byId: ReadonlyMap<string, KioskSubTask>,
+): KioskQueueUnit[] {
+  return units.map((unit) => {
+    if (unit.type === "isolated") {
+      return {
+        ...unit,
+        subTask: byId.get(unit.subTask.documentId) ?? unit.subTask,
+      };
+    }
+    return {
+      ...unit,
+      members: unit.members.map(
+        (member) => byId.get(member.documentId) ?? member,
+      ),
+    };
+  });
+}
+
 export type KioskQueueSectionPage = {
   section: KioskQueueSectionKey;
   producingUnits: KioskQueueUnit[];
@@ -896,7 +977,25 @@ export type KioskQueueSectionPage = {
   subTasks: KioskSubTask[];
   catalog: KioskSubTask[];
   queuePageSize: number;
+  catalogTruncated?: boolean;
 };
+
+export function emptyKioskQueueSectionPage(
+  queuePageSize = DEFAULT_KIOSK_QUEUE_PAGE_SIZE,
+): KioskQueueSectionPage {
+  return {
+    section: "liberadas",
+    producingUnits: [],
+    units: [],
+    nextCursor: null,
+    hasMore: false,
+    openRuns: [],
+    subTasks: [],
+    catalog: [],
+    queuePageSize,
+    catalogTruncated: true,
+  };
+}
 
 export async function listKioskQueueSectionPage(
   input: {
@@ -905,6 +1004,8 @@ export async function listKioskQueueSectionPage(
     cursor?: string | null;
     liveChainIntervalSeconds?: number;
     queuePageSize?: number;
+    catalogMode?: KioskQueueCatalogMode;
+    queue?: KioskQueueData;
   },
   db: Db = getDb(),
 ): Promise<KioskQueueSectionPage> {
@@ -916,14 +1017,19 @@ export async function listKioskQueueSectionPage(
     );
   }
 
-  const queue = await listKioskQueueData(input.colaboratorId, db);
+  const catalogMode = input.catalogMode ?? "slim";
+  const queue =
+    input.queue ??
+    (await listKioskQueueData(input.colaboratorId, db, {
+      attachCatalogFlags: catalogMode === "full",
+    }));
+  const liveChainIntervalSeconds = input.liveChainIntervalSeconds ?? 0;
   const units = buildKioskQueueUnits({
     viewerId: input.colaboratorId,
     subTasks: queue.subTasks,
     allTaskSubTasks: queue.catalog,
     openRuns: queue.openRuns,
-    maxSimultaneousSubtaskIntervalSeconds:
-      input.liveChainIntervalSeconds ?? 0,
+    maxSimultaneousSubtaskIntervalSeconds: liveChainIntervalSeconds,
   });
   const sections = splitQueueUnitsByKioskSection(units);
 
@@ -947,8 +1053,37 @@ export async function listKioskQueueSectionPage(
     cursor: input.cursor,
   });
 
+  const scope = collectKioskQueueCatalogScope({
+    viewerId: input.colaboratorId,
+    producingUnits,
+    pageUnits: page.units,
+    openRuns: queue.openRuns,
+    assignedSubTasks: queue.subTasks,
+    fullCatalog: queue.catalog,
+    maxIntervalSeconds: liveChainIntervalSeconds,
+  });
+  let scopedCatalog = filterCatalogByScope(queue.catalog, scope);
+  if (catalogMode === "slim") {
+    scopedCatalog = await attachKioskFlagFields(scopedCatalog, db);
+    const flaggedById = new Map(
+      scopedCatalog.map((item) => [item.documentId, item]),
+    );
+    page.units = applySubTasksToUnits(page.units, flaggedById);
+  }
+
+  const producingById = new Map(
+    flattenUnitsToSubTasks(producingUnits).map((item) => [
+      item.documentId,
+      item,
+    ]),
+  );
+  scopedCatalog = scopedCatalog.map(
+    (item) => producingById.get(item.documentId) ?? item,
+  );
+
   const visibleUnits = [...producingUnits, ...page.units];
   const pageSubTasks = flattenUnitsToSubTasks(visibleUnits);
+  const catalogTruncated = scopedCatalog.length < queue.catalog.length;
 
   return {
     section: input.section,
@@ -958,8 +1093,77 @@ export async function listKioskQueueSectionPage(
     hasMore: page.hasMore,
     openRuns: queue.openRuns,
     subTasks: pageSubTasks,
-    catalog: queue.catalog,
+    catalog: catalogMode === "full" ? queue.catalog : scopedCatalog,
     queuePageSize,
+    catalogTruncated: catalogMode === "slim" ? catalogTruncated : false,
+  };
+}
+
+export async function listKioskProducingSnapshot(
+  colaboratorId: string,
+  db: Db = getDb(),
+  options?: {
+    liveChainIntervalSeconds?: number;
+    queuePageSize?: number;
+  },
+): Promise<KioskQueueSectionPage> {
+  const queuePageSize =
+    options?.queuePageSize ?? DEFAULT_KIOSK_QUEUE_PAGE_SIZE;
+  const empty = {
+    ...emptyKioskQueueSectionPage(queuePageSize),
+    hasMore: true,
+  };
+  const openSessionIds = await fetchOpenStartedSubTaskIdsForColaborator(
+    colaboratorId,
+    db,
+  );
+  if (openSessionIds.length === 0) return empty;
+
+  const rows = await fetchSubTaskRowsByIds(openSessionIds, db);
+  const subTasks = await hydrateAssignedSubTaskRows(
+    rows,
+    colaboratorId,
+    openSessionIds,
+    db,
+  );
+  if (subTasks.length === 0) return empty;
+
+  const liveChainIntervalSeconds = options?.liveChainIntervalSeconds ?? 0;
+  const queue = await assembleKioskQueueData(subTasks, colaboratorId, db, {
+    attachCatalogFlags: false,
+  });
+  const units = buildKioskQueueUnits({
+    viewerId: colaboratorId,
+    subTasks: queue.subTasks,
+    allTaskSubTasks: queue.catalog,
+    openRuns: queue.openRuns,
+    maxSimultaneousSubtaskIntervalSeconds: liveChainIntervalSeconds,
+  });
+  const sections = splitQueueUnitsByKioskSection(units);
+  const producingUnits = await enrichProducingUnits(sections.producing, db);
+  const pageSubTasks = flattenUnitsToSubTasks(producingUnits);
+  const scope = collectKioskQueueCatalogScope({
+    viewerId: colaboratorId,
+    producingUnits,
+    pageUnits: [],
+    openRuns: queue.openRuns,
+    assignedSubTasks: queue.subTasks,
+    fullCatalog: queue.catalog,
+    maxIntervalSeconds: liveChainIntervalSeconds,
+  });
+  const scopedCatalog = filterCatalogByScope(queue.catalog, scope);
+
+  return {
+    section: "liberadas",
+    producingUnits,
+    units: [],
+    nextCursor: null,
+    hasMore: true,
+    openRuns: queue.openRuns,
+    subTasks: pageSubTasks,
+    catalog: scopedCatalog,
+    queuePageSize,
+    catalogTruncated: true,
   };
 }
 

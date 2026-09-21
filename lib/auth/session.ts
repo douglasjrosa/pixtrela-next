@@ -1,11 +1,5 @@
-import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { Session } from "next-auth";
-
-import { auth } from "@/auth";
-
-/** Per-request cached session (dedupes layout + page auth calls). */
-export const getAppSession = cache(() => auth());
 
 export const SESSION_EXPIRED_QUERY = "sessionExpired";
 

@@ -35,6 +35,7 @@ vi.mock("./actions", () => ({
   releaseMaterialFlag: vi.fn(),
   refreshMaterialFlags: vi.fn(),
   fetchKioskQueueSectionPage: (...args: unknown[]) => fetchSectionPage(...args),
+  fetchColaboratorFacePhotoUrl: vi.fn(async () => null),
 }));
 
 import { KioskPanelClient } from "./kiosk-panel-client";
@@ -80,6 +81,7 @@ function liberadasPage(): KioskQueueSectionPage {
     subTasks: [subTask],
     catalog: [subTask],
     queuePageSize: 15,
+    catalogTruncated: true,
   };
 }
 

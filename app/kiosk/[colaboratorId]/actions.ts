@@ -4,7 +4,7 @@ import { revalidateTag } from "next/cache";
 
 import type { KioskQueueSectionKey } from "@/lib/business/kiosk-queue-units";
 import { getRemainingSubTaskQty } from "@/lib/business/subtask-queue";
-import { loadKioskLiveChainIntervalSeconds } from "@/lib/kiosk/load-session-idle";
+import { loadKioskSettings } from "@/lib/kiosk/load-session-idle";
 import {
   assertQueueReader,
   assertQueueStaffMutation,
@@ -32,6 +32,8 @@ import {
   toActivityStopPayload,
   type KioskExitInput,
 } from "@/lib/schemas/kiosk-exit";
+import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
+import { findUserFacePhotoUrl } from "@/lib/repos/users";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
 function invalidateActivityData(): void {
@@ -60,12 +62,14 @@ export async function fetchKioskQueueSectionPage(input: {
   if (!input.colaboratorId.trim()) {
     throw new Error("forbidden");
   }
-  const liveChainIntervalSeconds = await loadKioskLiveChainIntervalSeconds();
+  const settings = await loadKioskSettings();
   return listKioskQueueSectionPage({
     colaboratorId: input.colaboratorId,
     section: input.section,
     cursor: input.cursor,
-    liveChainIntervalSeconds,
+    liveChainIntervalSeconds: settings.maxSimultaneousSubtaskIntervalSeconds,
+    queuePageSize: settings.queuePageSize,
+    catalogMode: "slim",
   });
 }
 
@@ -159,6 +163,15 @@ export async function confirmChainStop(
   const answers = parseChainStopAnswers(rawAnswers);
   await confirmChainStopRepo(colaboratorId, chainRunId, answers);
   invalidateActivityData();
+}
+
+export async function fetchColaboratorFacePhotoUrl(
+  colaboratorId: string,
+  staffUserId?: string,
+): Promise<string | null> {
+  await assertQueueReader(colaboratorId, staffUserId);
+  const url = await findUserFacePhotoUrl(colaboratorId);
+  return toBrowserMediaUrl(url);
 }
 
 export async function refreshMaterialFlags(

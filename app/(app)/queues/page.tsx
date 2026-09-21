@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
-import { getAppSession } from "@/lib/auth/session";
+import { getAppSession } from "@/lib/auth/app-session";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { KioskStaffQueuesPanel } from "@/components/kiosk/kiosk-staff-queues-panel";
 import {

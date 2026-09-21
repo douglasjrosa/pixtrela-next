@@ -46,6 +46,7 @@ vi.mock("./actions", () => ({
   releaseMaterialFlag: vi.fn(),
   refreshMaterialFlags: (...args: unknown[]) => refreshMaterialFlags(...args),
   fetchKioskQueueSectionPage: (...args: unknown[]) => fetchSectionPage(...args),
+  fetchColaboratorFacePhotoUrl: vi.fn(async () => null),
 }));
 
 import { KioskPanelClient } from "./kiosk-panel-client";
@@ -95,6 +96,7 @@ function liberadasPage(
     subTasks,
     catalog: subTasks,
     queuePageSize: 15,
+    catalogTruncated: false,
   };
 }
 
@@ -394,5 +396,20 @@ describe("KioskPanelClient", () => {
     expect(showKioskErrorToast).not.toHaveBeenCalledWith(
       "Não foi possível sair da subtarefa. Tente novamente.",
     );
+  });
+
+  it("renders bootstrap children until the first liberadas page is applied", () => {
+    renderWithIntl(
+      <KioskPanelClient
+        colaboratorId="u-1"
+        colaboratorName="Ana"
+        initialLiberadas={liberadasPage([])}
+        bootstrapPending
+      >
+        <p>producing-first</p>
+      </KioskPanelClient>,
+    );
+    expect(screen.getByText("producing-first")).toBeInTheDocument();
+    expect(screen.queryByText("Nenhuma tarefa na fila.")).not.toBeInTheDocument();
   });
 });

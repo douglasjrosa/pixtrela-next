@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 import type {
@@ -59,6 +60,7 @@ export interface KioskDailyQueueProps {
     requiresMaterialFlagsOnFinish?: boolean;
   }>;
   onChainRunNotReady?: () => void;
+  children?: ReactNode;
 }
 
 function sectionIsEmpty(section: KioskSectionState): boolean {
@@ -94,10 +96,12 @@ export function KioskDailyQueue({
   onReleaseMaterialFlag,
   onRefreshMaterialFlags,
   onChainRunNotReady,
+  children,
 }: KioskDailyQueueProps) {
   const t = useTranslations("kiosk");
   const liberadasUnits = [...liberadas.producingUnits, ...liberadas.units];
   const queueEmpty =
+    liberadas.loadedOnce &&
     sectionIsEmpty(liberadas) &&
     !bloqueadas.loadedOnce &&
     !finalizadas.loadedOnce &&
@@ -121,32 +125,38 @@ export function KioskDailyQueue({
         >
           {t("sectionUnlocked")}
         </h2>
-        {liberadasUnits.length > 0 ? (
-          <KioskSubtaskPanel
-            units={liberadasUnits}
-            allSubTasks={allSubTasks}
-            readOnly={readOnly}
-            blockingUi={blockingUi}
-            timerPaused={timerPaused}
-            exitBusy={exitBusy}
-            flashDocumentId={flashDocumentId}
-            onStart={onStart}
-            onExit={onExit}
-            onStartChain={onStartChain}
-            onConfirmChainStop={onConfirmChainStop}
-            onAdvanceChain={onAdvanceChain}
-            onReleaseMaterialFlag={onReleaseMaterialFlag}
-            onRefreshMaterialFlags={onRefreshMaterialFlags}
-            onChainRunNotReady={onChainRunNotReady}
-            openRuns={openRuns}
-          />
-        ) : null}
-        <KioskQueueLoadMoreSentinel
-          hasMore={liberadas.hasMore}
-          loading={liberadas.loading}
-          disabled={blockingUi}
-          onLoadMore={onLoadMoreLiberadas}
-        />
+        {liberadas.loadedOnce ? (
+          <>
+            {liberadasUnits.length > 0 ? (
+              <KioskSubtaskPanel
+                units={liberadasUnits}
+                allSubTasks={allSubTasks}
+                readOnly={readOnly}
+                blockingUi={blockingUi}
+                timerPaused={timerPaused}
+                exitBusy={exitBusy}
+                flashDocumentId={flashDocumentId}
+                onStart={onStart}
+                onExit={onExit}
+                onStartChain={onStartChain}
+                onConfirmChainStop={onConfirmChainStop}
+                onAdvanceChain={onAdvanceChain}
+                onReleaseMaterialFlag={onReleaseMaterialFlag}
+                onRefreshMaterialFlags={onRefreshMaterialFlags}
+                onChainRunNotReady={onChainRunNotReady}
+                openRuns={openRuns}
+              />
+            ) : null}
+            <KioskQueueLoadMoreSentinel
+              hasMore={liberadas.hasMore}
+              loading={liberadas.loading}
+              disabled={blockingUi}
+              onLoadMore={onLoadMoreLiberadas}
+            />
+          </>
+        ) : (
+          children
+        )}
       </section>
 
       <KioskQueueSectionAccordion

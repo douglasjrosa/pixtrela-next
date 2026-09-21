@@ -7,8 +7,10 @@ import {
   useRef,
   useState,
   type Dispatch,
+  type ReactNode,
   type SetStateAction,
 } from "react";
+import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 
 import {
@@ -17,9 +19,7 @@ import {
   saveKioskOwnColaboratorPassword,
   type KioskColaboratorPasswordResult,
 } from "@/app/kiosk/staff/[userId]/users/actions";
-import { KioskColaboratorFacePhotoForm } from "@/components/kiosk/kiosk-colaborator-face-photo-form";
 import { KioskColaboratorHeader } from "@/components/kiosk/kiosk-colaborator-header";
-import { KioskColaboratorPasswordForm } from "@/components/kiosk/kiosk-colaborator-password-form";
 import { BackLink } from "@/components/navigation/back-link";
 import {
   KioskDailyQueue,
@@ -51,6 +51,9 @@ import {
   type KioskSubTask,
 } from "@/lib/business/subtask-queue";
 import { buildKioskQueueFingerprint } from "@/lib/kiosk/queue-fingerprint";
+import { mergeKioskCatalog } from "@/lib/business/kiosk-queue-catalog-scope";
+import { KioskQueueBootstrapProvider } from "@/components/kiosk/kiosk-queue-bootstrap-context";
+import { KioskQueuePanelActionsProvider } from "@/components/kiosk/kiosk-queue-panel-actions-context";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { KioskQueueSectionPage } from "@/lib/repos/kiosk-subtasks";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
@@ -66,6 +69,7 @@ import {
   confirmChainStop,
   exitSubTask,
   fetchKioskQueueSectionPage,
+  fetchColaboratorFacePhotoUrl,
   joinLiveChain,
   refreshMaterialFlags,
   releaseMaterialFlag,
@@ -74,6 +78,22 @@ import {
 } from "./actions";
 
 const START_FLASH_MS = 300;
+
+const KioskColaboratorFacePhotoForm = dynamic(
+  () =>
+    import("@/components/kiosk/kiosk-colaborator-face-photo-form").then(
+      (mod) => mod.KioskColaboratorFacePhotoForm,
+    ),
+  { ssr: false },
+);
+
+const KioskColaboratorPasswordForm = dynamic(
+  () =>
+    import("@/components/kiosk/kiosk-colaborator-password-form").then(
+      (mod) => mod.KioskColaboratorPasswordForm,
+    ),
+  { ssr: false },
+);
 
 function kioskActionErrorMessage(
   t: (key: string) => string,
@@ -133,11 +153,7 @@ function mergeSubTasks(
   current: KioskSubTask[],
   incoming: KioskSubTask[],
 ): KioskSubTask[] {
-  const byId = new Map(current.map((item) => [item.documentId, item]));
-  for (const item of incoming) {
-    byId.set(item.documentId, item);
-  }
-  return [...byId.values()];
+  return mergeKioskCatalog(current, incoming);
 }
 
 function flattenUnits(units: readonly KioskQueueUnit[]): KioskSubTask[] {
@@ -167,13 +183,16 @@ export interface KioskPanelClientProps {
   backHref?: string;
   /** Matches parent content surface top corners when backHref is set. */
   toolbarTopRadiusClass?: string;
+  children?: ReactNode;
+  bootstrapPending?: boolean;
+  profileSlot?: ReactNode;
 }
 
 export function KioskPanelClient({
   colaboratorId,
   colaboratorName,
   avatarUrl = null,
-  facePhotoUrl = null,
+  facePhotoUrl,
   initialLiberadas,
   maxSimultaneousSubtaskIntervalSeconds = 0,
   readOnly = false,
@@ -181,12 +200,19 @@ export function KioskPanelClient({
   allowFaceEdit = false,
   backHref,
   toolbarTopRadiusClass = "rounded-t-2xl sm:rounded-t-2xl",
+  children,
+  bootstrapPending = false,
+  profileSlot,
 }: KioskPanelClientProps) {
   const t = useTranslations("kiosk");
   const tCommon = useTranslations("common");
   const [editOpen, setEditOpen] = useState(false);
   const [editPending, setEditPending] = useState(false);
-  const [currentFacePhotoUrl, setCurrentFacePhotoUrl] = useState(facePhotoUrl);
+  const [profileName, setProfileName] = useState(colaboratorName);
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState(avatarUrl);
+  const [currentFacePhotoUrl, setCurrentFacePhotoUrl] = useState<
+    string | null | undefined
+  >(facePhotoUrl);
   const [queueBusy, setQueueBusy] = useState<"start" | "exit" | null>(null);
   const [optimisticStart, setOptimisticStart] =
     useState<OptimisticKioskStart | null>(null);
@@ -199,7 +225,17 @@ export function KioskPanelClient({
   const loadingMoreRef = useRef(false);
 
   const [liberadas, setLiberadas] = useState<KioskSectionState>(() =>
-    sectionFromPage(initialLiberadas, true),
+    bootstrapPending
+      ? {
+          producingUnits: [],
+          units: [],
+          nextCursor: null,
+          hasMore: true,
+          expanded: true,
+          loading: true,
+          loadedOnce: false,
+        }
+      : sectionFromPage(initialLiberadas, true),
   );
   const [bloqueadas, setBloqueadas] = useState<KioskSectionState>(() =>
     emptySection(false),
@@ -309,9 +345,43 @@ export function KioskPanelClient({
   const applyPageToLiberadas = useCallback((page: KioskQueueSectionPage) => {
     setLiberadas(sectionFromPage(page, true));
     setOpenRuns(page.openRuns);
-    setSubTasks(page.subTasks);
-    setCatalog(page.catalog);
+    setSubTasks((current) => mergeKioskCatalog(current, page.subTasks));
+    setCatalog((current) => mergeKioskCatalog(current, page.catalog));
   }, []);
+
+  const applyProducingSnapshot = useCallback((page: KioskQueueSectionPage) => {
+    setLiberadas((current) => {
+      if (current.loadedOnce) return current;
+      return { ...current, producingUnits: page.producingUnits };
+    });
+    setOpenRuns((current) => (current.length > 0 ? current : page.openRuns));
+    setSubTasks((current) => mergeKioskCatalog(current, page.subTasks));
+    setCatalog((current) => mergeKioskCatalog(current, page.catalog));
+  }, []);
+
+  const applyProfile = useCallback(
+    (profile: { name: string; avatarUrl: string | null }) => {
+      setProfileName(profile.name);
+      setProfileAvatarUrl(profile.avatarUrl);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!editOpen || currentFacePhotoUrl !== undefined) return;
+    void (async () => {
+      try {
+        const url = await fetchColaboratorFacePhotoUrl(
+          colaboratorId,
+          staffUserId,
+        );
+        setCurrentFacePhotoUrl(url);
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        setCurrentFacePhotoUrl(null);
+      }
+    })();
+  }, [colaboratorId, currentFacePhotoUrl, editOpen, staffUserId]);
 
   const refreshLiberadas = useCallback(async (): Promise<void> => {
     const page = await fetchKioskQueueSectionPage({
@@ -331,7 +401,7 @@ export function KioskPanelClient({
       });
       setBloqueadas(sectionFromPage(page, true));
       setSubTasks((current) => mergeSubTasks(current, page.subTasks));
-      setCatalog(page.catalog);
+      setCatalog((current) => mergeKioskCatalog(current, page.catalog));
       setOpenRuns(page.openRuns);
     }
     if (finalizadas.expanded) {
@@ -342,7 +412,7 @@ export function KioskPanelClient({
       });
       setFinalizadas(sectionFromPage(page, true));
       setSubTasks((current) => mergeSubTasks(current, page.subTasks));
-      setCatalog(page.catalog);
+      setCatalog((current) => mergeKioskCatalog(current, page.catalog));
       setOpenRuns(page.openRuns);
     }
   }, [bloqueadas.expanded, colaboratorId, finalizadas.expanded, staffUserId]);
@@ -425,7 +495,7 @@ export function KioskPanelClient({
           loadedOnce: true,
         }));
         setSubTasks((current) => mergeSubTasks(current, page.subTasks));
-        setCatalog(page.catalog);
+        setCatalog((current) => mergeKioskCatalog(current, page.catalog));
         setOpenRuns(page.openRuns);
       } catch (error) {
         rethrowIfNavigationError(error);
@@ -473,7 +543,7 @@ export function KioskPanelClient({
         });
         setBloqueadas(sectionFromPage(page, true));
         setSubTasks((current) => mergeSubTasks(current, page.subTasks));
-        setCatalog(page.catalog);
+        setCatalog((current) => mergeKioskCatalog(current, page.catalog));
         setOpenRuns(page.openRuns);
       } catch (error) {
         rethrowIfNavigationError(error);
@@ -510,7 +580,7 @@ export function KioskPanelClient({
         });
         setFinalizadas(sectionFromPage(page, true));
         setSubTasks((current) => mergeSubTasks(current, page.subTasks));
-        setCatalog(page.catalog);
+        setCatalog((current) => mergeKioskCatalog(current, page.catalog));
         setOpenRuns(page.openRuns);
       } catch (error) {
         rethrowIfNavigationError(error);
@@ -751,16 +821,75 @@ export function KioskPanelClient({
   const showEdit = !readOnly;
 
   const headerProps = {
-    name: colaboratorName,
-    avatarUrl,
+    name: profileName,
+    avatarUrl: profileAvatarUrl,
     showEdit,
     editOpen,
     onEditClick: () => setEditOpen((open) => !open),
   };
 
+  const panelActions = {
+    readOnly,
+    blockingUi: queueBusy !== null,
+    timerPaused: queueBusy === "exit",
+    exitBusy: queueBusy === "exit",
+    flashDocumentId,
+    onStart: readOnly ? undefined : handleStart,
+    onExit: readOnly ? undefined : handleExit,
+    onStartChain: readOnly ? undefined : handleStartChain,
+    onConfirmChainStop: readOnly ? undefined : handleConfirmChainStop,
+    onAdvanceChain: readOnly ? undefined : handleAdvanceChain,
+    onReleaseMaterialFlag: readOnly ? undefined : handleReleaseMaterialFlag,
+    onRefreshMaterialFlags: readOnly ? undefined : handleRefreshMaterialFlags,
+    onChainRunNotReady: readOnly ? undefined : handleChainRunNotReady,
+  };
+
+  const bootstrapApi = useMemo(
+    () => ({
+      liberadasLoaded: liberadas.loadedOnce,
+      editOpen,
+      onEditClick: () => setEditOpen((open) => !open),
+      applyProducingSnapshot,
+      applyLiberadasPage: applyPageToLiberadas,
+      applyProfile,
+    }),
+    [
+      applyPageToLiberadas,
+      applyProducingSnapshot,
+      applyProfile,
+      editOpen,
+      liberadas.loadedOnce,
+    ],
+  );
+
+  const headerChip = profileSlot ?? (
+    profileName ? (
+      <KioskColaboratorHeader
+        {...headerProps}
+        className={
+          backHref ? "max-w-[min(100%,14rem)] shrink-0" : "w-full"
+        }
+      />
+    ) : (
+      <div className="flex max-w-[min(100%,14rem)] items-center gap-2 rounded-lg border px-2 py-2">
+        <div
+          className="size-10 shrink-0 animate-pulse rounded-full bg-muted"
+          aria-hidden
+        />
+        <div className="h-5 w-24 animate-pulse rounded bg-muted" aria-hidden />
+      </div>
+    )
+  );
+
+  const showToolbar = Boolean(
+    profileSlot || profileName || backHref || bootstrapPending,
+  );
+
   return (
+    <KioskQueueBootstrapProvider value={bootstrapApi}>
+      <KioskQueuePanelActionsProvider value={panelActions}>
     <div className="flex min-h-0 flex-1 flex-col">
-      {colaboratorName ? (
+      {showToolbar ? (
         backHref ? (
           <div
             className={
@@ -772,10 +901,7 @@ export function KioskPanelClient({
               <BackLink href={backHref} className="shrink-0">
                 {tCommon("back")}
               </BackLink>
-              <KioskColaboratorHeader
-                {...headerProps}
-                className="max-w-[min(100%,14rem)] shrink-0"
-              />
+              {headerChip}
             </div>
           </div>
         ) : (
@@ -785,7 +911,7 @@ export function KioskPanelClient({
               "backdrop-blur-sm px-4 py-3"
             }
           >
-            <KioskColaboratorHeader {...headerProps} className="w-full" />
+            {headerChip}
           </div>
         )
       ) : null}
@@ -793,13 +919,13 @@ export function KioskPanelClient({
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
           {allowFaceEdit ? (
             <KioskColaboratorFacePhotoForm
-              facePhotoUrl={currentFacePhotoUrl}
+              facePhotoUrl={currentFacePhotoUrl ?? null}
               disabled={editPending}
               onSave={handleSaveEditFacePhoto}
             />
           ) : null}
           <KioskColaboratorPasswordForm
-            colaboratorName={colaboratorName}
+            colaboratorName={profileName}
             disabled={editPending}
             onCancel={() => setEditOpen(false)}
             onSave={handleSaveEditPassword}
@@ -836,9 +962,13 @@ export function KioskPanelClient({
             readOnly ? undefined : handleRefreshMaterialFlags
           }
           onChainRunNotReady={readOnly ? undefined : handleChainRunNotReady}
-          />
+          >
+            {children}
+          </KioskDailyQueue>
         </div>
       )}
     </div>
+      </KioskQueuePanelActionsProvider>
+    </KioskQueueBootstrapProvider>
   );
 }

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 
-import { getAppSession } from "@/lib/auth/session";
+import { getAppSession } from "@/lib/auth/app-session";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { StaffSectionTabsBar } from "@/components/navigation/staff-section-tabs-bar";
 import type { Role } from "@/lib/auth/nav";
