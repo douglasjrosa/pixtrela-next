@@ -530,8 +530,10 @@ export function KioskPanelClient({
     window.setTimeout(() => setFlashDocumentId(null), START_FLASH_MS);
     const startedAt = new Date().toISOString();
     const activeSource = catalog.length > 0 ? catalog : subTasks;
-    const mode = hasActiveSubTask(activeSource) ? "join" : "solo";
-    const optimistic = { documentId, startedAt, mode };
+    const mode: OptimisticKioskStart["mode"] = hasActiveSubTask(activeSource)
+      ? "join"
+      : "solo";
+    const optimistic: OptimisticKioskStart = { documentId, startedAt, mode };
     setOptimisticStart(optimistic);
     setSubTasks((current) =>
       applyOptimisticKioskStartToSubTasks(current, optimistic),
