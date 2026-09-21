@@ -24,6 +24,7 @@ import {
   canManageTeams,
   canViewBalance,
   canViewUsers,
+  canViewActivities,
 } from "./permissions";
 
 describe("canManageTasks", () => {
@@ -189,6 +190,24 @@ describe("canViewUsers", () => {
     expect(canViewUsers("admin")).toBe(true);
     expect(canViewUsers("colaborator")).toBe(false);
     expect(canViewUsers("kiosk")).toBe(false);
+  });
+});
+
+describe("canViewActivities", () => {
+  it("allows admin only", () => {
+    expect(canViewActivities("admin")).toBe(true);
+    expect(canViewActivities("manager")).toBe(false);
+    expect(canViewActivities("leader")).toBe(false);
+    expect(canViewActivities("colaborator")).toBe(false);
+    expect(canViewActivities("kiosk")).toBe(false);
+  });
+});
+
+describe("canAccessRoute activities", () => {
+  it("allows the activities route only for admin", () => {
+    expect(canAccessRoute("admin", "/activities")).toBe(true);
+    expect(canAccessRoute("manager", "/activities")).toBe(false);
+    expect(canAccessRoute("leader", "/activities")).toBe(false);
   });
 });
 

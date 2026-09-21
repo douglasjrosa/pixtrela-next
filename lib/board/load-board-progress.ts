@@ -15,6 +15,7 @@ import {
   type BoardTaskProgressInput,
   type KanbanProgressStatus,
 } from "@/lib/business/task-progress";
+import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 import { getDb } from "@/lib/db/client";
 import {
   activities,
@@ -318,7 +319,12 @@ export async function loadBoardProgressByTaskId(
         colaboratorId: activities.colaboratorId,
       })
       .from(activities)
-      .where(inArray(activities.subTaskId, producingSubTaskIds))
+      .where(
+        and(
+          ACTIVE_ACTIVITY,
+          inArray(activities.subTaskId, producingSubTaskIds),
+        ),
+      )
       .orderBy(asc(activities.timestamp))
       .limit(ACTIVITY_PAGE_SIZE);
 
@@ -345,7 +351,12 @@ export async function loadBoardProgressByTaskId(
       })
       .from(activities)
       .innerJoin(subTasks, eq(activities.subTaskId, subTasks.id))
-      .where(inArray(subTasks.taskId, finishedTaskIds))
+      .where(
+        and(
+          ACTIVE_ACTIVITY,
+          inArray(subTasks.taskId, finishedTaskIds),
+        ),
+      )
       .limit(ACTIVITY_PAGE_SIZE);
 
     applyFinishedParticipantCountsFromRows(

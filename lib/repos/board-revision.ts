@@ -8,6 +8,7 @@ import {
   subTasks,
   tasks,
 } from "@/drizzle/schema";
+import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 import { getDb, type Db } from "@/lib/db/client";
 
 const ACTIVE_TASK_FILTER = eq(tasks.active, true);
@@ -41,7 +42,7 @@ export async function getBoardRevision(db: Db = getDb()): Promise<BoardRevision>
         .from(activities)
         .innerJoin(subTasks, eq(activities.subTaskId, subTasks.id))
         .innerJoin(tasks, eq(subTasks.taskId, tasks.id))
-        .where(ACTIVE_TASK_FILTER),
+        .where(and(ACTIVE_TASK_FILTER, ACTIVE_ACTIVITY)),
       db
         .select({ count: count() })
         .from(subTaskAssignees)

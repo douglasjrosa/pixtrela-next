@@ -108,6 +108,44 @@ export function formatDateTimePtBr(value: string | null | undefined): string {
   });
 }
 
+const ACTIVITY_PART_OPTIONS: Intl.DateTimeFormatOptions = {
+  hour: "2-digit",
+  minute: "2-digit",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hourCycle: "h23",
+  timeZone: DEFAULT_TIME_ZONE,
+};
+
+function activityPart(
+  parts: Intl.DateTimeFormatPart[],
+  type: Intl.DateTimeFormatPartTypes,
+): string {
+  return parts.find((part) => part.type === type)?.value ?? "";
+}
+
+/**
+ * Activity list datetime: `15h32 - 21/09/2026` in the app time zone.
+ */
+export function formatActivityDateTimePtBr(
+  value: string | Date | null | undefined,
+): string {
+  if (!value) return "—";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const parts = new Intl.DateTimeFormat(
+    "pt-BR",
+    ACTIVITY_PART_OPTIONS,
+  ).formatToParts(date);
+  const hour = activityPart(parts, "hour");
+  const minute = activityPart(parts, "minute");
+  const day = activityPart(parts, "day");
+  const month = activityPart(parts, "month");
+  const year = activityPart(parts, "year");
+  return `${hour}h${minute} - ${day}/${month}/${year}`;
+}
+
 /** Formats time as hh:mm for pt-BR UI. */
 export function formatTimePtBr(value: string | null | undefined): string {
   if (!value) return "—";

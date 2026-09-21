@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
+import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
+
 import { activities, subTasks, tasks } from "@/drizzle/schema";
 import {
   allocateChainTimeline,
@@ -172,7 +174,7 @@ async function loadRunActivities(
       chainRunId: activities.chainRunId,
     })
     .from(activities)
-    .where(eq(activities.chainRunId, chainRunId))
+    .where(and(eq(activities.chainRunId, chainRunId), ACTIVE_ACTIVITY))
     .orderBy(asc(activities.timestamp));
   return rows.map((row) => ({
     ...row,
@@ -471,6 +473,7 @@ async function listChainActivityLookupRows(
     .from(activities)
     .where(
       and(
+        ACTIVE_ACTIVITY,
         inArray(activities.subTaskId, [...subTaskIds]),
         inArray(activities.action, ["started", "stoped"]),
       ),
@@ -517,6 +520,7 @@ export async function findLatestChainRunIdForSubTask(
     .from(activities)
     .where(
       and(
+        ACTIVE_ACTIVITY,
         eq(activities.subTaskId, subTaskId),
         eq(activities.colaboratorId, colaboratorId),
       ),
@@ -782,6 +786,7 @@ async function sumStoppedQtyExcludingRun(
     .from(activities)
     .where(
       and(
+        ACTIVE_ACTIVITY,
         eq(activities.subTaskId, subTaskId),
         eq(activities.action, "stoped"),
       ),
@@ -1647,6 +1652,7 @@ async function findOpenStartedRowsForColaborator(
     .from(activities)
     .where(
       and(
+        ACTIVE_ACTIVITY,
         eq(activities.colaboratorId, colaboratorId),
         inArray(activities.action, ["started", "stoped"]),
       ),

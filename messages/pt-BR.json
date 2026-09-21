@@ -102,6 +102,7 @@
     "exchange": "Trocas",
     "store": "Loja",
     "users": "Usuários",
+    "activities": "Atividades",
     "profile": "Perfil",
     "dashboard": "Painel",
     "myBalance": "Meu saldo",
@@ -222,6 +223,49 @@
       "selectTasks": "Selecionar",
       "cancelSelection": "Cancelar seleção"
     }
+  },
+  "activities": {
+    "title": "Atividades",
+    "newActivity": "Nova atividade",
+    "editActivity": "Editar atividade",
+    "actionColumn": "Ação",
+    "colaborator": "Colaborador",
+    "dateTime": "Data e Hora",
+    "date": "Data",
+    "time": "Hora",
+    "qty": "Qtde.",
+    "subtask": "Subtarefa",
+    "action": {
+      "started": "Iniciada",
+      "stoped": "Parada"
+    },
+    "inactive": "Arquivada",
+    "filters": "Filtros",
+    "actionFilter": "Ação",
+    "applyFilters": "Aplicar",
+    "clearFilters": "Limpar",
+    "search": "Buscar colaborador, subtarefa ou tarefa",
+    "dateFrom": "De",
+    "dateTo": "Até",
+    "showArchived": "Exibir atividades arquivadas",
+    "dateRangeTooLong": "O intervalo entre De e Até não pode ser maior que 3 meses.",
+    "empty": "Nenhuma atividade encontrada.",
+    "listLoading": "Carregando atividades...",
+    "archive": "Arquivar",
+    "archiveTitle": "Arquivar atividades",
+    "archiveSelected": "Arquivar selecionadas",
+    "archiveReason": "Motivo do arquivo: {reason}",
+    "reactivate": "Reativar",
+    "reactivated": "Atividade reativada.",
+    "delete": "Excluir",
+    "deleteSelected": "Excluir selecionadas",
+    "bulkArchived": "Atividades arquivadas.",
+    "bulkDeleted": "Atividades excluídas.",
+    "bulkDeleteTitle": "Excluir atividades",
+    "bulkDeleteConfirm": "Excluir permanentemente as atividades selecionadas?",
+    "saved": "Atividade salva.",
+    "error": "Não foi possível concluir a operação.",
+    "validationError": "Verifique os campos do formulário."
   },
   "kanban": {
     "title": "Quadro de produção",
@@ -1318,10 +1362,6 @@
     "idleLockHome": "Totem aguardando identificação",
     "idleLockAuth": "Tempo para identificação em andamento",
     "idleLockButton": "Encerrar sessão do totem"
-  },
-  "activities": {
-    "started": "Atividade iniciada.",
-    "stopped": "Atividade finalizada."
   },
   "exchangeHistory": {
     "title": "Minhas trocas",

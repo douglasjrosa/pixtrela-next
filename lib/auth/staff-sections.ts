@@ -7,6 +7,7 @@ import {
   canViewExchanges,
   canViewQueues,
   canViewUsers,
+  canViewActivities,
 } from "./permissions";
 
 export interface StaffSectionTab {
@@ -21,6 +22,7 @@ export interface StaffSectionLabels {
   queues: string;
   teams: string;
   users: string;
+  activities: string;
   awards: string;
   exchanges: string;
 }
@@ -34,6 +36,7 @@ export interface TeamsSectionPaths {
   queues: string;
   teams: string;
   users: string;
+  activities: string;
 }
 
 export interface AwardsSectionPaths {
@@ -89,6 +92,13 @@ export function teamsSectionTabs(
       href: paths.users,
       label: labels.users,
       activePrefix: paths.users,
+    });
+  }
+  if (canViewActivities(role)) {
+    tabs.push({
+      href: paths.activities,
+      label: labels.activities,
+      activePrefix: paths.activities,
     });
   }
   return tabs;

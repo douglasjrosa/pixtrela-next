@@ -182,6 +182,7 @@ const PREFIX_RULES: { prefix: string; key: RouteThemeKey }[] = [
   { prefix: "/awards", key: "awards" },
   { prefix: "/exchanges", key: "exchanges" },
   { prefix: "/users", key: "users" },
+  { prefix: "/activities", key: "users" },
   { prefix: "/kiosk", key: "kiosk" },
   { prefix: "/login", key: "login" },
 ];
@@ -197,6 +198,7 @@ const RESERVED_TOP_SEGMENTS = new Set([
   "awards",
   "exchanges",
   "users",
+  "activities",
   "settings",
   "balance",
   "exchange",

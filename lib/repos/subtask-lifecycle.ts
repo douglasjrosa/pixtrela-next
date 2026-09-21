@@ -17,6 +17,7 @@ import { resolveSubTaskActivationStatusUpdates } from "@/lib/business/subtask-ac
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { calculateTaskTotalTimeSpent } from "@/lib/business/task-time-spent";
 import type { ActivityTimeRow } from "@/lib/business/task-time-spent";
+import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 import { getDb, type Db } from "@/lib/db/client";
 import { loadHasAssignedFlagsBySubTaskId } from "@/lib/repos/material-flags";
 
@@ -74,6 +75,7 @@ async function loadTaskSubTaskContext(
     .from(activities)
     .where(
       and(
+        ACTIVE_ACTIVITY,
         inArray(activities.subTaskId, subTaskIds),
         inArray(activities.action, ["started", "stoped"]),
       ),

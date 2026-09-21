@@ -19,6 +19,7 @@ async function staffSectionLabels() {
     queues: t("queues"),
     teams: t("teams"),
     users: t("users"),
+    activities: t("activities"),
     awards: t("awards"),
     exchanges: t("exchange"),
   };

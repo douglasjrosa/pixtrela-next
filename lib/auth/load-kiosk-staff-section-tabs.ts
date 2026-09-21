@@ -6,6 +6,7 @@ import {
   staffTeamsPath,
   staffTemplatesTasksPath,
   staffUsersPath,
+  staffActivitiesPath,
 } from "@/lib/business/kiosk-staff-paths";
 
 import {
@@ -33,6 +34,7 @@ export async function loadKioskTeamsSectionTabs(
     queues: staffQueuesPath(staffUserId),
     teams: staffTeamsPath(staffUserId),
     users: staffUsersPath(staffUserId),
+    activities: staffActivitiesPath(staffUserId),
   });
 }
 

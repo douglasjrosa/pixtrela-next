@@ -1,5 +1,7 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
+import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
+
 import {
   activities,
   currencies,
@@ -330,6 +332,7 @@ async function fetchOpenStartedSubTaskIdsForColaborator(
     .from(activities)
     .where(
       and(
+        ACTIVE_ACTIVITY,
         eq(activities.colaboratorId, colaboratorId),
         inArray(activities.action, ["started", "stoped"]),
       ),
@@ -407,6 +410,7 @@ async function loadActivityEnrichment(
     .from(activities)
     .where(
       and(
+        ACTIVE_ACTIVITY,
         inArray(activities.subTaskId, subTaskIds),
         inArray(activities.action, ["started", "stoped"]),
       ),
@@ -888,6 +892,7 @@ async function attachOpenRunPeerFields(
     .from(activities)
     .where(
       and(
+        ACTIVE_ACTIVITY,
         inArray(activities.chainRunId, runIds),
         inArray(activities.action, ["started", "stoped"]),
       ),
@@ -1173,6 +1178,7 @@ async function sumStoppedQty(subTaskId: string, db: Db): Promise<number> {
     .from(activities)
     .where(
       and(
+        ACTIVE_ACTIVITY,
         eq(activities.subTaskId, subTaskId),
         eq(activities.action, "stoped"),
       ),
@@ -1193,6 +1199,7 @@ async function fetchActiveColaboratorIdsForSubTask(
     .from(activities)
     .where(
       and(
+        ACTIVE_ACTIVITY,
         eq(activities.subTaskId, subTaskId),
         inArray(activities.action, ["started", "stoped"]),
       ),
@@ -1333,6 +1340,7 @@ async function creditStopCurrency(
       .from(activities)
       .where(
         and(
+          ACTIVE_ACTIVITY,
           eq(activities.subTaskId, input.subTaskId),
           inArray(activities.action, ["started", "stoped"]),
         ),
@@ -1420,6 +1428,7 @@ export async function stopSubTask(
     .where(
       and(
         eq(activities.subTaskId, subTaskId),
+        ACTIVE_ACTIVITY,
         eq(activities.colaboratorId, colaboratorId),
         inArray(activities.action, ["started", "stoped"]),
       ),
@@ -1635,6 +1644,7 @@ export async function recordActivityViaKiosk(
     .from(activities)
     .where(
       and(
+        ACTIVE_ACTIVITY,
         eq(activities.subTaskId, input.subTaskId),
         eq(activities.colaboratorId, input.colaboratorId),
         eq(activities.action, "stoped"),

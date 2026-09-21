@@ -61,14 +61,16 @@ describe("kiosk-staff-access", () => {
     const {
       kioskStaffNavPaths,
       staffBoardPath,
+      staffTasksPath,
       staffQueuesPath,
       staffQueueColaboratorPath,
       staffProfilePath,
-      staffTasksPath,
+      staffActivitiesPath,
     } = await import("./kiosk-staff-paths");
     expect(staffBoardPath("u1")).toBe("/kiosk/staff/u1/board");
     expect(staffTasksPath("u1")).toBe("/kiosk/staff/u1/tasks");
     expect(staffQueuesPath("u1")).toBe("/kiosk/staff/u1/queues");
+    expect(staffActivitiesPath("u1")).toBe("/kiosk/staff/u1/activities");
     expect(staffQueueColaboratorPath("u1", "c1")).toBe(
       "/kiosk/staff/u1/queues/c1",
     );
