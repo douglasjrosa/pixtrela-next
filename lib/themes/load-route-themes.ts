@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { listRouteThemes as listRouteThemesRepo } from "@/lib/repos/settings";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
@@ -69,7 +71,7 @@ function mapBackgroundImage(row: {
   };
 }
 
-export async function loadRouteThemes(): Promise<RouteThemeView[]> {
+export const loadRouteThemes = cache(async (): Promise<RouteThemeView[]> => {
   try {
     const rows = await listRouteThemesRepo();
     const themes: RouteThemeView[] = [];
@@ -136,4 +138,4 @@ export async function loadRouteThemes(): Promise<RouteThemeView[]> {
     rethrowIfNavigationError(error);
     return [];
   }
-}
+});

@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import {
   DEFAULT_KIOSK_SESSION_IDLE_SECONDS,
   kioskSessionIdleSecondsToMs,
@@ -11,11 +13,13 @@ import {
   normalizeKioskQueuePageSize,
 } from "@/lib/schemas/kiosk-setting";
 
-export async function loadKioskSettings(): Promise<{
+export type KioskSettingsView = {
   sessionIdleSeconds: number;
   maxSimultaneousSubtaskIntervalSeconds: number;
   queuePageSize: number;
-}> {
+};
+
+export const loadKioskSettings = cache(async (): Promise<KioskSettingsView> => {
   const row = await getKioskSettings();
   return {
     sessionIdleSeconds: normalizeKioskSessionIdleSeconds(
@@ -31,7 +35,7 @@ export async function loadKioskSettings(): Promise<{
       Number(row?.queuePageSize ?? DEFAULT_KIOSK_QUEUE_PAGE_SIZE),
     ),
   };
-}
+});
 
 export async function loadKioskSessionIdleSeconds(): Promise<number> {
   const settings = await loadKioskSettings();

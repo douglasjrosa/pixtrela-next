@@ -5,7 +5,7 @@ import { assertKioskStaffCanManageColaborator } from "@/lib/business/kiosk-staff
 import { staffQueuesPath } from "@/lib/business/kiosk-staff-paths";
 import { loadKioskQueueSectionPage } from "@/lib/kiosk/load-assigned-subtasks";
 import { loadKioskColaboratorProfile } from "@/lib/kiosk/load-colaborator-profile";
-import { loadKioskLiveChainIntervalSeconds } from "@/lib/kiosk/load-session-idle";
+import { loadKioskSettings } from "@/lib/kiosk/load-session-idle";
 import { findUserFacePhotoUrl } from "@/lib/repos/users";
 import type { KioskQueueSectionPage } from "@/lib/repos/kiosk-subtasks";
 import { DEFAULT_KIOSK_QUEUE_PAGE_SIZE } from "@/lib/schemas/kiosk-setting";
@@ -39,14 +39,20 @@ export default async function KioskStaffQueueColaboratorPage({
     notFound();
   }
 
-  const [liberadas, profile, facePhotoUrl, liveChainIntervalSeconds, themes] =
-    await Promise.all([
-      loadKioskQueueSectionPage({ colaboratorId, section: "liberadas" }),
-      loadKioskColaboratorProfile(colaboratorId),
-      findUserFacePhotoUrl(colaboratorId),
-      loadKioskLiveChainIntervalSeconds(),
-      loadRouteThemes(),
-    ]);
+  const kioskSettings = await loadKioskSettings();
+
+  const [liberadas, profile, facePhotoUrl, themes] = await Promise.all([
+    loadKioskQueueSectionPage({
+      colaboratorId,
+      section: "liberadas",
+      liveChainIntervalSeconds:
+        kioskSettings.maxSimultaneousSubtaskIntervalSeconds,
+      queuePageSize: kioskSettings.queuePageSize,
+    }),
+    loadKioskColaboratorProfile(colaboratorId),
+    findUserFacePhotoUrl(colaboratorId),
+    loadRouteThemes(),
+  ]);
 
   const kioskTheme = themes.find((entry) => entry.routeKey === "kiosk") ?? null;
   const toolbarTopRadiusClass =
@@ -60,7 +66,9 @@ export default async function KioskStaffQueueColaboratorPage({
         avatarUrl={profile?.avatarUrl ?? null}
         facePhotoUrl={facePhotoUrl}
         initialLiberadas={liberadas ?? EMPTY_LIBERADAS}
-        maxSimultaneousSubtaskIntervalSeconds={liveChainIntervalSeconds}
+        maxSimultaneousSubtaskIntervalSeconds={
+          kioskSettings.maxSimultaneousSubtaskIntervalSeconds
+        }
         staffUserId={userId}
         allowFaceEdit
         backHref={staffQueuesPath(userId)}

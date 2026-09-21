@@ -904,13 +904,17 @@ export async function listKioskQueueSectionPage(
     section: KioskQueueSectionKey;
     cursor?: string | null;
     liveChainIntervalSeconds?: number;
+    queuePageSize?: number;
   },
   db: Db = getDb(),
 ): Promise<KioskQueueSectionPage> {
-  const settings = await getKioskSettings(db);
-  const queuePageSize = normalizeKioskQueuePageSize(
-    Number(settings?.queuePageSize ?? DEFAULT_KIOSK_QUEUE_PAGE_SIZE),
-  );
+  let queuePageSize = input.queuePageSize;
+  if (queuePageSize == null) {
+    const settings = await getKioskSettings(db);
+    queuePageSize = normalizeKioskQueuePageSize(
+      Number(settings?.queuePageSize ?? DEFAULT_KIOSK_QUEUE_PAGE_SIZE),
+    );
+  }
 
   const queue = await listKioskQueueData(input.colaboratorId, db);
   const units = buildKioskQueueUnits({

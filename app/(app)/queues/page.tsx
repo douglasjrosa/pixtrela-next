@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
+import { getAppSession } from "@/lib/auth/session";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { KioskStaffQueuesPanel } from "@/components/kiosk/kiosk-staff-queues-panel";
 import {
@@ -14,7 +14,7 @@ import type { Role } from "@/lib/auth/nav";
 import { canViewQueues } from "@/lib/auth/permissions";
 
 export default async function AppQueuesPage() {
-  const session = await auth();
+  const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
   const userId = session?.user?.id;
 
