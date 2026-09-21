@@ -279,7 +279,7 @@ describe("kiosk queue suite — two workers", () => {
         }),
       ],
     });
-    expect(visibleStartIds(units)).toEqual(["qty"]);
+    expect(visibleStartIds(units)).toEqual(["qty", "dur"]);
   });
 
   it("hides join when isolated duration is at capacity", () => {
@@ -305,9 +305,14 @@ describe("kiosk queue suite — two workers", () => {
       ],
     });
     expect(visibleStartIds(units)).toEqual(["next"]);
+    expect(
+      units.map((unit) =>
+        unit.type === "isolated" ? unit.subTask.documentId : unit.headId,
+      ),
+    ).toEqual(["next"]);
   });
 
-  it("shows chain join to the idle peer and not a second idle card", () => {
+  it("shows chain join to the idle peer and start on the next empty card", () => {
     const members = [
       queueTask({
         documentId: "a",
@@ -348,7 +353,8 @@ describe("kiosk queue suite — two workers", () => {
       ],
     });
     expect(units[0]).toMatchObject({ type: "group", showStart: true });
-    expect(idleStartCount(units)).toBe(1);
+    expect(visibleStartIds(units)).toEqual(["a", "solo"]);
+    expect(idleStartCount(units)).toBe(2);
   });
 });
 

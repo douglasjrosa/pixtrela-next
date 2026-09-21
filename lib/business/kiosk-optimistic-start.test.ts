@@ -192,12 +192,20 @@ describe("kiosk optimistic start", () => {
       producing ? [producing] : [],
       [],
       "user-1",
+      0,
+      producing ? [producing] : [],
+      {
+        documentId: "st-1",
+        startedAt,
+        mode: "solo",
+      },
     );
 
     expect(next.producingUnits).toHaveLength(1);
     expect(next.producingUnits[0]).toMatchObject({
       type: "isolated",
       showStart: false,
+      hideActions: true,
       subTask: {
         documentId: "st-1",
         status: "producing",
@@ -235,12 +243,13 @@ describe("kiosk optimistic start", () => {
     expect([...next.producingUnits, ...next.units]).toHaveLength(1);
   });
 
-  it("does not grant a second idle start on a waiting card while another is producing", () => {
+  it("grants start on an occupied peer card and the next empty waiting card", () => {
     const producing = stub({
       documentId: "st-1",
       status: "producing",
       startedAt: null,
       activeWorkerCount: 1,
+      maxSameTimeWorkers: 2,
     });
     const waiting = stub({
       documentId: "st-2",
@@ -271,20 +280,17 @@ describe("kiosk optimistic start", () => {
       "user-1",
     );
 
-    expect(
-      next.producingUnits.map((unit) =>
-        unit.type === "isolated"
-          ? { id: unit.subTask.documentId, showStart: unit.showStart }
-          : null,
-      ),
-    ).toEqual([{ id: "st-1", showStart: false }]);
+    expect(next.producingUnits).toHaveLength(0);
     expect(
       next.units.map((unit) =>
         unit.type === "isolated"
           ? { id: unit.subTask.documentId, showStart: unit.showStart }
           : null,
       ),
-    ).toEqual([{ id: "st-2", showStart: true }]);
+    ).toEqual([
+      { id: "st-1", showStart: true },
+      { id: "st-2", showStart: true },
+    ]);
   });
 
   it("settles chain stop when server queue no longer has the open run", () => {

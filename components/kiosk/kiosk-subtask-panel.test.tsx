@@ -247,6 +247,38 @@ describe("KioskSubtaskPanel", () => {
     expect(screen.queryByRole("button", { name: "Iniciar" })).toBeNull();
   });
 
+  it("hides start and exit on an optimistic producing card", () => {
+    const producing = kioskSubTask({
+      documentId: "a",
+      name: "Tarefa A",
+      status: "producing",
+      startedAt: "2026-06-05T10:00:00.000Z",
+      activeWorkerCount: 1,
+    });
+
+    renderWithIntl(
+      <KioskSubtaskPanel
+        units={[
+          {
+            type: "isolated",
+            subTask: producing,
+            helperMode: false,
+            showStart: false,
+            hideActions: true,
+          },
+        ]}
+        allSubTasks={[producing]}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Iniciar" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Sair da subtarefa" }),
+    ).toBeNull();
+  });
+
   it("shows qty form for producing qty subtask", async () => {
     const user = userEvent.setup();
     const producing = [

@@ -113,6 +113,39 @@ describe("KioskChainGroupCard", () => {
     expect(screen.getByRole("button", { name: "Parar" })).toBeEnabled();
   });
 
+  it("hides start and stop on an optimistic producing group", () => {
+    const members = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Cortar",
+        status: "producing",
+        startedAt: "2026-08-16T12:00:00.000Z",
+      }),
+      kioskSubTask({
+        documentId: "b",
+        name: "Embalar",
+        index: 1,
+        linkedToPrevious: true,
+        status: "waiting",
+      }),
+    ];
+    renderWithIntl(
+      <KioskChainGroupCard
+        unit={{
+          ...activeGroupProps(members),
+          hideActions: true,
+          showStart: false,
+        }}
+        onStartChain={vi.fn()}
+        onConfirmChainStop={vi.fn()}
+        onAdvanceChain={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Iniciar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Parar" })).toBeNull();
+  });
+
   it("opens a wizard modal while collecting chain stop answers", async () => {
     const user = userEvent.setup();
     const members = [

@@ -226,7 +226,7 @@ describe("buildKioskQueueUnits", () => {
     ]);
   });
 
-  it("grants only one idle start across a producing leftover and a waiting leftover", () => {
+  it("grants start on an occupied leftover and the next empty leftover", () => {
     const units = buildKioskQueueUnits({
       viewerId: "u1",
       subTasks: [
@@ -235,6 +235,8 @@ describe("buildKioskQueueUnits", () => {
           name: "Cut",
           index: 0,
           status: "producing",
+          activeWorkerCount: 1,
+          maxSameTimeWorkers: 2,
         }),
         subTask({
           documentId: "pack",
@@ -256,6 +258,8 @@ describe("buildKioskQueueUnits", () => {
           index: 1,
           linkedToPrevious: true,
           status: "producing",
+          activeWorkerCount: 1,
+          maxSameTimeWorkers: 2,
         }),
         subTask({
           documentId: "pack-head",
@@ -279,7 +283,7 @@ describe("buildKioskQueueUnits", () => {
           : null,
       ),
     ).toEqual([
-      { id: "cut", showStart: false },
+      { id: "cut", showStart: true },
       { id: "pack", showStart: true },
     ]);
   });
@@ -295,6 +299,134 @@ describe("buildKioskQueueUnits", () => {
     expect(units.map((unit) => unit.type === "isolated" && unit.showStart)).toEqual(
       [true, false],
     );
+  });
+
+  it("hides an at-capacity card from the idle third assignee", () => {
+    const units = buildKioskQueueUnits({
+      viewerId: "u3",
+      subTasks: [
+        subTask({
+          documentId: "shared",
+          name: "Shared",
+          index: 0,
+          status: "waiting",
+          activeWorkerCount: 2,
+          maxSameTimeWorkers: 2,
+          assignedToIds: ["u1", "u2", "u3"],
+        }),
+        subTask({
+          documentId: "next",
+          name: "Next",
+          index: 1,
+          assignedToIds: ["u3"],
+        }),
+      ],
+    });
+    expect(
+      units.map((unit) =>
+        unit.type === "isolated" ? unit.subTask.documentId : unit.headId,
+      ),
+    ).toEqual(["next"]);
+    expect(units[0]).toMatchObject({ showStart: true });
+  });
+
+  it("grants start on the next card when the current card is occupied", () => {
+    const units = buildKioskQueueUnits({
+      viewerId: "u1",
+      subTasks: [
+        subTask({
+          documentId: "a",
+          name: "A",
+          index: 0,
+          status: "producing",
+          activeWorkerCount: 1,
+          maxSameTimeWorkers: 2,
+          assignedToIds: ["u1", "u2"],
+        }),
+        subTask({ documentId: "b", name: "B", index: 1 }),
+        subTask({ documentId: "c", name: "C", index: 2 }),
+      ],
+    });
+    expect(
+      units.map((unit) =>
+        unit.type === "isolated"
+          ? { id: unit.subTask.documentId, showStart: unit.showStart }
+          : null,
+      ),
+    ).toEqual([
+      { id: "a", showStart: true },
+      { id: "b", showStart: true },
+      { id: "c", showStart: false },
+    ]);
+  });
+
+  it("keeps peer-occupied cards in pending, not producing, for an idle viewer", () => {
+    const units = buildKioskQueueUnits({
+      viewerId: "u2",
+      subTasks: [
+        subTask({
+          documentId: "a",
+          name: "A",
+          index: 0,
+          status: "producing",
+          activeWorkerCount: 1,
+          maxSameTimeWorkers: 2,
+          assignedToIds: ["u1", "u2"],
+        }),
+      ],
+    });
+    const sections = splitQueueUnitsBySection(units);
+    expect(sections.producing).toHaveLength(0);
+    expect(sections.pending).toHaveLength(1);
+    expect(sections.pending[0]).toMatchObject({ showStart: true });
+  });
+
+  it("grants start on an occupied group and the next empty isolated card", () => {
+    const units = buildKioskQueueUnits({
+      viewerId: "u2",
+      subTasks: [
+        subTask({
+          documentId: "a",
+          name: "Chain A",
+          index: 0,
+          status: "producing",
+          activeWorkerCount: 1,
+          maxSameTimeWorkers: 2,
+          assignedToIds: ["u1", "u2"],
+        }),
+        subTask({
+          documentId: "b",
+          name: "Chain B",
+          index: 1,
+          linkedToPrevious: true,
+          maxSameTimeWorkers: 2,
+          assignedToIds: ["u1", "u2"],
+        }),
+        subTask({
+          documentId: "solo",
+          name: "Solo",
+          index: 2,
+          assignedToIds: ["u2"],
+        }),
+      ],
+      openRuns: [
+        {
+          chainHeadId: "a",
+          chainRunId: "run-1",
+          principalId: "u1",
+          runStartedAt: "2026-08-16T12:00:00.000Z",
+        },
+      ],
+    });
+    expect(
+      units.map((unit) => ({
+        id: unit.type === "group" ? unit.headId : unit.subTask.documentId,
+        showStart: unit.showStart,
+      })),
+    ).toEqual([
+      { id: "a", showStart: true },
+      { id: "solo", showStart: true },
+    ]);
   });
 
   it("shows join start on the next same-task sibling within the interval", () => {

@@ -51,6 +51,7 @@ import {
   type KioskSubTask,
 } from "@/lib/business/subtask-queue";
 import { buildKioskQueueFingerprint } from "@/lib/kiosk/queue-fingerprint";
+import { kioskActionErrorMessage } from "@/lib/business/kiosk-action-error";
 import { mergeKioskCatalog } from "@/lib/business/kiosk-queue-catalog-scope";
 import { KioskQueueBootstrapProvider } from "@/components/kiosk/kiosk-queue-bootstrap-context";
 import { KioskQueuePanelActionsProvider } from "@/components/kiosk/kiosk-queue-panel-actions-context";
@@ -94,19 +95,6 @@ const KioskColaboratorPasswordForm = dynamic(
     ),
   { ssr: false },
 );
-
-function kioskActionErrorMessage(
-  t: (key: string) => string,
-  error: unknown,
-): string {
-  const code = error instanceof Error ? error.message : "";
-  if (code === "flagsRequired") return t("flagsRequired");
-  if (code === "subTaskHasNoCategory") return t("subTaskHasNoCategory");
-  if (code === "flagWrongCategory") return t("flagWrongCategory");
-  if (code === "flagOccupied") return t("flagOccupied");
-  if (code === "chainStopInconsistent") return t("chainStopInconsistent");
-  return t("exitFailed");
-}
 
 type PasswordSaveError = Extract<
   KioskColaboratorPasswordResult,
@@ -317,6 +305,7 @@ export function KioskPanelClient({
         colaboratorId,
         maxSimultaneousSubtaskIntervalSeconds,
         displayCatalog,
+        optimisticStart,
       ),
     }),
     [
@@ -326,6 +315,7 @@ export function KioskPanelClient({
       displaySubTasks,
       liberadas,
       maxSimultaneousSubtaskIntervalSeconds,
+      optimisticStart,
     ],
   );
 
@@ -605,12 +595,6 @@ export function KioskPanelClient({
       : "solo";
     const optimistic: OptimisticKioskStart = { documentId, startedAt, mode };
     setOptimisticStart(optimistic);
-    setSubTasks((current) =>
-      applyOptimisticKioskStartToSubTasks(current, optimistic),
-    );
-    setCatalog((current) =>
-      applyOptimisticKioskStartToSubTasks(current, optimistic),
-    );
     setQueueBusy("start");
     runBackgroundAction(async () => {
       if (mode === "join") {
@@ -618,8 +602,8 @@ export function KioskPanelClient({
       } else {
         await startSubTask(colaboratorId, documentId, staffUserId);
       }
-    }, () => {
-      showKioskErrorToast(t("startFailed"));
+    }, (error) => {
+      showKioskErrorToast(kioskActionErrorMessage(t, error, "startFailed"));
     });
   }
 
@@ -635,17 +619,11 @@ export function KioskPanelClient({
       chainHeadId: headId,
     };
     setOptimisticStart(optimistic);
-    setSubTasks((current) =>
-      applyOptimisticKioskStartToSubTasks(current, optimistic),
-    );
-    setCatalog((current) =>
-      applyOptimisticKioskStartToSubTasks(current, optimistic),
-    );
     setQueueBusy("start");
     runBackgroundAction(async () => {
       await startChain(colaboratorId, headId, staffUserId);
-    }, () => {
-      showKioskErrorToast(t("startFailed"));
+    }, (error) => {
+      showKioskErrorToast(kioskActionErrorMessage(t, error, "startFailed"));
     });
   }
 
@@ -658,7 +636,7 @@ export function KioskPanelClient({
           await refreshAfterMutation();
         } catch (error) {
           rethrowIfNavigationError(error);
-          showKioskErrorToast(t("exitFailed"));
+          showKioskErrorToast(kioskActionErrorMessage(t, error, "exitFailed"));
         }
       })();
     },
@@ -700,7 +678,7 @@ export function KioskPanelClient({
       showKioskSuccessToast(t("exitRecorded"));
     }, (error) => {
       setOptimisticChainStop(null);
-      showKioskErrorToast(kioskActionErrorMessage(t, error));
+      showKioskErrorToast(kioskActionErrorMessage(t, error, "exitFailed"));
     });
   }
 
@@ -738,7 +716,7 @@ export function KioskPanelClient({
       showKioskSuccessToast(t("exitRecorded"));
     }, (error) => {
       setOptimisticExit(null);
-      showKioskErrorToast(kioskActionErrorMessage(t, error));
+      showKioskErrorToast(kioskActionErrorMessage(t, error, "exitFailed"));
     });
   }
 
@@ -750,7 +728,7 @@ export function KioskPanelClient({
       showKioskSuccessToast(t("flagsReleased"));
       setQueueBusy(null);
     }, (error) => {
-      showKioskErrorToast(kioskActionErrorMessage(t, error));
+      showKioskErrorToast(kioskActionErrorMessage(t, error, "exitFailed"));
     });
   }
 

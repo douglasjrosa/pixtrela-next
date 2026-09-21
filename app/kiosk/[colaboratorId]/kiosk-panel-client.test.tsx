@@ -166,6 +166,10 @@ describe("KioskPanelClient", () => {
     expect(screen.getByText("Cortar")).toBeInTheDocument();
     expect(screen.getByText("Produzindo")).toBeInTheDocument();
     expect(screen.queryByText("Processando...")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Iniciar" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Sair da subtarefa" }),
+    ).toBeNull();
     expect(startSubTask).toHaveBeenCalledWith("u-1", "st-1", undefined);
 
     await act(async () => {

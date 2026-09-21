@@ -2,6 +2,7 @@ import {
   applyQueueUnitStartVisibility,
   isProducingQueueUnit,
   queueUnitCursor,
+  shouldHideKioskQueueUnit,
   type KioskGroupUnit,
   type KioskIsolatedUnit,
   type KioskQueueUnit,
@@ -284,6 +285,7 @@ export function applyOptimisticStateToLiberadasSection(
   colaboratorId: string,
   maxSimultaneousSubtaskIntervalSeconds = 0,
   catalog: readonly KioskSubTask[] = queueContext,
+  optimisticStart: OptimisticKioskStart | null = null,
 ): LiberadasSectionSnapshot {
   const byId = subTasksById(queueContext);
   const patched = dedupeQueueUnits([
@@ -294,19 +296,51 @@ export function applyOptimisticStateToLiberadasSection(
       ? patchGroupUnit(unit, byId, openRuns)
       : patchIsolatedUnit(unit, byId),
   );
-  const withStart = applyQueueUnitStartVisibility(patched, {
+  const visible = patched.filter(
+    (unit) => !shouldHideKioskQueueUnit(unit, colaboratorId),
+  );
+  const withStart = applyQueueUnitStartVisibility(visible, {
     viewerId: colaboratorId,
     subTasks: queueContext,
     allTaskSubTasks: catalog.length > 0 ? catalog : queueContext,
     maxSimultaneousSubtaskIntervalSeconds,
   });
+  const withOptimisticActions = applyOptimisticHideActions(
+    withStart,
+    optimisticStart,
+  );
 
   const producingUnits: KioskQueueUnit[] = [];
   const pendingUnits: KioskQueueUnit[] = [];
-  for (const unit of withStart) {
+  for (const unit of withOptimisticActions) {
     if (isProducingQueueUnit(unit)) producingUnits.push(unit);
     else pendingUnits.push(unit);
   }
 
   return { producingUnits, units: pendingUnits };
+}
+
+function matchesOptimisticStart(
+  unit: KioskQueueUnit,
+  start: OptimisticKioskStart,
+): boolean {
+  if (unit.type === "isolated") {
+    return unit.subTask.documentId === start.documentId;
+  }
+  return (
+    unit.headId === start.documentId ||
+    unit.headId === start.chainHeadId ||
+    unit.memberIds.includes(start.documentId)
+  );
+}
+
+function applyOptimisticHideActions(
+  units: readonly KioskQueueUnit[],
+  start: OptimisticKioskStart | null,
+): KioskQueueUnit[] {
+  if (!start) return [...units];
+  return units.map((unit) => {
+    if (!matchesOptimisticStart(unit, start)) return unit;
+    return { ...unit, showStart: false, hideActions: true };
+  });
 }

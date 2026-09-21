@@ -174,7 +174,7 @@ describeWithDb("kiosk queue suite — sessions", () => {
       const pageA = await liberadas(workerA!.id);
       const pageB = await liberadas(workerB!.id);
       expect(pageStartCount(pageA)).toBe(0);
-      expect(pageStartCount(pageB)).toBe(1);
+      expect(pageStartCount(pageB)).toBe(2);
 
       await startSubTask(workerB!.id, qtyId);
       expect(pageStartCount(await liberadas(workerA!.id))).toBe(0);
@@ -188,6 +188,48 @@ describeWithDb("kiosk queue suite — sessions", () => {
       expect(qtyRow?.status).toBe("finished");
       expect(pageStartCount(await liberadas(workerA!.id))).toBe(1);
       expect(pageStartCount(await liberadas(workerB!.id))).toBe(1);
+    },
+    45_000,
+  );
+
+  it(
+    "hides an at-capacity subtask from the idle third assignee",
+    async () => {
+      const seed = await seedQueueScenario({
+        label: "cap3",
+        workerCount: 3,
+        subTasks: [
+          {
+            name: "Shared",
+            sharingType: "duration",
+            expectedTime: 30,
+            maxSameTimeWorkers: 2,
+            index: 0,
+          },
+          {
+            name: "After",
+            sharingType: "duration",
+            expectedTime: 20,
+            index: 1,
+          },
+        ],
+      });
+      const [workerA, workerB, workerC] = seed.workers;
+      const sharedId = seed.subTasks[0]!.id;
+      const afterId = seed.subTasks[1]!.id;
+
+      await startSubTask(workerA!.id, sharedId);
+      await startSubTask(workerB!.id, sharedId);
+
+      const pageC = await liberadas(workerC!.id);
+      const visibleIds = [...pageC.producingUnits, ...pageC.units].map((unit) =>
+        unit.type === "group" ? unit.headId : unit.subTask.documentId,
+      );
+      expect(visibleIds).not.toContain(sharedId);
+      expect(visibleIds).toContain(afterId);
+      await expect(startSubTask(workerC!.id, sharedId)).rejects.toThrow(
+        "atWorkerCapacity",
+      );
     },
     45_000,
   );

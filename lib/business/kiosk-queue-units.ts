@@ -14,6 +14,7 @@ import { nextJoinableSubTask } from "@/lib/business/kiosk-live-chain";
 import {
   canStartSubTask,
   hasActiveSubTask,
+  isFinishedSubTask,
   isLockedSubTask,
   type KioskSubTask,
 } from "@/lib/business/subtask-queue";
@@ -37,6 +38,7 @@ export type KioskGroupUnit = {
   chainRunId: string | null;
   runStartedAt: string | null;
   showStart: boolean;
+  hideActions?: boolean;
 };
 
 export type KioskIsolatedUnit = {
@@ -44,6 +46,7 @@ export type KioskIsolatedUnit = {
   subTask: KioskSubTask;
   helperMode: boolean;
   showStart: boolean;
+  hideActions?: boolean;
 };
 
 export type KioskQueueUnit = KioskGroupUnit | KioskIsolatedUnit;
@@ -113,6 +116,33 @@ export function chainHasOtherActiveWorkers(
     if (viewerHere) return activeCount > 1;
     return activeCount > 0 || item.status === "producing";
   });
+}
+
+function isolatedHasActiveWorkers(item: KioskSubTask): boolean {
+  if ((item.activeWorkerCount ?? 0) > 0) return true;
+  return item.status === "producing";
+}
+
+export function queueUnitHasActiveWorkers(unit: KioskQueueUnit): boolean {
+  if (unit.type === "isolated") return isolatedHasActiveWorkers(unit.subTask);
+  if (unit.chainRunId) return true;
+  return unit.members.some(isolatedHasActiveWorkers);
+}
+
+export function shouldHideKioskQueueUnit(
+  unit: KioskQueueUnit,
+  viewerId: string,
+): boolean {
+  if (unit.type === "isolated") {
+    if (unit.subTask.startedAt) return false;
+    return isSubTaskAtWorkerCapacity(
+      unit.subTask.maxSameTimeWorkers ?? 1,
+      unit.subTask.activeWorkerCount ?? 0,
+    );
+  }
+  if (unit.principalActive) return false;
+  if (!queueUnitHasActiveWorkers(unit)) return false;
+  return !groupHasJoinSlot(unit.members, viewerId);
 }
 
 export function viewerWorkedChainMemberIds(
@@ -236,7 +266,10 @@ export function buildKioskQueueUnits(input: {
     });
   }
 
-  return applyQueueUnitStartVisibility(units, input);
+  const visibleUnits = units.filter(
+    (unit) => !shouldHideKioskQueueUnit(unit, input.viewerId),
+  );
+  return applyQueueUnitStartVisibility(visibleUnits, input);
 }
 
 export function applyQueueUnitStartVisibility(
@@ -258,28 +291,28 @@ export function applyQueueUnitStartVisibility(
   });
   const joinableId = joinable?.documentId ?? null;
   const queue = [...queueContext];
-  let idleStartGranted = false;
 
+  if (hasActive) {
+    return units.map((unit) =>
+      applyActiveViewerStartVisibility(unit, {
+        viewerId: input.viewerId,
+        queue,
+        joinableId,
+      }),
+    );
+  }
+
+  let blockFurtherStarts = false;
   return units.map((unit) => {
     if (unit.type === "group") {
-      if (unit.chainRunId) {
-        const canJoin =
-          !unit.locked && groupHasJoinSlot(unit.members, input.viewerId);
-        if (canJoin && !hasActive) {
-          if (idleStartGranted) {
-            return { ...unit, showStart: false };
-          }
-          idleStartGranted = true;
-        }
-        return { ...unit, showStart: canJoin };
-      }
-      if (unit.principalActive || isProducingQueueUnit(unit)) {
-        return { ...unit, showStart: false };
-      }
-      const showStart =
-        !hasActive && !unit.locked && !idleStartGranted;
-      if (showStart) idleStartGranted = true;
-      return { ...unit, showStart };
+      return applyIdleGroupStartVisibility(
+        unit,
+        input.viewerId,
+        () => blockFurtherStarts,
+        (next) => {
+          blockFurtherStarts = next;
+        },
+      );
     }
 
     if (unit.helperMode) {
@@ -289,37 +322,82 @@ export function applyQueueUnitStartVisibility(
       };
     }
 
-    if (joinableId && unit.subTask.documentId === joinableId) {
-      return { ...unit, showStart: true };
-    }
-
-    if (unit.subTask.startedAt) {
-      return { ...unit, showStart: false };
-    }
-
-    if (isProducingQueueUnit(unit)) {
-      const activeCount = unit.subTask.activeWorkerCount ?? 0;
-      const atCapacity = isSubTaskAtWorkerCapacity(
-        unit.subTask.maxSameTimeWorkers ?? 1,
-        activeCount,
-      );
-      const showStart =
-        !hasActive &&
-        !idleStartGranted &&
-        activeCount > 0 &&
-        !atCapacity &&
-        canStartSubTask(queue, unit.subTask.documentId);
-      if (showStart) idleStartGranted = true;
-      return { ...unit, showStart };
-    }
-
-    const idleStart =
-      !hasActive &&
-      !idleStartGranted &&
-      canStartSubTask(queue, unit.subTask.documentId);
-    if (idleStart) idleStartGranted = true;
-    return { ...unit, showStart: idleStart };
+    return applyIdleIsolatedStartVisibility(
+      unit,
+      queue,
+      () => blockFurtherStarts,
+      (next) => {
+        blockFurtherStarts = next;
+      },
+    );
   });
+}
+
+function applyActiveViewerStartVisibility(
+  unit: KioskQueueUnit,
+  input: {
+    viewerId: string;
+    queue: KioskSubTask[];
+    joinableId: string | null;
+  },
+): KioskQueueUnit {
+  if (unit.type === "group") {
+    if (!unit.chainRunId) return { ...unit, showStart: false };
+    const canJoin =
+      !unit.locked && groupHasJoinSlot(unit.members, input.viewerId);
+    return { ...unit, showStart: canJoin };
+  }
+  if (unit.helperMode) {
+    return {
+      ...unit,
+      showStart: canStartSubTask(input.queue, unit.subTask.documentId),
+    };
+  }
+  if (input.joinableId && unit.subTask.documentId === input.joinableId) {
+    return { ...unit, showStart: true };
+  }
+  return { ...unit, showStart: false };
+}
+
+function applyIdleGroupStartVisibility(
+  unit: KioskGroupUnit,
+  viewerId: string,
+  isBlocked: () => boolean,
+  setBlocked: (next: boolean) => void,
+): KioskGroupUnit {
+  if (unit.principalActive || unit.locked) {
+    return { ...unit, showStart: false };
+  }
+  const occupied = queueUnitHasActiveWorkers(unit);
+  const canStart = unit.chainRunId
+    ? groupHasJoinSlot(unit.members, viewerId)
+    : true;
+  const showStart = !isBlocked() && canStart;
+  if (!occupied) setBlocked(true);
+  return { ...unit, showStart };
+}
+
+function applyIdleIsolatedStartVisibility(
+  unit: KioskIsolatedUnit,
+  queue: KioskSubTask[],
+  isBlocked: () => boolean,
+  setBlocked: (next: boolean) => void,
+): KioskIsolatedUnit {
+  if (unit.subTask.startedAt) return { ...unit, showStart: false };
+  if (isLockedSubTask(unit.subTask) || isFinishedSubTask(unit.subTask)) {
+    return { ...unit, showStart: false };
+  }
+  const occupied = isolatedHasActiveWorkers(unit.subTask);
+  const atCapacity = isSubTaskAtWorkerCapacity(
+    unit.subTask.maxSameTimeWorkers ?? 1,
+    unit.subTask.activeWorkerCount ?? 0,
+  );
+  const showStart =
+    !isBlocked() &&
+    !atCapacity &&
+    canStartSubTask(queue, unit.subTask.documentId);
+  if (!occupied) setBlocked(true);
+  return { ...unit, showStart };
 }
 
 function isLockedQueueUnit(unit: KioskQueueUnit): boolean {
@@ -328,18 +406,8 @@ function isLockedQueueUnit(unit: KioskQueueUnit): boolean {
 }
 
 export function isProducingQueueUnit(unit: KioskQueueUnit): boolean {
-  if (unit.type === "isolated") {
-    return (
-      unit.subTask.status === "producing" || Boolean(unit.subTask.startedAt)
-    );
-  }
-  return (
-    unit.principalActive ||
-    Boolean(unit.chainRunId) ||
-    unit.members.some(
-      (item) => item.status === "producing" || Boolean(item.startedAt),
-    )
-  );
+  if (unit.type === "isolated") return Boolean(unit.subTask.startedAt);
+  return unit.principalActive;
 }
 
 function isFinishedQueueUnit(unit: KioskQueueUnit): boolean {

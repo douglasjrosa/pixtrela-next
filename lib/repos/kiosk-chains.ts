@@ -534,7 +534,7 @@ export async function startChain(
 ): Promise<{ chainRunId: string }> {
   const { sub, items, chain, byId, siblings } = await loadChainContext(headId, db);
   const remaining = remainingExecutableMembers(chain, byId);
-  if (remaining.length === 0) throw new Error("forbidden");
+  if (remaining.length === 0) throw new Error("chainComplete");
   const assignedRemaining = remaining.filter((item) =>
     item.assignedToIds.includes(colaboratorId),
   );
@@ -552,10 +552,10 @@ export async function startChain(
       new Map(items.map((item) => [item.documentId, item])),
     )
   ) {
-    throw new Error("forbidden");
+    throw new Error("chainBlocked");
   }
   if (!startMember.assignedToIds.includes(colaboratorId)) {
-    throw new Error("forbidden");
+    throw new Error("notAssigned");
   }
 
   if (!isMultiMemberChain(chain)) {
@@ -589,7 +589,13 @@ export async function startChain(
       siblings,
       runRows,
     );
-    if (!joinMember) throw new Error("forbidden");
+    if (!joinMember) {
+      const assigned = remaining.filter((item) =>
+        item.assignedToIds.includes(colaboratorId),
+      );
+      if (assigned.length === 0) throw new Error("notAssigned");
+      throw new Error("atWorkerCapacity");
+    }
     await db.transaction(async (tx) => {
       await tx.insert(activities).values({
         subTaskId: joinMember.documentId,
@@ -1449,7 +1455,7 @@ export async function confirmChainStop(
   const hasOpen = chain.memberIds.some((id) =>
     hasOpenSession(runRows, colaboratorId, id),
   );
-  if (!hasOpen) throw new Error("forbidden");
+  if (!hasOpen) throw new Error("noOpenSession");
 
   const othersStillActive = othersStillActiveOnChain(
     runRows,
@@ -1705,7 +1711,7 @@ export async function joinLiveChain(
   const siblings = await listSubTasksWithRelationsForTask(candidate.taskId, db);
   const siblingIds = new Set(siblings.map((row) => row.id));
   const openOnTask = openRows.filter((row) => siblingIds.has(row.subTaskId));
-  if (openOnTask.length === 0) throw new Error("forbidden");
+  if (openOnTask.length === 0) throw new Error("noOpenSession");
 
   const items = siblings.map(toChainItem);
   const chains = resolveChains(items);
@@ -1736,7 +1742,9 @@ export async function joinLiveChain(
     viewerAssignedIds: assignedIds,
     maxIntervalSeconds,
   });
-  if (!next || next.documentId !== subTaskId) throw new Error("forbidden");
+  if (!next || next.documentId !== subTaskId) {
+    throw new Error("chainNotJoinable");
+  }
 
   const chainRunId = openOnTask[0]?.chainRunId ?? randomUUID();
   await db.transaction(async (tx) => {

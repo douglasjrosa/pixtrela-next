@@ -129,7 +129,7 @@ async function assertSubTaskAssigned(
       ),
     )
     .limit(1);
-  if (!row) throw new Error("forbidden");
+  if (!row) throw new Error("notAssigned");
 }
 
 async function resolvePaymentCurrency(db: Db) {
@@ -1229,11 +1229,11 @@ export async function startSubTask(
     status !== PRODUCING_STATUS &&
     status !== "paused"
   ) {
-    throw new Error("forbidden");
+    throw new Error("notStartable");
   }
 
   const activation = fromDrizzleActivationStatus(sub.activationStatus);
-  if (activation === "disabled") throw new Error("forbidden");
+  if (activation === "disabled") throw new Error("subTaskDisabled");
 
   const helperChainRunId = await attachHelperStartToOpenRun(
     colaboratorId,
@@ -1248,20 +1248,20 @@ export async function startSubTask(
     status !== PRODUCING_STATUS &&
     !helperJoinAllowed
   ) {
-    throw new Error("forbidden");
+    throw new Error("subTaskLocked");
   }
 
   const activeIds = await fetchActiveColaboratorIdsForSubTask(subTaskId, db);
-  if (activeIds.includes(colaboratorId)) throw new Error("forbidden");
+  if (activeIds.includes(colaboratorId)) throw new Error("alreadyActive");
   if (isSubTaskAtWorkerCapacity(sub.maxSameTimeWorkers, activeIds.length)) {
-    throw new Error("forbidden");
+    throw new Error("atWorkerCapacity");
   }
 
   if (sub.sharingType === "qty") {
     const completed = await sumStoppedQty(subTaskId, db);
     const targetQty = resolveSubTaskTargetQty(sub.qty);
     if (targetQty - completed <= 0) {
-      throw new Error("forbidden");
+      throw new Error("qtyComplete");
     }
   }
 
@@ -1428,7 +1428,7 @@ export async function stopSubTask(
 
   const sessionActions = sessionActivities.map((row) => row.action);
   if (!canAuthorizeKioskStop(hasOpenStartedSessionFromActions(sessionActions))) {
-    throw new Error("forbidden");
+    throw new Error("noOpenSession");
   }
 
   const activeIdsBefore = await fetchActiveColaboratorIdsForSubTask(subTaskId, db);

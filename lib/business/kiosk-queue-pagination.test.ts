@@ -72,6 +72,7 @@ describe("splitQueueUnitsByKioskSection", () => {
         name: "Run",
         index: 0,
         status: "producing",
+        startedAt: "2026-08-16T12:00:00.000Z",
       }),
       isolated({ documentId: "free", name: "Free", index: 1 }),
       isolated({

@@ -157,9 +157,10 @@ export function KioskChainGroupCard({
 
   const taskName = unit.members[0]?.taskName;
   const showLockOverlay = unit.locked && !unit.principalActive;
-  const showStart = !readOnly && unit.showStart;
+  const hideActions = unit.hideActions === true;
+  const showStart = !readOnly && unit.showStart && !hideActions;
   const showStop =
-    !readOnly && unit.principalActive && !collecting;
+    !readOnly && unit.principalActive && !collecting && !hideActions;
   const persistedChainRunId = resolvePersistedChainRunId(
     unit.chainRunId,
     openRuns,
@@ -351,6 +352,7 @@ export function KioskChainGroupCard({
       {persistedChainRunId &&
       unit.runStartedAt &&
       onAdvanceChain &&
+      !hideActions &&
       isDurationOnlySharing(unit.members) ? (
         <KioskChainAdvanceTimer
           chainRunId={persistedChainRunId}
