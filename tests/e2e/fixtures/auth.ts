@@ -23,11 +23,17 @@ export async function loginAs(
   password: string,
 ): Promise<void> {
   await page.goto("/login");
-  await page
-    .getByRole("button", { name: /usuário e senha|username/i })
-    .click();
-  await page.getByLabel(/Login/i).fill(login);
-  await page.getByLabel(/Senha/i).fill(password);
+  const usernameEntry = page.getByRole("button", {
+    name: /login e senha|usuário e senha|username/i,
+  });
+  if (await usernameEntry.isVisible().catch(() => false)) {
+    await usernameEntry.click();
+  }
+  await page.getByLabel(/^Login$/i).fill(login);
+  const passwordField = page.getByRole("textbox", { name: /^Senha$/i });
+  await passwordField.click();
+  await passwordField.fill("");
+  await page.keyboard.type(password, { delay: 15 });
   await page.getByRole("button", { name: /Entrar/i }).click();
 
   const leftLogin = page.waitForURL(

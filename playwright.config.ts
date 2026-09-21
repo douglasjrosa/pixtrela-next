@@ -1,6 +1,9 @@
+import { config as loadDotenv } from "dotenv";
 import { loadEnvConfig } from "@next/env";
 import { defineConfig, devices } from "@playwright/test";
 
+loadDotenv({ path: ".env.local" });
+loadDotenv();
 loadEnvConfig(process.cwd());
 
 export default defineConfig({
@@ -18,7 +21,12 @@ export default defineConfig({
   webServer: {
     command: "npm run dev",
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: process.env.E2E_REUSE_DEV_SERVER === "1",
     timeout: 120_000,
+    env: {
+      ...process.env,
+      NODE_ENV: "development",
+      AUTH_URL: "http://localhost:3000",
+    },
   },
 });

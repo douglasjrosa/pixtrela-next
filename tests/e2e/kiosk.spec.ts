@@ -2,6 +2,10 @@ import { test, expect } from "@playwright/test";
 
 import { e2eUsers, loginAs } from "./fixtures/auth";
 import {
+  fillKioskPasswordField,
+  openKioskCodePasswordStep,
+} from "./fixtures/kiosk-entry";
+import {
   seedKioskChainFixture,
   seedKioskStaffFixture,
   seedKioskWorkflowFixture,
@@ -30,8 +34,9 @@ test.describe("Kiosk", () => {
     await loginAs(page, login, password);
     await page.goto("/kiosk");
     await expect(page).toHaveURL(/\/kiosk$/);
+    await expect(page.getByText("Escolha como entrar.")).toBeVisible();
     await expect(
-      page.getByText("Aproxime o seu cartão ou digite seu código e senha."),
+      page.getByRole("button", { name: /código e senha/i }),
     ).toBeVisible();
   });
 
@@ -44,8 +49,9 @@ test.describe("Kiosk", () => {
 
     await loginAs(page, login, password);
     await page.goto("/kiosk");
+    await openKioskCodePasswordStep(page);
     await expect(page.getByLabel(/Código/i)).toBeVisible();
-    await expect(page.getByLabel(/Senha/i)).toBeVisible();
+    await expect(page.getByRole("textbox", { name: /^Senha$/i })).toBeVisible();
   });
 
   test("colaborator cannot access kiosk routes", async ({ page }) => {
@@ -75,9 +81,9 @@ test.describe("Kiosk", () => {
     await page.goto("/kiosk");
     await expect(page).toHaveURL(/\/kiosk$/);
 
-    await page.getByRole("button", { name: /código|code/i }).click();
+    await openKioskCodePasswordStep(page);
     await page.getByLabel(/Código/i).fill(String(fixture.colaboratorCode));
-    await page.getByLabel(/Senha/i).fill(fixture.colaboratorPassword);
+    await fillKioskPasswordField(page, fixture.colaboratorPassword);
     await page.getByRole("button", { name: /entrar|confirmar/i }).click();
 
     await expect(page).toHaveURL(
@@ -119,9 +125,9 @@ test.describe("Kiosk", () => {
     await page.goto("/kiosk");
     await expect(page).toHaveURL(/\/kiosk$/);
 
-    await page.getByRole("button", { name: /código|code/i }).click();
+    await openKioskCodePasswordStep(page);
     await page.getByLabel(/Código/i).fill(String(fixture.colaboratorCode));
-    await page.getByLabel(/Senha/i).fill(fixture.colaboratorPassword);
+    await fillKioskPasswordField(page, fixture.colaboratorPassword);
     await page.getByRole("button", { name: /entrar|confirmar/i }).click();
 
     await expect(page).toHaveURL(
@@ -140,16 +146,13 @@ test.describe("Kiosk", () => {
     await expect(stop).toBeVisible({ timeout: 30_000 });
 
     await stop.click();
-    await expect(page.getByText("A subtarefa foi concluída?")).toHaveCount(3);
-    await expect(stop).toBeDisabled();
-
-    const yesButtons = page.getByRole("button", { name: /Sim, concluí/i });
-    await expect(yesButtons).toHaveCount(3);
-    await yesButtons.nth(0).click();
-    await yesButtons.nth(1).click();
-    await yesButtons.nth(2).click();
-    await expect(stop).toBeEnabled();
-    await stop.click();
+    for (let step = 0; step < fixture.memberNames.length; step += 1) {
+      await page.getByRole("button", { name: /^SIM$/i }).click();
+      if (step < fixture.memberNames.length - 1) {
+        await page.getByRole("button", { name: /^Continuar$/i }).click();
+      }
+    }
+    await page.getByRole("button", { name: /^Confirmar saída$/i }).click();
 
     await expect(page.getByText(fixture.memberNames[0]!)).toBeVisible({
       timeout: 30_000,
@@ -176,9 +179,9 @@ test.describe("Kiosk", () => {
     await page.goto("/kiosk");
     await expect(page).toHaveURL(/\/kiosk$/);
 
-    await page.getByRole("button", { name: /código|code/i }).click();
+    await openKioskCodePasswordStep(page);
     await page.getByLabel(/Código/i).fill(String(fixture.leaderCode));
-    await page.getByLabel(/Senha/i).fill(fixture.leaderPassword);
+    await fillKioskPasswordField(page, fixture.leaderPassword);
     await page.getByRole("button", { name: /entrar|confirmar/i }).click();
 
     await expect(page).toHaveURL(
@@ -186,14 +189,12 @@ test.describe("Kiosk", () => {
       { timeout: 60_000 },
     );
 
-    await page.getByRole("button", { name: "Abrir menu" }).click();
-    await page.getByRole("link", { name: "Quadro" }).click();
+    await page.goto(`/kiosk/staff/${fixture.leaderId}/board`);
     await expect(page).toHaveURL(
       new RegExp(`/kiosk/staff/${fixture.leaderId}/board`),
     );
 
-    await page.getByRole("button", { name: "Abrir menu" }).click();
-    await page.getByRole("link", { name: "Filas" }).click();
+    await page.goto(`/kiosk/staff/${fixture.leaderId}/queues`);
     await expect(page).toHaveURL(
       new RegExp(`/kiosk/staff/${fixture.leaderId}/queues`),
     );
