@@ -12,6 +12,7 @@ const labels = {
   queues: "Filas",
   teams: "Equipes",
   users: "Usuários",
+  activities: "Atividades",
   awards: "Prêmios",
   exchanges: "Trocas",
 };
@@ -45,6 +46,7 @@ describe("teamsSectionTabs", () => {
         queues: "/queues",
         teams: "/teams",
         users: "/users",
+        activities: "/activities",
       }),
     ).toEqual([
       { href: "/queues", label: "Filas", activePrefix: "/queues" },
@@ -57,8 +59,20 @@ describe("teamsSectionTabs", () => {
         queues: "/queues",
         teams: "/teams",
         users: "/users",
+        activities: "/activities",
       }).map((tab) => tab.href),
     ).toEqual(["/queues", "/teams", "/users"]);
+  });
+
+  it("appends activities after users for admin", () => {
+    expect(
+      teamsSectionTabs("admin", labels, {
+        queues: "/queues",
+        teams: "/teams",
+        users: "/users",
+        activities: "/activities",
+      }).map((tab) => tab.href),
+    ).toEqual(["/queues", "/teams", "/users", "/activities"]);
   });
 });
 

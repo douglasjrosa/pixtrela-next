@@ -637,6 +637,7 @@ export const activities = pgTable("activities", {
   qty: integer("qty").default(0).notNull(),
   currencyAwarded: integer("currency_awarded").default(0).notNull(),
   chainRunId: uuid("chain_run_id"),
+  active: boolean("active").default(true).notNull(),
 });
 
 export const balances = pgTable("balances", {

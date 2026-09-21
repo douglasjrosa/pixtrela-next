@@ -25,6 +25,7 @@ export default async function UsersSectionLayout({
       queues: "/queues",
       teams: "/teams",
       users: "/users",
+      activities: "/activities",
     }),
     getTranslations("nav"),
   ]);

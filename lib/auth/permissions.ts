@@ -129,6 +129,23 @@ export function canViewUsers(role: Role | undefined): boolean {
   return isAtLeast(role, "manager");
 }
 
+/** Activities screen and CRUD: admin only. */
+export function canViewActivities(role: Role | undefined): boolean {
+  return role === "admin";
+}
+
+export function canManageActivities(role: Role | undefined): boolean {
+  return canViewActivities(role);
+}
+
+export function canDeactivateActivities(role: Role | undefined): boolean {
+  return canViewActivities(role);
+}
+
+export function canDeleteActivities(role: Role | undefined): boolean {
+  return canViewActivities(role);
+}
+
 /** Pair NFC key fob (userTag) on user edit: admin and manager only. */
 export function canPairUserTag(role: Role | undefined): boolean {
   return role === "admin" || role === "manager";
@@ -169,6 +186,7 @@ const ROUTE_GUARDS: { prefix: string; check: (role: Role | undefined) => boolean
   { prefix: "/awards", check: canViewAwards },
   { prefix: "/settings", check: canManageSettings },
   { prefix: "/users", check: canViewUsers },
+  { prefix: "/activities", check: canViewActivities },
 ];
 
 /** Whether role may access a route prefix (logged-in routes only). */

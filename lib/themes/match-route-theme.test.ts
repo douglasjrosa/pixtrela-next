@@ -103,6 +103,8 @@ describe("resolveRouteThemeKey", () => {
     expect(resolveRouteThemeKey("/settings/themes/routes")).toBe("settings");
     expect(resolveRouteThemeKey("/settings/files")).toBe("settings");
     expect(resolveRouteThemeKey("/exchanges")).toBe("exchanges");
+    expect(resolveRouteThemeKey("/users")).toBe("users");
+    expect(resolveRouteThemeKey("/activities")).toBe("users");
     expect(resolveRouteThemeKey("/exchanges/batch-1")).toBe("exchanges");
   });
 

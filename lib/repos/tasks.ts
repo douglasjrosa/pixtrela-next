@@ -23,6 +23,7 @@ import {
 } from "@/lib/domain/work-currency";
 import { getDb, type Db } from "@/lib/db/client";
 import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
+import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 import type { TasksRevision } from "@/lib/tasks/tasks-revision";
 import { archiveRecords } from "@/lib/repos/deactivation-reasons";
 import { recordActivityViaKiosk, reconcileProducingStatusFromOpenSessions } from "@/lib/repos/kiosk-subtasks";
@@ -476,6 +477,7 @@ export async function listBoardSubtaskOpenActivities(
     .innerJoin(users, eq(activities.colaboratorId, users.id))
     .where(
       and(
+        ACTIVE_ACTIVITY,
         inArray(activities.subTaskId, [...subTaskIds]),
         inArray(activities.action, ["started", "stoped"]),
       ),
@@ -517,6 +519,7 @@ export async function listBoardSubtaskSessionHistory(
     .innerJoin(users, eq(activities.colaboratorId, users.id))
     .where(
       and(
+        ACTIVE_ACTIVITY,
         inArray(activities.subTaskId, [...subTaskIds]),
         inArray(activities.action, ["started", "stoped"]),
       ),

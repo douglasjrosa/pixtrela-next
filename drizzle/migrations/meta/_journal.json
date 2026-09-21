@@ -260,6 +260,13 @@
       "when": 1788500000000,
       "tag": "0036_sub_task_preset_default_dependencies",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1788550000000,
+      "tag": "0037_activities_active",
+      "breakpoints": true
     }
   ]
 }

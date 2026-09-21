@@ -108,6 +108,7 @@ const PATHS = [
   "/other",
   "/other/profile",
   "/users",
+  "/activities",
   "/settings/files",
   "/settings/steps",
   "/settings/themes/files",
