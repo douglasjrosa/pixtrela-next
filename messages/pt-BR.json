@@ -931,6 +931,16 @@
     "categoryHasFlags": "Exclua as bandeiras desta categoria antes.",
     "categoryInUse": "Categoria em uso por subtarefas.",
     "flagOccupiedError": "Bandeira em uso em um palete.",
+    "categoriesDeleteSelected": "Excluir selecionadas",
+    "categoriesBulkDeleted": "Categorias excluídas.",
+    "categoriesBulkDeleteTitle": "Excluir categorias",
+    "categoriesBulkDeleteConfirm":
+      "Excluir permanentemente as categorias selecionadas?",
+    "flagsDeleteSelected": "Excluir selecionadas",
+    "flagsBulkDeleted": "Bandeiras excluídas.",
+    "flagsBulkDeleteTitle": "Excluir bandeiras",
+    "flagsBulkDeleteConfirm":
+      "Excluir permanentemente as bandeiras selecionadas?",
     "subTaskCategory": "Categoria",
     "noCategory": "Sem categoria",
     "allCategories": "Todas",

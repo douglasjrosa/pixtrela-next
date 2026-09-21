@@ -13,6 +13,7 @@ import {
   createMaterialFlag,
   createMaterialFlagsInRange,
   deleteMaterialFlag,
+  findMaterialFlagById,
   listMaterialFlags,
   nextFlagIndexForCategory,
   updateMaterialFlag,
@@ -20,10 +21,12 @@ import {
 import {
   createSubTaskCategory,
   deleteSubTaskCategory,
+  findSubTaskCategoryById,
   listSubTaskCategories,
   updateSubTaskCategory,
 } from "@/lib/repos/sub-task-categories";
 import { loadSubTaskCategoryOptions } from "@/lib/subtasks/category-options";
+import { bulkDocumentIdsSchema } from "@/lib/schemas/bulk-ids";
 import {
   materialFlagBulkCreateSchema,
   materialFlagFormSchema,
@@ -108,6 +111,32 @@ export async function createFlags(raw: unknown): Promise<number> {
 export async function removeFlag(documentId: string): Promise<void> {
   await assertCanManage();
   await deleteMaterialFlag(documentId);
+  invalidate();
+}
+
+export async function bulkDeleteCategories(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanManage();
+  const ids = bulkDocumentIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const category = await findSubTaskCategoryById(documentId);
+    if (!category) throw new Error("notFound");
+    await deleteSubTaskCategory(documentId);
+  }
+  invalidate();
+}
+
+export async function bulkDeleteFlags(documentIds: string[]): Promise<void> {
+  await assertCanManage();
+  const ids = bulkDocumentIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const flag = await findMaterialFlagById(documentId);
+    if (!flag) throw new Error("notFound");
+    await deleteMaterialFlag(documentId);
+  }
   invalidate();
 }
 
