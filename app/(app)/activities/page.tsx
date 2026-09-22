@@ -2,9 +2,7 @@ import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
-import { ActivitiesListMobileList } from "@/components/activities/activities-list-mobile-list";
 import { ActivitiesListSkeleton } from "@/components/activities/activities-list-skeleton";
-import { ActivitiesListTableBody } from "@/components/activities/activities-list-table-body";
 import { ActivitiesListTableFrame } from "@/components/activities/activities-list-table-frame";
 import { ActivitiesListTableHeader } from "@/components/activities/activities-list-table-header";
 import { ActivitiesPageHeader } from "@/components/activities/activities-page-header";
@@ -77,18 +75,6 @@ async function ActivitiesListSection({
         <ActivitiesListTableHeader
           sort={sort}
           filters={filters}
-          showCheckboxColumn={showCheckboxColumn}
-        />
-      }
-      tableBody={
-        <ActivitiesListTableBody
-          activities={pageResult.activities}
-          showCheckboxColumn={showCheckboxColumn}
-        />
-      }
-      mobileList={
-        <ActivitiesListMobileList
-          activities={pageResult.activities}
           showCheckboxColumn={showCheckboxColumn}
         />
       }

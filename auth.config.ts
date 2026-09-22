@@ -12,7 +12,7 @@ import {
 
 /**
  * Edge-safe Auth.js config shared with the middleware. Heavy logic (the
- * Credentials provider that calls Strapi) lives in auth.ts.
+ * Credentials provider) lives in auth.ts.
  */
 export const authConfig = {
   pages: {

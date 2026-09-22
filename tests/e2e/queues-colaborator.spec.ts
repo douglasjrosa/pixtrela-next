@@ -6,8 +6,7 @@ import {
   seedQueueScenario,
 } from "../queue/seed-queue-scenario";
 
-const isDrizzleE2e =
-  (process.env.DATA_BACKEND ?? "drizzle").trim().toLowerCase() !== "strapi";
+const isDrizzleE2e = true;
 
 const hasManager =
   Boolean(e2eUsers.manager.login) && Boolean(e2eUsers.manager.password);

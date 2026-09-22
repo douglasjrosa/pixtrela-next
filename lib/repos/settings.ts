@@ -1,4 +1,4 @@
-import { eq, getTableColumns, isNotNull } from "drizzle-orm";
+import { desc, eq, getTableColumns, isNotNull, isNull } from "drizzle-orm";
 
 import {
   currencies,
@@ -196,39 +196,68 @@ export async function getCurrencyForSubtasks(db: Db = getDb()) {
       iconMediaId: currencies.iconMediaId,
       iconMediaUrl: mediaAssets.url,
     })
-    .from(currencyForSubtasks)
-    .innerJoin(currencies, eq(currencyForSubtasks.currencyId, currencies.id))
-    .leftJoin(mediaAssets, eq(currencies.iconMediaId, mediaAssets.id))
-    .limit(1);
+      .from(currencyForSubtasks)
+      .innerJoin(currencies, eq(currencyForSubtasks.currencyId, currencies.id))
+      .leftJoin(mediaAssets, eq(currencies.iconMediaId, mediaAssets.id))
+      .where(isNull(currencyForSubtasks.validUntil))
+      .orderBy(desc(currencyForSubtasks.validFrom))
+      .limit(1);
   return row ?? null;
 }
+
+const HISTORY_VALID_FROM = new Date("1970-01-01T00:00:00.000Z");
 
 export async function upsertCurrencyForSubtasks(
   currencyId: string | null,
   db: Db = getDb(),
 ) {
-  const [existing] = await db.select().from(currencyForSubtasks).limit(1);
+  const [open] = await db
+    .select()
+    .from(currencyForSubtasks)
+    .where(isNull(currencyForSubtasks.validUntil))
+    .orderBy(desc(currencyForSubtasks.validFrom))
+    .limit(1);
+
   if (!currencyId) {
-    if (existing) {
+    if (open) {
       await db
-        .delete(currencyForSubtasks)
-        .where(eq(currencyForSubtasks.id, existing.id));
+        .update(currencyForSubtasks)
+        .set({ validUntil: new Date(), updatedAt: new Date() })
+        .where(eq(currencyForSubtasks.id, open.id));
     }
     return null;
   }
-  if (!existing) {
+
+  if (!open) {
     const [created] = await db
       .insert(currencyForSubtasks)
-      .values({ currencyId })
+      .values({
+        currencyId,
+        validFrom: HISTORY_VALID_FROM,
+        validUntil: null,
+      })
       .returning();
     return created;
   }
-  const [updated] = await db
+
+  if (open.currencyId === currencyId) {
+    return open;
+  }
+
+  const now = new Date();
+  await db
     .update(currencyForSubtasks)
-    .set({ currencyId, updatedAt: new Date() })
-    .where(eq(currencyForSubtasks.id, existing.id))
+    .set({ validUntil: now, updatedAt: now })
+    .where(eq(currencyForSubtasks.id, open.id));
+  const [created] = await db
+    .insert(currencyForSubtasks)
+    .values({
+      currencyId,
+      validFrom: now,
+      validUntil: null,
+    })
     .returning();
-  return updated;
+  return created;
 }
 
 export type UpdateRouteThemeInput = {

@@ -1,14 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { canViewUser, leaderColaboratorFilter } from "./team-scope";
-
-describe("leaderColaboratorFilter", () => {
-  it("filters colaborators by leader team", () => {
-    expect(leaderColaboratorFilter("5")).toMatchObject({
-      role: { type: { $eq: "colaborator" } },
-    });
-  });
-});
+import { canViewUser } from "./team-scope";
 
 describe("canViewUser", () => {
   it("allows admin to see anyone", () => {

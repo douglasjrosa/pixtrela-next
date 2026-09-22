@@ -2,10 +2,8 @@
 
 import { CardBadge } from "@/components/ui/card";
 import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
-import {
-  formatActivitySubtaskLabel,
-  formatColaboratorLabel,
-} from "@/lib/business/activity-timestamp";
+import { formatActivitySubtaskDisplayLabel } from "@/lib/business/activity-subtask-label";
+import { formatColaboratorLabel } from "@/lib/business/activity-timestamp";
 import { formatActivityDateTimePtBr } from "@/lib/format/datetime";
 import { cn } from "@/lib/utils";
 
@@ -41,10 +39,13 @@ export function ActivityListRowPresentational({
     activity.colaboratorName,
     activity.colaboratorCode,
   );
-  const subtask = formatActivitySubtaskLabel(
-    activity.subTaskName,
-    activity.taskName,
-  );
+  const subtask = formatActivitySubtaskDisplayLabel({
+    subTaskName: activity.subTaskName,
+    taskQty: activity.taskQty,
+    taskName: activity.taskName,
+    taskCrmItemKey: activity.taskCrmItemKey,
+    taskDeliveryDate: activity.taskDeliveryDate,
+  });
   const actionLabel = activity.action === "started" ? labels.started : labels.stoped;
   const when = formatActivityDateTimePtBr(activity.timestamp);
 
@@ -95,6 +96,7 @@ export function ActivityListRowPresentational({
         </td>
         <td className={CENTER_CELL_CLASS}>{when}</td>
         <td className={CENTER_CELL_CLASS}>{activity.qty}</td>
+        <td className={CENTER_CELL_CLASS}>{activity.currencyAwarded}</td>
         <td className="py-2">{subtask}</td>
       </tr>
     );
@@ -122,6 +124,9 @@ export function ActivityListRowPresentational({
           </div>
           <div className="text-muted-foreground text-sm">{when}</div>
           <div className="text-muted-foreground text-sm">{activity.qty}</div>
+          <div className="text-muted-foreground text-sm">
+            {activity.currencyAwarded}
+          </div>
           <div className="text-muted-foreground text-sm">{subtask}</div>
         </button>
       </div>

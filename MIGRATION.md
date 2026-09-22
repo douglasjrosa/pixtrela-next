@@ -1,7 +1,7 @@
-/**
- * Migration tracker: Strapi → Drizzle (complete).
- * Runtime Strapi DAL removed; use `scripts/etl-from-strapi.ts` only for one-time cutover ETL.
- */
+# Migration tracker: Drizzle (complete)
+
+Runtime persistence is **Drizzle + Postgres** only. Optional `scripts/etl-from-strapi.ts`
+is a one-time cutover CLI against a legacy source database.
 
 | Domain | Next target | Status |
 |--------|-------------|--------|
@@ -23,5 +23,5 @@ All domains pass when:
 
 1. Pure rules live in `lib/domain` with Vitest.
 2. Persistence goes through `lib/repos`.
-3. No `strapiFetch` or `lib/strapi/*` imports in application code.
+3. No CMS/HTTP DAL imports in application code.
 4. `npm test` and `npm run build` succeed on `dev`.

@@ -14,23 +14,28 @@ import {
 
 import {
   activities,
-  currencies,
-  currencyForSubtasks,
   subTasks,
   tasks,
   users,
 } from "@/drizzle/schema";
 import { DEFAULT_TIME_ZONE } from "@/lib/business/datetime-timezone";
 import { zonedDateTimeToUtc } from "@/lib/business/activity-timestamp";
-import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
 import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
 import type { Db } from "@/lib/db/client";
 import { getDb } from "@/lib/db/client";
-import { applyActivityIncomeDelta } from "@/lib/repos/activity-credits";
 import { archiveRecords } from "@/lib/repos/deactivation-reasons";
+import {
+  loadActiveCreditSnapshots,
+  recomputeActivityCreditsAfterAdminChange,
+  type ActivityCreditSnapshot,
+} from "@/lib/repos/recompute-activity-credits";
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import type { AdminActivityFormInput } from "@/lib/schemas/admin-activity";
 import type { ActivityListFilters } from "@/lib/schemas/activity-list-filters";
+import {
+  ACTIVITY_SUBTASK_PICKER_MIN_QUERY_LENGTH,
+  ACTIVITY_SUBTASK_PICKER_RESULT_LIMIT,
+} from "@/lib/activities/activity-subtask-picker-search";
 import type { ActivityListSort } from "@/lib/schemas/activity-list-sort";
 
 export type ActivityListItem = {
@@ -46,6 +51,18 @@ export type ActivityListItem = {
   subTaskId: string;
   subTaskName: string;
   taskName: string;
+  taskQty: number;
+  taskCrmItemKey: string | null;
+  taskDeliveryDate: string | null;
+};
+
+export type ActivitySubtaskPickerRow = {
+  id: string;
+  name: string;
+  taskName: string;
+  taskQty: number;
+  taskCrmItemKey: string | null;
+  taskDeliveryDate: string | null;
 };
 
 export type ActivityFormOptions = {
@@ -54,12 +71,19 @@ export type ActivityFormOptions = {
     name: string;
     code: number | null;
   }>;
-  subTasks: Array<{
-    id: string;
-    name: string;
-    taskName: string;
-  }>;
 };
+
+function activitySubtaskPickerSearchClause(q: string) {
+  const pattern = `%${q}%`;
+  return or(
+    ilike(subTasks.name, pattern),
+    ilike(tasks.name, pattern),
+    ilike(tasks.crmItemKey, pattern),
+    sql`replace(${tasks.crmItemKey}, ':', '-') ILIKE ${pattern}`,
+    sql`${tasks.qty}::text ILIKE ${pattern}`,
+    sql`to_char(${tasks.deliveryDate}, 'DD/MM/YYYY') ILIKE ${pattern}`,
+  );
+}
 
 const LOCAL_ACTIVITY_DATE = sql<string>`
   (${activities.timestamp} AT TIME ZONE ${DEFAULT_TIME_ZONE})::date
@@ -85,6 +109,9 @@ function activityListWhere(options: {
         sql`${users.code}::text ILIKE ${"%" + q + "%"}`,
         ilike(subTasks.name, `%${q}%`),
         ilike(tasks.name, `%${q}%`),
+        ilike(tasks.crmItemKey, `%${q}%`),
+        sql`${tasks.qty}::text ILIKE ${"%" + q + "%"}`,
+        sql`to_char(${tasks.deliveryDate}, 'DD/MM/YYYY') ILIKE ${"%" + q + "%"}`,
       )
     : undefined;
   return and(activeClause, actionClause, dateClause, searchClause);
@@ -122,6 +149,9 @@ function mapListRow(row: {
   subTaskId: string;
   subTaskName: string;
   taskName: string;
+  taskQty: number;
+  taskCrmItemKey: string | null;
+  taskDeliveryDate: string | null;
 }): ActivityListItem {
   return {
     id: row.id,
@@ -136,6 +166,9 @@ function mapListRow(row: {
     subTaskId: row.subTaskId,
     subTaskName: row.subTaskName,
     taskName: row.taskName,
+    taskQty: row.taskQty,
+    taskCrmItemKey: row.taskCrmItemKey,
+    taskDeliveryDate: row.taskDeliveryDate,
   };
 }
 
@@ -152,6 +185,9 @@ const LIST_COLUMNS = {
   subTaskId: activities.subTaskId,
   subTaskName: subTasks.name,
   taskName: tasks.name,
+  taskQty: tasks.qty,
+  taskCrmItemKey: tasks.crmItemKey,
+  taskDeliveryDate: tasks.deliveryDate,
 } as const;
 
 function activityListQuery(db: Db) {
@@ -218,41 +254,79 @@ export async function getActivityById(
 export async function listActivityFormOptions(
   db: Db = getDb(),
 ): Promise<ActivityFormOptions> {
-  const [colaborators, subTaskRows] = await Promise.all([
-    db
-      .select({
-        id: users.id,
-        name: users.name,
-        code: users.code,
-      })
-      .from(users)
-      .where(eq(users.active, true))
-      .orderBy(asc(users.name), asc(users.code)),
-    db
-      .select({
-        id: subTasks.id,
-        name: subTasks.name,
-        taskName: tasks.name,
-      })
-      .from(subTasks)
-      .innerJoin(tasks, eq(subTasks.taskId, tasks.id))
-      .where(and(eq(subTasks.active, true), eq(tasks.active, true)))
-      .orderBy(asc(tasks.name), asc(subTasks.name)),
-  ]);
+  const colaborators = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      code: users.code,
+    })
+    .from(users)
+    .where(eq(users.active, true))
+    .orderBy(asc(users.name), asc(users.code));
 
-  return { colaborators, subTasks: subTaskRows };
+  return { colaborators };
 }
 
-async function paymentCurrencyPluralTitle(db: Db): Promise<string | null> {
-  const [setting] = await db.select().from(currencyForSubtasks).limit(1);
-  if (!setting) return null;
-  const [currency] = await db
-    .select()
-    .from(currencies)
-    .where(eq(currencies.id, setting.currencyId))
+export async function searchActivitySubtaskPickerOptions(
+  rawQuery: string,
+  db: Db = getDb(),
+): Promise<ActivitySubtaskPickerRow[]> {
+  const q = rawQuery.trim();
+  if (q.length < ACTIVITY_SUBTASK_PICKER_MIN_QUERY_LENGTH) {
+    return [];
+  }
+
+  return db
+    .select({
+      id: subTasks.id,
+      name: subTasks.name,
+      taskName: tasks.name,
+      taskQty: tasks.qty,
+      taskCrmItemKey: tasks.crmItemKey,
+      taskDeliveryDate: tasks.deliveryDate,
+    })
+    .from(subTasks)
+    .innerJoin(tasks, eq(subTasks.taskId, tasks.id))
+    .where(
+      and(
+        eq(subTasks.active, true),
+        eq(tasks.active, true),
+        activitySubtaskPickerSearchClause(q),
+      ),
+    )
+    .orderBy(asc(tasks.name), asc(subTasks.name))
+    .limit(ACTIVITY_SUBTASK_PICKER_RESULT_LIMIT);
+}
+
+async function loadActivityScopeRow(
+  id: string,
+  db: Db,
+): Promise<{
+  subTaskId: string;
+  chainRunId: string | null;
+  active: boolean;
+} | null> {
+  const [row] = await db
+    .select({
+      subTaskId: activities.subTaskId,
+      chainRunId: activities.chainRunId,
+      active: activities.active,
+    })
+    .from(activities)
+    .where(eq(activities.id, id))
     .limit(1);
-  if (!currency) return null;
-  return resolveCurrencyPluralTitle(currency);
+  return row ?? null;
+}
+
+async function replayActivityCredits(
+  scope: {
+    subTaskIds: Array<string | null | undefined>;
+    chainRunIds: Array<string | null | undefined>;
+    previous: ActivityCreditSnapshot[];
+  },
+  db: Db,
+): Promise<void> {
+  await recomputeActivityCreditsAfterAdminChange(scope, db);
 }
 
 function timestampFromForm(input: AdminActivityFormInput): Date {
@@ -286,6 +360,10 @@ export async function createActivity(
   db: Db = getDb(),
 ): Promise<ActivityListItem> {
   const timestamp = timestampFromForm(input);
+  const previous = await loadActiveCreditSnapshots(
+    { subTaskIds: [input.subTaskId], chainRunIds: [] },
+    db,
+  );
   const [created] = await db
     .insert(activities)
     .values({
@@ -300,6 +378,14 @@ export async function createActivity(
     })
     .returning({ id: activities.id });
   await refreshAffectedTasks([input.subTaskId], db);
+  await replayActivityCredits(
+    {
+      subTaskIds: [input.subTaskId],
+      chainRunIds: [],
+      previous,
+    },
+    db,
+  );
   const row = await getActivityById(created.id, db);
   if (!row) throw new Error("activityNotFound");
   return row;
@@ -310,8 +396,15 @@ export async function updateActivityFields(
   input: AdminActivityFormInput,
   db: Db = getDb(),
 ): Promise<void> {
-  const existing = await getActivityById(id, db);
+  const existing = await loadActivityScopeRow(id, db);
   if (!existing) throw new Error("activityNotFound");
+  const previous = await loadActiveCreditSnapshots(
+    {
+      subTaskIds: [existing.subTaskId, input.subTaskId],
+      chainRunIds: [existing.chainRunId],
+    },
+    db,
+  );
   const timestamp = timestampFromForm(input);
   await db
     .update(activities)
@@ -327,31 +420,14 @@ export async function updateActivityFields(
     [...new Set([existing.subTaskId, input.subTaskId])],
     db,
   );
-}
-
-async function reverseAwardedIncome(
-  rows: Array<{
-    colaboratorId: string;
-    timestamp: Date;
-    currencyAwarded: number;
-  }>,
-  sign: 1 | -1,
-  db: Db,
-): Promise<void> {
-  const awarded = rows.filter((row) => row.currencyAwarded !== 0);
-  if (awarded.length === 0) return;
-  const plural = await paymentCurrencyPluralTitle(db);
-  for (const row of awarded) {
-    await applyActivityIncomeDelta(
-      {
-        colaboratorId: row.colaboratorId,
-        timestamp: row.timestamp,
-        delta: sign * row.currencyAwarded,
-        currencyPluralTitle: plural,
-      },
-      db,
-    );
-  }
+  await replayActivityCredits(
+    {
+      subTaskIds: [existing.subTaskId, input.subTaskId],
+      chainRunIds: [existing.chainRunId],
+      previous,
+    },
+    db,
+  );
 }
 
 export async function archiveActivities(
@@ -368,9 +444,7 @@ export async function archiveActivities(
         const rows = await tx
           .select({
             subTaskId: activities.subTaskId,
-            colaboratorId: activities.colaboratorId,
-            timestamp: activities.timestamp,
-            currencyAwarded: activities.currencyAwarded,
+            chainRunId: activities.chainRunId,
           })
           .from(activities)
           .where(
@@ -379,13 +453,27 @@ export async function archiveActivities(
         if (rows.length !== recordIds.length) {
           throw new Error("activityNotFound");
         }
-        await reverseAwardedIncome(rows, -1, tx);
+        const previous = await loadActiveCreditSnapshots(
+          {
+            subTaskIds: rows.map((row) => row.subTaskId),
+            chainRunIds: rows.map((row) => row.chainRunId),
+          },
+          tx,
+        );
         await tx
           .update(activities)
           .set({ active: false })
           .where(inArray(activities.id, recordIds));
         await refreshAffectedTasks(
           rows.map((row) => row.subTaskId),
+          tx,
+        );
+        await replayActivityCredits(
+          {
+            subTaskIds: rows.map((row) => row.subTaskId),
+            chainRunIds: rows.map((row) => row.chainRunId),
+            previous,
+          },
           tx,
         );
       },
@@ -400,26 +488,30 @@ export async function reactivateActivity(
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const txDb = tx as unknown as Db;
-    const [row] = await txDb
-      .select({
-        subTaskId: activities.subTaskId,
-        colaboratorId: activities.colaboratorId,
-        timestamp: activities.timestamp,
-        currencyAwarded: activities.currencyAwarded,
-        active: activities.active,
-      })
-      .from(activities)
-      .where(eq(activities.id, id))
-      .limit(1);
+    const row = await loadActivityScopeRow(id, txDb);
     if (!row) throw new Error("activityNotFound");
     if (row.active) return;
+    const previous = await loadActiveCreditSnapshots(
+      {
+        subTaskIds: [row.subTaskId],
+        chainRunIds: [row.chainRunId],
+      },
+      txDb,
+    );
 
     await txDb
       .update(activities)
       .set({ active: true })
       .where(eq(activities.id, id));
-    await reverseAwardedIncome([row], 1, txDb);
     await refreshAffectedTasks([row.subTaskId], txDb);
+    await replayActivityCredits(
+      {
+        subTaskIds: [row.subTaskId],
+        chainRunIds: [row.chainRunId],
+        previous,
+      },
+      txDb,
+    );
   });
 }
 
@@ -427,16 +519,24 @@ export async function deleteActivityById(
   id: string,
   db: Db = getDb(),
 ): Promise<void> {
-  const [row] = await db
-    .select({
-      subTaskId: activities.subTaskId,
-      active: activities.active,
-    })
-    .from(activities)
-    .where(eq(activities.id, id))
-    .limit(1);
+  const row = await loadActivityScopeRow(id, db);
   if (!row) throw new Error("activityNotFound");
   if (row.active) throw new Error("activeActivity");
+  const previous = await loadActiveCreditSnapshots(
+    {
+      subTaskIds: [row.subTaskId],
+      chainRunIds: [row.chainRunId],
+    },
+    db,
+  );
   await db.delete(activities).where(eq(activities.id, id));
   await refreshAffectedTasks([row.subTaskId], db);
+  await replayActivityCredits(
+    {
+      subTaskIds: [row.subTaskId],
+      chainRunIds: [row.chainRunId],
+      previous,
+    },
+    db,
+  );
 }

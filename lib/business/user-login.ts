@@ -3,7 +3,7 @@ import { deriveUserEmail } from "@/lib/users/create-user-payload";
 export interface UserLoginOwner {
   documentId: string;
   username: string;
-  /** Stored Strapi email when available (may lag behind username). */
+  /** Stored email when available (may lag behind username). */
   email?: string | null;
 }
 

@@ -4,6 +4,7 @@ import {
   applyOutcome,
   adjustIncome,
   buildNewMonthlyBalance,
+  cascadeBalanceRows,
   firstDayOfMonth,
   recomputeBalance,
 } from "./balance";
@@ -55,5 +56,35 @@ describe("balance domain", () => {
         -9,
       ).totalIncome,
     ).toBe(0);
+  });
+
+  it("cascades previous_balance through later months of the same currency", () => {
+    expect(
+      cascadeBalanceRows(
+        [
+          { date: "2026-08-01", totalIncome: 20, totalOutcome: 5 },
+          { date: "2026-09-01", totalIncome: 10, totalOutcome: 0 },
+        ],
+        40,
+      ),
+    ).toEqual([
+      { date: "2026-08-01", previousBalance: 40, balance: 55 },
+      { date: "2026-09-01", previousBalance: 55, balance: 65 },
+    ]);
+  });
+
+  it("skips missing months instead of inventing balance rows", () => {
+    expect(
+      cascadeBalanceRows(
+        [
+          { date: "2026-08-01", totalIncome: 20, totalOutcome: 0 },
+          { date: "2026-10-01", totalIncome: 5, totalOutcome: 0 },
+        ],
+        0,
+      ),
+    ).toEqual([
+      { date: "2026-08-01", previousBalance: 0, balance: 20 },
+      { date: "2026-10-01", previousBalance: 20, balance: 25 },
+    ]);
   });
 });

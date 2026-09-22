@@ -1,10 +1,11 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt } from "drizzle-orm";
 
 import { balances } from "@/drizzle/schema";
 import {
   applyOutcome,
   adjustIncome,
   buildNewMonthlyBalance,
+  cascadeBalanceRows,
   firstDayOfMonth,
   recomputeBalance,
 } from "@/lib/domain/balance";
@@ -170,6 +171,78 @@ export async function adjustBalanceIncome(
     totalOutcome: updated.totalOutcome,
     balance: updated.balance,
   };
+}
+
+function balanceMonthKey(value: Date | string): string {
+  if (value instanceof Date) return firstDayOfMonth(value);
+  return firstDayOfMonth(new Date(`${value.slice(0, 10)}T00:00:00.000Z`));
+}
+
+export async function cascadeMonthlyBalances(
+  input: {
+    userId: string;
+    currencyPluralTitle: string;
+    from: Date;
+  },
+  db: Db = getDb(),
+): Promise<void> {
+  const fromMonth = firstDayOfMonth(input.from);
+  const currencyPluralTitle = input.currencyPluralTitle.trim();
+  const laterRows = await db
+    .select()
+    .from(balances)
+    .where(
+      and(
+        eq(balances.userId, input.userId),
+        eq(balances.currencyPluralTitle, currencyPluralTitle),
+        gte(balances.date, fromMonth),
+      ),
+    )
+    .orderBy(asc(balances.date));
+  if (laterRows.length === 0) return;
+
+  const [seed] = await db
+    .select({ balance: balances.balance })
+    .from(balances)
+    .where(
+      and(
+        eq(balances.userId, input.userId),
+        eq(balances.currencyPluralTitle, currencyPluralTitle),
+        lt(balances.date, fromMonth),
+      ),
+    )
+    .orderBy(desc(balances.date))
+    .limit(1);
+
+  const cascaded = cascadeBalanceRows(
+    laterRows.map((row) => ({
+      date: balanceMonthKey(row.date),
+      totalIncome: row.totalIncome,
+      totalOutcome: row.totalOutcome,
+    })),
+    seed?.balance ?? 0,
+  );
+
+  for (const next of cascaded) {
+    const current = laterRows.find(
+      (row) => balanceMonthKey(row.date) === next.date,
+    );
+    if (!current) continue;
+    if (
+      current.previousBalance === next.previousBalance &&
+      current.balance === next.balance
+    ) {
+      continue;
+    }
+    await db
+      .update(balances)
+      .set({
+        previousBalance: next.previousBalance,
+        balance: next.balance,
+        updatedAt: new Date(),
+      })
+      .where(eq(balances.id, current.id));
+  }
 }
 
 export async function debitBalanceOutcome(

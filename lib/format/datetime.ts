@@ -126,7 +126,7 @@ function activityPart(
 }
 
 /**
- * Activity list datetime: `15h32 - 21/09/2026` in the app time zone.
+ * Activity list datetime: `21/09/2026 - 12h05` in the app time zone.
  */
 export function formatActivityDateTimePtBr(
   value: string | Date | null | undefined,
@@ -143,7 +143,7 @@ export function formatActivityDateTimePtBr(
   const day = activityPart(parts, "day");
   const month = activityPart(parts, "month");
   const year = activityPart(parts, "year");
-  return `${hour}h${minute} - ${day}/${month}/${year}`;
+  return `${day}/${month}/${year} - ${hour}h${minute}`;
 }
 
 /** Formats time as hh:mm for pt-BR UI. */

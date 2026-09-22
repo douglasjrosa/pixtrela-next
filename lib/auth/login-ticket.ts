@@ -18,7 +18,7 @@ function signPayload(payload: string): string {
 
 /**
  * Short-lived HMAC ticket so identify (code/tag/face) can establish an Auth.js
- * session without returning a Strapi JWT or re-sending the password.
+ * session without returning a JWT or re-sending the password.
  */
 export function issueLoginTicket(userId: string, nowMs = Date.now()): string {
   const expiresAt = String(nowMs + TICKET_TTL_MS);

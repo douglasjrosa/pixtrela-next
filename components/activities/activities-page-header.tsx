@@ -8,6 +8,7 @@ import { createActivity } from "@/app/(app)/activities/actions";
 import { AddNewButton } from "@/components/ui/add-new-button";
 import { Button } from "@/components/ui/button";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
+import { dispatchActivitiesListMutated } from "@/lib/activities/activity-list-events";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { ActivityFormOptions } from "@/lib/repos/activities";
 import type { AdminActivityFormInput } from "@/lib/schemas/admin-activity";
@@ -35,6 +36,7 @@ export function ActivitiesPageHeader({ options }: ActivitiesPageHeaderProps) {
         await createActivity(values);
         showSuccessToast(t("saved"));
         setCreateOpen(false);
+        dispatchActivitiesListMutated();
         router.refresh();
       } catch (error) {
         rethrowIfNavigationError(error);

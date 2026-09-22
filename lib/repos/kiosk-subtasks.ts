@@ -4,8 +4,6 @@ import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 
 import {
   activities,
-  currencies,
-  currencyForSubtasks,
   flags,
   subTaskAssignees,
   subTaskDependencies,
@@ -75,11 +73,11 @@ import {
 import { listTimeSpentByColaborator } from "@/lib/business/task-time-spent";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { getDb, type Db } from "@/lib/db/client";
-import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
 import {
   creditBalanceIncome,
   getOrCreateMonthlyBalance,
 } from "@/lib/repos/balances";
+import { resolvePaymentCurrencyAt } from "@/lib/repos/payment-currency";
 import {
   fetchUserNamesByIds,
   runTaskSubTaskSyncRoutine,
@@ -134,15 +132,8 @@ async function assertSubTaskAssigned(
   if (!row) throw new Error("notAssigned");
 }
 
-async function resolvePaymentCurrency(db: Db) {
-  const [setting] = await db.select().from(currencyForSubtasks).limit(1);
-  if (!setting) return null;
-  const [currency] = await db
-    .select()
-    .from(currencies)
-    .where(eq(currencies.id, setting.currencyId))
-    .limit(1);
-  return currency ?? null;
+async function resolvePaymentCurrency(db: Db, at: Date = new Date()) {
+  return resolvePaymentCurrencyAt(at, db);
 }
 
 function toSubTaskDbRow(
@@ -1308,7 +1299,7 @@ async function creditStopCurrency(
   },
   db: Db,
 ): Promise<number> {
-  const currency = await resolvePaymentCurrency(db);
+  const currency = await resolvePaymentCurrency(db, input.timestamp);
   if (!currency) return 0;
 
   let currencyAwarded = 0;
@@ -1373,7 +1364,7 @@ async function creditStopCurrency(
       const balance = await getOrCreateMonthlyBalance(
         {
           userId: credit.colaboratorId,
-          currencyPluralTitle: resolveCurrencyPluralTitle(currency),
+          currencyPluralTitle: currency.currencyPluralTitle,
           now: input.timestamp,
         },
         db,

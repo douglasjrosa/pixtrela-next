@@ -1,6 +1,6 @@
 /**
  * Potential currency a sub-task can generate when completed.
- * Matches Strapi pool size: expectedTime × currencyPerSecond.
+ * Pool size: expectedTime × currencyPerSecond.
  */
 export function calculateSubtaskPayment(
   expectedTime: number,
@@ -42,7 +42,7 @@ export type ColaboratorEarningsInput = {
 };
 
 /**
- * Collaborator earnings preview aligned with Strapi work-currency:
+ * Collaborator earnings preview aligned with work-currency rules:
  * - duration: ceil share of expectedTime × rate by time spent
  * - qty: pieces × (expectedTime / targetQty) × rate (no ceil)
  */

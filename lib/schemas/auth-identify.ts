@@ -30,12 +30,12 @@ export const loginByFaceConfirmSchema = z.object({
     .length(FACE_DESCRIPTOR_LENGTH),
 });
 
-/** Credentials path that establishes a session from a Strapi JWT. */
+/** Credentials path that establishes a session from a legacy JWT. */
 export const jwtCredentialSchema = z.object({
   jwt: z.string().min(1),
 });
 
-/** Credentials path for Drizzle identify (code/tag/face) without Strapi JWT. */
+/** Credentials path for identify (code/tag/face) without JWT. */
 export const loginTicketCredentialSchema = z.object({
   loginTicket: z.string().min(1),
 });

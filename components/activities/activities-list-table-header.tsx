@@ -61,6 +61,7 @@ export async function ActivitiesListTableHeader({
           filters={filters}
           align="center"
         />
+        <th className="py-2 text-center">{t("earned")}</th>
         <ActivityListSortHeaderLink
           column="subtask"
           label={t("subtask")}

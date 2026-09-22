@@ -108,7 +108,7 @@ async function loadTaskSubTaskContext(
 
 /**
  * Recomputes activation statuses, parent task status, and total time spent
- * for all sub-tasks of a task (Strapi runTaskSubTaskSyncRoutine + parent rollup).
+ * for all sub-tasks of a task (activation + parent task rollup).
  */
 export async function runTaskSubTaskSyncRoutine(
   taskId: string,

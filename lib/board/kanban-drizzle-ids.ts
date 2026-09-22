@@ -1,4 +1,4 @@
-/** Kanban UI uses numeric ids (Strapi legacy); Drizzle uses UUIDs. */
+/** Kanban UI uses numeric column ids; persistence uses UUIDs. */
 
 import type { KanbanStep } from "@/components/kanban/types";
 import type { StepTaskOrderBy } from "@/lib/schemas/step-task-order-by";

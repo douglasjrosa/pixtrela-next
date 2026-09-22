@@ -6,7 +6,7 @@ export function deriveUserEmail(username: string): string {
   return `${username.trim().toLowerCase()}@${PIXTRELA_EMAIL_DOMAIN}`;
 }
 
-/** Payload for Strapi POST /users (role resolved server-side from roleType). */
+/** Payload for user create (role resolved server-side from roleType). */
 export function buildCreateUserPayload(data: UserFormInput): Record<string, unknown> {
   return {
     username: data.username,

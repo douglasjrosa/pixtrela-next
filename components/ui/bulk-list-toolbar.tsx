@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Trash2 } from "lucide-react";
+import { Archive, RefreshCw, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -12,6 +12,10 @@ export interface BulkListToolbarProps {
   disabled?: boolean;
   onArchive: () => void;
   onDelete: () => void;
+  showRefresh?: boolean;
+  refreshLabel?: string;
+  refreshPending?: boolean;
+  onRefresh?: () => void;
 }
 
 export function BulkListToolbar({
@@ -22,9 +26,28 @@ export function BulkListToolbar({
   disabled = false,
   onArchive,
   onDelete,
+  showRefresh = false,
+  refreshLabel,
+  refreshPending = false,
+  onRefresh,
 }: BulkListToolbarProps) {
   return (
     <div className="flex h-10 shrink-0 items-center justify-end gap-2">
+      {showRefresh && onRefresh && refreshLabel ? (
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          aria-label={refreshLabel}
+          disabled={disabled || refreshPending}
+          onClick={onRefresh}
+        >
+          <RefreshCw
+            aria-hidden
+            className={refreshPending ? "animate-spin" : undefined}
+          />
+        </Button>
+      ) : null}
       {showArchive ? (
         <Button
           type="button"

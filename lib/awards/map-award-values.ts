@@ -8,7 +8,7 @@ export interface MappedAwardValue {
   currencyDocumentId: string;
 }
 
-/** Maps Strapi Award `Value` rows to form values. */
+/** Maps award value rows to form values. */
 export function mapAwardValues(
   values: AwardValueComponent[] | null | undefined,
 ): MappedAwardValue[] {

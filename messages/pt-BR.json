@@ -234,7 +234,14 @@
     "date": "Data",
     "time": "Hora",
     "qty": "Qtde.",
+    "earned": "Ganho",
     "subtask": "Subtarefa",
+    "subtaskPickerTitle": "Escolher subtarefa",
+    "subtaskPickerSearch": "Buscar por subtarefa, tarefa, pedido ou entrega",
+    "subtaskPickerEmpty": "Nenhuma subtarefa encontrada.",
+    "subtaskPickerPlaceholder": "Selecione uma subtarefa",
+    "subtaskPickerMinChars": "Digite pelo menos 3 caracteres para buscar.",
+    "subtaskPickerSearching": "Buscando…",
     "action": {
       "started": "Iniciada",
       "stoped": "Parada"
@@ -250,6 +257,7 @@
     "showArchived": "Exibir atividades arquivadas",
     "dateRangeTooLong": "O intervalo entre De e Até não pode ser maior que 3 meses.",
     "empty": "Nenhuma atividade encontrada.",
+    "refreshList": "Atualizar lista",
     "listLoading": "Carregando atividades...",
     "archive": "Arquivar",
     "archiveTitle": "Arquivar atividades",

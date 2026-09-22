@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
@@ -12,6 +12,7 @@ import {
 } from "@/lib/auth/permissions";
 import {
   loadActivityListPage,
+  reloadActivityListPage,
   type ActivityListPageResult,
 } from "@/lib/activities/load-activity-list-page";
 import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
@@ -22,7 +23,9 @@ import {
   deleteActivityById,
   getActivityById,
   reactivateActivity as reactivateActivityRepo,
+  searchActivitySubtaskPickerOptions,
   updateActivityFields,
+  type ActivitySubtaskPickerRow,
 } from "@/lib/repos/activities";
 import {
   adminActivityFormSchema,
@@ -65,6 +68,14 @@ function invalidateActivities(): void {
   revalidateTag("drizzle:subTasks", "default");
   revalidateTag("drizzle:tasks", "default");
   revalidateTag("drizzle:balances", "default");
+  revalidatePath("/activities");
+}
+
+export async function searchActivitySubtasksForPicker(
+  query: string,
+): Promise<ActivitySubtaskPickerRow[]> {
+  await assertCanView();
+  return searchActivitySubtaskPickerOptions(query);
 }
 
 export async function loadMoreActivities(
@@ -74,6 +85,14 @@ export async function loadMoreActivities(
   await assertCanView();
   const filters = activityListFiltersSchema.parse(rawFilters);
   return loadActivityListPage(filters, page);
+}
+
+export async function refreshActivitiesList(
+  rawFilters: unknown,
+): Promise<ActivityListPageResult> {
+  await assertCanView();
+  const filters = activityListFiltersSchema.parse(rawFilters);
+  return reloadActivityListPage(filters, 1);
 }
 
 export async function loadActivityArchiveReason(

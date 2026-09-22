@@ -80,10 +80,3 @@ export function formatColaboratorLabel(
   return `${trimmed} ${code}`;
 }
 
-/** `{subTask} - {task}` label used in the activities list and form. */
-export function formatActivitySubtaskLabel(
-  subTaskName: string,
-  taskName: string,
-): string {
-  return `${subTaskName.trim()} - ${taskName.trim()}`;
-}

@@ -34,6 +34,9 @@ function mapItem(item: ActivityListItem): ActivityRow {
     subTaskId: item.subTaskId,
     subTaskName: item.subTaskName,
     taskName: item.taskName,
+    taskQty: item.taskQty,
+    taskCrmItemKey: item.taskCrmItemKey,
+    taskDeliveryDate: item.taskDeliveryDate,
   };
 }
 
@@ -73,4 +76,12 @@ export async function loadActivityListPage(
     { tags: [ACTIVITY_LIST_CACHE_TAG] },
   );
   return cached();
+}
+
+/** Bypasses `unstable_cache` for explicit client refresh after mutations. */
+export async function reloadActivityListPage(
+  filters: ActivityListFilters,
+  page: number,
+): Promise<ActivityListPageResult> {
+  return loadActivityListPageImpl(filters, Math.max(1, page));
 }

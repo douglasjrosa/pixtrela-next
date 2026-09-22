@@ -11,6 +11,18 @@ export type ActivityRow = {
   subTaskId: string;
   subTaskName: string;
   taskName: string;
+  taskQty: number;
+  taskCrmItemKey: string | null;
+  taskDeliveryDate: string | null;
+};
+
+export type ActivitySubtaskOption = {
+  id: string;
+  name: string;
+  taskName: string;
+  taskQty: number;
+  taskCrmItemKey: string | null;
+  taskDeliveryDate: string | null;
 };
 
 export type ActivityFormOption = {

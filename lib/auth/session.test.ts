@@ -13,7 +13,7 @@ describe("isAuthenticatedSession", () => {
     ).toBe(true);
   });
 
-  it("accepts legacy session with Strapi jwt and role", () => {
+  it("accepts legacy session with jwt and role", () => {
     expect(
       isAuthenticatedSession({
         user: { id: "1", name: "Admin", role: "admin" },

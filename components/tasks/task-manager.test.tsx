@@ -120,7 +120,7 @@ describe("TasksPageHeader", () => {
 
   it("shows error toast when create fails", async () => {
     const user = userEvent.setup();
-    createTask.mockRejectedValueOnce(new Error("Strapi request failed"));
+    createTask.mockRejectedValueOnce(new Error("request failed"));
 
     renderWithIntl(<TasksPageHeader steps={steps} />);
 

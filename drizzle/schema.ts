@@ -207,6 +207,10 @@ export const currencyForSubtasks = pgTable("currency_for_subtasks", {
   currencyId: uuid("currency_id")
     .references(() => currencies.id)
     .notNull(),
+  validFrom: timestamp("valid_from", { withTimezone: true })
+    .default(sql`'1970-01-01T00:00:00Z'`)
+    .notNull(),
+  validUntil: timestamp("valid_until", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

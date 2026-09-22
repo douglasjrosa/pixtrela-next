@@ -11,8 +11,7 @@ import {
   seedKioskWorkflowFixture,
 } from "./fixtures/kiosk-workflow";
 
-const isDrizzleE2e =
-  (process.env.DATA_BACKEND ?? "drizzle").trim().toLowerCase() !== "strapi";
+const isDrizzleE2e = true;
 
 test.describe("Kiosk", () => {
   test("kiosk home requires login when unauthenticated", async ({ page }) => {

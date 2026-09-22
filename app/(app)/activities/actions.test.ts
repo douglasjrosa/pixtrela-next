@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTag = vi.fn();
+const revalidatePath = vi.fn();
 const auth = vi.fn();
 const createActivityRepo = vi.fn();
 const updateActivityFields = vi.fn();
@@ -17,6 +18,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
+  revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
 vi.mock("@/lib/repos/activities", () => ({
@@ -50,6 +52,7 @@ describe("activities actions", () => {
   beforeEach(() => {
     vi.resetModules();
     revalidateTag.mockReset();
+    revalidatePath.mockReset();
     auth.mockReset();
     createActivityRepo.mockReset();
     updateActivityFields.mockReset();
@@ -74,6 +77,7 @@ describe("activities actions", () => {
     await createActivity(FORM);
     expect(createActivityRepo).toHaveBeenCalledWith(FORM);
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:activities", "default");
+    expect(revalidatePath).toHaveBeenCalledWith("/activities");
   });
 
   it("refuses to delete an active activity", async () => {

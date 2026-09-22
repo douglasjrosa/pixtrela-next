@@ -8,11 +8,7 @@ import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberInput } from "@/components/ui/number-input";
-import {
-  formatActivitySubtaskLabel,
-  formatColaboratorLabel,
-  splitZonedDateTime,
-} from "@/lib/business/activity-timestamp";
+import { formatColaboratorLabel, splitZonedDateTime } from "@/lib/business/activity-timestamp";
 import type { ActivityFormOptions } from "@/lib/repos/activities";
 import { ACTIVITY_ACTIONS } from "@/lib/schemas/activity";
 import {
@@ -21,7 +17,21 @@ import {
 } from "@/lib/schemas/admin-activity";
 import { cn } from "@/lib/utils";
 
-import type { ActivityRow } from "./types";
+import { ActivitySubtaskPickerField } from "./activity-subtask-picker-field";
+import type { ActivityRow, ActivitySubtaskOption } from "./types";
+
+export function activitySubtaskOptionFromRow(
+  activity: ActivityRow,
+): ActivitySubtaskOption {
+  return {
+    id: activity.subTaskId,
+    name: activity.subTaskName,
+    taskName: activity.taskName,
+    taskQty: activity.taskQty,
+    taskCrmItemKey: activity.taskCrmItemKey,
+    taskDeliveryDate: activity.taskDeliveryDate,
+  };
+}
 
 const SELECT_CLASS = cn(
   "flex h-9 w-full rounded-md border border-input",
@@ -35,7 +45,7 @@ export function buildCreateActivityDefaults(
   const parts = splitZonedDateTime(now);
   return {
     colaboratorId: options.colaborators[0]?.id ?? "",
-    subTaskId: options.subTasks[0]?.id ?? "",
+    subTaskId: "",
     action: "started",
     date: parts.date,
     time: parts.time,
@@ -60,6 +70,7 @@ export function activityFormValuesFromRow(
 export interface ActivityFormProps {
   options: ActivityFormOptions;
   defaultValues: AdminActivityFormInput;
+  selectedSubtask?: ActivitySubtaskOption | null;
   isPending?: boolean;
   formId: string;
   onSubmit: (values: AdminActivityFormInput) => void;
@@ -69,6 +80,7 @@ export interface ActivityFormProps {
 export function ActivityForm({
   options,
   defaultValues,
+  selectedSubtask = null,
   isPending = false,
   formId,
   onSubmit,
@@ -110,24 +122,15 @@ export function ActivityForm({
         ) : null}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="activity-subtask">{t("subtask")}</Label>
-        <select
-          id="activity-subtask"
-          className={SELECT_CLASS}
-          disabled={isPending}
-          {...register("subTaskId")}
-        >
-          {options.subTasks.map((subTask) => (
-            <option key={subTask.id} value={subTask.id}>
-              {formatActivitySubtaskLabel(subTask.name, subTask.taskName)}
-            </option>
-          ))}
-        </select>
-        {errors.subTaskId ? (
-          <p className="text-sm text-destructive">{t("validationError")}</p>
-        ) : null}
-      </div>
+      <ActivitySubtaskPickerField
+        control={control}
+        selectedSubtask={selectedSubtask}
+        disabled={isPending}
+        error={Boolean(errors.subTaskId)}
+      />
+      {errors.subTaskId ? (
+        <p className="text-sm text-destructive">{t("validationError")}</p>
+      ) : null}
 
       <div className="space-y-2">
         <Label htmlFor="activity-action">{t("actionColumn")}</Label>

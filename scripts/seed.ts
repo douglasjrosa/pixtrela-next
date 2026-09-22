@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 import {
@@ -92,7 +92,11 @@ async function main(): Promise<void> {
     currencyId = created.id;
   }
 
-  const [paymentSetting] = await db.select().from(currencyForSubtasks).limit(1);
+  const [paymentSetting] = await db
+    .select()
+    .from(currencyForSubtasks)
+    .where(isNull(currencyForSubtasks.validUntil))
+    .limit(1);
   if (!paymentSetting) {
     await db.insert(currencyForSubtasks).values({ currencyId });
   }

@@ -1,7 +1,7 @@
 # Greenfield: Next + Postgres + Drizzle
 
-Strapi (`../strapi`) is **legacy reference only**. This app is **Drizzle-only**
-at runtime; use `scripts/etl-from-strapi.ts` only for one-time cutover ETL.
+This app is **Drizzle-only** at runtime. Optional `npm run db:etl` imports from a
+legacy source database (one-time cutover).
 
 ## Quick start (laptop)
 
@@ -42,7 +42,7 @@ Target topology:
 | `npm run db:push` | Push schema (dev only) |
 | `npm run db:seed` | Minimal admin + currency + steps |
 | `npm run db:seed:e2e` | E2E manager user |
-| `npm run db:etl` | Cutover ETL (needs `STRAPI_DATABASE_URL`) |
+| `npm run db:etl` | One-time cutover ETL (needs `LEGACY_SOURCE_DATABASE_URL` or `STRAPI_DATABASE_URL`) |
 | `npm run test:db` | Domain/repos unit tests |
 | `RUN_DB_TESTS=1 npm test -- lib/repos/repos.integration.test.ts` | Postgres integration |
 
@@ -53,6 +53,6 @@ Target topology:
 | `DATABASE_URL` | Postgres connection (required) |
 | `AUTH_SECRET` | Auth.js session signing (required) |
 | `RUN_DB_TESTS=1` | Enable Drizzle integration tests |
-| `STRAPI_DATABASE_URL` | Legacy DB for `npm run db:etl` only |
+| `STRAPI_DATABASE_URL` | Legacy source DB for `npm run db:etl` only (optional) |
 
 See also `MIGRATION.md` and `CUTOVER.md`.

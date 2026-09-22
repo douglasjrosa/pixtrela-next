@@ -43,7 +43,7 @@ describe("calculateColaboratorEarnings", () => {
     ).toBe(60);
   });
 
-  it("pays qty pieces using expectedTime / targetQty × rate (Strapi)", () => {
+  it("pays qty pieces using expectedTime / targetQty × rate", () => {
     expect(
       calculateColaboratorEarnings({
         sharingType: "qty",

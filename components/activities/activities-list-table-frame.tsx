@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -10,6 +10,7 @@ import {
   loadActivityArchiveReason,
   loadMoreActivities,
   reactivateActivity,
+  refreshActivitiesList,
   updateActivity,
 } from "@/app/(app)/activities/actions";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
@@ -18,6 +19,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { ListLoadMore } from "@/components/ui/load-more-button";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
+import { ACTIVITIES_LIST_MUTATED_EVENT } from "@/lib/activities/activity-list-events";
 import { activityListFilterKey } from "@/lib/activities/activity-list-params";
 import {
   areAllRowsSelected,
@@ -28,12 +30,17 @@ import {
 } from "@/lib/business/list-selection";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { ActivityFormOptions } from "@/lib/repos/activities";
+import type { ActivityListPageResult } from "@/lib/activities/load-activity-list-page";
 import type { ActivityListFilters } from "@/lib/schemas/activity-list-filters";
 import type { AdminActivityFormInput } from "@/lib/schemas/admin-activity";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 import { ActivityEditProvider } from "./activity-edit-context";
-import { ActivityForm, activityFormValuesFromRow } from "./activity-form";
+import {
+  ActivityForm,
+  activityFormValuesFromRow,
+  activitySubtaskOptionFromRow,
+} from "./activity-form";
 import {
   ActivityListRowPresentational,
   type ActivityListRowLabels,
@@ -60,17 +67,7 @@ function optionsForEdit(
         },
         ...options.colaborators,
       ];
-  const subTasks = options.subTasks.some((row) => row.id === activity.subTaskId)
-    ? options.subTasks
-    : [
-        {
-          id: activity.subTaskId,
-          name: activity.subTaskName,
-          taskName: activity.taskName,
-        },
-        ...options.subTasks,
-      ];
-  return { colaborators, subTasks };
+  return { colaborators };
 }
 
 export interface ActivitiesListTableFrameProps {
@@ -82,8 +79,6 @@ export interface ActivitiesListTableFrameProps {
   canDeactivate?: boolean;
   canDelete?: boolean;
   tableHeader: ReactNode;
-  tableBody: ReactNode;
-  mobileList: ReactNode;
 }
 
 function buildRowLabels(
@@ -108,8 +103,6 @@ export function ActivitiesListTableFrame({
   canDeactivate = false,
   canDelete = false,
   tableHeader,
-  tableBody,
-  mobileList,
 }: ActivitiesListTableFrameProps) {
   const t = useTranslations("activities");
   const tCommon = useTranslations("common");
@@ -118,6 +111,7 @@ export function ActivitiesListTableFrame({
   const bulkEnabled = canDeactivate || canDelete;
   const showCheckboxColumn = bulkEnabled;
 
+  const [baseActivities, setBaseActivities] = useState(initialActivities);
   const [extraActivities, setExtraActivities] = useState<ActivityRow[]>([]);
   const [page, setPage] = useState(initialPage);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -132,13 +126,53 @@ export function ActivitiesListTableFrame({
   const [prevListResetKey, setPrevListResetKey] = useState(listResetKey);
   if (listResetKey !== prevListResetKey) {
     setPrevListResetKey(listResetKey);
+    setBaseActivities(initialActivities);
     setExtraActivities([]);
     setPage(initialPage);
     setHasMore(initialHasMore);
     setSelectedIds([]);
   }
 
-  const activities = [...initialActivities, ...extraActivities];
+  useEffect(() => {
+    setBaseActivities(initialActivities);
+  }, [initialActivities]);
+
+  useEffect(() => {
+    function onListMutated(): void {
+      syncListFromServer();
+    }
+    window.addEventListener(ACTIVITIES_LIST_MUTATED_EVENT, onListMutated);
+    return () => {
+      window.removeEventListener(ACTIVITIES_LIST_MUTATED_EVENT, onListMutated);
+    };
+  }, [filterKey]);
+
+  const activities = [...baseActivities, ...extraActivities];
+
+  function applyListPage(result: ActivityListPageResult): void {
+    setBaseActivities(result.activities);
+    setExtraActivities([]);
+    setPage(result.page);
+    setHasMore(result.hasMore);
+    setSelectedIds([]);
+  }
+
+  async function fetchFreshList(): Promise<void> {
+    const result = await refreshActivitiesList(filters);
+    applyListPage(result);
+    router.refresh();
+  }
+
+  function syncListFromServer(): void {
+    startTransition(async () => {
+      try {
+        await fetchFreshList();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(t("error"));
+      }
+    });
+  }
   const selected = selectedRowsFromList(activities, selectedIds);
   const hasSelection = selected.length > 0;
   const allSelectedArchived = areAllSelectedRowsInactive(
@@ -185,7 +219,7 @@ export function ActivitiesListTableFrame({
         await updateActivity(editing.documentId, values);
         showSuccessToast(t("saved"));
         setEditing(null);
-        router.refresh();
+        await fetchFreshList();
       } catch (error) {
         rethrowIfNavigationError(error);
         showErrorToast(t("error"));
@@ -200,7 +234,7 @@ export function ActivitiesListTableFrame({
         await reactivateActivity(editing.documentId);
         showSuccessToast(t("reactivated"));
         setEditing(null);
-        router.refresh();
+        await fetchFreshList();
       } catch (error) {
         rethrowIfNavigationError(error);
         showErrorToast(t("error"));
@@ -215,7 +249,7 @@ export function ActivitiesListTableFrame({
         showSuccessToast(t("bulkArchived"));
         setArchiveOpen(false);
         setSelectedIds([]);
-        router.refresh();
+        await fetchFreshList();
       } catch (error) {
         rethrowIfNavigationError(error);
         showErrorToast(t("error"));
@@ -230,7 +264,7 @@ export function ActivitiesListTableFrame({
         showSuccessToast(t("bulkDeleted"));
         setDeleteOpen(false);
         setSelectedIds([]);
-        router.refresh();
+        await fetchFreshList();
       } catch (error) {
         rethrowIfNavigationError(error);
         showErrorToast(t("error"));
@@ -255,50 +289,46 @@ export function ActivitiesListTableFrame({
     <ActivityEditProvider onEdit={openEdit}>
       <ListSelectionProvider value={selectionValue}>
         <div className="flex min-h-0 flex-1 flex-col">
-          {bulkEnabled ? (
-            <BulkListToolbar
-              showArchive={showArchiveAction}
-              showDelete={showDeleteAction}
-              archiveLabel={t("archiveSelected")}
-              deleteLabel={t("deleteSelected")}
-              disabled={isPending}
-              onArchive={() => setArchiveOpen(true)}
-              onDelete={() => setDeleteOpen(true)}
-            />
-          ) : null}
+          <BulkListToolbar
+            showRefresh
+            refreshLabel={t("refreshList")}
+            refreshPending={isPending}
+            onRefresh={syncListFromServer}
+            showArchive={bulkEnabled && showArchiveAction}
+            showDelete={bulkEnabled && showDeleteAction}
+            archiveLabel={t("archiveSelected")}
+            deleteLabel={t("deleteSelected")}
+            disabled={isPending}
+            onArchive={() => setArchiveOpen(true)}
+            onDelete={() => setDeleteOpen(true)}
+          />
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             <table className="hidden w-full text-sm md:table">
               {tableHeader}
-              {tableBody}
-              {extraActivities.length > 0 ? (
-                <tbody>
-                  {extraActivities.map((activity) => (
-                    <ActivityListRowPresentational
-                      key={activity.documentId}
-                      activity={activity}
-                      variant="table"
-                      labels={buildRowLabels(activity, t, tCommon)}
-                      showCheckboxColumn={showCheckboxColumn}
-                    />
-                  ))}
-                </tbody>
-              ) : null}
-            </table>
-            {mobileList}
-            {extraActivities.length > 0 ? (
-              <ul className="md:hidden">
-                {extraActivities.map((activity) => (
+              <tbody>
+                {activities.map((activity) => (
                   <ActivityListRowPresentational
                     key={activity.documentId}
                     activity={activity}
-                    variant="mobile"
+                    variant="table"
                     labels={buildRowLabels(activity, t, tCommon)}
                     showCheckboxColumn={showCheckboxColumn}
                   />
                 ))}
-              </ul>
-            ) : null}
+              </tbody>
+            </table>
+            <ul className="md:hidden">
+              {activities.map((activity) => (
+                <ActivityListRowPresentational
+                  key={activity.documentId}
+                  activity={activity}
+                  variant="mobile"
+                  labels={buildRowLabels(activity, t, tCommon)}
+                  showCheckboxColumn={showCheckboxColumn}
+                />
+              ))}
+            </ul>
           </div>
 
           <ListLoadMore
@@ -357,6 +387,7 @@ export function ActivitiesListTableFrame({
               <ActivityForm
                 options={optionsForEdit(options, editing)}
                 defaultValues={activityFormValuesFromRow(editing)}
+                selectedSubtask={activitySubtaskOptionFromRow(editing)}
                 formId={EDIT_FORM_ID}
                 isPending={isPending}
                 onSubmit={handleUpdate}

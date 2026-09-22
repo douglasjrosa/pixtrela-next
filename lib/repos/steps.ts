@@ -137,7 +137,7 @@ export async function updateStepIndex(
 }
 
 /**
- * Hard-deletes a step like Strapi. Tasks referencing it lose the column
+ * Hard-deletes a step. Tasks referencing it lose the column
  * assignment (`step_id` set to null) so the FK does not block the delete.
  */
 export async function deleteStep(id: string, db: Db = getDb()): Promise<void> {

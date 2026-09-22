@@ -7,7 +7,7 @@ export const LOGIN_PATH = `/login?reason=${SESSION_EXPIRED_QUERY}`;
 
 /**
  * True when Auth.js has a usable session.
- * Drizzle sessions may have an empty `jwt` (no Strapi token).
+ * Sessions may have an empty `jwt` (Drizzle-only auth).
  */
 export function isAuthenticatedSession(
   session: Session | null | undefined,

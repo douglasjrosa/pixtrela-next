@@ -57,6 +57,27 @@ export function applyIncome(
   return { ...next, previousBalance: amounts.previousBalance };
 }
 
+export function cascadeBalanceRows(
+  laterMonths: Array<{
+    date: string;
+    totalIncome: number;
+    totalOutcome: number;
+  }>,
+  seedPreviousBalance: number,
+): Array<{ date: string; previousBalance: number; balance: number }> {
+  let previous = seedPreviousBalance;
+  return laterMonths.map((row) => {
+    const previousBalance = previous;
+    const balance = recomputeBalance({
+      previousBalance,
+      totalIncome: row.totalIncome,
+      totalOutcome: row.totalOutcome,
+    });
+    previous = balance;
+    return { date: row.date, previousBalance, balance };
+  });
+}
+
 export function applyOutcome(
   amounts: BalanceAmounts,
   outcome: number,

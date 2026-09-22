@@ -58,7 +58,6 @@ import {
 } from "@/lib/domain/work-currency";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { getDb, type Db } from "@/lib/db/client";
-import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
 import {
   adjustBalanceIncome,
   getOrCreateMonthlyBalance,
@@ -81,7 +80,7 @@ import {
   assertFinishFlagsAllowed,
   mergeFlagIds,
 } from "@/lib/business/subtask-material-flags";
-import { currencies, currencyForSubtasks } from "@/drizzle/schema";
+import { resolvePaymentCurrencyAt } from "@/lib/repos/payment-currency";
 
 const PRODUCING_STATUS = "producing";
 const WAITING_STATUS = "waiting";
@@ -124,15 +123,8 @@ function toChainItem(row: SubTaskWithAssignees): ChainSubTask {
   };
 }
 
-async function resolvePaymentCurrency(db: Db) {
-  const [setting] = await db.select().from(currencyForSubtasks).limit(1);
-  if (!setting) return null;
-  const [currency] = await db
-    .select()
-    .from(currencies)
-    .where(eq(currencies.id, setting.currencyId))
-    .limit(1);
-  return currency ?? null;
+async function resolvePaymentCurrency(db: Db, at: Date = new Date()) {
+  return resolvePaymentCurrencyAt(at, db);
 }
 
 async function loadChainContext(subTaskId: string, db: Db) {
@@ -817,14 +809,14 @@ async function applyCreditDeltas(
   timestamp: Date,
   db: Db,
 ): Promise<void> {
-  const currency = await resolvePaymentCurrency(db);
+  const currency = await resolvePaymentCurrency(db, timestamp);
   if (!currency) return;
   for (const row of deltas) {
     if (row.delta === 0) continue;
     const balance = await getOrCreateMonthlyBalance(
       {
         userId: row.colaboratorId,
-        currencyPluralTitle: resolveCurrencyPluralTitle(currency),
+        currencyPluralTitle: currency.currencyPluralTitle,
         now: timestamp,
       },
       db,
@@ -838,6 +830,7 @@ type ReallocateChainRunHints = {
   principalId?: string;
   skipFinishFlagAssertion?: boolean;
   requireOpenPrincipal?: boolean;
+  skipCreditApply?: boolean;
 };
 
 async function reallocateChainRunInternal(
@@ -1204,14 +1197,16 @@ async function reallocateChainRunInternal(
       }
     }
 
-    await applyCreditDeltas(
-      creditDeltas.map((row) => ({
-        colaboratorId: row.colaboratorId,
-        delta: row.delta,
-      })),
-      stopAt,
-      tx as unknown as Db,
-    );
+    if (!hints?.skipCreditApply) {
+      await applyCreditDeltas(
+        creditDeltas.map((row) => ({
+          colaboratorId: row.colaboratorId,
+          delta: row.delta,
+        })),
+        stopAt,
+        tx as unknown as Db,
+      );
+    }
     await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, stopAt);
     await releaseProducerFlagsWhenConsumersFinished(
       sub.taskId,
@@ -1542,6 +1537,37 @@ export async function reallocateChainRunAfterHelperStop(
     preferredAnchorSubTaskId: answers[0]?.documentId,
     principalId,
     skipFinishFlagAssertion: true,
+  });
+}
+
+export async function reallocateChainRunForReplay(
+  chainRunId: string,
+  db: Db = getDb(),
+): Promise<void> {
+  const runRows = await loadRunActivities(chainRunId, db);
+  if (runRows.length === 0) return;
+  const scope = await resolveChainRunScope(runRows, db);
+  const { scopedRows, principalId } = scope;
+  const principalLastStop = [...scopedRows]
+    .reverse()
+    .find(
+      (row) => row.colaboratorId === principalId && row.action === "stoped",
+    );
+  const stopAt =
+    principalLastStop?.timestamp ??
+    scopedRows[scopedRows.length - 1]?.timestamp ??
+    new Date();
+  const answers = reconstructChainStopAnswersFromPrincipalStops(
+    scope.chain.memberIds,
+    scope.siblings,
+    scopedRows,
+    principalId,
+  );
+  await reallocateChainRunInternal(chainRunId, answers, stopAt, db, 0, {
+    preferredAnchorSubTaskId: answers[0]?.documentId,
+    principalId,
+    skipFinishFlagAssertion: true,
+    skipCreditApply: true,
   });
 }
 
