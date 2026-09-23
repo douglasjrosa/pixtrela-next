@@ -31,6 +31,7 @@ export function KanbanColumn({
   onTaskPrefetch,
   onTaskVisiblePrefetch,
   onTaskPrefetchCancel,
+  persistingTaskDocumentIds,
 }: {
   step: KanbanStep;
   tasks: KanbanTask[];
@@ -43,6 +44,7 @@ export function KanbanColumn({
   onTaskPrefetch?: (task: KanbanTask) => void;
   onTaskVisiblePrefetch?: (task: KanbanTask) => void;
   onTaskPrefetchCancel?: () => void;
+  persistingTaskDocumentIds?: ReadonlySet<string>;
 }) {
   const t = useTranslations("kanban");
   const sortableDisabled = isAutoStepTaskOrder(step.taskOrderBy);
@@ -114,6 +116,7 @@ export function KanbanColumn({
                   key={task.documentId}
                   task={task}
                   sortableDisabled={sortableDisabled}
+                  persisting={persistingTaskDocumentIds?.has(task.documentId)}
                   onTaskClick={onTaskClick}
                   onTaskPrefetch={onTaskPrefetch}
                   onTaskVisiblePrefetch={onTaskVisiblePrefetch}

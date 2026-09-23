@@ -187,7 +187,7 @@ describe("BoardActions", () => {
       }),
     ]);
     const updateSubtaskAssignees = vi.fn().mockImplementation(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 30));
+      await new Promise((resolve) => setTimeout(resolve, 200));
       loadSubtasks.mockResolvedValue([
         boardSubTaskSummaryStub({
           documentId: "st-1",
@@ -210,11 +210,11 @@ describe("BoardActions", () => {
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(
-      screen.getByRole("heading", { name: "Subtarefas" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("heading", { name: "Subtarefas" }),
+    ).not.toBeInTheDocument();
     await vi.waitFor(() => {
       expect(
-        screen.getByTestId("subtask-card-persisting-spinner"),
+        screen.getByTestId("task-card-persisting-spinner"),
       ).toBeInTheDocument();
     });
     await vi.waitFor(() => {
@@ -226,11 +226,15 @@ describe("BoardActions", () => {
       );
     });
     expect(
-      screen.queryByTestId("subtask-card-persisting-spinner"),
+      screen.queryByTestId("task-card-persisting-spinner"),
     ).not.toBeInTheDocument();
+
+    await user.click(screen.getByText("1 - Tarefa A"));
+    await user.click(await screen.findByRole("button", { name: /Soldar/ }));
+    expect(screen.getByRole("button", { name: "Remover Ana" })).toBeInTheDocument();
   });
 
-  it("keeps the modal open and the board usable while save runs", async () => {
+  it("closes the modal and blocks only the saving task card while save runs", async () => {
     const user = userEvent.setup();
     let resolveSave!: () => void;
     const saveGate = new Promise<void>((resolve) => {
@@ -256,14 +260,13 @@ describe("BoardActions", () => {
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(
-      screen.getByRole("heading", { name: "Subtarefas" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("heading", { name: "Subtarefas" }),
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByTestId("subtask-card-persisting-spinner"),
+      screen.getByTestId("task-card-persisting-spinner"),
     ).toBeInTheDocument();
     expect(updateSubtaskAssignees).toHaveBeenCalledWith("st-1", "task-10", ["u-1"]);
     expect(showSuccessToast).not.toHaveBeenCalled();
-    expect(screen.getAllByText("1 - Tarefa A").length).toBeGreaterThanOrEqual(1);
 
     await user.click(screen.getByText("2 - Tarefa B"));
     expect(await screen.findByRole("heading", { name: "Subtarefas" })).toBeInTheDocument();
@@ -277,6 +280,9 @@ describe("BoardActions", () => {
         "A tarefa 1 - Tarefa A foi atualizada com sucesso.",
       );
     });
+    expect(
+      screen.queryByTestId("task-card-persisting-spinner"),
+    ).not.toBeInTheDocument();
   });
 
   it("toasts an error when background assignee save fails", async () => {
@@ -299,14 +305,17 @@ describe("BoardActions", () => {
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(
-      screen.getByRole("heading", { name: "Subtarefas" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("heading", { name: "Subtarefas" }),
+    ).not.toBeInTheDocument();
     await vi.waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(
         "Não foi possível atualizar a tarefa 1 - Tarefa A.",
       );
     });
     expect(showSuccessToast).not.toHaveBeenCalled();
+    expect(
+      screen.queryByTestId("task-card-persisting-spinner"),
+    ).not.toBeInTheDocument();
   });
 
   it("opens create modal, saves subtask, and keeps subtasks modal open", async () => {

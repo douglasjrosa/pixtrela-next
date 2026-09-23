@@ -58,6 +58,7 @@ export interface KanbanBoardProps {
   onTaskPrefetch?: (task: KanbanTask) => void;
   onTaskVisiblePrefetch?: (task: KanbanTask) => void;
   onTaskPrefetchCancel?: () => void;
+  persistingTaskDocumentIds?: ReadonlySet<string>;
   /** Controlled column state from live poll / parent. */
   columnStates?: BoardColumnState[];
   onColumnStatesChange?: (columns: BoardColumnState[]) => void;
@@ -155,6 +156,7 @@ export function KanbanBoard({
   onTaskPrefetch,
   onTaskVisiblePrefetch,
   onTaskPrefetchCancel,
+  persistingTaskDocumentIds,
   columnStates: controlledColumns,
   onColumnStatesChange,
 }: KanbanBoardProps) {
@@ -330,6 +332,7 @@ export function KanbanBoard({
               onTaskPrefetch={onTaskPrefetch}
               onTaskVisiblePrefetch={onTaskVisiblePrefetch}
               onTaskPrefetchCancel={onTaskPrefetchCancel}
+              persistingTaskDocumentIds={persistingTaskDocumentIds}
             />
           );
         })}

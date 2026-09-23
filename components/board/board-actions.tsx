@@ -71,6 +71,31 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 const FINISHED_STATUS = "finished";
 const PREFETCH_DEBOUNCE_MS = 200;
+/** Skip a redundant refetch right after a successful background save sync. */
+const SUBTASK_POST_SAVE_SKIP_REFETCH_MS = 15_000;
+
+function mergeSavedSnapshotOverStaleLoad(
+  loaded: BoardSubTaskSummary[],
+  snapshot: readonly BoardSubTaskSummary[],
+): BoardSubTaskSummary[] {
+  const snapshotById = new Map(
+    snapshot.map((item) => [item.documentId, item]),
+  );
+  return loaded.map((item) => {
+    const saved = snapshotById.get(item.documentId);
+    if (!saved) return item;
+    const loadedAssignees = buildAssigneesSnapshot([item])[item.documentId];
+    const savedAssignees = buildAssigneesSnapshot([saved])[item.documentId];
+    const assigneesDiffer = loadedAssignees !== savedAssignees;
+    const linksDiffer = item.linkedToPrevious !== saved.linkedToPrevious;
+    if (!assigneesDiffer && !linksDiffer) return item;
+    return {
+      ...item,
+      assignedTo: saved.assignedTo,
+      linkedToPrevious: saved.linkedToPrevious,
+    };
+  });
+}
 
 function resolveUnassignedSubTaskCount(
   items: readonly BoardSubTaskSummary[],
@@ -199,7 +224,7 @@ export function BoardActions({
   const [createOpen, setCreateOpen] = useState(false);
   const [savingCreate, setSavingCreate] = useState(false);
   const [reorderingSubtasks, setReorderingSubtasks] = useState(false);
-  const [persistingSubtaskIds, setPersistingSubtaskIds] = useState<
+  const [persistingTaskDocumentIds, setPersistingTaskDocumentIds] = useState<
     ReadonlySet<string>
   >(() => new Set());
   const nameDirectoryRef = useRef(new Map<string, string>());
@@ -209,32 +234,46 @@ export function BoardActions({
   const assigneesBaselineRef = useRef(assigneesBaseline);
   const linksBaselineRef = useRef(linksBaseline);
   const subtaskCacheRef = useRef(new SubtaskListCache());
+  const subtaskSaveFreshUntilRef = useRef(new Map<string, number>());
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prefetchQueueRef = useRef<LimitedPrefetchQueue | null>(null);
   const sessionsLoadedRef = useRef(false);
-  const persistingSubtaskIdsRef = useRef(persistingSubtaskIds);
+  const persistingTaskDocumentIdsRef = useRef(persistingTaskDocumentIds);
   selectedTaskRef.current = selectedTask;
   subtasksRef.current = subtasks;
   assigneesBaselineRef.current = assigneesBaseline;
   linksBaselineRef.current = linksBaseline;
-  persistingSubtaskIdsRef.current = persistingSubtaskIds;
+  persistingTaskDocumentIdsRef.current = persistingTaskDocumentIds;
 
-  function commitSubtaskDraftBaseline(snapshot: readonly BoardSubTaskSummary[]) {
-    const nextAssigneesBaseline = buildAssigneesSnapshot(snapshot);
-    const nextLinksBaseline = Object.fromEntries(
-      snapshot.map((item) => [item.documentId, item.linkedToPrevious]),
-    );
-    setAssigneesBaseline(nextAssigneesBaseline);
-    setLinksBaseline(nextLinksBaseline);
-    const taskDocumentId = selectedTaskRef.current?.documentId;
-    if (taskDocumentId) {
-      subtaskCacheRef.current.set(taskDocumentId, {
-        ...createSubtaskListCacheEntry(snapshot),
-        subtasks: [...snapshot],
-        assigneesBaseline: nextAssigneesBaseline,
-        linksBaseline: nextLinksBaseline,
-      });
+  async function commitSubtaskCacheAfterSave(
+    taskDocumentId: string,
+    fallbackSnapshot: readonly BoardSubTaskSummary[],
+  ): Promise<void> {
+    let loaded: BoardSubTaskSummary[] = [...fallbackSnapshot];
+    try {
+      const fromServer = await loadSubtasks(taskDocumentId);
+      loaded = mergeSavedSnapshotOverStaleLoad(fromServer, fallbackSnapshot);
+    } catch {
+      // Keep optimistic snapshot if the post-save read fails.
     }
+
+    const entry = createSubtaskListCacheEntry(loaded);
+    subtaskCacheRef.current.set(taskDocumentId, entry);
+    subtaskSaveFreshUntilRef.current.set(
+      taskDocumentId,
+      entry.loadedAt + SUBTASK_POST_SAVE_SKIP_REFETCH_MS,
+    );
+    ingestSubtasksIntoAssigneeDirectory(nameDirectoryRef.current, loaded);
+
+    if (openTaskIdRef.current === taskDocumentId) {
+      applyLoadedSubtasks(loaded);
+      setSubtasksLoadedAt(entry.loadedAt);
+    }
+  }
+
+  function shouldSkipSubtaskRefetchAfterSave(taskDocumentId: string): boolean {
+    const freshUntil = subtaskSaveFreshUntilRef.current.get(taskDocumentId);
+    return freshUntil !== undefined && Date.now() < freshUntil;
   }
 
   function hasBoardDraftChanges(
@@ -390,6 +429,9 @@ export function BoardActions({
   }
 
   function handleTaskClick(task: KanbanTask): void {
+    if (persistingTaskDocumentIdsRef.current.has(task.documentId)) {
+      return;
+    }
     onSubtasksModalOpenChange?.(true);
     openTaskIdRef.current = task.documentId;
     selectedTaskRef.current = task;
@@ -413,9 +455,17 @@ export function BoardActions({
       setSubtasksLoadedAt(null);
     }
 
+    const skipRefetchAfterSave = shouldSkipSubtaskRefetchAfterSave(
+      task.documentId,
+    );
+
     void (async () => {
       try {
-        await fetchSubtasks(task.documentId);
+        if (skipRefetchAfterSave) {
+          void fetchLiveState(task.documentId);
+        } else {
+          await fetchSubtasks(task.documentId);
+        }
       } finally {
         if (openTaskIdRef.current === task.documentId) {
           setLoadingSubtasks(false);
@@ -471,7 +521,6 @@ export function BoardActions({
   function handleCloseSubtasksModal(options?: {
     keepDraftCache?: boolean;
   }): void {
-    if (persistingSubtaskIdsRef.current.size > 0) return;
     const taskId = selectedTaskRef.current?.documentId;
     if (
       !options?.keepDraftCache &&
@@ -499,7 +548,6 @@ export function BoardActions({
     setCreateOpen(false);
     setSavingCreate(false);
     setReorderingSubtasks(false);
-    setPersistingSubtaskIds(new Set());
     cancelTaskPrefetch();
   }
 
@@ -769,18 +817,18 @@ export function BoardActions({
       return leftHead - rightHead;
     });
 
-    const persistingIds = new Set([
-      ...dirtyAssigneeUpdates.map((update) => update.documentId),
-      ...dirtyLinkUpdates.map((update) => update.documentId),
-    ]);
-    setPersistingSubtaskIds(persistingIds);
-
     subtaskCacheRef.current.set(
       taskDocumentId,
       createSubtaskListCacheEntry(snapshot),
     );
     patchTaskInColumns(taskDocumentId, {
       unassignedSubTaskCount: resolveUnassignedSubTaskCount(snapshot),
+    });
+    handleCloseSubtasksModal({ keepDraftCache: true });
+    setPersistingTaskDocumentIds((current) => {
+      const next = new Set(current);
+      next.add(taskDocumentId);
+      return next;
     });
 
     void (async () => {
@@ -826,15 +874,23 @@ export function BoardActions({
             update.linkedToPrevious,
           );
         }
-        commitSubtaskDraftBaseline(snapshot);
-        setPersistingSubtaskIds(new Set());
+        await commitSubtaskCacheAfterSave(taskDocumentId, snapshot);
+        setPersistingTaskDocumentIds((current) => {
+          const next = new Set(current);
+          next.delete(taskDocumentId);
+          return next;
+        });
         showSuccessToast(tKanban("taskUpdated", { title: taskTitle }));
       } catch {
         invalidateSubtaskCache(taskDocumentId);
         patchTaskInColumns(taskDocumentId, {
           unassignedSubTaskCount: previousUnassigned,
         });
-        setPersistingSubtaskIds(new Set());
+        setPersistingTaskDocumentIds((current) => {
+          const next = new Set(current);
+          next.delete(taskDocumentId);
+          return next;
+        });
         showErrorToast(tKanban("taskUpdateFailed", { title: taskTitle }));
       }
     })();
@@ -897,6 +953,7 @@ export function BoardActions({
           onTaskPrefetch={handleTaskPrefetch}
           onTaskVisiblePrefetch={prefetchSubtasks}
           onTaskPrefetchCancel={cancelTaskPrefetch}
+          persistingTaskDocumentIds={persistingTaskDocumentIds}
         />
       </div>
 
@@ -913,7 +970,6 @@ export function BoardActions({
         loadedAt={subtasksLoadedAt}
         loadingSessions={loadingSessions}
         dirty={hasBoardDraftChanges(subtasks, assigneesBaseline, linksBaseline)}
-        persistingSubtaskIds={persistingSubtaskIds}
         reordering={reorderingSubtasks}
         onClose={handleCloseSubtasksModal}
         onAssigneesChange={handleAssigneesChange}

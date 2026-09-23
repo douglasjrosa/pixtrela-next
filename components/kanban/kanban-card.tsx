@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { User, Users } from "lucide-react";
+import { Loader, User, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { CardBadge } from "@/components/ui/card";
@@ -34,9 +34,37 @@ import type { KanbanTask } from "./types";
 const KANBAN_CLICK_ACTIVATION_DISTANCE_PX = 8;
 const FINISHED_STATUS = "finished";
 
+function KanbanTaskPersistingFrame({
+  persisting,
+  children,
+}: {
+  persisting: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className="relative" aria-busy={persisting}>
+      {children}
+      {persisting ? (
+        <>
+          <div
+            className="pointer-events-none absolute inset-0 z-20 rounded-md bg-muted/55"
+            data-testid="task-card-persisting-overlay"
+          />
+          <Loader
+            className="pointer-events-none absolute top-2 right-2 z-30 size-4 animate-spin text-primary"
+            data-testid="task-card-persisting-spinner"
+            aria-hidden
+          />
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 export interface KanbanCardProps {
   task: KanbanTask;
   sortableDisabled?: boolean;
+  persisting?: boolean;
   onTaskClick?: (task: KanbanTask) => void;
   onTaskPrefetch?: (task: KanbanTask) => void;
   onTaskVisiblePrefetch?: (task: KanbanTask) => void;
@@ -203,6 +231,7 @@ export function KanbanCardDragOverlay({ task }: { task: KanbanTask }) {
 export function KanbanCard({
   task,
   sortableDisabled = false,
+  persisting = false,
   onTaskClick,
   onTaskPrefetch,
   onTaskVisiblePrefetch,
@@ -220,7 +249,7 @@ export function KanbanCard({
     isDragging,
   } = useSortable({
     id: toKanbanTaskId(task.id),
-    disabled: sortableDisabled,
+    disabled: sortableDisabled || persisting,
   });
 
   const style = {
@@ -262,7 +291,7 @@ export function KanbanCard({
   function handlePointerUp(event: React.PointerEvent<HTMLDivElement>): void {
     listeners?.onPointerUp?.(event);
 
-    if (!pointerStart.current || !onTaskClick) {
+    if (!pointerStart.current || !onTaskClick || persisting) {
       pointerStart.current = null;
       return;
     }
@@ -282,7 +311,8 @@ export function KanbanCard({
       style={style}
       className={cn(
         "relative min-w-0 overflow-visible",
-        onTaskClick && "cursor-pointer",
+        onTaskClick && !persisting && "cursor-pointer",
+        persisting && "cursor-not-allowed",
         isDragging && "opacity-40",
       )}
       onPointerDown={handlePointerDown}
@@ -291,7 +321,9 @@ export function KanbanCard({
       onPointerLeave={() => onTaskPrefetchCancel?.()}
       {...attributes}
     >
-      <KanbanCardSurface task={task} />
+      <KanbanTaskPersistingFrame persisting={persisting}>
+        <KanbanCardSurface task={task} />
+      </KanbanTaskPersistingFrame>
     </div>
   );
 }

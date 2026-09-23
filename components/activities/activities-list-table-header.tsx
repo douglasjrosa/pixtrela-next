@@ -68,6 +68,7 @@ export async function ActivitiesListTableHeader({
           label={t("subtask")}
           sort={sort}
           filters={filters}
+          align="center"
         />
       </tr>
     </thead>

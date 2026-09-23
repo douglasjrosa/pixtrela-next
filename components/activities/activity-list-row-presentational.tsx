@@ -91,7 +91,7 @@ export function ActivityListRowPresentational({
         <td className={CENTER_CELL_CLASS}>{when}</td>
         <td className={CENTER_CELL_CLASS}>{activity.qty}</td>
         <td className={CENTER_CELL_CLASS}>{activity.currencyAwarded}</td>
-        <td className="py-2">{subtask}</td>
+        <td className={cn("py-2", CENTER_CELL_CLASS)}>{subtask}</td>
       </tr>
     );
   }
