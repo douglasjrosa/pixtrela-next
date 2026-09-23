@@ -18,6 +18,7 @@ import {
   hardDeleteTemplateTask,
   updateTemplateTask as updateTemplateTaskRepo,
 } from "@/lib/repos/templates";
+import { auditSuccess } from "@/lib/logs/record-log";
 import { parseArchiveReason } from "@/lib/schemas/archive-with-reason";
 import { templateListFiltersSchema } from "@/lib/schemas/template-list-filters";
 import {
@@ -72,6 +73,13 @@ export async function createTemplate(
     code: data.code,
     subTasks: [],
   });
+  await auditSuccess({
+    route: "/templates/tasks",
+    verb: "created",
+    entity: "template",
+    name: data.name,
+    code: data.code,
+  });
   invalidateTemplates();
   return created.id;
 }
@@ -88,6 +96,13 @@ export async function updateTemplate(
     name: data.name,
     code: data.code,
     subTasks: toTemplateRepoSubTasks(data.subTask ?? []) ?? [],
+  });
+  await auditSuccess({
+    route: "/templates/tasks",
+    verb: "updated",
+    entity: "template",
+    name: data.name,
+    code: data.code,
   });
   invalidateTemplates();
 }
@@ -107,7 +122,15 @@ export async function deleteTemplate(
 ): Promise<void> {
   await assertCanManage();
   const text = parseArchiveReason(reason, 1);
+  const template = await findTemplateById(documentId);
   await deleteTemplateTaskRepo(documentId, text);
+  await auditSuccess({
+    route: "/templates/tasks",
+    verb: "archived",
+    entity: "template",
+    name: template?.name,
+    code: template?.code,
+  });
   invalidateTemplates();
 }
 
@@ -124,6 +147,12 @@ export async function bulkArchiveTemplates(
     if (!template) throw new Error("notFound");
   }
   await archiveTemplateTasks(ids, text);
+  await auditSuccess({
+    route: "/templates/tasks",
+    verb: "bulkArchived",
+    entity: "templates",
+    quantity: ids.length,
+  });
   invalidateTemplates();
 }
 
@@ -143,5 +172,11 @@ export async function bulkDeleteTemplates(
     if (template.active) throw new Error("activeTemplate");
     await hardDeleteTemplateTask(documentId);
   }
+  await auditSuccess({
+    route: "/templates/tasks",
+    verb: "bulkDeleted",
+    entity: "templates",
+    quantity: ids.length,
+  });
   invalidateTemplates();
 }

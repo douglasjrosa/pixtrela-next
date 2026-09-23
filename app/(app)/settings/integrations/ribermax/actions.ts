@@ -12,6 +12,7 @@ import { probeRibermaxConnection } from "@/integrations/ribermax/settings/test-c
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
 import type { IntegrationSettingsActionResult } from "@/lib/integrations/settings-action-result";
+import { auditBug, auditSuccess } from "@/lib/logs/record-log";
 
 async function assertCanManage(): Promise<void> {
   const session = await auth();
@@ -29,11 +30,24 @@ export async function updateRibermaxConnection(
       baseUrl: String(formData.get("baseUrl") ?? ""),
       token: String(formData.get("token") ?? ""),
     });
+    const previous = await getRibermaxConnection();
     await upsertRibermaxConnection(values);
+    await auditSuccess({
+      route: "/settings/integrations/ribermax",
+      verb: "connection",
+      entity: "ribermax",
+      before: previous?.baseUrl ?? null,
+      after: values.baseUrl,
+    });
     revalidateTag("drizzle:ribermax-connection-settings", "default");
     revalidatePath("/settings/integrations/ribermax");
     return { ok: true };
-  } catch {
+  } catch (error) {
+    await auditBug({
+      route: "/settings/integrations/ribermax",
+      operation: "updateRibermaxConnection",
+      error,
+    });
     return { ok: false };
   }
 }

@@ -5,6 +5,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { verifyCrmApiToken } from "@/lib/api/crm-api-auth";
 import { deleteTasksFromApiByCrmPedidoId } from "@/lib/business/delete-tasks-from-api";
 import { upsertTaskFromApi } from "@/lib/business/upsert-task-from-api";
+import { auditBug, scheduleCrmTasksLog } from "@/lib/logs/record-log";
 import { apiTaskUpsertSchema } from "@/lib/schemas/api-task";
 
 export const runtime = "nodejs";
@@ -24,6 +25,7 @@ export async function DELETE(request: Request): Promise<NextResponse> {
 
   try {
     const result = await deleteTasksFromApiByCrmPedidoId(crmPedidoId);
+    scheduleCrmTasksLog();
     after(() => {
       revalidateTag("drizzle:tasks", "default");
       revalidateTag("drizzle:steps", "default");
@@ -31,7 +33,13 @@ export async function DELETE(request: Request): Promise<NextResponse> {
       revalidatePath("/tasks");
     });
     return NextResponse.json({ ok: true, ...result });
-  } catch {
+  } catch (error) {
+    await auditBug({
+      route: "/api/tasks",
+      operation: "crm.delete",
+      error,
+      ids: { crmPedidoId },
+    });
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
 }
@@ -59,6 +67,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   try {
     const result = await upsertTaskFromApi(parsed.data);
+    scheduleCrmTasksLog();
     after(() => {
       revalidateTag("drizzle:tasks", "default");
       revalidateTag("drizzle:steps", "default");
@@ -80,6 +89,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (message.startsWith("presetNotFound:")) {
       return NextResponse.json({ error: message }, { status: 422 });
     }
+    await auditBug({
+      route: "/api/tasks",
+      operation: "crm.upsert",
+      error,
+    });
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
 }

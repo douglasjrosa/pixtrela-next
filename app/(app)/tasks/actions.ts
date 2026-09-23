@@ -10,6 +10,7 @@ import {
   canManageTasks,
 } from "@/lib/auth/permissions";
 import { getNextTaskIndex } from "@/lib/business/task-order";
+import { auditSuccess } from "@/lib/logs/record-log";
 import { applyAutoStepTaskOrderingAfterTaskChange } from "@/lib/business/apply-step-task-order";
 import { findTemplateByCode } from "@/lib/repos/templates";
 import {
@@ -94,6 +95,13 @@ export async function createTask(raw: TaskFormInput): Promise<void> {
       },
     });
   }
+  await auditSuccess({
+    route: "/tasks",
+    verb: "created",
+    entity: "task",
+    name: data.name,
+    code: data.templateTaskCode,
+  });
   invalidateTasks();
 }
 
@@ -126,6 +134,15 @@ export async function updateTask(
       },
     });
   }
+  await auditSuccess({
+    route: "/tasks",
+    verb: "updated",
+    entity: "task",
+    name: data.name,
+    code: data.templateTaskCode,
+    before: before ? `${before.name} / ${before.status}` : null,
+    after: `${data.name} / ${data.status}`,
+  });
   invalidateTasks();
 }
 
@@ -135,13 +152,29 @@ export async function deactivateTask(
 ): Promise<void> {
   await assertCanDeactivate();
   const text = parseArchiveReason(reason, 1);
+  const task = await getTaskById(documentId);
   await archiveTasks([documentId], text);
+  await auditSuccess({
+    route: "/tasks",
+    verb: "archived",
+    entity: "task",
+    name: task?.name,
+    code: task?.templateTaskCode,
+  });
   invalidateTasks();
 }
 
 export async function reactivateTask(documentId: string): Promise<void> {
   await assertCanDeactivate();
+  const task = await getTaskById(documentId);
   await setTaskActive(documentId, true);
+  await auditSuccess({
+    route: "/tasks",
+    verb: "reactivated",
+    entity: "task",
+    name: task?.name,
+    code: task?.templateTaskCode,
+  });
   invalidateTasks();
 }
 
@@ -168,7 +201,15 @@ export async function deleteTask(documentId: string): Promise<void> {
   if (!canDeleteTasks(session?.user?.role as Role | undefined)) {
     throw new Error("forbidden");
   }
+  const task = await getTaskById(documentId);
   await deleteTaskById(documentId);
+  await auditSuccess({
+    route: "/tasks",
+    verb: "deleted",
+    entity: "task",
+    name: task?.name,
+    code: task?.templateTaskCode,
+  });
   invalidateTasks();
 }
 
@@ -185,6 +226,12 @@ export async function bulkDeactivateTasks(
     if (!task) throw new Error("notFound");
   }
   await archiveTasks(ids, text);
+  await auditSuccess({
+    route: "/tasks",
+    verb: "bulkArchived",
+    entity: "tasks",
+    quantity: ids.length,
+  });
   invalidateTasks();
 }
 
@@ -202,5 +249,11 @@ export async function bulkDeleteTasks(documentIds: string[]): Promise<void> {
     if (task.active) throw new Error("activeTask");
     await deleteTaskById(documentId);
   }
+  await auditSuccess({
+    route: "/tasks",
+    verb: "bulkDeleted",
+    entity: "tasks",
+    quantity: ids.length,
+  });
   invalidateTasks();
 }

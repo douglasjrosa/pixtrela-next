@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
 import { canUpdateExchangeShoppingPrices } from "@/lib/auth/permissions";
 import { updateAwardActualPrices } from "@/lib/repos/awards";
+import { auditSuccess } from "@/lib/logs/record-log";
 import { shoppingPriceUpdatesSchema } from "@/lib/schemas/shopping-prices";
 
 async function assertCanUpdatePrices(): Promise<void> {
@@ -30,6 +31,12 @@ export async function updateShoppingListPrices(
       actualPrice: award.actualPrice,
     })),
   );
+  await auditSuccess({
+    route: "/exchanges",
+    verb: "bulkUpdated",
+    entity: "exchangePrices",
+    quantity: data.awards.length,
+  });
   revalidateTag("drizzle:awards", "default");
   revalidatePath(`/exchanges/${batchId}`);
 }

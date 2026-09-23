@@ -1,6 +1,7 @@
 "use server";
 
 import { assertKioskStaffActor } from "@/lib/business/kiosk-staff-access";
+import { auditBug } from "@/lib/logs/record-log";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 import { storeMedia } from "@/lib/media/store-media";
 import { insertMediaAsset } from "@/lib/repos/media";
@@ -141,6 +142,12 @@ export async function updateStaffPersonal(
       phone: updated.phone ?? "",
     };
   } catch (error) {
+    await auditBug({
+      route: "/kiosk/staff/profile",
+      operation: "updateOwnPersonal",
+      error,
+      ids: { staffUserId },
+    });
     if (error instanceof Error && error.message === "emailTaken") {
       return { ok: false, error: "emailTaken" };
     }

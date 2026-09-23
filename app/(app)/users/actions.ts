@@ -13,6 +13,7 @@ import { resolveInitialUserPassword } from "@/lib/business/initial-user-password
 import { canDeleteUsers, canManageRole } from "@/lib/business/roles";
 import { isUserArchivedForHardDelete } from "@/lib/business/user-archive";
 import { normalizeUserTag } from "@/lib/kiosk/user-tag";
+import { auditBug, auditSuccess } from "@/lib/logs/record-log";
 import { storeMedia } from "@/lib/media/store-media";
 import { insertMediaAsset } from "@/lib/repos/media";
 import {
@@ -139,6 +140,13 @@ export async function createUser(raw: UserFormInput): Promise<void> {
     code: data.code,
     greetingGender: data.greetingGender ?? "neutral",
   });
+  await auditSuccess({
+    route: "/users",
+    verb: "created",
+    entity: "user",
+    name: data.name,
+    code: data.code,
+  });
   invalidateUsers();
 }
 
@@ -182,6 +190,15 @@ export async function updateUser(
     }
   }
 
+  await auditSuccess({
+    route: "/users",
+    verb: "updated",
+    entity: "user",
+    name: data.name ?? data.username,
+    code: data.code,
+    before: currentRole,
+    after: data.roleType ?? currentRole,
+  });
   invalidateUsers();
 }
 
@@ -213,11 +230,26 @@ export async function pairUserTag(
   if (ownerId && ownerId !== toUserIdString(userId)) {
     return { ok: false, error: "conflict" };
   }
+  const user = await findUserById(toUserIdString(userId));
   try {
     await setUserTag(toUserIdString(userId), userTag);
-  } catch {
+  } catch (error) {
+    await auditBug({
+      route: "/users",
+      operation: "pairUserTag",
+      error,
+      ids: { userId: toUserIdString(userId) },
+    });
     return { ok: false, error: "conflict" };
   }
+  await auditSuccess({
+    route: "/users",
+    verb: "updated",
+    entity: "user",
+    name: user?.name,
+    code: user?.code,
+    after: userTag,
+  });
   invalidateUsers();
   return { ok: true, userTag };
 }
@@ -233,7 +265,15 @@ export async function deactivateUser(
   }
 
   const text = parseArchiveReason(reason, 1);
+  const user = await findUserById(toUserIdString(userId));
   await deactivateUsers([toUserIdString(userId)], text);
+  await auditSuccess({
+    route: "/users",
+    verb: "archived",
+    entity: "user",
+    name: user?.name,
+    code: user?.code,
+  });
   invalidateUsers();
 }
 
@@ -244,7 +284,15 @@ export async function deleteUser(userId: UserId): Promise<void> {
     throw new Error("forbidden");
   }
 
+  const user = await findUserById(toUserIdString(userId));
   await hardDeleteUser(toUserIdString(userId));
+  await auditSuccess({
+    route: "/users",
+    verb: "deleted",
+    entity: "user",
+    name: user?.name,
+    code: user?.code,
+  });
   invalidateUsers();
 }
 
@@ -262,6 +310,12 @@ export async function bulkDeactivateUsers(
     }
   }
   await deactivateUsers(ids, text);
+  await auditSuccess({
+    route: "/users",
+    verb: "bulkArchived",
+    entity: "users",
+    quantity: ids.length,
+  });
   invalidateUsers();
 }
 
@@ -278,6 +332,12 @@ export async function bulkDeleteUsers(userIds: string[]): Promise<void> {
     if (!isUserArchivedForHardDelete(user)) throw new Error("activeUser");
     await hardDeleteUser(userId);
   }
+  await auditSuccess({
+    route: "/users",
+    verb: "bulkDeleted",
+    entity: "users",
+    quantity: ids.length,
+  });
   invalidateUsers();
 }
 
@@ -329,5 +389,14 @@ export async function updateUserImage(
     }
     await setUserFacePhotoMedia(userIdStr, media.id, faceVector);
   }
+  const user = await findUserById(userIdStr);
+  await auditSuccess({
+    route: "/users",
+    verb: "updated",
+    entity: "user",
+    name: user?.name,
+    code: user?.code,
+    after: imageType,
+  });
   invalidateUsers();
 }

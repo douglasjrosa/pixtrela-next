@@ -7,6 +7,7 @@ import type { Role } from "@/lib/auth/nav";
 import { canExchange } from "@/lib/auth/permissions";
 import { syncOpenCartDraft } from "@/lib/repos/carts";
 import { cartDraftPayloadSchema } from "@/lib/schemas/cart-draft";
+import { auditBug, auditSuccess } from "@/lib/logs/record-log";
 import { COLABORATOR_STORE_PAGE_PATH } from "@/lib/store/store-path";
 
 export type CartActionState = {
@@ -59,9 +60,22 @@ export async function saveCartDraft(
       userId,
       items: parsed.items,
     });
+    await auditSuccess({
+      route: "/store",
+      verb: "updated",
+      entity: "cart",
+      name: String(parsed.items.length),
+    });
     revalidateCartTags();
     return { ok: true };
   } catch (error) {
+    if (!(error instanceof Error && error.message === "forbidden")) {
+      await auditBug({
+        route: "/store",
+        operation: "saveCartDraft",
+        error,
+      });
+    }
     if (error instanceof Error && error.message === "forbidden") {
       return { ok: false, messageKey: "saveFailed" };
     }

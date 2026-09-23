@@ -90,7 +90,7 @@ describe("navItemsForRole", () => {
 
     expect(result).not.toContain("/exchanges");
 
-    expect(result).not.toContain("/settings/files");
+    expect(result).not.toContain("/settings/logs");
 
   });
 
@@ -124,7 +124,7 @@ describe("navItemsForRole", () => {
 
     expect(result).not.toContain("/templates/tasks");
 
-    expect(result).not.toContain("/settings/files");
+    expect(result).not.toContain("/settings/logs");
 
   });
 
@@ -148,7 +148,7 @@ describe("navItemsForRole", () => {
 
         "/awards",
 
-        "/settings/files",
+        "/settings/logs",
 
       ]),
 

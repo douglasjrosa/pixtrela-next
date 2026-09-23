@@ -818,6 +818,28 @@ export const exchanges = pgTable(
   (table) => [index("exchanges_order_id_idx").on(table.orderId)],
 );
 
+export const logs = pgTable(
+  "logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    route: varchar("route", { length: 256 }).notNull(),
+    description: text("description").notNull(),
+    detail: text("detail"),
+    count: integer("count").default(1).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("logs_created_at_idx").on(table.createdAt),
+    index("logs_route_created_at_idx").on(table.route, table.createdAt),
+    index("logs_user_id_idx").on(table.userId),
+  ],
+);
+
 export const reasonForDeactivation = pgTable(
   "reason_for_deactivation",
   {
