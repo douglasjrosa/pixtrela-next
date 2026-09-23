@@ -15,6 +15,11 @@ describe("preset default dependencies seed", () => {
     ).toEqual(["Fixação das chapas das laterais"]);
   });
 
+  it("treats a missing dependency list as empty", () => {
+    expect(normalizeDefaultDependencyPresetIds(undefined)).toEqual([]);
+    expect(normalizeDefaultDependencyPresetIds(null)).toEqual([]);
+  });
+
   it("removes self references when normalizing dependency ids", () => {
     expect(
       normalizeDefaultDependencyPresetIds(

@@ -1422,7 +1422,6 @@
     "elapsed": "Tempo decorrido",
     "timeSpent": "Tempo gasto",
     "actionLoading": "Processando...",
-    "chainRunNotReady": "Aguarde a sincronização da cadeia antes de confirmar a saída.",
     "remainingQty": "{count} pçs. restantes",
     "sectionProducing": "Em execução",
     "sectionPending": "A fazer",

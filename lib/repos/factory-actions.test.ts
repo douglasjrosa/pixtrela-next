@@ -4,8 +4,8 @@ import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
 import {
   createFactoryActionRepo,
-  deleteFactoryActionById,
   getFactoryActionById,
+  hardDeleteFactoryActionById,
   updateFactoryActionRepo,
 } from "@/lib/repos/factory-actions";
 import { createSubTaskPresetRepo } from "@/lib/repos/sub-task-presets";
@@ -40,7 +40,7 @@ describeWithDb("factory-actions repo", () => {
     const updated = await getFactoryActionById(id);
     expect(updated?.name).toBe(`Action ${suffix} b`);
 
-    await deleteFactoryActionById(id);
+    await hardDeleteFactoryActionById(id);
     expect(await getFactoryActionById(id)).toBeNull();
   });
 
@@ -59,7 +59,7 @@ describeWithDb("factory-actions repo", () => {
       actionId,
     });
 
-    await expect(deleteFactoryActionById(actionId)).rejects.toThrow(
+    await expect(hardDeleteFactoryActionById(actionId)).rejects.toThrow(
       "actionInUse",
     );
     expect(await getFactoryActionById(actionId)).not.toBeNull();

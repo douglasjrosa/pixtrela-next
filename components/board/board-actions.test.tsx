@@ -225,9 +225,11 @@ describe("BoardActions", () => {
         "A tarefa 1 - Tarefa A foi atualizada com sucesso.",
       );
     });
-    expect(
-      screen.queryByTestId("task-card-persisting-spinner"),
-    ).not.toBeInTheDocument();
+    await vi.waitFor(() => {
+      expect(
+        screen.queryByTestId("task-card-persisting-spinner"),
+      ).not.toBeInTheDocument();
+    });
 
     await user.click(screen.getByText("1 - Tarefa A"));
     await user.click(await screen.findByRole("button", { name: /Soldar/ }));

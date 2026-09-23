@@ -5,6 +5,8 @@ const upsertTaskFromApi = vi.fn();
 const deleteTasksFromApiByCrmPedidoId = vi.fn();
 const revalidateTag = vi.fn();
 const revalidatePath = vi.fn();
+const auditBug = vi.fn();
+const scheduleCrmTasksLog = vi.fn();
 
 vi.mock("@/lib/api/crm-api-auth", () => ({
   verifyCrmApiToken: (...args: unknown[]) => verifyCrmApiToken(...args),
@@ -19,20 +21,24 @@ vi.mock("@/lib/business/delete-tasks-from-api", () => ({
     deleteTasksFromApiByCrmPedidoId(...args),
 }));
 
+vi.mock("@/lib/logs/record-log", () => ({
+  auditBug: (...args: unknown[]) => auditBug(...args),
+  scheduleCrmTasksLog: (...args: unknown[]) => scheduleCrmTasksLog(...args),
+}));
+
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
   revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
-vi.mock("next/server", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("next/server")>();
-  return {
-    ...actual,
-    after: (fn: () => void) => {
-      fn();
-    },
-  };
-});
+vi.mock("next/server", () => ({
+  after: (fn: () => void) => {
+    fn();
+  },
+  NextResponse: {
+    json: (body: unknown, init?: ResponseInit) => Response.json(body, init),
+  },
+}));
 
 describe("POST /api/tasks", () => {
   beforeEach(() => {

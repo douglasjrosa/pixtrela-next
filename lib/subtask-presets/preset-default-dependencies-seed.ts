@@ -39,10 +39,10 @@ export const PRESET_DEFAULT_DEPENDENCY_NAMES: Readonly<
 };
 
 export function normalizeDefaultDependencyPresetIds(
-  ids: readonly string[],
+  ids: readonly string[] | null | undefined,
   selfId?: string,
 ): string[] {
-  const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  const unique = [...new Set((ids ?? []).map((id) => id.trim()).filter(Boolean))];
   if (!selfId) return unique;
   return unique.filter((id) => id !== selfId);
 }

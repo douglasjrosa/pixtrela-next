@@ -1,5 +1,3 @@
-import { isSkippableLogError } from "@/lib/logs/log-error";
-
 type RequestInfo = {
   path: string;
   method: string;
@@ -11,24 +9,16 @@ type ErrorContext = {
 };
 
 /**
- * Unexpected request errors that no action catch recorded.
- * Validation, forbidden, and notFound stay out of the log.
+ * Edge instrumentation must stay free of Node modules.
+ * Request logging runs only on the Node.js runtime.
  */
 export async function onRequestError(
   error: unknown,
   request: RequestInfo,
   context: ErrorContext,
 ): Promise<void> {
-  if (isSkippableLogError(error)) return;
-  try {
-    const { auditBug } = await import("@/lib/logs/record-log");
-    const route = context.routePath || request.path || "unknown";
-    await auditBug({
-      route,
-      operation: context.routeType || request.method || "request",
-      error,
-    });
-  } catch {
-    return;
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { onRequestError } = await import("./instrumentation.node.ts");
+    await onRequestError(error, request, context);
   }
 }
