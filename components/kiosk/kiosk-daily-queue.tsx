@@ -3,10 +3,7 @@
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
-import type {
-  KioskQueueUnit,
-  OpenChainRun,
-} from "@/lib/business/kiosk-queue-units";
+import type { KioskQueueUnit } from "@/lib/business/kiosk-queue-units";
 import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
 import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
@@ -32,7 +29,6 @@ export interface KioskDailyQueueProps {
   bloqueadas: KioskSectionState;
   finalizadas: KioskSectionState;
   allSubTasks: KioskSubTask[];
-  openRuns?: readonly OpenChainRun[];
   readOnly?: boolean;
   flashDocumentId?: string | null;
   blockingUi?: boolean;
@@ -47,8 +43,9 @@ export interface KioskDailyQueueProps {
   onExit?: (documentId: string, input: KioskExitInput) => void | Promise<void>;
   onStartChain?: (headId: string) => void | Promise<void>;
   onConfirmChainStop?: (
-    chainRunId: string,
+    chainRunId: string | null,
     answers: ChainStopAnswer[],
+    headId: string,
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
   onReleaseMaterialFlag?: (flagId: string) => void | Promise<void>;
@@ -59,7 +56,6 @@ export interface KioskDailyQueueProps {
     categoryId: string | null;
     requiresMaterialFlagsOnFinish?: boolean;
   }>;
-  onChainRunNotReady?: () => void;
   children?: ReactNode;
 }
 
@@ -77,7 +73,6 @@ export function KioskDailyQueue({
   bloqueadas,
   finalizadas,
   allSubTasks,
-  openRuns,
   readOnly = false,
   blockingUi = false,
   timerPaused,
@@ -95,7 +90,6 @@ export function KioskDailyQueue({
   onAdvanceChain,
   onReleaseMaterialFlag,
   onRefreshMaterialFlags,
-  onChainRunNotReady,
   children,
 }: KioskDailyQueueProps) {
   const t = useTranslations("kiosk");
@@ -143,8 +137,6 @@ export function KioskDailyQueue({
                 onAdvanceChain={onAdvanceChain}
                 onReleaseMaterialFlag={onReleaseMaterialFlag}
                 onRefreshMaterialFlags={onRefreshMaterialFlags}
-                onChainRunNotReady={onChainRunNotReady}
-                openRuns={openRuns}
               />
             ) : null}
             <KioskQueueLoadMoreSentinel
@@ -185,8 +177,6 @@ export function KioskDailyQueue({
                 onAdvanceChain={onAdvanceChain}
                 onReleaseMaterialFlag={onReleaseMaterialFlag}
                 onRefreshMaterialFlags={onRefreshMaterialFlags}
-                onChainRunNotReady={onChainRunNotReady}
-                openRuns={openRuns}
               />
             ) : (
               <p className="text-sm text-muted-foreground">{t("noTasks")}</p>
@@ -226,8 +216,6 @@ export function KioskDailyQueue({
                 onAdvanceChain={onAdvanceChain}
                 onReleaseMaterialFlag={onReleaseMaterialFlag}
                 onRefreshMaterialFlags={onRefreshMaterialFlags}
-                onChainRunNotReady={onChainRunNotReady}
-                openRuns={openRuns}
               />
             ) : (
               <p className="text-sm text-muted-foreground">{t("noTasks")}</p>

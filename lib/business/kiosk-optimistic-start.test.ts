@@ -5,13 +5,10 @@ import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import {
   applyOptimisticChainStopToOpenRuns,
   applyOptimisticChainStopToSubTasks,
-  applyOptimisticKioskStartToOpenRuns,
   applyOptimisticKioskStartToSubTasks,
   applyOptimisticStateToLiberadasSection,
   isOptimisticChainStopSettled,
   isOptimisticKioskStartSettled,
-  OPTIMISTIC_CHAIN_RUN_PREFIX,
-  resolvePersistedChainRunId,
 } from "./kiosk-optimistic-start";
 
 function stub(overrides: Partial<KioskSubTask> = {}): KioskSubTask {
@@ -58,25 +55,6 @@ describe("kiosk optimistic start", () => {
     expect(next[1]?.status).toBe("waiting");
   });
 
-  it("adds an optimistic open run for a chain start", () => {
-    const startedAt = "2026-08-17T23:00:00.000Z";
-    const runs = applyOptimisticKioskStartToOpenRuns([], {
-      documentId: "st-1",
-      startedAt,
-      mode: "chain",
-      chainHeadId: "st-1",
-    }, "user-1");
-
-    expect(runs).toEqual([
-      {
-        chainHeadId: "st-1",
-        chainRunId: `${OPTIMISTIC_CHAIN_RUN_PREFIX}st-1`,
-        principalId: "user-1",
-        runStartedAt: startedAt,
-      },
-    ]);
-  });
-
   it("settles when the server queue already has a session", () => {
     expect(
       isOptimisticKioskStartSettled(
@@ -95,23 +73,6 @@ describe("kiosk optimistic start", () => {
         mode: "solo",
       }),
     ).toBe(false);
-  });
-
-  it("resolves a persisted chain run id from open runs", () => {
-    expect(
-      resolvePersistedChainRunId(
-        `${OPTIMISTIC_CHAIN_RUN_PREFIX}st-1`,
-        [
-          {
-            chainHeadId: "st-1",
-            chainRunId: "run-1",
-            principalId: "user-1",
-            runStartedAt: "2026-08-17T23:00:00.000Z",
-          },
-        ],
-        "st-1",
-      ),
-    ).toBe("run-1");
   });
 
   it("moves chain members out of producing and clears the open run", () => {

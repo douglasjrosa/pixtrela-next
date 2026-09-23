@@ -29,6 +29,7 @@ function kioskSubTask(
     viewerParticipated: overrides.viewerParticipated,
     viewerCurrencyAwarded: overrides.viewerCurrencyAwarded,
     activeWorkerCount: overrides.activeWorkerCount ?? 0,
+    ...overrides,
   };
 }
 
@@ -66,6 +67,54 @@ describe("KioskSubtaskPanel", () => {
     expect(
       screen.getByRole("button", { name: "Sair da subtarefa" }),
     ).toBeEnabled();
+  });
+
+  it("shows peer assignee badges instead of status", () => {
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={[
+          kioskSubTask({
+            documentId: "a",
+            name: "Montar",
+            status: "waiting",
+            peerAssignees: [
+              { colaboratorId: "u2", name: "Maria", isActive: true },
+            ],
+          }),
+        ]}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    const badge = screen.getByText("Maria");
+    expect(badge).toHaveClass("bg-success");
+    expect(screen.queryByText("Aguardando")).not.toBeInTheDocument();
+  });
+
+  it("does not use producing styling when only a peer is active", () => {
+    const { container } = renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={[
+          kioskSubTask({
+            documentId: "a",
+            name: "Montar",
+            status: "producing",
+            activeWorkerCount: 1,
+            startedAt: null,
+            peerAssignees: [
+              { colaboratorId: "u2", name: "Maria", isActive: true },
+            ],
+          }),
+        ]}
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    const card = container.querySelector("li");
+    expect(card).not.toHaveClass("bg-success/10");
+    expect(screen.getByText("Maria")).toHaveClass("bg-success");
   });
 
   it("shows remaining qty badge on pending qty cards", () => {
@@ -328,7 +377,6 @@ describe("KioskSubtaskPanel", () => {
     expect(screen.getByText("Início")).toBeInTheDocument();
     expect(screen.getByText("Tempo previsto")).toBeInTheDocument();
     expect(screen.getByText("Tempo decorrido")).toBeInTheDocument();
-    expect(screen.getByText("Produzindo")).toBeInTheDocument();
   });
 
   it("shows finished subtask with time spent and no actions", () => {
@@ -354,7 +402,7 @@ describe("KioskSubtaskPanel", () => {
       />,
     );
 
-    const finishedItem = screen.getByText("Finalizada").closest("li");
+    const finishedItem = screen.getByText("Tarefa A").closest("li");
     expect(finishedItem).not.toBeNull();
     expect(within(finishedItem!).queryByRole("button")).toBeNull();
     expect(screen.getByText(/Tempo gasto:/)).toBeInTheDocument();

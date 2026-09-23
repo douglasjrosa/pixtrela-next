@@ -17,6 +17,7 @@ import {
 } from "@/lib/repos/kiosk-chains";
 import {
   listKioskQueueSectionPage,
+  listKioskQueueSnapshot,
   startSubTask as startSubTaskRepo,
   stopSubTask as stopSubTaskRepo,
   type KioskQueueSectionPage,
@@ -67,6 +68,25 @@ export async function fetchKioskQueueSectionPage(input: {
     colaboratorId: input.colaboratorId,
     section: input.section,
     cursor: input.cursor,
+    liveChainIntervalSeconds: settings.maxSimultaneousSubtaskIntervalSeconds,
+    queuePageSize: settings.queuePageSize,
+    catalogMode: "slim",
+  });
+}
+
+export async function fetchKioskQueueSnapshot(input: {
+  colaboratorId: string;
+  sections: KioskQueueSectionKey[];
+  staffUserId?: string;
+}): Promise<KioskQueueSectionPage[]> {
+  await assertQueueReader(input.colaboratorId, input.staffUserId);
+  if (!input.colaboratorId.trim()) throw new Error("forbidden");
+  const sections = input.sections.filter((section) => SECTION_KEYS.has(section));
+  if (sections.length === 0) throw new Error("invalidSection");
+  const settings = await loadKioskSettings();
+  return listKioskQueueSnapshot({
+    colaboratorId: input.colaboratorId,
+    sections,
     liveChainIntervalSeconds: settings.maxSimultaneousSubtaskIntervalSeconds,
     queuePageSize: settings.queuePageSize,
     catalogMode: "slim",
@@ -155,13 +175,21 @@ export async function advanceChainRun(
 
 export async function confirmChainStop(
   colaboratorId: string,
-  chainRunId: string,
+  chainRunId: string | null,
   rawAnswers: unknown,
   staffUserId?: string,
+  headId?: string,
 ): Promise<void> {
   await assertQueueStaffMutation(colaboratorId, staffUserId);
   const answers = parseChainStopAnswers(rawAnswers);
-  await confirmChainStopRepo(colaboratorId, chainRunId, answers);
+  await confirmChainStopRepo(
+    colaboratorId,
+    chainRunId,
+    answers,
+    undefined,
+    undefined,
+    headId,
+  );
   invalidateActivityData();
 }
 

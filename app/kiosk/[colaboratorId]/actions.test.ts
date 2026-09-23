@@ -201,9 +201,16 @@ describe("kiosk/[colaboratorId]/actions drizzle", () => {
       { documentId: "a", completed: true, inferred: true, semBandeira: true },
       { documentId: "b", completed: false },
     ]);
-    expect(confirmChainStopRepo).toHaveBeenCalledWith("col-1", "run-1", [
-      { documentId: "a", completed: true, inferred: true, semBandeira: true },
-      { documentId: "b", completed: false },
-    ]);
+    expect(confirmChainStopRepo).toHaveBeenCalledWith(
+      "col-1",
+      "run-1",
+      [
+        { documentId: "a", completed: true, inferred: true, semBandeira: true },
+        { documentId: "b", completed: false },
+      ],
+      undefined,
+      undefined,
+      undefined,
+    );
   });
 });

@@ -46,6 +46,7 @@ vi.mock("./actions", () => ({
   releaseMaterialFlag: vi.fn(),
   refreshMaterialFlags: (...args: unknown[]) => refreshMaterialFlags(...args),
   fetchKioskQueueSectionPage: (...args: unknown[]) => fetchSectionPage(...args),
+  fetchKioskQueueSnapshot: vi.fn(async () => []),
   fetchColaboratorFacePhotoUrl: vi.fn(async () => null),
 }));
 
@@ -164,7 +165,7 @@ describe("KioskPanelClient", () => {
 
     expect(screen.getByRole("heading", { name: "Liberadas" })).toBeInTheDocument();
     expect(screen.getByText("Cortar")).toBeInTheDocument();
-    expect(screen.getByText("Produzindo")).toBeInTheDocument();
+    expect(screen.getByText("Início")).toBeInTheDocument();
     expect(screen.queryByText("Processando...")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Iniciar" })).toBeNull();
     expect(
@@ -366,6 +367,7 @@ describe("KioskPanelClient", () => {
         { documentId: "b", completed: true },
       ],
       undefined,
+      "a",
     );
     expect(showKioskSuccessToast).toHaveBeenCalledWith("Saída registrada.");
   });

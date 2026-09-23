@@ -6,6 +6,7 @@ import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import type { KioskQueueSectionPage } from "@/lib/repos/kiosk-subtasks";
 
 const fetchSectionPage = vi.fn();
+const fetchSnapshot = vi.fn();
 
 vi.mock("@/lib/kiosk/kiosk-queue-poll-interval", () => ({
   KIOSK_QUEUE_POLL_MS: 1_000,
@@ -35,6 +36,7 @@ vi.mock("./actions", () => ({
   releaseMaterialFlag: vi.fn(),
   refreshMaterialFlags: vi.fn(),
   fetchKioskQueueSectionPage: (...args: unknown[]) => fetchSectionPage(...args),
+  fetchKioskQueueSnapshot: (...args: unknown[]) => fetchSnapshot(...args),
   fetchColaboratorFacePhotoUrl: vi.fn(async () => null),
 }));
 
@@ -89,7 +91,9 @@ describe("KioskPanelClient queue polling", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     fetchSectionPage.mockReset();
+    fetchSnapshot.mockReset();
     fetchSectionPage.mockResolvedValue(liberadasPage());
+    fetchSnapshot.mockResolvedValue([liberadasPage()]);
   });
 
   it("refreshes liberadas on mount and on each poll interval", async () => {
@@ -104,17 +108,17 @@ describe("KioskPanelClient queue polling", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
     });
-    expect(fetchSectionPage).toHaveBeenCalledTimes(1);
-    expect(fetchSectionPage).toHaveBeenCalledWith({
+    expect(fetchSnapshot).toHaveBeenCalledTimes(1);
+    expect(fetchSnapshot).toHaveBeenCalledWith({
       colaboratorId: "u-1",
-      section: "liberadas",
+      sections: ["liberadas"],
       staffUserId: undefined,
     });
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1_000);
     });
-    expect(fetchSectionPage).toHaveBeenCalledTimes(2);
+    expect(fetchSnapshot).toHaveBeenCalledTimes(2);
     vi.useRealTimers();
   });
 });

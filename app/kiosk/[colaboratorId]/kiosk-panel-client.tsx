@@ -33,13 +33,11 @@ import {
   applyOptimisticChainStopToOpenRuns,
   applyOptimisticChainStopToSubTasks,
   applyOptimisticKioskExitToSubTasks,
-  applyOptimisticKioskStartToOpenRuns,
   applyOptimisticKioskStartToSubTasks,
   applyOptimisticStateToLiberadasSection,
   isOptimisticChainStopSettled,
   isOptimisticKioskExitSettled,
   isOptimisticKioskStartSettled,
-  resolvePersistedChainRunId,
   type OptimisticKioskChainStop,
   type OptimisticKioskExit,
   type OptimisticKioskStart,
@@ -70,6 +68,7 @@ import {
   confirmChainStop,
   exitSubTask,
   fetchKioskQueueSectionPage,
+  fetchKioskQueueSnapshot,
   fetchColaboratorFacePhotoUrl,
   joinLiveChain,
   refreshMaterialFlags,
@@ -264,16 +263,8 @@ export function KioskPanelClient({
     [catalog, optimisticChainStop, optimisticExit, optimisticStart],
   );
   const displayOpenRuns = useMemo(
-    () =>
-      applyOptimisticChainStopToOpenRuns(
-        applyOptimisticKioskStartToOpenRuns(
-          openRuns,
-          optimisticStart,
-          colaboratorId,
-        ),
-        optimisticChainStop,
-      ),
-    [colaboratorId, openRuns, optimisticChainStop, optimisticStart],
+    () => applyOptimisticChainStopToOpenRuns(openRuns, optimisticChainStop),
+    [openRuns, optimisticChainStop],
   );
 
   if (
@@ -335,8 +326,8 @@ export function KioskPanelClient({
   const applyPageToLiberadas = useCallback((page: KioskQueueSectionPage) => {
     setLiberadas(sectionFromPage(page, true));
     setOpenRuns(page.openRuns);
-    setSubTasks((current) => mergeKioskCatalog(current, page.subTasks));
-    setCatalog((current) => mergeKioskCatalog(current, page.catalog));
+    setSubTasks(page.subTasks);
+    setCatalog(page.catalog);
   }, []);
 
   const applyProducingSnapshot = useCallback((page: KioskQueueSectionPage) => {
@@ -373,53 +364,38 @@ export function KioskPanelClient({
     })();
   }, [colaboratorId, currentFacePhotoUrl, editOpen, staffUserId]);
 
-  const refreshLiberadas = useCallback(async (): Promise<void> => {
-    const page = await fetchKioskQueueSectionPage({
+  const refreshVisibleQueue = useCallback(async (): Promise<void> => {
+    const sections: Array<"liberadas" | "bloqueadas" | "finalizadas_hoje"> = [
+      "liberadas",
+    ];
+    if (bloqueadas.expanded) sections.push("bloqueadas");
+    if (finalizadas.expanded) sections.push("finalizadas_hoje");
+    const pages = await fetchKioskQueueSnapshot({
       colaboratorId,
-      section: "liberadas",
+      sections,
       staffUserId,
     });
-    applyPageToLiberadas(page);
-  }, [applyPageToLiberadas, colaboratorId, staffUserId]);
+    const liberadasPage = pages.find((page) => page.section === "liberadas");
+    const bloqueadasPage = pages.find((page) => page.section === "bloqueadas");
+    const finalizadasPage = pages.find(
+      (page) => page.section === "finalizadas_hoje",
+    );
+    if (liberadasPage) setLiberadas(sectionFromPage(liberadasPage, true));
+    if (bloqueadasPage) setBloqueadas(sectionFromPage(bloqueadasPage, true));
+    if (finalizadasPage) setFinalizadas(sectionFromPage(finalizadasPage, true));
+    setSubTasks(mergeKioskCatalog([], pages.flatMap((page) => page.subTasks)));
+    setCatalog(mergeKioskCatalog([], pages.flatMap((page) => page.catalog)));
+    setOpenRuns(liberadasPage?.openRuns ?? pages[0]?.openRuns ?? []);
+  }, [
+    bloqueadas.expanded,
+    colaboratorId,
+    finalizadas.expanded,
+    staffUserId,
+  ]);
 
-  const refreshExpandedAccordions = useCallback(async (): Promise<void> => {
-    if (bloqueadas.expanded) {
-      const page = await fetchKioskQueueSectionPage({
-        colaboratorId,
-        section: "bloqueadas",
-        staffUserId,
-      });
-      setBloqueadas(sectionFromPage(page, true));
-      setSubTasks((current) => mergeSubTasks(current, page.subTasks));
-      setCatalog((current) => mergeKioskCatalog(current, page.catalog));
-      setOpenRuns(page.openRuns);
-    }
-    if (finalizadas.expanded) {
-      const page = await fetchKioskQueueSectionPage({
-        colaboratorId,
-        section: "finalizadas_hoje",
-        staffUserId,
-      });
-      setFinalizadas(sectionFromPage(page, true));
-      setSubTasks((current) => mergeSubTasks(current, page.subTasks));
-      setCatalog((current) => mergeKioskCatalog(current, page.catalog));
-      setOpenRuns(page.openRuns);
-    }
-  }, [bloqueadas.expanded, colaboratorId, finalizadas.expanded, staffUserId]);
+  const queuePollPaused = editOpen;
 
-  const refreshAfterMutation = useCallback(async (): Promise<void> => {
-    await refreshLiberadas();
-    void refreshExpandedAccordions();
-  }, [refreshExpandedAccordions, refreshLiberadas]);
-
-  const queuePollPaused =
-    queueBusy !== null ||
-    optimisticStart !== null ||
-    optimisticChainStop !== null ||
-    optimisticExit !== null ||
-    editOpen;
-
-  useKioskQueuePoll(refreshAfterMutation, queuePollPaused);
+  useKioskQueuePoll(refreshVisibleQueue, queuePollPaused);
 
   const runBackgroundAction = useCallback(
     (action: () => Promise<void>, onError?: (error: unknown) => void): void => {
@@ -427,8 +403,7 @@ export function KioskPanelClient({
         try {
           await action();
           setQueueBusy(null);
-          await refreshLiberadas();
-          void refreshExpandedAccordions();
+          await refreshVisibleQueue();
         } catch (error) {
           rethrowIfNavigationError(error);
           setOptimisticStart(null);
@@ -438,7 +413,7 @@ export function KioskPanelClient({
         }
       })();
     },
-    [refreshExpandedAccordions, refreshLiberadas],
+    [refreshVisibleQueue],
   );
 
   const runExitAction = useCallback(
@@ -446,8 +421,7 @@ export function KioskPanelClient({
       void (async () => {
         try {
           await action();
-          await refreshLiberadas();
-          void refreshExpandedAccordions();
+          await refreshVisibleQueue();
         } catch (error) {
           rethrowIfNavigationError(error);
           onError?.(error);
@@ -457,7 +431,7 @@ export function KioskPanelClient({
         }
       })();
     },
-    [refreshExpandedAccordions, refreshLiberadas],
+    [refreshVisibleQueue],
   );
 
   const loadMoreSection = useCallback(
@@ -633,28 +607,21 @@ export function KioskPanelClient({
       void (async () => {
         try {
           await advanceChainRun(colaboratorId, chainRunId, staffUserId);
-          await refreshAfterMutation();
+          await refreshVisibleQueue();
         } catch (error) {
           rethrowIfNavigationError(error);
           showKioskErrorToast(kioskActionErrorMessage(t, error, "exitFailed"));
         }
       })();
     },
-    [colaboratorId, queueBusy, refreshAfterMutation, staffUserId, t],
+    [colaboratorId, queueBusy, refreshVisibleQueue, staffUserId, t],
   );
 
   function handleConfirmChainStop(
-    chainRunId: string,
+    chainRunId: string | null,
     answers: ChainStopAnswer[],
+    headId: string,
   ): void {
-    const persistedId = resolvePersistedChainRunId(
-      chainRunId,
-      displayOpenRuns,
-    );
-    if (!persistedId) {
-      showKioskErrorToast(t("chainRunNotReady"));
-      return;
-    }
     if (queueBusy) {
       showKioskErrorToast(t("actionLoading"));
       return;
@@ -664,26 +631,29 @@ export function KioskPanelClient({
       openRuns,
     );
     setQueueBusy("exit");
-    const openRun = displayOpenRuns.find(
-      (run) => run.chainRunId === persistedId,
-    );
+    const openRun = chainRunId
+      ? displayOpenRuns.find((run) => run.chainRunId === chainRunId)
+      : displayOpenRuns.find((run) => run.chainHeadId === headId);
+    const optimisticRunId = chainRunId ?? openRun?.chainRunId ?? headId;
     setOptimisticChainStop({
-      chainRunId: persistedId,
-      chainHeadId: openRun?.chainHeadId ?? answers[0]!.documentId,
+      chainRunId: optimisticRunId,
+      chainHeadId: openRun?.chainHeadId ?? headId,
       memberIds: answers.map((answer) => answer.documentId),
       answers,
     });
     runExitAction(async () => {
-      await confirmChainStop(colaboratorId, persistedId, answers, staffUserId);
+      await confirmChainStop(
+        colaboratorId,
+        chainRunId,
+        answers,
+        staffUserId,
+        headId,
+      );
       showKioskSuccessToast(t("exitRecorded"));
     }, (error) => {
       setOptimisticChainStop(null);
       showKioskErrorToast(kioskActionErrorMessage(t, error, "exitFailed"));
     });
-  }
-
-  function handleChainRunNotReady(): void {
-    showKioskErrorToast(t("chainRunNotReady"));
   }
 
   function handleExit(documentId: string, input: KioskExitInput): void {
@@ -819,7 +789,6 @@ export function KioskPanelClient({
     onAdvanceChain: readOnly ? undefined : handleAdvanceChain,
     onReleaseMaterialFlag: readOnly ? undefined : handleReleaseMaterialFlag,
     onRefreshMaterialFlags: readOnly ? undefined : handleRefreshMaterialFlags,
-    onChainRunNotReady: readOnly ? undefined : handleChainRunNotReady,
   };
 
   const bootstrapApi = useMemo(
@@ -917,7 +886,6 @@ export function KioskPanelClient({
           bloqueadas={bloqueadas}
           finalizadas={finalizadas}
           allSubTasks={allSubTasksForPanel}
-          openRuns={displayOpenRuns}
           readOnly={readOnly}
           blockingUi={queueBusy !== null}
           timerPaused={queueBusy === "exit"}
@@ -939,7 +907,6 @@ export function KioskPanelClient({
           onRefreshMaterialFlags={
             readOnly ? undefined : handleRefreshMaterialFlags
           }
-          onChainRunNotReady={readOnly ? undefined : handleChainRunNotReady}
           >
             {children}
           </KioskDailyQueue>

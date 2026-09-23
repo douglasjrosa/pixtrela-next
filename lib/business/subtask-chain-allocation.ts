@@ -149,6 +149,78 @@ export function elapsedSecondsBetween(startedAt: Date, stoppedAt: Date): number 
   return Math.floor(deltaMs / MS_PER_SECOND);
 }
 
+export type PresenceActivity = {
+  colaboratorId: string;
+  subTaskId: string;
+  action: "started" | "stoped";
+  timestamp: Date;
+};
+
+/** Seconds this worker actually spent on the subtask, closing an open session at closeOpenAt. */
+export function presenceSecondsOnSubTask(
+  rows: readonly PresenceActivity[],
+  colaboratorId: string,
+  subTaskId: string,
+  closeOpenAt: Date,
+): number {
+  const scoped = rows
+    .filter(
+      (row) =>
+        row.colaboratorId === colaboratorId && row.subTaskId === subTaskId,
+    )
+    .sort(
+      (left, right) => left.timestamp.getTime() - right.timestamp.getTime(),
+    );
+  let openStart: Date | null = null;
+  let total = 0;
+  for (const row of scoped) {
+    if (row.action === "started") {
+      openStart = row.timestamp;
+      continue;
+    }
+    if (!openStart) continue;
+    total += elapsedSecondsBetween(openStart, row.timestamp);
+    openStart = null;
+  }
+  if (openStart) {
+    total += elapsedSecondsBetween(openStart, closeOpenAt);
+  }
+  return total;
+}
+
+/** Splits a segment by each worker's own presence. The run opener is not given the whole segment. */
+export function allocateSegmentPresenceShares(input: {
+  rows: readonly PresenceActivity[];
+  subTaskId: string;
+  segmentSeconds: number;
+  closeOpenAt: Date;
+}): Array<{ colaboratorId: string; timeSpentSeconds: number }> {
+  const workerIds = [
+    ...new Set(
+      input.rows
+        .filter((row) => row.subTaskId === input.subTaskId)
+        .map((row) => row.colaboratorId),
+    ),
+  ];
+  const walls = workerIds
+    .map((colaboratorId) => ({
+      colaboratorId,
+      wall: presenceSecondsOnSubTask(
+        input.rows,
+        colaboratorId,
+        input.subTaskId,
+        input.closeOpenAt,
+      ),
+    }))
+    .filter((row) => row.wall > 0);
+  const wallSum = walls.reduce((sum, row) => sum + row.wall, 0);
+  if (wallSum <= 0) return [];
+  return walls.map((row) => ({
+    colaboratorId: row.colaboratorId,
+    timeSpentSeconds: Math.floor((input.segmentSeconds * row.wall) / wallSum),
+  }));
+}
+
 function splitElapsedByExpected(
   elapsedSeconds: number,
   expectedTimes: number[],
@@ -318,5 +390,5 @@ export function msUntilNextAutoAdvance(input: {
       return (cumulative - elapsed) * MS_PER_SECOND;
     }
   }
-  return null;
+  return 0;
 }

@@ -31,6 +31,7 @@ import {
 import { createStep, listSteps } from "@/lib/repos/steps";
 import { createSubTaskCategory } from "@/lib/repos/sub-task-categories";
 import {
+  archiveTasks,
   assignColaboratorsToSubTask,
   createTask,
   getTaskById,
@@ -486,6 +487,44 @@ describeWithDb("drizzle repos integration", () => {
       expect(fromDrizzleActivationStatus(secondRow?.activationStatus)).toBe(
         "unlocked",
       );
+    },
+    45_000,
+  );
+
+  it(
+    "excludes assigned subtasks from archived tasks on the kiosk queue",
+    async () => {
+      const suffix = String(Date.now());
+      const worker = await createUser({
+        username: `archq-${suffix}`,
+        password: "Secret123!",
+        name: "Archive Queue Worker",
+        role: "colaborator",
+        code: Number(suffix.slice(-5)),
+      });
+
+      await createTemplateTask({
+        code: `AQ${suffix.slice(-7)}`,
+        name: "Archive queue template",
+        subTasks: [{ name: "Step", expectedTime: 10, index: 0 }],
+      });
+
+      const step = await createStep({ name: `Archive Q ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `Archive queue task ${suffix}`,
+        qty: 1,
+        stepId: step.id,
+        templateTaskCode: `AQ${suffix.slice(-7)}`,
+      });
+
+      const [sub] = await listSubTasksForTask(task.id);
+      expect(sub).toBeTruthy();
+      await assignColaboratorsToSubTask(sub!.id, [worker.id]);
+      expect(await listAssignedSubTasks(worker.id)).toHaveLength(1);
+
+      await archiveTasks([task.id], "integration test archive");
+
+      expect(await listAssignedSubTasks(worker.id)).toHaveLength(0);
     },
     45_000,
   );

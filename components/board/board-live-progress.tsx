@@ -106,6 +106,9 @@ export function BoardLiveProgress({
   releaseSubtaskFlags,
 }: BoardLiveProgressProps) {
   const [subtasksModalOpen, setSubtasksModalOpen] = useState(false);
+  const [persistingTaskDocumentIds, setPersistingTaskDocumentIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
   const [steps, setSteps] = useState(initialSteps);
   const [columns, setColumns] = useState<BoardColumnState[]>(() =>
     boardColumnsFromPages(initialColumns),
@@ -190,6 +193,7 @@ export function BoardLiveProgress({
     pollBoardProgress,
     setColumns,
     subtasksModalOpen,
+    persistingTaskDocumentIds,
   );
 
   if (interactive) {
@@ -216,6 +220,7 @@ export function BoardLiveProgress({
           releaseSubtaskFlags={releaseSubtaskFlags}
           assigneePeople={assigneePeople}
           onSubtasksModalOpenChange={setSubtasksModalOpen}
+          onPersistingTaskDocumentIdsChange={setPersistingTaskDocumentIds}
         />
       </div>
     );

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   allocateChainTimeline,
+  allocateSegmentPresenceShares,
   buildInitialChainStopAnswers,
   elapsedSecondsBetween,
   isChainMemberAnswerComplete,
@@ -284,7 +285,7 @@ describe("msUntilNextAutoAdvance", () => {
     ).toBe(6000);
   });
 
-  it("returns null on the last member", () => {
+  it("returns 0 once the next boundary is already due", () => {
     expect(
       msUntilNextAutoAdvance({
         runStartedAt: T0,
@@ -294,7 +295,50 @@ describe("msUntilNextAutoAdvance", () => {
           { documentId: "b", expectedTime: 20 },
         ],
       }),
-    ).toBeNull();
+    ).toBe(0);
+  });
+});
+
+describe("allocateSegmentPresenceShares", () => {
+  it("weights the run opener by their own presence, not the whole segment", () => {
+    const minute = 60;
+    const shares = allocateSegmentPresenceShares({
+      rows: [
+        {
+          colaboratorId: "owner",
+          subTaskId: "a",
+          action: "started",
+          timestamp: T0,
+        },
+        {
+          colaboratorId: "owner",
+          subTaskId: "a",
+          action: "stoped",
+          timestamp: secondsLater(15 * minute),
+        },
+        {
+          colaboratorId: "helper",
+          subTaskId: "a",
+          action: "started",
+          timestamp: secondsLater(5 * minute),
+        },
+        {
+          colaboratorId: "helper",
+          subTaskId: "a",
+          action: "stoped",
+          timestamp: secondsLater(25 * minute),
+        },
+      ],
+      subTaskId: "a",
+      segmentSeconds: 25 * minute,
+      closeOpenAt: secondsLater(25 * minute),
+    });
+
+    expect(shares).toEqual([
+      { colaboratorId: "owner", timeSpentSeconds: 642 },
+      { colaboratorId: "helper", timeSpentSeconds: 857 },
+    ]);
+    expect(shares[0]?.timeSpentSeconds).toBeLessThan(25 * minute);
   });
 });
 

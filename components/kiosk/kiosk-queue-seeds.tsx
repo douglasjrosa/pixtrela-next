@@ -28,7 +28,6 @@ export function KioskQueueProducingSeed({
     <KioskSubtaskPanel
       units={page.producingUnits}
       allSubTasks={mergeKioskCatalog(page.catalog, page.subTasks)}
-      openRuns={page.openRuns}
       {...panel}
     />
   );
@@ -52,7 +51,6 @@ export function KioskQueueLiberadasSeed({
     <KioskSubtaskPanel
       units={page.units}
       allSubTasks={mergeKioskCatalog(page.catalog, page.subTasks)}
-      openRuns={page.openRuns}
       {...panel}
     />
   );

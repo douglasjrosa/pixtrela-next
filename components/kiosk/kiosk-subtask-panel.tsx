@@ -4,7 +4,7 @@ import { Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import type { KioskQueueUnit, OpenChainRun } from "@/lib/business/kiosk-queue-units";
+import type { KioskQueueUnit } from "@/lib/business/kiosk-queue-units";
 import { queueUnitCursor } from "@/lib/business/kiosk-queue-units";
 import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
 import {
@@ -27,7 +27,7 @@ import { MaterialFlagHintList } from "./material-flag-hint-list";
 import { KioskSubtaskEarnedCredits } from "./kiosk-subtask-earned-credits";
 import { KioskSubtaskRemainingQtyBadge } from "./kiosk-subtask-remaining-qty-badge";
 import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
-import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
+import { KioskPeerAssigneeBadges } from "./kiosk-peer-assignee-badges";
 
 export interface KioskSubtaskPanelProps {
   subTasks?: KioskSubTask[];
@@ -39,8 +39,9 @@ export interface KioskSubtaskPanelProps {
   onExit?: (documentId: string, input: KioskExitInput) => void | Promise<void>;
   onStartChain?: (headId: string) => void | Promise<void>;
   onConfirmChainStop?: (
-    chainRunId: string,
+    chainRunId: string | null,
     answers: ChainStopAnswer[],
+    headId: string,
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
   onReleaseMaterialFlag?: (flagId: string) => void | Promise<void>;
@@ -51,8 +52,6 @@ export interface KioskSubtaskPanelProps {
     categoryId: string | null;
     requiresMaterialFlagsOnFinish?: boolean;
   }>;
-  onChainRunNotReady?: () => void;
-  openRuns?: readonly OpenChainRun[];
   blockingUi?: boolean;
   timerPaused?: boolean;
   exitBusy?: boolean;
@@ -81,8 +80,6 @@ export function KioskSubtaskPanel({
   onAdvanceChain,
   onReleaseMaterialFlag,
   onRefreshMaterialFlags,
-  onChainRunNotReady,
-  openRuns,
   blockingUi = false,
   timerPaused,
   exitBusy = false,
@@ -125,7 +122,6 @@ export function KioskSubtaskPanel({
             <KioskChainGroupCard
               key={`group-${queueUnitCursor(unit)}`}
               unit={unit}
-              openRuns={openRuns}
               readOnly={readOnly}
               blockingUi={blockingUi}
               timerPaused={timerPaused}
@@ -141,7 +137,6 @@ export function KioskSubtaskPanel({
               onAdvanceChain={onAdvanceChain}
               onReleaseMaterialFlag={onReleaseMaterialFlag}
               onRefreshMaterialFlags={onRefreshMaterialFlags}
-              onChainRunNotReady={onChainRunNotReady}
             />
           );
         }
@@ -150,7 +145,7 @@ export function KioskSubtaskPanel({
         const finished = isFinishedSubTask(subTask);
         const locked = isLockedSubTask(subTask);
         const hasOwnSession = Boolean(subTask.startedAt);
-        const isProducing = subTask.status === "producing" || hasOwnSession;
+        const isViewerProducing = hasOwnSession;
         const showLockOverlay = locked;
         const hideActions = unit.hideActions === true;
         const showStart =
@@ -160,7 +155,7 @@ export function KioskSubtaskPanel({
           !hideActions &&
           shouldShowExitButton(queueContext, subTask);
         const isExiting =
-          exitingId === subTask.documentId && isProducing && onExit;
+          exitingId === subTask.documentId && isViewerProducing && onExit;
         const isFlashing = flashDocumentId === subTask.documentId;
         const remainingQty = getRemainingSubTaskQty(
           subTask.targetQty,
@@ -169,7 +164,7 @@ export function KioskSubtaskPanel({
         const showRemainingQtyBadge =
           !compactFinishedCards &&
           !finished &&
-          !isProducing &&
+          !isViewerProducing &&
           subTask.sharingType === "qty";
 
         return (
@@ -178,10 +173,10 @@ export function KioskSubtaskPanel({
             className={cn(
               "relative rounded-2xl border bg-card p-4 transition-colors duration-300",
               finished && "border-muted bg-muted opacity-80",
-              isProducing &&
+              isViewerProducing &&
                 "border-l-4 border-l-[var(--success)] bg-success/10 shadow-sm",
               showLockOverlay && "bg-muted",
-              isFlashing && !isProducing && "bg-muted",
+              isFlashing && !isViewerProducing && "bg-muted",
             )}
           >
             <div className="flex flex-col gap-4">
@@ -192,9 +187,13 @@ export function KioskSubtaskPanel({
                   </p>
                 ) : null}
                 <p className="text-lg font-bold leading-snug">{subTask.name}</p>
-                {!compactFinishedCards ? (
+                {!compactFinishedCards &&
+                ((subTask.peerAssignees?.length ?? 0) > 0 ||
+                  showRemainingQtyBadge) ? (
                   <div className="flex w-full items-center justify-between gap-2">
-                    <KioskSubtaskStatusBadge status={subTask.status} />
+                    <KioskPeerAssigneeBadges
+                      peers={subTask.peerAssignees ?? []}
+                    />
                     {showRemainingQtyBadge ? (
                       <KioskSubtaskRemainingQtyBadge
                         remainingQty={remainingQty}
@@ -202,7 +201,7 @@ export function KioskSubtaskPanel({
                     ) : null}
                   </div>
                 ) : null}
-                {isProducing && subTask.startedAt ? (
+                {isViewerProducing && subTask.startedAt ? (
                   <KioskSubtaskProducingMetrics
                     startedAt={subTask.startedAt}
                     timeSpent={subTask.timeSpent}
@@ -229,7 +228,7 @@ export function KioskSubtaskPanel({
                   onReleaseFlag={
                     !readOnly ? onReleaseMaterialFlag : undefined
                   }
-                  canReleaseFlags={isProducing}
+                  canReleaseFlags={isViewerProducing}
                   releaseDisabled={blockingUi}
                 />
               </div>

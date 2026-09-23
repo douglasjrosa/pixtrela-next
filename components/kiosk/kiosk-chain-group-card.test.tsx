@@ -289,11 +289,64 @@ describe("KioskChainGroupCard", () => {
     });
     expect(confirm).toBeEnabled();
     await user.click(confirm);
-    expect(onConfirmChainStop).toHaveBeenCalledWith("run-1", [
-      { documentId: "a", completed: true },
-      { documentId: "b", completed: true },
-    ]);
+    expect(onConfirmChainStop).toHaveBeenCalledWith(
+      "run-1",
+      [
+        { documentId: "a", completed: true },
+        { documentId: "b", completed: true },
+      ],
+      "a",
+    );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("confirms stop without a chain run id and passes the head id", async () => {
+    const user = userEvent.setup();
+    const onConfirmChainStop = vi.fn();
+    const members = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Cortar",
+        status: "producing",
+        startedAt: "2026-08-16T12:00:00.000Z",
+      }),
+      kioskSubTask({
+        documentId: "b",
+        name: "Embalar",
+        index: 1,
+        linkedToPrevious: true,
+        status: "waiting",
+      }),
+    ];
+    renderWithIntl(
+      <KioskChainGroupCard
+        unit={groupUnit({
+          members,
+          principalActive: true,
+          chainRunId: null,
+        })}
+        onConfirmChainStop={onConfirmChainStop}
+        onAdvanceChain={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Parar" }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "SIM" }));
+    await user.click(within(dialog).getByRole("button", { name: "Continuar" }));
+    await user.click(within(dialog).getByRole("button", { name: "SIM" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Confirmar saída" }),
+    );
+
+    expect(onConfirmChainStop).toHaveBeenCalledWith(
+      null,
+      [
+        { documentId: "a", completed: true },
+        { documentId: "b", completed: true },
+      ],
+      "a",
+    );
   });
 
   it("hides inferred suppliers and still sends them in the payload", async () => {
@@ -372,11 +425,15 @@ describe("KioskChainGroupCard", () => {
       within(dialog).getByRole("button", { name: "Confirmar saída" }),
     );
 
-    expect(onConfirmChainStop).toHaveBeenCalledWith("run-1", [
-      { documentId: "a", qty: 5 },
-      { documentId: "b", qty: 5 },
-      { documentId: "c", completed: true },
-    ]);
+    expect(onConfirmChainStop).toHaveBeenCalledWith(
+      "run-1",
+      [
+        { documentId: "a", qty: 5 },
+        { documentId: "b", qty: 5 },
+        { documentId: "c", completed: true },
+      ],
+      "a",
+    );
   });
 
   it("lets the second peer stop from the group card", () => {
@@ -471,10 +528,14 @@ describe("KioskChainGroupCard", () => {
     await user.click(
       within(dialog).getByRole("button", { name: "Confirmar saída" }),
     );
-    expect(onConfirmChainStop).toHaveBeenCalledWith("run-1", [
-      { documentId: "a", qty: 40, inferred: true, semBandeira: true },
-      { documentId: "b", qty: 30 },
-    ]);
+    expect(onConfirmChainStop).toHaveBeenCalledWith(
+      "run-1",
+      [
+        { documentId: "a", qty: 40, inferred: true, semBandeira: true },
+        { documentId: "b", qty: 30 },
+      ],
+      "a",
+    );
   });
 });
 

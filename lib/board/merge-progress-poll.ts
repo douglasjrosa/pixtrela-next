@@ -9,9 +9,14 @@ import {
 } from "@/lib/business/task-progress";
 import { stableKanbanTaskNumericId } from "@/lib/board/kanban-drizzle-ids";
 
+export type MergeBoardColumnsProgressPollOptions = {
+  preserveLocalUnassignedBadgeTaskIds?: ReadonlySet<string>;
+};
+
 function applyLoadedTaskFields(
   task: KanbanTask,
   snapshot: BoardProgressPollSnapshot,
+  options?: MergeBoardColumnsProgressPollOptions,
 ): KanbanTask {
   const layout = snapshot.layoutByTaskId[task.documentId];
   const withLayout: KanbanTask = layout
@@ -28,11 +33,16 @@ function applyLoadedTaskFields(
     : task;
 
   const badges = snapshot.badgesByTaskId[task.documentId];
+  const preserveLocalUnassigned =
+    options?.preserveLocalUnassignedBadgeTaskIds?.has(task.documentId) ??
+    false;
   const withBadges: KanbanTask = badges
     ? {
         ...withLayout,
         activeColaboratorCount: badges.activeColaboratorCount,
-        unassignedSubTaskCount: badges.unassignedSubTaskCount,
+        unassignedSubTaskCount: preserveLocalUnassigned
+          ? task.unassignedSubTaskCount
+          : badges.unassignedSubTaskCount,
         participantCount: badges.participantCount,
       }
     : withLayout;
@@ -116,6 +126,7 @@ export function mergeBoardColumnsProgressPoll(
   columns: readonly BoardColumnState[],
   steps: readonly KanbanStep[],
   snapshot: BoardProgressPollSnapshot,
+  options?: MergeBoardColumnsProgressPollOptions,
 ): BoardColumnState[] {
   const stepByKanbanId = new Map(steps.map((step) => [step.id, step]));
   const stepByDocumentId = new Map(
@@ -125,7 +136,10 @@ export function mergeBoardColumnsProgressPoll(
   const loadedById = new Map<string, KanbanTask>();
   for (const column of columns) {
     for (const task of column.tasks) {
-      loadedById.set(task.documentId, applyLoadedTaskFields(task, snapshot));
+      loadedById.set(
+        task.documentId,
+        applyLoadedTaskFields(task, snapshot, options),
+      );
     }
   }
 

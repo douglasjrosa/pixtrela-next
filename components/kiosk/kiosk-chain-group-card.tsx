@@ -5,16 +5,13 @@ import { useTranslations } from "next-intl";
 import { Lock } from "lucide-react";
 
 import type { KioskGroupUnit } from "@/lib/business/kiosk-queue-units";
-import type { OpenChainRun } from "@/lib/business/kiosk-queue-units";
 import {
   chainHasOtherActiveWorkers,
   viewerWorkedChainMemberIds,
 } from "@/lib/business/kiosk-queue-units";
-import { resolvePersistedChainRunId } from "@/lib/business/kiosk-optimistic-start";
 import {
   chainExitMembersFromQueue,
   dependencyEdgesWithinChain,
-  isDurationOnlySharing,
   recomputeChainExitState,
   type ChainExitRecomputeOptions,
 } from "@/lib/business/chain-exit-inference";
@@ -31,11 +28,10 @@ import { KioskChainExitWizardModal } from "./kiosk-chain-exit-wizard-modal";
 import { MaterialFlagHintList } from "./material-flag-hint-list";
 import { KioskSubtaskEarnedCredits } from "./kiosk-subtask-earned-credits";
 import { KioskSubtaskProducingMetrics } from "./kiosk-subtask-producing-metrics";
-import { KioskSubtaskStatusBadge } from "./kiosk-subtask-status-badge";
+import { KioskPeerAssigneeBadges } from "./kiosk-peer-assignee-badges";
 
 export interface KioskChainGroupCardProps {
   unit: KioskGroupUnit;
-  openRuns?: readonly OpenChainRun[];
   readOnly?: boolean;
   blockingUi?: boolean;
   timerPaused?: boolean;
@@ -46,8 +42,9 @@ export interface KioskChainGroupCardProps {
   onCollectingChange?: (collecting: boolean) => void;
   onStartChain?: (headId: string) => void | Promise<void>;
   onConfirmChainStop?: (
-    chainRunId: string,
+    chainRunId: string | null,
     answers: ChainStopAnswer[],
+    headId: string,
   ) => void | Promise<void>;
   onAdvanceChain?: (chainRunId: string) => void | Promise<void>;
   onReleaseMaterialFlag?: (flagId: string) => void | Promise<void>;
@@ -58,12 +55,10 @@ export interface KioskChainGroupCardProps {
     categoryId: string | null;
     requiresMaterialFlagsOnFinish?: boolean;
   }>;
-  onChainRunNotReady?: () => void;
 }
 
 export function KioskChainGroupCard({
   unit,
-  openRuns,
   readOnly = false,
   blockingUi = false,
   timerPaused,
@@ -77,7 +72,6 @@ export function KioskChainGroupCard({
   onAdvanceChain,
   onReleaseMaterialFlag,
   onRefreshMaterialFlags,
-  onChainRunNotReady,
 }: KioskChainGroupCardProps) {
   const t = useTranslations("kiosk");
   const [collectingInternal, setCollectingInternal] = useState(false);
@@ -161,11 +155,7 @@ export function KioskChainGroupCard({
   const showStart = !readOnly && unit.showStart && !hideActions;
   const showStop =
     !readOnly && unit.principalActive && !collecting && !hideActions;
-  const persistedChainRunId = resolvePersistedChainRunId(
-    unit.chainRunId,
-    openRuns,
-    unit.headId,
-  );
+  const chainRunId = unit.chainRunId;
   function resetCollecting(): void {
     setCollecting(false);
     setChainStepIndex(0);
@@ -203,12 +193,12 @@ export function KioskChainGroupCard({
 
   function confirmPayload(draft: Record<string, ChainStopAnswer>): void {
     if (blockingUi) return;
-    if (!persistedChainRunId) {
-      onChainRunNotReady?.();
-      return;
-    }
     resetCollecting();
-    onConfirmChainStop?.(persistedChainRunId, payloadFromState(draft));
+    onConfirmChainStop?.(
+      chainRunId,
+      payloadFromState(draft),
+      unit.headId,
+    );
   }
 
   function handleStopClick(): void {
@@ -268,8 +258,7 @@ export function KioskChainGroupCard({
         ) : null}
         <ul className="space-y-3">
           {unit.members.map((member) => {
-            const isProducing =
-              member.status === "producing" || Boolean(member.startedAt);
+            const isViewerProducing = Boolean(member.startedAt);
             return (
               <li
                 key={member.documentId}
@@ -283,13 +272,16 @@ export function KioskChainGroupCard({
                   onReleaseFlag={
                     !readOnly ? onReleaseMaterialFlag : undefined
                   }
-                  canReleaseFlags={isProducing}
+                  canReleaseFlags={isViewerProducing}
                   releaseDisabled={blockingUi}
                 />
-                {!compactFinishedCards ? (
-                  <KioskSubtaskStatusBadge status={member.status} />
+                {!compactFinishedCards &&
+                (member.peerAssignees?.length ?? 0) > 0 ? (
+                  <KioskPeerAssigneeBadges
+                    peers={member.peerAssignees ?? []}
+                  />
                 ) : null}
-                {isProducing && member.startedAt ? (
+                {isViewerProducing && member.startedAt ? (
                   <KioskSubtaskProducingMetrics
                     startedAt={member.startedAt}
                     timeSpent={member.timeSpent}
@@ -349,13 +341,16 @@ export function KioskChainGroupCard({
           />
         </div>
       ) : null}
-      {persistedChainRunId &&
+      {chainRunId &&
       unit.runStartedAt &&
       onAdvanceChain &&
       !hideActions &&
-      isDurationOnlySharing(unit.members) ? (
+      unit.members.some(
+        (member) =>
+          member.sharingType === "duration" && Boolean(member.startedAt),
+      ) ? (
         <KioskChainAdvanceTimer
-          chainRunId={persistedChainRunId}
+          chainRunId={chainRunId}
           runStartedAt={unit.runStartedAt}
           members={unit.members}
           onAdvance={onAdvanceChain}

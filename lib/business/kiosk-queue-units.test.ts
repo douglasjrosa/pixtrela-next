@@ -62,7 +62,7 @@ describe("buildKioskQueueUnits", () => {
     });
   });
 
-  it("keeps join start when the viewer already has an open qty session", () => {
+  it("hides start when the viewer is already producing on the chain", () => {
     const units = buildKioskQueueUnits({
       viewerId: "u1",
       subTasks: [
@@ -104,7 +104,7 @@ describe("buildKioskQueueUnits", () => {
     expect(units[0]).toMatchObject({
       type: "group",
       principalActive: true,
-      showStart: true,
+      showStart: false,
     });
   });
 

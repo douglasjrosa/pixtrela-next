@@ -342,7 +342,9 @@ function applyActiveViewerStartVisibility(
   },
 ): KioskQueueUnit {
   if (unit.type === "group") {
-    if (!unit.chainRunId) return { ...unit, showStart: false };
+    if (unit.principalActive || !unit.chainRunId) {
+      return { ...unit, showStart: false };
+    }
     const canJoin =
       !unit.locked && groupHasJoinSlot(unit.members, input.viewerId);
     return { ...unit, showStart: canJoin };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import { KanbanBoard } from "@/components/kanban/kanban-board";
@@ -167,6 +167,7 @@ export interface BoardActionsProps {
   ) => Promise<BoardSubtaskLinkResult>;
   assigneePeople?: { documentId: string; name: string }[];
   onSubtasksModalOpenChange?: (open: boolean) => void;
+  onPersistingTaskDocumentIdsChange?: (ids: ReadonlySet<string>) => void;
 }
 
 export function BoardActions({
@@ -190,10 +191,13 @@ export function BoardActions({
   releaseSubtaskFlags,
   assigneePeople = [],
   onSubtasksModalOpenChange,
+  onPersistingTaskDocumentIdsChange,
 }: BoardActionsProps) {
   const tKanban = useTranslations("kanban");
   const tKiosk = useTranslations("kiosk");
   const [, startTransition] = useTransition();
+  const columnsRef = useRef(columns);
+  columnsRef.current = columns;
   const orderedTasks = flattenBoardColumnTasks(columns);
 
   function patchTaskInColumns(
@@ -201,7 +205,7 @@ export function BoardActions({
     patch: Partial<KanbanTask>,
   ): void {
     onColumnsChange(
-      columns.map((column) => ({
+      columnsRef.current.map((column) => ({
         ...column,
         tasks: column.tasks.map((task) =>
           task.documentId === taskDocumentId ? { ...task, ...patch } : task,
@@ -245,6 +249,10 @@ export function BoardActions({
   linksBaselineRef.current = linksBaseline;
   persistingTaskDocumentIdsRef.current = persistingTaskDocumentIds;
 
+  useEffect(() => {
+    onPersistingTaskDocumentIdsChange?.(persistingTaskDocumentIds);
+  }, [onPersistingTaskDocumentIdsChange, persistingTaskDocumentIds]);
+
   async function commitSubtaskCacheAfterSave(
     taskDocumentId: string,
     fallbackSnapshot: readonly BoardSubTaskSummary[],
@@ -269,6 +277,10 @@ export function BoardActions({
       applyLoadedSubtasks(loaded);
       setSubtasksLoadedAt(entry.loadedAt);
     }
+
+    patchTaskInColumns(taskDocumentId, {
+      unassignedSubTaskCount: resolveUnassignedSubTaskCount(loaded),
+    });
   }
 
   function shouldSkipSubtaskRefetchAfterSave(taskDocumentId: string): boolean {

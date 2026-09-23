@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  collectOpenStartedActivityIdsMissingRunId,
   resolveOpenChainRunFromActivityRows,
   resolveOpenPrincipalForChainMembers,
 } from "./kiosk-chains";
@@ -106,6 +107,52 @@ describe("resolveOpenChainRunFromActivityRows", () => {
       principalId: "u-1",
       runStartedAt: startedAt,
     });
+  });
+});
+
+describe("collectOpenStartedActivityIdsMissingRunId", () => {
+  it("returns started rows without a chain run id for open sessions", () => {
+    const ids = collectOpenStartedActivityIdsMissingRunId([
+      {
+        id: "a-1",
+        chainRunId: null,
+        colaboratorId: "u-1",
+        action: "started",
+        timestamp: new Date("2026-08-17T10:00:00.000Z"),
+        subTaskId: "st-1",
+      },
+    ]);
+    expect(ids).toEqual(["a-1"]);
+  });
+
+  it("ignores closed sessions and rows that already have a run id", () => {
+    const ids = collectOpenStartedActivityIdsMissingRunId([
+      {
+        id: "a-1",
+        chainRunId: "run-1",
+        colaboratorId: "u-1",
+        action: "started",
+        timestamp: new Date("2026-08-17T10:00:00.000Z"),
+        subTaskId: "st-1",
+      },
+      {
+        id: "a-2",
+        chainRunId: null,
+        colaboratorId: "u-1",
+        action: "started",
+        timestamp: new Date("2026-08-17T10:00:00.000Z"),
+        subTaskId: "st-1",
+      },
+      {
+        id: "a-3",
+        chainRunId: null,
+        colaboratorId: "u-1",
+        action: "stoped",
+        timestamp: new Date("2026-08-17T10:05:00.000Z"),
+        subTaskId: "st-1",
+      },
+    ]);
+    expect(ids).toEqual([]);
   });
 });
 

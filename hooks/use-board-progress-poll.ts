@@ -34,6 +34,7 @@ export function useBoardProgressPoll(
   pollBoardProgress: PollBoardProgressFn,
   onColumnsChange: (columns: BoardColumnState[]) => void,
   paused = false,
+  persistingTaskDocumentIds: ReadonlySet<string> = new Set(),
 ): BoardProgressPollState {
   const [assignedCounts, setAssignedCounts] = useState(
     assignedCountByColaboratorId,
@@ -50,10 +51,15 @@ export function useBoardProgressPoll(
   const stepsRef = useRef(steps);
   const pollRef = useRef(pollBoardProgress);
   const onColumnsChangeRef = useRef(onColumnsChange);
+  const persistingTaskDocumentIdsRef = useRef(persistingTaskDocumentIds);
 
   useEffect(() => {
     columnsRef.current = columns;
   }, [columns]);
+
+  useEffect(() => {
+    persistingTaskDocumentIdsRef.current = persistingTaskDocumentIds;
+  }, [persistingTaskDocumentIds]);
 
   useEffect(() => {
     stepsRef.current = steps;
@@ -96,6 +102,10 @@ export function useBoardProgressPoll(
           columnsRef.current,
           stepsRef.current,
           snapshot,
+          {
+            preserveLocalUnassignedBadgeTaskIds:
+              persistingTaskDocumentIdsRef.current,
+          },
         );
         columnsRef.current = merged;
         onColumnsChangeRef.current(merged);

@@ -55,6 +55,12 @@ export interface KioskSubTask extends QueuedSubTask {
   linkedToPrevious?: boolean;
   maxSameTimeWorkers?: number;
   assignedToIds?: string[];
+  /** Other assignees on this subtask (excludes the kiosk viewer). */
+  peerAssignees?: Array<{
+    colaboratorId: string;
+    name: string;
+    isActive: boolean;
+  }>;
   dependencyIds?: string[];
   subTaskCategoryId?: string | null;
   assignedFlagCodes?: string[];

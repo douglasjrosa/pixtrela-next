@@ -11,6 +11,8 @@ import {
   tasks,
   users,
 } from "@/drizzle/schema";
+
+const ACTIVE_KIOSK_QUEUE_TASK = eq(tasks.active, true);
 import {
   findSubTaskIdsNeedingProducingReconcile,
   selectRowsForProducingReconcile,
@@ -35,6 +37,7 @@ import {
   filterKioskDailyQueue,
   sortKioskDailyQueue,
 } from "@/lib/business/kiosk-daily-queue";
+import { buildKioskPeerAssignees } from "@/lib/business/kiosk-peer-assignees";
 import {
   buildFinishedAtBySubTaskId,
   buildOpenStartedAtBySubTaskId,
@@ -306,7 +309,9 @@ async function fetchAssignedSubTaskRows(
     .from(subTasks)
     .innerJoin(subTaskAssignees, eq(subTaskAssignees.subTaskId, subTasks.id))
     .innerJoin(tasks, eq(subTasks.taskId, tasks.id))
-    .where(eq(subTaskAssignees.userId, colaboratorId))
+    .where(
+      and(eq(subTaskAssignees.userId, colaboratorId), ACTIVE_KIOSK_QUEUE_TASK),
+    )
     .orderBy(asc(subTasks.index));
 }
 
@@ -369,7 +374,7 @@ async function fetchSubTaskRowsByIds(subTaskIds: string[], db: Db) {
     })
     .from(subTasks)
     .innerJoin(tasks, eq(subTasks.taskId, tasks.id))
-    .where(inArray(subTasks.id, subTaskIds))
+    .where(and(inArray(subTasks.id, subTaskIds), ACTIVE_KIOSK_QUEUE_TASK))
     .orderBy(asc(subTasks.index));
 }
 
@@ -470,6 +475,18 @@ async function loadActivityEnrichment(
     viewerParticipatedIds: viewerStopStats.participatedIds,
     viewerCurrencyBySubTaskId: viewerStopStats.currencyBySubTaskId,
   };
+}
+
+async function loadColaboratorNameById(
+  userIds: readonly string[],
+  db: Db,
+): Promise<Map<string, string>> {
+  if (userIds.length === 0) return new Map();
+  const rows = await db
+    .select({ id: users.id, name: users.name })
+    .from(users)
+    .where(inArray(users.id, [...userIds]));
+  return new Map(rows.map((row) => [row.id, row.name.trim()]));
 }
 
 async function loadAssigneeAndDependencyMaps(
@@ -615,6 +632,14 @@ async function hydrateAssignedSubTaskRows(
     loadActivityEnrichment(subTaskIds, colaboratorId, db),
     loadAssigneeAndDependencyMaps(subTaskIds, db),
   ]);
+  const assigneeIds = [
+    ...new Set(
+      rows.flatMap(
+        (row) => relationMaps.assignedToIdsBySubTaskId.get(row.id) ?? [],
+      ),
+    ),
+  ];
+  const assigneeNameById = await loadColaboratorNameById(assigneeIds, db);
 
   await reconcileProducingStatusFromOpenSessions(
     selectRowsForProducingReconcile(rows, {
@@ -656,10 +681,18 @@ async function hydrateAssignedSubTaskRows(
           enrichment.finishedAtBySubTaskId.get(row.id) ?? null,
           activeIds.length,
         );
+        const assignedToIds =
+          relationMaps.assignedToIdsBySubTaskId.get(row.id) ?? [];
         return {
           ...kioskRow,
-          assignedToIds: relationMaps.assignedToIdsBySubTaskId.get(row.id) ?? [],
+          assignedToIds,
           dependencyIds: relationMaps.dependencyIdsBySubTaskId.get(row.id) ?? [],
+          peerAssignees: buildKioskPeerAssignees(
+            assignedToIds,
+            activeIds,
+            colaboratorId,
+            assigneeNameById,
+          ),
           viewerParticipated: enrichment.viewerParticipatedIds.has(row.id),
           viewerCurrencyAwarded:
             enrichment.viewerCurrencyBySubTaskId.get(row.id) ?? 0,
@@ -696,6 +729,7 @@ async function hydrateAssignedSubTaskRows(
     linkedToPrevious: row.linkedToPrevious,
     maxSameTimeWorkers: row.maxSameTimeWorkers,
     assignedToIds: row.assignedToIds,
+    peerAssignees: row.peerAssignees,
     dependencyIds: row.dependencyIds,
     subTaskCategoryId: categoryById.get(row.documentId) ?? null,
   }));
@@ -1093,6 +1127,39 @@ export async function listKioskQueueSectionPage(
     queuePageSize,
     catalogTruncated: catalogMode === "slim" ? catalogTruncated : false,
   };
+}
+
+export async function listKioskQueueSnapshot(
+  input: {
+    colaboratorId: string;
+    sections: readonly KioskQueueSectionKey[];
+    liveChainIntervalSeconds?: number;
+    queuePageSize?: number;
+    catalogMode?: KioskQueueCatalogMode;
+    db?: Db;
+  },
+): Promise<KioskQueueSectionPage[]> {
+  const db = input.db ?? getDb();
+  const queue = await listKioskQueueData(input.colaboratorId, db, {
+    attachCatalogFlags: input.catalogMode === "full",
+  });
+  const pages: KioskQueueSectionPage[] = [];
+  for (const section of input.sections) {
+    pages.push(
+      await listKioskQueueSectionPage(
+        {
+          colaboratorId: input.colaboratorId,
+          section,
+          liveChainIntervalSeconds: input.liveChainIntervalSeconds,
+          queuePageSize: input.queuePageSize,
+          catalogMode: input.catalogMode,
+          queue,
+        },
+        db,
+      ),
+    );
+  }
+  return pages;
 }
 
 export async function listKioskProducingSnapshot(

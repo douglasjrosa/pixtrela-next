@@ -18,7 +18,6 @@ export type KioskQueuePanelActions = Pick<
   | "onAdvanceChain"
   | "onReleaseMaterialFlag"
   | "onRefreshMaterialFlags"
-  | "onChainRunNotReady"
 >;
 
 const KioskQueuePanelActionsContext =

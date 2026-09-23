@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
 import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 
 import { activities, subTasks, tasks } from "@/drizzle/schema";
 import {
   allocateChainTimeline,
+  allocateSegmentPresenceShares,
   elapsedSecondsBetween,
   isFinishedThisRun,
   planPrincipalSegmentActivities,
@@ -449,6 +450,119 @@ export function resolveOpenChainRunFromActivityRows(
   return null;
 }
 
+export type ChainActivitySessionRow = {
+  id: string;
+  chainRunId: string | null;
+  colaboratorId: string;
+  action: "started" | "stoped";
+  timestamp: Date;
+  subTaskId: string;
+};
+
+export function collectOpenStartedActivityIdsMissingRunId(
+  rows: readonly ChainActivitySessionRow[],
+): string[] {
+  const bySession = new Map<string, ChainActivitySessionRow[]>();
+  for (const row of rows) {
+    const key = `${row.subTaskId}:${row.colaboratorId}`;
+    const list = bySession.get(key) ?? [];
+    list.push(row);
+    bySession.set(key, list);
+  }
+
+  const missingRunIds: string[] = [];
+  for (const list of bySession.values()) {
+    const ordered = [...list].sort(
+      (left, right) => left.timestamp.getTime() - right.timestamp.getTime(),
+    );
+    const actions = ordered.map((row) => row.action);
+    if (!hasOpenStartedSessionFromActions(actions)) continue;
+    const lastStarted = [...ordered]
+      .reverse()
+      .find((row) => row.action === "started");
+    if (lastStarted && !lastStarted.chainRunId) {
+      missingRunIds.push(lastStarted.id);
+    }
+  }
+  return missingRunIds;
+}
+
+async function listChainActivitySessionRows(
+  subTaskIds: readonly string[],
+  db: Db,
+): Promise<ChainActivitySessionRow[]> {
+  if (subTaskIds.length === 0) return [];
+  const rows = await db
+    .select({
+      id: activities.id,
+      chainRunId: activities.chainRunId,
+      colaboratorId: activities.colaboratorId,
+      action: activities.action,
+      timestamp: activities.timestamp,
+      subTaskId: activities.subTaskId,
+    })
+    .from(activities)
+    .where(
+      and(
+        ACTIVE_ACTIVITY,
+        inArray(activities.subTaskId, [...subTaskIds]),
+        inArray(activities.action, ["started", "stoped"]),
+      ),
+    )
+    .orderBy(asc(activities.timestamp));
+
+  return rows.map((row) => ({
+    ...row,
+    action: row.action === "stoped" ? "stoped" : "started",
+  }));
+}
+
+export async function backfillMissingChainRunIdOnOpenStarts(
+  subTaskIds: readonly string[],
+  db: Db = getDb(),
+): Promise<string | null> {
+  const rows = await listChainActivitySessionRows(subTaskIds, db);
+  const open = resolveOpenChainRunFromActivityRows(rows);
+  if (open) return open.chainRunId;
+
+  const activityIds = collectOpenStartedActivityIdsMissingRunId(rows);
+  if (activityIds.length === 0) return null;
+
+  const chainRunId = randomUUID();
+  await db
+    .update(activities)
+    .set({ chainRunId })
+    .where(
+      and(inArray(activities.id, activityIds), isNull(activities.chainRunId)),
+    );
+  return chainRunId;
+}
+
+export async function resolveOrBackfillChainRunIdForStop(
+  input: {
+    chainRunId?: string | null;
+    headId: string;
+  },
+  db: Db = getDb(),
+): Promise<string> {
+  const trimmed = input.chainRunId?.trim();
+  if (trimmed) {
+    const runRows = await loadRunActivities(trimmed, db);
+    if (runRows.length > 0) return trimmed;
+  }
+
+  const { chain } = await loadChainContext(input.headId, db);
+  const memberIds = chain.memberIds;
+
+  const open = await findOpenChainRunId({ subTaskIds: [...memberIds], db });
+  if (open) return open.chainRunId;
+
+  const backfilled = await backfillMissingChainRunIdOnOpenStarts(memberIds, db);
+  if (backfilled) return backfilled;
+
+  throw new Error("noOpenSession");
+}
+
 async function listChainActivityLookupRows(
   subTaskIds: readonly string[],
   db: Db,
@@ -555,6 +669,7 @@ export async function startChain(
   }
 
   if (!isMultiMemberChain(chain)) {
+    const chainRunId = randomUUID();
     await db.transaction(async (tx) => {
       await tx.insert(activities).values({
         subTaskId: startMember.documentId,
@@ -563,6 +678,7 @@ export async function startChain(
         timestamp,
         qty: 0,
         currencyAwarded: 0,
+        chainRunId,
       });
       await tx
         .update(subTasks)
@@ -570,7 +686,7 @@ export async function startChain(
         .where(eq(subTasks.id, startMember.documentId));
       await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, timestamp);
     });
-    return { chainRunId: startMember.documentId };
+    return { chainRunId };
   }
 
   const open = await findOpenChainRunId({
@@ -643,14 +759,6 @@ export async function advanceChainRun(
   const { sub, chain, byId, runStartedAt, siblings } =
     await resolveChainRunScope(runRows, db);
   const remaining = remainingExecutableMembers(chain, byId);
-  if (
-    remaining.some((item) => {
-      const row = siblings.find((sibling) => sibling.id === item.documentId);
-      return row?.sharingType === "qty";
-    })
-  ) {
-    return;
-  }
   const expectedById = new Map(
     (await listSubTasksWithRelationsForTask(sub.taskId, db)).map((row) => [
       row.id,
@@ -687,6 +795,8 @@ export async function advanceChainRun(
   const actorOpen = remaining.find((item) =>
     hasOpenSession(runRows, actorId, item.documentId),
   );
+  const openSharing = siblings.find((row) => row.id === actorOpen?.documentId);
+  if (openSharing?.sharingType === "qty") return;
   const currentOpenId = actorOpen?.documentId ?? null;
   if (currentOpenId === advance.currentId) return;
 
@@ -967,55 +1077,24 @@ async function reallocateChainRunInternal(
     }));
 
   const participations = timeline.segments.flatMap((segment) => {
-    const workers = new Set<string>([principalId]);
-    for (const row of runRows) {
-      if (row.subTaskId === segment.documentId) {
-        workers.add(row.colaboratorId);
-      }
-    }
-    const wallByWorker = new Map<string, number>();
-    for (const workerId of workers) {
-      if (workerId === principalId) {
-        wallByWorker.set(workerId, segment.timeSpent);
-        continue;
-      }
-      const started = runRows.find(
-        (row) =>
-          row.subTaskId === segment.documentId &&
-          row.colaboratorId === workerId &&
-          row.action === "started",
-      );
-      const stopped = [...runRows]
-        .reverse()
-        .find(
-          (row) =>
-            row.subTaskId === segment.documentId &&
-            row.colaboratorId === workerId &&
-            row.action === "stoped",
-        );
-      const helperStart = started?.timestamp ?? segment.startedAt;
-      const helperStop = stopped?.timestamp ?? stopAt;
-      wallByWorker.set(
-        workerId,
-        elapsedSecondsBetween(helperStart, helperStop),
-      );
-    }
-    const wallSum = [...wallByWorker.values()].reduce((sum, value) => sum + value, 0);
-    return [...wallByWorker.entries()].map(([colaboratorId, wall]) => ({
-      colaboratorId,
+    const shares = allocateSegmentPresenceShares({
+      rows: runRows,
       subTaskId: segment.documentId,
-      timeSpentSeconds:
-        wallSum > 0
-          ? Math.floor((segment.timeSpent * wall) / wallSum)
-          : 0,
+      segmentSeconds: segment.timeSpent,
+      closeOpenAt: stopAt,
+    });
+    return shares.map((share) => ({
+      colaboratorId: share.colaboratorId,
+      subTaskId: segment.documentId,
+      timeSpentSeconds: share.timeSpentSeconds,
       qty:
-        colaboratorId === principalId
+        share.colaboratorId === principalId
           ? (qtyBySubTaskId[segment.documentId] ?? 0)
           : runRows
               .filter(
                 (row) =>
                   row.subTaskId === segment.documentId &&
-                  row.colaboratorId === colaboratorId &&
+                  row.colaboratorId === share.colaboratorId &&
                   row.action === "stoped",
               )
               .reduce((sum, row) => sum + row.qty, 0),
@@ -1439,12 +1518,19 @@ async function recordPeerChainExit(input: {
 
 export async function confirmChainStop(
   colaboratorId: string,
-  chainRunId: string,
+  chainRunId: string | null,
   answers: ChainStopMemberAnswer[],
   db: Db = getDb(),
   timestamp: Date = new Date(),
+  headId?: string,
 ): Promise<void> {
-  const runRows = await loadRunActivities(chainRunId, db);
+  const anchorHeadId = headId ?? answers[0]?.documentId;
+  if (!anchorHeadId) throw new Error("notFound");
+  const resolvedChainRunId = await resolveOrBackfillChainRunIdForStop(
+    { chainRunId, headId: anchorHeadId },
+    db,
+  );
+  const runRows = await loadRunActivities(resolvedChainRunId, db);
   const anchorSubTaskId = answers[0]?.documentId ?? runRows[0]?.subTaskId;
   if (!anchorSubTaskId) throw new Error("notFound");
 
@@ -1487,7 +1573,7 @@ export async function confirmChainStop(
           ),
           answers,
         );
-    await reallocateChainRunInternal(chainRunId, merged, timestamp, db, 0, {
+    await reallocateChainRunInternal(resolvedChainRunId, merged, timestamp, db, 0, {
       preferredAnchorSubTaskId: anchorSubTaskId,
       principalId,
     });
@@ -1496,7 +1582,7 @@ export async function confirmChainStop(
 
   await recordPeerChainExit({
     colaboratorId,
-    chainRunId,
+    chainRunId: resolvedChainRunId,
     answers,
     timestamp,
     db,
@@ -1778,15 +1864,23 @@ export async function joinLiveChain(
     throw new Error("chainNotJoinable");
   }
 
-  const chainRunId = openOnTask[0]?.chainRunId ?? randomUUID();
+  const memberIds = siblings.map((row) => row.id);
+  let chainRunId = "";
   await db.transaction(async (tx) => {
-    if (!openOnTask[0]?.chainRunId) {
+    const sessionDb = tx as unknown as Db;
+    const rows = await listChainActivitySessionRows(memberIds, sessionDb);
+    const open = resolveOpenChainRunFromActivityRows(rows);
+    chainRunId = open?.chainRunId ?? randomUUID();
+    const activityIds = collectOpenStartedActivityIdsMissingRunId(rows);
+    if (activityIds.length > 0) {
       await tx
         .update(activities)
         .set({ chainRunId })
-        .where(eq(activities.id, openOnTask[0]!.id));
+        .where(
+          and(inArray(activities.id, activityIds), isNull(activities.chainRunId)),
+        );
     }
-    await updateSubTaskLinkedToPrevious(subTaskId, true, tx as unknown as Db);
+    await updateSubTaskLinkedToPrevious(subTaskId, true, sessionDb);
   });
 
   return { chainRunId };

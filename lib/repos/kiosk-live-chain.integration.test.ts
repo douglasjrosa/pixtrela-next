@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { activities, subTasks } from "@/drizzle/schema";
 import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
-import { joinLiveChain } from "@/lib/repos/kiosk-chains";
+import { confirmChainStop, joinLiveChain } from "@/lib/repos/kiosk-chains";
 import { startSubTask } from "@/lib/repos/kiosk-subtasks";
 import { upsertKioskSettings } from "@/lib/repos/settings";
 import { createStep } from "@/lib/repos/steps";
@@ -89,6 +89,76 @@ describeWithDb("joinLiveChain", () => {
       expect(started[0]?.subTaskId).toBe(first!.id);
       expect(started[0]?.chainRunId).toBe(result.chainRunId);
       expect(rows.some((row) => row.subTaskId === second!.id)).toBe(false);
+    },
+    45_000,
+  );
+
+  it(
+    "backfills a chain run id on confirm when the live session started without one",
+    async () => {
+      const suffix = String(Date.now());
+      await upsertKioskSettings({
+        sessionIdleSeconds: 7,
+        maxSimultaneousSubtaskIntervalSeconds: 300,
+        queuePageSize: 15,
+      });
+      const worker = await createUser({
+        username: `live-stop-${suffix}`,
+        password: "Secret123!",
+        name: "Live Stop Worker",
+        role: "colaborator",
+        code: Number(suffix.slice(-4)) + 1,
+      });
+      await createTemplateTask({
+        code: `S${suffix.slice(-7)}`,
+        name: "Live stop template",
+        subTasks: [
+          { name: "One", expectedTime: 100, index: 0 },
+          { name: "Two", expectedTime: 100, index: 1 },
+        ],
+      });
+      const step = await createStep({ name: `Live stop ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `Live stop task ${suffix}`,
+        qty: 1,
+        stepId: step.id,
+        templateTaskCode: `S${suffix.slice(-7)}`,
+      });
+      const subs = await listSubTasksForTask(task.id);
+      const [first, second] = subs;
+      expect(first).toBeTruthy();
+      expect(second).toBeTruthy();
+
+      await assignColaboratorsToSubTask(first!.id, [worker.id]);
+      await assignColaboratorsToSubTask(second!.id, [worker.id]);
+
+      await startSubTask(worker.id, first!.id);
+      await joinLiveChain(worker.id, second!.id);
+
+      await confirmChainStop(
+        worker.id,
+        null,
+        [
+          { documentId: first!.id, completed: true },
+          { documentId: second!.id, completed: true },
+        ],
+        undefined,
+        undefined,
+        first!.id,
+      );
+
+      const db = getDb();
+      const rows = await db
+        .select({
+          action: activities.action,
+          chainRunId: activities.chainRunId,
+        })
+        .from(activities)
+        .where(eq(activities.colaboratorId, worker.id));
+      expect(rows.some((row) => row.action === "stoped")).toBe(true);
+      expect(
+        rows.every((row) => row.chainRunId === rows[0]?.chainRunId),
+      ).toBe(true);
     },
     45_000,
   );

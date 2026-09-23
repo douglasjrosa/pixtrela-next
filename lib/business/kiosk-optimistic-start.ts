@@ -12,32 +12,6 @@ import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
 import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 
-export const OPTIMISTIC_CHAIN_RUN_PREFIX = "optimistic:";
-
-export function isOptimisticChainRunId(
-  chainRunId: string | null | undefined,
-): boolean {
-  return (
-    typeof chainRunId === "string" &&
-    chainRunId.startsWith(OPTIMISTIC_CHAIN_RUN_PREFIX)
-  );
-}
-
-export function resolvePersistedChainRunId(
-  chainRunId: string | null | undefined,
-  openRuns: readonly OpenChainRun[] | undefined,
-  headId?: string,
-): string | null {
-  if (!chainRunId) return null;
-  if (!isOptimisticChainRunId(chainRunId)) return chainRunId;
-  const persisted = openRuns?.find(
-    (run) =>
-      !isOptimisticChainRunId(run.chainRunId) &&
-      (run.chainHeadId === headId || run.chainRunId === chainRunId),
-  );
-  return persisted?.chainRunId ?? null;
-}
-
 export type OptimisticKioskStartMode = "solo" | "join" | "chain";
 
 export type OptimisticKioskStart = {
@@ -61,24 +35,6 @@ export function applyOptimisticKioskStartToSubTasks(
       activeWorkerCount: Math.max(1, (item.activeWorkerCount ?? 0) + 1),
     };
   });
-}
-
-export function applyOptimisticKioskStartToOpenRuns(
-  openRuns: readonly OpenChainRun[] | undefined,
-  start: OptimisticKioskStart | null,
-  colaboratorId: string,
-): OpenChainRun[] {
-  const current = [...(openRuns ?? [])];
-  if (!start || start.mode !== "chain") return current;
-  const headId = start.chainHeadId ?? start.documentId;
-  if (current.some((run) => run.chainHeadId === headId)) return current;
-  current.push({
-    chainHeadId: headId,
-    chainRunId: `${OPTIMISTIC_CHAIN_RUN_PREFIX}${headId}`,
-    principalId: colaboratorId,
-    runStartedAt: start.startedAt,
-  });
-  return current;
 }
 
 export function isOptimisticKioskStartSettled(
