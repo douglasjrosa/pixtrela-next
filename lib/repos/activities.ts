@@ -19,6 +19,7 @@ import {
   users,
 } from "@/drizzle/schema";
 import { DEFAULT_TIME_ZONE } from "@/lib/business/datetime-timezone";
+import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 import { zonedDateTimeToUtc } from "@/lib/business/activity-timestamp";
 import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
 import type { Db } from "@/lib/db/client";
@@ -55,6 +56,48 @@ export type ActivityListItem = {
   taskCrmItemKey: string | null;
   taskDeliveryDate: string | null;
 };
+
+export type ColaboratorLatestActivitySummary = {
+  colaboratorId: string;
+  action: "started" | "stoped";
+  timestamp: Date;
+  subTaskName: string;
+  taskName: string;
+  taskQty: number;
+  taskCrmItemKey: string | null;
+  taskDeliveryDate: string | null;
+};
+
+export async function loadLatestActivitiesByColaboratorIds(
+  colaboratorIds: string[],
+  db: Db = getDb(),
+): Promise<Map<string, ColaboratorLatestActivitySummary>> {
+  const uniqueIds = [...new Set(colaboratorIds.filter(Boolean))];
+  if (uniqueIds.length === 0) return new Map();
+
+  const rows = await db
+    .selectDistinctOn([activities.colaboratorId], {
+      colaboratorId: activities.colaboratorId,
+      action: activities.action,
+      timestamp: activities.timestamp,
+      subTaskName: subTasks.name,
+      taskName: tasks.name,
+      taskQty: tasks.qty,
+      taskCrmItemKey: tasks.crmItemKey,
+      taskDeliveryDate: tasks.deliveryDate,
+    })
+    .from(activities)
+    .innerJoin(subTasks, eq(activities.subTaskId, subTasks.id))
+    .innerJoin(tasks, eq(subTasks.taskId, tasks.id))
+    .where(and(ACTIVE_ACTIVITY, inArray(activities.colaboratorId, uniqueIds)))
+    .orderBy(
+      activities.colaboratorId,
+      desc(activities.timestamp),
+      desc(activities.id),
+    );
+
+  return new Map(rows.map((row) => [row.colaboratorId, row]));
+}
 
 export type ActivitySubtaskPickerRow = {
   id: string;

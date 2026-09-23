@@ -4,12 +4,22 @@ import { mediaAssets, teamMembers, teams, users } from "@/drizzle/schema";
 import type { KioskStaffRole } from "@/lib/business/kiosk-staff-access";
 import { getDb, type Db } from "@/lib/db/client";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
+import {
+  loadLatestActivitiesByColaboratorIds,
+  type ColaboratorLatestActivitySummary,
+} from "@/lib/repos/activities";
+
+export type StaffQueueMemberLastActivity = Omit<
+  ColaboratorLatestActivitySummary,
+  "colaboratorId"
+>;
 
 export type StaffQueueMember = {
   documentId: string;
   name: string;
   code: number | null;
   facePhotoUrl?: string | null;
+  lastActivity: StaffQueueMemberLastActivity | null;
 };
 
 export type StaffQueueTeam = {
@@ -35,8 +45,17 @@ export async function loadStaffQueuesGrouped(
   const teamRows = await loadStaffTeams(staffUserId, staffRole, db);
   if (teamRows.length === 0) return { teams: [] };
 
-  const membersByTeam = await loadColaboratorsByTeam(
-    teamRows.map((team) => team.id),
+  const teamIds = teamRows.map((team) => team.id);
+  const membersByTeam = await loadColaboratorsByTeam(teamIds, db);
+  const colaboratorIds = [
+    ...new Set(
+      teamIds.flatMap((teamId) =>
+        (membersByTeam.get(teamId) ?? []).map((member) => member.documentId),
+      ),
+    ),
+  ];
+  const latestActivities = await loadLatestActivitiesByColaboratorIds(
+    colaboratorIds,
     db,
   );
 
@@ -44,9 +63,22 @@ export async function loadStaffQueuesGrouped(
     teams: teamRows.map((team) => ({
       teamId: team.id,
       teamName: team.name,
-      members: membersByTeam.get(team.id) ?? [],
+      members: (membersByTeam.get(team.id) ?? []).map((member) => ({
+        ...member,
+        lastActivity: toMemberLastActivity(
+          latestActivities.get(member.documentId),
+        ),
+      })),
     })),
   };
+}
+
+function toMemberLastActivity(
+  row: ColaboratorLatestActivitySummary | undefined,
+): StaffQueueMemberLastActivity | null {
+  if (!row) return null;
+  const { colaboratorId: _omit, ...rest } = row;
+  return rest;
 }
 
 async function loadStaffTeams(
@@ -100,6 +132,7 @@ async function loadColaboratorsByTeam(
       name: row.name,
       code: row.code,
       facePhotoUrl: toBrowserMediaUrl(row.facePhotoUrl),
+      lastActivity: null,
     });
     membersByTeam.set(row.teamId, list);
   }

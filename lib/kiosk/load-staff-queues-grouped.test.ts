@@ -17,8 +17,10 @@ function chainable(result: QueryResult) {
 
 function makeDb(results: QueryResult[]) {
   let index = 0;
+  const consume = () => chainable(results[index++] ?? []);
   return {
-    select: () => chainable(results[index++] ?? []),
+    select: () => consume(),
+    selectDistinctOn: () => consume(),
   } as never;
 }
 
@@ -49,7 +51,23 @@ describe("loadStaffQueuesGrouped", () => {
       },
     ];
 
-    await expect(load([teamRows, memberRows], "manager")).resolves.toEqual({
+    const activityTimestamp = new Date("2026-09-21T18:32:00.000Z");
+    const latestActivityRows = [
+      {
+        colaboratorId: "c1",
+        action: "started" as const,
+        timestamp: activityTimestamp,
+        subTaskName: "Corte",
+        taskName: "Pedido A",
+        taskQty: 5,
+        taskCrmItemKey: null,
+        taskDeliveryDate: null,
+      },
+    ];
+
+    await expect(
+      load([teamRows, memberRows, latestActivityRows], "manager"),
+    ).resolves.toEqual({
       teams: [
         {
           teamId: "team-1",
@@ -60,6 +78,15 @@ describe("loadStaffQueuesGrouped", () => {
               name: "Ana",
               code: 1001,
               facePhotoUrl: "/api/media/ana.jpg",
+              lastActivity: {
+                action: "started",
+                timestamp: activityTimestamp,
+                subTaskName: "Corte",
+                taskName: "Pedido A",
+                taskQty: 5,
+                taskCrmItemKey: null,
+                taskDeliveryDate: null,
+              },
             },
           ],
         },
@@ -67,7 +94,13 @@ describe("loadStaffQueuesGrouped", () => {
           teamId: "team-2",
           teamName: "Linha 2",
           members: [
-            { documentId: "c2", name: "Bruno", code: 1002, facePhotoUrl: null },
+            {
+              documentId: "c2",
+              name: "Bruno",
+              code: 1002,
+              facePhotoUrl: null,
+              lastActivity: null,
+            },
           ],
         },
       ],
@@ -84,7 +117,7 @@ describe("loadStaffQueuesGrouped", () => {
       { teamId: "team-2", documentId: "c1", name: "Ana", code: 1, facePhotoUrl: null },
     ];
 
-    const result = await load([teamRows, memberRows], "leader");
+    const result = await load([teamRows, memberRows, []], "leader");
 
     expect(result.teams[0]?.members).toHaveLength(1);
     expect(result.teams[1]?.members).toHaveLength(1);
@@ -110,7 +143,7 @@ describe("loadStaffQueuesGrouped", () => {
 
   it("returns empty members for a team with no colaborators", async () => {
     const teamRows = [{ id: "team-1", name: "Linha 1" }];
-    const result = await load([teamRows, []], "admin");
+    const result = await load([teamRows, [], []], "admin");
     expect(result.teams[0]?.members).toEqual([]);
   });
 });

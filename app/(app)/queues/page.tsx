@@ -7,7 +7,6 @@ import {
   APP_LIST_PAGE_SHELL_CLASS,
   APP_LIST_PAGE_TITLE_CLASS,
 } from "@/components/layout/app-page-layout";
-import { appQueueColaboratorPath } from "@/lib/business/app-queues-paths";
 import type { KioskStaffRole } from "@/lib/business/kiosk-staff-access";
 import { loadStaffQueuesGrouped } from "@/lib/kiosk/load-staff-queues-grouped";
 import type { Role } from "@/lib/auth/nav";
@@ -29,10 +28,7 @@ export default async function AppQueuesPage() {
   return (
     <section className={APP_LIST_PAGE_SHELL_CLASS}>
       <h1 className={APP_LIST_PAGE_TITLE_CLASS}>{tKiosk("queuesPage")}</h1>
-      <KioskStaffQueuesPanel
-        teams={teams}
-        colaboratorHref={appQueueColaboratorPath}
-      />
+      <KioskStaffQueuesPanel teams={teams} colaboratorLinkTarget="app" />
     </section>
   );
 }

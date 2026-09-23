@@ -7,6 +7,7 @@ import { formatColaboratorLabel } from "@/lib/business/activity-timestamp";
 import { formatActivityDateTimePtBr } from "@/lib/format/datetime";
 import { cn } from "@/lib/utils";
 
+import { ActivityActionMark } from "./activity-action-mark";
 import { useActivityEdit } from "./activity-edit-context";
 import type { ActivityRow } from "./types";
 
@@ -50,14 +51,7 @@ export function ActivityListRowPresentational({
   const when = formatActivityDateTimePtBr(activity.timestamp);
 
   const actionMark = (
-    <span
-      className={cn(
-        "inline-block size-3 rounded-full",
-        activity.action === "started" ? "bg-green-600" : "bg-red-600",
-      )}
-      role="img"
-      aria-label={actionLabel}
-    />
+    <ActivityActionMark action={activity.action} ariaLabel={actionLabel} />
   );
 
   const nameCell = (
