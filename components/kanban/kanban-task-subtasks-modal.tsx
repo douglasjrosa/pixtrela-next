@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, User, Users } from "lucide-react";
+import { GripVertical, Loader2, User, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { CurrencyMediaIcon } from "@/components/currency/currency-media-icon";
@@ -117,6 +117,35 @@ const EMPTY_PAYMENT_CURRENCY: SubtaskPaymentCurrency = {
   pluralTitle: "",
 };
 
+const EMPTY_PERSISTING_SUBTASK_IDS: ReadonlySet<string> = new Set();
+
+function SubtaskCardPersistingFrame({
+  persisting,
+  children,
+}: {
+  persisting: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className="relative" aria-busy={persisting}>
+      {children}
+      {persisting ? (
+        <>
+          <div
+            className="pointer-events-none absolute inset-0 z-20 rounded-lg bg-muted/55"
+            data-testid="subtask-card-persisting-overlay"
+          />
+          <Loader2
+            className="pointer-events-none absolute top-2 right-2 z-30 size-4 animate-spin text-primary"
+            data-testid="subtask-card-persisting-spinner"
+            aria-hidden
+          />
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 export interface KanbanTaskSubtasksModalProps {
   open: boolean;
   taskName: string;
@@ -130,7 +159,7 @@ export interface KanbanTaskSubtasksModalProps {
   loadedAt?: number | null;
   loadingSessions?: boolean;
   dirty: boolean;
-  saving: boolean;
+  persistingSubtaskIds?: ReadonlySet<string>;
   reordering?: boolean;
   onClose: () => void;
   onAssigneesChange: (
@@ -280,13 +309,13 @@ function SubTaskUnassignedFloatingBadge({
 function PendingSubtaskCard({
   subtask,
   highlighted,
-  saving,
+  persisting,
   statusLabel,
   onClick,
 }: {
   subtask: BoardSubTaskSummary;
   highlighted: boolean;
-  saving: boolean;
+  persisting: boolean;
   statusLabel: string;
   onClick: () => void;
 }) {
@@ -295,36 +324,40 @@ function PendingSubtaskCard({
       <button
         type="button"
         aria-pressed={highlighted}
-        disabled={saving}
+        disabled={persisting}
         className={cn(
           "relative w-full rounded-lg border p-3 text-left transition-colors",
           highlighted
             ? "border-primary bg-primary/5"
             : "bg-background hover:bg-muted/40",
-          saving && "opacity-50",
+          persisting && "cursor-not-allowed",
         )}
         onClick={onClick}
       >
-        <SubTaskUnassignedFloatingBadge assignedCount={subtask.assignedTo.length} />
-        <SubTaskCardHeader
-          name={subtask.name}
-          status={subtask.status}
-          statusLabel={statusLabel}
-          workingCount={subtask.openActivityStartedAts.length}
-          assignedTo={subtask.assignedTo}
-          producingColaboratorIds={subtask.producingColaboratorIds}
-          maxSameTimeWorkers={subtask.maxSameTimeWorkers}
-        />
-        <SubTaskProgressBar
-          status={subtask.status}
-          expectedTime={subtask.expectedTime}
-          timeSpent={subtask.timeSpent}
-          openActivityStartedAts={subtask.openActivityStartedAts}
-        />
-        <MaterialFlagHintList
-          dependencyFlags={subtask.dependencyFlags}
-          assignedFlagCodes={subtask.assignedFlagCodes}
-        />
+        <SubtaskCardPersistingFrame persisting={persisting}>
+          <SubTaskUnassignedFloatingBadge
+            assignedCount={subtask.assignedTo.length}
+          />
+          <SubTaskCardHeader
+            name={subtask.name}
+            status={subtask.status}
+            statusLabel={statusLabel}
+            workingCount={subtask.openActivityStartedAts.length}
+            assignedTo={subtask.assignedTo}
+            producingColaboratorIds={subtask.producingColaboratorIds}
+            maxSameTimeWorkers={subtask.maxSameTimeWorkers}
+          />
+          <SubTaskProgressBar
+            status={subtask.status}
+            expectedTime={subtask.expectedTime}
+            timeSpent={subtask.timeSpent}
+            openActivityStartedAts={subtask.openActivityStartedAts}
+          />
+          <MaterialFlagHintList
+            dependencyFlags={subtask.dependencyFlags}
+            assignedFlagCodes={subtask.assignedFlagCodes}
+          />
+        </SubtaskCardPersistingFrame>
       </button>
     </li>
   );
@@ -334,7 +367,7 @@ interface SortablePendingSubtaskCardProps {
   subtask: BoardSubTaskSummary;
   highlighted: boolean;
   dragDisabled: boolean;
-  saving: boolean;
+  persisting: boolean;
   dragLabel: string;
   statusLabel: string;
   showLinkColumn?: boolean;
@@ -349,7 +382,7 @@ function SortablePendingSubtaskCard({
   subtask,
   highlighted,
   dragDisabled,
-  saving,
+  persisting,
   dragLabel,
   statusLabel,
   showLinkColumn = false,
@@ -408,7 +441,7 @@ function SortablePendingSubtaskCard({
             linked={subtask.linkedToPrevious}
             showButton={showLinkButton}
             hidden={isDragging}
-            disabled={saving}
+            disabled={persisting}
             linkLabel={linkLabel}
             unlinkLabel={unlinkLabel}
             onToggle={(linked) => onLinkToggle?.(linked)}
@@ -418,38 +451,40 @@ function SortablePendingSubtaskCard({
           <button
             type="button"
             aria-pressed={highlighted}
-            disabled={saving}
+            disabled={persisting}
             className={cn(
               "relative w-full rounded-lg border p-3 text-left transition-colors",
               highlighted
                 ? "border-primary bg-primary/5"
                 : "bg-background hover:bg-muted/40",
-              saving && "opacity-50",
+              persisting && "cursor-not-allowed",
             )}
             onClick={onClick}
           >
-            <SubTaskUnassignedFloatingBadge
-              assignedCount={subtask.assignedTo.length}
-            />
-            <SubTaskCardHeader
-              name={subtask.name}
-              status={subtask.status}
-              statusLabel={statusLabel}
-              workingCount={subtask.openActivityStartedAts.length}
-              assignedTo={subtask.assignedTo}
-              producingColaboratorIds={subtask.producingColaboratorIds}
-              maxSameTimeWorkers={subtask.maxSameTimeWorkers}
-            />
-            <SubTaskProgressBar
-              status={subtask.status}
-              expectedTime={subtask.expectedTime}
-              timeSpent={subtask.timeSpent}
-              openActivityStartedAts={subtask.openActivityStartedAts}
-            />
-            <MaterialFlagHintList
-              dependencyFlags={subtask.dependencyFlags}
-              assignedFlagCodes={subtask.assignedFlagCodes}
-            />
+            <SubtaskCardPersistingFrame persisting={persisting}>
+              <SubTaskUnassignedFloatingBadge
+                assignedCount={subtask.assignedTo.length}
+              />
+              <SubTaskCardHeader
+                name={subtask.name}
+                status={subtask.status}
+                statusLabel={statusLabel}
+                workingCount={subtask.openActivityStartedAts.length}
+                assignedTo={subtask.assignedTo}
+                producingColaboratorIds={subtask.producingColaboratorIds}
+                maxSameTimeWorkers={subtask.maxSameTimeWorkers}
+              />
+              <SubTaskProgressBar
+                status={subtask.status}
+                expectedTime={subtask.expectedTime}
+                timeSpent={subtask.timeSpent}
+                openActivityStartedAts={subtask.openActivityStartedAts}
+              />
+              <MaterialFlagHintList
+                dependencyFlags={subtask.dependencyFlags}
+                assignedFlagCodes={subtask.assignedFlagCodes}
+              />
+            </SubtaskCardPersistingFrame>
           </button>
         </div>
       </div>
@@ -470,7 +505,7 @@ export function KanbanTaskSubtasksModal({
   loadedAt = null,
   loadingSessions = false,
   dirty,
-  saving,
+  persistingSubtaskIds = EMPTY_PERSISTING_SUBTASK_IDS,
   reordering = false,
   onClose,
   onAssigneesChange,
@@ -487,6 +522,7 @@ export function KanbanTaskSubtasksModal({
   const tStatus = useTranslations("tasks.status");
   const tSubtasks = useTranslations("subtasks");
   const tBalance = useTranslations("balance");
+  const isPersistingAny = persistingSubtaskIds.size > 0;
 
   const [mainTab, setMainTab] = useState<MainTab>("pending");
   const [preferFinishedTab, setPreferFinishedTab] = useState(false);
@@ -607,7 +643,7 @@ export function KanbanTaskSubtasksModal({
   }
 
   const dragDisabled =
-    !onReorder || multiEnabled || saving || loading || reordering;
+    !onReorder || multiEnabled || isPersistingAny || loading || reordering;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -799,7 +835,7 @@ export function KanbanTaskSubtasksModal({
         type="button"
         variant="outline"
         className={cn("shrink-0 self-center", className)}
-        disabled={saving || loading}
+        disabled={isPersistingAny || loading}
         onClick={handleAddSubtask}
       >
         {tKanban("addSubtask")}
@@ -1054,7 +1090,7 @@ export function KanbanTaskSubtasksModal({
         title={tKanban("subtasksTitle")}
         titleId="kanban-subtasks-title"
         onClose={requestClose}
-        disabled={saving}
+        disabled={isPersistingAny}
         size="xl"
         layout="viewport"
         bodyScroll={false}
@@ -1063,14 +1099,14 @@ export function KanbanTaskSubtasksModal({
           multiEnabled && showMultiAssignSwitch ? (
             <KanbanMultiAssignClearButton
               canApply={canApply}
-              disabled={saving}
+              disabled={isPersistingAny}
               onRemove={handleMultiRemove}
             />
           ) : (
             <Button
               type="button"
               variant="outline"
-              disabled={saving}
+              disabled={isPersistingAny}
               onClick={requestClose}
             >
               {tCommon("cancel")}
@@ -1081,11 +1117,11 @@ export function KanbanTaskSubtasksModal({
           multiEnabled && showMultiAssignSwitch ? (
             <KanbanMultiAssignSubmitButton
               canApply={canApply}
-              disabled={saving}
+              disabled={isPersistingAny}
               onAssign={handleMultiAssign}
             />
           ) : (
-            <Button type="button" disabled={!dirty || saving} onClick={onSave}>
+            <Button type="button" disabled={!dirty || isPersistingAny} onClick={onSave}>
               {tCommon("save")}
             </Button>
           )
@@ -1136,7 +1172,7 @@ export function KanbanTaskSubtasksModal({
             {showMultiAssignSwitch ? (
               <KanbanMultiAssignSwitch
                 multiEnabled={multiEnabled}
-                disabled={saving || loading}
+                disabled={isPersistingAny || loading}
                 className="pb-2"
                 onMultiEnabledChange={handleMultiEnabledChange}
               />
@@ -1288,7 +1324,9 @@ export function KanbanTaskSubtasksModal({
                           key={subtask.documentId}
                           subtask={subtask}
                           highlighted={highlighted}
-                          saving={saving}
+                          persisting={persistingSubtaskIds.has(
+                            subtask.documentId,
+                          )}
                           statusLabel={tStatus(subtask.status)}
                           onClick={() => handlePendingSubtaskClick(subtask)}
                         />
@@ -1313,8 +1351,13 @@ export function KanbanTaskSubtasksModal({
                               key={subtask.documentId}
                               subtask={subtask}
                               highlighted={highlighted}
-                              dragDisabled={dragDisabled}
-                              saving={saving}
+                              dragDisabled={
+                                dragDisabled ||
+                                persistingSubtaskIds.has(subtask.documentId)
+                              }
+                              persisting={persistingSubtaskIds.has(
+                                subtask.documentId,
+                              )}
                               dragLabel={tSubtasks("dragToReorder")}
                               statusLabel={tStatus(subtask.status)}
                               showLinkColumn={Boolean(onLinkToggle)}
@@ -1381,7 +1424,7 @@ export function KanbanTaskSubtasksModal({
                                 ? "cursor-default text-muted-foreground"
                                 : "text-muted-foreground hover:text-foreground",
                             )}
-                            disabled={saving || teamIds.length === 0}
+                            disabled={isPersistingAny || teamIds.length === 0}
                             aria-pressed={teamAllSelected}
                             aria-label={tSubtasks("toggleTeamMembers", {
                               team: team.name,
@@ -1419,7 +1462,7 @@ export function KanbanTaskSubtasksModal({
                                   member.documentId,
                                 );
                               const memberDisabled =
-                                saving ||
+                                isPersistingAny ||
                                 (!multiEnabled &&
                                   focusMode === "subtasks" &&
                                   (selectedAssigneeLocked ||

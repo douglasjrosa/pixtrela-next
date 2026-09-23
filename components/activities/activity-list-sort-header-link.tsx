@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { ArrowDown, ArrowUp } from "lucide-react";
 
-import { LIST_SORT_HEADER_LINK_CLASS, listSortHeaderFontClass } from "@/lib/ui/table-head-styles";
+import {
+  LIST_SORT_HEADER_LINK_BASE_CLASS,
+  listSortHeaderLinkClass,
+} from "@/lib/ui/table-head-styles";
 import { cn } from "@/lib/utils";
 import type { ActivityListFilters } from "@/lib/schemas/activity-list-filters";
 import type {
@@ -42,12 +45,9 @@ export function ActivityListSortHeaderLink({
         href={href}
         scroll={false}
         className={cn(
-          "flex w-full items-center gap-1 rounded-md px-2 py-1",
-          listSortHeaderFontClass(active),
-          "transition-colors hover:bg-muted focus-visible:outline-none",
-          "focus-visible:ring-2 focus-visible:ring-ring",
+          LIST_SORT_HEADER_LINK_BASE_CLASS,
+          listSortHeaderLinkClass(active),
           align === "center" ? "justify-center" : "justify-start",
-          LIST_SORT_HEADER_LINK_CLASS,
         )}
         aria-sort={
           active ? (direction === "asc" ? "ascending" : "descending") : "none"

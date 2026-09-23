@@ -103,7 +103,7 @@ function renderModal(
       }}
       loading={false}
       dirty={false}
-      saving={false}
+      persistingSubtaskIds={new Set()}
       onClose={vi.fn()}
       onAssigneesChange={vi.fn()}
       onSave={vi.fn()}
@@ -328,7 +328,7 @@ describe("KanbanTaskSubtasksModal", () => {
         assignedCountByColaboratorId={{ "u-1": 3 }}
         loading={false}
         dirty={false}
-        saving={false}
+        persistingSubtaskIds={new Set()}
         onClose={vi.fn()}
         onAssigneesChange={vi.fn()}
         onSave={vi.fn()}
@@ -350,7 +350,7 @@ describe("KanbanTaskSubtasksModal", () => {
           assignedCountByColaboratorId={{ "u-1": 3 }}
           loading={false}
           dirty={false}
-          saving={false}
+          persistingSubtaskIds={new Set()}
           onClose={vi.fn()}
           onAssigneesChange={vi.fn()}
           onSave={vi.fn()}

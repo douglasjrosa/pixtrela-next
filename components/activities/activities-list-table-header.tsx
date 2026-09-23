@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
 import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
+import { ListTableHeadCell } from "@/components/ui/list-table-head-cell";
 import { cn } from "@/lib/utils";
 import type { ActivityListFilters } from "@/lib/schemas/activity-list-filters";
 import type { ActivityListSort } from "@/lib/schemas/activity-list-sort";
@@ -61,7 +62,7 @@ export async function ActivitiesListTableHeader({
           filters={filters}
           align="center"
         />
-        <th className="py-2 text-center">{t("earned")}</th>
+        <ListTableHeadCell align="center">{t("earned")}</ListTableHeadCell>
         <ActivityListSortHeaderLink
           column="subtask"
           label={t("subtask")}

@@ -6,8 +6,6 @@ import type { ComponentProps } from "react";
 const refresh = vi.fn();
 const showSuccessToast = vi.fn();
 const showErrorToast = vi.fn();
-const showLoadingToast = vi.fn();
-
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
 }));
@@ -19,7 +17,6 @@ vi.mock("@/app/(app)/settings/subtasks/actions", () => ({
 vi.mock("@/lib/ui/app-toast", () => ({
   showSuccessToast: (...args: unknown[]) => showSuccessToast(...args),
   showErrorToast: (...args: unknown[]) => showErrorToast(...args),
-  showLoadingToast: (...args: unknown[]) => showLoadingToast(...args),
 }));
 
 import { renderWithIntl } from "@/test/test-utils";
@@ -135,8 +132,6 @@ describe("BoardActions", () => {
   beforeEach(() => {
     showSuccessToast.mockReset();
     showErrorToast.mockReset();
-    showLoadingToast.mockReset();
-    showLoadingToast.mockReturnValue("save-toast-id");
   });
 
   it("renders kanban board with steps", () => {
@@ -192,6 +187,7 @@ describe("BoardActions", () => {
       }),
     ]);
     const updateSubtaskAssignees = vi.fn().mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
       loadSubtasks.mockResolvedValue([
         boardSubTaskSummaryStub({
           documentId: "st-1",
@@ -214,21 +210,27 @@ describe("BoardActions", () => {
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(
-      screen.queryByRole("heading", { name: "Subtarefas" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("heading", { name: "Subtarefas" }),
+    ).toBeInTheDocument();
+    await vi.waitFor(() => {
+      expect(
+        screen.getByTestId("subtask-card-persisting-spinner"),
+      ).toBeInTheDocument();
+    });
     await vi.waitFor(() => {
       expect(updateSubtaskAssignees).toHaveBeenCalledWith("st-1", "task-10", ["u-1"]);
     });
-    expect(showLoadingToast).toHaveBeenCalledWith(
-      "Atualizando a tarefa 1 - Tarefa A…",
-    );
-    expect(showSuccessToast).toHaveBeenCalledWith(
-      "A tarefa 1 - Tarefa A foi atualizada com sucesso.",
-      { toastId: "save-toast-id" },
-    );
+    await vi.waitFor(() => {
+      expect(showSuccessToast).toHaveBeenCalledWith(
+        "A tarefa 1 - Tarefa A foi atualizada com sucesso.",
+      );
+    });
+    expect(
+      screen.queryByTestId("subtask-card-persisting-spinner"),
+    ).not.toBeInTheDocument();
   });
 
-  it("closes the modal immediately and keeps the board usable while save runs", async () => {
+  it("keeps the modal open and the board usable while save runs", async () => {
     const user = userEvent.setup();
     let resolveSave!: () => void;
     const saveGate = new Promise<void>((resolve) => {
@@ -254,14 +256,14 @@ describe("BoardActions", () => {
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(
-      screen.queryByRole("heading", { name: "Subtarefas" }),
-    ).not.toBeInTheDocument();
-    expect(showLoadingToast).toHaveBeenCalledWith(
-      "Atualizando a tarefa 1 - Tarefa A…",
-    );
+      screen.getByRole("heading", { name: "Subtarefas" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("subtask-card-persisting-spinner"),
+    ).toBeInTheDocument();
     expect(updateSubtaskAssignees).toHaveBeenCalledWith("st-1", "task-10", ["u-1"]);
     expect(showSuccessToast).not.toHaveBeenCalled();
-    expect(screen.getByText("1 - Tarefa A")).toBeInTheDocument();
+    expect(screen.getAllByText("1 - Tarefa A").length).toBeGreaterThanOrEqual(1);
 
     await user.click(screen.getByText("2 - Tarefa B"));
     expect(await screen.findByRole("heading", { name: "Subtarefas" })).toBeInTheDocument();
@@ -273,7 +275,6 @@ describe("BoardActions", () => {
     await vi.waitFor(() => {
       expect(showSuccessToast).toHaveBeenCalledWith(
         "A tarefa 1 - Tarefa A foi atualizada com sucesso.",
-        { toastId: "save-toast-id" },
       );
     });
   });
@@ -298,12 +299,11 @@ describe("BoardActions", () => {
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(
-      screen.queryByRole("heading", { name: "Subtarefas" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("heading", { name: "Subtarefas" }),
+    ).toBeInTheDocument();
     await vi.waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(
         "Não foi possível atualizar a tarefa 1 - Tarefa A.",
-        { toastId: "save-toast-id" },
       );
     });
     expect(showSuccessToast).not.toHaveBeenCalled();

@@ -5,6 +5,7 @@ import type { SubtaskPresetListSort } from "@/lib/schemas/subtask-preset-list-so
 import type { SubtaskPresetListFilters } from "@/lib/schemas/subtask-preset-list-filters";
 
 import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
+import { ListTableHeadCell } from "@/components/ui/list-table-head-cell";
 import { SubtaskPresetListSortHeaderLink } from "./subtask-preset-list-sort-header-link";
 
 export interface SubtaskPresetListTableHeaderProps {
@@ -56,7 +57,9 @@ export async function SubtaskPresetListTableHeader({
           filters={filters}
           align="center"
         />
-        <th className="py-2 text-center">{tSettings("subTaskCategory")}</th>
+        <ListTableHeadCell align="center">
+          {tSettings("subTaskCategory")}
+        </ListTableHeadCell>
       </tr>
     </thead>
   );
