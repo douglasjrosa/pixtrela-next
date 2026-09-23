@@ -8,6 +8,7 @@ import {
   ilike,
   inArray,
   isNull,
+  like,
   lte,
   or,
   sql,
@@ -17,6 +18,7 @@ import { logs, users } from "@/drizzle/schema";
 import { DEFAULT_TIME_ZONE } from "@/lib/business/datetime-timezone";
 import { getDb, type Db } from "@/lib/db/client";
 import { LOG_ACTOR_SYSTEM, LOG_PAGE_SIZE } from "@/lib/logs/constants";
+import { logTextLikePattern } from "@/lib/logs/log-text-search";
 import type { LogListFilters } from "@/lib/schemas/log-list-filters";
 
 export type LogListItem = {
@@ -73,12 +75,18 @@ function filterWhere(filters: LogListFilters) {
     parts.push(eq(logs.userId, filters.actor));
   }
   if (filters.route) {
-    parts.push(ilike(logs.route, `%${filters.route}%`));
+    const routeMatch =
+      filters.route === "/"
+        ? eq(logs.route, "/")
+        : or(eq(logs.route, filters.route), like(logs.route, `${filters.route}/%`));
+    if (routeMatch) parts.push(routeMatch);
   }
   if (filters.q) {
+    const pattern = logTextLikePattern(filters.q);
     const textMatch = or(
-      ilike(logs.description, `%${filters.q}%`),
-      ilike(logs.detail, `%${filters.q}%`),
+      ilike(logs.description, pattern),
+      ilike(logs.detail, pattern),
+      ilike(logs.route, pattern),
     );
     if (textMatch) parts.push(textMatch);
   }
