@@ -11,6 +11,7 @@ import {
 } from "@/lib/business/step-order";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
+import { auditSuccess } from "@/lib/logs/record-log";
 import {
   createStep as createStepRepo,
   deleteStep as deleteStepRepo,
@@ -69,6 +70,12 @@ export async function createStep(
   if (orderBy !== "manual") {
     await applyAutoStepTaskOrdering({ stepIds: [created.id] });
   }
+  await auditSuccess({
+    route: "/settings/steps",
+    verb: "created",
+    entity: "step",
+    name,
+  });
   invalidateSteps();
   return mapStepRecordToSettingsRow(created);
 }
@@ -93,6 +100,14 @@ export async function updateStep(
   ) {
     await applyAutoStepTaskOrdering({ stepIds: [documentId] });
   }
+  await auditSuccess({
+    route: "/settings/steps",
+    verb: "updated",
+    entity: "step",
+    name,
+    before: existing?.name ?? null,
+    after: name,
+  });
   invalidateSteps();
 }
 
@@ -116,12 +131,25 @@ export async function reorderSteps(
   for (const { documentId, index } of updates) {
     await updateStepIndex(documentId, index);
   }
+  await auditSuccess({
+    route: "/settings/steps",
+    verb: "reorder",
+    entity: "steps",
+    quantity: orderedDocumentIds.length,
+  });
   invalidateSteps();
 }
 
 export async function deleteStep(documentId: string): Promise<void> {
   await assertCanManage();
+  const step = await getStepById(documentId);
   await deleteStepRepo(documentId);
+  await auditSuccess({
+    route: "/settings/steps",
+    verb: "deleted",
+    entity: "step",
+    name: step?.name,
+  });
   invalidateSteps();
 }
 
@@ -134,5 +162,11 @@ export async function bulkDeleteSteps(documentIds: string[]): Promise<void> {
     if (!step) throw new Error("notFound");
     await deleteStepRepo(documentId);
   }
+  await auditSuccess({
+    route: "/settings/steps",
+    verb: "bulkDeleted",
+    entity: "steps",
+    quantity: ids.length,
+  });
   invalidateSteps();
 }

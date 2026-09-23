@@ -12,6 +12,7 @@ import { probeCrmWebhookSecret } from "@/integrations/crm/settings/test-connecti
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
 import type { IntegrationSettingsActionResult } from "@/lib/integrations/settings-action-result";
+import { auditBug, auditSuccess } from "@/lib/logs/record-log";
 
 async function assertCanManage(): Promise<void> {
   const session = await auth();
@@ -29,11 +30,24 @@ export async function updateCrmConnection(
       baseUrl: String(formData.get("baseUrl") ?? ""),
       webhookSecret: String(formData.get("webhookSecret") ?? ""),
     });
+    const previous = await getCrmConnection();
     await upsertCrmConnection(values);
+    await auditSuccess({
+      route: "/settings/integrations/crm",
+      verb: "connection",
+      entity: "crm",
+      before: previous?.baseUrl ?? null,
+      after: values.baseUrl,
+    });
     revalidateTag("drizzle:crm-connection-settings", "default");
     revalidatePath("/settings/integrations/crm");
     return { ok: true };
-  } catch {
+  } catch (error) {
+    await auditBug({
+      route: "/settings/integrations/crm",
+      operation: "updateCrmConnection",
+      error,
+    });
     return { ok: false };
   }
 }

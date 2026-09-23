@@ -7,6 +7,7 @@ import { normalizeSubTaskCreateValues } from "@/lib/business/subtask-create-fiel
 import { getNextSubTaskIndex, buildSubTaskIndexUpdates } from "@/lib/business/subtask-order";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTasks } from "@/lib/auth/permissions";
+import { auditSuccess } from "@/lib/logs/record-log";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import {
   createSubTaskForTask,
@@ -109,9 +110,23 @@ export async function createSubTask(
       created.id,
       ...subtasks.slice(insertAt).map((subtask) => subtask.documentId),
     ];
-    await reorderSubTasks(taskDocumentId, orderedDocumentIds);
+    await reorderSubTasks(taskDocumentId, orderedDocumentIds, {
+      recordAudit: false,
+    });
+    await auditSuccess({
+      route: `/tasks/${taskDocumentId}`,
+      verb: "created",
+      entity: "subtask",
+      name: data.name,
+    });
     return;
   }
+  await auditSuccess({
+    route: `/tasks/${taskDocumentId}`,
+    verb: "created",
+    entity: "subtask",
+    name: data.name,
+  });
   invalidateSubTasks();
 }
 
@@ -123,13 +138,23 @@ export async function updateSubTask(
   await assertCanManage();
   const data = subTaskFormSchema.parse(raw);
   const currentIndex = await fetchSubTaskIndex(documentId);
+  const current = await getSubTaskById(documentId);
   await updateSubTaskFields(documentId, taskDocumentId, data, currentIndex);
+  await auditSuccess({
+    route: `/tasks/${taskDocumentId}`,
+    verb: "updated",
+    entity: "subtask",
+    name: data.name,
+    before: current?.name ?? null,
+    after: data.name,
+  });
   invalidateSubTasks();
 }
 
 export async function reorderSubTasks(
   taskDocumentId: string,
   orderedDocumentIds: string[],
+  options?: { recordAudit?: boolean },
 ): Promise<void> {
   await assertCanManage();
 
@@ -148,12 +173,27 @@ export async function reorderSubTasks(
   for (const { documentId, index } of updates) {
     await updateSubTaskIndex(documentId, index, taskDocumentId);
   }
+  if (options?.recordAudit !== false) {
+    await auditSuccess({
+      route: `/tasks/${taskDocumentId}`,
+      verb: "reorder",
+      entity: "subtasks",
+      quantity: orderedDocumentIds.length,
+    });
+  }
   invalidateSubTasks();
 }
 
 export async function deleteSubTask(documentId: string): Promise<void> {
   await assertCanManage();
+  const current = await getSubTaskById(documentId);
   await deleteSubTaskById(documentId);
+  await auditSuccess({
+    route: "/tasks",
+    verb: "deleted",
+    entity: "subtask",
+    name: current?.name,
+  });
   invalidateSubTasks();
 }
 

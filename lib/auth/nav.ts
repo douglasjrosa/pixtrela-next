@@ -33,7 +33,7 @@ export const APP_STAFF_NAV_PATHS: StaffNavPaths = {
   tasks: "/tasks",
   queues: "/queues",
   awards: "/awards",
-  settings: "/settings/files",
+  settings: "/settings/logs",
 };
 
 interface NavRule {

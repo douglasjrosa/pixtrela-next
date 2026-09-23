@@ -11,6 +11,7 @@ import {
 import { SectionTabs } from "@/components/navigation/section-tabs";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
+import { SETTINGS_TAB_DEFS } from "@/lib/settings/settings-tabs";
 
 export default async function SettingsLayout({
   children,
@@ -32,29 +33,11 @@ export default async function SettingsLayout({
         <SectionTabs
           ariaLabel={t("title")}
           className={APP_SECTION_TABS_COMPACT_CLASS}
-          items={[
-            { href: "/settings/files", label: t("tabs.files") },
-            { href: "/settings/steps", label: t("tabs.steps") },
-            { href: "/settings/currency", label: t("tabs.currency") },
-            { href: "/settings/automations", label: t("tabs.automations") },
-            { href: "/settings/kiosk", label: t("tabs.kiosk") },
-            { href: "/settings/login", label: t("tabs.login") },
-            {
-              href: "/settings/integrations/ribermax",
-              activePrefix: "/settings/integrations",
-              label: t("tabs.integrations"),
-            },
-            {
-              href: "/settings/themes/colors",
-              activePrefix: "/settings/themes",
-              label: t("tabs.themes"),
-            },
-            {
-              href: "/settings/subtasks/categories",
-              activePrefix: "/settings/subtasks",
-              label: t("tabs.subtasks"),
-            },
-          ]}
+          items={SETTINGS_TAB_DEFS.map((tab) => ({
+            href: tab.href,
+            label: t(tab.labelKey),
+            activePrefix: tab.activePrefix,
+          }))}
         />
       </div>
       {children}

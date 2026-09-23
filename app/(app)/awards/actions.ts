@@ -13,6 +13,7 @@ import {
   canViewAwards,
 } from "@/lib/auth/permissions";
 import { getDb } from "@/lib/db/client";
+import { auditSuccess } from "@/lib/logs/record-log";
 import {
   listCategoryImageAssets,
   uploadCategoryImageAsset,
@@ -122,6 +123,12 @@ export async function createAward(raw: AwardFormInput): Promise<void> {
     autoRecalculate: data.autoRecalculate,
     prices,
   });
+  await auditSuccess({
+    route: "/awards",
+    verb: "created",
+    entity: "award",
+    name: data.name,
+  });
   invalidateAwards();
 }
 
@@ -159,6 +166,13 @@ export async function updateAward(
     })
     .where(eq(awards.id, documentId));
   await replaceAwardPrices(documentId, prices, db);
+  await auditSuccess({
+    route: "/awards",
+    verb: "updated",
+    entity: "award",
+    name: data.name,
+    after: String(data.actualPrice),
+  });
   invalidateAwards();
 }
 
@@ -168,7 +182,14 @@ export async function deleteAward(
 ): Promise<void> {
   await assertCanDeactivate();
   const text = parseArchiveReason(reason, 1);
+  const award = await findAwardById(documentId);
   await deleteAwardRepo(documentId, text);
+  await auditSuccess({
+    route: "/awards",
+    verb: "archived",
+    entity: "award",
+    name: award?.name,
+  });
   invalidateAwards();
 }
 
@@ -178,6 +199,12 @@ export async function permanentlyDeleteAward(documentId: string): Promise<void> 
   if (!award) throw new Error("notFound");
   if (award.active) throw new Error("activeAward");
   await hardDeleteAward(documentId);
+  await auditSuccess({
+    route: "/awards",
+    verb: "deleted",
+    entity: "award",
+    name: award.name,
+  });
   invalidateAwards();
 }
 
@@ -194,6 +221,12 @@ export async function bulkArchiveAwards(
     if (!award) throw new Error("notFound");
   }
   await archiveAwards(ids, text);
+  await auditSuccess({
+    route: "/awards",
+    verb: "bulkArchived",
+    entity: "awards",
+    quantity: ids.length,
+  });
   invalidateAwards();
 }
 
@@ -207,5 +240,11 @@ export async function bulkDeleteAwards(documentIds: string[]): Promise<void> {
     if (award.active) throw new Error("activeAward");
     await hardDeleteAward(documentId);
   }
+  await auditSuccess({
+    route: "/awards",
+    verb: "bulkDeleted",
+    entity: "awards",
+    quantity: ids.length,
+  });
   invalidateAwards();
 }

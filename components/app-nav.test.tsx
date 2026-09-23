@@ -19,7 +19,7 @@ const adminItems = [
   { href: "/tasks", label: "Tarefas" },
   { href: "/queues", label: "Equipes" },
   { href: "/awards", label: "Prêmios" },
-  { href: "/settings/files", label: "Configurações" },
+  { href: "/settings/logs", label: "Configurações" },
 ];
 
 function renderNav(items = adminItems) {
@@ -63,7 +63,7 @@ describe("AppNavClient", () => {
     expect(screen.getByRole("link", { name: "Painel" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Configurações" })).toHaveAttribute(
       "href",
-      "/settings/files",
+      "/settings/logs",
     );
     expect(
       screen.getByRole("button", { name: "Admin, Abrir menu da conta" }),
