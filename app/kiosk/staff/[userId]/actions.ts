@@ -6,6 +6,7 @@ import {
   applyColaboratorBalanceAdjustment,
   type BalanceAdjustmentResult,
 } from "@/lib/dashboard/apply-balance-adjustment";
+import { auditBug } from "@/lib/logs/record-log";
 import type { BalanceAdjustmentInput } from "@/lib/schemas/balance-adjustment";
 
 /**
@@ -24,6 +25,14 @@ export async function adjustKioskColaboratorBalance(
     }
     return await applyColaboratorBalanceAdjustment(raw);
   } catch (error) {
+    if (!(error instanceof Error && error.message === "forbidden")) {
+      await auditBug({
+        route: "/kiosk/staff",
+        operation: "adjustKioskColaboratorBalance",
+        error,
+        ids: { staffUserId },
+      });
+    }
     if (error instanceof Error && error.message === "forbidden") {
       return { ok: false, error: "forbidden" };
     }

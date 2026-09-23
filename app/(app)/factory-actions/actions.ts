@@ -26,6 +26,7 @@ import {
   searchFactoryActionsByName,
   updateFactoryActionRepo,
 } from "@/lib/repos/factory-actions";
+import { auditSuccess } from "@/lib/logs/record-log";
 import { parseArchiveReason } from "@/lib/schemas/archive-with-reason";
 import {
   factoryActionFormSchema,
@@ -81,6 +82,12 @@ export async function createFactoryAction(
   await assertCanManageActions();
   const data = factoryActionFormSchema.parse(raw);
   const id = await createFactoryActionRepo(data);
+  await auditSuccess({
+    route: "/templates/actions",
+    verb: "created",
+    entity: "factoryAction",
+    name: data.name,
+  });
   invalidateActions();
   return id;
 }
@@ -91,7 +98,16 @@ export async function updateFactoryAction(
 ): Promise<void> {
   await assertCanManageActions();
   const data = factoryActionFormSchema.parse(raw);
+  const before = await getFactoryActionById(documentId);
   await updateFactoryActionRepo(documentId, data);
+  await auditSuccess({
+    route: "/templates/actions",
+    verb: "updated",
+    entity: "factoryAction",
+    name: data.name,
+    before: before?.name ?? null,
+    after: data.name,
+  });
   invalidateActions();
 }
 
@@ -101,7 +117,14 @@ export async function deleteFactoryAction(
 ): Promise<void> {
   await assertCanManageActions();
   const text = parseArchiveReason(reason, 1);
+  const action = await getFactoryActionById(documentId);
   await archiveFactoryActionById(documentId, text);
+  await auditSuccess({
+    route: "/templates/actions",
+    verb: "archived",
+    entity: "factoryAction",
+    name: action?.name,
+  });
   invalidateActions();
 }
 
@@ -118,6 +141,12 @@ export async function bulkArchiveFactoryActions(
     if (!action) throw new Error("notFound");
   }
   await archiveFactoryActions(ids, text);
+  await auditSuccess({
+    route: "/templates/actions",
+    verb: "bulkArchived",
+    entity: "factoryActions",
+    quantity: ids.length,
+  });
   invalidateActions();
 }
 
@@ -137,5 +166,11 @@ export async function bulkDeleteFactoryActions(
     if (action.active) throw new Error("activeAction");
     await hardDeleteFactoryActionById(documentId);
   }
+  await auditSuccess({
+    route: "/templates/actions",
+    verb: "bulkDeleted",
+    entity: "factoryActions",
+    quantity: ids.length,
+  });
   invalidateActions();
 }

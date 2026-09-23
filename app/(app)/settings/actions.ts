@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
+import { auditSuccess } from "@/lib/logs/record-log";
 import { upsertEntryAccessSettings } from "@/lib/repos/entry-access";
 import {
   upsertCurrencyForSubtasks,
@@ -41,6 +42,12 @@ export async function updateCurrencyForSubtasks(
     currencyDocumentId: formString(formData, "currencyDocumentId"),
   });
   await upsertCurrencyForSubtasks(data.currencyDocumentId);
+  await auditSuccess({
+    route: "/settings/currency",
+    verb: "setting",
+    entity: "currencyForSubtasks",
+    after: data.currencyDocumentId,
+  });
   revalidateTag("drizzle:currency-for-subtasks", "default");
   revalidateTag("drizzle:currencies", "default");
   revalidatePath("/settings/currency");
@@ -60,6 +67,12 @@ export async function updateKioskSessionIdleSeconds(
     queuePageSize: formNumber(formData, "queuePageSize"),
   });
   await upsertKioskSettings(values);
+  await auditSuccess({
+    route: "/settings/kiosk",
+    verb: "setting",
+    entity: "kiosk",
+    after: String(values.sessionIdleSeconds),
+  });
   revalidateTag("drizzle:kiosk-setting", "default");
   revalidatePath("/settings/kiosk");
   redirect("/settings/kiosk");
@@ -79,6 +92,12 @@ export async function updateTaskAutomationSetting(
     assignWarnMax: formNumber(formData, "assignWarnMax"),
   });
   await upsertTaskAutomationSettings(values);
+  await auditSuccess({
+    route: "/settings/automations",
+    verb: "setting",
+    entity: "automations",
+    after: String(values.assignWarnMax),
+  });
   revalidateTag("drizzle:task-automation-setting", "default");
   revalidatePath("/settings/automations");
   redirect("/settings/automations");
@@ -92,6 +111,13 @@ export async function updateEntryAccessSettings(
   await upsertEntryAccessSettings(data.surface, {
     computer: data.computer,
     mobile: data.mobile,
+  });
+  await auditSuccess({
+    route: "/settings/login",
+    verb: "setting",
+    entity: "login",
+    name: data.surface,
+    after: `${data.computer}/${data.mobile}`,
   });
   revalidateTag("drizzle:entry-access", "default");
 }

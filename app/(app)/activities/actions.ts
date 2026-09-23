@@ -15,6 +15,7 @@ import {
   type ActivityListPageResult,
 } from "@/lib/activities/load-activity-list-page";
 import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
+import { auditSuccess } from "@/lib/logs/record-log";
 import { findLatestDeactivationReason } from "@/lib/repos/deactivation-reasons";
 import {
   archiveActivities,
@@ -93,6 +94,13 @@ export async function createActivity(
   await assertCanManage();
   const data = adminActivityFormSchema.parse(raw);
   await createActivityRepo(data);
+  await auditSuccess({
+    route: "/activities",
+    verb: "created",
+    entity: "activity",
+    name: `${data.action} · ${data.qty}`,
+    after: `${data.date} ${data.time}`,
+  });
   invalidateActivities();
 }
 
@@ -102,13 +110,29 @@ export async function updateActivity(
 ): Promise<void> {
   await assertCanManage();
   const data = adminActivityFormSchema.parse(raw);
+  const before = await getActivityById(documentId);
   await updateActivityFields(documentId, data);
+  await auditSuccess({
+    route: "/activities",
+    verb: "updated",
+    entity: "activity",
+    name: `${data.action} · ${data.qty}`,
+    before: before ? `${before.action} · ${before.qty}` : null,
+    after: `${data.action} · ${data.qty}`,
+  });
   invalidateActivities();
 }
 
 export async function reactivateActivity(documentId: string): Promise<void> {
   await assertCanDeactivate();
+  const activity = await getActivityById(documentId);
   await reactivateActivityRepo(documentId);
+  await auditSuccess({
+    route: "/activities",
+    verb: "reactivated",
+    entity: "activity",
+    name: activity ? `${activity.action} · ${activity.qty}` : null,
+  });
   invalidateActivities();
 }
 
@@ -120,6 +144,12 @@ export async function bulkDeactivateActivities(
   const ids = bulkDocumentIdsSchema.parse(documentIds);
   const text = parseArchiveReason(reason, ids.length);
   await archiveActivities(ids, text);
+  await auditSuccess({
+    route: "/activities",
+    verb: "bulkArchived",
+    entity: "activities",
+    quantity: ids.length,
+  });
   invalidateActivities();
 }
 
@@ -134,5 +164,11 @@ export async function bulkDeleteActivities(
     if (activity.active) throw new Error("activeActivity");
     await deleteActivityById(documentId);
   }
+  await auditSuccess({
+    route: "/activities",
+    verb: "bulkDeleted",
+    entity: "activities",
+    quantity: ids.length,
+  });
   invalidateActivities();
 }

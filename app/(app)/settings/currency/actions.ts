@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { currencies } from "@/drizzle/schema";
 import type { Role } from "@/lib/auth/nav";
 import { canManageSettings } from "@/lib/auth/permissions";
+import { auditSuccess } from "@/lib/logs/record-log";
 import {
   assignedActiveCurrencyId,
   isProtectedCurrencyId,
@@ -109,6 +110,13 @@ export async function createCurrency(raw: CurrencyFormInput): Promise<void> {
       typeof data.iconMediaId === "string" ? data.iconMediaId : null,
     showInStore: data.showInStore,
   });
+  await auditSuccess({
+    route: "/settings/currency",
+    verb: "created",
+    entity: "currency",
+    name: data.name,
+    code: data.title,
+  });
   invalidateCurrencies();
 }
 
@@ -135,6 +143,14 @@ export async function updateCurrency(
     patch.iconMediaId = data.iconMediaId;
   }
   await db.update(currencies).set(patch).where(eq(currencies.id, documentId));
+  await auditSuccess({
+    route: "/settings/currency",
+    verb: "updated",
+    entity: "currency",
+    name: data.name,
+    code: data.title,
+    after: String(data.exchangeRate),
+  });
   invalidateCurrencies();
 }
 
@@ -149,6 +165,12 @@ export async function archiveCurrency(
   await reassignSubtasksCurrencyIfNeeded(documentId);
   const text = parseArchiveReason(reason, 1);
   await archiveCurrencyRepo(documentId, text);
+  await auditSuccess({
+    route: "/settings/currency",
+    verb: "archived",
+    entity: "currency",
+    code: documentId,
+  });
   invalidateCurrencies();
 }
 
@@ -160,6 +182,12 @@ export async function deleteCurrency(documentId: string): Promise<void> {
   assertNotProtected(documentId, all, assignedId);
   await reassignSubtasksCurrencyIfNeeded(documentId);
   await hardDeleteCurrencyRepo(documentId);
+  await auditSuccess({
+    route: "/settings/currency",
+    verb: "deleted",
+    entity: "currency",
+    code: documentId,
+  });
   invalidateCurrencies();
 }
 
@@ -183,6 +211,12 @@ export async function bulkArchiveCurrencies(
     await reassignSubtasksCurrencyIfNeeded(documentId);
   }
   await archiveCurrencies(archivable, text);
+  await auditSuccess({
+    route: "/settings/currency",
+    verb: "bulkArchived",
+    entity: "currencies",
+    quantity: archivable.length,
+  });
   invalidateCurrencies();
 }
 
@@ -207,6 +241,12 @@ export async function bulkDeleteCurrencies(
     await reassignSubtasksCurrencyIfNeeded(documentId);
     await hardDeleteCurrencyRepo(documentId);
   }
+  await auditSuccess({
+    route: "/settings/currency",
+    verb: "bulkDeleted",
+    entity: "currencies",
+    quantity: removable.length,
+  });
   invalidateCurrencies();
 }
 

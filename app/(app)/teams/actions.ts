@@ -18,6 +18,7 @@ import {
   updateTeam as updateTeamRepo,
 } from "@/lib/repos/teams";
 import { toCalendarDateKey } from "@/lib/business/datetime-timezone";
+import { auditSuccess } from "@/lib/logs/record-log";
 import { parseArchiveReason } from "@/lib/schemas/archive-with-reason";
 import { teamFormSchema, bulkTeamIdsSchema, type TeamFormInput } from "@/lib/schemas/team";
 import { teamListFiltersSchema } from "@/lib/schemas/team-list-filters";
@@ -75,6 +76,12 @@ export async function createTeam(raw: TeamFormInput): Promise<void> {
     memberIds: data.colaboratorDocumentIds ?? [],
     since: todayIsoDate(),
   });
+  await auditSuccess({
+    route: "/teams",
+    verb: "created",
+    entity: "team",
+    name: data.name,
+  });
   invalidateTeams();
 }
 
@@ -93,6 +100,12 @@ export async function updateTeam(
     until: data.untill?.trim() ? data.untill.trim() : null,
     memberIds: data.colaboratorDocumentIds ?? [],
   });
+  await auditSuccess({
+    route: "/teams",
+    verb: "updated",
+    entity: "team",
+    name: data.name,
+  });
   invalidateTeams();
 }
 
@@ -102,7 +115,14 @@ export async function deleteTeam(
 ): Promise<void> {
   await assertCanDeactivate();
   const text = parseArchiveReason(reason, 1);
+  const team = await findTeamById(documentId);
   await deleteTeamRepo(documentId, text);
+  await auditSuccess({
+    route: "/teams",
+    verb: "archived",
+    entity: "team",
+    name: team?.name,
+  });
   invalidateTeams();
 }
 
@@ -112,6 +132,12 @@ export async function permanentlyDeleteTeam(documentId: string): Promise<void> {
   if (!team) throw new Error("notFound");
   if (team.active) throw new Error("activeTeam");
   await hardDeleteTeam(documentId);
+  await auditSuccess({
+    route: "/teams",
+    verb: "deleted",
+    entity: "team",
+    name: team.name,
+  });
   invalidateTeams();
 }
 
@@ -128,6 +154,12 @@ export async function bulkArchiveTeams(
     if (!team) throw new Error("notFound");
   }
   await archiveTeams(ids, text);
+  await auditSuccess({
+    route: "/teams",
+    verb: "bulkArchived",
+    entity: "teams",
+    quantity: ids.length,
+  });
   invalidateTeams();
 }
 
@@ -141,5 +173,11 @@ export async function bulkDeleteTeams(documentIds: string[]): Promise<void> {
     if (team.active) throw new Error("activeTeam");
     await hardDeleteTeam(documentId);
   }
+  await auditSuccess({
+    route: "/teams",
+    verb: "bulkDeleted",
+    entity: "teams",
+    quantity: ids.length,
+  });
   invalidateTeams();
 }
