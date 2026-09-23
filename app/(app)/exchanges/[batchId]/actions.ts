@@ -32,7 +32,7 @@ export async function updateShoppingListPrices(
     })),
   );
   await auditSuccess({
-    route: `/exchanges/${batchId}`,
+    route: "/exchanges",
     verb: "bulkUpdated",
     entity: "exchangePrices",
     quantity: data.awards.length,

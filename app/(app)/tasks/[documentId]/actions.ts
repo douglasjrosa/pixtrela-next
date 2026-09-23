@@ -114,7 +114,7 @@ export async function createSubTask(
       recordAudit: false,
     });
     await auditSuccess({
-      route: `/tasks/${taskDocumentId}`,
+      route: "/tasks",
       verb: "created",
       entity: "subtask",
       name: data.name,
@@ -122,7 +122,7 @@ export async function createSubTask(
     return;
   }
   await auditSuccess({
-    route: `/tasks/${taskDocumentId}`,
+    route: "/tasks",
     verb: "created",
     entity: "subtask",
     name: data.name,
@@ -141,7 +141,7 @@ export async function updateSubTask(
   const current = await getSubTaskById(documentId);
   await updateSubTaskFields(documentId, taskDocumentId, data, currentIndex);
   await auditSuccess({
-    route: `/tasks/${taskDocumentId}`,
+    route: "/tasks",
     verb: "updated",
     entity: "subtask",
     name: data.name,
@@ -175,7 +175,7 @@ export async function reorderSubTasks(
   }
   if (options?.recordAudit !== false) {
     await auditSuccess({
-      route: `/tasks/${taskDocumentId}`,
+      route: "/tasks",
       verb: "reorder",
       entity: "subtasks",
       quantity: orderedDocumentIds.length,
