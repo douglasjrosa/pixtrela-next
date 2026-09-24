@@ -18,7 +18,9 @@ export async function onRequestError(
   context: ErrorContext,
 ): Promise<void> {
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { onRequestError } = await import("./instrumentation.node.ts");
-    await onRequestError(error, request, context);
+    const { onRequestError: logNodeRequestError } = await import(
+      "./instrumentation.node"
+    );
+    await logNodeRequestError(error, request, context);
   }
 }
