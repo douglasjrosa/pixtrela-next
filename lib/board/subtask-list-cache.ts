@@ -1,6 +1,7 @@
 import type { BoardSubTaskSummary } from "@/components/kanban/types";
 import { buildAssigneesSnapshot } from "@/lib/business/board-assignee-draft";
 import { buildLinksSnapshot } from "@/lib/business/board-link-queue";
+import { subtaskDocumentIdsInOrder } from "@/lib/business/board-pending-subtask-order";
 
 export const SUBTASK_LIST_CACHE_TTL_MS = 60_000;
 
@@ -8,6 +9,7 @@ export type SubtaskListCacheEntry = {
   subtasks: BoardSubTaskSummary[];
   assigneesBaseline: Record<string, string>;
   linksBaseline: Record<string, boolean>;
+  orderBaseline: string[];
   loadedAt: number;
 };
 
@@ -19,6 +21,7 @@ export function createSubtaskListCacheEntry(
     subtasks,
     assigneesBaseline: buildAssigneesSnapshot(subtasks),
     linksBaseline: buildLinksSnapshot(subtasks),
+    orderBaseline: subtaskDocumentIdsInOrder(subtasks),
     loadedAt,
   };
 }

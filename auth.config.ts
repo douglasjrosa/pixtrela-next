@@ -9,6 +9,10 @@ import {
   isAuthenticatedSession,
   SESSION_EXPIRED_QUERY,
 } from "@/lib/auth/session";
+import {
+  TOTEM_MODE_COOKIE_NAME,
+  readTotemModeUserId,
+} from "@/lib/auth/totem-mode-cookie";
 
 /**
  * Edge-safe Auth.js config shared with the middleware. Heavy logic (the
@@ -34,6 +38,9 @@ export const authConfig = {
       const isAuthenticated = isAuthenticatedSession(auth);
       const role = auth?.user?.role as Role | undefined;
       const userId = auth?.user?.id;
+      const totemModeUserId = readTotemModeUserId(
+        request.cookies.get(TOTEM_MODE_COOKIE_NAME)?.value,
+      );
       const sessionExpiredReason =
         request.nextUrl.searchParams.get("reason") === SESSION_EXPIRED_QUERY;
 
@@ -46,6 +53,7 @@ export const authConfig = {
           role,
           userId,
           request.nextUrl.searchParams.get("callbackUrl"),
+          totemModeUserId,
         );
         if (destination.split("?")[0] !== pathname) {
           return NextResponse.redirect(new URL(destination, request.nextUrl));
@@ -57,6 +65,7 @@ export const authConfig = {
         isAuthenticated,
         role,
         userId,
+        totemModeUserId,
       });
 
       if (decision.action === "allow") {

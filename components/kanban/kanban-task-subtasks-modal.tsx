@@ -37,6 +37,7 @@ import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { LeaderRoleBadge } from "@/components/ui/leader-role-badge";
 import { StackedDateTime } from "@/components/ui/stacked-date-time";
 import {
+  findSubtaskReorderDependencyViolation,
   reorderPendingSubtasksInPlace,
   subtaskDocumentIdsInOrder,
 } from "@/lib/business/board-pending-subtask-order";
@@ -118,6 +119,26 @@ export function resolveKanbanPendingSubtaskReorder(
 ): BoardSubTaskSummary[] | null {
   if (typeof activeId !== "string" || typeof overId !== "string") return null;
   return reorderPendingSubtasksInPlace(subtasks, activeId, overId);
+}
+
+export function resolveKanbanPendingSubtaskDrop(
+  subtasks: readonly BoardSubTaskSummary[],
+  activeId: unknown,
+  overId: unknown,
+):
+  | { type: "reorder"; next: BoardSubTaskSummary[] }
+  | { type: "blocked"; consumerName: string; producerName: string }
+  | null {
+  const next = resolveKanbanPendingSubtaskReorder(subtasks, activeId, overId);
+  if (!next) return null;
+  const violation = findSubtaskReorderDependencyViolation(
+    next,
+    typeof activeId === "string" ? activeId : undefined,
+  );
+  if (violation) {
+    return { type: "blocked", ...violation };
+  }
+  return { type: "reorder", next };
 }
 
 const EMPTY_PAYMENT_CURRENCY: SubtaskPaymentCurrency = {
@@ -309,8 +330,10 @@ function SubTaskUnassignedFloatingBadge({
 
   return (
     <KanbanFloatingCountBadge
-      count={1}
-      ariaLabel={tKanban("unassignedSubtasksBadge", { count: 1 })}
+      count={0}
+      display="!"
+      valueClassName="font-bold"
+      ariaLabel={tKanban("unassignedSubtaskMark")}
     />
   );
 }
@@ -670,18 +693,27 @@ export function KanbanTaskSubtasksModal({
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       if (!onReorder) return;
-      const next = resolveKanbanPendingSubtaskReorder(
+      const result = resolveKanbanPendingSubtaskDrop(
         subtasks,
         event.active.id,
         event.over?.id,
       );
-      if (!next) return;
+      if (!result) return;
+      if (result.type === "blocked") {
+        showHintToast(
+          tKanban("reorderBlockedByDependency", {
+            consumerName: result.consumerName,
+            producerName: result.producerName,
+          }),
+        );
+        return;
+      }
       void onReorder(
-        subtaskDocumentIdsInOrder(next),
+        subtaskDocumentIdsInOrder(result.next),
         String(event.active.id),
       );
     },
-    [onReorder, subtasks],
+    [onReorder, subtasks, tKanban],
   );
 
   if (!open) return null;
@@ -1534,6 +1566,7 @@ export function KanbanTaskSubtasksModal({
                                   {showAssignWarn ? (
                                     <KanbanFloatingCountBadge
                                       count={assignedCount}
+                                      display={String(assignedCount)}
                                       ariaLabel={tKanban(
                                         "assignWarnColaboratorBadge",
                                         {

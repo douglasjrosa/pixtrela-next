@@ -2,6 +2,7 @@ import type { BoardSubTaskSummary } from "@/components/kanban/types";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import { adjustAssignedCount } from "@/lib/business/assign-warn";
 import type { LinkDraftUpdate } from "@/lib/business/board-link-queue";
+import { applyPreferredSubtaskOrder } from "@/lib/business/board-pending-subtask-order";
 import { prepareBoardSubtasksForSave } from "@/lib/business/group-link";
 import {
   chainItemsFromBoard,
@@ -190,7 +191,7 @@ export function mergeLoadedSubtasksWithDraft(
   draft: BoardSubTaskSummary[],
 ): BoardSubTaskSummary[] {
   const draftById = new Map(draft.map((item) => [item.documentId, item]));
-  return loaded.map((item) => {
+  const merged = loaded.map((item) => {
     const existing = draftById.get(item.documentId);
     if (!existing) return item;
     const linkChanged = existing.linkedToPrevious !== item.linkedToPrevious;
@@ -203,6 +204,10 @@ export function mergeLoadedSubtasksWithDraft(
       linkedToPrevious: existing.linkedToPrevious,
     };
   });
+  return applyPreferredSubtaskOrder(
+    merged,
+    draft.map((item) => item.documentId),
+  );
 }
 
 export function mergeAssigneesBaseline(

@@ -13,6 +13,11 @@ import {
 
 import type { Role } from "./nav";
 import { canAccessOwnProfile } from "./profile-access";
+import { isTotemModeActive } from "./totem-mode-cookie";
+import {
+  buildUserKioskPath,
+  isUserKioskPath as isUserKioskPathShape,
+} from "./user-kiosk-path";
 
 export const KIOSK_HOME_PATH = "/kiosk";
 export const LOGIN_PATH = "/login";
@@ -88,11 +93,17 @@ export function isUserOrdersPath(pathname: string): boolean {
   return isOrdersPathShape(pathname, RESERVED_ROOT_SEGMENTS);
 }
 
+/** True for `/{documentId}/kiosk`. */
+export function isUserKioskPath(pathname: string): boolean {
+  return isUserKioskPathShape(pathname, RESERVED_ROOT_SEGMENTS);
+}
+
 export function canColaboratorAccessPath(
   pathname: string,
   documentId: string,
 ): boolean {
   if (pathname === `/${documentId}`) return true;
+  if (pathname === buildUserKioskPath(documentId)) return true;
   if (pathname === buildProfilePath(documentId)) return true;
   if (pathname === buildStorePath(documentId)) return true;
   if (
@@ -108,6 +119,7 @@ interface RouteAccessInput {
   isAuthenticated: boolean;
   role?: Role;
   userId?: string;
+  totemModeUserId?: string;
 }
 
 function redirectTo(destination: string, pathname: string): RouteAccessDecision {
@@ -126,12 +138,37 @@ export function resolveRouteAccess(
   pathname: string,
   input: RouteAccessInput,
 ): RouteAccessDecision {
-  const { isAuthenticated, role, userId } = input;
+  const { isAuthenticated, role, userId, totemModeUserId } = input;
   const isColaborator = role === "colaborator";
   const isProducer = canAccessOwnProfile(role);
   const isKiosk = role === "kiosk";
 
   if (pathname.startsWith(LOGIN_PATH)) {
+    return { action: "allow" };
+  }
+
+  if (
+    isAuthenticated &&
+    userId &&
+    isProducer &&
+    isTotemModeActive(totemModeUserId, userId)
+  ) {
+    return redirectTo(buildUserKioskPath(userId), pathname);
+  }
+
+  if (isUserKioskPath(pathname)) {
+    if (!isAuthenticated) {
+      return redirectTo(buildLoginRedirect(pathname), pathname);
+    }
+    if (isKiosk) {
+      return redirectTo(KIOSK_HOME_PATH, pathname);
+    }
+    if (!isProducer) {
+      return redirectTo("/", pathname);
+    }
+    if (userId && pathname !== buildUserKioskPath(userId)) {
+      return redirectTo(buildUserKioskPath(userId), pathname);
+    }
     return { action: "allow" };
   }
 

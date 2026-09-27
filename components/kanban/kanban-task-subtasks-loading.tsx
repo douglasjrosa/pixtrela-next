@@ -124,6 +124,7 @@ function KanbanLoadingTeamsColumn({
                     {showAssignWarn ? (
                       <KanbanFloatingCountBadge
                         count={assignedCount}
+                        display={String(assignedCount)}
                         ariaLabel={tKanban("assignWarnColaboratorBadge", {
                           name: member.name,
                           count: assignedCount,

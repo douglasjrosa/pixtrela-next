@@ -208,6 +208,26 @@ describe("board-assignee-draft", () => {
     ]);
   });
 
+  it("keeps the draft subtask order while merging a refreshed list", () => {
+    const loaded = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Pintar",
+        status: "waiting",
+      }),
+    ];
+    const draft = [loaded[1]!, loaded[0]!];
+
+    expect(
+      mergeLoadedSubtasksWithDraft(loaded, draft).map((item) => item.documentId),
+    ).toEqual(["st-2", "st-1"]);
+  });
+
   it("preserves pending chain link while merging a refreshed list", () => {
     const loaded = [
       boardSubTaskSummaryStub({

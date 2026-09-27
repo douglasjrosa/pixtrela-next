@@ -23,13 +23,13 @@ describe("navItemsForRole", () => {
 
     expect(navItemsForRole("colaborator", { userId: "col-1" }).map((i) => i.href))
 
-      .toEqual(["/col-1", "/col-1/store", "/col-1/orders", "/col-1/profile"]);
+      .toEqual(["/col-1", "/col-1/store", "/col-1/orders"]);
 
     expect(
 
       navItemsForRole("colaborator", { userId: "col-1" }).map((i) => i.labelKey),
 
-    ).toEqual(["dashboard", "store", "exchange", "profile"]);
+    ).toEqual(["dashboard", "store", "exchange"]);
 
   });
 
@@ -58,6 +58,15 @@ describe("navItemsForRole", () => {
   });
 
 
+
+  it("hides all links while personal totem mode is on", () => {
+    expect(
+      navItemsForRole("colaborator", { userId: "col-1", totemMode: true }),
+    ).toEqual([]);
+    expect(
+      navItemsForRole("leader", { userId: "lead-1", totemMode: true }),
+    ).toEqual([]);
+  });
 
   it("does not include profile in staff navbar", () => {
     expect(navItemsForRole("manager", { userId: "mgr-1" }).map((i) => i.href))
@@ -213,6 +222,16 @@ describe("homeHrefForRole", () => {
     expect(homeHrefForRole("kiosk")).toBe("/kiosk");
 
     expect(homeHrefForRole("manager")).toBe("/");
+
+    expect(homeHrefForRole("leader", "lead-1")).toBe("/");
+
+    expect(
+      homeHrefForRole("colaborator", "col-1", { totemMode: true }),
+    ).toBe("/col-1/kiosk");
+
+    expect(
+      homeHrefForRole("leader", "lead-1", { totemMode: true }),
+    ).toBe("/lead-1/kiosk");
 
   });
 

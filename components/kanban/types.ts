@@ -60,5 +60,7 @@ export interface BoardSubTaskSummary {
   sessions: import("@/lib/business/task-progress").ActivitySession[];
   assignedTo: BoardSubTaskAssignee[];
   assignedFlagCodes?: string[];
+  /** Producer sub-task ids this row depends on (board DND lock). */
+  dependencyIds?: string[];
   dependencyFlags?: { predecessorName: string; codes: string[] }[];
 }

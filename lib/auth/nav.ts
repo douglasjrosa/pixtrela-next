@@ -70,6 +70,7 @@ function staffNavRules(paths: StaffNavPaths): NavRule[] {
 
 export interface NavItemsOptions {
   userId?: string;
+  totemMode?: boolean;
 }
 
 /** Primary colaborator header links (dashboard + store). */
@@ -82,8 +83,19 @@ export function colaboratorMenuItems(userId: string): NavItem[] {
 }
 
 /** Brand / home destination after login for the role. */
-export function homeHrefForRole(role: Role, userId?: string): string {
+export function homeHrefForRole(
+  role: Role,
+  userId?: string,
+  options: { totemMode?: boolean } = {},
+): string {
   if (role === "kiosk") return "/kiosk";
+  const usesPersonalTotem =
+    options.totemMode &&
+    Boolean(userId) &&
+    (role === "colaborator" || role === "leader");
+  if (usesPersonalTotem && userId) {
+    return `/${userId}/kiosk`;
+  }
   if (role === "colaborator" && userId) return `/${userId}`;
   return "/";
 }
@@ -97,6 +109,10 @@ export function navItemsForRole(
 ): NavItem[] {
   if (role === "kiosk") return [];
 
+  if (options.totemMode && (role === "colaborator" || role === "leader")) {
+    return [];
+  }
+
   if (role === "colaborator") {
     const { userId } = options;
     if (!userId) {
@@ -106,7 +122,6 @@ export function navItemsForRole(
       { href: `/${userId}`, labelKey: "dashboard" },
       { href: `/${userId}/store`, labelKey: "store" },
       { href: `/${userId}/orders`, labelKey: "exchange" },
-      { href: `/${userId}/profile`, labelKey: "profile" },
     ];
   }
 

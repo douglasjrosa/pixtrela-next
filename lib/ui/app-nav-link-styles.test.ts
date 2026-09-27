@@ -6,8 +6,9 @@ import {
 } from "./app-nav-link-styles";
 
 describe("appNavLinkClass", () => {
-  it("applies the surface background when active", () => {
+  it("applies the solid primary surface when active", () => {
     expect(appNavLinkClass(true)).toContain(APP_NAV_LINK_SURFACE_CLASS);
+    expect(appNavLinkClass(true)).toContain("bg-primary");
     expect(appNavLinkClass(true)).toContain("py-2");
   });
 

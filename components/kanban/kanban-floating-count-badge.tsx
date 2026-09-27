@@ -5,6 +5,8 @@ export interface KanbanFloatingCountBadgeProps {
   count: number;
   ariaLabel: string;
   className?: string;
+  display?: string;
+  valueClassName?: string;
 }
 
 /** Orange floating count badge that overflows the parent corner. */
@@ -12,8 +14,11 @@ export function KanbanFloatingCountBadge({
   count,
   ariaLabel,
   className,
+  display,
+  valueClassName,
 }: KanbanFloatingCountBadgeProps) {
-  if (count <= 0) return null;
+  if (count < 0) return null;
+  if (count === 0 && display === undefined) return null;
 
   return (
     <div
@@ -24,9 +29,12 @@ export function KanbanFloatingCountBadge({
     >
       <span
         aria-label={ariaLabel}
-        className={KANBAN_UNASSIGNED_FLOATING_BADGE_CLASS_NAME}
+        className={cn(
+          KANBAN_UNASSIGNED_FLOATING_BADGE_CLASS_NAME,
+          valueClassName,
+        )}
       >
-        {count}
+        {display ?? count}
       </span>
     </div>
   );

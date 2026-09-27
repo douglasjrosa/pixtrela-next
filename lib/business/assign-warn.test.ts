@@ -19,8 +19,8 @@ describe("countAssignedSubTasksByColaborator", () => {
 });
 
 describe("shouldShowAssignWarn", () => {
-  it("shows only when count is between 1 and assignWarnMax inclusive", () => {
-    expect(shouldShowAssignWarn(0, 4)).toBe(false);
+  it("shows when count is between 0 and assignWarnMax inclusive", () => {
+    expect(shouldShowAssignWarn(0, 4)).toBe(true);
     expect(shouldShowAssignWarn(1, 4)).toBe(true);
     expect(shouldShowAssignWarn(3, 4)).toBe(true);
     expect(shouldShowAssignWarn(4, 4)).toBe(true);

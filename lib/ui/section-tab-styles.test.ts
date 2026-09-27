@@ -5,6 +5,7 @@ import {
   SECTION_TAB_INACTIVE_HEIGHT_CLASS,
   SECTION_TAB_ACTIVE_HEIGHT_CLASS,
   SECTION_TAB_SURFACE_CLASS,
+  SECTION_TABS_NAV_CLASS,
 } from "./section-tab-styles";
 
 describe("sectionTabLinkClass", () => {
@@ -14,6 +15,10 @@ describe("sectionTabLinkClass", () => {
     expect(classes).toContain(SECTION_TAB_SURFACE_CLASS);
     expect(classes).toContain("opacity-100");
     expect(classes).toContain("rounded-t-md");
+  });
+
+  it("adds top padding on the shared tabs container", () => {
+    expect(SECTION_TABS_NAV_CLASS).toContain("pt-3");
   });
 
   it("uses shorter height and lower opacity for inactive tabs", () => {

@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { AppBrandLink } from "@/components/app-brand-link";
 import { AppNavMobileMenu } from "@/components/app-nav-mobile-menu";
 import { AppNavUserMenu } from "@/components/app-nav-user-menu";
+import { TotemModeSwitch } from "@/components/nav/totem-mode-switch";
 import { Button } from "@/components/ui/button";
 import { isAppNavLinkActive } from "@/lib/auth/is-app-nav-link-active";
 import type { ResolvedNavItem } from "@/lib/auth/nav";
@@ -33,6 +34,8 @@ export interface AppNavClientProps {
   userName: string;
   avatarUrl?: string | null;
   items: ResolvedNavItem[];
+  totemMode?: boolean;
+  showTotemSwitch?: boolean;
 }
 
 export function AppNavClient({
@@ -44,6 +47,8 @@ export function AppNavClient({
   userName,
   avatarUrl = null,
   items,
+  totemMode = false,
+  showTotemSwitch = false,
 }: AppNavClientProps) {
   const t = useTranslations();
   const pathname = usePathname();
@@ -95,13 +100,14 @@ export function AppNavClient({
     };
   }, [updateLayoutMode]);
 
-  const effectiveMenuOpen = menuOpen && layoutMode !== "desktop";
+  const showHamburger = layoutMode !== "desktop" || showTotemSwitch;
+  const effectiveMenuOpen = menuOpen && showHamburger;
 
   function handleSignOut(): void {
     void signOut({ callbackUrl: "/login" });
   }
 
-  const showDesktopLinks = layoutMode === "desktop";
+  const showDesktopLinks = layoutMode === "desktop" && items.length > 0;
 
   return (
     <>
@@ -114,7 +120,7 @@ export function AppNavClient({
           className={`flex items-center gap-3 px-4 ${APP_NAV_HEIGHT_CLASS}`}
           aria-label={t("app.name")}
         >
-          {!showDesktopLinks ? (
+          {showHamburger ? (
             <Button
               type="button"
               variant="outline"
@@ -190,6 +196,9 @@ export function AppNavClient({
         open={effectiveMenuOpen}
         items={items}
         onOpenChange={setMenuOpen}
+        extras={
+          showTotemSwitch ? <TotemModeSwitch enabled={totemMode} /> : null
+        }
       />
     </>
   );

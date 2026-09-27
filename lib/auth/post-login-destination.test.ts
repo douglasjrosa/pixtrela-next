@@ -54,4 +54,13 @@ describe("resolvePostLoginDestination", () => {
   it("falls back to home for staff without callback", () => {
     expect(resolvePostLoginDestination("manager", "m1", null)).toBe("/");
   });
+
+  it("sends a producer with totem mode to their personal queue", () => {
+    expect(
+      resolvePostLoginDestination("colaborator", "c1", "/c1", "c1"),
+    ).toBe("/c1/kiosk");
+    expect(
+      resolvePostLoginDestination("leader", "lead-1", "/board", "lead-1"),
+    ).toBe("/lead-1/kiosk");
+  });
 });

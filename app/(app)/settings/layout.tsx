@@ -5,7 +5,6 @@ import { getAppSession } from "@/lib/auth/app-session";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import {
   APP_LIST_PAGE_CHROME_CLASS,
-  APP_LIST_PAGE_TITLE_CLASS,
   APP_SECTION_TABS_COMPACT_CLASS,
 } from "@/components/layout/app-page-layout";
 import { SectionTabs } from "@/components/navigation/section-tabs";
@@ -29,7 +28,6 @@ export default async function SettingsLayout({
   return (
     <div className="space-y-6 p-6 max-[500px]:space-y-3 max-[500px]:p-3">
       <div className={APP_LIST_PAGE_CHROME_CLASS}>
-        <h1 className={APP_LIST_PAGE_TITLE_CLASS}>{t("title")}</h1>
         <SectionTabs
           ariaLabel={t("title")}
           className={APP_SECTION_TABS_COMPACT_CLASS}

@@ -48,6 +48,19 @@ describe("AppNavMobileMenu", () => {
     expect(screen.queryByRole("button", { name: "Sair" })).not.toBeInTheDocument();
   });
 
+  it("renders extras below the navigation links", () => {
+    renderWithIntl(
+      <AppNavMobileMenu
+        open
+        items={items}
+        onOpenChange={vi.fn()}
+        extras={<span>Modo Totem</span>}
+      />,
+    );
+
+    expect(screen.getByText("Modo Totem")).toBeInTheDocument();
+  });
+
   it("closes when pressing the close button", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();

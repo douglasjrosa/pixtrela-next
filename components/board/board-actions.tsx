@@ -48,6 +48,12 @@ import {
   resolveChains,
   type AssigneeApplyScope,
 } from "@/lib/business/subtask-chain";
+import {
+  applyPreferredSubtaskOrder,
+  hasOrderDraftChanges,
+  mergeOrderBaseline,
+  subtaskDocumentIdsInOrder,
+} from "@/lib/business/board-pending-subtask-order";
 import { prepareBoardSubtasksForSave } from "@/lib/business/group-link";
 import { countUnassignedSubTasks } from "@/lib/business/kanban-card-badges";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
@@ -81,7 +87,7 @@ function mergeSavedSnapshotOverStaleLoad(
   const snapshotById = new Map(
     snapshot.map((item) => [item.documentId, item]),
   );
-  return loaded.map((item) => {
+  const merged = loaded.map((item) => {
     const saved = snapshotById.get(item.documentId);
     if (!saved) return item;
     const loadedAssignees = buildAssigneesSnapshot([item])[item.documentId];
@@ -95,6 +101,10 @@ function mergeSavedSnapshotOverStaleLoad(
       linkedToPrevious: saved.linkedToPrevious,
     };
   });
+  return applyPreferredSubtaskOrder(
+    merged,
+    snapshot.map((item) => item.documentId),
+  );
 }
 
 function resolveUnassignedSubTaskCount(
@@ -221,13 +231,13 @@ export function BoardActions({
   const [linksBaseline, setLinksBaseline] = useState<Record<string, boolean>>(
     {},
   );
+  const [orderBaseline, setOrderBaseline] = useState<string[]>([]);
   const [loadingSubtasks, setLoadingSubtasks] = useState(false);
   const [refreshingSubtasks, setRefreshingSubtasks] = useState(false);
   const [subtasksLoadedAt, setSubtasksLoadedAt] = useState<number | null>(null);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [savingCreate, setSavingCreate] = useState(false);
-  const [reorderingSubtasks, setReorderingSubtasks] = useState(false);
   const [persistingTaskDocumentIds, setPersistingTaskDocumentIds] = useState<
     ReadonlySet<string>
   >(() => new Set());
@@ -237,6 +247,8 @@ export function BoardActions({
   const subtasksRef = useRef(subtasks);
   const assigneesBaselineRef = useRef(assigneesBaseline);
   const linksBaselineRef = useRef(linksBaseline);
+  const orderBaselineRef = useRef(orderBaseline);
+  const lastMovedDocumentIdRef = useRef<string | null>(null);
   const subtaskCacheRef = useRef(new SubtaskListCache());
   const subtaskSaveFreshUntilRef = useRef(new Map<string, number>());
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -247,6 +259,7 @@ export function BoardActions({
   subtasksRef.current = subtasks;
   assigneesBaselineRef.current = assigneesBaseline;
   linksBaselineRef.current = linksBaseline;
+  orderBaselineRef.current = orderBaseline;
   persistingTaskDocumentIdsRef.current = persistingTaskDocumentIds;
 
   useEffect(() => {
@@ -292,10 +305,12 @@ export function BoardActions({
     items: readonly BoardSubTaskSummary[],
     assigneeBaseline: Record<string, string>,
     linkBaseline: Record<string, boolean>,
+    nextOrderBaseline: readonly string[],
   ): boolean {
     return (
       hasAssigneeDraftChanges(items, assigneeBaseline) ||
-      hasLinkDraftChanges(items, linkBaseline)
+      hasLinkDraftChanges(items, linkBaseline) ||
+      hasOrderDraftChanges(items, nextOrderBaseline)
     );
   }
 
@@ -317,6 +332,7 @@ export function BoardActions({
     applyLoadedSubtasks(entry.subtasks);
     setAssigneesBaseline(entry.assigneesBaseline);
     setLinksBaseline(entry.linksBaseline);
+    setOrderBaseline(entry.orderBaseline);
     setSubtasksLoadedAt(entry.loadedAt);
   }
 
@@ -350,6 +366,8 @@ export function BoardActions({
         loaded.map((item) => [item.documentId, item.linkedToPrevious]),
       ),
     );
+    setOrderBaseline(subtaskDocumentIdsInOrder(loaded));
+    lastMovedDocumentIdRef.current = null;
   }
 
   function applyFetchedSubtasks(
@@ -368,6 +386,7 @@ export function BoardActions({
         subtasksRef.current,
         assigneesBaselineRef.current,
         linksBaselineRef.current,
+        orderBaselineRef.current,
       );
 
     if (shouldMergeDraft) {
@@ -383,17 +402,23 @@ export function BoardActions({
         linksBaselineRef.current,
         loaded,
       );
+      const nextOrderBaseline = mergeOrderBaseline(
+        orderBaselineRef.current,
+        loaded,
+      );
       if (taskDocumentId) {
         subtaskCacheRef.current.set(taskDocumentId, {
           ...entry,
           subtasks: merged,
           assigneesBaseline: nextAssigneeBaseline,
           linksBaseline: nextLinksBaseline,
+          orderBaseline: nextOrderBaseline,
         });
       }
       setSubtasks(merged);
       setAssigneesBaseline(nextAssigneeBaseline);
       setLinksBaseline(nextLinksBaseline);
+      setOrderBaseline(nextOrderBaseline);
       return;
     }
 
@@ -541,6 +566,7 @@ export function BoardActions({
         subtasksRef.current,
         assigneesBaselineRef.current,
         linksBaselineRef.current,
+        orderBaselineRef.current,
       )
     ) {
       invalidateSubtaskCache(taskId);
@@ -552,6 +578,8 @@ export function BoardActions({
     setSubtasks([]);
     setAssigneesBaseline({});
     setLinksBaseline({});
+    setOrderBaseline([]);
+    lastMovedDocumentIdRef.current = null;
     setLoadingSubtasks(false);
     setRefreshingSubtasks(false);
     setSubtasksLoadedAt(null);
@@ -559,7 +587,6 @@ export function BoardActions({
     sessionsLoadedRef.current = false;
     setCreateOpen(false);
     setSavingCreate(false);
-    setReorderingSubtasks(false);
     cancelTaskPrefetch();
   }
 
@@ -637,9 +664,6 @@ export function BoardActions({
   ): void {
     if (!selectedTask) return;
 
-    const taskDocumentId = selectedTask.documentId;
-    invalidateSubtaskCache(taskDocumentId);
-    const before = subtasks;
     const pending = subtasks.filter((item) => item.status !== FINISHED_STATUS);
     const pendingIds = new Set(pending.map((item) => item.documentId));
     const pendingOrder = orderedDocumentIds.filter((id) => pendingIds.has(id));
@@ -648,27 +672,13 @@ export function BoardActions({
       pendingOrder,
       movedDocumentId,
     );
+    lastMovedDocumentIdRef.current = movedDocumentId;
     setSubtasks(
       sortSubtasksByDocumentIds(
         applyChainStatesToSubtasks(subtasks, reconciled),
         orderedDocumentIds,
       ).map((item, index) => ({ ...item, index })),
     );
-    setReorderingSubtasks(true);
-
-    void (async () => {
-      try {
-        await reorderSubtasks(
-          taskDocumentId,
-          orderedDocumentIds,
-          movedDocumentId,
-        );
-      } catch {
-        setSubtasks(before);
-      } finally {
-        setReorderingSubtasks(false);
-      }
-    })();
   }
 
   function applyOptimisticLink(
@@ -813,7 +823,12 @@ export function BoardActions({
       assigneesBaseline,
       dirtyLinkUpdates,
     );
-    if (dirtyAssigneeUpdates.length === 0 && dirtyLinkUpdates.length === 0) {
+    const orderChanged = hasOrderDraftChanges(snapshot, orderBaseline);
+    if (
+      dirtyAssigneeUpdates.length === 0 &&
+      dirtyLinkUpdates.length === 0 &&
+      !orderChanged
+    ) {
       return;
     }
 
@@ -872,6 +887,19 @@ export function BoardActions({
             update.documentId,
             update.linkedToPrevious,
           );
+        }
+        if (orderChanged) {
+          const movedDocumentId =
+            lastMovedDocumentIdRef.current ??
+            snapshot[0]?.documentId ??
+            "";
+          if (movedDocumentId) {
+            await reorderSubtasks(
+              taskDocumentId,
+              snapshot.map((item) => item.documentId),
+              movedDocumentId,
+            );
+          }
         }
         await commitSubtaskCacheAfterSave(taskDocumentId, snapshot);
         setPersistingTaskDocumentIds((current) => {
@@ -968,8 +996,12 @@ export function BoardActions({
         refreshing={refreshingSubtasks}
         loadedAt={subtasksLoadedAt}
         loadingSessions={loadingSessions}
-        dirty={hasBoardDraftChanges(subtasks, assigneesBaseline, linksBaseline)}
-        reordering={reorderingSubtasks}
+        dirty={hasBoardDraftChanges(
+          subtasks,
+          assigneesBaseline,
+          linksBaseline,
+          orderBaseline,
+        )}
         onClose={handleCloseSubtasksModal}
         onAssigneesChange={handleAssigneesChange}
         onSave={handleSaveAssignees}

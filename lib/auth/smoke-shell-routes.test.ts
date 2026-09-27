@@ -20,7 +20,6 @@ describe("smokeShellHrefsForRole", () => {
       "/col-1",
       "/col-1/store",
       "/col-1/orders",
-      "/col-1/profile",
     ]);
   });
 

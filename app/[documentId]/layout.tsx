@@ -6,7 +6,9 @@ import { ColaboratorSurface } from "@/components/colaborator/colaborator-surface
 import { RouteThemeBackground } from "@/components/themes/route-theme-background";
 import { RouteThemeMatchedMain } from "@/components/themes/route-theme-matched-main";
 import { getAppSession } from "@/lib/auth/app-session";
-import type { Role } from "@/lib/auth/nav";
+import { homeHrefForRole, type Role } from "@/lib/auth/nav";
+import { canAccessOwnProfile } from "@/lib/auth/profile-access";
+import { loadSessionTotemMode } from "@/lib/auth/totem-mode-state";
 import { loadBrandingForLayout } from "@/lib/themes/load-branding";
 import { loadRouteThemes } from "@/lib/themes/load-route-themes";
 
@@ -17,6 +19,8 @@ export default async function DocumentIdLayout({
 }) {
   const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
+  const userId = session?.user?.id;
+  const totemMode = await loadSessionTotemMode(userId);
   const branding = await loadBrandingForLayout();
   const menuLogo = branding.menu_logo;
 
@@ -46,12 +50,16 @@ export default async function DocumentIdLayout({
         />
         <div className="relative z-10 flex min-h-dvh flex-1 flex-col">
           <ColaboratorHeader
-            homeHref={session?.user?.id ? `/${session.user.id}` : "/"}
+            homeHref={homeHrefForRole(role ?? "colaborator", userId, {
+              totemMode,
+            })}
             logoUrl={menuLogo.mediaUrl}
             menuLogoBackgroundColor={menuLogo.config.backgroundColor ?? null}
             menuLogoBackgroundColorOpacity={
               menuLogo.config.backgroundColorOpacity ?? 0
             }
+            totemMode={totemMode}
+            showTotemSwitch={canAccessOwnProfile(role) && Boolean(userId)}
           />
           <RouteThemeMatchedMain themes={themes} withDocumentPanel>
             {children}

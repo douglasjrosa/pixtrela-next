@@ -111,7 +111,8 @@
     "openMenu": "Abrir menu",
     "openAccountMenu": "Abrir menu da conta",
     "closeMenu": "Fechar menu",
-    "menuTitle": "Menu"
+    "menuTitle": "Menu",
+    "totemMode": "Modo Totem"
   },
   "profile": {
     "title": "Meu perfil",
@@ -293,6 +294,8 @@
     "subtasksColumn": "Subtarefas",
     "teamsColumn": "Equipes",
     "unassignedSubtasksBadge": "{count} subtarefa(s) sem colaborador",
+    "unassignedSubtaskMark": "Subtarefa sem colaborador",
+    "reorderBlockedByDependency": "A subtarefa {consumerName} depende de {producerName}, por isso não pode ser movida para antes dela.",
     "producingWithActiveColaborators": "{status} · {count} em atividade",
     "assignWarnColaboratorBadge": "{name}: {count} subtarefa(s) atribuída(s)",
     "multiSelect": "Multi-seleção",

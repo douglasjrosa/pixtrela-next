@@ -9,6 +9,7 @@ import {
   resolveNavItemLabels,
   type Role,
 } from "@/lib/auth/nav";
+import { loadSessionTotemMode } from "@/lib/auth/totem-mode-state";
 import { buildProfilePath } from "@/lib/profile/profile-path";
 
 export { APP_NAV_HEIGHT_CLASS } from "@/components/app-nav-client";
@@ -29,7 +30,9 @@ export async function AppNav({
   const userId = session?.user?.id;
   const tNav = await getTranslations("nav");
   const tProfile = await getTranslations("profile");
-  const items = navItemsForRole(role, { userId });
+  const totemMode = await loadSessionTotemMode(userId);
+  const showTotemSwitch = canAccessOwnProfile(role) && Boolean(userId);
+  const items = navItemsForRole(role, { userId, totemMode });
   const resolvedItems = resolveNavItemLabels(items, {
     panel: tNav("panel"),
     board: tNav("board"),
@@ -42,9 +45,11 @@ export async function AppNav({
     exchange: tNav("exchange"),
     profile: tNav("profile"),
   });
-  const homeHref = homeHrefForRole(role, userId);
+  const homeHref = homeHrefForRole(role, userId, { totemMode });
   const profileHref =
-    canAccessOwnProfile(role) && userId ? buildProfilePath(userId) : null;
+    canAccessOwnProfile(role) && userId && !totemMode
+      ? buildProfilePath(userId)
+      : null;
   const userName = session?.user?.name ?? tProfile("title");
 
   return (
@@ -57,6 +62,8 @@ export async function AppNav({
       userName={userName}
       avatarUrl={session?.user?.avatarUrl ?? null}
       items={resolvedItems}
+      totemMode={totemMode}
+      showTotemSwitch={showTotemSwitch}
     />
   );
 }

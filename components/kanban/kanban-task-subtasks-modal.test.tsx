@@ -8,7 +8,11 @@ import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager
 import { boardSubTaskSummaryStub } from "@/lib/business/board-subtask-summary";
 import messages from "@/messages/pt-BR.json";
 import { renderWithIntl } from "@/test/test-utils";
-import { KanbanTaskSubtasksModal, resolveKanbanPendingSubtaskReorder } from "./kanban-task-subtasks-modal";
+import {
+  KanbanTaskSubtasksModal,
+  resolveKanbanPendingSubtaskDrop,
+  resolveKanbanPendingSubtaskReorder,
+} from "./kanban-task-subtasks-modal";
 
 const showSuccessToast = vi.fn();
 const showHintToast = vi.fn();
@@ -138,8 +142,8 @@ describe("KanbanTaskSubtasksModal", () => {
       screen.getByLabelText("Produzindo · 1 em atividade"),
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText("1 subtarefa(s) sem colaborador"),
-    ).toBeInTheDocument();
+      screen.getByLabelText("Subtarefa sem colaborador"),
+    ).toHaveTextContent("!");
     expect(
       screen.getByLabelText("Ana: 3 subtarefa(s) atribuída(s)"),
     ).toHaveTextContent("3");
@@ -393,18 +397,21 @@ describe("KanbanTaskSubtasksModal", () => {
     });
 
     expect(
-      screen.queryByLabelText(/subtarefa\(s\) atribuída\(s\)/),
+      screen.queryByLabelText("Ana: 5 subtarefa(s) atribuída(s)"),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Bob: 0 subtarefa(s) atribuída(s)"),
+    ).toHaveTextContent("0");
   });
 
-  it("hides assign-warn badge when count is zero", () => {
+  it("shows assign-warn badge when count is zero", () => {
     renderModal({
-      assignedCountByColaboratorId: { "u-1": 0 },
+      assignedCountByColaboratorId: { "u-1": 0, "u-2": 5 },
     });
 
     expect(
-      screen.queryByLabelText(/subtarefa\(s\) atribuída\(s\)/),
-    ).not.toBeInTheDocument();
+      screen.getByLabelText("Ana: 0 subtarefa(s) atribuída(s)"),
+    ).toHaveTextContent("0");
   });
 
   it("shows finished subtasks with sessions on the finished tab", async () => {
@@ -895,6 +902,81 @@ describe("KanbanTaskSubtasksModal", () => {
       "st-1",
       "st-3",
     ]);
+  });
+
+  it("blocks dropping a consumer before its producer", () => {
+    const dependent = [
+      boardSubTaskSummaryStub({
+        documentId: "st-b",
+        name: "B",
+        status: "waiting",
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-c",
+        name: "C",
+        status: "waiting",
+        dependencyIds: ["st-b"],
+      }),
+    ];
+
+    expect(resolveKanbanPendingSubtaskDrop(dependent, "st-c", "st-b")).toEqual({
+      type: "blocked",
+      consumerName: "C",
+      producerName: "B",
+    });
+  });
+
+  it("blocks moving a producer after its consumer", () => {
+    const dependent = [
+      boardSubTaskSummaryStub({
+        documentId: "st-b",
+        name: "B",
+        status: "waiting",
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-c",
+        name: "C",
+        status: "waiting",
+        dependencyIds: ["st-b"],
+      }),
+    ];
+
+    expect(resolveKanbanPendingSubtaskDrop(dependent, "st-b", "st-c")).toEqual({
+      type: "blocked",
+      consumerName: "C",
+      producerName: "B",
+    });
+  });
+
+  it("allows a drop that keeps consumers after producers", () => {
+    const dependent = [
+      boardSubTaskSummaryStub({
+        documentId: "st-b",
+        name: "B",
+        status: "waiting",
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-a",
+        name: "A",
+        status: "waiting",
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-c",
+        name: "C",
+        status: "waiting",
+        dependencyIds: ["st-b"],
+      }),
+    ];
+
+    const result = resolveKanbanPendingSubtaskDrop(dependent, "st-a", "st-c");
+    expect(result?.type).toBe("reorder");
+    if (result?.type === "reorder") {
+      expect(result.next.map((item) => item.documentId)).toEqual([
+        "st-b",
+        "st-c",
+        "st-a",
+      ]);
+    }
   });
 
   it("asks before leaving multi with a selection", async () => {

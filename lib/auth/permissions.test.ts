@@ -263,6 +263,7 @@ describe("canAccessRoute", () => {
     expect(canAccessRoute("colaborator", "/col-1/profile", "col-1")).toBe(true);
     expect(canAccessRoute("colaborator", "/col-1/store", "col-1")).toBe(true);
     expect(canAccessRoute("colaborator", "/col-1/orders", "col-1")).toBe(true);
+    expect(canAccessRoute("colaborator", "/col-1/kiosk", "col-1")).toBe(true);
     expect(canAccessRoute("colaborator", "/kiosk", "col-1")).toBe(false);
     expect(canAccessRoute("manager", "/balance")).toBe(false);
     expect(canAccessRoute("manager", "/col-1/store", "mgr-1")).toBe(false);
@@ -288,6 +289,7 @@ describe("canAccessRoute", () => {
   it("allows own profile for colaborator and leader", () => {
     expect(canAccessRoute("colaborator", "/col-1/profile", "col-1")).toBe(true);
     expect(canAccessRoute("leader", "/lead-1/profile", "lead-1")).toBe(true);
+    expect(canAccessRoute("leader", "/lead-1/kiosk", "lead-1")).toBe(true);
     expect(canAccessRoute("leader", "/lead-1/store", "lead-1")).toBe(true);
     expect(canAccessRoute("manager", "/mgr-1/profile", "mgr-1")).toBe(false);
     expect(canAccessRoute("admin", "/admin-1/profile", "admin-1")).toBe(false);

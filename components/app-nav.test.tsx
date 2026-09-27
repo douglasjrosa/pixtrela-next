@@ -11,6 +11,10 @@ vi.mock("next-auth/react", () => ({
   signOut: (...args: unknown[]) => signOut(...args),
 }));
 
+vi.mock("@/app/[documentId]/kiosk/actions", () => ({
+  setPersonalTotemMode: vi.fn(),
+}));
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/tasks",
 }));
@@ -76,6 +80,41 @@ describe("AppNavClient", () => {
     expect(
       screen.queryByRole("button", { name: "Abrir menu" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps the sandwich on desktop so a leader can toggle totem mode", async () => {
+    const user = userEvent.setup();
+    renderWithIntl(
+      <AppNavClient
+        logoUrl={LOGO_URL}
+        homeHref="/"
+        profileHref="/lead-1/profile"
+        userName="Ana"
+        items={[{ href: "/", label: "Painel" }]}
+        showTotemSwitch
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Painel" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Abrir menu" }));
+    expect(screen.getByRole("switch", { name: "Modo Totem" })).toBeInTheDocument();
+  });
+
+  it("hides desktop links while personal totem mode is on", () => {
+    renderWithIntl(
+      <AppNavClient
+        logoUrl={LOGO_URL}
+        homeHref="/lead-1/kiosk"
+        profileHref={null}
+        userName="Ana"
+        items={[]}
+        totemMode
+        showTotemSwitch
+      />,
+    );
+
+    expect(screen.queryByRole("link", { name: "Painel" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Abrir menu" })).toBeInTheDocument();
   });
 
   it("shows mobile menu button before the brand on small screens", () => {

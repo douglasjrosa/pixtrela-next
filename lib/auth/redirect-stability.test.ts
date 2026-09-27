@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   isColaboratorPrivatePath,
+  isUserKioskPath,
   isUserProfilePath,
   resolveRouteAccess,
   type RouteAccessDecision,
@@ -9,12 +10,14 @@ import {
 import type { Role } from "./nav";
 import { resolvePostLoginDestination } from "./post-login-destination";
 import { canAccessOwnProfile } from "./profile-access";
+import { buildUserKioskPath } from "./user-kiosk-path";
 import { buildProfilePath } from "@/lib/profile/profile-path";
 
 type AccessInput = {
   isAuthenticated: boolean;
   role?: Role;
   userId?: string;
+  totemModeUserId?: string;
 };
 
 function pathnameOf(destination: string): string {
@@ -30,6 +33,12 @@ function resolvePageRedirect(
   pathname: string,
   input: AccessInput,
 ): string | null {
+  if (isUserKioskPath(pathname)) {
+    if (!input.userId || !canAccessOwnProfile(input.role)) return "/";
+    const own = buildUserKioskPath(input.userId);
+    if (pathname !== own) return own;
+    return null;
+  }
   if (isUserProfilePath(pathname)) {
     if (!input.userId || !canAccessOwnProfile(input.role)) return "/";
     const own = buildProfilePath(input.userId);
@@ -101,6 +110,8 @@ const PATHS = [
   "/kiosk",
   "/kiosk/col-1",
   "/col-1",
+  "/col-1/kiosk",
+  "/lead-1/kiosk",
   "/col-1/profile",
   "/mgr-1/profile",
   "/lead-1/profile",
@@ -216,6 +227,43 @@ describe("resolveRouteAccess redirect stability", () => {
       });
       expect(result.looped).toBe(false);
       expect(result.chain).toEqual([expected]);
+    }
+  });
+
+  it("never loops when personal totem mode locks a producer", () => {
+    const producers = ROLES.filter(
+      ({ role }) => role === "colaborator" || role === "leader",
+    );
+
+    for (const { role, userId } of producers) {
+      for (const path of PATHS) {
+        const result = followRedirects(path, {
+          isAuthenticated: true,
+          role,
+          userId,
+          totemModeUserId: userId,
+        });
+        expect(
+          result.looped,
+          `${role} ${path} -> ${result.chain.join(" => ")}`,
+        ).toBe(false);
+      }
+
+      const destination = resolvePostLoginDestination(
+        role,
+        userId,
+        "/board",
+        userId,
+      );
+      expect(destination).toBe(buildUserKioskPath(userId));
+      const settled = followRedirects(destination, {
+        isAuthenticated: true,
+        role,
+        userId,
+        totemModeUserId: userId,
+      });
+      expect(settled.looped).toBe(false);
+      expect(settled.chain).toEqual([destination]);
     }
   });
 });

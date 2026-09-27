@@ -18,6 +18,7 @@ export function boardSubTaskSummaryStub(
     sessions: [],
     assignedTo: [],
     assignedFlagCodes: [],
+    dependencyIds: [],
     dependencyFlags: [],
     ...partial,
   };

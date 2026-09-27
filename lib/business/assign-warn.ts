@@ -19,15 +19,15 @@ export function countAssignedSubTasksByColaborator(
 }
 
 /**
- * Low-load warn: show when the colaborator has some assignments but not more
- * than assignWarnMax. Zero max disables the badge; zero count stays hidden.
+ * Low-load warn: show when the colaborator has at most assignWarnMax
+ * assignments, including zero. Zero max disables the badge.
  */
 export function shouldShowAssignWarn(
   count: number,
   assignWarnMax: number,
 ): boolean {
   if (assignWarnMax <= 0) return false;
-  return count >= 1 && count <= assignWarnMax;
+  return count >= 0 && count <= assignWarnMax;
 }
 
 /** Applies ±1 to a count map when toggling an assignee on an open sub-task. */

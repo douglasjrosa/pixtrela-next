@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
@@ -16,12 +16,14 @@ export interface AppNavMobileMenuProps {
   open: boolean;
   items: ResolvedNavItem[];
   onOpenChange: (open: boolean) => void;
+  extras?: ReactNode;
 }
 
 export function AppNavMobileMenu({
   open,
   items,
   onOpenChange,
+  extras = null,
 }: AppNavMobileMenuProps) {
   const t = useTranslations();
   const pathname = usePathname();
@@ -106,6 +108,7 @@ export function AppNavMobileMenu({
               </li>
             ))}
           </ul>
+          {extras ? <div className="mt-3 border-t px-2 pt-3">{extras}</div> : null}
         </nav>
       </div>
     </div>

@@ -179,6 +179,7 @@ function mapBoardSubtasksFromCore(
     sessions: [],
     assignedTo: assigneesBySubTask.get(subtask.id) ?? [],
     assignedFlagCodes: codesBySubTask.get(subtask.id) ?? [],
+    dependencyIds: producersByConsumer.get(subtask.id) ?? [],
     dependencyFlags: (producersByConsumer.get(subtask.id) ?? [])
       .map((producerId) => ({
         predecessorName: nameById.get(producerId) ?? "",

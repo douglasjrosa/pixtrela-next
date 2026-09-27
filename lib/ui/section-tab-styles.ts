@@ -31,4 +31,4 @@ export function sectionTabLinkClass(isActive: boolean): string {
 }
 
 export const SECTION_TABS_NAV_CLASS =
-  "flex flex-wrap items-end gap-2 border-b";
+  "flex flex-wrap items-end gap-2 border-b pt-3";

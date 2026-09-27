@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   isColaboratorPrivatePath,
   isKioskPanelPath,
+  isUserKioskPath,
   isUserProfilePath,
   isUserOrdersPath,
   isUserStorePath,
@@ -154,6 +155,74 @@ describe("resolveRouteAccess", () => {
     ).toEqual({ action: "allow" });
   });
 
+  it("allows the owner on their personal totem route", () => {
+    expect(
+      resolveRouteAccess("/col-1/kiosk", {
+        isAuthenticated: true,
+        role: "colaborator",
+        userId: "col-1",
+      }),
+    ).toEqual({ action: "allow" });
+
+    expect(
+      resolveRouteAccess("/lead-1/kiosk", {
+        isAuthenticated: true,
+        role: "leader",
+        userId: "lead-1",
+      }),
+    ).toEqual({ action: "allow" });
+  });
+
+  it("redirects a producer from another personal totem route to their own", () => {
+    expect(
+      resolveRouteAccess("/other/kiosk", {
+        isAuthenticated: true,
+        role: "colaborator",
+        userId: "col-1",
+      }),
+    ).toEqual({ action: "redirect", destination: "/col-1/kiosk" });
+  });
+
+  it("locks a producer to their totem route when the cookie matches", () => {
+    expect(
+      resolveRouteAccess("/col-1", {
+        isAuthenticated: true,
+        role: "colaborator",
+        userId: "col-1",
+        totemModeUserId: "col-1",
+      }),
+    ).toEqual({ action: "redirect", destination: "/col-1/kiosk" });
+
+    expect(
+      resolveRouteAccess("/board", {
+        isAuthenticated: true,
+        role: "leader",
+        userId: "lead-1",
+        totemModeUserId: "lead-1",
+      }),
+    ).toEqual({ action: "redirect", destination: "/lead-1/kiosk" });
+
+    expect(
+      resolveRouteAccess("/col-1/kiosk", {
+        isAuthenticated: true,
+        role: "colaborator",
+        userId: "col-1",
+        totemModeUserId: "col-1",
+      }),
+    ).toEqual({ action: "allow" });
+  });
+
+  it("ignores a totem cookie that belongs to another user", () => {
+    expect(
+      resolveRouteAccess("/col-1", {
+        isAuthenticated: true,
+        role: "colaborator",
+        userId: "col-1",
+        totemModeUserId: "other",
+      }),
+    ).toEqual({ action: "allow" });
+  });
+
   it("redirects kiosk away from staff and colaborator paths", () => {
     expect(
       resolveRouteAccess("/board", {
@@ -201,6 +270,14 @@ describe("isKioskPanelPath", () => {
   it("detects kiosk document routes only", () => {
     expect(isKioskPanelPath("/kiosk/col-1")).toBe(true);
     expect(isKioskPanelPath("/kiosk")).toBe(false);
+  });
+});
+
+describe("isUserKioskPath", () => {
+  it("matches personal totem routes only", () => {
+    expect(isUserKioskPath("/col-1/kiosk")).toBe(true);
+    expect(isUserKioskPath("/kiosk")).toBe(false);
+    expect(isUserKioskPath("/kiosk/col-1")).toBe(false);
   });
 });
 
