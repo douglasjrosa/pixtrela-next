@@ -5,6 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { renderWithIntl } from "@/test/test-utils";
 
 import { TaskListRowPresentational } from "./task-list-row-presentational";
+import { ListPageActionsProvider } from "@/components/ui/list-page-actions-slot";
+import { ListPageToolbar } from "@/components/ui/list-page-toolbar";
 import { TasksListTableFrame } from "./tasks-list-table-frame";
 
 const loadMoreTasks = vi.fn();
@@ -172,6 +174,35 @@ describe("TasksListTableFrame", () => {
       expect(bulkDeactivateTasks).toHaveBeenCalledWith(["t1"], reason);
     });
     expect(showSuccessToast).toHaveBeenCalled();
+  });
+
+  it("renders the archive action inside the toolbar slot", async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <ListPageActionsProvider>
+        <ListPageToolbar />
+        <TasksListTableFrame
+          filters={filters}
+          initialTasks={initialTasks}
+          initialHasMore={false}
+          initialPage={1}
+          canDeactivate
+          tableHeader={<thead><tr><th>Nome</th></tr></thead>}
+          tableBody={selectableBody()}
+          mobileList={null}
+        />
+      </ListPageActionsProvider>,
+    );
+
+    await user.click(screen.getAllByRole("checkbox")[0]!);
+    const slot = document.querySelector('[data-slot="list-page-actions"]');
+    expect(slot).not.toBeNull();
+    await waitFor(() => {
+      expect(
+        slot?.querySelector("button")?.getAttribute("aria-label"),
+      ).toBe("Arquivar selecionadas");
+    });
   });
 
   it("shows delete action when all selected tasks are archived", async () => {

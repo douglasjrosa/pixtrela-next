@@ -11,6 +11,7 @@ import {
 } from "@/app/(app)/users/actions";
 import { ArchiveReasonModal } from "@/components/ui/archive-reason-modal";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
+import { ListPageActionsPortal } from "@/components/ui/list-page-actions-slot";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
 import { ListLoadMore } from "@/components/ui/load-more-button";
@@ -175,16 +176,18 @@ export function UsersListTableFrame({
   return (
     <ListSelectionProvider value={selectionValue}>
       <div className="flex min-h-0 flex-1 flex-col">
-        {bulkEnabled ? (
-          <BulkListToolbar
-            showArchive={showDeactivateAction}
-            showDelete={showDeleteAction}
-            archiveLabel={tUsers("deactivateSelected")}
-            deleteLabel={tUsers("deleteSelected")}
-            disabled={isPending}
-            onArchive={() => setDeactivateOpen(true)}
-            onDelete={() => setDeleteOpen(true)}
-          />
+        {bulkEnabled && (showDeactivateAction || showDeleteAction) ? (
+          <ListPageActionsPortal>
+            <BulkListToolbar
+              showArchive={showDeactivateAction}
+              showDelete={showDeleteAction}
+              archiveLabel={tUsers("deactivateSelected")}
+              deleteLabel={tUsers("deleteSelected")}
+              disabled={isPending}
+              onArchive={() => setDeactivateOpen(true)}
+              onDelete={() => setDeleteOpen(true)}
+            />
+          </ListPageActionsPortal>
         ) : null}
 
         <div className="min-h-0 flex-1 overflow-y-auto">

@@ -206,7 +206,7 @@ export function KioskSubtaskPanel({
                     startedAt={subTask.startedAt}
                     timeSpent={subTask.timeSpent}
                     expectedTime={subTask.expectedTime}
-                    timerPaused={timerPaused ?? blockingUi}
+                    timerPaused={timerPaused === true}
                   />
                 ) : null}
                 {finished && !compactFinishedCards ? (

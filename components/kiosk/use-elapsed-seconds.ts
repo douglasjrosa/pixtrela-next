@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { elapsedSecondsSince } from "@/lib/format/datetime";
 
 const TICK_MS = 1000;
+
+function usableStartMs(startedAt: string, nowMs: number): number | null {
+  const startedMs = Date.parse(startedAt);
+  if (Number.isNaN(startedMs) || startedMs > nowMs) return null;
+  return startedMs;
+}
 
 export function useElapsedSeconds(
   startedAt: string | null,
@@ -12,8 +18,10 @@ export function useElapsedSeconds(
   paused = false,
 ): number | null {
   const [nowMs, setNowMs] = useState<number | null>(null);
+  const anchoredStartMs = useRef<number | null>(null);
 
   useEffect(() => {
+    anchoredStartMs.current = null;
     const syncNow = () => setNowMs(Date.now());
     syncNow();
     if (!startedAt || paused) return undefined;
@@ -23,6 +31,20 @@ export function useElapsedSeconds(
 
   if (!startedAt) return null;
   if (nowMs === null) return baseSeconds;
+
+  const startedMs = usableStartMs(startedAt, nowMs);
+  if (startedMs === null) {
+    if (anchoredStartMs.current === null) {
+      anchoredStartMs.current = nowMs;
+    }
+    return (
+      baseSeconds +
+      elapsedSecondsSince(
+        new Date(anchoredStartMs.current).toISOString(),
+        nowMs,
+      )
+    );
+  }
 
   return baseSeconds + elapsedSecondsSince(startedAt, nowMs);
 }

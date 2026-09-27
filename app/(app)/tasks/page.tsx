@@ -8,15 +8,11 @@ import { TasksListSkeleton } from "@/components/tasks/tasks-list-skeleton";
 import { TasksListTableBody } from "@/components/tasks/tasks-list-table-body";
 import { TasksListTableFrame } from "@/components/tasks/tasks-list-table-frame";
 import { TasksListTableHeader } from "@/components/tasks/tasks-list-table-header";
-import { TasksPageHeader } from "@/components/tasks/tasks-page-header";
+import { TasksPageChrome } from "@/components/tasks/tasks-page-chrome";
 import { TasksRevisionRefresh } from "@/components/tasks/tasks-revision-refresh";
-import { TasksToolbar } from "@/components/tasks/tasks-toolbar";
 import { ListEmptyMessage } from "@/components/ui/list-empty-message";
 import type { StepOption } from "@/components/tasks/types";
-import {
-  APP_LIST_PAGE_SHELL_CLASS,
-  APP_LIST_PAGE_STACK_CLASS,
-} from "@/components/layout/app-page-layout";
+import { APP_LIST_PAGE_SHELL_CLASS } from "@/components/layout/app-page-layout";
 import type { Role } from "@/lib/auth/nav";
 import {
   canDeactivateTasks,
@@ -121,11 +117,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   return (
     <section className={APP_LIST_PAGE_SHELL_CLASS}>
       <TasksRevisionRefresh />
-      <div className={APP_LIST_PAGE_STACK_CLASS}>
-        <TasksPageHeader steps={steps} />
-        <Suspense fallback={null}>
-          <TasksToolbar />
-        </Suspense>
+      <TasksPageChrome steps={steps}>
         <Suspense
           key={taskListFilterKey(filters)}
           fallback={<TasksListSkeleton />}
@@ -136,7 +128,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
             canDelete={canDelete}
           />
         </Suspense>
-      </div>
+      </TasksPageChrome>
     </section>
   );
 }

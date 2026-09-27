@@ -37,6 +37,45 @@ export function applyOptimisticKioskStartToSubTasks(
   });
 }
 
+/** Prefer the click time when the server timestamp is missing, invalid, or later. */
+export function earlierSessionStartedAt(
+  serverStartedAt: string | null,
+  optimisticStartedAt: string,
+): string {
+  const optimisticMs = Date.parse(optimisticStartedAt);
+  const serverMs = serverStartedAt ? Date.parse(serverStartedAt) : Number.NaN;
+  if (Number.isNaN(optimisticMs)) {
+    return !Number.isNaN(serverMs) && serverStartedAt
+      ? serverStartedAt
+      : optimisticStartedAt;
+  }
+  if (Number.isNaN(serverMs) || optimisticMs <= serverMs) {
+    return optimisticStartedAt;
+  }
+  return serverStartedAt ?? optimisticStartedAt;
+}
+
+/** Writes the earlier start onto the matching row so the elapsed clock does not jump. */
+export function pinEarlierSessionStart(
+  items: readonly KioskSubTask[],
+  documentId: string,
+  optimisticStartedAt: string,
+): KioskSubTask[] {
+  let changed = false;
+  const next = items.map((item) => {
+    if (item.documentId !== documentId) return item;
+    const startedAt = earlierSessionStartedAt(
+      item.startedAt,
+      optimisticStartedAt,
+    );
+    if (startedAt === item.startedAt) return item;
+    changed = true;
+    return { ...item, startedAt };
+  });
+  if (!changed) return items as KioskSubTask[];
+  return next;
+}
+
 export function isOptimisticKioskStartSettled(
   subTasks: readonly KioskSubTask[],
   start: OptimisticKioskStart,

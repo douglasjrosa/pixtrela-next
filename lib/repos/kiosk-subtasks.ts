@@ -82,6 +82,11 @@ import {
 } from "@/lib/repos/balances";
 import { resolvePaymentCurrencyAt } from "@/lib/repos/payment-currency";
 import {
+  deleteOpenSessionsForUser,
+  insertIsolatedOpenSession,
+  listOpenSessionLive,
+} from "@/lib/repos/group-runs";
+import {
   fetchUserNamesByIds,
   runTaskSubTaskSyncRoutine,
 } from "@/lib/repos/subtask-lifecycle";
@@ -465,6 +470,20 @@ async function loadActivityEnrichment(
       activitiesBySubTask.get(subTaskId) ?? [],
     );
     activeColaboratorIdsBySubTaskId.set(subTaskId, activeIds);
+  }
+
+  const liveSessions = await listOpenSessionLive(subTaskIds, db);
+  for (const session of liveSessions) {
+    const activeIds = activeColaboratorIdsBySubTaskId.get(session.subTaskId) ?? [];
+    if (!activeIds.includes(session.userId)) {
+      activeColaboratorIdsBySubTaskId.set(session.subTaskId, [
+        ...activeIds,
+        session.userId,
+      ]);
+    }
+    if (session.userId === colaboratorId) {
+      openStartedAt.set(session.subTaskId, session.startedAt.toISOString());
+    }
   }
 
   return {
@@ -1341,6 +1360,7 @@ export async function startSubTask(
       currencyAwarded: 0,
       chainRunId: chainRunId ?? undefined,
     });
+    await insertIsolatedOpenSession(subTaskId, colaboratorId, timestamp, tx as unknown as Db);
 
     await tx
       .update(subTasks)
@@ -1604,6 +1624,11 @@ export async function stopSubTask(
     if (flagIds.length > 0) {
       await assignFlagsToSubTask(subTaskId, flagIds, tx as unknown as Db);
     }
+    await deleteOpenSessionsForUser(
+      subTaskId,
+      colaboratorId,
+      tx as unknown as Db,
+    );
 
     const [created] = await tx
       .insert(activities)

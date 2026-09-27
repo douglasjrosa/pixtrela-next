@@ -1,10 +1,10 @@
-import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
 import { FlagListTableFrame } from "@/components/settings/subtasks/flag-list-table-frame";
 import { FlagNameSearch } from "@/components/settings/subtasks/flag-name-search";
 import { FlagPageHeader } from "@/components/settings/subtasks/flag-page-header";
-import { APP_LIST_PAGE_STACK_CLASS } from "@/components/layout/app-page-layout";
+import { ListPageChrome } from "@/components/ui/list-page-chrome";
+import { ListPageToolbar } from "@/components/ui/list-page-toolbar";
 import { ListEmptyMessage } from "@/components/ui/list-empty-message";
 import { listMaterialFlags } from "@/lib/repos/material-flags";
 import { listAllSubTaskCategories } from "@/lib/repos/sub-task-categories";
@@ -34,17 +34,14 @@ export default async function SettingsSubtaskFlagsPage({
   const hasMore = SETTINGS_ENTITY_LIST_PAGE_SIZE < pageResult.total;
 
   return (
-    <div className={APP_LIST_PAGE_STACK_CLASS}>
-      <div className="flex shrink-0 flex-row items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <Suspense fallback={null}>
-            <FlagNameSearch categories={categories} />
-          </Suspense>
-        </div>
-        <div className="shrink-0">
-          <FlagPageHeader categories={categories} />
-        </div>
-      </div>
+    <ListPageChrome
+      toolbar={
+        <ListPageToolbar
+          search={<FlagNameSearch categories={categories} />}
+          trailingActions={<FlagPageHeader categories={categories} />}
+        />
+      }
+    >
       {pageResult.items.length === 0 ? (
         <ListEmptyMessage>{t("flagsEmpty")}</ListEmptyMessage>
       ) : (
@@ -54,6 +51,6 @@ export default async function SettingsSubtaskFlagsPage({
           initialHasMore={hasMore}
         />
       )}
-    </div>
+    </ListPageChrome>
   );
 }

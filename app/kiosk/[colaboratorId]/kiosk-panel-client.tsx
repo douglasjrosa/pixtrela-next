@@ -38,6 +38,7 @@ import {
   isOptimisticChainStopSettled,
   isOptimisticKioskExitSettled,
   isOptimisticKioskStartSettled,
+  pinEarlierSessionStart,
   type OptimisticKioskChainStop,
   type OptimisticKioskExit,
   type OptimisticKioskStart,
@@ -64,7 +65,6 @@ import { useKioskQueuePoll } from "@/hooks/use-kiosk-queue-poll";
 import { markKioskColaboratorReady } from "@/lib/welcome/kiosk-welcome-ready";
 
 import {
-  advanceChainRun,
   confirmChainStop,
   exitSubTask,
   fetchKioskQueueSectionPage,
@@ -271,6 +271,14 @@ export function KioskPanelClient({
     optimisticStart &&
     isOptimisticKioskStartSettled(subTasks, optimisticStart)
   ) {
+    const documentId = optimisticStart.documentId;
+    const startedAt = optimisticStart.startedAt;
+    setSubTasks((current) =>
+      pinEarlierSessionStart(current, documentId, startedAt),
+    );
+    setCatalog((current) =>
+      pinEarlierSessionStart(current, documentId, startedAt),
+    );
     setOptimisticStart(null);
     setQueueBusy((current) => (current === "start" ? null : current));
   }
@@ -571,11 +579,10 @@ export function KioskPanelClient({
     setOptimisticStart(optimistic);
     setQueueBusy("start");
     runBackgroundAction(async () => {
-      if (mode === "join") {
-        await joinLiveChain(colaboratorId, documentId, staffUserId);
-      } else {
-        await startSubTask(colaboratorId, documentId, staffUserId);
-      }
+        const result = mode === "join"
+          ? await joinLiveChain(colaboratorId, documentId, staffUserId)
+          : await startSubTask(colaboratorId, documentId, staffUserId);
+        if (result?.errorCode) throw new Error(result.errorCode);
     }, (error) => {
       showKioskErrorToast(kioskActionErrorMessage(t, error, "startFailed"));
     });
@@ -595,27 +602,12 @@ export function KioskPanelClient({
     setOptimisticStart(optimistic);
     setQueueBusy("start");
     runBackgroundAction(async () => {
-      await startChain(colaboratorId, headId, staffUserId);
+      const result = await startChain(colaboratorId, headId, staffUserId);
+      if (result?.errorCode) throw new Error(result.errorCode);
     }, (error) => {
       showKioskErrorToast(kioskActionErrorMessage(t, error, "startFailed"));
     });
   }
-
-  const handleAdvanceChain = useCallback(
-    (chainRunId: string): void => {
-      if (queueBusy) return;
-      void (async () => {
-        try {
-          await advanceChainRun(colaboratorId, chainRunId, staffUserId);
-          await refreshVisibleQueue();
-        } catch (error) {
-          rethrowIfNavigationError(error);
-          showKioskErrorToast(kioskActionErrorMessage(t, error, "exitFailed"));
-        }
-      })();
-    },
-    [colaboratorId, queueBusy, refreshVisibleQueue, staffUserId, t],
-  );
 
   function handleConfirmChainStop(
     chainRunId: string | null,
@@ -642,13 +634,14 @@ export function KioskPanelClient({
       answers,
     });
     runExitAction(async () => {
-      await confirmChainStop(
+      const result = await confirmChainStop(
         colaboratorId,
         chainRunId,
         answers,
         staffUserId,
         headId,
       );
+      if (result?.errorCode) throw new Error(result.errorCode);
       showKioskSuccessToast(t("exitRecorded"));
     }, (error) => {
       setOptimisticChainStop(null);
@@ -786,7 +779,6 @@ export function KioskPanelClient({
     onExit: readOnly ? undefined : handleExit,
     onStartChain: readOnly ? undefined : handleStartChain,
     onConfirmChainStop: readOnly ? undefined : handleConfirmChainStop,
-    onAdvanceChain: readOnly ? undefined : handleAdvanceChain,
     onReleaseMaterialFlag: readOnly ? undefined : handleReleaseMaterialFlag,
     onRefreshMaterialFlags: readOnly ? undefined : handleRefreshMaterialFlags,
   };
@@ -900,7 +892,6 @@ export function KioskPanelClient({
           onExit={readOnly ? undefined : handleExit}
           onStartChain={readOnly ? undefined : handleStartChain}
           onConfirmChainStop={readOnly ? undefined : handleConfirmChainStop}
-          onAdvanceChain={readOnly ? undefined : handleAdvanceChain}
           onReleaseMaterialFlag={
             readOnly ? undefined : handleReleaseMaterialFlag
           }

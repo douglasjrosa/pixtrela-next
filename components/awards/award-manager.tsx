@@ -28,6 +28,8 @@ import type { MediaAssetRecord } from "@/lib/repos/media";
 import { awardFormSchema, type AwardFormInput } from "@/lib/schemas/award";
 
 import { AwardListProvider } from "./award-list-context";
+import { ListPageActionsProvider } from "@/components/ui/list-page-actions-slot";
+
 import { AwardsToolbar } from "./awards-toolbar";
 import {
   currencyLabel,
@@ -393,18 +395,19 @@ export function AwardManager({
 
   return (
     <AwardListProvider openEdit={canOpenEdit ? startEdit : undefined}>
+      <ListPageActionsProvider>
       <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
-        <div className="flex shrink-0 items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold max-[500px]:text-lg">
-            {tAwards("title")}
-          </h1>
-          {canManage ? (
-            <AddNewButton label={tAwards("newAward")} onClick={startCreate} />
-          ) : null}
-        </div>
-
         <Suspense fallback={null}>
-          <AwardsToolbar />
+          <AwardsToolbar
+            trailingActions={
+              canManage ? (
+                <AddNewButton
+                  label={tAwards("newAward")}
+                  onClick={startCreate}
+                />
+              ) : null
+            }
+          />
         </Suspense>
 
         {message ? (
@@ -431,6 +434,7 @@ export function AwardManager({
 
         {children}
       </div>
+      </ListPageActionsProvider>
     </AwardListProvider>
   );
 }

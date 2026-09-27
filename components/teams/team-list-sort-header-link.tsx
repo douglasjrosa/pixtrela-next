@@ -1,17 +1,12 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
-import { ArrowDown, ArrowUp } from "lucide-react";
 
-import {
-  LIST_SORT_HEADER_LINK_BASE_CLASS,
-  listSortHeaderLinkClass,
-} from "@/lib/ui/table-head-styles";
+import { ListSortHeaderLink } from "@/components/ui/list-sort-header-link";
 import { cn } from "@/lib/utils";
+import type { TeamListFilters } from "@/lib/schemas/team-list-filters";
 import type {
   TeamListSort,
   TeamListSortColumn,
 } from "@/lib/schemas/team-list-sort";
-import type { TeamListFilters } from "@/lib/schemas/team-list-filters";
 import { buildTeamListSortHref } from "@/lib/teams/team-list-sort-url";
 
 export interface TeamListSortHeaderLinkProps {
@@ -38,35 +33,14 @@ export function TeamListSortHeaderLink({
   const href = buildTeamListSortHref(filters, column);
 
   return (
-    <th
-      className={cn(
-        "px-2 py-2 align-middle",
-        align === "center" ? "text-center" : "text-left",
-        className,
-      )}
-    >
-      <Link
-        href={href}
-        scroll={false}
-        className={cn(
-          LIST_SORT_HEADER_LINK_BASE_CLASS,
-          listSortHeaderLinkClass(active),
-          align === "center" ? "justify-center" : "justify-start",
-          linkClassName,
-        )}
-        aria-sort={
-          active ? (direction === "asc" ? "ascending" : "descending") : "none"
-        }
-      >
-        <span className={linkClassName ? "leading-tight" : undefined}>{label}</span>
-        {active ? (
-          direction === "asc" ? (
-            <ArrowUp className="size-3.5 shrink-0" aria-hidden />
-          ) : (
-            <ArrowDown className="size-3.5 shrink-0" aria-hidden />
-          )
-        ) : null}
-      </Link>
-    </th>
+    <ListSortHeaderLink
+      href={href}
+      label={label}
+      active={active}
+      direction={direction}
+      align={align}
+      className={cn("px-2 align-middle", className)}
+      linkClassName={linkClassName}
+    />
   );
 }

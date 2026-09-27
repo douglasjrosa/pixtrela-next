@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { LogsFiltersButton } from "@/components/settings/logs/logs-filters";
 import { LogsListFrame } from "@/components/settings/logs/logs-list-frame";
+import { ListPageChrome } from "@/components/ui/list-page-chrome";
 import { ListEmptyMessage } from "@/components/ui/list-empty-message";
 import { logListFilterKey } from "@/lib/logs/log-list-params";
 import type { LogActorOption, LogListItem } from "@/lib/repos/logs";
@@ -35,16 +36,19 @@ export function LogsScreen({
   }
 
   return (
-    <div className="space-y-3">
-      <LogsFiltersButton
-        filters={filters}
-        actors={actors}
-        onApplied={(next, result) => {
-          setFilters(next);
-          setItems(result.items);
-          setHasMore(result.hasMore);
-        }}
-      />
+    <ListPageChrome
+      toolbar={
+        <LogsFiltersButton
+          filters={filters}
+          actors={actors}
+          onApplied={(next, result) => {
+            setFilters(next);
+            setItems(result.items);
+            setHasMore(result.hasMore);
+          }}
+        />
+      }
+    >
       {items.length === 0 ? (
         <ListEmptyMessage>{t("empty")}</ListEmptyMessage>
       ) : (
@@ -54,6 +58,6 @@ export function LogsScreen({
           initialHasMore={hasMore}
         />
       )}
-    </div>
+    </ListPageChrome>
   );
 }

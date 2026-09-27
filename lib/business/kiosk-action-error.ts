@@ -1,4 +1,4 @@
-const KIOSK_ACTION_ERROR_CODES = [
+export const KIOSK_ACTION_ERROR_CODES = [
   "flagsRequired",
   "subTaskHasNoCategory",
   "flagWrongCategory",

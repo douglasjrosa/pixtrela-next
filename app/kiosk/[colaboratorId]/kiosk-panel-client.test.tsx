@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
@@ -8,6 +8,7 @@ import type { KioskQueueSectionPage } from "@/lib/repos/kiosk-subtasks";
 import type { OpenChainRun } from "@/lib/business/kiosk-queue-units";
 
 const fetchSectionPage = vi.fn();
+const fetchSnapshot = vi.fn();
 const refreshMaterialFlags = vi.fn();
 const startSubTask = vi.fn();
 const joinLiveChain = vi.fn();
@@ -46,7 +47,7 @@ vi.mock("./actions", () => ({
   releaseMaterialFlag: vi.fn(),
   refreshMaterialFlags: (...args: unknown[]) => refreshMaterialFlags(...args),
   fetchKioskQueueSectionPage: (...args: unknown[]) => fetchSectionPage(...args),
-  fetchKioskQueueSnapshot: vi.fn(async () => []),
+  fetchKioskQueueSnapshot: (...args: unknown[]) => fetchSnapshot(...args),
   fetchColaboratorFacePhotoUrl: vi.fn(async () => null),
 }));
 
@@ -103,8 +104,11 @@ function liberadasPage(
 
 describe("KioskPanelClient", () => {
   beforeEach(() => {
+    vi.useRealTimers();
     fetchSectionPage.mockReset();
     fetchSectionPage.mockImplementation(async () => liberadasPage([]));
+    fetchSnapshot.mockReset();
+    fetchSnapshot.mockImplementation(async () => []);
     refreshMaterialFlags.mockReset();
     refreshMaterialFlags.mockResolvedValue({
       flags: [],
@@ -177,6 +181,75 @@ describe("KioskPanelClient", () => {
       resolveStart();
       await Promise.resolve();
     });
+  });
+
+  it("keeps the elapsed clock running after the exit button appears", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-26T15:00:00.000Z"));
+    let resolveStart!: () => void;
+    const startGate = new Promise<void>((resolve) => {
+      resolveStart = resolve;
+    });
+    startSubTask.mockImplementation(async () => startGate);
+    const serverStartedAt = "2026-09-26T16:00:00.000Z";
+    fetchSnapshot.mockImplementation(async () => [
+      liberadasPage(
+        [],
+        [
+          {
+            type: "isolated",
+            subTask: {
+              ...waitingTask(),
+              status: "producing",
+              startedAt: serverStartedAt,
+              activeWorkerCount: 1,
+            },
+            helperMode: false,
+            showStart: false,
+          },
+        ],
+      ),
+    ]);
+
+    renderWithIntl(
+      <KioskPanelClient
+        colaboratorId="u-1"
+        colaboratorName="Ana"
+        initialLiberadas={liberadasPage([
+          {
+            type: "isolated",
+            subTask: waitingTask(),
+            helperMode: false,
+            showStart: true,
+          },
+        ])}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Iniciar" }));
+    await act(() => {
+      vi.advanceTimersByTime(3_000);
+    });
+    expect(screen.getByText("3s")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveStart();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Sair da subtarefa" }),
+    ).toBeInTheDocument();
+
+    try {
+      await act(() => {
+        vi.advanceTimersByTime(2_000);
+      });
+      expect(screen.getByText("5s")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps the producing card and shows processing on exit confirm", async () => {
@@ -290,7 +363,7 @@ describe("KioskPanelClient", () => {
       await Promise.resolve();
     });
 
-    expect(advanceChainRun).toHaveBeenCalledWith("u-1", "run-1", undefined);
+    expect(advanceChainRun).not.toHaveBeenCalled();
     const stopButton = screen.getByRole("button", { name: "Parar" });
     expect(stopButton).toBeEnabled();
     await user.click(stopButton);

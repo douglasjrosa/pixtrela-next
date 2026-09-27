@@ -7,6 +7,7 @@ import {
   assigneeIdsKey,
   buildAssigneesSnapshot,
   collectDirtyAssigneeUpdates,
+  collectDirtyAssigneeUpdatesForSave,
   hasAssigneeDraftChanges,
   ingestAssigneeDirectory,
   ingestSubtasksIntoAssigneeDirectory,
@@ -41,6 +42,33 @@ describe("board-assignee-draft", () => {
       "st-1": "u-1,u-2",
       "st-2": "",
     });
+  });
+
+  it("skips member assignee dirt when link copied head assignees", () => {
+    const baseline = {
+      "st-1": "u-1",
+      "st-2": "",
+    };
+    const linked = [
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        index: 0,
+        status: "waiting",
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        index: 1,
+        status: "waiting",
+        linkedToPrevious: true,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+    ];
+    expect(
+      collectDirtyAssigneeUpdatesForSave(linked, baseline, [
+        { documentId: "st-2", linkedToPrevious: true },
+      ]),
+    ).toEqual([]);
   });
 
   it("collects only dirty assignee updates", () => {

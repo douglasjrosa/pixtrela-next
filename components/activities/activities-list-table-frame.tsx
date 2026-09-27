@@ -14,6 +14,7 @@ import {
   updateActivity,
 } from "@/app/(app)/activities/actions";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
+import { ListPageActionsPortal } from "@/components/ui/list-page-actions-slot";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
@@ -289,19 +290,21 @@ export function ActivitiesListTableFrame({
     <ActivityEditProvider onEdit={openEdit}>
       <ListSelectionProvider value={selectionValue}>
         <div className="flex min-h-0 flex-1 flex-col">
-          <BulkListToolbar
-            showRefresh
-            refreshLabel={t("refreshList")}
-            refreshPending={isPending}
-            onRefresh={syncListFromServer}
-            showArchive={bulkEnabled && showArchiveAction}
-            showDelete={bulkEnabled && showDeleteAction}
-            archiveLabel={t("archiveSelected")}
-            deleteLabel={t("deleteSelected")}
-            disabled={isPending}
-            onArchive={() => setArchiveOpen(true)}
-            onDelete={() => setDeleteOpen(true)}
-          />
+          <ListPageActionsPortal>
+            <BulkListToolbar
+              showRefresh
+              refreshLabel={t("refreshList")}
+              refreshPending={isPending}
+              onRefresh={syncListFromServer}
+              showArchive={bulkEnabled && showArchiveAction}
+              showDelete={bulkEnabled && showDeleteAction}
+              archiveLabel={t("archiveSelected")}
+              deleteLabel={t("deleteSelected")}
+              disabled={isPending}
+              onArchive={() => setArchiveOpen(true)}
+              onDelete={() => setDeleteOpen(true)}
+            />
+          </ListPageActionsPortal>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             <table className="hidden w-full text-sm md:table">

@@ -5,6 +5,10 @@ import userEvent from "@testing-library/user-event";
 import { renderWithIntl } from "@/test/test-utils";
 
 import { TemplateListRowPresentational } from "./template-list-row-presentational";
+import {
+  ListPageActionsProvider,
+} from "@/components/ui/list-page-actions-slot";
+import { ListPageToolbar } from "@/components/ui/list-page-toolbar";
 import { TemplatesListTableFrame } from "./templates-list-table-frame";
 
 const loadMoreTemplates = vi.fn();
@@ -160,6 +164,38 @@ describe("TemplatesListTableFrame", () => {
       expect(bulkArchiveTemplates).toHaveBeenCalledWith(["tpl1"], reason);
     });
     expect(showSuccessToast).toHaveBeenCalled();
+  });
+
+  it("renders the archive action inside the toolbar slot", async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <ListPageActionsProvider>
+        <ListPageToolbar />
+        <TemplatesListTableFrame
+          filters={filters}
+          initialTemplates={initialTemplates}
+          initialHasMore={false}
+          initialPage={1}
+          canDeactivate
+          tableHeader={
+            <thead>
+              <tr>
+                <th>Nome</th>
+              </tr>
+            </thead>
+          }
+        />
+      </ListPageActionsProvider>,
+    );
+
+    await user.click(screen.getAllByRole("checkbox")[0]!);
+    const slot = document.querySelector('[data-slot="list-page-actions"]');
+    await waitFor(() => {
+      expect(slot?.querySelector("button")?.getAttribute("aria-label")).toBe(
+        "Arquivar selecionados",
+      );
+    });
   });
 
   it("hard-deletes when all selected templates are archived", async () => {

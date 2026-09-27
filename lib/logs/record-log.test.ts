@@ -143,6 +143,8 @@ describe("bug detail", () => {
     expect(isSkippableLogError(new Error("Cannot read properties of null"))).toBe(
       false,
     );
+    expect(isSkippableLogError(new Error("atWorkerCapacity"))).toBe(true);
+    expect(isSkippableLogError(new Error("boom"))).toBe(false);
     expect(() => z.string().parse(1)).toThrow(ZodError);
   });
 });

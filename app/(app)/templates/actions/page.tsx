@@ -1,9 +1,8 @@
-import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
 import { getAppSession } from "@/lib/auth/app-session";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
-import { APP_LIST_PAGE_STACK_CLASS } from "@/components/layout/app-page-layout";
+import { ListPageChrome } from "@/components/ui/list-page-chrome";
 import { FactoryActionListTableFrame } from "@/components/factory-actions/factory-action-list-table-frame";
 import { FactoryActionListTableHeader } from "@/components/factory-actions/factory-action-list-table-header";
 import { FactoryActionManager } from "@/components/factory-actions/factory-action-manager";
@@ -79,12 +78,9 @@ export default async function TemplateActionsPage({
 
   return (
     <FactoryActionManager>
-      <div className={APP_LIST_PAGE_STACK_CLASS}>
-        <Suspense fallback={null}>
-          <FactoryActionsToolbar />
-        </Suspense>
+      <ListPageChrome toolbar={<FactoryActionsToolbar />}>
         {listContent}
-      </div>
+      </ListPageChrome>
     </FactoryActionManager>
   );
 }

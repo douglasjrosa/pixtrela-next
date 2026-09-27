@@ -55,7 +55,9 @@ export const APP_LIST_PAGE_HEADER_ROW_CLASS = [
  */
 export const APP_SECTION_TABS_COMPACT_CLASS = [
   "max-[500px]:gap-1",
-  "[&_a]:max-[500px]:min-h-8 [&_a]:max-[500px]:px-2 [&_a]:max-[500px]:text-xs",
+  "[&_a]:max-[500px]:px-2 [&_a]:max-[500px]:text-xs",
+  "[&_a[aria-current=page]]:max-[500px]:min-h-8",
+  "[&_a:not([aria-current])]:max-[500px]:min-h-7",
 ].join(" ");
 
 /**

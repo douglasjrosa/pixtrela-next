@@ -19,6 +19,10 @@ const replaceSubTaskAssignees = vi.fn();
 const applyAutoStepTaskOrderingAfterTaskChange = vi.fn();
 const createSubTask = vi.fn();
 const updateSubTask = vi.fn();
+vi.mock("@/lib/repos/group-runs", () => ({
+  listOpenSessionLive: vi.fn(async () => []),
+}));
+
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({
     user: { id: "mgr-1", role: "manager" },
@@ -483,18 +487,28 @@ describe("board/actions drizzle", () => {
       false,
     );
 
-    expect(updateSubTask).toHaveBeenCalledTimes(1);
+    expect(updateSubTask).toHaveBeenCalledTimes(2);
     expect(updateSubTask).toHaveBeenCalledWith(
       "st-1",
       "task-1",
       expect.objectContaining({ assignedToIds: ["u-head", "u-new"] }),
     );
+    expect(updateSubTask).toHaveBeenCalledWith(
+      "st-2",
+      "task-1",
+      expect.objectContaining({ assignedToIds: ["u-head", "u-new"] }),
+    );
   });
 
-  it("updateBoardSubtaskAssignees rejects locked chain members", async () => {
-    listSubTasksWithRelationsForTask.mockResolvedValue([
+  it("updateBoardSubtaskAssignees applies one set to every linked member", async () => {
+    const siblings = [
       {
         id: "st-1",
+        taskId: "task-1",
+        name: "Cut",
+        qty: 1,
+        expectedTime: 10,
+        sharingType: "duration",
         index: 0,
         status: "waiting",
         activationStatus: "unlocked",
@@ -505,6 +519,11 @@ describe("board/actions drizzle", () => {
       },
       {
         id: "st-2",
+        taskId: "task-1",
+        name: "Pack",
+        qty: 1,
+        expectedTime: 10,
+        sharingType: "duration",
         index: 1,
         status: "waiting",
         activationStatus: "unlocked",
@@ -513,13 +532,24 @@ describe("board/actions drizzle", () => {
         assignedToIds: ["u-head"],
         dependencyIds: [],
       },
-    ]);
+    ];
+    listSubTasksWithRelationsForTask.mockResolvedValue(siblings);
+    getSubTaskById.mockImplementation(async (id: string) =>
+      siblings.find((row) => row.id === id) ?? null,
+    );
 
     const { updateBoardSubtaskAssignees } = await import("./actions");
-    await expect(
-      updateBoardSubtaskAssignees("st-2", "task-1", ["u-other"]),
-    ).rejects.toThrow("forbidden");
-    expect(updateSubTask).not.toHaveBeenCalled();
+    await updateBoardSubtaskAssignees("st-2", "task-1", ["u-other"]);
+    expect(updateSubTask).toHaveBeenCalledWith(
+      "st-1",
+      "task-1",
+      expect.objectContaining({ assignedToIds: ["u-other"] }),
+    );
+    expect(updateSubTask).toHaveBeenCalledWith(
+      "st-2",
+      "task-1",
+      expect.objectContaining({ assignedToIds: ["u-other"] }),
+    );
   });
 
   it("updateBoardSubtaskAssignees strips shared removals from the group", async () => {
@@ -572,11 +602,11 @@ describe("board/actions drizzle", () => {
     expect(updateSubTask).toHaveBeenCalledWith(
       "st-2",
       "task-1",
-      expect.objectContaining({ assignedToIds: [] }),
+      expect.objectContaining({ assignedToIds: ["u-extra"] }),
     );
   });
 
-  it("updateBoardSubtaskAssignees keeps extras local on a helper patch", async () => {
+  it("updateBoardSubtaskAssignees copies a member edit onto the whole group", async () => {
     const siblings = [
       {
         id: "st-1",
@@ -617,7 +647,12 @@ describe("board/actions drizzle", () => {
     const { updateBoardSubtaskAssignees } = await import("./actions");
     await updateBoardSubtaskAssignees("st-2", "task-1", ["u-head", "u-extra"]);
 
-    expect(updateSubTask).toHaveBeenCalledTimes(1);
+    expect(updateSubTask).toHaveBeenCalledTimes(2);
+    expect(updateSubTask).toHaveBeenCalledWith(
+      "st-1",
+      "task-1",
+      expect.objectContaining({ assignedToIds: ["u-head", "u-extra"] }),
+    );
     expect(updateSubTask).toHaveBeenCalledWith(
       "st-2",
       "task-1",

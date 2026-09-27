@@ -11,6 +11,7 @@ import {
 } from "@/app/(app)/tasks/actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
+import { ListPageActionsPortal } from "@/components/ui/list-page-actions-slot";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
 import {
@@ -182,19 +183,24 @@ export function TasksListTableFrame({
       }
     : null;
 
+  const bulkActions =
+    showArchiveAction || showDeleteAction ? (
+      <BulkListToolbar
+        showArchive={showArchiveAction}
+        showDelete={showDeleteAction}
+        archiveLabel={tManage("archiveSelected")}
+        deleteLabel={tManage("deleteSelected")}
+        disabled={isPending}
+        onArchive={() => setArchiveOpen(true)}
+        onDelete={() => setDeleteOpen(true)}
+      />
+    ) : null;
+
   return (
     <ListSelectionProvider value={selectionValue}>
       <div className="flex min-h-0 flex-1 flex-col">
-        {bulkEnabled ? (
-          <BulkListToolbar
-            showArchive={showArchiveAction}
-            showDelete={showDeleteAction}
-            archiveLabel={tManage("archiveSelected")}
-            deleteLabel={tManage("deleteSelected")}
-            disabled={isPending}
-            onArchive={() => setArchiveOpen(true)}
-            onDelete={() => setDeleteOpen(true)}
-          />
+        {bulkActions ? (
+          <ListPageActionsPortal>{bulkActions}</ListPageActionsPortal>
         ) : null}
 
         <div className="min-h-0 flex-1 overflow-y-auto">

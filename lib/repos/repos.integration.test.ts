@@ -718,7 +718,7 @@ describeWithDb("drizzle repos integration", () => {
   );
 
   it(
-    "starts a chain, auto-advances, rewrites timestamps on confirm, and keeps helper producing",
+    "starts a group together, ignores advance, and writes activities when the last worker leaves",
     async () => {
       const suffix = String(Date.now());
       const worker = await createUser({
@@ -764,9 +764,9 @@ describeWithDb("drizzle repos integration", () => {
       expect(subs[1]?.linkedToPrevious).toBe(true);
       expect(subs[2]?.linkedToPrevious).toBe(true);
 
-      await assignColaboratorsToSubTask(subs[0]!.id, [worker.id]);
+      await assignColaboratorsToSubTask(subs[0]!.id, [worker.id, helper.id]);
       await assignColaboratorsToSubTask(subs[1]!.id, [worker.id, helper.id]);
-      await assignColaboratorsToSubTask(subs[2]!.id, [worker.id]);
+      await assignColaboratorsToSubTask(subs[2]!.id, [worker.id, helper.id]);
 
       const t0 = new Date("2026-08-16T10:00:00Z");
       const { chainRunId } = await startChain(worker.id, subs[0]!.id, undefined, t0);
@@ -778,16 +778,15 @@ describeWithDb("drizzle repos integration", () => {
       );
 
       const afterAdvance = await listSubTasksForTask(task.id);
-      expect(afterAdvance.find((row) => row.id === subs[0]!.id)?.status).toBe(
-        "paused",
-      );
-      expect(afterAdvance.find((row) => row.id === subs[1]!.id)?.status).toBe(
-        "producing",
-      );
+      for (const sub of subs) {
+        expect(afterAdvance.find((row) => row.id === sub.id)?.status).toBe(
+          "producing",
+        );
+      }
 
-      await startSubTask(
+      await startChain(
         helper.id,
-        subs[1]!.id,
+        subs[0]!.id,
         undefined,
         new Date("2026-08-16T10:00:13Z"),
       );
@@ -798,13 +797,31 @@ describeWithDb("drizzle repos integration", () => {
         [
           { documentId: subs[0]!.id, completed: true },
           { documentId: subs[1]!.id, completed: true },
-          { documentId: subs[2]!.id, completed: false },
+          { documentId: subs[2]!.id, completed: true },
         ],
         undefined,
-        new Date("2026-08-16T10:00:20Z"),
+        new Date("2026-08-16T10:02:00Z"),
       );
 
       const db = getDb();
+      const beforeLastLeave = await db
+        .select()
+        .from(activities)
+        .where(eq(activities.chainRunId, chainRunId));
+      expect(beforeLastLeave).toHaveLength(0);
+
+      await confirmChainStop(
+        helper.id,
+        chainRunId,
+        [
+          { documentId: subs[0]!.id, completed: true },
+          { documentId: subs[1]!.id, completed: true },
+          { documentId: subs[2]!.id, completed: true },
+        ],
+        undefined,
+        new Date("2026-08-16T10:03:00Z"),
+      );
+
       const runRows = await db
         .select()
         .from(activities)
@@ -818,32 +835,18 @@ describeWithDb("drizzle repos integration", () => {
         principalStops[1]?.timestamp.toISOString(),
       );
 
-      const helperOpen = runRows.some(
-        (row) =>
-          row.colaboratorId === helper.id &&
-          row.action === "started" &&
-          !runRows.some(
-            (stop) =>
-              stop.colaboratorId === helper.id &&
-              stop.action === "stoped" &&
-              stop.subTaskId === row.subTaskId,
-          ),
-      );
-      expect(helperOpen).toBe(true);
-
       const afterConfirm = await listSubTasksForTask(task.id);
-      const pack = afterConfirm.find((row) => row.id === subs[1]!.id);
-      expect(pack?.status).toBe("producing");
-      const cut = afterConfirm.find((row) => row.id === subs[0]!.id);
-      expect(cut?.status).toBe("finished");
-      const ship = afterConfirm.find((row) => row.id === subs[2]!.id);
-      expect(ship?.status).not.toBe("finished");
+      for (const sub of subs) {
+        expect(afterConfirm.find((row) => row.id === sub.id)?.status).toBe(
+          "finished",
+        );
+      }
     },
     60_000,
   );
 
   it(
-    "finishes the supplier when the last helper exits after principal finish",
+    "finishes every member when the last worker leaves the group",
     async () => {
       const suffix = String(Date.now());
       const worker = await createUser({
@@ -900,7 +903,7 @@ describeWithDb("drizzle repos integration", () => {
         undefined,
         new Date("2026-08-16T11:00:00Z"),
       );
-      await startSubTask(
+      await startChain(
         helper.id,
         subs[0]!.id,
         undefined,
@@ -911,12 +914,7 @@ describeWithDb("drizzle repos integration", () => {
         worker.id,
         chainRunId,
         [
-          {
-            documentId: subs[0]!.id,
-            completed: true,
-            inferred: true,
-            semBandeira: true,
-          },
+          { documentId: subs[0]!.id, completed: true },
           { documentId: subs[1]!.id, completed: true },
         ],
         undefined,
@@ -928,13 +926,16 @@ describeWithDb("drizzle repos integration", () => {
         "producing",
       );
       expect(afterConfirm.find((row) => row.id === subs[1]!.id)?.status).toBe(
-        "finished",
+        "producing",
       );
 
-      await stopSubTask(
+      await confirmChainStop(
         helper.id,
-        subs[0]!.id,
-        { isCompleted: false },
+        chainRunId,
+        [
+          { documentId: subs[0]!.id, completed: true },
+          { documentId: subs[1]!.id, completed: true },
+        ],
         undefined,
         new Date("2026-08-16T11:00:25Z"),
       );
@@ -943,12 +944,15 @@ describeWithDb("drizzle repos integration", () => {
       expect(afterHelper.find((row) => row.id === subs[0]!.id)?.status).toBe(
         "finished",
       );
+      expect(afterHelper.find((row) => row.id === subs[1]!.id)?.status).toBe(
+        "finished",
+      );
     },
     60_000,
   );
 
   it(
-    "keeps the supplier open when helper exits without principal finish",
+    "keeps the group open when one worker leaves and another is still inside",
     async () => {
       const suffix = String(Date.now());
       const worker = await createUser({
@@ -1004,7 +1008,7 @@ describeWithDb("drizzle repos integration", () => {
         undefined,
         new Date("2026-08-16T12:00:00Z"),
       );
-      await startSubTask(
+      await startChain(
         helper.id,
         subs[0]!.id,
         undefined,
@@ -1012,7 +1016,7 @@ describeWithDb("drizzle repos integration", () => {
       );
 
       await confirmChainStop(
-        worker.id,
+        helper.id,
         chainRunId,
         [
           { documentId: subs[0]!.id, completed: false },
@@ -1022,16 +1026,11 @@ describeWithDb("drizzle repos integration", () => {
         new Date("2026-08-16T12:00:20Z"),
       );
 
-      await stopSubTask(
-        helper.id,
-        subs[0]!.id,
-        { isCompleted: false },
-        undefined,
-        new Date("2026-08-16T12:00:25Z"),
-      );
-
       const afterHelper = await listSubTasksForTask(task.id);
       expect(afterHelper.find((row) => row.id === subs[0]!.id)?.status).not.toBe(
+        "finished",
+      );
+      expect(afterHelper.find((row) => row.id === subs[1]!.id)?.status).not.toBe(
         "finished",
       );
     },
@@ -1039,7 +1038,7 @@ describeWithDb("drizzle repos integration", () => {
   );
 
   it(
-    "records personal qty for two peers and keeps the line open below the target",
+    "stores only the closing worker qty and finishes the group",
     async () => {
       const suffix = String(Date.now());
       const first = await createUser({
@@ -1102,22 +1101,10 @@ describeWithDb("drizzle repos integration", () => {
         new Date("2026-08-16T13:00:00Z"),
       );
       await startChain(
-        first.id,
-        chapas.id,
-        undefined,
-        new Date("2026-08-16T13:00:05Z"),
-      );
-      await startChain(
         second.id,
         chapas.id,
         undefined,
         new Date("2026-08-16T13:00:10Z"),
-      );
-      await startChain(
-        second.id,
-        chapas.id,
-        undefined,
-        new Date("2026-08-16T13:00:15Z"),
       );
 
       await confirmChainStop(
@@ -1156,16 +1143,14 @@ describeWithDb("drizzle repos integration", () => {
               row.action === "stoped",
           )
           .reduce((sum, row) => sum + row.qty, 0);
-      expect(stoppedQty(first.id, chapas.id)).toBe(10);
-      expect(stoppedQty(first.id, adesivos.id)).toBe(20);
+      expect(stoppedQty(first.id, chapas.id)).toBe(0);
+      expect(stoppedQty(first.id, adesivos.id)).toBe(0);
       expect(stoppedQty(second.id, chapas.id)).toBe(40);
       expect(stoppedQty(second.id, adesivos.id)).toBe(30);
 
       const after = await listSubTasksForTask(task.id);
-      expect(after.find((row) => row.id === chapas.id)?.status).not.toBe(
-        "finished",
-      );
-      expect(after.find((row) => row.id === adesivos.id)?.status).not.toBe(
+      expect(after.find((row) => row.id === chapas.id)?.status).toBe("finished");
+      expect(after.find((row) => row.id === adesivos.id)?.status).toBe(
         "finished",
       );
     },
@@ -1236,22 +1221,10 @@ describeWithDb("drizzle repos integration", () => {
         new Date("2026-08-16T14:00:00Z"),
       );
       await startChain(
-        first.id,
-        chapas.id,
-        undefined,
-        new Date("2026-08-16T14:00:05Z"),
-      );
-      await startChain(
         second.id,
         chapas.id,
         undefined,
         new Date("2026-08-16T14:00:10Z"),
-      );
-      await startChain(
-        second.id,
-        chapas.id,
-        undefined,
-        new Date("2026-08-16T14:00:15Z"),
       );
 
       await confirmChainStop(

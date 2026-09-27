@@ -94,17 +94,25 @@ export function groupHasJoinSlot(
   members: readonly KioskSubTask[],
   viewerId: string,
 ): boolean {
-  const qtyChain = members.some((item) => item.sharingType === "qty");
-  return members.some((item) => {
-    if (!(item.assignedToIds ?? []).includes(viewerId)) return false;
-    if (item.startedAt) return false;
-    if (isFinishedChainMember(toChainItem(item))) return false;
-    if (!qtyChain && item.status !== "producing") return false;
-    return !isSubTaskAtWorkerCapacity(
-      item.maxSameTimeWorkers ?? 1,
-      item.activeWorkerCount,
-    );
-  });
+  if (members.length === 0) return false;
+  const capacity = members.reduce(
+    (max, item) => Math.max(max, item.maxSameTimeWorkers ?? 1),
+    1,
+  );
+  const active = members.reduce(
+    (max, item) => Math.max(max, item.activeWorkerCount ?? 0),
+    0,
+  );
+  if (members.some((item) => Boolean(item.startedAt))) return false;
+  const assigned = members.some((item) =>
+    (item.assignedToIds ?? []).includes(viewerId),
+  );
+  if (!assigned) return false;
+  const executable = members.some(
+    (item) => !isFinishedChainMember(toChainItem(item)),
+  );
+  if (!executable) return false;
+  return active < capacity;
 }
 
 export function chainHasOtherActiveWorkers(
@@ -131,8 +139,9 @@ export function queueUnitHasActiveWorkers(unit: KioskQueueUnit): boolean {
 
 export function shouldHideKioskQueueUnit(
   unit: KioskQueueUnit,
-  viewerId: string,
+  _viewerId: string,
 ): boolean {
+  void _viewerId;
   if (unit.type === "isolated") {
     if (unit.subTask.startedAt) return false;
     return isSubTaskAtWorkerCapacity(
@@ -140,9 +149,7 @@ export function shouldHideKioskQueueUnit(
       unit.subTask.activeWorkerCount ?? 0,
     );
   }
-  if (unit.principalActive) return false;
-  if (!queueUnitHasActiveWorkers(unit)) return false;
-  return !groupHasJoinSlot(unit.members, viewerId);
+  return false;
 }
 
 export function viewerWorkedChainMemberIds(
@@ -249,6 +256,11 @@ export function buildKioskQueueUnits(input: {
       }
     }
 
+    const slotBlocked =
+      Boolean(openRun) &&
+      !viewerActive &&
+      !groupHasJoinSlot(remainingSubTasks, input.viewerId);
+
     for (const member of remainingSubTasks) {
       consumed.add(member.documentId);
     }
@@ -258,7 +270,7 @@ export function buildKioskQueueUnits(input: {
       headId: remainingSubTasks[0]!.documentId,
       memberIds: remainingSubTasks.map((item) => item.documentId),
       members: remainingSubTasks,
-      locked,
+      locked: locked || slotBlocked,
       principalActive: viewerActive,
       chainRunId: openRun?.chainRunId ?? null,
       runStartedAt: openRun?.runStartedAt ?? null,

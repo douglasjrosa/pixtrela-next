@@ -97,7 +97,6 @@ describe("CurrencyManager", () => {
   it("renders currencies in a tasks-like table", () => {
     renderManager();
 
-    expect(screen.getByRole("heading", { name: "Moedas" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Nova moeda" }),
     ).toBeInTheDocument();
@@ -334,29 +333,36 @@ describe("CurrencyManager", () => {
     15_000,
   );
 
-  it("shows only archived currencies when the toggle is on", () => {
+  async function applyShowArchivedFilter(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: "Filtros" }));
+    const dialog = screen.getByRole("dialog", { name: "Filtros" });
+    fireEvent.click(
+      within(dialog).getByRole("checkbox", { name: "Exibir moedas arquivadas" }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Aplicar" }));
+  }
+
+  it("shows only archived currencies when the toggle is on", async () => {
+    const user = userEvent.setup();
     renderManager({
       currencies: [currencies[0]!, { ...currencies[1]!, active: false }],
     });
 
     expect(screen.getAllByText("Estrela").length).toBeGreaterThan(0);
-    fireEvent.click(
-      screen.getByRole("checkbox", { name: "Exibir moedas arquivadas" }),
-    );
+    await applyShowArchivedFilter(user);
     expect(screen.queryByText("Estrela")).not.toBeInTheDocument();
     expect(screen.getAllByText("Gema").length).toBeGreaterThan(0);
   });
 
   it("hard-deletes when every selected currency is archived", async () => {
+    const user = userEvent.setup();
     const onBulkDelete = vi.fn().mockResolvedValue(undefined);
     renderManager({
       currencies: [currencies[0]!, { ...currencies[1]!, active: false }],
       onBulkDelete,
     });
 
-    fireEvent.click(
-      screen.getByRole("checkbox", { name: "Exibir moedas arquivadas" }),
-    );
+    await applyShowArchivedFilter(user);
     expect(screen.getAllByText("Inativa").length).toBeGreaterThan(0);
     fireEvent.click(
       screen.getAllByRole("checkbox", { name: "Selecionar Gema" })[0]!,

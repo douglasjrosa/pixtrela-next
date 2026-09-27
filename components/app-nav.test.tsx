@@ -11,6 +11,10 @@ vi.mock("next-auth/react", () => ({
   signOut: (...args: unknown[]) => signOut(...args),
 }));
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/tasks",
+}));
+
 import { AppNavClient } from "./app-nav-client";
 
 const adminItems = [

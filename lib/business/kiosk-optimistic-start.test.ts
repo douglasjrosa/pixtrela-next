@@ -7,8 +7,10 @@ import {
   applyOptimisticChainStopToSubTasks,
   applyOptimisticKioskStartToSubTasks,
   applyOptimisticStateToLiberadasSection,
+  earlierSessionStartedAt,
   isOptimisticChainStopSettled,
   isOptimisticKioskStartSettled,
+  pinEarlierSessionStart,
 } from "./kiosk-optimistic-start";
 
 function stub(overrides: Partial<KioskSubTask> = {}): KioskSubTask {
@@ -53,6 +55,27 @@ describe("kiosk optimistic start", () => {
       activeWorkerCount: 1,
     });
     expect(next[1]?.status).toBe("waiting");
+  });
+
+  it("keeps the earlier session start when the server timestamp is later", () => {
+    const optimisticStartedAt = "2026-08-17T23:00:00.000Z";
+    const serverStartedAt = "2026-08-17T23:00:04.000Z";
+    expect(earlierSessionStartedAt(serverStartedAt, optimisticStartedAt)).toBe(
+      optimisticStartedAt,
+    );
+    expect(
+      earlierSessionStartedAt("2026-08-17T22:59:00.000Z", optimisticStartedAt),
+    ).toBe("2026-08-17T22:59:00.000Z");
+    expect(earlierSessionStartedAt("not-a-date", optimisticStartedAt)).toBe(
+      optimisticStartedAt,
+    );
+
+    const pinned = pinEarlierSessionStart(
+      [stub({ startedAt: serverStartedAt, status: "producing" })],
+      "st-1",
+      optimisticStartedAt,
+    );
+    expect(pinned[0]?.startedAt).toBe(optimisticStartedAt);
   });
 
   it("settles when the server queue already has a session", () => {

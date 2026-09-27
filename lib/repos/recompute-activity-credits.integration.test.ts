@@ -245,7 +245,7 @@ describeWithDb("admin activity credit replay", () => {
         templateTaskCode: `CR${suffix.slice(-6)}`,
       });
       const subs = await listSubTasksForTask(task.id);
-      await assignColaboratorsToSubTask(subs[0]!.id, [worker.id]);
+      await assignColaboratorsToSubTask(subs[0]!.id, [worker.id, helper.id]);
       await assignColaboratorsToSubTask(subs[1]!.id, [worker.id, helper.id]);
 
       const { chainRunId } = await startChain(
@@ -254,9 +254,9 @@ describeWithDb("admin activity credit replay", () => {
         undefined,
         new Date("2026-08-16T10:00:00.000Z"),
       );
-      await startSubTask(
+      await startChain(
         helper.id,
-        subs[1]!.id,
+        subs[0]!.id,
         undefined,
         new Date("2026-08-16T10:00:05.000Z"),
       );
@@ -269,6 +269,16 @@ describeWithDb("admin activity credit replay", () => {
         ],
         undefined,
         new Date("2026-08-16T10:00:20.000Z"),
+      );
+      await confirmChainStop(
+        helper.id,
+        chainRunId,
+        [
+          { documentId: subs[0]!.id, completed: true },
+          { documentId: subs[1]!.id, completed: true },
+        ],
+        undefined,
+        new Date("2026-08-16T10:00:30.000Z"),
       );
 
       const before = await db

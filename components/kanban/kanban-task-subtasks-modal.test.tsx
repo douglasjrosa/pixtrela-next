@@ -1124,7 +1124,7 @@ describe("KanbanTaskSubtasksModal", () => {
     );
   });
 
-  it("dims head assignees on a helper until the row toggles to the group", async () => {
+  it("selects the whole group on the first click", async () => {
     const user = userEvent.setup();
     const onAssigneesChange = vi.fn();
     const chained = [
@@ -1161,9 +1161,6 @@ describe("KanbanTaskSubtasksModal", () => {
       "aria-pressed",
       "false",
     );
-    expect(screen.getByRole("button", { name: "Remover Ana" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Atribuir Bob" })).toBeEnabled();
-
     await user.click(screen.getByRole("button", { name: /Pintar/ }));
     expect(screen.getByRole("button", { name: /Soldar/ })).toHaveAttribute(
       "aria-pressed",

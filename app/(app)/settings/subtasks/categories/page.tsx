@@ -1,10 +1,10 @@
-import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
 import { CategoryListTableFrame } from "@/components/settings/subtasks/category-list-table-frame";
 import { CategoryNameSearch } from "@/components/settings/subtasks/category-name-search";
 import { CategoryPageHeader } from "@/components/settings/subtasks/category-page-header";
-import { APP_LIST_PAGE_STACK_CLASS } from "@/components/layout/app-page-layout";
+import { ListPageChrome } from "@/components/ui/list-page-chrome";
+import { ListPageToolbar } from "@/components/ui/list-page-toolbar";
 import { ListEmptyMessage } from "@/components/ui/list-empty-message";
 import { listSubTaskCategories } from "@/lib/repos/sub-task-categories";
 import { SETTINGS_ENTITY_LIST_PAGE_SIZE } from "@/lib/schemas/sub-task-category";
@@ -27,17 +27,14 @@ export default async function SettingsSubtaskCategoriesPage({
   const hasMore = SETTINGS_ENTITY_LIST_PAGE_SIZE < pageResult.total;
 
   return (
-    <div className={APP_LIST_PAGE_STACK_CLASS}>
-      <div className="flex shrink-0 flex-row items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <Suspense fallback={null}>
-            <CategoryNameSearch />
-          </Suspense>
-        </div>
-        <div className="shrink-0">
-          <CategoryPageHeader />
-        </div>
-      </div>
+    <ListPageChrome
+      toolbar={
+        <ListPageToolbar
+          search={<CategoryNameSearch />}
+          trailingActions={<CategoryPageHeader />}
+        />
+      }
+    >
       {pageResult.items.length === 0 ? (
         <ListEmptyMessage>{t("categoriesEmpty")}</ListEmptyMessage>
       ) : (
@@ -47,6 +44,6 @@ export default async function SettingsSubtaskCategoriesPage({
           initialHasMore={hasMore}
         />
       )}
-    </div>
+    </ListPageChrome>
   );
 }

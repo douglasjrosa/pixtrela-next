@@ -2,6 +2,7 @@
 
 import { revalidateTag } from "next/cache";
 
+import { KIOSK_ACTION_ERROR_CODES } from "@/lib/business/kiosk-action-error";
 import type { KioskQueueSectionKey } from "@/lib/business/kiosk-queue-units";
 import { getRemainingSubTaskQty } from "@/lib/business/subtask-queue";
 import { loadKioskSettings } from "@/lib/kiosk/load-session-idle";
@@ -42,6 +43,31 @@ function invalidateActivityData(): void {
   revalidateTag("drizzle:subTasks", "default");
   revalidateTag("drizzle:balances", "default");
   revalidateTag("drizzle:tasks", "default");
+}
+
+export type KioskMutationResult = { errorCode?: string };
+
+function refusalResult(error: unknown): KioskMutationResult | null {
+  if (!(error instanceof Error)) return null;
+  const code = error.message;
+  if ((KIOSK_ACTION_ERROR_CODES as readonly string[]).includes(code)) {
+    return { errorCode: code };
+  }
+  return null;
+}
+
+async function runKioskMutation(
+  action: () => Promise<void>,
+): Promise<KioskMutationResult> {
+  try {
+    await action();
+    invalidateActivityData();
+    return {};
+  } catch (error) {
+    const refusal = refusalResult(error);
+    if (refusal) return refusal;
+    throw error;
+  }
 }
 
 const SECTION_KEYS = new Set<KioskQueueSectionKey>([
@@ -97,16 +123,13 @@ export async function startSubTask(
   colaboratorId: string,
   subTaskDocumentId: string,
   staffUserId?: string,
-): Promise<void> {
+): Promise<KioskMutationResult> {
   await assertQueueStaffMutation(colaboratorId, staffUserId);
-
   activityFormSchema.parse({
     subTaskDocumentId,
     action: "started",
   });
-
-  await startSubTaskRepo(colaboratorId, subTaskDocumentId);
-  invalidateActivityData();
+  return runKioskMutation(() => startSubTaskRepo(colaboratorId, subTaskDocumentId));
 }
 
 export async function exitSubTask(
@@ -147,20 +170,20 @@ export async function startChain(
   colaboratorId: string,
   headId: string,
   staffUserId?: string,
-): Promise<void> {
+): Promise<KioskMutationResult> {
   await assertQueueStaffMutation(colaboratorId, staffUserId);
-  await startChainRepo(colaboratorId, headId);
-  invalidateActivityData();
+  return runKioskMutation(() => startChainRepo(colaboratorId, headId));
 }
 
 export async function joinLiveChain(
   colaboratorId: string,
   subTaskDocumentId: string,
   staffUserId?: string,
-): Promise<void> {
+): Promise<KioskMutationResult> {
   await assertQueueStaffMutation(colaboratorId, staffUserId);
-  await joinLiveChainRepo(colaboratorId, subTaskDocumentId);
-  invalidateActivityData();
+  return runKioskMutation(() =>
+    joinLiveChainRepo(colaboratorId, subTaskDocumentId),
+  );
 }
 
 export async function advanceChainRun(
@@ -179,18 +202,19 @@ export async function confirmChainStop(
   rawAnswers: unknown,
   staffUserId?: string,
   headId?: string,
-): Promise<void> {
+): Promise<KioskMutationResult> {
   await assertQueueStaffMutation(colaboratorId, staffUserId);
   const answers = parseChainStopAnswers(rawAnswers);
-  await confirmChainStopRepo(
-    colaboratorId,
-    chainRunId,
-    answers,
-    undefined,
-    undefined,
-    headId,
+  return runKioskMutation(() =>
+    confirmChainStopRepo(
+      colaboratorId,
+      chainRunId,
+      answers,
+      undefined,
+      undefined,
+      headId,
+    ),
   );
-  invalidateActivityData();
 }
 
 export async function fetchColaboratorFacePhotoUrl(

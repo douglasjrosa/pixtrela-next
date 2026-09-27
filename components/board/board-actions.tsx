@@ -20,7 +20,7 @@ import type { LoadMoreBoardColumnResult } from "@/components/kanban/kanban-board
 import {
   applyAssigneeDraftDeltasToCounts,
   buildAssigneesSnapshot,
-  collectDirtyAssigneeUpdates,
+  collectDirtyAssigneeUpdatesForSave,
   hasAssigneeDraftChanges,
   ingestAssigneeDirectory,
   ingestSubtasksIntoAssigneeDirectory,
@@ -46,9 +46,9 @@ import {
   isMultiMemberChain,
   reconcileChainReorder,
   resolveChains,
-  shouldPropagateHeadAssigneeSave,
   type AssigneeApplyScope,
 } from "@/lib/business/subtask-chain";
+import { prepareBoardSubtasksForSave } from "@/lib/business/group-link";
 import { countUnassignedSubTasks } from "@/lib/business/kanban-card-badges";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
 import type { ActivitySession } from "@/lib/business/task-progress";
@@ -797,11 +797,7 @@ export function BoardActions({
       selectedTask.qty,
       selectedTask.name,
     );
-    const snapshot = subtasks;
-    const dirtyAssigneeUpdates = collectDirtyAssigneeUpdates(
-      snapshot,
-      assigneesBaseline,
-    );
+    const snapshot = prepareBoardSubtasksForSave(subtasks);
     const dirtyLinkUpdates = collectDirtyLinkUpdates(snapshot, linksBaseline)
       .sort((left, right) => {
         const leftIndex =
@@ -812,6 +808,11 @@ export function BoardActions({
           0;
         return leftIndex - rightIndex;
       });
+    const dirtyAssigneeUpdates = collectDirtyAssigneeUpdatesForSave(
+      snapshot,
+      assigneesBaseline,
+      dirtyLinkUpdates,
+    );
     if (dirtyAssigneeUpdates.length === 0 && dirtyLinkUpdates.length === 0) {
       return;
     }
@@ -851,27 +852,13 @@ export function BoardActions({
             (item) => item.documentId === update.documentId,
           );
           if (chain && isMultiMemberChain(chain) && current) {
-            const role = canEditAssignees(
-              current.documentId,
-              current.maxSameTimeWorkers,
-              chain,
+            await updateSubtaskAssignees(
+              update.documentId,
+              taskDocumentId,
+              update.assignedToIds,
+              true,
             );
-            if (role === "none") continue;
-            if (role === "head") {
-              const memberIds = chain.memberIds.map((id) => {
-                const row = snapshot.find((item) => item.documentId === id);
-                return (
-                  row?.assignedTo.map((assignee) => assignee.documentId) ?? []
-                );
-              });
-              await updateSubtaskAssignees(
-                update.documentId,
-                taskDocumentId,
-                update.assignedToIds,
-                shouldPropagateHeadAssigneeSave(memberIds, update.assignedToIds),
-              );
-              continue;
-            }
+            continue;
           }
           await updateSubtaskAssignees(
             update.documentId,

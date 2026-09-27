@@ -23,6 +23,8 @@ import {
 
 import { TeamListProvider } from "./team-list-context";
 import { TeamColaboratorPicker } from "./team-colaborator-picker";
+import { ListPageActionsProvider } from "@/components/ui/list-page-actions-slot";
+
 import { TeamsToolbar } from "./teams-toolbar";
 import type { TeamRow, UserOption } from "./types";
 
@@ -267,16 +269,14 @@ export function TeamManager({
 
   return (
     <TeamListProvider openEdit={startEdit}>
+      <ListPageActionsProvider>
       <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
-        <div className="flex shrink-0 items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold max-[500px]:text-lg">
-            {tTeams("title")}
-          </h1>
-          <AddNewButton label={tTeams("newTeam")} onClick={startCreate} />
-        </div>
-
         <Suspense fallback={null}>
-          <TeamsToolbar />
+          <TeamsToolbar
+            trailingActions={
+              <AddNewButton label={tTeams("newTeam")} onClick={startCreate} />
+            }
+          />
         </Suspense>
 
         {message ? (
@@ -301,6 +301,7 @@ export function TeamManager({
 
         {children}
       </div>
+      </ListPageActionsProvider>
     </TeamListProvider>
   );
 }

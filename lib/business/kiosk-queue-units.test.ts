@@ -330,6 +330,35 @@ describe("buildKioskQueueUnits", () => {
     expect(units[0]).toMatchObject({ showStart: true });
   });
 
+  it("keeps a full group in Bloqueadas instead of hiding it", () => {
+    const units = buildKioskQueueUnits({
+      viewerId: "u3",
+      subTasks: chained.map((item) => ({
+        ...item,
+        status: "producing" as const,
+        activeWorkerCount: 2,
+        maxSameTimeWorkers: 2,
+        assignedToIds: ["u1", "u2", "u3"],
+      })),
+      openRuns: [
+        {
+          chainHeadId: "a",
+          chainRunId: "run-1",
+          principalId: "u1",
+          runStartedAt: "2026-08-16T12:00:00.000Z",
+        },
+      ],
+    });
+    expect(units).toEqual([
+      expect.objectContaining({
+        type: "group",
+        locked: true,
+        showStart: false,
+        principalActive: false,
+      }),
+    ]);
+  });
+
   it("grants start on the next card when the current card is occupied", () => {
     const units = buildKioskQueueUnits({
       viewerId: "u1",

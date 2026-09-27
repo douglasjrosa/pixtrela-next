@@ -50,6 +50,7 @@ import {
   canEditAssignees,
   chainIdsForClickSelection,
   chainItemsFromBoard,
+  constrainHelperAssignees,
   findChainContaining,
   isMultiMemberChain,
   nextChainSubtaskClick,
@@ -57,6 +58,13 @@ import {
   type AssigneeApplyScope,
   type ChainClickSelection,
 } from "@/lib/business/subtask-chain";
+import {
+  applyEffectiveBoardLinks,
+  displayMaxSameTimeWorkers,
+  groupMemberIds,
+  showChainLinkButton,
+  toggleGroupInSelection,
+} from "@/lib/business/group-link";
 import {
   buildMultiAssignUpdates,
   buildMultiRemoveUpdates,
@@ -625,21 +633,27 @@ export function KanbanTaskSubtasksModal({
     () => pending.map((item) => item.documentId),
     [pending],
   );
-  const chainItems = useMemo(
-    () => chainItemsFromBoard(subtasks),
+  const chainSource = useMemo(
+    () => applyEffectiveBoardLinks(subtasks),
     [subtasks],
   );
+  const chainItems = useMemo(
+    () => chainItemsFromBoard(chainSource),
+    [chainSource],
+  );
   const chains = useMemo(() => resolveChains(chainItems), [chainItems]);
+  const maxWorkersById = useMemo(
+    () => displayMaxSameTimeWorkers(chainSource),
+    [chainSource],
+  );
 
-  function assigneeRoleFor(documentId: string): "head" | "helper" | "none" | "solo" {
+  function assigneeEditRoleFor(
+    documentId: string,
+  ): ReturnType<typeof canEditAssignees> | "solo" {
     const chain = findChainContaining(chains, documentId);
-    const current = chainItems.find((item) => item.documentId === documentId);
-    if (!chain || chain.memberIds.length <= 1 || !current) return "solo";
-    return canEditAssignees(
-      current.documentId,
-      current.maxSameTimeWorkers,
-      chain,
-    );
+    if (!chain || !isMultiMemberChain(chain)) return "solo";
+    const maxWorkers = maxWorkersById.get(documentId) ?? 1;
+    return canEditAssignees(documentId, maxWorkers, chain);
   }
 
   const dragDisabled =
@@ -687,24 +701,17 @@ export function KanbanTaskSubtasksModal({
     (hasPendingSubtasks || loading) && activeMainTab === "pending";
   const selectedSubtask =
     pending.find((item) => item.documentId === selectedSubtaskId) ?? null;
-  const selectedAssigneeRole = selectedSubtask
-    ? assigneeRoleFor(selectedSubtask.documentId)
+  const selectedAssigneeEditRole = selectedSubtask
+    ? assigneeEditRoleFor(selectedSubtask.documentId)
     : "solo";
   const selectedApplyScope: AssigneeApplyScope | undefined =
     chainClickSelection?.scope ??
-    (selectedAssigneeRole === "head"
-      ? "group"
-      : selectedAssigneeRole === "helper"
-        ? "self"
-        : undefined);
+    (selectedAssigneeEditRole === "head" ? "group" : undefined);
   const selectedAssigneeLocked =
-    selectedSubtask != null &&
-    selectedAssigneeRole === "none" &&
-    selectedApplyScope !== "group";
+    selectedAssigneeEditRole === "none" && selectedApplyScope !== "group";
   const selectedHelperSelfLocked =
-    selectedSubtask != null &&
-    selectedAssigneeRole === "helper" &&
-    selectedApplyScope === "self";
+    selectedAssigneeEditRole === "helper" &&
+    (chainClickSelection?.scope ?? "self") === "self";
   const selectedChain = selectedSubtask
     ? findChainContaining(chains, selectedSubtask.documentId)
     : null;
@@ -888,18 +895,32 @@ export function KanbanTaskSubtasksModal({
       onAssigneesChange(source, assignedToIds);
       return;
     }
-    const applyScope = selectedApplyScope ?? "self";
+    const editRole = assigneeEditRoleFor(source.documentId);
+    const applyScope: AssigneeApplyScope =
+      chainClickSelection?.scope ??
+      (editRole === "head" ? "group" : "self");
+    let nextIds = assignedToIds;
+    if (editRole === "helper" && applyScope === "self") {
+      const head = pending.find((item) => item.documentId === chain.headId);
+      if (head) {
+        nextIds = constrainHelperAssignees(
+          getSubtaskAssigneeIds(head),
+          assignedToIds,
+        );
+      }
+    }
     const target =
       applyScope === "group"
         ? (pending.find((item) => item.documentId === chain.headId) ?? source)
         : source;
-    onAssigneesChange(target, assignedToIds, applyScope);
+    onAssigneesChange(target, nextIds, applyScope);
   }
 
   function handlePendingSubtaskClick(subtask: BoardSubTaskSummary): void {
     if (multiEnabled) {
+      const memberIds = groupMemberIds(chainSource, subtask.documentId);
       setSelectedSubtaskIds((current) =>
-        toggleIdInSet(current, subtask.documentId),
+        toggleGroupInSelection(current, memberIds),
       );
       return;
     }
@@ -907,9 +928,13 @@ export function KanbanTaskSubtasksModal({
     if (focusMode === "subtasks") {
       const chain = findChainContaining(chains, subtask.documentId);
       if (chain && isMultiMemberChain(chain)) {
+        const maxWorkers =
+          maxWorkersById.get(subtask.documentId) ??
+          subtask.maxSameTimeWorkers ??
+          1;
         const next = nextChainSubtaskClick({
           clickedId: subtask.documentId,
-          clickedMaxWorkers: subtask.maxSameTimeWorkers,
+          clickedMaxWorkers: maxWorkers,
           current: chainClickSelection,
         });
         setChainClickSelection(next);
@@ -927,15 +952,18 @@ export function KanbanTaskSubtasksModal({
       showHintToast(tKanban("chooseCollaboratorFirst"));
       return;
     }
-    if (assigneeRoleFor(subtask.documentId) === "none") {
-      showHintToast(tKanban("assigneesFollowHead"));
-      return;
-    }
+    const memberIds = groupMemberIds(chainSource, subtask.documentId);
+    const target =
+      pending.find((item) => item.documentId === memberIds[0]) ?? subtask;
     const nextIds = toggleCollaboratorOnSubtask(
-      getSubtaskAssigneeIds(subtask),
+      getSubtaskAssigneeIds(target),
       selectedCollaboratorId,
     );
-    onAssigneesChange(subtask, nextIds);
+    if (memberIds.length > 1) {
+      onAssigneesChange(target, nextIds, "group");
+      return;
+    }
+    onAssigneesChange(target, nextIds);
   }
 
   function handleCollaboratorClick(collaboratorId: string): void {
@@ -1343,13 +1371,23 @@ export function KanbanTaskSubtasksModal({
                         items={pendingSubtaskIds}
                         strategy={verticalListSortingStrategy}
                       >
-                        {pending.map((subtask, index) => {
+                        {pending.map((subtask) => {
                           const highlighted =
                             isPendingSubtaskHighlighted(subtask);
+                          const effective = chainSource.find(
+                            (item) => item.documentId === subtask.documentId,
+                          );
+                          const displaySubtask = {
+                            ...subtask,
+                            linkedToPrevious: effective?.linkedToPrevious ?? false,
+                            maxSameTimeWorkers:
+                              maxWorkersById.get(subtask.documentId) ??
+                              subtask.maxSameTimeWorkers,
+                          };
                           return (
                             <SortablePendingSubtaskCard
                               key={subtask.documentId}
-                              subtask={subtask}
+                              subtask={displaySubtask}
                               highlighted={highlighted}
                               dragDisabled={
                                 dragDisabled ||
@@ -1361,7 +1399,10 @@ export function KanbanTaskSubtasksModal({
                               dragLabel={tSubtasks("dragToReorder")}
                               statusLabel={tStatus(subtask.status)}
                               showLinkColumn={Boolean(onLinkToggle)}
-                              showLinkButton={Boolean(onLinkToggle) && index > 0}
+                              showLinkButton={
+                                Boolean(onLinkToggle) &&
+                                showChainLinkButton(subtask, pending)
+                              }
                               linkLabel={tKanban("linkToPrevious")}
                               unlinkLabel={tKanban("unlinkFromPrevious")}
                               onLinkToggle={(linked) =>

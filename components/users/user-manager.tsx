@@ -54,6 +54,8 @@ import {
   type UserImageType,
 } from "./user-media-fields";
 import { UserListProvider } from "./user-list-context";
+import { ListPageActionsProvider } from "@/components/ui/list-page-actions-slot";
+
 import { UsersToolbar } from "./users-toolbar";
 
 export type { UserRow } from "./types";
@@ -626,16 +628,14 @@ export function UserManager({
       openEdit={startEdit}
       canEdit={(user) => manageableRoles.includes(user.roleType)}
     >
+      <ListPageActionsProvider>
       <div className="flex min-h-0 flex-1 flex-col gap-4 max-[500px]:gap-2">
-        <div className="flex shrink-0 items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold max-[500px]:text-lg">
-            {tUsers("title")}
-          </h1>
-          <AddNewButton label={tUsers("newUser")} onClick={startCreate} />
-        </div>
-
         <Suspense fallback={null}>
-          <UsersToolbar />
+          <UsersToolbar
+            trailingActions={
+              <AddNewButton label={tUsers("newUser")} onClick={startCreate} />
+            }
+          />
         </Suspense>
 
         {message ? (
@@ -669,6 +669,7 @@ export function UserManager({
 
         {children}
       </div>
+      </ListPageActionsProvider>
     </UserListProvider>
   );
 }

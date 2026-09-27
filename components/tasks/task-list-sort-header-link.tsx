@@ -1,16 +1,9 @@
-import Link from "next/link";
-import { ArrowDown, ArrowUp } from "lucide-react";
-
-import {
-  LIST_SORT_HEADER_LINK_BASE_CLASS,
-  listSortHeaderLinkClass,
-} from "@/lib/ui/table-head-styles";
-import { cn } from "@/lib/utils";
+import { ListSortHeaderLink } from "@/components/ui/list-sort-header-link";
+import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
 import type {
   TaskListSort,
   TaskListSortColumn,
 } from "@/lib/schemas/task-list-sort";
-import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
 import { buildTaskListSortHref } from "@/lib/tasks/task-list-sort-url";
 
 export interface TaskListSortHeaderLinkProps {
@@ -35,34 +28,13 @@ export function TaskListSortHeaderLink({
   const href = buildTaskListSortHref(filters, column);
 
   return (
-    <th
-      className={cn(
-        "py-2",
-        align === "center" ? "text-center" : "text-left",
-        className,
-      )}
-    >
-      <Link
-        href={href}
-        scroll={false}
-        className={cn(
-          LIST_SORT_HEADER_LINK_BASE_CLASS,
-          listSortHeaderLinkClass(active),
-          align === "center" ? "justify-center" : "justify-start",
-        )}
-        aria-sort={
-          active ? (direction === "asc" ? "ascending" : "descending") : "none"
-        }
-      >
-        <span>{label}</span>
-        {active ? (
-          direction === "asc" ? (
-            <ArrowUp className="size-3.5 shrink-0" aria-hidden />
-          ) : (
-            <ArrowDown className="size-3.5 shrink-0" aria-hidden />
-          )
-        ) : null}
-      </Link>
-    </th>
+    <ListSortHeaderLink
+      href={href}
+      label={label}
+      active={active}
+      direction={direction}
+      align={align}
+      className={className}
+    />
   );
 }

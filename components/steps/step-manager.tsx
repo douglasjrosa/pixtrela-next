@@ -25,6 +25,11 @@ import { useTranslations } from "next-intl";
 import { StepFormModal } from "@/components/steps/step-form-modal";
 import { AddNewButton } from "@/components/ui/add-new-button";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
+import {
+  ListPageActionsPortal,
+  ListPageActionsProvider,
+} from "@/components/ui/list-page-actions-slot";
+import { ListPageToolbar } from "@/components/ui/list-page-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
@@ -307,22 +312,11 @@ export function StepManager({
   };
 
   return (
+    <ListPageActionsProvider>
     <ListSelectionProvider value={selectionValue}>
       <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">{tSteps("title")}</h2>
-        <div className="flex items-center gap-2">
-          {orderedSteps.length > 0 ? (
-            <BulkListToolbar
-              showArchive={false}
-              showDelete={hasSelection}
-              archiveLabel={tSteps("deleteSelected")}
-              deleteLabel={tSteps("deleteSelected")}
-              disabled={isPending}
-              onArchive={() => undefined}
-              onDelete={() => setBulkDeleteOpen(true)}
-            />
-          ) : null}
+      <ListPageToolbar
+        trailingActions={
           <AddNewButton
             label={tSteps("newStep")}
             disabled={isPending}
@@ -331,8 +325,21 @@ export function StepManager({
               setModal({ mode: "create" });
             }}
           />
-        </div>
-      </div>
+        }
+      />
+      {orderedSteps.length > 0 && hasSelection ? (
+        <ListPageActionsPortal>
+          <BulkListToolbar
+            showArchive={false}
+            showDelete
+            archiveLabel={tSteps("deleteSelected")}
+            deleteLabel={tSteps("deleteSelected")}
+            disabled={isPending}
+            onArchive={() => undefined}
+            onDelete={() => setBulkDeleteOpen(true)}
+          />
+        </ListPageActionsPortal>
+      ) : null}
 
       {message ? (
         <p role="status" className="text-sm text-muted-foreground">
@@ -407,5 +414,6 @@ export function StepManager({
       />
       </div>
     </ListSelectionProvider>
+    </ListPageActionsProvider>
   );
 }

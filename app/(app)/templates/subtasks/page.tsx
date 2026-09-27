@@ -1,9 +1,8 @@
-import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
 import { getAppSession } from "@/lib/auth/app-session";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
-import { APP_LIST_PAGE_STACK_CLASS } from "@/components/layout/app-page-layout";
+import { ListPageChrome } from "@/components/ui/list-page-chrome";
 import { SubtaskPresetListTableFrame } from "@/components/subtask-presets/subtask-preset-list-table-frame";
 import { SubtaskPresetListTableHeader } from "@/components/subtask-presets/subtask-preset-list-table-header";
 import { SubTaskPresetManager } from "@/components/subtask-presets/subtask-preset-manager";
@@ -92,12 +91,9 @@ export default async function TemplateSubtasksPage({
       categoryOptions={categoryOptions}
       dependencyOptions={dependencyOptions}
     >
-      <div className={APP_LIST_PAGE_STACK_CLASS}>
-        <Suspense fallback={null}>
-          <SubtaskPresetsToolbar />
-        </Suspense>
+      <ListPageChrome toolbar={<SubtaskPresetsToolbar />}>
         {listContent}
-      </div>
+      </ListPageChrome>
     </SubTaskPresetManager>
   );
 }

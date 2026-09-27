@@ -69,6 +69,8 @@ export const activityActionEnum = pgEnum("activity_action", [
   "stoped",
 ]);
 
+export const chainRunStatusEnum = pgEnum("chain_run_status", ["open", "closed"]);
+
 export const cartStatusEnum = pgEnum("cart_status", [
   "open",
   "checked_out",
@@ -643,6 +645,49 @@ export const activities = pgTable("activities", {
   chainRunId: uuid("chain_run_id"),
   active: boolean("active").default(true).notNull(),
 });
+
+export const chainRuns = pgTable(
+  "chain_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    taskId: uuid("task_id")
+      .references(() => tasks.id, { onDelete: "cascade" })
+      .notNull(),
+    headSubTaskId: uuid("head_sub_task_id")
+      .references(() => subTasks.id, { onDelete: "cascade" })
+      .notNull(),
+    status: chainRunStatusEnum("status").default("open").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    capacity: integer("capacity").notNull(),
+  },
+  (table) => [
+    index("chain_runs_open_head_idx").on(table.status, table.headSubTaskId),
+  ],
+);
+
+export const openSessions = pgTable(
+  "open_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    subTaskId: uuid("sub_task_id")
+      .references(() => subTasks.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: uuid("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull(),
+    leftAt: timestamp("left_at", { withTimezone: true }),
+    chainRunId: uuid("chain_run_id").references(() => chainRuns.id, {
+      onDelete: "cascade",
+    }),
+  },
+  (table) => [
+    index("open_sessions_sub_task_idx").on(table.subTaskId),
+    index("open_sessions_chain_run_idx").on(table.chainRunId),
+    index("open_sessions_user_idx").on(table.userId),
+  ],
+);
 
 export const balances = pgTable("balances", {
   id: uuid("id").defaultRandom().primaryKey(),

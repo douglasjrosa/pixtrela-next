@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import {
+  SECTION_TABS_NAV_CLASS,
+  sectionTabLinkClass,
+} from "@/lib/ui/section-tab-styles";
 import { cn } from "@/lib/utils";
 
 export interface SectionTabItem {
@@ -22,7 +26,7 @@ export function SectionTabs({ items, className, ariaLabel }: SectionTabsProps) {
 
   return (
     <nav
-      className={cn("flex flex-wrap gap-2 border-b", className)}
+      className={cn(SECTION_TABS_NAV_CLASS, className)}
       aria-label={ariaLabel}
     >
       {items.map((item) => {
@@ -35,12 +39,7 @@ export function SectionTabs({ items, className, ariaLabel }: SectionTabsProps) {
             key={item.href}
             href={item.href}
             aria-current={isActive ? "page" : undefined}
-            className={cn(
-              "inline-flex min-h-10 items-center border-b-2 px-3 text-sm font-medium",
-              isActive
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
+            className={sectionTabLinkClass(isActive)}
           >
             {item.label}
           </Link>

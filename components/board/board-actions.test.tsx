@@ -6,6 +6,7 @@ import type { ComponentProps } from "react";
 const refresh = vi.fn();
 const showSuccessToast = vi.fn();
 const showErrorToast = vi.fn();
+const showHintToast = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
 }));
@@ -17,6 +18,7 @@ vi.mock("@/app/(app)/settings/subtasks/actions", () => ({
 vi.mock("@/lib/ui/app-toast", () => ({
   showSuccessToast: (...args: unknown[]) => showSuccessToast(...args),
   showErrorToast: (...args: unknown[]) => showErrorToast(...args),
+  showHintToast: (...args: unknown[]) => showHintToast(...args),
 }));
 
 import { renderWithIntl } from "@/test/test-utils";

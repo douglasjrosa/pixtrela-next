@@ -94,21 +94,6 @@ export function KioskDailyQueue({
 }: KioskDailyQueueProps) {
   const t = useTranslations("kiosk");
   const liberadasUnits = [...liberadas.producingUnits, ...liberadas.units];
-  const queueEmpty =
-    liberadas.loadedOnce &&
-    sectionIsEmpty(liberadas) &&
-    !bloqueadas.loadedOnce &&
-    !finalizadas.loadedOnce &&
-    sectionIsEmpty(bloqueadas) &&
-    sectionIsEmpty(finalizadas);
-
-  if (queueEmpty) {
-    return (
-      <p role="status" className="px-4 py-8 text-center text-lg">
-        {t("noTasks")}
-      </p>
-    );
-  }
 
   return (
     <div className="mx-auto w-full max-w-md space-y-8 px-4 py-4">
@@ -138,6 +123,10 @@ export function KioskDailyQueue({
                 onReleaseMaterialFlag={onReleaseMaterialFlag}
                 onRefreshMaterialFlags={onRefreshMaterialFlags}
               />
+            ) : sectionIsEmpty(liberadas) ? (
+              <p role="status" className="py-8 text-center text-lg">
+                {t("noTasks")}
+              </p>
             ) : null}
             <KioskQueueLoadMoreSentinel
               hasMore={liberadas.hasMore}

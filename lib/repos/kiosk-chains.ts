@@ -4,14 +4,13 @@ import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 
 import { activities, subTasks, tasks } from "@/drizzle/schema";
+import { openOrJoinGroupRun, findOpenChainRunRow, leaveGroupRun, listOpenGroupRunsByHead } from "@/lib/repos/group-runs";
 import {
   allocateChainTimeline,
   allocateSegmentPresenceShares,
   elapsedSecondsBetween,
   isFinishedThisRun,
   planPrincipalSegmentActivities,
-  resolveChainAutoAdvance,
-  statusAfterChainTimeAdvance,
   type AllocationMember,
   type AllocationSharingType,
   type ChainStopAnswer,
@@ -291,32 +290,6 @@ function hasOpenSession(
     )
     .map((row) => row.action);
   return hasOpenStartedSessionFromActions(actions);
-}
-
-function pickChainJoinMember(
-  remaining: readonly ChainSubTask[],
-  colaboratorId: string,
-  siblings: readonly SubTaskWithAssignees[],
-  runRows: ChainActivityRow[],
-): ChainSubTask | null {
-  const sharingById = new Map(
-    siblings.map((row) => [row.id, row.sharingType === "qty" ? "qty" : "duration"]),
-  );
-  const qtyChain = remaining.some(
-    (item) => sharingById.get(item.documentId) === "qty",
-  );
-  const assigned = remaining.filter((item) =>
-    item.assignedToIds.includes(colaboratorId),
-  );
-  const withSpare = assigned.filter((item) => {
-    if (hasOpenSession(runRows, colaboratorId, item.documentId)) return false;
-    const openCount = countOpenWorkers(runRows, item.documentId);
-    return openCount < item.maxSameTimeWorkers;
-  });
-  const producing = withSpare.find((item) => item.status === PRODUCING_STATUS);
-  if (producing) return producing;
-  if (!qtyChain) return null;
-  return withSpare[0] ?? null;
 }
 
 function countOpenWorkers(
@@ -600,10 +573,21 @@ export async function findOpenChainRunsForMemberGroups(
   groups: readonly { headId: string; memberIds: readonly string[] }[],
   db: Db = getDb(),
 ): Promise<Map<string, OpenChainRunRef>> {
-  const allIds = [...new Set(groups.flatMap((group) => group.memberIds))];
-  const rows = await listChainActivityLookupRows(allIds, db);
+  const fromTables = await listOpenGroupRunsByHead(
+    groups.map((group) => group.headId),
+    db,
+  );
   const result = new Map<string, OpenChainRunRef>();
-  for (const group of groups) {
+  for (const [headId, run] of fromTables) {
+    if (!run.principalId) continue;
+    result.set(headId, run);
+  }
+  const missing = groups.filter((group) => !result.has(group.headId));
+  if (missing.length === 0) return result;
+
+  const allIds = [...new Set(missing.flatMap((group) => group.memberIds))];
+  const rows = await listChainActivityLookupRows(allIds, db);
+  for (const group of missing) {
     const memberIds = new Set(group.memberIds);
     const open = resolveOpenChainRunFromActivityRows(
       rows.filter((row) => memberIds.has(row.subTaskId)),
@@ -668,63 +652,16 @@ export async function startChain(
     throw new Error("notAssigned");
   }
 
-  if (!isMultiMemberChain(chain)) {
-    const chainRunId = randomUUID();
-    await db.transaction(async (tx) => {
-      await tx.insert(activities).values({
-        subTaskId: startMember.documentId,
-        colaboratorId,
-        action: "started",
-        timestamp,
-        qty: 0,
-        currencyAwarded: 0,
-        chainRunId,
-      });
-      await tx
-        .update(subTasks)
-        .set({ status: PRODUCING_STATUS, updatedAt: timestamp })
-        .where(eq(subTasks.id, startMember.documentId));
-      await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, timestamp);
-    });
-    return { chainRunId };
-  }
-
-  const open = await findOpenChainRunId({
-    subTaskIds: chain.memberIds,
-    db,
-  });
-  if (open) {
-    const runRows = await loadRunActivities(open.chainRunId, db);
-    const joinMember = pickChainJoinMember(
-      remaining,
+  if (isMultiMemberChain(chain)) {
+    return openOrJoinGroupRun({
       colaboratorId,
+      taskId: sub.taskId,
+      headId: chain.headId,
+      memberIds: chain.memberIds,
       siblings,
-      runRows,
-    );
-    if (!joinMember) {
-      const assigned = remaining.filter((item) =>
-        item.assignedToIds.includes(colaboratorId),
-      );
-      if (assigned.length === 0) throw new Error("notAssigned");
-      throw new Error("atWorkerCapacity");
-    }
-    await db.transaction(async (tx) => {
-      await tx.insert(activities).values({
-        subTaskId: joinMember.documentId,
-        colaboratorId,
-        action: "started",
-        timestamp,
-        qty: 0,
-        currencyAwarded: 0,
-        chainRunId: open.chainRunId,
-      });
-      await tx
-        .update(subTasks)
-        .set({ status: PRODUCING_STATUS, updatedAt: timestamp })
-        .where(eq(subTasks.id, joinMember.documentId));
-      await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, timestamp);
+      timestamp,
+      db,
     });
-    return { chainRunId: open.chainRunId };
   }
 
   const chainRunId = randomUUID();
@@ -744,119 +681,20 @@ export async function startChain(
       .where(eq(subTasks.id, startMember.documentId));
     await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, timestamp);
   });
-
   return { chainRunId };
 }
 
 export async function advanceChainRun(
-  chainRunId: string,
-  db: Db = getDb(),
-  now: Date = new Date(),
+  _chainRunId: string,
+  _db: Db = getDb(),
+  _now: Date = new Date(),
 ): Promise<void> {
-  const runRows = await loadRunActivities(chainRunId, db);
-  if (runRows.length === 0) return;
-
-  const { sub, chain, byId, runStartedAt, siblings } =
-    await resolveChainRunScope(runRows, db);
-  const remaining = remainingExecutableMembers(chain, byId);
-  const expectedById = new Map(
-    (await listSubTasksWithRelationsForTask(sub.taskId, db)).map((row) => [
-      row.id,
-      row,
-    ]),
-  );
-  const remainingForClock = remaining.map((item) => ({
-    documentId: item.documentId,
-    expectedTime: expectedById.get(item.documentId)?.expectedTime ?? 0,
-  }));
-
-  const advance = resolveChainAutoAdvance({
-    runStartedAt,
-    now,
-    remainingOrdered: remainingForClock,
-  });
-  if (!advance.currentId) return;
-
-  let actorId: string | null = null;
-  for (const item of remaining) {
-    const ids = [
-      ...new Set(
-        runRows
-          .filter((row) => row.subTaskId === item.documentId)
-          .map((row) => row.colaboratorId),
-      ),
-    ];
-    actorId =
-      ids.find((id) => hasOpenSession(runRows, id, item.documentId)) ?? null;
-    if (actorId) break;
-  }
-  if (!actorId) return;
-
-  const actorOpen = remaining.find((item) =>
-    hasOpenSession(runRows, actorId, item.documentId),
-  );
-  const openSharing = siblings.find((row) => row.id === actorOpen?.documentId);
-  if (openSharing?.sharingType === "qty") return;
-  const currentOpenId = actorOpen?.documentId ?? null;
-  if (currentOpenId === advance.currentId) return;
-
-  await db.transaction(async (tx) => {
-    for (const completedId of advance.completedIds) {
-      if (hasOpenSession(runRows, actorId, completedId)) {
-        await tx.insert(activities).values({
-          subTaskId: completedId,
-          colaboratorId: actorId,
-          action: "stoped",
-          timestamp: now,
-          qty: 0,
-          currencyAwarded: 0,
-          chainRunId,
-        });
-      }
-      const [member] = await tx
-        .select()
-        .from(subTasks)
-        .where(eq(subTasks.id, completedId))
-        .limit(1);
-      if (member && member.status !== FINISHED_STATUS) {
-        const helperOpen = runRows.some(
-          (row) =>
-            row.subTaskId === completedId &&
-            row.colaboratorId !== actorId &&
-            hasOpenSession(runRows, row.colaboratorId, completedId),
-        );
-        await tx
-          .update(subTasks)
-          .set({
-            status: statusAfterChainTimeAdvance(helperOpen),
-            updatedAt: now,
-          })
-          .where(eq(subTasks.id, completedId));
-      }
-    }
-
-    if (
-      advance.currentId &&
-      !hasOpenSession(runRows, actorId, advance.currentId)
-    ) {
-      await tx.insert(activities).values({
-        subTaskId: advance.currentId,
-        colaboratorId: actorId,
-        action: "started",
-        timestamp: now,
-        qty: 0,
-        currencyAwarded: 0,
-        chainRunId,
-      });
-      await tx
-        .update(subTasks)
-        .set({ status: PRODUCING_STATUS, updatedAt: now })
-        .where(eq(subTasks.id, advance.currentId));
-    }
-
-    await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, now);
-  });
+  void _chainRunId;
+  void _db;
+  void _now;
+  return;
 }
+
 
 function principalPairSeconds(
   rows: ChainActivityRow[],
@@ -1524,6 +1362,19 @@ export async function confirmChainStop(
   timestamp: Date = new Date(),
   headId?: string,
 ): Promise<void> {
+  if (chainRunId) {
+    const tableRun = await findOpenChainRunRow(chainRunId, db);
+    if (tableRun) {
+      await leaveGroupRun({
+        chainRunId,
+        colaboratorId,
+        answers,
+        timestamp,
+        db,
+      });
+      return;
+    }
+  }
   const anchorHeadId = headId ?? answers[0]?.documentId;
   if (!anchorHeadId) throw new Error("notFound");
   const resolvedChainRunId = await resolveOrBackfillChainRunIdForStop(

@@ -11,6 +11,7 @@ import {
 } from "@/app/(app)/settings/subtasks/actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
+import { ListPageActionsPortal } from "@/components/ui/list-page-actions-slot";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
@@ -123,16 +124,18 @@ export function FlagListTableFrame({
   return (
     <ListSelectionProvider value={selectionValue}>
       <div className="space-y-4">
-        {items.length > 0 ? (
-          <BulkListToolbar
-            showArchive={false}
-            showDelete={hasSelection}
-            archiveLabel={t("flagsDeleteSelected")}
-            deleteLabel={t("flagsDeleteSelected")}
-            disabled={isPending}
-            onArchive={() => undefined}
-            onDelete={() => setDeleteOpen(true)}
-          />
+        {items.length > 0 && hasSelection ? (
+          <ListPageActionsPortal>
+            <BulkListToolbar
+              showArchive={false}
+              showDelete
+              archiveLabel={t("flagsDeleteSelected")}
+              deleteLabel={t("flagsDeleteSelected")}
+              disabled={isPending}
+              onArchive={() => undefined}
+              onDelete={() => setDeleteOpen(true)}
+            />
+          </ListPageActionsPortal>
         ) : null}
         <table className="hidden w-full text-sm md:table">
           <thead>

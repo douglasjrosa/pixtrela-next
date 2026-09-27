@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { Label } from "@/components/ui/label";
+import { ListFilterModalShell } from "@/components/ui/list-filter-modal-shell";
 import { isTaskListDateRangeWithinMaxMonths } from "@/lib/business/task-list-date-range";
 import { TASK_STATUSES } from "@/lib/schemas/task";
 import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
@@ -31,7 +31,6 @@ export function TasksFilterModal({
 }: TasksFilterModalProps) {
   const tManage = useTranslations("tasks.manage");
   const tStatus = useTranslations("tasks.status");
-  const tCommon = useTranslations("common");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [draft, setDraft] = useState<TaskListFilters>(initialFilters);
@@ -87,104 +86,13 @@ export function TasksFilterModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/50 p-4"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className={
-          "relative w-full max-w-md rounded-lg border bg-background p-4 " +
-          "shadow-lg"
-        }
-        onClick={(event) => event.stopPropagation()}
-      >
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="absolute top-3 right-3"
-          disabled={isPending}
-          aria-label={tCommon("close")}
-          onClick={onClose}
-        >
-          <X className="size-4" aria-hidden />
-        </Button>
-
-        <h2 id={titleId} className="mb-4 pr-10 text-lg font-semibold">
-          {tManage("filters")}
-        </h2>
-
-        <fieldset className="mb-4 space-y-2">
-          <legend className="mb-2 text-sm font-medium">
-            {tManage("statusFilter")}
-          </legend>
-          {TASK_STATUSES.map((status) => (
-            <label
-              key={status}
-              className="flex items-center gap-2 text-sm"
-            >
-              <input
-                type="checkbox"
-                className={cn("size-4 rounded border accent-primary")}
-                checked={draft.statuses.includes(status)}
-                onChange={() => toggleStatus(status)}
-              />
-              {tStatus(status)}
-            </label>
-          ))}
-        </fieldset>
-
-        <label className="mb-4 flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className={cn("size-4 rounded border accent-primary")}
-            checked={draft.showArchived}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                showArchived: event.target.checked,
-              }))
-            }
-          />
-          {tManage("showArchivedTasks")}
-        </label>
-
-        <div className="mb-4 grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label htmlFor="task-filter-from">{tManage("dateFrom")}</Label>
-            <DatePtBrInput
-              id="task-filter-from"
-              value={draft.from}
-              disabled={isPending}
-              onChange={(from) =>
-                setDraft((current) => ({
-                  ...current,
-                  from,
-                }))
-              }
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="task-filter-to">{tManage("dateTo")}</Label>
-            <DatePtBrInput
-              id="task-filter-to"
-              value={draft.to}
-              disabled={isPending}
-              onChange={(to) =>
-                setDraft((current) => ({
-                  ...current,
-                  to,
-                }))
-              }
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap justify-end gap-2">
+    <ListFilterModalShell
+      titleId={titleId}
+      title={tManage("filters")}
+      disabled={isPending}
+      onClose={onClose}
+      footer={
+        <>
           <Button
             type="button"
             variant="outline"
@@ -196,8 +104,71 @@ export function TasksFilterModal({
           <Button type="button" disabled={isPending} onClick={handleApply}>
             {tManage("applyFilters")}
           </Button>
+        </>
+      }
+    >
+      <fieldset className="mb-4 space-y-2">
+        <legend className="mb-2 text-sm font-medium">
+          {tManage("statusFilter")}
+        </legend>
+        {TASK_STATUSES.map((status) => (
+          <label key={status} className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className={cn("size-4 rounded border accent-primary")}
+              checked={draft.statuses.includes(status)}
+              onChange={() => toggleStatus(status)}
+            />
+            {tStatus(status)}
+          </label>
+        ))}
+      </fieldset>
+
+      <label className="mb-4 flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className={cn("size-4 rounded border accent-primary")}
+          checked={draft.showArchived}
+          onChange={(event) =>
+            setDraft((current) => ({
+              ...current,
+              showArchived: event.target.checked,
+            }))
+          }
+        />
+        {tManage("showArchivedTasks")}
+      </label>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label htmlFor="task-filter-from">{tManage("dateFrom")}</Label>
+          <DatePtBrInput
+            id="task-filter-from"
+            value={draft.from}
+            disabled={isPending}
+            onChange={(from) =>
+              setDraft((current) => ({
+                ...current,
+                from,
+              }))
+            }
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="task-filter-to">{tManage("dateTo")}</Label>
+          <DatePtBrInput
+            id="task-filter-to"
+            value={draft.to}
+            disabled={isPending}
+            onChange={(to) =>
+              setDraft((current) => ({
+                ...current,
+                to,
+              }))
+            }
+          />
         </div>
       </div>
-    </div>
+    </ListFilterModalShell>
   );
 }

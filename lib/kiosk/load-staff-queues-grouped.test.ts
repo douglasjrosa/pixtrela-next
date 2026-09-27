@@ -11,6 +11,10 @@ function chainable(result: QueryResult) {
     leftJoin: () => builder,
     where: () => builder,
     orderBy: () => Promise.resolve(result),
+    then: (
+      resolve: (value: QueryResult) => void,
+      reject?: (reason: unknown) => void,
+    ) => Promise.resolve(result).then(resolve, reject),
   };
   return builder;
 }

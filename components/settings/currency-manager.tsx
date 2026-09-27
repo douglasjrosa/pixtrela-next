@@ -8,10 +8,18 @@ import { useTranslations } from "next-intl";
 import { CurrencyFormModal } from "@/components/settings/currency-form-modal";
 import { AddNewButton } from "@/components/ui/add-new-button";
 import { ListCircleThumb } from "@/components/ui/list-circle-thumb";
+import { CurrencyArchivedFilterModal } from "@/components/settings/currency-archived-filter-modal";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
-import { ListArchivedToggle } from "@/components/ui/list-archived-toggle";
-import { ListFiltersBar } from "@/components/ui/list-filters-bar";
 import { ListNameSearch } from "@/components/ui/list-name-search";
+import {
+  ListPageActionsPortal,
+  ListPageActionsProvider,
+} from "@/components/ui/list-page-actions-slot";
+import { ListPageFilterButton } from "@/components/ui/list-page-filter-button";
+import {
+  LIST_PAGE_SEARCH_INPUT_CLASS,
+  ListPageToolbar,
+} from "@/components/ui/list-page-toolbar";
 import { CardBadge } from "@/components/ui/card";
 import { ArchiveReasonModal } from "@/components/ui/archive-reason-modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -130,6 +138,7 @@ export function CurrencyManager({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const listResetKey = currencies
@@ -289,43 +298,68 @@ export function CurrencyManager({
     );
   }
 
+  const bulkToolbar =
+    showArchiveAction || showDeleteAction ? (
+      <BulkListToolbar
+        showArchive={showArchiveAction}
+        showDelete={showDeleteAction}
+        archiveLabel={tSettings("archiveSelected")}
+        deleteLabel={tSettings("deleteSelected")}
+        disabled={isPending}
+        onArchive={() => setBulkArchiveOpen(true)}
+        onDelete={() => setBulkDeleteOpen(true)}
+      />
+    ) : null;
+
   return (
+    <ListPageActionsProvider>
     <ListSelectionProvider value={selectionValue}>
       <section className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold">{tSettings("currency")}</h2>
-          <div className="flex items-center gap-2">
-            <BulkListToolbar
-              showArchive={showArchiveAction}
-              showDelete={showDeleteAction}
-              archiveLabel={tSettings("archiveSelected")}
-              deleteLabel={tSettings("deleteSelected")}
-              disabled={isPending}
-              onArchive={() => setBulkArchiveOpen(true)}
-              onDelete={() => setBulkDeleteOpen(true)}
+        {currencies.length > 0 ? (
+          <>
+            <ListPageToolbar
+              search={
+                <ListNameSearch
+                  label={tSettings("searchCurrencies")}
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  className={LIST_PAGE_SEARCH_INPUT_CLASS}
+                />
+              }
+              filterButton={
+                <ListPageFilterButton
+                  ariaLabel={tSettings("currencyFilters")}
+                  onClick={() => setFiltersOpen(true)}
+                />
+              }
+              trailingActions={
+                <AddNewButton
+                  label={tSettings("newCurrency")}
+                  disabled={isPending}
+                  onClick={() => setModal({ mode: "create" })}
+                />
+              }
             />
+            {bulkToolbar ? (
+              <ListPageActionsPortal>{bulkToolbar}</ListPageActionsPortal>
+            ) : null}
+            {filtersOpen ? (
+              <CurrencyArchivedFilterModal
+                initialShowArchived={showArchived}
+                onClose={() => setFiltersOpen(false)}
+                onApply={setShowArchived}
+              />
+            ) : null}
+          </>
+        ) : (
+          <div className="flex justify-end">
             <AddNewButton
               label={tSettings("newCurrency")}
               disabled={isPending}
               onClick={() => setModal({ mode: "create" })}
             />
           </div>
-        </div>
-
-        {currencies.length > 0 ? (
-          <ListFiltersBar>
-            <ListNameSearch
-              label={tSettings("searchCurrencies")}
-              value={searchQuery}
-              onChange={setSearchQuery}
-            />
-            <ListArchivedToggle
-              label={tSettings("showArchivedCurrencies")}
-              checked={showArchived}
-              onChange={setShowArchived}
-            />
-          </ListFiltersBar>
-        ) : null}
+        )}
 
         {visibleCurrencies.length === 0 ? (
           <p className="text-muted-foreground py-6 text-sm">
@@ -495,5 +529,6 @@ export function CurrencyManager({
         />
       </section>
     </ListSelectionProvider>
+    </ListPageActionsProvider>
   );
 }

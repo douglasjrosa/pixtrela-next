@@ -54,6 +54,20 @@ describe("SubtaskElapsedTimer", () => {
     expect(timer).toHaveClass("text-destructive");
   });
 
+  it("counts up when startedAt is ahead of the client clock", () => {
+    renderWithIntl(
+      <SubtaskElapsedTimer startedAt="2026-06-05T12:00:00.000Z" />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    act(() => {
+      vi.advanceTimersByTime(2_000);
+    });
+    expect(screen.getByText("2s")).toBeInTheDocument();
+  });
+
   it("pauses the live counter while paused is true", () => {
     renderWithIntl(
       <SubtaskElapsedTimer

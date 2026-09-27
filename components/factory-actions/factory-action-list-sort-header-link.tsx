@@ -1,16 +1,9 @@
-import Link from "next/link";
-import { ArrowDown, ArrowUp } from "lucide-react";
-
-import {
-  LIST_SORT_HEADER_LINK_BASE_CLASS,
-  listSortHeaderLinkClass,
-} from "@/lib/ui/table-head-styles";
-import { cn } from "@/lib/utils";
+import { ListSortHeaderLink } from "@/components/ui/list-sort-header-link";
+import type { FactoryActionListFilters } from "@/lib/schemas/factory-action-list-filters";
 import type {
   FactoryActionListSort,
   FactoryActionListSortColumn,
 } from "@/lib/schemas/factory-action-list-sort";
-import type { FactoryActionListFilters } from "@/lib/schemas/factory-action-list-filters";
 import { buildFactoryActionListSortHref } from "@/lib/factory-actions/factory-action-list-sort-url";
 
 export interface FactoryActionListSortHeaderLinkProps {
@@ -33,30 +26,12 @@ export function FactoryActionListSortHeaderLink({
   const href = buildFactoryActionListSortHref(filters, column);
 
   return (
-    <th
-      className={cn("py-2", align === "center" ? "text-center" : "text-left")}
-    >
-      <Link
-        href={href}
-        scroll={false}
-        className={cn(
-          LIST_SORT_HEADER_LINK_BASE_CLASS,
-          listSortHeaderLinkClass(active),
-          align === "center" ? "justify-center" : "justify-start",
-        )}
-        aria-sort={
-          active ? (direction === "asc" ? "ascending" : "descending") : "none"
-        }
-      >
-        <span>{label}</span>
-        {active ? (
-          direction === "asc" ? (
-            <ArrowUp className="size-3.5 shrink-0" aria-hidden />
-          ) : (
-            <ArrowDown className="size-3.5 shrink-0" aria-hidden />
-          )
-        ) : null}
-      </Link>
-    </th>
+    <ListSortHeaderLink
+      href={href}
+      label={label}
+      active={active}
+      direction={direction}
+      align={align}
+    />
   );
 }

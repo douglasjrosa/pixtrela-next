@@ -12,6 +12,7 @@ import {
 import { ListLoadMore } from "@/components/ui/load-more-button";
 import { ArchiveReasonModal } from "@/components/ui/archive-reason-modal";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
+import { ListPageActionsPortal } from "@/components/ui/list-page-actions-slot";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
@@ -182,16 +183,18 @@ export function SubtaskPresetListTableFrame({
   return (
     <ListSelectionProvider value={selectionValue}>
       <div className="flex min-h-0 flex-1 flex-col">
-        {bulkEnabled ? (
-          <BulkListToolbar
-            showArchive={showArchiveAction}
-            showDelete={showDeleteAction}
-            archiveLabel={tPresets("archiveSelected")}
-            deleteLabel={tPresets("deleteSelected")}
-            disabled={isPending}
-            onArchive={() => setArchiveOpen(true)}
-            onDelete={() => setDeleteOpen(true)}
-          />
+        {bulkEnabled && (showArchiveAction || showDeleteAction) ? (
+          <ListPageActionsPortal>
+            <BulkListToolbar
+              showArchive={showArchiveAction}
+              showDelete={showDeleteAction}
+              archiveLabel={tPresets("archiveSelected")}
+              deleteLabel={tPresets("deleteSelected")}
+              disabled={isPending}
+              onArchive={() => setArchiveOpen(true)}
+              onDelete={() => setDeleteOpen(true)}
+            />
+          </ListPageActionsPortal>
         ) : null}
 
         <div className="min-h-0 flex-1 overflow-y-auto">

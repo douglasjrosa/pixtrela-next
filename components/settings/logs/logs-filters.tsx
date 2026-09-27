@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Funnel, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { loadMoreLogs } from "@/app/(app)/settings/logs/actions";
 import { Button } from "@/components/ui/button";
+import { ListPageFilterButton } from "@/components/ui/list-page-filter-button";
+import { ListPageToolbar } from "@/components/ui/list-page-toolbar";
 import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { Label } from "@/components/ui/label";
 import {
@@ -58,17 +60,14 @@ export function LogsFiltersButton({
 
   return (
     <>
-      <div className="flex shrink-0 justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label={t("openFilters")}
-          onClick={() => setOpen(true)}
-        >
-          <Funnel aria-hidden />
-        </Button>
-      </div>
+      <ListPageToolbar
+        filterButton={
+          <ListPageFilterButton
+            ariaLabel={t("openFilters")}
+            onClick={() => setOpen(true)}
+          />
+        }
+      />
       {open ? (
         <LogsFilterModal
           filters={filters}

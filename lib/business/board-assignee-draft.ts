@@ -1,6 +1,14 @@
 import type { BoardSubTaskSummary } from "@/components/kanban/types";
 import type { TeamAssignmentOption } from "@/components/subtasks/subtask-manager";
 import { adjustAssignedCount } from "@/lib/business/assign-warn";
+import type { LinkDraftUpdate } from "@/lib/business/board-link-queue";
+import { prepareBoardSubtasksForSave } from "@/lib/business/group-link";
+import {
+  chainItemsFromBoard,
+  findChainContaining,
+  isMultiMemberChain,
+  resolveChains,
+} from "@/lib/business/subtask-chain";
 
 export type AssigneeDraftUpdate = {
   documentId: string;
@@ -46,6 +54,35 @@ export function collectDirtyAssigneeUpdates(
     updates.push({ documentId: subtask.documentId, assignedToIds });
   }
   return updates;
+}
+
+/** Drops member assignee dirt that only mirrors head after a link toggle. */
+export function collectDirtyAssigneeUpdatesForSave(
+  subtasks: readonly BoardSubTaskSummary[],
+  baseline: Readonly<Record<string, string>>,
+  dirtyLinkUpdates: readonly Pick<LinkDraftUpdate, "documentId">[],
+): AssigneeDraftUpdate[] {
+  const prepared = prepareBoardSubtasksForSave(subtasks);
+  const dirty = collectDirtyAssigneeUpdates(prepared, baseline);
+  if (dirtyLinkUpdates.length === 0) return dirty;
+
+  const linkChangedIds = new Set(
+    dirtyLinkUpdates.map((item) => item.documentId),
+  );
+  const chains = resolveChains(chainItemsFromBoard(prepared));
+
+  return dirty.filter((update) => {
+    const chain = findChainContaining(chains, update.documentId);
+    if (!chain || !isMultiMemberChain(chain)) return true;
+    if (update.documentId === chain.headId) return true;
+    if (!linkChangedIds.has(update.documentId)) return true;
+    const head = prepared.find((item) => item.documentId === chain.headId);
+    if (!head) return true;
+    return (
+      assigneeIdsKey(update.assignedToIds) !==
+      assigneeIdsKey(getSubtaskAssigneeIds(head))
+    );
+  });
 }
 
 export function hasAssigneeDraftChanges(

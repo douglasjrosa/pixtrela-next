@@ -4,6 +4,10 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+}));
+
 import { AppNavMobileMenu } from "./app-nav-mobile-menu";
 
 const items = [

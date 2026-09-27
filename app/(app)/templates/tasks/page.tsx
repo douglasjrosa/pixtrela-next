@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
 import { getAppSession } from "@/lib/auth/app-session";
@@ -11,10 +10,9 @@ import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { loadTemplateListPage } from "@/lib/templates/load-template-list-page";
 import { parseTemplateListSearchParams } from "@/lib/templates/template-list-params";
 
-import { APP_LIST_PAGE_STACK_CLASS } from "@/components/layout/app-page-layout";
+import { TemplatesListChrome } from "@/components/templates/templates-list-chrome";
 import { TemplatesListTableFrame } from "@/components/templates/templates-list-table-frame";
 import { TemplatesListTableHeader } from "@/components/templates/templates-list-table-header";
-import { TemplatesToolbar } from "@/components/templates/templates-toolbar";
 import { ListEmptyMessage } from "@/components/ui/list-empty-message";
 
 interface TemplateTasksPageProps {
@@ -68,12 +66,5 @@ export default async function TemplateTasksPage({
     );
   }
 
-  return (
-    <div className={APP_LIST_PAGE_STACK_CLASS}>
-      <Suspense fallback={null}>
-        <TemplatesToolbar />
-      </Suspense>
-      {listContent}
-    </div>
-  );
+  return <TemplatesListChrome>{listContent}</TemplatesListChrome>;
 }

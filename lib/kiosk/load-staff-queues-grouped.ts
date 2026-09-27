@@ -8,6 +8,7 @@ import {
   loadLatestActivitiesByColaboratorIds,
   type ColaboratorLatestActivitySummary,
 } from "@/lib/repos/activities";
+import { listStaffOpenSessionLabels, type StaffOpenSessionLabel } from "@/lib/repos/group-runs";
 
 export type StaffQueueMemberLastActivity = Omit<
   ColaboratorLatestActivitySummary,
@@ -58,6 +59,7 @@ export async function loadStaffQueuesGrouped(
     colaboratorIds,
     db,
   );
+  const openLabels = await listStaffOpenSessionLabels(colaboratorIds, db);
 
   return {
     teams: teamRows.map((team) => ({
@@ -65,11 +67,25 @@ export async function loadStaffQueuesGrouped(
       teamName: team.name,
       members: (membersByTeam.get(team.id) ?? []).map((member) => ({
         ...member,
-        lastActivity: toMemberLastActivity(
-          latestActivities.get(member.documentId),
-        ),
+        lastActivity: openSessionActivity(openLabels.get(member.documentId))
+          ?? toMemberLastActivity(latestActivities.get(member.documentId)),
       })),
     })),
+  };
+}
+
+function openSessionActivity(
+  row: StaffOpenSessionLabel | undefined,
+): StaffQueueMemberLastActivity | null {
+  if (!row) return null;
+  return {
+    action: row.action,
+    timestamp: row.timestamp,
+    subTaskName: row.subTaskName,
+    taskName: row.taskName,
+    taskQty: row.taskQty,
+    taskCrmItemKey: row.taskCrmItemKey,
+    taskDeliveryDate: row.taskDeliveryDate,
   };
 }
 
@@ -77,7 +93,8 @@ function toMemberLastActivity(
   row: ColaboratorLatestActivitySummary | undefined,
 ): StaffQueueMemberLastActivity | null {
   if (!row) return null;
-  const { colaboratorId: _omit, ...rest } = row;
+  const { colaboratorId, ...rest } = row;
+  void colaboratorId;
   return rest;
 }
 

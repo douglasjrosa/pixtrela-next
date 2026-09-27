@@ -1,7 +1,17 @@
 import type { ReactNode } from "react";
 
-export function ListFiltersBar({ children }: { children: ReactNode }) {
+import { cn } from "@/lib/utils";
+
+export function ListFiltersBar({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-4">{children}</div>
+    <div className={cn("flex shrink-0 flex-wrap items-center gap-4", className)}>
+      {children}
+    </div>
   );
 }

@@ -99,13 +99,11 @@ export function TasksPageHeader({ steps }: TasksPageHeaderProps) {
   }
 
   return (
-    <div className="flex shrink-0 items-center justify-between gap-3">
-      <h1 className="text-2xl font-bold max-[500px]:text-lg">{tManage("title")}</h1>
+    <>
       <AddNewButton
         label={tManage("newTask")}
         onClick={() => setCreateOpen(true)}
       />
-
       {createOpen ? (
         <CreateTaskDialog
           steps={steps}
@@ -115,6 +113,6 @@ export function TasksPageHeader({ steps }: TasksPageHeaderProps) {
           onInvalid={handleInvalid}
         />
       ) : null}
-    </div>
+    </>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
@@ -10,11 +11,16 @@ import { AppBrandLink } from "@/components/app-brand-link";
 import { AppNavMobileMenu } from "@/components/app-nav-mobile-menu";
 import { AppNavUserMenu } from "@/components/app-nav-user-menu";
 import { Button } from "@/components/ui/button";
+import { isAppNavLinkActive } from "@/lib/auth/is-app-nav-link-active";
 import type { ResolvedNavItem } from "@/lib/auth/nav";
 import {
   resolveNavLayoutMode,
   type NavLayoutMode,
 } from "@/lib/auth/nav-layout";
+import {
+  APP_NAV_LINK_BASE_CLASS,
+  appNavLinkClass,
+} from "@/lib/ui/app-nav-link-styles";
 
 export const APP_NAV_HEIGHT_CLASS = "h-14";
 
@@ -40,6 +46,7 @@ export function AppNavClient({
   items,
 }: AppNavClientProps) {
   const t = useTranslations();
+  const pathname = usePathname();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [layoutMode, setLayoutMode] = useState<NavLayoutMode>("desktop");
@@ -140,9 +147,7 @@ export function AppNavClient({
             >
               {items.map((item) => (
                 <li key={`measure-${item.href}`}>
-                  <span className="inline-flex items-center px-2 py-1">
-                    {item.label}
-                  </span>
+                  <span className={APP_NAV_LINK_BASE_CLASS}>{item.label}</span>
                 </li>
               ))}
             </ul>
@@ -153,10 +158,14 @@ export function AppNavClient({
                   <li key={item.href} className="shrink-0">
                     <Link
                       href={item.href}
-                      className={
-                        "inline-flex items-center rounded-md px-2 py-1 " +
-                        "transition-colors hover:bg-muted hover:text-foreground"
+                      aria-current={
+                        isAppNavLinkActive(pathname, item.href)
+                          ? "page"
+                          : undefined
                       }
+                      className={appNavLinkClass(
+                        isAppNavLinkActive(pathname, item.href),
+                      )}
                     >
                       {item.label}
                     </Link>

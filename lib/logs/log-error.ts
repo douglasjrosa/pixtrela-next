@@ -1,13 +1,16 @@
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { ZodError } from "zod";
 
+import { KIOSK_ACTION_ERROR_CODES } from "@/lib/business/kiosk-action-error";
 import { LOG_DETAIL_MAX_LENGTH } from "@/lib/logs/constants";
 
-const SKIP_MESSAGES = new Set([
+const SKIP_MESSAGES = new Set<string>([
   "forbidden",
   "notFound",
   "not_found",
   "invalid",
+  "invalid_link",
+  ...KIOSK_ACTION_ERROR_CODES,
 ]);
 
 const SENSITIVE_KEY = /password|token|secret|authorization|passwd|apikey/i;
@@ -62,7 +65,6 @@ export function isSkippableLogError(error: unknown): boolean {
   if (message.endsWith("NotFound") || message.endsWith("not_found")) {
     return true;
   }
-  if (isShortValidationCode(message)) return true;
   return false;
 }
 

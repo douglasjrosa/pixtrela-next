@@ -1,13 +1,20 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { FileText, Pencil, Trash2, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { SettingsSectionHeading } from "@/components/settings/settings-section-heading";
+import { MediaFilesFilterModal } from "@/components/settings/media-files-filter-modal";
+import { MEDIA_LIBRARY_CATEGORY_OPTIONS } from "@/components/settings/media-library-category-options";
 import { AppImage } from "@/components/media/app-image";
 import { AddNewButton } from "@/components/ui/add-new-button";
 import { Button } from "@/components/ui/button";
+import { ListNameSearch } from "@/components/ui/list-name-search";
+import { ListPageFilterButton } from "@/components/ui/list-page-filter-button";
+import {
+  LIST_PAGE_SEARCH_INPUT_CLASS,
+  ListPageToolbar,
+} from "@/components/ui/list-page-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { Input } from "@/components/ui/input";
@@ -23,6 +30,7 @@ import type {
   MediaReferenceSummary,
 } from "@/lib/repos/media";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { LIST_SEARCH_DEBOUNCE_MS } from "@/lib/ui/list-url";
 import {
   MEDIA_THUMBNAIL_FRAME_CLASS,
   MEDIA_THUMBNAIL_IMAGE_CLASS,
@@ -30,16 +38,6 @@ import {
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 24;
-
-const LIBRARY_CATEGORY_OPTIONS: MediaCategory[] = [
-  "other",
-  "award",
-  "currency",
-  "branding",
-  "route_theme",
-  "avatar",
-  "document",
-];
 
 export interface MediaFilesManagerProps {
   initialItems: MediaAssetRecord[];
@@ -154,9 +152,23 @@ export function MediaFilesManager({
   const [editAltText, setEditAltText] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const [editCategory, setEditCategory] = useState<MediaCategory>("other");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const skipSearchDebounceRef = useRef(true);
 
   const hasMore = items.length < total;
+
+  useEffect(() => {
+    if (skipSearchDebounceRef.current) {
+      skipSearchDebounceRef.current = false;
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      refreshFromStart();
+    }, LIST_SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- debounce search text only
+  }, [q]);
 
   function refreshFromStart(
     nextQ = q,
@@ -313,15 +325,47 @@ export function MediaFilesManager({
     });
   }
 
+  function applyFiltersFromModal(
+    nextMime: MediaMimeFilter,
+    nextCategory: MediaCategory | "all",
+  ): void {
+    setMimeFilter(nextMime);
+    setCategoryFilter(nextCategory);
+    refreshFromStart(q, nextMime, nextCategory);
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <SettingsSectionHeading title={t("mediaFilesTitle")} />
-          <p className="text-sm text-muted-foreground">{t("mediaFilesHelp")}</p>
-        </div>
-        <AddNewButton label={t("mediaUpload")} onClick={handleUploadClick} />
-      </div>
+      <ListPageToolbar
+        search={
+          <ListNameSearch
+            label={t("mediaSearchPlaceholder")}
+            value={q}
+            onChange={setQ}
+            className={LIST_PAGE_SEARCH_INPUT_CLASS}
+          />
+        }
+        filterButton={
+          <ListPageFilterButton
+            ariaLabel={t("mediaFilters")}
+            onClick={() => setFiltersOpen(true)}
+          />
+        }
+        trailingActions={
+          <AddNewButton label={t("mediaUpload")} onClick={handleUploadClick} />
+        }
+      />
+
+      {filtersOpen ? (
+        <MediaFilesFilterModal
+          initialValues={{ mimeFilter, categoryFilter }}
+          disabled={isPending}
+          onClose={() => setFiltersOpen(false)}
+          onApply={(values) =>
+            applyFiltersFromModal(values.mimeFilter, values.categoryFilter)
+          }
+        />
+      ) : null}
 
       <input
         ref={fileInputRef}
@@ -338,79 +382,6 @@ export function MediaFilesManager({
         onChange={(event) => handleReplaceSelected(event.target.files)}
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") refreshFromStart();
-          }}
-          placeholder={t("mediaSearchPlaceholder")}
-          className="max-w-xs"
-          disabled={isPending}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={isPending}
-          onClick={() => refreshFromStart()}
-        >
-          {tCommon("search")}
-        </Button>
-        {(
-          [
-            ["all", "mediaFilterAll"],
-            ["image", "mediaFilterImages"],
-            ["pdf", "mediaFilterPdf"],
-          ] as const
-        ).map(([value, labelKey]) => (
-          <Button
-            key={value}
-            type="button"
-            size="sm"
-            variant={mimeFilter === value ? "default" : "outline"}
-            disabled={isPending}
-            onClick={() => {
-              setMimeFilter(value);
-              refreshFromStart(q, value, categoryFilter);
-            }}
-          >
-            {t(labelKey)}
-          </Button>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant={categoryFilter === "all" ? "default" : "outline"}
-          disabled={isPending}
-          onClick={() => {
-            setCategoryFilter("all");
-            refreshFromStart(q, mimeFilter, "all");
-          }}
-        >
-          {t("mediaCategories.all")}
-        </Button>
-        {LIBRARY_CATEGORY_OPTIONS.map((value) => (
-          <Button
-            key={value}
-            type="button"
-            size="sm"
-            variant={categoryFilter === value ? "default" : "outline"}
-            disabled={isPending}
-            onClick={() => {
-              setCategoryFilter(value);
-              refreshFromStart(q, mimeFilter, value);
-            }}
-          >
-            {t(`mediaCategories.${value}`)}
-          </Button>
-        ))}
-      </div>
-
       {message ? (
         <p role="status" className="text-sm text-destructive">
           {message}
@@ -420,7 +391,11 @@ export function MediaFilesManager({
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("mediaFilesEmpty")}</p>
       ) : (
-        <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+        <ul
+          className={
+            "grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5"
+          }
+        >
           {items.map((item) => {
             const title = assetLabel(item);
             const image = isImageMime(item.mimeType) && item.browserUrl;
@@ -593,7 +568,7 @@ export function MediaFilesManager({
                 setEditCategory(event.target.value as MediaCategory)
               }
             >
-              {LIBRARY_CATEGORY_OPTIONS.map((value) => (
+              {MEDIA_LIBRARY_CATEGORY_OPTIONS.map((value) => (
                 <option key={value} value={value}>
                   {t(`mediaCategories.${value}`)}
                 </option>

@@ -11,10 +11,7 @@ import type { BoardSubTaskSummary } from "@/components/kanban/types";
 import {
   applyChainLinkToggle,
   applyHeadAssigneePropagation,
-  applyMaxWorkerSelfAssigneeChange,
-  canEditAssignees,
   findChainContaining,
-  sameAssigneeIdSet,
   previousChainMember,
   reconcileChainReorder,
   resolveChains,
@@ -22,6 +19,10 @@ import {
   type ChainAssigneeState,
   type ChainSubTask,
 } from "@/lib/business/subtask-chain";
+import {
+  applyEffectiveBoardLinks,
+  previousByIndex,
+} from "@/lib/business/group-link";
 import {
   assertBoardActorCanManageSubtasks,
   assertBoardActorCanMove,
@@ -40,6 +41,7 @@ import { loadBoardProgressByTaskId, loadGlobalAssignedCountByColaboratorId } fro
 import { loadCachedBoardSubtaskCore } from "@/lib/board/load-board-subtask-core";
 import {
   liveStateFromOpenActivityRows,
+  mergeOpenSessionLive,
   type BoardSubtaskLiveState,
 } from "@/lib/board/board-subtask-live";
 import type { BoardSubtaskLinkResult } from "@/lib/business/board-link-queue";
@@ -81,6 +83,7 @@ import {
   updateSubTaskLinkedToPrevious,
   updateTaskBoardFields,
 } from "@/lib/repos/tasks";
+import { listOpenSessionLive } from "@/lib/repos/group-runs";
 import { releaseFlagsForSubTask } from "@/lib/repos/material-flags";
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
@@ -267,7 +270,8 @@ export async function loadBoardSubtaskLive(
   const openRows = await listBoardSubtaskOpenActivities(
     rows.map((row) => row.id),
   );
-  return liveStateFromOpenActivityRows(openRows);
+  const sessions = await listOpenSessionLive(rows.map((row) => row.id));
+  return mergeOpenSessionLive(liveStateFromOpenActivityRows(openRows), sessions);
 }
 
 export async function loadBoardSubtaskSessions(
@@ -414,6 +418,53 @@ function toChainSubTask(row: {
   };
 }
 
+type SiblingLinkSource = {
+  id: string;
+  index: number;
+  sharingType?: string | null;
+  linkedToPrevious: boolean;
+};
+
+function sharingTypeOf(row: SiblingLinkSource): "qty" | "duration" {
+  return row.sharingType === "qty" ? "qty" : "duration";
+}
+
+function effectiveLinkFlags(siblings: readonly SiblingLinkSource[]) {
+  return applyEffectiveBoardLinks(
+    siblings.map((row) => ({
+      documentId: row.id,
+      index: row.index,
+      sharingType: sharingTypeOf(row),
+      linkedToPrevious: row.linkedToPrevious,
+    })),
+  );
+}
+
+async function persistMismatchedLinks(
+  siblings: readonly SiblingLinkSource[],
+): Promise<void> {
+  const flags = effectiveLinkFlags(siblings);
+  for (const row of siblings) {
+    const effective = flags.find((item) => item.documentId === row.id);
+    if (row.linkedToPrevious && effective && !effective.linkedToPrevious) {
+      await updateSubTaskLinkedToPrevious(row.id, false);
+    }
+  }
+}
+
+function effectiveChainItems<T extends SiblingLinkSource>(
+  siblings: readonly T[],
+): ChainSubTask[] {
+  const flags = effectiveLinkFlags(siblings);
+  const linkedById = new Map(
+    flags.map((row) => [row.documentId, row.linkedToPrevious]),
+  );
+  return siblings.map((row) => ({
+    ...toChainSubTask(row),
+    linkedToPrevious: linkedById.get(row.id) ?? false,
+  }));
+}
+
 export async function updateBoardSubtaskLink(
   taskDocumentId: string,
   subtaskDocumentId: string,
@@ -434,8 +485,19 @@ export async function updateBoardSubtaskLink(
     throw new Error("invalid_link");
   }
 
+  const currentSibling = siblings.find((row) => row.id === subtaskDocumentId);
+  const previousSibling = currentSibling
+    ? previousByIndex(currentSibling, siblings)
+    : null;
+  const mixedSharing =
+    linkedToPrevious &&
+    currentSibling != null &&
+    previousSibling != null &&
+    sharingTypeOf(currentSibling) !== sharingTypeOf(previousSibling);
+  const nextLinked = mixedSharing ? false : linkedToPrevious;
+
   const before = pending.map(toAssigneeState);
-  const after = applyChainLinkToggle(before, subtaskDocumentId, linkedToPrevious);
+  const after = applyChainLinkToggle(before, subtaskDocumentId, nextLinked);
   await persistChainAssigneeStates(before, after);
 
   const updatedState = after.find(
@@ -459,12 +521,14 @@ export async function updateBoardSubtaskAssignees(
   subtaskDocumentId: string,
   taskDocumentId: string,
   assignedToIds: string[],
-  propagateChain = true,
+  _propagateChain = true,
   staffUserId?: string,
 ): Promise<void> {
   await assertCanManageBoardSubtasks(staffUserId);
+  void _propagateChain;
   const siblings = await listSubTasksWithRelationsForTask(taskDocumentId);
-  const chainItems = siblings.map(toChainSubTask);
+  await persistMismatchedLinks(siblings);
+  const chainItems = effectiveChainItems(siblings);
   const chains = resolveChains(chainItems);
   const chain = findChainContaining(chains, subtaskDocumentId);
   const current = chainItems.find((item) => item.documentId === subtaskDocumentId);
@@ -482,44 +546,9 @@ export async function updateBoardSubtaskAssignees(
     return;
   }
 
-  const role = canEditAssignees(
-    current.documentId,
-    current.maxSameTimeWorkers,
-    chain,
-  );
-  if (role === "none") throw new Error("forbidden");
-
   const members = chain.memberIds
     .map((id) => chainItems.find((item) => item.documentId === id))
     .filter((item): item is ChainSubTask => Boolean(item));
-
-  if (role === "helper" || !propagateChain) {
-    const nextRows = applyMaxWorkerSelfAssigneeChange(
-      members,
-      subtaskDocumentId,
-      assignedToIds,
-    );
-    for (const update of nextRows) {
-      const previous = members.find(
-        (item) => item.documentId === update.documentId,
-      );
-      if (
-        previous &&
-        sameAssigneeIdSet(previous.assignedToIds, update.assignedToIds)
-      ) {
-        continue;
-      }
-      const subtask = await fetchSubTaskForUpdate(update.documentId);
-      if (!subtask) continue;
-      await updateSubTask(
-        update.documentId,
-        taskDocumentId,
-        toSubTaskFormInput(subtask, update.assignedToIds),
-      );
-    }
-    invalidateBoardSubtaskReads(taskDocumentId);
-    return;
-  }
 
   const propagated = applyHeadAssigneePropagation(
     members,

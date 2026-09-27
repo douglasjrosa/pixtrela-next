@@ -46,8 +46,7 @@ export function ActivitiesPageHeader({ options }: ActivitiesPageHeaderProps) {
   }
 
   return (
-    <div className="flex shrink-0 items-center justify-between gap-3">
-      <h1 className="text-2xl font-bold max-[500px]:text-lg">{t("title")}</h1>
+    <>
       <AddNewButton label={t("newActivity")} onClick={() => setCreateOpen(true)} />
       {createOpen ? (
         <FormModalShell
@@ -73,6 +72,6 @@ export function ActivitiesPageHeader({ options }: ActivitiesPageHeaderProps) {
           />
         </FormModalShell>
       ) : null}
-    </div>
+    </>
   );
 }

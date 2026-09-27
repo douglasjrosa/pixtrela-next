@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { deleteLogs, loadMoreLogs } from "@/app/(app)/settings/logs/actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
 import { BulkListToolbar } from "@/components/ui/bulk-list-toolbar";
+import { ListPageActionsPortal } from "@/components/ui/list-page-actions-slot";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import { ListSelectionProvider } from "@/components/ui/list-selection-context";
@@ -121,7 +122,7 @@ export function LogsListFrame({
     <ListSelectionProvider value={selectionValue}>
       <div className="space-y-3">
         {hasSelection ? (
-          <div className="flex justify-end">
+          <ListPageActionsPortal>
             <BulkListToolbar
               showArchive={false}
               showDelete
@@ -131,7 +132,7 @@ export function LogsListFrame({
               onArchive={() => undefined}
               onDelete={() => setDeleteOpen(true)}
             />
-          </div>
+          </ListPageActionsPortal>
         ) : null}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

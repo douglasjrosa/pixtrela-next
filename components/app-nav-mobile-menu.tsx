@@ -2,11 +2,15 @@
 
 import { useEffect, useId, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { isAppNavLinkActive } from "@/lib/auth/is-app-nav-link-active";
 import type { ResolvedNavItem } from "@/lib/auth/nav";
+import { appNavLinkClass } from "@/lib/ui/app-nav-link-styles";
+import { cn } from "@/lib/utils";
 
 export interface AppNavMobileMenuProps {
   open: boolean;
@@ -20,6 +24,7 @@ export function AppNavMobileMenu({
   onOpenChange,
 }: AppNavMobileMenuProps) {
   const t = useTranslations();
+  const pathname = usePathname();
   const titleId = useId();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -85,10 +90,15 @@ export function AppNavMobileMenu({
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={
-                    "flex min-h-11 items-center rounded-md px-3 text-base " +
-                    "hover:bg-muted"
+                  aria-current={
+                    isAppNavLinkActive(pathname, item.href)
+                      ? "page"
+                      : undefined
                   }
+                  className={cn(
+                    appNavLinkClass(isAppNavLinkActive(pathname, item.href)),
+                    "min-h-11 text-base",
+                  )}
                   onClick={close}
                 >
                   {item.label}

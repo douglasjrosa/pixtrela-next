@@ -38,6 +38,31 @@ export function liveStateFromOpenActivityRows(
   return liveBySubTaskId;
 }
 
+export function mergeOpenSessionLive(
+  liveBySubTaskId: Record<string, BoardSubtaskLiveState>,
+  sessions: readonly { subTaskId: string; userId: string; startedAt: Date }[],
+): Record<string, BoardSubtaskLiveState> {
+  const merged: Record<string, BoardSubtaskLiveState> = { ...liveBySubTaskId };
+  for (const session of sessions) {
+    const current = merged[session.subTaskId] ?? {
+      producingColaboratorIds: [],
+      openActivityStartedAts: [],
+    };
+    const producers = current.producingColaboratorIds.includes(session.userId)
+      ? current.producingColaboratorIds
+      : [...current.producingColaboratorIds, session.userId];
+    const startedAt = session.startedAt.toISOString();
+    const stamps = current.openActivityStartedAts.includes(startedAt)
+      ? current.openActivityStartedAts
+      : [...current.openActivityStartedAts, startedAt];
+    merged[session.subTaskId] = {
+      producingColaboratorIds: producers,
+      openActivityStartedAts: stamps,
+    };
+  }
+  return merged;
+}
+
 export function mergeBoardSubtaskLiveState(
   subtasks: readonly BoardSubTaskSummary[],
   liveBySubTaskId: Record<string, BoardSubtaskLiveState>,

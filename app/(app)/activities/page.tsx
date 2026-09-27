@@ -5,13 +5,9 @@ import { auth } from "@/auth";
 import { ActivitiesListSkeleton } from "@/components/activities/activities-list-skeleton";
 import { ActivitiesListTableFrame } from "@/components/activities/activities-list-table-frame";
 import { ActivitiesListTableHeader } from "@/components/activities/activities-list-table-header";
-import { ActivitiesPageHeader } from "@/components/activities/activities-page-header";
-import { ActivitiesToolbar } from "@/components/activities/activities-toolbar";
+import { ActivitiesPageChrome } from "@/components/activities/activities-page-chrome";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
-import {
-  APP_LIST_PAGE_SHELL_CLASS,
-  APP_LIST_PAGE_STACK_CLASS,
-} from "@/components/layout/app-page-layout";
+import { APP_LIST_PAGE_SHELL_CLASS } from "@/components/layout/app-page-layout";
 import { ListEmptyMessage } from "@/components/ui/list-empty-message";
 import { activityListFilterKey } from "@/lib/activities/activity-list-params";
 import { loadActivityListPage } from "@/lib/activities/load-activity-list-page";
@@ -98,11 +94,7 @@ export default async function ActivitiesPage({
 
   return (
     <section className={APP_LIST_PAGE_SHELL_CLASS}>
-      <div className={APP_LIST_PAGE_STACK_CLASS}>
-        <ActivitiesPageHeader options={options} />
-        <Suspense fallback={null}>
-          <ActivitiesToolbar />
-        </Suspense>
+      <ActivitiesPageChrome options={options}>
         <Suspense
           key={activityListFilterKey(filters)}
           fallback={<ActivitiesListSkeleton />}
@@ -114,7 +106,7 @@ export default async function ActivitiesPage({
             canDelete={canDeleteActivities(role)}
           />
         </Suspense>
-      </div>
+      </ActivitiesPageChrome>
     </section>
   );
 }
