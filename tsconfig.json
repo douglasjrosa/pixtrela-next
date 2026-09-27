@@ -39,6 +39,7 @@
     "**/*.test.tsx",
     "**/*.spec.ts",
     "**/*.spec.tsx",
-    "tests/e2e"
+    "tests/e2e",
+    "services"
   ]
 }

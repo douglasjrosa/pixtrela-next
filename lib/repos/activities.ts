@@ -30,6 +30,7 @@ import {
   recomputeActivityCreditsAfterAdminChange,
   type ActivityCreditSnapshot,
 } from "@/lib/repos/recompute-activity-credits";
+import { scheduleBoardInvalidate } from "@/lib/realtime/publish-board-invalidate";
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import type { AdminActivityFormInput } from "@/lib/schemas/admin-activity";
 import type { ActivityListFilters } from "@/lib/schemas/activity-list-filters";
@@ -429,6 +430,7 @@ export async function createActivity(
     },
     db,
   );
+  scheduleBoardInvalidate();
   const row = await getActivityById(created.id, db);
   if (!row) throw new Error("activityNotFound");
   return row;

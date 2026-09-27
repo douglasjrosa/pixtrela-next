@@ -28,6 +28,7 @@ import {
   getOrCreateMonthlyBalance,
 } from "@/lib/repos/balances";
 import { resolvePaymentCurrencyAt } from "@/lib/repos/payment-currency";
+import { scheduleBoardInvalidate } from "@/lib/realtime/publish-board-invalidate";
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import type { SubTaskWithAssignees } from "@/lib/repos/tasks";
 
@@ -484,6 +485,7 @@ async function closeGroupRun(
     await tx.delete(chainRuns).where(eq(chainRuns.id, run.id));
     await runTaskSubTaskSyncRoutine(run.taskId, txDb, endedAt);
   });
+  scheduleBoardInvalidate();
 }
 
 function presencesFromSessions(

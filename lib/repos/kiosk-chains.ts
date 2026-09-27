@@ -5,6 +5,7 @@ import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 
 import { activities, subTasks, tasks } from "@/drizzle/schema";
 import { openOrJoinGroupRun, findOpenChainRunRow, leaveGroupRun, listOpenGroupRunsByHead } from "@/lib/repos/group-runs";
+import { scheduleBoardInvalidate } from "@/lib/realtime/publish-board-invalidate";
 import {
   allocateChainTimeline,
   allocateSegmentPresenceShares,
@@ -681,6 +682,7 @@ export async function startChain(
       .where(eq(subTasks.id, startMember.documentId));
     await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, timestamp);
   });
+  scheduleBoardInvalidate();
   return { chainRunId };
 }
 
@@ -1130,6 +1132,7 @@ async function reallocateChainRunInternal(
       tx as unknown as Db,
     );
   });
+  scheduleBoardInvalidate();
 }
 
 async function recordPeerChainExit(input: {
@@ -1352,6 +1355,7 @@ async function recordPeerChainExit(input: {
       tx as unknown as Db,
     );
   });
+  scheduleBoardInvalidate();
 }
 
 export async function confirmChainStop(

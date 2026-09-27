@@ -89,6 +89,7 @@ import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import type { KanbanTask } from "@/components/kanban/types";
 import { isAutoStepTaskOrder } from "@/lib/schemas/step-task-order-by";
+import { scheduleBoardInvalidate } from "@/lib/realtime/publish-board-invalidate";
 import { STEP_TASKS_PER_LOAD_DEFAULT } from "@/lib/schemas/step";
 
 const FINISHED_STATUS = "finished";
@@ -127,11 +128,13 @@ async function assertAuthenticatedActor(staffUserId?: string): Promise<void> {
 function invalidateBoardTasks(): void {
   revalidateTag("drizzle:tasks", "default");
   revalidateTag("drizzle:steps", "default");
+  scheduleBoardInvalidate();
 }
 
 function invalidateBoardSubtaskReads(taskId: string): void {
   revalidateTag("drizzle:subTasks", "default");
   revalidateTag(`board-subtasks:${taskId}`, "default");
+  scheduleBoardInvalidate();
 }
 
 function mapBoardSubtasksFromCore(

@@ -76,6 +76,7 @@ import {
 import { listTimeSpentByColaborator } from "@/lib/business/task-time-spent";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { getDb, type Db } from "@/lib/db/client";
+import { scheduleBoardInvalidate } from "@/lib/realtime/publish-board-invalidate";
 import {
   creditBalanceIncome,
   getOrCreateMonthlyBalance,
@@ -1369,6 +1370,7 @@ export async function startSubTask(
 
     await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, timestamp);
   });
+  scheduleBoardInvalidate();
 }
 
 async function creditStopCurrency(
@@ -1669,6 +1671,7 @@ export async function stopSubTask(
       );
     }
   });
+  scheduleBoardInvalidate();
 
   const stillOpen = chainRunId
     ? await findOpenChainRunForSubTask(subTaskId, db)

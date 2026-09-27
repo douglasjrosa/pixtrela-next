@@ -1,0 +1,64 @@
+# Redis + realtime SSE hub. Host ports stay on loopback only.
+# Usage (from this directory):
+#   cp services/realtime/.env.example services/realtime/.env
+#   docker compose -f docker-compose.realtime.yml up --build
+#
+# Redis listens on the Docker network so the hub can reach it. The published
+# host port is 127.0.0.1:6379, not a public bind. protected-mode is off because
+# Redis 7 would otherwise refuse the hub on the internal network when no
+# password is set. Do not publish 6379 or 8787 on 0.0.0.0.
+
+name: pixtrela-realtime
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: pixtrela-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --bind
+      - 0.0.0.0
+      - --protected-mode
+      - "no"
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      - realtime
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  realtime:
+    build:
+      context: ./services/realtime
+    container_name: pixtrela-realtime
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./services/realtime/.env
+    environment:
+      REDIS_URL: redis://redis:6379
+      PORT: "8787"
+    ports:
+      - "127.0.0.1:8787:8787"
+    networks:
+      - realtime
+    healthcheck:
+      test: ["CMD", "node", "/app/healthcheck.js"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+networks:
+  realtime:
+    driver: bridge

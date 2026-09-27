@@ -7,14 +7,59 @@ import {
   hasBoardRevisionChanged,
   type BoardRevision,
 } from "@/lib/board/board-revision";
+import {
+  BOARD_EVENTS_PATH,
+  BOARD_INVALIDATE_EVENT,
+  BOARD_REALTIME_TOKEN_PATH,
+  trimEnv,
+} from "@/lib/realtime/board-channel";
 
-const BOARD_REVISION_POLL_MS = 10_000;
+export const BOARD_REVISION_POLL_MS = 10_000;
+export const BOARD_REVISION_SSE_FALLBACK_MS = 60_000;
 
 export type SyncBoardStepsFn = () => Promise<void>;
+
+type BoardRealtimeCredentials = {
+  sseUrl: string;
+  token: string;
+};
+
+function readPublicSseUrl(): string {
+  return trimEnv(process.env.NEXT_PUBLIC_REALTIME_SSE_URL);
+}
+
+function isDocumentHidden(): boolean {
+  return (
+    typeof document !== "undefined" && document.visibilityState === "hidden"
+  );
+}
+
+function buildBoardEventSourceUrl(sseUrl: string, token: string): string {
+  const origin = sseUrl.replace(/\/$/, "");
+  const query = new URLSearchParams({ token });
+  return `${origin}${BOARD_EVENTS_PATH}?${query.toString()}`;
+}
+
+async function fetchBoardRealtimeCredentials(): Promise<BoardRealtimeCredentials | null> {
+  const response = await fetch(BOARD_REALTIME_TOKEN_PATH, {
+    credentials: "same-origin",
+  });
+  if (!response.ok) return null;
+
+  const body = (await response.json()) as {
+    sseUrl?: unknown;
+    token?: unknown;
+  };
+  if (typeof body.sseUrl !== "string" || body.sseUrl.length === 0) return null;
+  if (typeof body.token !== "string" || body.token.length === 0) return null;
+  return { sseUrl: body.sseUrl, token: body.token };
+}
 
 /**
  * Polls board-wide revision. Structural step changes call `onStepsChanged`
  * (syncBoardSteps). Task layout is left to progress poll C — no router.refresh.
+ * When the public SSE URL is set, `board-invalidate` runs the same check and
+ * the interval slows while the stream is open.
  */
 export function useBoardRevisionRefresh(
   paused = false,
@@ -30,28 +75,25 @@ export function useBoardRevisionRefresh(
   useEffect(() => {
     let cancelled = false;
     let timerId: number | undefined;
+    let source: EventSource | null = null;
+    let connecting = false;
+    let pollMs = BOARD_REVISION_POLL_MS;
 
     async function checkRevision(): Promise<void> {
       if (paused) return;
-      if (
-        typeof document !== "undefined" &&
-        document.visibilityState === "hidden"
-      ) {
-        return;
-      }
+      if (isDocumentHidden()) return;
 
       try {
         const revision = await pollBoardRevision();
         if (cancelled) return;
 
         const previous = revisionRef.current;
-        if (hasBoardRevisionChanged(previous, revision)) {
-          const stepsChanged =
-            previous != null &&
-            previous.stepsMaxUpdatedAt !== revision.stepsMaxUpdatedAt;
-          if (stepsChanged) {
-            await onStepsChangedRef.current?.();
-          }
+        const stepsChanged =
+          hasBoardRevisionChanged(previous, revision) &&
+          previous != null &&
+          previous.stepsMaxUpdatedAt !== revision.stepsMaxUpdatedAt;
+        if (stepsChanged) {
+          await onStepsChangedRef.current?.();
         }
 
         revisionRef.current = revision;
@@ -60,26 +102,88 @@ export function useBoardRevisionRefresh(
       }
     }
 
-    function schedule(): void {
+    function closeSource(): void {
+      const current = source;
+      source = null;
+      current?.close();
+    }
+
+    function startInterval(): void {
+      if (timerId !== undefined) window.clearInterval(timerId);
       timerId = window.setInterval(() => {
         void checkRevision();
-      }, BOARD_REVISION_POLL_MS);
+        if (source !== null || isDocumentHidden()) return;
+        void connectRealtime();
+      }, pollMs);
+    }
+
+    function applyPollInterval(nextMs: number): void {
+      if (pollMs === nextMs && timerId !== undefined) return;
+      pollMs = nextMs;
+      if (paused) return;
+      startInterval();
+    }
+
+    function openSource(credentials: BoardRealtimeCredentials): void {
+      closeSource();
+      const next = new EventSource(
+        buildBoardEventSourceUrl(credentials.sseUrl, credentials.token),
+      );
+      source = next;
+      next.addEventListener(BOARD_INVALIDATE_EVENT, () => {
+        void checkRevision();
+      });
+      next.onopen = () => {
+        if (cancelled || source !== next) return;
+        applyPollInterval(BOARD_REVISION_SSE_FALLBACK_MS);
+      };
+      next.onerror = () => {
+        if (cancelled || source !== next) return;
+        closeSource();
+        applyPollInterval(BOARD_REVISION_POLL_MS);
+      };
+    }
+
+    async function connectRealtime(): Promise<void> {
+      if (cancelled || paused || connecting || source) return;
+      if (!readPublicSseUrl() || isDocumentHidden()) return;
+
+      connecting = true;
+      try {
+        const credentials = await fetchBoardRealtimeCredentials();
+        if (cancelled || isDocumentHidden() || source) return;
+        if (!credentials) {
+          applyPollInterval(BOARD_REVISION_POLL_MS);
+          return;
+        }
+        openSource(credentials);
+      } catch {
+        if (!cancelled) applyPollInterval(BOARD_REVISION_POLL_MS);
+      } finally {
+        connecting = false;
+      }
     }
 
     function onVisibility(): void {
-      if (document.visibilityState === "visible") {
-        void checkRevision();
+      if (isDocumentHidden()) {
+        closeSource();
+        applyPollInterval(BOARD_REVISION_POLL_MS);
+        return;
       }
+      void checkRevision();
+      void connectRealtime();
     }
 
     if (!paused) {
       void checkRevision();
-      schedule();
+      startInterval();
+      void connectRealtime();
     }
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       cancelled = true;
+      closeSource();
       if (timerId !== undefined) window.clearInterval(timerId);
       document.removeEventListener("visibilitychange", onVisibility);
     };
