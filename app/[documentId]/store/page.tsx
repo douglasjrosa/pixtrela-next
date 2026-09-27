@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { getAppSession } from "@/lib/auth/app-session";
+import { canAccessOwnProfile } from "@/lib/auth/profile-access";
+import type { Role } from "@/lib/auth/nav";
 import { CartEditor } from "@/components/store/cart-editor";
 import { StoreMyListCard } from "@/components/store/store-my-list-card";
 import { StoreWindowInfoCard } from "@/components/store/store-window-info-card";
@@ -22,7 +24,8 @@ export default async function ColaboratorStorePage({ params }: PageProps) {
   const session = await getAppSession();
   const { documentId } = await params;
 
-  if (session?.user?.role !== "colaborator" || !session.user.id) {
+  const role = session?.user?.role as Role | undefined;
+  if (!session?.user?.id || !canAccessOwnProfile(role)) {
     redirect("/");
   }
 

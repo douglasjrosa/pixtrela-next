@@ -8,35 +8,35 @@ import {
   APP_LIST_PAGE_SHELL_CLASS,
   APP_LIST_PAGE_TITLE_CLASS,
 } from "@/components/layout/app-page-layout";
+import { canManageColaboratorCredentialsOnKiosk } from "@/lib/auth/kiosk-credentials-access";
 import {
   canKioskSignOutDevice,
   loadKioskStaffActor,
 } from "@/lib/business/kiosk-staff-access";
-import { canViewUsers } from "@/lib/auth/permissions";
-import { loadKioskStaffColaborators } from "@/lib/kiosk/load-staff-colaborators";
+import { loadTeamColaboratorsForStaff } from "@/lib/kiosk/load-team-colaborators-for-staff";
 
 interface PageProps {
   params: Promise<{ userId: string }>;
 }
 
-export default async function KioskStaffUsersPage({ params }: PageProps) {
+export default async function KioskStaffTeamAccessPage({ params }: PageProps) {
   const { userId } = await params;
   const actor = await loadKioskStaffActor(userId);
   if (!actor) notFound();
 
-  if (!canViewUsers(actor.staffRole)) {
+  if (!canManageColaboratorCredentialsOnKiosk(actor.staffRole)) {
     return <ForbiddenMessage />;
   }
 
   const [colaborators, tKiosk] = await Promise.all([
-    loadKioskStaffColaborators(),
+    loadTeamColaboratorsForStaff(actor.staffUserId, actor.staffRole),
     getTranslations("kiosk"),
   ]);
 
   return (
     <KioskContentSurface>
       <section className={APP_LIST_PAGE_SHELL_CLASS}>
-        <h1 className={APP_LIST_PAGE_TITLE_CLASS}>{tKiosk("usersPage")}</h1>
+        <h1 className={APP_LIST_PAGE_TITLE_CLASS}>{tKiosk("teamAccessPage")}</h1>
         <KioskStaffUsersPanel
           userId={userId}
           colaborators={colaborators}

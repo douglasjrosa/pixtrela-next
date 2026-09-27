@@ -15,13 +15,13 @@ describe("resolveKioskPathAfterIdentify", () => {
 
   it("routes staff roles to the kiosk staff area", () => {
     expect(resolveKioskPathAfterIdentify("admin-1", "admin")).toBe(
-      "/kiosk/staff/admin-1",
+      "/kiosk/staff/admin-1/queues",
     );
     expect(resolveKioskPathAfterIdentify("mgr-1", "manager")).toBe(
-      "/kiosk/staff/mgr-1",
+      "/kiosk/staff/mgr-1/queues",
     );
     expect(resolveKioskPathAfterIdentify("lead-1", "leader")).toBe(
-      "/kiosk/staff/lead-1",
+      "/kiosk/staff/lead-1/queues",
     );
   });
 });
@@ -37,7 +37,7 @@ describe("resolveKioskPathForIdentifiedUser", () => {
       "/kiosk/c1",
     );
     expect(resolveKioskPathForIdentifiedUser("a1", "admin")).toBe(
-      "/kiosk/staff/a1",
+      "/kiosk/staff/a1/queues",
     );
   });
 });

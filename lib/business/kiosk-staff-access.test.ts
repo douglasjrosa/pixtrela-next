@@ -15,6 +15,7 @@ vi.mock("@/lib/repos/users", () => ({
 vi.mock("@/lib/repos/kiosk", () => ({
   assertStaffCanManageColaborator: (...args: unknown[]) =>
     assertStaffCanManageColaborator(...args),
+  assertStaffCanOpenQueue: vi.fn(),
 }));
 
 describe("kiosk-staff-access", () => {
@@ -76,5 +77,7 @@ describe("kiosk-staff-access", () => {
     );
     expect(staffProfilePath("u1")).toBe("/kiosk/staff/u1/profile");
     expect(kioskStaffNavPaths("u1").tasks).toBe("/kiosk/staff/u1/tasks");
+    const { staffTeamAccessPath } = await import("./kiosk-staff-paths");
+    expect(staffTeamAccessPath("u1")).toBe("/kiosk/staff/u1/team-access");
   });
 });

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { KioskContentSurface } from "@/components/kiosk/kiosk-content-surface";
 import { KioskQueueColaboratorPage } from "@/components/kiosk/kiosk-queue-colaborator-page";
-import { assertKioskStaffCanManageColaborator } from "@/lib/business/kiosk-staff-access";
+import { assertKioskStaffCanOpenQueue } from "@/lib/business/kiosk-staff-access";
 import { staffQueuesPath } from "@/lib/business/kiosk-staff-paths";
 import { loadKioskRouteTheme } from "@/lib/themes/load-route-themes";
 import { routeThemeContentSurfaceTopRadiusClass } from "@/lib/themes/match-route-theme";
@@ -17,7 +17,7 @@ export default async function KioskStaffQueueColaboratorPage({
   const { userId, colaboratorId } = await params;
 
   try {
-    await assertKioskStaffCanManageColaborator(userId, colaboratorId);
+    await assertKioskStaffCanOpenQueue(userId, colaboratorId);
   } catch {
     notFound();
   }

@@ -3,10 +3,10 @@ import type { Role } from "@/lib/auth/nav";
 import { canPreviewKioskColaborator } from "@/lib/auth/permissions";
 import {
   assertKioskDeviceSession,
-  assertKioskStaffCanManageColaborator,
+  assertKioskStaffCanOpenQueue,
   isKioskStaffRole,
 } from "@/lib/business/kiosk-staff-access";
-import { assertStaffCanManageColaborator } from "@/lib/repos/kiosk";
+import { assertStaffCanOpenQueue } from "@/lib/repos/kiosk";
 
 /**
  * Queue mutations from the kiosk device (self-service), kiosk staff URL, or
@@ -25,7 +25,7 @@ export async function assertQueueStaffMutation(
   const role = session?.user?.role as Role | undefined;
 
   if (role === "kiosk") {
-    await assertKioskStaffCanManageColaborator(staffUserId, colaboratorId);
+    await assertKioskStaffCanOpenQueue(staffUserId, colaboratorId);
     return;
   }
 
@@ -33,7 +33,7 @@ export async function assertQueueStaffMutation(
     throw new Error("forbidden");
   }
 
-  await assertStaffCanManageColaborator(staffUserId, colaboratorId);
+  await assertStaffCanOpenQueue(staffUserId, colaboratorId);
 }
 
 /** Read access for queue polling on kiosk, admin preview, or staff routes. */
@@ -53,7 +53,7 @@ export async function assertQueueReader(
     session?.user?.id === staffUserId &&
     isKioskStaffRole(role)
   ) {
-    await assertStaffCanManageColaborator(staffUserId, colaboratorId);
+    await assertStaffCanOpenQueue(staffUserId, colaboratorId);
     return;
   }
 

@@ -2,6 +2,7 @@ import { and, asc, count, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 
 import { teamMembers, teams, users } from "@/drizzle/schema";
 import { toCalendarDateKey } from "@/lib/business/datetime-timezone";
+import { pickProducerExchangeWindow } from "@/lib/business/producer-exchange-window";
 import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
 import { getDb, type Db } from "@/lib/db/client";
 import { archiveRecords } from "@/lib/repos/deactivation-reasons";
@@ -347,18 +348,35 @@ export async function hardDeleteTeam(
   await db.delete(teams).where(eq(teams.id, id));
 }
 
-export async function findActiveTeamWindowForUser(
+export async function listProducerExchangeWindows(
   userId: string,
   db: Db = getDb(),
-): Promise<{ exchangesFirstDay: number; exchangesLastDay: number } | null> {
-  const [membership] = await db
+): Promise<Array<{ exchangesFirstDay: number; exchangesLastDay: number }>> {
+  const memberWindows = await db
     .select({
       exchangesFirstDay: teams.exchangesFirstDay,
       exchangesLastDay: teams.exchangesLastDay,
     })
     .from(teamMembers)
     .innerJoin(teams, eq(teamMembers.teamId, teams.id))
-    .where(and(eq(teamMembers.userId, userId), eq(teams.active, true)))
-    .limit(1);
-  return membership ?? null;
+    .where(and(eq(teamMembers.userId, userId), eq(teams.active, true)));
+
+  const ledWindows = await db
+    .select({
+      exchangesFirstDay: teams.exchangesFirstDay,
+      exchangesLastDay: teams.exchangesLastDay,
+    })
+    .from(teams)
+    .where(and(eq(teams.leaderId, userId), eq(teams.active, true)));
+
+  return [...memberWindows, ...ledWindows];
+}
+
+export async function findActiveTeamWindowForUser(
+  userId: string,
+  db: Db = getDb(),
+  now: Date = new Date(),
+): Promise<{ exchangesFirstDay: number; exchangesLastDay: number } | null> {
+  const windows = await listProducerExchangeWindows(userId, db);
+  return pickProducerExchangeWindow(windows, now);
 }

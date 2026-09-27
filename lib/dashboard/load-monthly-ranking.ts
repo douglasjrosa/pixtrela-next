@@ -40,7 +40,7 @@ async function loadDrizzleMonthlyRanking(
     .from(users)
     .where(
       and(
-        eq(users.role, "colaborator"),
+        eq(users.role, "colaborator"), // leaders excluded: isMonthlyRankingParticipantRole
         eq(users.active, true),
         eq(users.blocked, false),
       ),

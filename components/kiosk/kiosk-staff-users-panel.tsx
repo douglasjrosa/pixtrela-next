@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { KIOSK_HOME_PATH } from "@/lib/auth/colaborator-routes";
+import { staffQueuesPath } from "@/lib/business/kiosk-staff-paths";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 import { TABLE_HEAD_TEXT_CLASS } from "@/lib/ui/table-head-styles";
 import { cn } from "@/lib/utils";
@@ -132,9 +133,9 @@ export function KioskStaffUsersPanel({
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold">{t("usersPage")}</h1>
+          <h1 className="text-xl font-semibold">{t("teamAccessPage")}</h1>
           <Link
-            href={`/kiosk/staff/${userId}`}
+            href={staffQueuesPath(userId)}
             className={cn(buttonVariants({ variant: "link" }), "h-auto p-0")}
           >
             {t("staffBack")}
@@ -164,12 +165,16 @@ export function KioskStaffUsersPanel({
               handleSaveFacePhoto(selectedColaborator.documentId, file, options)
             }
           />
-          <KioskColaboratorPasswordForm
-            colaboratorName={selectedColaborator.name}
-            disabled={pending}
-            onCancel={handleBackToList}
-            onSave={(input) => handleSave(selectedColaborator.documentId, input)}
-          />
+          {selectedColaborator.documentId !== userId ? (
+            <KioskColaboratorPasswordForm
+              colaboratorName={selectedColaborator.name}
+              disabled={pending}
+              onCancel={handleBackToList}
+              onSave={(input) =>
+                handleSave(selectedColaborator.documentId, input)
+              }
+            />
+          ) : null}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border">

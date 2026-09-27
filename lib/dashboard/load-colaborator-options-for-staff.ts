@@ -13,6 +13,7 @@ async function loadLeaderColaboratorOptions(
   const byId = new Map<string, ColaboratorOption>();
   for (const team of teams) {
     for (const member of team.members) {
+      if (member.isLeader) continue;
       byId.set(member.documentId, {
         documentId: member.documentId,
         name: member.name,

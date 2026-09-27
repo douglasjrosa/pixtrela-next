@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { getAppSession } from "@/lib/auth/app-session";
+import { canAccessOwnProfile } from "@/lib/auth/profile-access";
+import type { Role } from "@/lib/auth/nav";
 import { buttonVariants } from "@/components/ui/button";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
 import { buildOrderPath, buildOrdersPath } from "@/lib/orders/orders-path";
@@ -20,7 +22,8 @@ export default async function ColaboratorOrdersPage({ params }: PageProps) {
   const session = await getAppSession();
   const { documentId } = await params;
 
-  if (session?.user?.role !== "colaborator" || !session.user.id) {
+  const role = session?.user?.role as Role | undefined;
+  if (!session?.user?.id || !canAccessOwnProfile(role)) {
     redirect("/");
   }
   if (session.user.id !== documentId) {

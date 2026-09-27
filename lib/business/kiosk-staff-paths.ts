@@ -26,6 +26,10 @@ export function staffUsersPath(staffUserId: string): string {
   return `/kiosk/staff/${staffUserId}/users`;
 }
 
+export function staffTeamAccessPath(staffUserId: string): string {
+  return `/kiosk/staff/${staffUserId}/team-access`;
+}
+
 export function staffActivitiesPath(staffUserId: string): string {
   return `/kiosk/staff/${staffUserId}/activities`;
 }

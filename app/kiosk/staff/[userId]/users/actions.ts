@@ -2,6 +2,8 @@
 
 import { auth } from "@/auth";
 import { storeMedia } from "@/lib/media/store-media";
+import { canEditOtherPersonCredentialsOnKiosk } from "@/lib/auth/kiosk-credentials-access";
+import { assertKioskStaffActor } from "@/lib/business/kiosk-staff-access";
 import { assertStaffColaboratorEditAccess } from "@/lib/kiosk/staff-colaborator-edit-access";
 import { assertStaffCanManageColaborator } from "@/lib/repos/kiosk";
 import { insertMediaAsset } from "@/lib/repos/media";
@@ -37,6 +39,14 @@ export async function saveKioskColaboratorPassword(
       (issue) => issue.message === "passwordMismatch",
     );
     return { ok: false, error: mismatch ? "passwordMismatch" : "invalid" };
+  }
+
+  const session = await auth();
+  if (
+    !canEditOtherPersonCredentialsOnKiosk(session?.user?.role)
+    || staffUserId === colaboratorDocumentId
+  ) {
+    return { ok: false, error: "forbidden" };
   }
 
   try {
@@ -168,12 +178,21 @@ export async function saveKioskColaboratorFacePhoto(
   raw: unknown,
   faceVector?: number[],
 ): Promise<KioskColaboratorFacePhotoResult> {
+  const session = await auth();
+  if (session?.user?.role !== "kiosk") {
+    return { ok: false, error: "forbidden" };
+  }
+
   if (!(raw instanceof File) || raw.size === 0 || !raw.type.startsWith("image/")) {
     return { ok: false, error: "invalid" };
   }
 
   try {
-    await assertStaffColaboratorEditAccess(staffUserId, colaboratorDocumentId);
+    if (staffUserId === colaboratorDocumentId) {
+      await assertKioskStaffActor(staffUserId);
+    } else {
+      await assertStaffColaboratorEditAccess(staffUserId, colaboratorDocumentId);
+    }
     const facePhotoUrl = await storeFacePhotoForColaborator(
       colaboratorDocumentId,
       raw,

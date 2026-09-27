@@ -8,6 +8,7 @@ import {
   loadLatestActivitiesByColaboratorIds,
   type ColaboratorLatestActivitySummary,
 } from "@/lib/repos/activities";
+import { appendTeamLeaderAsLastMember } from "@/lib/business/team-leader-assignee";
 import { listStaffOpenSessionLabels, type StaffOpenSessionLabel } from "@/lib/repos/group-runs";
 
 export type StaffQueueMemberLastActivity = Omit<
@@ -21,6 +22,7 @@ export type StaffQueueMember = {
   code: number | null;
   facePhotoUrl?: string | null;
   lastActivity: StaffQueueMemberLastActivity | null;
+  isLeader?: boolean;
 };
 
 export type StaffQueueTeam = {
@@ -48,10 +50,19 @@ export async function loadStaffQueuesGrouped(
 
   const teamIds = teamRows.map((team) => team.id);
   const membersByTeam = await loadColaboratorsByTeam(teamIds, db);
+  const membersWithLeaders = new Map(
+    teamRows.map((team) => [
+      team.id,
+      appendTeamLeaderAsLastMember(
+        membersByTeam.get(team.id) ?? [],
+        toQueueLeaderMember(team),
+      ),
+    ]),
+  );
   const colaboratorIds = [
     ...new Set(
       teamIds.flatMap((teamId) =>
-        (membersByTeam.get(teamId) ?? []).map((member) => member.documentId),
+        (membersWithLeaders.get(teamId) ?? []).map((member) => member.documentId),
       ),
     ),
   ];
@@ -65,7 +76,7 @@ export async function loadStaffQueuesGrouped(
     teams: teamRows.map((team) => ({
       teamId: team.id,
       teamName: team.name,
-      members: (membersByTeam.get(team.id) ?? []).map((member) => ({
+      members: (membersWithLeaders.get(team.id) ?? []).map((member) => ({
         ...member,
         lastActivity: openSessionActivity(openLabels.get(member.documentId))
           ?? toMemberLastActivity(latestActivities.get(member.documentId)),
@@ -98,11 +109,42 @@ function toMemberLastActivity(
   return rest;
 }
 
+type StaffTeamRow = {
+  id: string;
+  name: string;
+  leaderId: string | null;
+  leaderName: string | null;
+  leaderCode: number | null;
+  leaderFacePhotoUrl: string | null;
+  leaderActive: boolean | null;
+  leaderBlocked: boolean | null;
+};
+
+function toQueueLeaderMember(
+  team: StaffTeamRow,
+): StaffQueueMember | null {
+  if (
+    !team.leaderId
+    || !team.leaderName
+    || !team.leaderActive
+    || team.leaderBlocked
+  ) {
+    return null;
+  }
+  return {
+    documentId: team.leaderId,
+    name: team.leaderName,
+    code: team.leaderCode,
+    facePhotoUrl: toBrowserMediaUrl(team.leaderFacePhotoUrl),
+    lastActivity: null,
+  };
+}
+
 async function loadStaffTeams(
   staffUserId: string,
   staffRole: KioskStaffRole,
   db: Db,
-): Promise<Array<{ id: string; name: string }>> {
+): Promise<StaffTeamRow[]> {
   const activeClause = eq(teams.active, true);
   const where =
     staffRole === "leader"
@@ -110,8 +152,19 @@ async function loadStaffTeams(
       : activeClause;
 
   return db
-    .select({ id: teams.id, name: teams.name })
+    .select({
+      id: teams.id,
+      name: teams.name,
+      leaderId: teams.leaderId,
+      leaderName: users.name,
+      leaderCode: users.code,
+      leaderFacePhotoUrl: mediaAssets.url,
+      leaderActive: users.active,
+      leaderBlocked: users.blocked,
+    })
     .from(teams)
+    .leftJoin(users, eq(teams.leaderId, users.id))
+    .leftJoin(mediaAssets, eq(users.facePhotoMediaId, mediaAssets.id))
     .where(where)
     .orderBy(asc(teams.name));
 }

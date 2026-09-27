@@ -10,7 +10,7 @@ export function resolveKioskPathAfterIdentify(
   role: KioskIdentifiedRole,
 ): string {
   if (role === "colaborator") return `/kiosk/${documentId}`;
-  return `/kiosk/staff/${documentId}`;
+  return `/kiosk/staff/${documentId}/queues`;
 }
 
 export function isKioskIdentifiedRole(role: string): role is KioskIdentifiedRole {

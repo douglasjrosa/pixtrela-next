@@ -3,7 +3,10 @@ import { cache } from "react";
 import { getAppSession } from "@/lib/auth/app-session";
 import type { Role } from "@/lib/auth/nav";
 import { canManageTasks, canMoveBoardTasks } from "@/lib/auth/permissions";
-import { assertStaffCanManageColaborator } from "@/lib/repos/kiosk";
+import {
+  assertStaffCanManageColaborator,
+  assertStaffCanOpenQueue,
+} from "@/lib/repos/kiosk";
 import { findUserById } from "@/lib/repos/users";
 
 import type { KioskIdentifiedRole } from "./kiosk-identify-route";
@@ -81,6 +84,15 @@ export async function assertKioskStaffCanManageColaborator(
 ): Promise<KioskStaffActor> {
   const actor = await assertKioskStaffActor(staffUserId);
   await assertStaffCanManageColaborator(staffUserId, colaboratorId);
+  return actor;
+}
+
+export async function assertKioskStaffCanOpenQueue(
+  staffUserId: string,
+  targetId: string,
+): Promise<KioskStaffActor> {
+  const actor = await assertKioskStaffActor(staffUserId);
+  await assertStaffCanOpenQueue(staffUserId, targetId);
   return actor;
 }
 

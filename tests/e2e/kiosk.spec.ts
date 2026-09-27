@@ -184,13 +184,8 @@ test.describe("Kiosk", () => {
     await page.getByRole("button", { name: /entrar|confirmar/i }).click();
 
     await expect(page).toHaveURL(
-      new RegExp(`/kiosk/staff/${fixture.leaderId}`),
+      new RegExp(`/kiosk/staff/${fixture.leaderId}/queues`),
       { timeout: 60_000 },
-    );
-
-    await page.goto(`/kiosk/staff/${fixture.leaderId}/board`);
-    await expect(page).toHaveURL(
-      new RegExp(`/kiosk/staff/${fixture.leaderId}/board`),
     );
 
     await page.goto(`/kiosk/staff/${fixture.leaderId}/queues`);

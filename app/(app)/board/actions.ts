@@ -425,6 +425,14 @@ type SiblingLinkSource = {
   linkedToPrevious: boolean;
 };
 
+type ChainSiblingSource = SiblingLinkSource & {
+  status: string;
+  activationStatus?: string | null;
+  maxSameTimeWorkers: number;
+  assignedToIds: string[];
+  dependencyIds: string[];
+};
+
 function sharingTypeOf(row: SiblingLinkSource): "qty" | "duration" {
   return row.sharingType === "qty" ? "qty" : "duration";
 }
@@ -452,7 +460,7 @@ async function persistMismatchedLinks(
   }
 }
 
-function effectiveChainItems<T extends SiblingLinkSource>(
+function effectiveChainItems<T extends ChainSiblingSource>(
   siblings: readonly T[],
 ): ChainSubTask[] {
   const flags = effectiveLinkFlags(siblings);

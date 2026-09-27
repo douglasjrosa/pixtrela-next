@@ -128,6 +128,7 @@ export function resolveRouteAccess(
 ): RouteAccessDecision {
   const { isAuthenticated, role, userId } = input;
   const isColaborator = role === "colaborator";
+  const isProducer = canAccessOwnProfile(role);
   const isKiosk = role === "kiosk";
 
   if (pathname.startsWith(LOGIN_PATH)) {
@@ -157,7 +158,7 @@ export function resolveRouteAccess(
     if (isKiosk) {
       return redirectTo(KIOSK_HOME_PATH, pathname);
     }
-    if (!canAccessOwnProfile(role)) {
+    if (!isProducer) {
       return redirectTo("/", pathname);
     }
     if (userId && pathname !== buildProfilePath(userId)) {
@@ -173,7 +174,7 @@ export function resolveRouteAccess(
     if (isKiosk) {
       return redirectTo(KIOSK_HOME_PATH, pathname);
     }
-    if (!isColaborator) {
+    if (!isProducer) {
       return redirectTo("/", pathname);
     }
     const ownStore = buildStorePath(userId ?? "");
@@ -190,7 +191,7 @@ export function resolveRouteAccess(
     if (isKiosk) {
       return redirectTo(KIOSK_HOME_PATH, pathname);
     }
-    if (!isColaborator) {
+    if (!isProducer) {
       return redirectTo("/", pathname);
     }
     const ownOrders = buildOrdersPath(userId ?? "");
@@ -211,10 +212,10 @@ export function resolveRouteAccess(
     if (isKiosk) {
       return redirectTo(KIOSK_HOME_PATH, pathname);
     }
-    if (isColaborator && userId && pathname !== `/${userId}`) {
+    if (isProducer && userId && pathname !== `/${userId}`) {
       return redirectTo(`/${userId}`, pathname);
     }
-    if (!isColaborator && isAuthenticated) {
+    if (!isProducer && isAuthenticated) {
       return redirectTo("/", pathname);
     }
     return { action: "allow" };

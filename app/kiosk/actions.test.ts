@@ -82,7 +82,7 @@ describe("kiosk/actions drizzle", () => {
     expect(result).toEqual({
       ok: true,
       status: "match",
-      path: "/kiosk/staff/admin-1",
+      path: "/kiosk/staff/admin-1/queues",
       match: {
         documentId: "admin-1",
         name: "Admin",

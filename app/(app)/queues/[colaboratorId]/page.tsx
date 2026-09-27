@@ -8,7 +8,7 @@ import { appQueuesPath } from "@/lib/business/app-queues-paths";
 import { isKioskStaffRole } from "@/lib/business/kiosk-staff-access";
 import { getAppSession } from "@/lib/auth/app-session";
 import type { Role } from "@/lib/auth/nav";
-import { assertStaffCanManageColaborator } from "@/lib/repos/kiosk";
+import { assertStaffCanOpenQueue } from "@/lib/repos/kiosk";
 import { loadQueuesToolbarTopRadiusClass } from "@/lib/themes/load-queues-route-toolbar";
 
 interface PageProps {
@@ -27,7 +27,7 @@ export default async function AppQueueColaboratorPage({ params }: PageProps) {
   const { colaboratorId } = await params;
 
   try {
-    await assertStaffCanManageColaborator(staffUserId, colaboratorId);
+    await assertStaffCanOpenQueue(staffUserId, colaboratorId);
   } catch {
     notFound();
   }
@@ -39,7 +39,7 @@ export default async function AppQueueColaboratorPage({ params }: PageProps) {
       <KioskQueueColaboratorPage
         colaboratorId={colaboratorId}
         staffUserId={staffUserId}
-        allowFaceEdit
+        allowFaceEdit={false}
         backHref={appQueuesPath()}
         toolbarTopRadiusClass={toolbarTopRadiusClass}
         headerClassName="max-w-[min(100%,14rem)] shrink-0"

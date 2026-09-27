@@ -114,14 +114,14 @@ export function canManageSettings(role: Role | undefined): boolean {
   return role === "admin";
 }
 
-/** Exchange Stars for awards: colaborator only. */
+/** Exchange Stars for awards: own cart for colaborator and leader. */
 export function canExchange(role: Role | undefined): boolean {
-  return role === "colaborator";
+  return role === "colaborator" || role === "leader";
 }
 
-/** Own balance screen: colaborator only. */
+/** Own balance screen: colaborator and producing leader. */
 export function canViewBalance(role: Role | undefined): boolean {
-  return role === "colaborator";
+  return role === "colaborator" || role === "leader";
 }
 
 /** Users screen: manager and above. */
@@ -204,6 +204,10 @@ export function canAccessRoute(
       return isColaboratorPrivatePath(pathname) || pathname === "/";
     }
     return canColaboratorAccessPath(pathname, userId) || pathname === "/";
+  }
+
+  if (userId && canColaboratorAccessPath(pathname, userId)) {
+    return canAccessOwnProfile(role);
   }
 
   if (isUserProfilePath(pathname)) {

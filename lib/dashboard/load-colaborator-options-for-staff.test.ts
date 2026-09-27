@@ -46,6 +46,7 @@ describe("loadColaboratorOptionsForStaff", () => {
           members: [
             { documentId: "c1", name: "Ana", code: 1 },
             { documentId: "c2", name: "Bruno", code: 2 },
+            { documentId: "lead-1", name: "Lia", code: 9, isLeader: true },
           ],
         },
         {

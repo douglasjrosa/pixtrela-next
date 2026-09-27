@@ -53,6 +53,7 @@ import type { SubTaskDependencyOption } from "./subtask-dependencies-modal";
 export interface UserOption {
   documentId: string;
   name: string;
+  isLeader?: boolean;
 }
 
 export interface TeamAssignmentOption {

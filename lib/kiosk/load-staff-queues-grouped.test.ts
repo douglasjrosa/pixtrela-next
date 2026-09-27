@@ -150,4 +150,39 @@ describe("loadStaffQueuesGrouped", () => {
     const result = await load([teamRows, [], []], "admin");
     expect(result.teams[0]?.members).toEqual([]);
   });
+
+  it("appends the team leader last with isLeader", async () => {
+    const teamRows = [
+      {
+        id: "team-1",
+        name: "Linha 1",
+        leaderId: "lead-1",
+        leaderName: "Lia",
+        leaderCode: 9,
+        leaderFacePhotoUrl: null,
+        leaderActive: true,
+        leaderBlocked: false,
+      },
+    ];
+    const memberRows = [
+      {
+        teamId: "team-1",
+        documentId: "c1",
+        name: "Ana",
+        code: 1,
+        facePhotoUrl: null,
+      },
+    ];
+
+    const result = await load([teamRows, memberRows, []], "leader");
+    expect(result.teams[0]?.members.map((member) => member.documentId)).toEqual([
+      "c1",
+      "lead-1",
+    ]);
+    expect(result.teams[0]?.members[1]).toMatchObject({
+      documentId: "lead-1",
+      name: "Lia",
+      isLeader: true,
+    });
+  });
 });

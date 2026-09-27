@@ -24,17 +24,15 @@ import { renderWithIntl } from "@/test/test-utils";
 import { KioskStaffNav } from "./kiosk-staff-nav";
 
 const leaderItems = [
-  { href: "/kiosk/staff/lead-1", label: "Painel" },
-  { href: "/kiosk/staff/lead-1/board", label: "Quadro" },
-  { href: "/kiosk/staff/lead-1/tasks", label: "Tarefas" },
-  { href: "/kiosk/staff/lead-1/queues", label: "Equipes" },
+  { href: "/kiosk/staff/lead-1/queues", label: "Filas" },
+  { href: "/kiosk/staff/lead-1/team-access", label: "Acesso da equipe" },
 ];
 
 function renderNav(canSignOutDevice = false) {
   return renderWithIntl(
     <KioskStaffNav
       userName="Líder Teste"
-      homeHref="/kiosk/staff/lead-1"
+      homeHref="/kiosk/staff/lead-1/queues"
       items={leaderItems}
       canSignOutDevice={canSignOutDevice}
     />,
@@ -52,22 +50,13 @@ describe("KioskStaffNav", () => {
 
     await user.click(screen.getByRole("button", { name: "Abrir menu" }));
 
-    expect(screen.getByRole("link", { name: "Painel" })).toHaveAttribute(
-      "href",
-      "/kiosk/staff/lead-1",
-    );
-    expect(screen.getByRole("link", { name: "Quadro" })).toHaveAttribute(
-      "href",
-      "/kiosk/staff/lead-1/board",
-    );
-    expect(screen.getByRole("link", { name: "Tarefas" })).toHaveAttribute(
-      "href",
-      "/kiosk/staff/lead-1/tasks",
-    );
-    expect(screen.getByRole("link", { name: "Equipes" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Filas" })).toHaveAttribute(
       "href",
       "/kiosk/staff/lead-1/queues",
     );
+    expect(
+      screen.getByRole("link", { name: "Acesso da equipe" }),
+    ).toHaveAttribute("href", "/kiosk/staff/lead-1/team-access");
   });
 
   it("shows the staff user menu trigger", () => {

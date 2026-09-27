@@ -1,11 +1,8 @@
 import type { ReactNode } from "react";
-import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
-import { StaffSectionTabsBar } from "@/components/navigation/staff-section-tabs-bar";
 import { loadKioskStaffActor } from "@/lib/business/kiosk-staff-access";
-import { loadKioskTeamsSectionTabs } from "@/lib/auth/load-kiosk-staff-section-tabs";
 import { canViewQueues } from "@/lib/auth/permissions";
 
 interface LayoutProps {
@@ -25,14 +22,5 @@ export default async function KioskQueuesSectionLayout({
     return <ForbiddenMessage />;
   }
 
-  const [tabs, tNav] = await Promise.all([
-    loadKioskTeamsSectionTabs(actor.staffRole, userId),
-    getTranslations("nav"),
-  ]);
-
-  return (
-    <StaffSectionTabsBar tabs={tabs} ariaLabel={tNav("teams")}>
-      {children}
-    </StaffSectionTabsBar>
-  );
+  return children;
 }

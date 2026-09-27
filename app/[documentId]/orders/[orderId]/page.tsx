@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { getAppSession } from "@/lib/auth/app-session";
+import { canAccessOwnProfile } from "@/lib/auth/profile-access";
+import type { Role } from "@/lib/auth/nav";
 import { CurrencyAmount } from "@/components/currency/currency-amount";
 import { buttonVariants } from "@/components/ui/button";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
@@ -26,7 +28,8 @@ export default async function ColaboratorOrderDetailPage({
   const query = await searchParams;
   const placed = query.placed === "1" || query.placed?.[0] === "1";
 
-  if (session?.user?.role !== "colaborator" || !session.user.id) {
+  const role = session?.user?.role as Role | undefined;
+  if (!session?.user?.id || !canAccessOwnProfile(role)) {
     redirect("/");
   }
   if (session.user.id !== documentId) {

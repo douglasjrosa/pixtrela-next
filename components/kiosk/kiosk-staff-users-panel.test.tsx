@@ -94,6 +94,24 @@ describe("KioskStaffUsersPanel", () => {
     expect(screen.queryByLabelText("Senha")).toBeNull();
   });
 
+  it("hides the password form when staff selects themselves", async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <KioskStaffUsersPanel
+        userId="c1"
+        colaborators={colaborators}
+        canSignOut={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Ana Costa/i }));
+    expect(
+      screen.getByRole("heading", { name: "Foto para reconhecimento facial" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Senha")).toBeNull();
+  });
+
   it("redirects to kiosk home with success toast after saving password", async () => {
     const user = userEvent.setup();
 

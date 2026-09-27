@@ -222,6 +222,32 @@ describe("resolveRouteAccess profile", () => {
     ).toEqual({ action: "allow" });
   });
 
+  it("allows leader on own profile and shop", () => {
+    expect(
+      resolveRouteAccess("/lead-1/profile", {
+        isAuthenticated: true,
+        role: "leader",
+        userId: "lead-1",
+      }),
+    ).toEqual({ action: "allow" });
+
+    expect(
+      resolveRouteAccess("/lead-1/store", {
+        isAuthenticated: true,
+        role: "leader",
+        userId: "lead-1",
+      }),
+    ).toEqual({ action: "allow" });
+
+    expect(
+      resolveRouteAccess("/lead-1", {
+        isAuthenticated: true,
+        role: "leader",
+        userId: "lead-1",
+      }),
+    ).toEqual({ action: "allow" });
+  });
+
   it("redirects staff away from profile", () => {
     expect(
       resolveRouteAccess("/mgr-1/profile", {
@@ -248,14 +274,14 @@ describe("resolveRouteAccess profile", () => {
     ).toEqual({ action: "redirect", destination: KIOSK_HOME_PATH });
   });
 
-  it("redirects staff to home when visiting any profile path", () => {
+  it("redirects a leader from another profile to their own", () => {
     expect(
       resolveRouteAccess("/other/profile", {
         isAuthenticated: true,
         role: "leader",
         userId: "lead-1",
       }),
-    ).toEqual({ action: "redirect", destination: "/" });
+    ).toEqual({ action: "redirect", destination: "/lead-1/profile" });
   });
 
   it("redirects unlogged profile visits to login with callback", () => {

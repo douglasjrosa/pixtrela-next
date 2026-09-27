@@ -7,6 +7,7 @@ import {
 } from "@/lib/board/load-board-data";
 import { loadBoardProgressByTaskId } from "@/lib/board/load-board-progress";
 import { shouldShowKanbanTaskProgress } from "@/lib/business/task-progress";
+import { appendTeamLeaderAsLastMember } from "@/lib/business/team-leader-assignee";
 import { listTeamsWithMembers } from "@/lib/repos/teams";
 import { listUserAssigneeNames } from "@/lib/repos/users";
 import {
@@ -45,7 +46,7 @@ async function loadTeamsForAssignment(
     .map((team) => ({
       documentId: team.id,
       name: team.name,
-      members: team.colaborators,
+      members: appendTeamLeaderAsLastMember(team.colaborators, team.leader),
     }));
 }
 

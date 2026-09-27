@@ -5,8 +5,6 @@ import {
   awards,
   currencies,
   exchanges,
-  teams,
-  teamMembers,
 } from "@/drizzle/schema";
 import {
   resolveAwardHistoryTitle,
@@ -18,7 +16,9 @@ import {
   isExchangeWindowOpen,
   type AwardPrice,
 } from "@/lib/domain/exchange";
+import { pickProducerExchangeWindow } from "@/lib/business/producer-exchange-window";
 import { getDb, type Db } from "@/lib/db/client";
+import { listProducerExchangeWindows } from "@/lib/repos/teams";
 import {
   debitBalanceOutcome,
   getOrCreateMonthlyBalance,
@@ -63,17 +63,10 @@ export async function loadAwardPrices(
 async function findTeamWindowForUser(
   userId: string,
   db: Db,
+  now: Date,
 ): Promise<{ exchangesFirstDay: number; exchangesLastDay: number } | null> {
-  const [membership] = await db
-    .select({
-      exchangesFirstDay: teams.exchangesFirstDay,
-      exchangesLastDay: teams.exchangesLastDay,
-    })
-    .from(teamMembers)
-    .innerJoin(teams, eq(teamMembers.teamId, teams.id))
-    .where(eq(teamMembers.userId, userId))
-    .limit(1);
-  return membership ?? null;
+  const windows = await listProducerExchangeWindows(userId, db);
+  return pickProducerExchangeWindow(windows, now);
 }
 
 /**
@@ -116,6 +109,7 @@ export async function redeemAward(
     const window = await findTeamWindowForUser(
       input.userId,
       tx as unknown as Db,
+      now,
     );
     if (!window || !isExchangeWindowOpen(window, now)) {
       throw new Error("exchangeWindowClosed");

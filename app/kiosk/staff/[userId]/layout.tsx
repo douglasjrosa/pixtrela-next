@@ -3,15 +3,13 @@ import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 
 import { KioskStaffNav } from "@/components/kiosk/kiosk-staff-nav";
+import { kioskStaffSlimNavItems } from "@/lib/auth/kiosk-staff-slim-nav";
+import { resolveNavItemLabels } from "@/lib/auth/nav";
 import {
   canKioskSignOutDevice,
   loadKioskStaffActor,
 } from "@/lib/business/kiosk-staff-access";
-import { kioskStaffNavPaths } from "@/lib/business/kiosk-staff-paths";
-import {
-  resolveNavItemLabels,
-  staffNavItemsForRole,
-} from "@/lib/auth/nav";
+import { staffQueuesPath } from "@/lib/business/kiosk-staff-paths";
 import { loadBrandingForLayout } from "@/lib/themes/load-branding";
 
 interface LayoutProps {
@@ -34,17 +32,12 @@ export default async function KioskStaffLayout({
   }
 
   const menuLogo = branding.menu_logo;
-  const paths = kioskStaffNavPaths(actor.staffUserId);
   const tNav = await getTranslations("nav");
   const navItems = resolveNavItemLabels(
-    staffNavItemsForRole(actor.staffRole, paths),
+    kioskStaffSlimNavItems(actor.staffUserId),
     {
-      panel: tNav("panel"),
-      board: tNav("board"),
-      tasks: tNav("tasks"),
-      teams: tNav("teams"),
-      awards: tNav("awards"),
-      settings: tNav("settings"),
+      queues: tNav("queues"),
+      teamAccess: tNav("teamAccess"),
     },
   );
 
@@ -53,7 +46,7 @@ export default async function KioskStaffLayout({
       <KioskStaffNav
         userName={actor.name}
         avatarUrl={actor.avatarUrl}
-        homeHref={paths.panel}
+        homeHref={staffQueuesPath(actor.staffUserId)}
         items={navItems}
         canSignOutDevice={canKioskSignOutDevice(actor.staffRole)}
         logoUrl={menuLogo.mediaUrl}

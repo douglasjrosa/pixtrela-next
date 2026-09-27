@@ -3,6 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { mediaAssets, teamMembers, teams, users } from "@/drizzle/schema";
 import type { KioskIdentifiedRole } from "@/lib/business/kiosk-identify-route";
 import { canStaffSetColaboratorPassword } from "@/lib/business/kiosk-staff-colaborators";
+import { canStaffOpenQueue } from "@/lib/business/queue-open-access";
 import { canEstablishAppSession } from "@/lib/domain/auth-session";
 import { getDb, type Db } from "@/lib/db/client";
 import {
@@ -407,5 +408,43 @@ export async function assertStaffCanManageColaborator(
     leaderIds,
     colaboratorId,
   );
+  if (!allowed) throw new Error("forbidden");
+}
+
+export async function assertStaffCanOpenQueue(
+  staffUserId: string,
+  targetId: string,
+  db: Db = getDb(),
+): Promise<void> {
+  const staff = await findUserById(staffUserId, db);
+  if (
+    !staff ||
+    staff.role === "colaborator" ||
+    staff.role === "kiosk" ||
+    staff.blocked ||
+    !staff.active
+  ) {
+    throw new Error("forbidden");
+  }
+
+  const target = await findUserById(targetId, db);
+  if (!target) throw new Error("forbidden");
+
+  const leaderIds =
+    staff.role === "leader"
+      ? await fetchLeaderTeamColaboratorIds(staffUserId, db)
+      : new Set<string>();
+
+  const allowed = canStaffOpenQueue({
+    actorRole: staff.role as "admin" | "manager" | "leader",
+    actorId: staffUserId,
+    target: {
+      id: target.id,
+      role: target.role,
+      active: target.active,
+      blocked: target.blocked,
+    },
+    leaderTeamColaboratorIds: leaderIds,
+  });
   if (!allowed) throw new Error("forbidden");
 }

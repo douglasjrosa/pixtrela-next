@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardBadge, CardContent } from "@/components/ui/card";
+import { LeaderRoleBadge } from "@/components/ui/leader-role-badge";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -91,7 +92,10 @@ export function SubTaskAssigneePicker({
               : "bg-muted text-muted-foreground hover:bg-muted/80",
           )}
         >
-          {member.name}
+          <span className="inline-flex items-center gap-1">
+            <span>{member.name}</span>
+            {member.isLeader ? <LeaderRoleBadge /> : null}
+          </span>
         </CardBadge>
       </button>
     );

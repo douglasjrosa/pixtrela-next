@@ -57,7 +57,7 @@ function refusalResult(error: unknown): KioskMutationResult | null {
 }
 
 async function runKioskMutation(
-  action: () => Promise<void>,
+  action: () => Promise<unknown>,
 ): Promise<KioskMutationResult> {
   try {
     await action();

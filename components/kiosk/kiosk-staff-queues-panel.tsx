@@ -9,6 +9,7 @@ import { staffQueueColaboratorPath } from "@/lib/business/kiosk-staff-paths";
 import { formatActivityDateTimePtBr } from "@/lib/format/datetime";
 import type { StaffQueueTeam } from "@/lib/kiosk/load-staff-queues-grouped";
 import { cn } from "@/lib/utils";
+import { LeaderRoleBadge } from "@/components/ui/leader-role-badge";
 
 function activityActionBadgeClass(action: "started" | "stoped"): string {
   return action === "started" ? "bg-green-600" : "bg-red-600";
@@ -106,10 +107,10 @@ export function KioskStaffQueuesPanel({
                           "max-md:flex-col max-md:items-start max-md:gap-1",
                         )}
                       >
-                        <span className="whitespace-nowrap font-medium">
-                          {member.name}
+                        <span className="inline-flex flex-wrap items-center gap-1.5 font-medium">
+                          <span className="whitespace-nowrap">{member.name}</span>
+                          {member.isLeader ? <LeaderRoleBadge /> : null}
                           <span className="tabular-nums font-normal text-muted-foreground">
-                            {" "}
                             {member.code ?? "—"}
                           </span>
                         </span>

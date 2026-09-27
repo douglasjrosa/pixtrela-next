@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBadge, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
+import { LeaderRoleBadge } from "@/components/ui/leader-role-badge";
 import { StackedDateTime } from "@/components/ui/stacked-date-time";
 import {
   reorderPendingSubtasksInPlace,
@@ -1553,7 +1554,12 @@ export function KanbanTaskSubtasksModal({
                                         : "bg-muted text-muted-foreground hover:bg-muted/80",
                                     )}
                                   >
-                                    {member.name}
+                                    <span className="inline-flex max-w-full items-center gap-1">
+                                      <span className="truncate">{member.name}</span>
+                                      {member.isLeader ? (
+                                        <LeaderRoleBadge />
+                                      ) : null}
+                                    </span>
                                   </CardBadge>
                                 </button>
                               );

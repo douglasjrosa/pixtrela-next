@@ -96,15 +96,17 @@ describe("canDeleteTemplates", () => {
 });
 
 describe("canExchange", () => {
-  it("allows colaborator only", () => {
+  it("allows colaborator and producing leader", () => {
     expect(canExchange("colaborator")).toBe(true);
-    expect(canExchange("leader")).toBe(false);
+    expect(canExchange("leader")).toBe(true);
+    expect(canExchange("manager")).toBe(false);
   });
 });
 
 describe("canViewBalance", () => {
-  it("allows colaborator only", () => {
+  it("allows colaborator and producing leader", () => {
     expect(canViewBalance("colaborator")).toBe(true);
+    expect(canViewBalance("leader")).toBe(true);
     expect(canViewBalance("admin")).toBe(false);
   });
 });
@@ -283,18 +285,19 @@ describe("canAccessRoute", () => {
     expect(canAccessRoute("colaborator", "/exchanges", "col-1")).toBe(false);
   });
 
-  it("allows own profile for colaborator only", () => {
+  it("allows own profile for colaborator and leader", () => {
     expect(canAccessRoute("colaborator", "/col-1/profile", "col-1")).toBe(true);
+    expect(canAccessRoute("leader", "/lead-1/profile", "lead-1")).toBe(true);
+    expect(canAccessRoute("leader", "/lead-1/store", "lead-1")).toBe(true);
     expect(canAccessRoute("manager", "/mgr-1/profile", "mgr-1")).toBe(false);
-    expect(canAccessRoute("leader", "/lead-1/profile", "lead-1")).toBe(false);
     expect(canAccessRoute("admin", "/admin-1/profile", "admin-1")).toBe(false);
   });
 });
 
 describe("canAccessOwnProfile", () => {
-  it("allows colaborator only", () => {
+  it("allows colaborator and producing leader", () => {
     expect(canAccessOwnProfile("colaborator")).toBe(true);
-    expect(canAccessOwnProfile("leader")).toBe(false);
+    expect(canAccessOwnProfile("leader")).toBe(true);
     expect(canAccessOwnProfile("manager")).toBe(false);
     expect(canAccessOwnProfile("admin")).toBe(false);
     expect(canAccessOwnProfile("kiosk")).toBe(false);

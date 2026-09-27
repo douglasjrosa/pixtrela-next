@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const assertStaffColaboratorEditAccess = vi.fn();
 const setColaboratorPasswordByStaff = vi.fn();
+const auth = vi.fn(async () => ({ user: { role: "kiosk" }, jwt: "jwt" }));
 vi.mock("@/auth", () => ({
-  auth: vi.fn(async () => ({ user: { role: "kiosk" }, jwt: "jwt" })),
+  auth: (...args: unknown[]) => auth(...args),
 }));
 
 vi.mock("@/lib/kiosk/staff-colaborator-edit-access", () => ({
@@ -25,6 +26,7 @@ describe("kiosk staff users/actions drizzle", () => {
     setColaboratorPasswordByStaff.mockReset();
     assertStaffColaboratorEditAccess.mockResolvedValue(undefined);
     setColaboratorPasswordByStaff.mockResolvedValue(undefined);
+    auth.mockResolvedValue({ user: { role: "kiosk" }, jwt: "jwt" });
   });
 
   it("saveKioskColaboratorPassword updates drizzle user", async () => {
@@ -42,5 +44,16 @@ describe("kiosk staff users/actions drizzle", () => {
       "col-1",
       "newpass1",
     );
+  });
+
+  it("refuses password changes outside a kiosk device session", async () => {
+    auth.mockResolvedValue({ user: { role: "admin" }, jwt: "jwt" });
+    const { saveKioskColaboratorPassword } = await import("./actions");
+    const result = await saveKioskColaboratorPassword("admin-1", "col-1", {
+      password: "newpass1",
+      confirmPassword: "newpass1",
+    });
+    expect(result).toEqual({ ok: false, error: "forbidden" });
+    expect(setColaboratorPasswordByStaff).not.toHaveBeenCalled();
   });
 });

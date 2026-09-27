@@ -37,7 +37,7 @@ function resolvePageRedirect(
     return null;
   }
   if (isColaboratorPrivatePath(pathname)) {
-    if (input.role !== "colaborator") return "/";
+    if (input.role !== "colaborator" && input.role !== "leader") return "/";
     if (input.userId && pathname !== `/${input.userId}`) {
       return `/${input.userId}`;
     }

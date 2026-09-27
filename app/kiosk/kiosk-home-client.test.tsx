@@ -251,7 +251,7 @@ describe("KioskHomeClient", () => {
     identifyKioskUserByFace.mockResolvedValue({
       ok: true,
       status: "match",
-      path: "/kiosk/staff/admin-1",
+      path: "/kiosk/staff/admin-1/queues",
       match: {
         documentId: "admin-1",
         name: "Admin",
@@ -269,7 +269,7 @@ describe("KioskHomeClient", () => {
     await user.click(screen.getByRole("button", { name: "mock-probe" }));
 
     await waitFor(() => {
-      expect(replace).toHaveBeenCalledWith("/kiosk/staff/admin-1");
+      expect(replace).toHaveBeenCalledWith("/kiosk/staff/admin-1/queues");
     });
   });
 
