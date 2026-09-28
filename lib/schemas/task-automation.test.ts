@@ -22,6 +22,8 @@ describe("taskAutomationFormSchema", () => {
       reviewedStepDocumentId: "step-5",
       deliveredStepDocumentId: "",
       assignWarnMax: 4,
+      leaderExchangesFirstDay: 3,
+      leaderExchangesLastDay: 15,
     });
   });
 

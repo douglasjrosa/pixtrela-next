@@ -90,6 +90,8 @@ export async function updateTaskAutomationSetting(
     reviewedStepDocumentId: formString(formData, "reviewedStepDocumentId"),
     deliveredStepDocumentId: formString(formData, "deliveredStepDocumentId"),
     assignWarnMax: formNumber(formData, "assignWarnMax"),
+    leaderExchangesFirstDay: formNumber(formData, "leaderExchangesFirstDay"),
+    leaderExchangesLastDay: formNumber(formData, "leaderExchangesLastDay"),
   });
   await upsertTaskAutomationSettings(values);
   await auditSuccess({
@@ -120,4 +122,6 @@ export async function updateEntryAccessSettings(
     after: `${data.computer}/${data.mobile}`,
   });
   revalidateTag("drizzle:entry-access", "default");
+  revalidatePath("/settings/login");
+  revalidatePath("/settings/kiosk");
 }

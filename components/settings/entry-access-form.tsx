@@ -15,9 +15,14 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 const METHOD_KEYS = ["username", "code", "face", "nfc"] as const;
 
+export type EntryAccessHeadingKey =
+  | "entryAccessHeading"
+  | "entryAccessKioskHeading";
+
 export interface EntryAccessFormProps {
   value: EntryAccessByDevice;
   onSave: (value: EntryAccessByDevice) => void | Promise<void>;
+  headingKey?: EntryAccessHeadingKey;
 }
 
 function MethodSwitchRow({
@@ -47,7 +52,11 @@ function MethodSwitchRow({
   );
 }
 
-export function EntryAccessForm({ value, onSave }: EntryAccessFormProps) {
+export function EntryAccessForm({
+  value,
+  onSave,
+  headingKey = "entryAccessHeading",
+}: EntryAccessFormProps) {
   const tSettings = useTranslations("settings");
   const tAuth = useTranslations("auth");
   const router = useRouter();
@@ -110,7 +119,7 @@ export function EntryAccessForm({ value, onSave }: EntryAccessFormProps) {
 
   return (
     <section className="max-w-sm space-y-6">
-      <h2 className="text-lg font-semibold">{tSettings("entryAccessHeading")}</h2>
+      <h2 className="text-lg font-semibold">{tSettings(headingKey)}</h2>
       {renderDeviceSection("computer")}
       {renderDeviceSection("mobile")}
     </section>

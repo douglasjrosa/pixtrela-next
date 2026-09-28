@@ -29,6 +29,7 @@ describe("loadKioskColaboratorProfile", () => {
     await expect(loadKioskColaboratorProfile("c1")).resolves.toEqual({
       documentId: "c1",
       name: "Ana Silva",
+      role: "colaborator",
       avatarUrl: "/api/media/ana.jpg",
     });
   });
@@ -39,5 +40,34 @@ describe("loadKioskColaboratorProfile", () => {
       "./load-colaborator-profile"
     );
     await expect(loadKioskColaboratorProfile("missing")).resolves.toBeNull();
+  });
+
+  it("returns leader and manager profiles for queue headers", async () => {
+    findUserById.mockResolvedValue({
+      id: "lead-1",
+      name: "Team Lead",
+      role: "leader",
+      active: true,
+      blocked: false,
+    });
+    findUserAvatarUrl.mockResolvedValue(null);
+
+    const { loadKioskColaboratorProfile } = await import(
+      "./load-colaborator-profile"
+    );
+    await expect(loadKioskColaboratorProfile("lead-1")).resolves.toMatchObject({
+      name: "Team Lead",
+    });
+
+    findUserById.mockResolvedValue({
+      id: "mgr-1",
+      name: "Manager",
+      role: "manager",
+      active: true,
+      blocked: false,
+    });
+    await expect(loadKioskColaboratorProfile("mgr-1")).resolves.toMatchObject({
+      name: "Manager",
+    });
   });
 });

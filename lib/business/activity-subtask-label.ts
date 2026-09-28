@@ -16,6 +16,27 @@ function normalizeSearchToken(value: string): string {
 }
 
 /** Full subtask label for activities list and picker (pt-BR segments). */
+export type ActivitySubtaskQueueBadges = {
+  primary: string;
+  secondary: string;
+  tertiary: string;
+};
+
+/** Staff queue list: task, subtask, and pedido/delivery as separate badges. */
+export function formatActivitySubtaskQueueBadges(
+  parts: ActivitySubtaskLabelParts,
+): ActivitySubtaskQueueBadges {
+  const pedidoItem = formatCrmItemKeyLabel(parts.taskCrmItemKey) || "—";
+  const delivery = formatDatePtBr(parts.taskDeliveryDate) || "—";
+  return {
+    primary: [String(parts.taskQty), parts.taskName.trim()].join(
+      LABEL_SEGMENT_SEPARATOR,
+    ),
+    secondary: parts.subTaskName.trim(),
+    tertiary: [pedidoItem, delivery].join(LABEL_SEGMENT_SEPARATOR),
+  };
+}
+
 export function formatActivitySubtaskDisplayLabel(
   parts: ActivitySubtaskLabelParts,
 ): string {

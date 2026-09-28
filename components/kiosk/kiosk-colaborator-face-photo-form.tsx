@@ -93,7 +93,12 @@ export function KioskColaboratorFacePhotoForm({
         <p className="text-sm text-muted-foreground">{t("staffFacePhotoHint")}</p>
       </div>
 
-      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+      <div
+        className={
+          "flex flex-col items-center gap-4 sm:flex-row sm:items-center " +
+          "sm:justify-center"
+        }
+      >
         <div className="relative flex size-28 items-center justify-center overflow-hidden rounded-full border bg-background">
           {currentUrl ? (
             <AppImage
@@ -107,7 +112,7 @@ export function KioskColaboratorFacePhotoForm({
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap justify-center gap-2">
           <Button
             type="button"
             variant="outline"

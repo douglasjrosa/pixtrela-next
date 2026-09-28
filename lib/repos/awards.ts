@@ -368,6 +368,17 @@ export async function createCurrency(
   return row;
 }
 
+export async function reactivateCurrencies(
+  ids: string[],
+  db: Db = getDb(),
+): Promise<void> {
+  if (ids.length === 0) return;
+  await db
+    .update(currencies)
+    .set({ active: true, updatedAt: new Date() })
+    .where(inArray(currencies.id, ids));
+}
+
 export async function archiveCurrencies(
   ids: string[],
   reason: string,
@@ -465,6 +476,17 @@ export async function findAwardById(
     ...row,
     actualPrice: Number(row.actualPrice ?? 0),
   };
+}
+
+export async function reactivateAwards(
+  ids: string[],
+  db: Db = getDb(),
+): Promise<void> {
+  if (ids.length === 0) return;
+  await db
+    .update(awards)
+    .set({ active: true, updatedAt: new Date() })
+    .where(inArray(awards.id, ids));
 }
 
 export async function archiveAwards(

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 
 import { pollBoardRevision } from "@/app/(app)/board/poll-revision";
+import { isBrowserTabVisible } from "@/lib/browser/is-browser-tab-visible";
 import {
   hasBoardRevisionChanged,
   type BoardRevision,
@@ -26,12 +27,6 @@ type BoardRealtimeCredentials = {
 
 function readPublicSseUrl(): string {
   return trimEnv(process.env.NEXT_PUBLIC_REALTIME_SSE_URL);
-}
-
-function isDocumentHidden(): boolean {
-  return (
-    typeof document !== "undefined" && document.visibilityState === "hidden"
-  );
 }
 
 function buildBoardEventSourceUrl(sseUrl: string, token: string): string {
@@ -80,8 +75,7 @@ export function useBoardRevisionRefresh(
     let pollMs = BOARD_REVISION_POLL_MS;
 
     async function checkRevision(): Promise<void> {
-      if (paused) return;
-      if (isDocumentHidden()) return;
+      if (paused || !isBrowserTabVisible()) return;
 
       try {
         const revision = await pollBoardRevision();
@@ -108,19 +102,31 @@ export function useBoardRevisionRefresh(
       current?.close();
     }
 
+    function stopInterval(): void {
+      if (timerId === undefined) return;
+      window.clearInterval(timerId);
+      timerId = undefined;
+    }
+
     function startInterval(): void {
-      if (timerId !== undefined) window.clearInterval(timerId);
+      stopInterval();
+      if (paused || !isBrowserTabVisible()) return;
       timerId = window.setInterval(() => {
+        if (!isBrowserTabVisible()) {
+          stopInterval();
+          return;
+        }
         void checkRevision();
-        if (source !== null || isDocumentHidden()) return;
+        if (source !== null) return;
         void connectRealtime();
       }, pollMs);
     }
 
     function applyPollInterval(nextMs: number): void {
-      if (pollMs === nextMs && timerId !== undefined) return;
+      const keepTimer =
+        pollMs === nextMs && timerId !== undefined && isBrowserTabVisible();
       pollMs = nextMs;
-      if (paused) return;
+      if (keepTimer) return;
       startInterval();
     }
 
@@ -146,12 +152,12 @@ export function useBoardRevisionRefresh(
 
     async function connectRealtime(): Promise<void> {
       if (cancelled || paused || connecting || source) return;
-      if (!readPublicSseUrl() || isDocumentHidden()) return;
+      if (!readPublicSseUrl() || !isBrowserTabVisible()) return;
 
       connecting = true;
       try {
         const credentials = await fetchBoardRealtimeCredentials();
-        if (cancelled || isDocumentHidden() || source) return;
+        if (cancelled || !isBrowserTabVisible() || source) return;
         if (!credentials) {
           applyPollInterval(BOARD_REVISION_POLL_MS);
           return;
@@ -165,16 +171,18 @@ export function useBoardRevisionRefresh(
     }
 
     function onVisibility(): void {
-      if (isDocumentHidden()) {
+      if (!isBrowserTabVisible()) {
         closeSource();
-        applyPollInterval(BOARD_REVISION_POLL_MS);
+        pollMs = BOARD_REVISION_POLL_MS;
+        stopInterval();
         return;
       }
       void checkRevision();
       void connectRealtime();
+      startInterval();
     }
 
-    if (!paused) {
+    if (!paused && isBrowserTabVisible()) {
       void checkRevision();
       startInterval();
       void connectRealtime();

@@ -23,6 +23,7 @@ import {
   createFactoryActionRepo,
   getFactoryActionById,
   hardDeleteFactoryActionById,
+  reactivateFactoryActions,
   searchFactoryActionsByName,
   updateFactoryActionRepo,
 } from "@/lib/repos/factory-actions";
@@ -144,6 +145,27 @@ export async function bulkArchiveFactoryActions(
   await auditSuccess({
     route: "/templates/actions",
     verb: "bulkArchived",
+    entity: "factoryActions",
+    quantity: ids.length,
+  });
+  invalidateActions();
+}
+
+export async function bulkReactivateFactoryActions(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanDeactivateActions();
+  const ids = bulkDocumentIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const action = await getFactoryActionById(documentId);
+    if (!action) throw new Error("notFound");
+    if (action.active) throw new Error("activeAction");
+  }
+  await reactivateFactoryActions(ids);
+  await auditSuccess({
+    route: "/templates/actions",
+    verb: "bulkReactivated",
     entity: "factoryActions",
     quantity: ids.length,
   });

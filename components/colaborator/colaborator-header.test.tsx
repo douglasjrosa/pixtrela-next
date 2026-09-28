@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ColaboratorHeader } from "@/components/colaborator/colaborator-header";
 import { renderWithIntl } from "@/test/test-utils";
@@ -30,6 +30,14 @@ vi.mock("next-auth/react", () => ({
 }));
 
 describe("ColaboratorHeader", () => {
+  beforeEach(() => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 1280,
+    });
+  });
+
   it("renders dashboard and store links plus the account menu", () => {
     renderWithIntl(<ColaboratorHeader homeHref="/colab-1" />);
 
@@ -56,26 +64,50 @@ describe("ColaboratorHeader", () => {
     expect(
       screen.queryByRole("button", { name: "Abrir menu" }),
     ).not.toBeInTheDocument();
+    const header = screen.getByRole("banner");
+    expect(header.className).toContain("fixed");
+    expect(header.className).toContain("top-0");
   });
 
-  it("opens the sandwich with the totem switch", async () => {
+  it("shows fixed links or the sandwich, never both", async () => {
     const user = userEvent.setup();
 
+    const { unmount } = renderWithIntl(
+      <ColaboratorHeader homeHref="/colab-1" showTotemSwitch />,
+    );
+
+    expect(screen.getByRole("link", { name: "Painel" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Abrir menu" }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Maria, Abrir menu da conta" }),
+    );
+    expect(screen.getByRole("switch", { name: "Modo Totem" })).toBeInTheDocument();
+
+    unmount();
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 500,
+    });
     renderWithIntl(
       <ColaboratorHeader homeHref="/colab-1" showTotemSwitch />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Abrir menu" }));
-    expect(screen.getByRole("switch", { name: "Modo Totem" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Painel" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Abrir menu" })).toBeInTheDocument();
   });
 
-  it("hides header links while personal totem mode is on", () => {
+  it("hides header links and the sandwich while personal totem mode is on", () => {
     renderWithIntl(
       <ColaboratorHeader homeHref="/colab-1/kiosk" totemMode showTotemSwitch />,
     );
 
     expect(screen.queryByRole("link", { name: "Painel" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Loja" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Abrir menu" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Abrir menu" }),
+    ).not.toBeInTheDocument();
   });
 });

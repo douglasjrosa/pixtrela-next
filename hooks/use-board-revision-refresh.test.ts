@@ -175,6 +175,7 @@ describe("useBoardRevisionRefresh", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(BOARD_REVISION_POLL_MS);
     });
+    expect(pollBoardRevision).toHaveBeenCalledTimes(1);
     expect(FakeEventSource.last).toBe(source);
   });
 });

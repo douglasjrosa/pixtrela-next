@@ -29,6 +29,13 @@ export function canKioskSignOutDevice(
   return role === "admin" || role === "manager";
 }
 
+/** Device header (logo + Sair) on `/kiosk/staff/*` — not shown to `leader` role. */
+export function showKioskStaffDeviceHeader(
+  staffRole: KioskStaffRole | undefined,
+): boolean {
+  return canKioskSignOutDevice(staffRole);
+}
+
 export function isKioskStaffRole(
   role: string | undefined,
 ): role is KioskStaffRole {

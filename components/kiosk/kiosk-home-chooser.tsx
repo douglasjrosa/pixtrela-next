@@ -6,7 +6,8 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import type { EntryAccessMethods } from "@/lib/business/entry-access";
 
-const CHOOSER_BUTTON_CLASS = "flex h-36 flex-col gap-3 text-base";
+const CHOOSER_BUTTON_CLASS =
+  "flex h-36 w-full flex-col gap-3 text-base";
 
 export interface KioskHomeChooserProps {
   onCamera: () => void;
@@ -69,7 +70,7 @@ export function KioskHomeChooser({
           <Button
             type="button"
             variant="outline"
-            className={`${CHOOSER_BUTTON_CLASS} sm:col-span-2`}
+            className={CHOOSER_BUTTON_CLASS}
             onClick={onUsernameLogin}
           >
             <LogIn className="size-12" aria-hidden strokeWidth={1.5} />

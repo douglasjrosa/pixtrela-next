@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { compressProfileImage } from "@/lib/media/compress-profile-image";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { cn } from "@/lib/utils";
+
+const AVATAR_ACTION_BUTTON_CLASS = "w-36 shrink-0";
 
 export interface ProfileAvatarEditorProps {
   userName: string;
@@ -113,9 +116,10 @@ export function ProfileAvatarEditor({
         onChange={(event) => void handleFileChange(event)}
       />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex justify-around">
         <Button
           type="button"
+          className={cn(AVATAR_ACTION_BUTTON_CLASS)}
           disabled={disabled || pending}
           onClick={() => setCaptureOpen(true)}
         >
@@ -124,6 +128,7 @@ export function ProfileAvatarEditor({
         <Button
           type="button"
           variant="outline"
+          className={cn(AVATAR_ACTION_BUTTON_CLASS)}
           disabled={disabled || pending}
           onClick={() => {
             document.getElementById("profile-avatar-upload")?.click();

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   activitySubtaskMatchesQuery,
   formatActivitySubtaskDisplayLabel,
+  formatActivitySubtaskQueueBadges,
 } from "./activity-subtask-label";
 
 const SAMPLE: Parameters<typeof formatActivitySubtaskDisplayLabel>[0] = {
@@ -30,6 +31,16 @@ describe("formatActivitySubtaskDisplayLabel", () => {
         taskDeliveryDate: null,
       }),
     ).toBe("Montagem - 1 - Solo - — - —");
+  });
+});
+
+describe("formatActivitySubtaskQueueBadges", () => {
+  it("splits queue row activity into primary, secondary, and tertiary badges", () => {
+    expect(formatActivitySubtaskQueueBadges(SAMPLE)).toEqual({
+      primary: "10 - Max Brasil - Test Box",
+      secondary: "Corte das tábuas",
+      tertiary: "1969-2 - 21/09/2026",
+    });
   });
 });
 

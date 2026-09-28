@@ -14,6 +14,7 @@ import { TemplatesListTableFrame } from "./templates-list-table-frame";
 const loadMoreTemplates = vi.fn();
 const bulkArchiveTemplates = vi.fn();
 const bulkDeleteTemplates = vi.fn();
+const bulkReactivateTemplates = vi.fn();
 const showErrorToast = vi.fn();
 const showSuccessToast = vi.fn();
 const refresh = vi.fn();
@@ -22,6 +23,8 @@ vi.mock("@/app/(app)/templates/template-task-actions", () => ({
   loadMoreTemplates: (...args: unknown[]) => loadMoreTemplates(...args),
   bulkArchiveTemplates: (...args: unknown[]) => bulkArchiveTemplates(...args),
   bulkDeleteTemplates: (...args: unknown[]) => bulkDeleteTemplates(...args),
+  bulkReactivateTemplates: (...args: unknown[]) =>
+    bulkReactivateTemplates(...args),
 }));
 
 vi.mock("@/lib/ui/app-toast", () => ({
@@ -60,6 +63,7 @@ describe("TemplatesListTableFrame", () => {
     loadMoreTemplates.mockReset();
     bulkArchiveTemplates.mockReset();
     bulkDeleteTemplates.mockReset();
+    bulkReactivateTemplates.mockReset();
     showErrorToast.mockReset();
     showSuccessToast.mockReset();
     refresh.mockReset();
@@ -196,6 +200,43 @@ describe("TemplatesListTableFrame", () => {
         "Arquivar selecionados",
       );
     });
+  });
+
+  it("restores when all selected templates are archived", async () => {
+    bulkReactivateTemplates.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    const archived = [{ ...initialTemplates[0]!, active: false }];
+
+    renderWithIntl(
+      <ListPageActionsProvider>
+        <ListPageToolbar />
+        <TemplatesListTableFrame
+          filters={{ ...filters, showArchived: true }}
+          initialTemplates={archived}
+          initialHasMore={false}
+          initialPage={1}
+          canDeactivate
+          canDelete
+          tableHeader={
+            <thead>
+              <tr>
+                <th>Nome</th>
+              </tr>
+            </thead>
+          }
+        />
+      </ListPageActionsProvider>,
+    );
+
+    await user.click(screen.getAllByRole("checkbox")[0]!);
+    await user.click(
+      screen.getByRole("button", { name: "Restaurar selecionados" }),
+    );
+
+    await waitFor(() => {
+      expect(bulkReactivateTemplates).toHaveBeenCalledWith(["tpl1"]);
+    });
+    expect(showSuccessToast).toHaveBeenCalled();
   });
 
   it("hard-deletes when all selected templates are archived", async () => {

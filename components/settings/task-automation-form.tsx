@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NumberInput } from "@/components/ui/number-input";
 import {
   MAX_ASSIGN_WARN_MAX,
   MIN_ASSIGN_WARN_MAX,
@@ -32,10 +33,13 @@ export async function TaskAutomationForm({
   const tCommon = await getTranslations("common");
   const tSettings = await getTranslations("settings");
   const tStatus = await getTranslations("tasks.status");
+  const tTeams = await getTranslations("teams");
 
   const formKey = [
     ...TASK_AUTOMATION_STATUS_FIELDS.map(({ field }) => defaultValues[field]),
     defaultValues.assignWarnMax,
+    defaultValues.leaderExchangesFirstDay,
+    defaultValues.leaderExchangesLastDay,
   ].join(":");
 
   return (
@@ -74,6 +78,50 @@ export async function TaskAutomationForm({
             </select>
           </div>
         ))}
+      </div>
+
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold">
+            {tSettings("leaderExchangePeriodHeading")}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {tSettings("leaderExchangePeriodDescription")}
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="leaderExchangesFirstDay">
+              {tTeams("exchangesFirstDay")}
+            </Label>
+            <NumberInput
+              id="leaderExchangesFirstDay"
+              name="leaderExchangesFirstDay"
+              min={1}
+              max={31}
+              step={1}
+              key={`leaderExchangesFirstDay-${defaultValues.leaderExchangesFirstDay}`}
+              defaultValue={defaultValues.leaderExchangesFirstDay}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="leaderExchangesLastDay">
+              {tTeams("exchangesLastDay")}
+            </Label>
+            <NumberInput
+              id="leaderExchangesLastDay"
+              name="leaderExchangesLastDay"
+              min={1}
+              max={31}
+              step={1}
+              key={`leaderExchangesLastDay-${defaultValues.leaderExchangesLastDay}`}
+              defaultValue={defaultValues.leaderExchangesLastDay}
+              required
+            />
+          </div>
+        </div>
       </div>
 
       <div className="space-y-4">

@@ -9,6 +9,7 @@ export const AUDIT_VERBS = [
   "reactivated",
   "deleted",
   "bulkArchived",
+  "bulkReactivated",
   "bulkDeleted",
   "bulkUpdated",
   "connection",

@@ -7,6 +7,8 @@ import { RouteThemeMatchedMain } from "@/components/themes/route-theme-matched-m
 import { loadKioskSessionIdleMs } from "@/lib/kiosk/load-session-idle";
 import { loadRouteThemes } from "@/lib/themes/load-route-themes";
 
+export const dynamic = "force-dynamic";
+
 export default async function KioskLayout({ children }: { children: ReactNode }) {
   const [sessionIdleMs, themes] = await Promise.all([
     loadKioskSessionIdleMs(),

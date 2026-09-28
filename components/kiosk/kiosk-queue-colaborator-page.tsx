@@ -5,7 +5,10 @@ import { KioskQueuePageComposer } from "@/components/kiosk/kiosk-queue-page-comp
 import { KioskQueueProducingBlock } from "@/components/kiosk/kiosk-queue-producing-block";
 import { KioskQueueProfileBlock } from "@/components/kiosk/kiosk-queue-profile-block";
 import { KioskQueueSkeletonList } from "@/components/kiosk/kiosk-queue-card-skeleton";
+import { loadKioskColaboratorProfile } from "@/lib/kiosk/load-colaborator-profile";
 import { loadKioskSettings } from "@/lib/kiosk/load-session-idle";
+import { showQueueCredentialPasswordForm } from "@/lib/kiosk/queue-credential-edit";
+import { showQueueFaceEditForm } from "@/lib/kiosk/queue-face-edit";
 import { emptyKioskQueueSectionPage } from "@/lib/repos/kiosk-subtasks";
 
 function HeaderChipSkeleton() {
@@ -40,7 +43,21 @@ export async function KioskQueueColaboratorPage({
   profileShowEdit?: boolean;
 }): Promise<ReactNode> {
   const settings = await loadKioskSettings();
-  const showEdit = profileShowEdit ?? Boolean(allowFaceEdit && !readOnly);
+  const profile = await loadKioskColaboratorProfile(colaboratorId);
+  const queueTargetRole = profile?.role;
+  const showFaceForm = showQueueFaceEditForm(
+    staffUserId,
+    colaboratorId,
+    queueTargetRole,
+    allowFaceEdit,
+  );
+  const showPasswordForm = showQueueCredentialPasswordForm(
+    staffUserId,
+    colaboratorId,
+    queueTargetRole,
+  );
+  const showEdit =
+    profileShowEdit ?? (!readOnly && (showFaceForm || showPasswordForm));
 
   return (
     <KioskQueuePageComposer
@@ -53,6 +70,7 @@ export async function KioskQueueColaboratorPage({
       readOnly={readOnly}
       staffUserId={staffUserId}
       allowFaceEdit={allowFaceEdit}
+      queueTargetRole={queueTargetRole}
       backHref={backHref}
       toolbarTopRadiusClass={toolbarTopRadiusClass}
       bootstrapPending

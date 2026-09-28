@@ -84,12 +84,19 @@ export const PasswordInput = React.forwardRef<
   const selectionRef = React.useRef({ start: 0, end: 0 });
   const beforeInputHandledRef = React.useRef(false);
   const [showAll, setShowAll] = React.useState(false);
-  const [useNativePasswordField] = React.useState(
-    () => forceNative || prefersCoarsePointer(),
-  );
+  const [useNativePasswordField, setUseNativePasswordField] =
+    React.useState(forceNative);
   const [, refreshMask] = React.useReducer((count) => count + 1, 0);
 
   revealStateRef.current = revealState;
+
+  React.useEffect(() => {
+    if (forceNative) {
+      setUseNativePasswordField(true);
+      return;
+    }
+    setUseNativePasswordField(prefersCoarsePointer());
+  }, [forceNative]);
 
   React.useImperativeHandle(ref, () => hiddenRef.current as HTMLInputElement);
 

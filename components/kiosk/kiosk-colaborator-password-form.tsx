@@ -84,10 +84,7 @@ export function KioskColaboratorPasswordForm({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={disabled || isSubmitting}>
-          {tCommon("save")}
-        </Button>
+      <div className="flex w-full flex-wrap items-center justify-between gap-2">
         <Button
           type="button"
           variant="outline"
@@ -95,6 +92,9 @@ export function KioskColaboratorPasswordForm({
           onClick={onCancel}
         >
           {tCommon("cancel")}
+        </Button>
+        <Button type="submit" disabled={disabled || isSubmitting}>
+          {tCommon("save")}
         </Button>
       </div>
     </form>

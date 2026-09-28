@@ -24,6 +24,7 @@ import {
   findCurrencyById,
   hardDeleteCurrency as hardDeleteCurrencyRepo,
   listCurrencies as listCurrenciesRepo,
+  reactivateCurrencies,
 } from "@/lib/repos/awards";
 import type { MediaAssetRecord } from "@/lib/repos/media";
 import { parseArchiveReason } from "@/lib/schemas/archive-with-reason";
@@ -216,6 +217,27 @@ export async function bulkArchiveCurrencies(
     verb: "bulkArchived",
     entity: "currencies",
     quantity: archivable.length,
+  });
+  invalidateCurrencies();
+}
+
+export async function bulkReactivateCurrencies(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanManage();
+  const ids = bulkCurrencyIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const currency = await findCurrencyById(documentId);
+    if (!currency) throw new Error("notFound");
+    if (currency.active) throw new Error("activeCurrency");
+  }
+  await reactivateCurrencies(ids);
+  await auditSuccess({
+    route: CURRENCY_SETTINGS_PATH,
+    verb: "bulkReactivated",
+    entity: "currencies",
+    quantity: ids.length,
   });
   invalidateCurrencies();
 }

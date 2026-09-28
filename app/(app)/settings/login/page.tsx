@@ -5,9 +5,12 @@ import type { EntryAccessByDevice } from "@/lib/business/entry-access";
 import { updateEntryAccessSettings } from "../actions";
 
 export default async function SettingsLoginPage() {
-  const access = await loadEntryAccessSettings("login");
+  const [loginAccess, kioskAccess] = await Promise.all([
+    loadEntryAccessSettings("login"),
+    loadEntryAccessSettings("kiosk"),
+  ]);
 
-  async function handleSaveAccess(
+  async function handleSaveLoginAccess(
     value: EntryAccessByDevice,
   ): Promise<void> {
     "use server";
@@ -18,5 +21,25 @@ export default async function SettingsLoginPage() {
     });
   }
 
-  return <EntryAccessForm value={access} onSave={handleSaveAccess} />;
+  async function handleSaveKioskAccess(
+    value: EntryAccessByDevice,
+  ): Promise<void> {
+    "use server";
+    await updateEntryAccessSettings({
+      surface: "kiosk",
+      computer: value.computer,
+      mobile: value.mobile,
+    });
+  }
+
+  return (
+    <div className="space-y-10">
+      <EntryAccessForm value={loginAccess} onSave={handleSaveLoginAccess} />
+      <EntryAccessForm
+        value={kioskAccess}
+        onSave={handleSaveKioskAccess}
+        headingKey="entryAccessKioskHeading"
+      />
+    </div>
+  );
 }

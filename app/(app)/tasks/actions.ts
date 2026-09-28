@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
@@ -50,6 +50,10 @@ async function assertCanDeactivate(): Promise<void> {
 
 function invalidateTasks(): void {
   revalidateTag("drizzle:tasks", "default");
+  revalidateTag("drizzle:steps", "default");
+  revalidateTag("drizzle:subTasks", "default");
+  revalidatePath("/tasks");
+  revalidatePath("/board");
 }
 
 async function fetchTaskIndexes(): Promise<number[]> {
@@ -229,6 +233,30 @@ export async function bulkDeactivateTasks(
   await auditSuccess({
     route: "/tasks",
     verb: "bulkArchived",
+    entity: "tasks",
+    quantity: ids.length,
+  });
+  invalidateTasks();
+}
+
+export async function bulkReactivateTasks(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanDeactivate();
+  const ids = bulkTaskIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const task = await getTaskById(documentId);
+    if (!task) throw new Error("notFound");
+    if (task.active) throw new Error("activeTask");
+  }
+
+  for (const documentId of ids) {
+    await setTaskActive(documentId, true);
+  }
+  await auditSuccess({
+    route: "/tasks",
+    verb: "bulkReactivated",
     entity: "tasks",
     quantity: ids.length,
   });

@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
+import { ListPageActionsProvider } from "@/components/ui/list-page-actions-slot";
+import { ListPageToolbar } from "@/components/ui/list-page-toolbar";
 import { sampleSubTaskPreset } from "@/test/sample-subtask-preset";
 import type { SubTaskPreset } from "@/lib/business/subtask-preset";
 
@@ -9,16 +12,20 @@ import { SubTaskPresetListProvider } from "./subtask-preset-list-context";
 import { SubtaskPresetListTableFrame } from "./subtask-preset-list-table-frame";
 
 const loadMoreSubTaskPresets = vi.fn();
+const bulkReactivateSubTaskPresets = vi.fn();
 const showErrorToast = vi.fn();
+const showSuccessToast = vi.fn();
 
 vi.mock("@/app/(app)/sub-task-presets/actions", () => ({
   loadMoreSubTaskPresets: (...args: unknown[]) =>
     loadMoreSubTaskPresets(...args),
+  bulkReactivateSubTaskPresets: (...args: unknown[]) =>
+    bulkReactivateSubTaskPresets(...args),
 }));
 
 vi.mock("@/lib/ui/app-toast", () => ({
   showErrorToast: (...args: unknown[]) => showErrorToast(...args),
-  showSuccessToast: vi.fn(),
+  showSuccessToast: (...args: unknown[]) => showSuccessToast(...args),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -38,7 +45,9 @@ const initialPresets: SubTaskPreset[] = [
 describe("SubtaskPresetListTableFrame", () => {
   beforeEach(() => {
     loadMoreSubTaskPresets.mockReset();
+    bulkReactivateSubTaskPresets.mockReset();
     showErrorToast.mockReset();
+    showSuccessToast.mockReset();
   });
 
   it("appends the next page when Carregar mais is clicked", async () => {
@@ -87,6 +96,49 @@ describe("SubtaskPresetListTableFrame", () => {
     expect(
       screen.queryByRole("button", { name: "Carregar mais" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("calls bulk reactivate when archived presets are selected", async () => {
+    bulkReactivateSubTaskPresets.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    const archived = sampleSubTaskPreset({
+      documentId: "p1",
+      name: "Primeiro",
+      active: false,
+    });
+
+    renderWithIntl(
+      <ListPageActionsProvider>
+        <ListPageToolbar />
+        <SubTaskPresetListProvider openEdit={vi.fn()}>
+          <SubtaskPresetListTableFrame
+            filters={{ ...filters, showArchived: true }}
+            initialPresets={[archived]}
+            initialHasMore={false}
+            initialPage={1}
+            canDeactivate
+            canDelete
+            tableHeader={
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                </tr>
+              </thead>
+            }
+          />
+        </SubTaskPresetListProvider>
+      </ListPageActionsProvider>,
+    );
+
+    await user.click(screen.getAllByRole("checkbox")[0]!);
+    await user.click(
+      screen.getByRole("button", { name: "Restaurar selecionados" }),
+    );
+
+    await waitFor(() => {
+      expect(bulkReactivateSubTaskPresets).toHaveBeenCalledWith(["p1"]);
+    });
+    expect(showSuccessToast).toHaveBeenCalled();
   });
 
   it("centers the load more button", () => {

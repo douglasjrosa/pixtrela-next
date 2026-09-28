@@ -41,7 +41,7 @@ describe("ProfileClient", () => {
       <ProfileClient userName="Ana Silva" avatarUrl={null} personal={personal} />,
     );
 
-    expect(screen.getByRole("heading", { name: "Meu perfil" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Meu Perfil" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Dados pessoais" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toHaveValue("Ana");
     expect(screen.getByLabelText("Sobrenome")).toHaveValue("Silva");

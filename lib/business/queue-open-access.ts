@@ -12,7 +12,7 @@ export type QueueOpenTarget = {
  * that stays on `canStaffSetColaboratorPassword`.
  *
  * Manager+ open any active colaborator. A leader opens colaborators on their
- * teams and their own queue.
+ * teams. Any staff actor may open their own queue.
  */
 export function canStaffOpenQueue(input: {
   actorRole: QueueOpenActorRole;
@@ -22,13 +22,10 @@ export function canStaffOpenQueue(input: {
 }): boolean {
   const { actorRole, actorId, target, leaderTeamColaboratorIds } = input;
   if (!target.active || target.blocked) return false;
+  if (target.id === actorId) return true;
 
   if (actorRole === "admin" || actorRole === "manager") {
-    return target.role === "colaborator";
-  }
-
-  if (target.id === actorId && target.role === "leader") {
-    return true;
+    return target.role === "colaborator" || target.role === "leader";
   }
 
   if (target.role !== "colaborator") return false;
@@ -36,5 +33,10 @@ export function canStaffOpenQueue(input: {
 }
 
 export function isQueueProfileRole(role: string): boolean {
-  return role === "colaborator" || role === "leader";
+  return (
+    role === "colaborator" ||
+    role === "leader" ||
+    role === "manager" ||
+    role === "admin"
+  );
 }

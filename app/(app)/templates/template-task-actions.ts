@@ -16,6 +16,7 @@ import {
   deleteTemplateTask as deleteTemplateTaskRepo,
   findTemplateById,
   hardDeleteTemplateTask,
+  reactivateTemplateTasks,
   updateTemplateTask as updateTemplateTaskRepo,
 } from "@/lib/repos/templates";
 import { auditSuccess } from "@/lib/logs/record-log";
@@ -49,6 +50,7 @@ async function assertCanDeactivate(): Promise<void> {
 function invalidateTemplates(): void {
   revalidateTag("drizzle:templates", "default");
   revalidatePath("/templates/tasks");
+  revalidatePath("/templates/tasks", "layout");
 }
 
 export async function loadMoreTemplates(
@@ -150,6 +152,28 @@ export async function bulkArchiveTemplates(
   await auditSuccess({
     route: "/templates/tasks",
     verb: "bulkArchived",
+    entity: "templates",
+    quantity: ids.length,
+  });
+  invalidateTemplates();
+}
+
+export async function bulkReactivateTemplates(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanDeactivate();
+  const ids = bulkTemplateIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const template = await findTemplateById(documentId);
+    if (!template) throw new Error("notFound");
+    if (template.active) throw new Error("activeTemplate");
+  }
+
+  await reactivateTemplateTasks(ids);
+  await auditSuccess({
+    route: "/templates/tasks",
+    verb: "bulkReactivated",
     entity: "templates",
     quantity: ids.length,
   });

@@ -8,6 +8,7 @@ const deleteTemplateTaskRepo = vi.fn();
 const archiveTemplateTasks = vi.fn();
 const findTemplateById = vi.fn();
 const hardDeleteTemplateTask = vi.fn();
+const reactivateTemplateTasks = vi.fn();
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" }, jwt: "" })),
@@ -26,6 +27,8 @@ vi.mock("@/lib/repos/templates", () => ({
   findTemplateById: (...args: unknown[]) => findTemplateById(...args),
   hardDeleteTemplateTask: (...args: unknown[]) =>
     hardDeleteTemplateTask(...args),
+  reactivateTemplateTasks: (...args: unknown[]) =>
+    reactivateTemplateTasks(...args),
 }));
 
 vi.mock("@/integrations/ribermax", () => ({
@@ -47,6 +50,7 @@ describe("templates/actions drizzle CRUD", () => {
     archiveTemplateTasks.mockReset();
     findTemplateById.mockReset();
     hardDeleteTemplateTask.mockReset();
+    reactivateTemplateTasks.mockReset();
   });
 
   it("createTemplate returns repo id", async () => {
@@ -132,5 +136,13 @@ describe("templates/actions drizzle CRUD", () => {
       "activeTemplate",
     );
     expect(hardDeleteTemplateTask).not.toHaveBeenCalled();
+  });
+
+  it("bulkReactivateTemplates reactivates inactive templates", async () => {
+    findTemplateById.mockResolvedValue({ active: false });
+    const { bulkReactivateTemplates } = await import("./template-task-actions");
+    await bulkReactivateTemplates(["tpl-1", "tpl-2"]);
+    expect(reactivateTemplateTasks).toHaveBeenCalledWith(["tpl-1", "tpl-2"]);
+    expect(revalidatePath).toHaveBeenCalledWith("/templates/tasks");
   });
 });

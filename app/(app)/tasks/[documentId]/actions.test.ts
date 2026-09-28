@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTag = vi.fn();
+const revalidatePath = vi.fn();
 const createSubTaskForTask = vi.fn();
 const updateSubTaskFields = vi.fn();
 const updateSubTaskIndex = vi.fn();
@@ -12,8 +13,13 @@ vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" } })),
 }));
 
+vi.mock("@/lib/logs/record-log", () => ({
+  auditSuccess: vi.fn(async () => undefined),
+}));
+
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
+  revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
 vi.mock("@/lib/repos/tasks", () => ({
@@ -32,6 +38,7 @@ describe("tasks/[documentId]/actions drizzle subtasks", () => {
   beforeEach(() => {
     vi.resetModules();
     revalidateTag.mockReset();
+    revalidatePath.mockReset();
     createSubTaskForTask.mockReset();
     updateSubTaskFields.mockReset();
     updateSubTaskIndex.mockReset();

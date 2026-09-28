@@ -12,6 +12,7 @@ import { TasksListTableFrame } from "./tasks-list-table-frame";
 const loadMoreTasks = vi.fn();
 const bulkDeactivateTasks = vi.fn();
 const bulkDeleteTasks = vi.fn();
+const bulkReactivateTasks = vi.fn();
 const showErrorToast = vi.fn();
 const showSuccessToast = vi.fn();
 const replace = vi.fn();
@@ -21,6 +22,7 @@ vi.mock("@/app/(app)/tasks/actions", () => ({
   loadMoreTasks: (...args: unknown[]) => loadMoreTasks(...args),
   bulkDeactivateTasks: (...args: unknown[]) => bulkDeactivateTasks(...args),
   bulkDeleteTasks: (...args: unknown[]) => bulkDeleteTasks(...args),
+  bulkReactivateTasks: (...args: unknown[]) => bulkReactivateTasks(...args),
 }));
 
 vi.mock("@/lib/ui/app-toast", () => ({
@@ -85,6 +87,7 @@ describe("TasksListTableFrame", () => {
     loadMoreTasks.mockReset();
     bulkDeactivateTasks.mockReset();
     bulkDeleteTasks.mockReset();
+    bulkReactivateTasks.mockReset();
     showErrorToast.mockReset();
     showSuccessToast.mockReset();
     replace.mockReset();
@@ -203,6 +206,47 @@ describe("TasksListTableFrame", () => {
         slot?.querySelector("button")?.getAttribute("aria-label"),
       ).toBe("Arquivar selecionadas");
     });
+  });
+
+  it("shows restore and delete when all selected tasks are archived", async () => {
+    bulkReactivateTasks.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    const archivedTasks = [
+      {
+        ...initialTasks[0],
+        active: false,
+      },
+    ];
+
+    renderWithIntl(
+      <ListPageActionsProvider>
+        <ListPageToolbar />
+        <TasksListTableFrame
+          filters={filters}
+          initialTasks={archivedTasks}
+          initialHasMore={false}
+          initialPage={1}
+          canDeactivate
+          canDelete
+          tableHeader={<thead><tr><th>Nome</th></tr></thead>}
+          tableBody={selectableBody(archivedTasks[0]!)}
+          mobileList={null}
+        />
+      </ListPageActionsProvider>,
+    );
+
+    await user.click(screen.getAllByRole("checkbox")[0]!);
+    expect(
+      screen.getByRole("button", { name: "Restaurar selecionadas" }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Restaurar selecionadas" }),
+    );
+
+    await waitFor(() => {
+      expect(bulkReactivateTasks).toHaveBeenCalledWith(["t1"]);
+    });
+    expect(showSuccessToast).toHaveBeenCalled();
   });
 
   it("shows delete action when all selected tasks are archived", async () => {

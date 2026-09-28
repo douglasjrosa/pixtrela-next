@@ -6,6 +6,7 @@ import { findUserAvatarUrl, findUserById } from "@/lib/repos/users";
 export type KioskColaboratorProfile = {
   documentId: string;
   name: string;
+  role: string;
   avatarUrl: string | null;
 };
 
@@ -26,6 +27,7 @@ export async function loadKioskColaboratorProfile(
     return {
       documentId: user.id,
       name: user.name,
+      role: user.role,
       avatarUrl: avatarUrl ? toBrowserMediaUrl(avatarUrl) : null,
     };
   } catch (error) {

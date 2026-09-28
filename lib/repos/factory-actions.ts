@@ -159,6 +159,17 @@ export async function updateFactoryActionRepo(
     .where(eq(factoryActions.id, id));
 }
 
+export async function reactivateFactoryActions(
+  ids: string[],
+  db: Db = getDb(),
+): Promise<void> {
+  if (ids.length === 0) return;
+  await db
+    .update(factoryActions)
+    .set({ active: true, updatedAt: new Date() })
+    .where(inArray(factoryActions.id, ids));
+}
+
 export async function archiveFactoryActions(
   ids: string[],
   reason: string,

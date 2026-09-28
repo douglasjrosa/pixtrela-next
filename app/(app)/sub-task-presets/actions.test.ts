@@ -11,6 +11,7 @@ const createSubTaskPresetRepo = vi.fn();
 const updateSubTaskPresetRepo = vi.fn();
 const archiveSubTaskPresetById = vi.fn();
 const archiveSubTaskPresets = vi.fn();
+const reactivateSubTaskPresets = vi.fn();
 const findSubTaskPresetById = vi.fn();
 const auth = vi.fn(async () => ({ user: { role: "manager" } }));
 const revalidateTag = vi.fn();
@@ -37,6 +38,8 @@ vi.mock("@/lib/repos/sub-task-presets", () => ({
     archiveSubTaskPresetById(...args),
   archiveSubTaskPresets: (...args: unknown[]) =>
     archiveSubTaskPresets(...args),
+  reactivateSubTaskPresets: (...args: unknown[]) =>
+    reactivateSubTaskPresets(...args),
   findSubTaskPresetById: (...args: unknown[]) => findSubTaskPresetById(...args),
 }));
 
@@ -56,6 +59,7 @@ describe("sub-task-presets actions", () => {
     updateSubTaskPresetRepo.mockReset();
     archiveSubTaskPresetById.mockReset();
     archiveSubTaskPresets.mockReset();
+    reactivateSubTaskPresets.mockReset();
     findSubTaskPresetById.mockReset();
     auth.mockReset();
     revalidateTag.mockReset();
@@ -161,5 +165,14 @@ describe("sub-task-presets actions", () => {
     auth.mockResolvedValue({ user: { role: "colaborator" } });
     const { searchSubTaskPresets } = await import("./actions");
     await expect(searchSubTaskPresets("corte")).rejects.toThrow("forbidden");
+  });
+
+  it("bulkReactivateSubTaskPresets reactivates inactive presets", async () => {
+    findSubTaskPresetById.mockResolvedValue(
+      sampleSubTaskPreset({ documentId: "p1", active: false }),
+    );
+    const { bulkReactivateSubTaskPresets } = await import("./actions");
+    await bulkReactivateSubTaskPresets(["p1"]);
+    expect(reactivateSubTaskPresets).toHaveBeenCalledWith(["p1"]);
   });
 });

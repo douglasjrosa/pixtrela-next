@@ -51,6 +51,12 @@ describe("ProfileAvatarEditor", () => {
     expect(
       screen.getByRole("button", { name: "Enviar foto" }),
     ).toBeInTheDocument();
+
+    const takePhoto = screen.getByRole("button", { name: "Tirar foto" });
+    const uploadPhoto = screen.getByRole("button", { name: "Enviar foto" });
+    expect(takePhoto.parentElement).toHaveClass("justify-around");
+    expect(takePhoto).toHaveClass("w-36");
+    expect(uploadPhoto).toHaveClass("w-36");
   });
 
   it("opens camera capture when take photo is clicked", async () => {

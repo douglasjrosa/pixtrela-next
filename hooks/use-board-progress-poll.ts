@@ -9,6 +9,7 @@ import {
 } from "@/lib/board/board-column-state";
 import { mergeBoardColumnsProgressPoll } from "@/lib/board/merge-progress-poll";
 import type { BoardProgressPollSnapshot } from "@/lib/board/progress-poll";
+import { isBrowserTabVisible } from "@/lib/browser/is-browser-tab-visible";
 
 const BOARD_PROGRESS_POLL_MS = 12_000;
 
@@ -78,14 +79,14 @@ export function useBoardProgressPoll(
     let timerId: number | undefined;
     let inFlight = false;
 
+    function stopInterval(): void {
+      if (timerId === undefined) return;
+      window.clearInterval(timerId);
+      timerId = undefined;
+    }
+
     async function runPoll(): Promise<void> {
-      if (paused || inFlight) return;
-      if (
-        typeof document !== "undefined" &&
-        document.visibilityState === "hidden"
-      ) {
-        return;
-      }
+      if (paused || inFlight || !isBrowserTabVisible()) return;
       const boardColumns = columnsRef.current;
       const loadedTasks = flattenBoardColumnTasks(boardColumns);
 
@@ -118,18 +119,27 @@ export function useBoardProgressPoll(
     }
 
     function schedule(): void {
+      stopInterval();
+      if (paused || !isBrowserTabVisible()) return;
       timerId = window.setInterval(() => {
+        if (!isBrowserTabVisible()) {
+          stopInterval();
+          return;
+        }
         void runPoll();
       }, BOARD_PROGRESS_POLL_MS);
     }
 
     function onVisibility(): void {
-      if (document.visibilityState === "visible") {
-        void runPoll();
+      if (!isBrowserTabVisible()) {
+        stopInterval();
+        return;
       }
+      void runPoll();
+      if (timerId === undefined) schedule();
     }
 
-    if (!paused) {
+    if (!paused && isBrowserTabVisible()) {
       void runPoll();
       schedule();
     }

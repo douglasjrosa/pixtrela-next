@@ -30,7 +30,7 @@ async function loadTemplate(
 } | null> {
   try {
     const template = await findTemplateById(documentId);
-    if (!template || !template.active) return null;
+    if (!template) return null;
     const subTasks = await listTemplateSubTasks(documentId);
     return {
       documentId: template.id,

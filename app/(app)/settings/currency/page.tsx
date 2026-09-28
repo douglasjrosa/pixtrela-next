@@ -15,6 +15,7 @@ import { updateCurrencyForSubtasks } from "../actions";
 import {
   bulkArchiveCurrencies,
   bulkDeleteCurrencies,
+  bulkReactivateCurrencies,
   createCurrency,
   listCurrencyImages,
   updateCurrency,
@@ -60,6 +61,7 @@ export default async function SettingsCurrencyPage() {
         onCreate={createCurrency}
         onUpdate={updateCurrency}
         onBulkArchive={bulkArchiveCurrencies}
+        onBulkReactivate={bulkReactivateCurrencies}
         onBulkDelete={bulkDeleteCurrencies}
         onListImages={listCurrencyImages}
         onUploadImage={uploadCurrencyIcon}

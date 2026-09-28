@@ -34,6 +34,7 @@ export function TemplatesLayoutClient({
   const pathname = usePathname();
   const hideTitleRow =
     pathname === TEMPLATES_TASKS_LIST_PATH ||
+    pathname.startsWith(`${TEMPLATES_TASKS_LIST_PATH}/`) ||
     pathname.startsWith("/templates/subtasks") ||
     pathname.startsWith("/templates/actions");
 

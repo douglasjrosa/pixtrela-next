@@ -49,6 +49,8 @@ import {
   hasActiveSubTask,
   type KioskSubTask,
 } from "@/lib/business/subtask-queue";
+import { showQueueCredentialPasswordForm } from "@/lib/kiosk/queue-credential-edit";
+import { showQueueFaceEditForm } from "@/lib/kiosk/queue-face-edit";
 import { buildKioskQueueFingerprint } from "@/lib/kiosk/queue-fingerprint";
 import { kioskActionErrorMessage } from "@/lib/business/kiosk-action-error";
 import { mergeKioskCatalog } from "@/lib/business/kiosk-queue-catalog-scope";
@@ -167,6 +169,8 @@ export interface KioskPanelClientProps {
   readOnly?: boolean;
   staffUserId?: string;
   allowFaceEdit?: boolean;
+  /** Role of the user whose queue is open (for totem credential/face rules). */
+  queueTargetRole?: string;
   backHref?: string;
   /** Matches parent content surface top corners when backHref is set. */
   toolbarTopRadiusClass?: string;
@@ -185,6 +189,7 @@ export function KioskPanelClient({
   readOnly = false,
   staffUserId,
   allowFaceEdit = false,
+  queueTargetRole,
   backHref,
   toolbarTopRadiusClass = "rounded-t-2xl sm:rounded-t-2xl",
   children,
@@ -759,7 +764,18 @@ export function KioskPanelClient({
     ]),
   );
 
-  const showEdit = !readOnly;
+  const showFaceForm = showQueueFaceEditForm(
+    staffUserId,
+    colaboratorId,
+    queueTargetRole,
+    allowFaceEdit,
+  );
+  const showPasswordForm = showQueueCredentialPasswordForm(
+    staffUserId,
+    colaboratorId,
+    queueTargetRole,
+  );
+  const showEdit = !readOnly && (showFaceForm || showPasswordForm);
 
   const headerProps = {
     name: profileName,
@@ -856,19 +872,21 @@ export function KioskPanelClient({
       ) : null}
       {editOpen && showEdit ? (
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-          {allowFaceEdit ? (
+          {showFaceForm ? (
             <KioskColaboratorFacePhotoForm
               facePhotoUrl={currentFacePhotoUrl ?? null}
               disabled={editPending}
               onSave={handleSaveEditFacePhoto}
             />
           ) : null}
-          <KioskColaboratorPasswordForm
-            colaboratorName={profileName}
-            disabled={editPending}
-            onCancel={() => setEditOpen(false)}
-            onSave={handleSaveEditPassword}
-          />
+          {showPasswordForm ? (
+            <KioskColaboratorPasswordForm
+              colaboratorName={profileName}
+              disabled={editPending}
+              onCancel={() => setEditOpen(false)}
+              onSave={handleSaveEditPassword}
+            />
+          ) : null}
         </div>
       ) : (
         <div className="relative min-h-0 flex-1">

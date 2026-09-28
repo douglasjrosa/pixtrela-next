@@ -1,6 +1,6 @@
 import type { Role } from "@/lib/auth/nav";
 
-/** Staff who may open the totem team-access screen. Not `canViewUsers`. */
+/** Leader+ may change another person's password and face on the totem queue. */
 export function canManageColaboratorCredentialsOnKiosk(
   role: Role | undefined,
 ): boolean {

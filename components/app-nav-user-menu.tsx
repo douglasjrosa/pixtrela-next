@@ -1,16 +1,23 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { UserListAvatar } from "@/components/users/user-list-avatar";
+import { APP_MENU_FONT_CLASS } from "@/lib/ui/app-menu-typography";
 import { cn } from "@/lib/utils";
+
+const ACCOUNT_MENU_ITEM_CLASS =
+  `flex min-h-16 w-full items-center justify-center px-4 py-6 ${APP_MENU_FONT_CLASS} ` +
+  "hover:bg-muted";
 
 export interface AppNavUserMenuProps {
   userName: string;
   avatarUrl?: string | null;
   profileHref?: string | null;
+  showSignOut?: boolean;
+  accountExtras?: ReactNode;
   onSignOut: () => void;
 }
 
@@ -18,6 +25,8 @@ export function AppNavUserMenu({
   userName,
   avatarUrl,
   profileHref,
+  showSignOut = true,
+  accountExtras = null,
   onSignOut,
 }: AppNavUserMenuProps) {
   const t = useTranslations();
@@ -56,7 +65,16 @@ export function AppNavUserMenu({
   }
 
   return (
-    <div ref={rootRef} className="relative shrink-0">
+    <>
+      {open ? (
+        <div
+          data-testid="account-menu-backdrop"
+          className="fixed inset-0 z-[65] bg-overlay/50"
+          aria-hidden
+          onClick={close}
+        />
+      ) : null}
+      <div ref={rootRef} className="relative z-[70] shrink-0">
       <button
         type="button"
         className={
@@ -79,7 +97,7 @@ export function AppNavUserMenu({
         role="menu"
         aria-hidden={!open}
         className={cn(
-          "absolute right-0 top-[calc(100%+0.25rem)] z-[70] min-w-[11rem] " +
+          "absolute right-0 top-[calc(100%+0.25rem)] min-w-80 " +
             "overflow-hidden rounded-md border bg-background shadow-md " +
             "transition-all duration-200 ease-out origin-top",
           open
@@ -87,38 +105,44 @@ export function AppNavUserMenu({
             : "pointer-events-none -translate-y-1 scale-y-95 opacity-0",
         )}
       >
-        <div className="border-b px-3 py-2">
-          <p className="font-heading truncate text-sm font-semibold">
+        <div className="border-b px-4 py-3 text-center">
+          <p
+            className={cn(
+              "font-heading truncate font-semibold uppercase",
+              APP_MENU_FONT_CLASS,
+            )}
+          >
             {userName}
           </p>
         </div>
+        {accountExtras ? (
+          <div className="flex justify-center border-b px-4">{accountExtras}</div>
+        ) : null}
         {profileHref ? (
           <Link
             href={profileHref}
             role="menuitem"
-            className={
-              "flex min-h-10 items-center px-3 text-sm hover:bg-muted"
-            }
+            className={cn(ACCOUNT_MENU_ITEM_CLASS, "text-center")}
             onClick={close}
           >
             {t("profile.title")}
           </Link>
         ) : null}
-        <button
-          type="button"
-          role="menuitem"
-          className={
-            "flex min-h-10 w-full items-center px-3 text-left text-sm " +
-            "hover:bg-muted"
-          }
-          onClick={() => {
-            close();
-            onSignOut();
-          }}
-        >
-          {t("auth.signOut")}
-        </button>
+        {showSignOut ? (
+          <button
+            type="button"
+            role="menuitem"
+            className={cn(ACCOUNT_MENU_ITEM_CLASS, "text-center")}
+            onClick={() => {
+              close();
+              onSignOut();
+            }}
+          >
+            {t("auth.signOut")}
+          </button>
+        ) : null}
       </div>
     </div>
+    </>
   );
 }

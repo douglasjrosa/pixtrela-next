@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import {
   bulkArchiveSubTaskPresets,
   bulkDeleteSubTaskPresets,
+  bulkReactivateSubTaskPresets,
   loadMoreSubTaskPresets,
 } from "@/app/(app)/sub-task-presets/actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
@@ -96,6 +97,8 @@ export function SubtaskPresetListTableFrame({
   const showArchiveAction =
     hasSelection && !allSelectedArchived && canDeactivate;
   const showDeleteAction = hasSelection && allSelectedArchived && canDelete;
+  const showRestoreAction =
+    hasSelection && allSelectedArchived && canDeactivate;
 
   function labelsFor(preset: SubTaskPreset): SubtaskPresetListRowLabels {
     return {
@@ -171,6 +174,20 @@ export function SubtaskPresetListTableFrame({
     });
   }
 
+  function handleRestoreSelected(): void {
+    startTransition(async () => {
+      try {
+        await bulkReactivateSubTaskPresets(selectedIds);
+        showSuccessToast(tPresets("bulkReactivated"));
+        clearSelection();
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tPresets("error"));
+      }
+    });
+  }
+
   const selectionValue = bulkEnabled
     ? {
         selectedIds,
@@ -183,15 +200,19 @@ export function SubtaskPresetListTableFrame({
   return (
     <ListSelectionProvider value={selectionValue}>
       <div className="flex min-h-0 flex-1 flex-col">
-        {bulkEnabled && (showArchiveAction || showDeleteAction) ? (
+        {bulkEnabled &&
+        (showArchiveAction || showRestoreAction || showDeleteAction) ? (
           <ListPageActionsPortal>
             <BulkListToolbar
               showArchive={showArchiveAction}
+              showRestore={showRestoreAction}
               showDelete={showDeleteAction}
               archiveLabel={tPresets("archiveSelected")}
+              restoreLabel={tPresets("restoreSelected")}
               deleteLabel={tPresets("deleteSelected")}
               disabled={isPending}
               onArchive={() => setArchiveOpen(true)}
+              onRestore={handleRestoreSelected}
               onDelete={() => setDeleteOpen(true)}
             />
           </ListPageActionsPortal>

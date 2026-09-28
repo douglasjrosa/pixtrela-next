@@ -82,7 +82,7 @@ describe("AppNavClient", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps the sandwich on desktop so a leader can toggle totem mode", async () => {
+  it("puts the totem switch in the account menu on desktop", async () => {
     const user = userEvent.setup();
     renderWithIntl(
       <AppNavClient
@@ -96,25 +96,45 @@ describe("AppNavClient", () => {
     );
 
     expect(screen.getByRole("link", { name: "Painel" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Abrir menu" }));
-    expect(screen.getByRole("switch", { name: "Modo Totem" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Abrir menu" }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Ana, Abrir menu da conta" }),
+    );
+    const name = screen.getByText("Ana");
+    const totem = screen.getByRole("switch", { name: "Modo Totem" });
+    const profile = screen.getByRole("menuitem", { name: "Meu Perfil" });
+    expect(name.compareDocumentPosition(totem)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(totem.compareDocumentPosition(profile)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 
-  it("hides desktop links while personal totem mode is on", () => {
+  it("hides desktop links and the sandwich while personal totem mode is on", async () => {
+    const user = userEvent.setup();
     renderWithIntl(
       <AppNavClient
         logoUrl={LOGO_URL}
         homeHref="/lead-1/kiosk"
         profileHref={null}
         userName="Ana"
-        items={[]}
+        items={[{ href: "/", label: "Painel" }]}
         totemMode
         showTotemSwitch
       />,
     );
 
     expect(screen.queryByRole("link", { name: "Painel" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Abrir menu" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Abrir menu" }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Ana, Abrir menu da conta" }),
+    );
+    expect(screen.getByRole("switch", { name: "Modo Totem" })).toBeInTheDocument();
   });
 
   it("shows mobile menu button before the brand on small screens", () => {

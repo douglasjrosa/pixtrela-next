@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import { pollTasksRevision } from "@/app/(app)/tasks/poll-revision";
+import { isBrowserTabVisible } from "@/lib/browser/is-browser-tab-visible";
 import {
   hasTasksRevisionChanged,
   type TasksRevision,
@@ -23,13 +24,14 @@ export function useTasksRevisionRefresh(): void {
     let cancelled = false;
     let timerId: number | undefined;
 
+    function stopInterval(): void {
+      if (timerId === undefined) return;
+      window.clearInterval(timerId);
+      timerId = undefined;
+    }
+
     async function checkRevision(): Promise<void> {
-      if (
-        typeof document !== "undefined" &&
-        document.visibilityState === "hidden"
-      ) {
-        return;
-      }
+      if (!isBrowserTabVisible()) return;
 
       try {
         const revision = await pollTasksRevision();
@@ -46,19 +48,30 @@ export function useTasksRevisionRefresh(): void {
     }
 
     function schedule(): void {
+      stopInterval();
+      if (!isBrowserTabVisible()) return;
       timerId = window.setInterval(() => {
+        if (!isBrowserTabVisible()) {
+          stopInterval();
+          return;
+        }
         void checkRevision();
       }, TASKS_REVISION_POLL_MS);
     }
 
     function onVisibility(): void {
-      if (document.visibilityState === "visible") {
-        void checkRevision();
+      if (!isBrowserTabVisible()) {
+        stopInterval();
+        return;
       }
+      void checkRevision();
+      if (timerId === undefined) schedule();
     }
 
-    void checkRevision();
-    schedule();
+    if (isBrowserTabVisible()) {
+      void checkRevision();
+      schedule();
+    }
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {

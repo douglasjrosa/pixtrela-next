@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import {
   bulkDeactivateActivities,
   bulkDeleteActivities,
+  bulkReactivateActivities,
   loadActivityArchiveReason,
   loadMoreActivities,
   reactivateActivity,
@@ -182,6 +183,8 @@ export function ActivitiesListTableFrame({
   );
   const showArchiveAction = hasSelection && !allSelectedArchived && canDeactivate;
   const showDeleteAction = hasSelection && allSelectedArchived && canDelete;
+  const showRestoreAction =
+    hasSelection && allSelectedArchived && canDeactivate;
 
   function handleLoadMore(): void {
     const nextPage = page + 1;
@@ -273,6 +276,20 @@ export function ActivitiesListTableFrame({
     });
   }
 
+  function handleRestoreSelected(): void {
+    startTransition(async () => {
+      try {
+        await bulkReactivateActivities(selectedIds);
+        showSuccessToast(t("bulkReactivated"));
+        setSelectedIds([]);
+        await fetchFreshList();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(t("error"));
+      }
+    });
+  }
+
   const selectionValue = bulkEnabled
     ? {
         selectedIds,
@@ -297,11 +314,14 @@ export function ActivitiesListTableFrame({
               refreshPending={isPending}
               onRefresh={syncListFromServer}
               showArchive={bulkEnabled && showArchiveAction}
+              showRestore={bulkEnabled && showRestoreAction}
               showDelete={bulkEnabled && showDeleteAction}
               archiveLabel={t("archiveSelected")}
+              restoreLabel={t("restoreSelected")}
               deleteLabel={t("deleteSelected")}
               disabled={isPending}
               onArchive={() => setArchiveOpen(true)}
+              onRestore={handleRestoreSelected}
               onDelete={() => setDeleteOpen(true)}
             />
           </ListPageActionsPortal>

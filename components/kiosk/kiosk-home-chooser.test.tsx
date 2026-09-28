@@ -21,15 +21,17 @@ describe("KioskHomeChooser", () => {
     expect(
       screen.getByText("Escolha como entrar."),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Reconhecimento facial" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Código e senha" }),
-    ).toBeInTheDocument();
+    const faceButton = screen.getByRole("button", {
+      name: "Reconhecimento facial",
+    });
+    expect(faceButton).toBeInTheDocument();
+    expect(faceButton).toHaveClass("w-full");
     expect(
       screen.getByRole("button", { name: "Login e senha" }),
-    ).toBeInTheDocument();
+    ).toHaveClass("w-full");
+    expect(
+      screen.getByRole("button", { name: "Código e senha" }),
+    ).toHaveClass("w-full");
     expect(
       screen.getByText("Ou apenas aproxime sua Tag NFC."),
     ).toBeInTheDocument();

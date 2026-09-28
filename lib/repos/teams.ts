@@ -5,6 +5,7 @@ import { toCalendarDateKey } from "@/lib/business/datetime-timezone";
 import { pickProducerExchangeWindow } from "@/lib/business/producer-exchange-window";
 import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
 import { getDb, type Db } from "@/lib/db/client";
+import { loadLeaderExchangeWindow } from "@/lib/repos/settings";
 import { archiveRecords } from "@/lib/repos/deactivation-reasons";
 import type { TeamListSort } from "@/lib/schemas/team-list-sort";
 
@@ -295,6 +296,17 @@ export async function updateTeam(
   return row;
 }
 
+export async function reactivateTeams(
+  ids: string[],
+  db: Db = getDb(),
+): Promise<void> {
+  if (ids.length === 0) return;
+  await db
+    .update(teams)
+    .set({ active: true, until: null, updatedAt: new Date() })
+    .where(inArray(teams.id, ids));
+}
+
 export async function archiveTeams(
   ids: string[],
   reason: string,
@@ -377,6 +389,16 @@ export async function findActiveTeamWindowForUser(
   db: Db = getDb(),
   now: Date = new Date(),
 ): Promise<{ exchangesFirstDay: number; exchangesLastDay: number } | null> {
+  const [user] = await db
+    .select({ role: users.role })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (user?.role === "leader") {
+    return loadLeaderExchangeWindow(db);
+  }
+
   const windows = await listProducerExchangeWindows(userId, db);
   return pickProducerExchangeWindow(windows, now);
 }

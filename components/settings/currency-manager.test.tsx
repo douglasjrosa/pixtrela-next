@@ -75,8 +75,8 @@ function renderManager(
       currencies={currencies}
       onCreate={vi.fn()}
       onUpdate={vi.fn()}
-      onDelete={vi.fn()}
       onBulkArchive={vi.fn()}
+      onBulkReactivate={vi.fn()}
       onBulkDelete={vi.fn()}
       onListImages={onListImages}
       onUploadImage={onUploadImage}

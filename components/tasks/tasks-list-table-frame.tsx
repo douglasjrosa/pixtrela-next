@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import {
   bulkDeactivateTasks,
   bulkDeleteTasks,
+  bulkReactivateTasks,
   loadMoreTasks,
 } from "@/app/(app)/tasks/actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
@@ -99,7 +100,12 @@ export function TasksListTableFrame({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const listResetKey = `${filterKey}:${initialPage}:${initialHasMore}`;
+  const listResetKey = [
+    filterKey,
+    String(initialPage),
+    String(initialHasMore),
+    initialTasks.map((row) => row.documentId).join(","),
+  ].join(":");
   const [prevListResetKey, setPrevListResetKey] = useState(listResetKey);
   if (listResetKey !== prevListResetKey) {
     setPrevListResetKey(listResetKey);
@@ -116,6 +122,8 @@ export function TasksListTableFrame({
   const showArchiveAction =
     hasSelection && !allSelectedArchived && canDeactivate;
   const showDeleteAction = hasSelection && allSelectedArchived && canDelete;
+  const showRestoreAction =
+    hasSelection && allSelectedArchived && canDeactivate;
 
   function handleLoadMore(): void {
     const nextPage = page + 1;
@@ -174,6 +182,20 @@ export function TasksListTableFrame({
     });
   }
 
+  function handleRestoreSelected(): void {
+    startTransition(async () => {
+      try {
+        await bulkReactivateTasks(selectedIds);
+        showSuccessToast(tManage("bulkReactivated"));
+        clearSelection();
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tManage("error"));
+      }
+    });
+  }
+
   const selectionValue = bulkEnabled
     ? {
         selectedIds,
@@ -184,14 +206,17 @@ export function TasksListTableFrame({
     : null;
 
   const bulkActions =
-    showArchiveAction || showDeleteAction ? (
+    showArchiveAction || showRestoreAction || showDeleteAction ? (
       <BulkListToolbar
         showArchive={showArchiveAction}
+        showRestore={showRestoreAction}
         showDelete={showDeleteAction}
         archiveLabel={tManage("archiveSelected")}
+        restoreLabel={tManage("restoreSelected")}
         deleteLabel={tManage("deleteSelected")}
         disabled={isPending}
         onArchive={() => setArchiveOpen(true)}
+        onRestore={handleRestoreSelected}
         onDelete={() => setDeleteOpen(true)}
       />
     ) : null;

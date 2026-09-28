@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import {
   bulkArchiveTeams,
   bulkDeleteTeams,
+  bulkReactivateTeams,
   loadMoreTeams,
 } from "@/app/(app)/teams/actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
@@ -90,6 +91,8 @@ export function TeamsListTableFrame({
   const showArchiveAction =
     hasSelection && !allSelectedArchived && canDeactivate;
   const showDeleteAction = hasSelection && allSelectedArchived && canDelete;
+  const showRestoreAction =
+    hasSelection && allSelectedArchived && canDeactivate;
 
   const showUntillColumn = filters.showArchived;
 
@@ -160,6 +163,20 @@ export function TeamsListTableFrame({
     });
   }
 
+  function handleRestoreSelected(): void {
+    startTransition(async () => {
+      try {
+        await bulkReactivateTeams(selectedIds);
+        showSuccessToast(tTeams("bulkReactivated"));
+        clearSelection();
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tTeams("error"));
+      }
+    });
+  }
+
   const selectionValue = bulkEnabled
     ? {
         selectedIds,
@@ -172,15 +189,19 @@ export function TeamsListTableFrame({
   return (
     <ListSelectionProvider value={selectionValue}>
       <div className="flex min-h-0 flex-1 flex-col">
-        {bulkEnabled && (showArchiveAction || showDeleteAction) ? (
+        {bulkEnabled &&
+        (showArchiveAction || showRestoreAction || showDeleteAction) ? (
           <ListPageActionsPortal>
             <BulkListToolbar
               showArchive={showArchiveAction}
+              showRestore={showRestoreAction}
               showDelete={showDeleteAction}
               archiveLabel={tTeams("archiveSelected")}
+              restoreLabel={tTeams("restoreSelected")}
               deleteLabel={tTeams("deleteSelected")}
               disabled={isPending}
               onArchive={() => setArchiveOpen(true)}
+              onRestore={handleRestoreSelected}
               onDelete={() => setDeleteOpen(true)}
             />
           </ListPageActionsPortal>

@@ -1,16 +1,19 @@
 "use client";
 
-import { Archive, RefreshCw, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, RefreshCw, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
 export interface BulkListToolbarProps {
   showArchive: boolean;
+  showRestore?: boolean;
   showDelete: boolean;
   archiveLabel: string;
+  restoreLabel?: string;
   deleteLabel: string;
   disabled?: boolean;
   onArchive: () => void;
+  onRestore?: () => void;
   onDelete: () => void;
   showRefresh?: boolean;
   refreshLabel?: string;
@@ -20,11 +23,14 @@ export interface BulkListToolbarProps {
 
 export function BulkListToolbar({
   showArchive,
+  showRestore = false,
   showDelete,
   archiveLabel,
+  restoreLabel,
   deleteLabel,
   disabled = false,
   onArchive,
+  onRestore,
   onDelete,
   showRefresh = false,
   refreshLabel,
@@ -58,6 +64,18 @@ export function BulkListToolbar({
           onClick={onArchive}
         >
           <Archive aria-hidden />
+        </Button>
+      ) : null}
+      {showRestore && onRestore && restoreLabel ? (
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          aria-label={restoreLabel}
+          disabled={disabled}
+          onClick={onRestore}
+        >
+          <ArchiveRestore aria-hidden />
         </Button>
       ) : null}
       {showDelete ? (

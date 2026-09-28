@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(),
@@ -8,7 +7,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
-  usePathname: () => "/kiosk/staff/lead-1",
+  usePathname: () => "/kiosk/staff/mgr-1",
 }));
 
 vi.mock("./kiosk-idle-provider", () => ({
@@ -23,19 +22,9 @@ vi.mock("./kiosk-idle-provider", () => ({
 import { renderWithIntl } from "@/test/test-utils";
 import { KioskStaffNav } from "./kiosk-staff-nav";
 
-const leaderItems = [
-  { href: "/kiosk/staff/lead-1/queues", label: "Filas" },
-  { href: "/kiosk/staff/lead-1/team-access", label: "Acesso da equipe" },
-];
-
-function renderNav(canSignOutDevice = false) {
+function renderNav() {
   return renderWithIntl(
-    <KioskStaffNav
-      userName="Líder Teste"
-      homeHref="/kiosk/staff/lead-1/queues"
-      items={leaderItems}
-      canSignOutDevice={canSignOutDevice}
-    />,
+    <KioskStaffNav homeHref="/kiosk/staff/mgr-1/queues" />,
   );
 }
 
@@ -44,26 +33,24 @@ describe("KioskStaffNav", () => {
     vi.clearAllMocks();
   });
 
-  it("renders consolidated staff links in the drawer", async () => {
-    const user = userEvent.setup();
+  it("does not render a sandwich menu", () => {
     renderNav();
 
-    await user.click(screen.getByRole("button", { name: "Abrir menu" }));
-
-    expect(screen.getByRole("link", { name: "Filas" })).toHaveAttribute(
-      "href",
-      "/kiosk/staff/lead-1/queues",
-    );
     expect(
-      screen.getByRole("link", { name: "Acesso da equipe" }),
-    ).toHaveAttribute("href", "/kiosk/staff/lead-1/team-access");
+      screen.queryByRole("button", { name: "Abrir menu" }),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows the staff user menu trigger", () => {
+  it("shows brand link and device sign-out only", () => {
     renderNav();
 
+    expect(screen.getByRole("navigation")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sair" })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Líder Teste/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /Abrir menu da conta/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("switch", { name: "Modo Totem" }),
+    ).not.toBeInTheDocument();
   });
 });

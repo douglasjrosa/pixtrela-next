@@ -16,9 +16,8 @@ import {
   isExchangeWindowOpen,
   type AwardPrice,
 } from "@/lib/domain/exchange";
-import { pickProducerExchangeWindow } from "@/lib/business/producer-exchange-window";
 import { getDb, type Db } from "@/lib/db/client";
-import { listProducerExchangeWindows } from "@/lib/repos/teams";
+import { findActiveTeamWindowForUser } from "@/lib/repos/teams";
 import {
   debitBalanceOutcome,
   getOrCreateMonthlyBalance,
@@ -65,8 +64,7 @@ async function findTeamWindowForUser(
   db: Db,
   now: Date,
 ): Promise<{ exchangesFirstDay: number; exchangesLastDay: number } | null> {
-  const windows = await listProducerExchangeWindows(userId, db);
-  return pickProducerExchangeWindow(windows, now);
+  return findActiveTeamWindowForUser(userId, db, now);
 }
 
 /**

@@ -361,6 +361,12 @@ export const taskAutomationSettings = pgTable("task_automation_settings", {
   }),
   // Matches DEFAULT_ASSIGN_WARN_MAX in lib/business/assign-warn-max.ts.
   assignWarnMax: integer("assign_warn_max").default(4).notNull(),
+  leaderExchangesFirstDay: integer("leader_exchanges_first_day")
+    .default(3)
+    .notNull(),
+  leaderExchangesLastDay: integer("leader_exchanges_last_day")
+    .default(15)
+    .notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

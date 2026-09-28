@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import { normalizeSubTaskCreateValues } from "@/lib/business/subtask-create-fields";
@@ -48,6 +48,10 @@ async function assertCanManage(): Promise<void> {
 
 function invalidateSubTasks(): void {
   revalidateTag("drizzle:tasks", "default");
+  revalidateTag("drizzle:subTasks", "default");
+  revalidateTag("drizzle:steps", "default");
+  revalidatePath("/tasks");
+  revalidatePath("/board");
 }
 
 function mapDrizzleSubTaskToEntity(
@@ -195,6 +199,9 @@ export async function deleteSubTask(documentId: string): Promise<void> {
     name: current?.name,
   });
   invalidateSubTasks();
+  if (current?.taskId) {
+    revalidatePath(`/tasks/${current.taskId}`);
+  }
 }
 
 export async function loadSubTaskSessionsAction(

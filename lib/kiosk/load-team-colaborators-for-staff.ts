@@ -1,4 +1,4 @@
-import type { KioskStaffColaboratorRow } from "@/components/kiosk/kiosk-staff-users-panel";
+import type { KioskStaffColaboratorRow } from "@/lib/kiosk/staff-colaborator-row";
 import type { KioskStaffRole } from "@/lib/business/kiosk-staff-access";
 import { getDb, type Db } from "@/lib/db/client";
 import { loadStaffQueuesGrouped } from "@/lib/kiosk/load-staff-queues-grouped";

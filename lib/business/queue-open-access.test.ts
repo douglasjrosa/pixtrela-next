@@ -36,7 +36,7 @@ describe("canStaffOpenQueue", () => {
     ).toBe(true);
   });
 
-  it("does not let manager+ open a leader queue", () => {
+  it("lets manager+ open a leader production queue", () => {
     expect(
       canStaffOpenQueue({
         actorRole: "manager",
@@ -44,7 +44,34 @@ describe("canStaffOpenQueue", () => {
         target: leader,
         leaderTeamColaboratorIds: new Set(),
       }),
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      canStaffOpenQueue({
+        actorRole: "admin",
+        actorId: "admin-1",
+        target: leader,
+        leaderTeamColaboratorIds: new Set(),
+      }),
+    ).toBe(true);
+  });
+
+  it("lets staff open their own queue", () => {
+    expect(
+      canStaffOpenQueue({
+        actorRole: "leader",
+        actorId: "lead-1",
+        target: leader,
+        leaderTeamColaboratorIds: new Set(),
+      }),
+    ).toBe(true);
+    expect(
+      canStaffOpenQueue({
+        actorRole: "manager",
+        actorId: "mgr-1",
+        target: { ...leader, id: "mgr-1", role: "manager" },
+        leaderTeamColaboratorIds: new Set(),
+      }),
+    ).toBe(true);
   });
 
   it("lets a leader open team colaborators and their own queue", () => {
@@ -90,9 +117,11 @@ describe("canStaffOpenQueue", () => {
 });
 
 describe("isQueueProfileRole", () => {
-  it("accepts colaborator and leader queue targets", () => {
+  it("accepts roles that may appear on a production queue", () => {
     expect(isQueueProfileRole("colaborator")).toBe(true);
     expect(isQueueProfileRole("leader")).toBe(true);
-    expect(isQueueProfileRole("manager")).toBe(false);
+    expect(isQueueProfileRole("manager")).toBe(true);
+    expect(isQueueProfileRole("admin")).toBe(true);
+    expect(isQueueProfileRole("kiosk")).toBe(false);
   });
 });

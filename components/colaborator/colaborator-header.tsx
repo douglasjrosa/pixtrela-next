@@ -12,10 +12,18 @@ import { AppNavMobileMenu } from "@/components/app-nav-mobile-menu";
 import { AppNavUserMenu } from "@/components/app-nav-user-menu";
 import { TotemModeSwitch } from "@/components/nav/totem-mode-switch";
 import { Button } from "@/components/ui/button";
+import { useMeasuredNavLayout } from "@/hooks/use-measured-nav-layout";
 import { navItemsForRole, type Role } from "@/lib/auth/nav";
 import { canAccessOwnProfile } from "@/lib/auth/profile-access";
 import { buildProfilePath } from "@/lib/profile/profile-path";
 import { cn } from "@/lib/utils";
+
+const COLAB_NAV_LINK_BASE =
+  "inline-flex min-h-9 items-center rounded-md px-2.5 py-1 text-sm " +
+  "font-medium sm:px-3";
+
+/** Matches the fixed bar so page content starts below it. */
+const COLAB_HEADER_HEIGHT_CLASS = "h-16";
 
 export interface ColaboratorHeaderProps {
   homeHref?: string;
@@ -50,6 +58,11 @@ export function ColaboratorHeader({
     label: t(`nav.${item.labelKey}`),
   }));
   const [menuOpen, setMenuOpen] = useState(false);
+  const measureKey = menuItems.map((item) => item.href).join("|");
+  const { slotRef, measureRef, layoutMode } = useMeasuredNavLayout(measureKey);
+  const showNav = !totemMode && menuItems.length > 0;
+  const showHamburger = showNav && layoutMode !== "desktop";
+  const showDesktopLinks = showNav && layoutMode === "desktop";
 
   function handleSignOut(): void {
     void signOut({ callbackUrl: "/login" });
@@ -59,11 +72,11 @@ export function ColaboratorHeader({
     <>
       <header
         className={
-          "relative z-20 flex items-center justify-between gap-3 border-b " +
-          "bg-card px-4 py-3 shadow-sm"
+          "fixed inset-x-0 top-0 z-50 flex items-center justify-between " +
+          `gap-3 border-b bg-card px-4 shadow-sm ${COLAB_HEADER_HEIGHT_CLASS}`
         }
       >
-        {showTotemSwitch ? (
+        {showHamburger ? (
           <Button
             type="button"
             variant="outline"
@@ -86,55 +99,80 @@ export function ColaboratorHeader({
           nameClassName="text-lg"
         />
 
-        {menuItems.length > 0 ? (
-          <nav
-            aria-label={t("nav.menuTitle")}
-            className="flex min-w-0 flex-1 justify-center"
-          >
-            <ul className="flex flex-wrap items-center justify-center gap-1 sm:gap-2">
-              {menuItems.map((item) => {
-                const active =
-                  pathname === item.href ||
-                  (item.href !== `/${userId}` && pathname.startsWith(item.href));
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "inline-flex min-h-9 items-center rounded-md px-2.5 py-1 " +
-                          "text-sm font-medium transition-colors sm:px-3",
-                        active
-                          ? "bg-muted text-foreground"
-                          : "text-muted-foreground hover:bg-muted/60 " +
-                            "hover:text-foreground",
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                );
-              })}
+        <div ref={slotRef} className="relative min-w-0 flex-1">
+          {showNav ? (
+            <ul
+              ref={measureRef}
+              aria-hidden
+              className={
+                "pointer-events-none invisible absolute left-0 top-0 flex " +
+                "gap-2 whitespace-nowrap"
+              }
+            >
+              {menuItems.map((item) => (
+                <li key={`measure-${item.href}`}>
+                  <span className={COLAB_NAV_LINK_BASE}>{item.label}</span>
+                </li>
+              ))}
             </ul>
-          </nav>
-        ) : null}
+          ) : null}
+
+          {showDesktopLinks ? (
+            <nav
+              aria-label={t("nav.menuTitle")}
+              className="flex justify-center"
+            >
+              <ul className="flex items-center justify-center gap-1 sm:gap-2">
+                {menuItems.map((item) => {
+                  const active =
+                    pathname === item.href ||
+                    (item.href !== `/${userId}` &&
+                      pathname.startsWith(item.href));
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        className={cn(
+                          COLAB_NAV_LINK_BASE,
+                          "transition-colors",
+                          active
+                            ? "bg-muted text-foreground"
+                            : "text-muted-foreground hover:bg-muted/60 " +
+                              "hover:text-foreground",
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+          ) : null}
+        </div>
 
         <AppNavUserMenu
           userName={userName}
           avatarUrl={avatarUrl}
           profileHref={profileHref}
+          accountExtras={
+            showTotemSwitch ? <TotemModeSwitch enabled={totemMode} /> : null
+          }
           onSignOut={handleSignOut}
         />
       </header>
 
-      {showTotemSwitch ? (
-        <AppNavMobileMenu
-          open={menuOpen}
-          items={menuItems}
-          onOpenChange={setMenuOpen}
-          extras={<TotemModeSwitch enabled={totemMode} />}
-        />
-      ) : null}
+      <div className={COLAB_HEADER_HEIGHT_CLASS} aria-hidden />
+
+      <AppNavMobileMenu
+        open={menuOpen && showHamburger}
+        items={menuItems}
+        onOpenChange={setMenuOpen}
+        linkActiveOptions={
+          userId ? { exactMatchHrefs: [`/${userId}`] } : undefined
+        }
+      />
     </>
   );
 }

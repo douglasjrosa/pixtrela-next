@@ -21,6 +21,7 @@ import {
   findSubTaskPresetById,
   hardDeleteSubTaskPresetById,
   listSubTaskPresetsRepo,
+  reactivateSubTaskPresets,
   searchSubTaskPresetsByName,
   updateSubTaskPresetRepo,
 } from "@/lib/repos/sub-task-presets";
@@ -132,6 +133,21 @@ export async function bulkArchiveSubTaskPresets(
     if (!preset) throw new Error("notFound");
   }
   await archiveSubTaskPresets(ids, text);
+  invalidatePresets();
+}
+
+export async function bulkReactivateSubTaskPresets(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanDeactivatePresets();
+  const ids = bulkDocumentIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const preset = await findSubTaskPresetById(documentId);
+    if (!preset) throw new Error("notFound");
+    if (preset.active) throw new Error("activePreset");
+  }
+  await reactivateSubTaskPresets(ids);
   invalidatePresets();
 }
 

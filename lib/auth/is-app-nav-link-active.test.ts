@@ -13,6 +13,14 @@ describe("isAppNavLinkActive", () => {
     expect(isAppNavLinkActive("/board", "/tasks")).toBe(false);
   });
 
+  it("matches document dashboard only on the exact path when configured", () => {
+    const dashboardHref = "/col-1";
+    const exact = { exactMatchHrefs: [dashboardHref] as const };
+
+    expect(isAppNavLinkActive("/col-1", dashboardHref, exact)).toBe(true);
+    expect(isAppNavLinkActive("/col-1/store", dashboardHref, exact)).toBe(false);
+  });
+
   it("matches any settings route when href is under settings", () => {
     expect(isAppNavLinkActive("/settings/currency", "/settings/logs")).toBe(
       true,

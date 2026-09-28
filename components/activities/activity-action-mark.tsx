@@ -1,3 +1,4 @@
+import { activityActionBadgeBackgroundClass } from "@/lib/ui/activity-action-badge";
 import { cn } from "@/lib/utils";
 
 export type ActivityActionMarkProps = {
@@ -10,7 +11,7 @@ export function ActivityActionMark({ action, ariaLabel }: ActivityActionMarkProp
     <span
       className={cn(
         "inline-block size-3 shrink-0 rounded-full",
-        action === "started" ? "bg-green-600" : "bg-red-600",
+        activityActionBadgeBackgroundClass(action),
       )}
       role="img"
       aria-label={ariaLabel}

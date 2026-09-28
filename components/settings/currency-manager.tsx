@@ -71,6 +71,7 @@ export interface CurrencyManagerProps {
     documentIds: string[],
     reason: string,
   ) => void | Promise<void>;
+  onBulkReactivate: (documentIds: string[]) => void | Promise<void>;
   onBulkDelete: (documentIds: string[]) => void | Promise<void>;
   onListImages: () => Promise<MediaAssetRecord[]>;
   onUploadImage: (formData: FormData) => Promise<MediaAssetRecord>;
@@ -125,6 +126,7 @@ export function CurrencyManager({
   onCreate,
   onUpdate,
   onBulkArchive,
+  onBulkReactivate,
   onBulkDelete,
   onListImages,
   onUploadImage,
@@ -171,6 +173,7 @@ export function CurrencyManager({
   );
   const showArchiveAction = hasSelection && !allSelectedArchived;
   const showDeleteAction = hasSelection && allSelectedArchived;
+  const showRestoreAction = hasSelection && allSelectedArchived;
 
   function closeModal(): void {
     setModal({ mode: "closed" });
@@ -255,6 +258,26 @@ export function CurrencyManager({
     });
   }
 
+  function handleBulkRestoreSelected(): void {
+    startTransition(async () => {
+      try {
+        await onBulkReactivate(selectedIds);
+        showSuccessToast(tSettings("bulkReactivated"));
+        clearSelection();
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(
+          actionErrorMessage(
+            error,
+            tSettings("currencyDeleteError"),
+            tSettings("currencyPrimaryProtected"),
+          ),
+        );
+      }
+    });
+  }
+
   const formKey =
     modal.mode === "edit"
       ? `currency-edit-${modal.currency.documentId}`
@@ -299,14 +322,17 @@ export function CurrencyManager({
   }
 
   const bulkToolbar =
-    showArchiveAction || showDeleteAction ? (
+    showArchiveAction || showRestoreAction || showDeleteAction ? (
       <BulkListToolbar
         showArchive={showArchiveAction}
+        showRestore={showRestoreAction}
         showDelete={showDeleteAction}
         archiveLabel={tSettings("archiveSelected")}
+        restoreLabel={tSettings("restoreSelected")}
         deleteLabel={tSettings("deleteSelected")}
         disabled={isPending}
         onArchive={() => setBulkArchiveOpen(true)}
+        onRestore={handleBulkRestoreSelected}
         onDelete={() => setBulkDeleteOpen(true)}
       />
     ) : null;

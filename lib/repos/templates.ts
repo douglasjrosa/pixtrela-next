@@ -325,6 +325,17 @@ export async function archiveActiveTemplateByCode(
   return true;
 }
 
+export async function reactivateTemplateTasks(
+  ids: string[],
+  db: Db = getDb(),
+): Promise<void> {
+  if (ids.length === 0) return;
+  await db
+    .update(templateTasks)
+    .set({ active: true, updatedAt: new Date() })
+    .where(inArray(templateTasks.id, ids));
+}
+
 export async function archiveTemplateTasks(
   ids: string[],
   reason: string,

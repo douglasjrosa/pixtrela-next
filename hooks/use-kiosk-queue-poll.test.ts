@@ -64,4 +64,34 @@ describe("useKioskQueuePoll", () => {
     });
     expect(onPoll).not.toHaveBeenCalled();
   });
+
+  it("stops the timer while hidden and polls again when the tab returns", async () => {
+    const onPoll = vi.fn().mockResolvedValue(undefined);
+    renderHook(() => useKioskQueuePoll(onPoll, false));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(onPoll).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "hidden",
+    });
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(onPoll).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "visible",
+    });
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(onPoll).toHaveBeenCalledTimes(2);
+  });
 });

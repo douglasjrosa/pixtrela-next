@@ -21,6 +21,8 @@ export function TotemModeSwitch({ enabled }: TotemModeSwitchProps) {
       label={t("totemMode")}
       checked={enabled}
       disabled={pending}
+      size="lg"
+      className="justify-center py-8"
       onCheckedChange={(checked) => {
         startTransition(() => {
           void setPersonalTotemMode(checked);

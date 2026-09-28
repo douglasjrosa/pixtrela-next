@@ -1,4 +1,4 @@
-import type { KioskStaffColaboratorRow } from "@/components/kiosk/kiosk-staff-users-panel";
+import type { KioskStaffColaboratorRow } from "@/lib/kiosk/staff-colaborator-row";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import {
   findUserFacePhotoUrl,

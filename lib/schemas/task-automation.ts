@@ -5,6 +5,12 @@ import {
   MAX_ASSIGN_WARN_MAX,
   MIN_ASSIGN_WARN_MAX,
 } from "@/lib/business/assign-warn-max";
+import {
+  DEFAULT_EXCHANGES_FIRST_DAY,
+  DEFAULT_EXCHANGES_LAST_DAY,
+} from "@/lib/schemas/team";
+
+const exchangeDayOfMonth = z.number().int().min(1).max(31);
 
 const optionalStepDocumentId = z
   .string()
@@ -24,6 +30,10 @@ export const taskAutomationFormSchema = z.object({
     .min(MIN_ASSIGN_WARN_MAX)
     .max(MAX_ASSIGN_WARN_MAX)
     .default(DEFAULT_ASSIGN_WARN_MAX),
+  leaderExchangesFirstDay: exchangeDayOfMonth.default(
+    DEFAULT_EXCHANGES_FIRST_DAY,
+  ),
+  leaderExchangesLastDay: exchangeDayOfMonth.default(DEFAULT_EXCHANGES_LAST_DAY),
 });
 
 export type TaskAutomationFormInput = z.infer<typeof taskAutomationFormSchema>;

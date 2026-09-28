@@ -16,6 +16,10 @@ import {
 import { getDb, type Db } from "@/lib/db/client";
 import type { TaskAutomationFormInput } from "@/lib/schemas/task-automation";
 import {
+  DEFAULT_EXCHANGES_FIRST_DAY,
+  DEFAULT_EXCHANGES_LAST_DAY,
+} from "@/lib/schemas/team";
+import {
   DEFAULT_PAGE_MARGIN_DESKTOP,
   DEFAULT_PAGE_MARGIN_MOBILE,
   ROUTE_THEME_KEYS,
@@ -92,6 +96,8 @@ export async function loadTaskAutomationFormValues(
       reviewedStepDocumentId: "",
       deliveredStepDocumentId: "",
       assignWarnMax: DEFAULT_ASSIGN_WARN_MAX,
+      leaderExchangesFirstDay: DEFAULT_EXCHANGES_FIRST_DAY,
+      leaderExchangesLastDay: DEFAULT_EXCHANGES_LAST_DAY,
     };
   }
   return {
@@ -102,6 +108,22 @@ export async function loadTaskAutomationFormValues(
     reviewedStepDocumentId: row.reviewedStepId ?? "",
     deliveredStepDocumentId: row.deliveredStepId ?? "",
     assignWarnMax: normalizeAssignWarnMax(row.assignWarnMax),
+    leaderExchangesFirstDay:
+      row.leaderExchangesFirstDay ?? DEFAULT_EXCHANGES_FIRST_DAY,
+    leaderExchangesLastDay:
+      row.leaderExchangesLastDay ?? DEFAULT_EXCHANGES_LAST_DAY,
+  };
+}
+
+/** Global monthly exchange window for leader-role producers. */
+export async function loadLeaderExchangeWindow(
+  db: Db = getDb(),
+): Promise<{ exchangesFirstDay: number; exchangesLastDay: number }> {
+  const row = await getTaskAutomationSettings(db);
+  return {
+    exchangesFirstDay:
+      row?.leaderExchangesFirstDay ?? DEFAULT_EXCHANGES_FIRST_DAY,
+    exchangesLastDay: row?.leaderExchangesLastDay ?? DEFAULT_EXCHANGES_LAST_DAY,
   };
 }
 
@@ -117,6 +139,8 @@ export async function upsertTaskAutomationSettings(
     reviewedStepId: toStepId(values.reviewedStepDocumentId),
     deliveredStepId: toStepId(values.deliveredStepDocumentId),
     assignWarnMax: normalizeAssignWarnMax(values.assignWarnMax),
+    leaderExchangesFirstDay: values.leaderExchangesFirstDay,
+    leaderExchangesLastDay: values.leaderExchangesLastDay,
   };
 
   const existing = await getTaskAutomationSettings(db);

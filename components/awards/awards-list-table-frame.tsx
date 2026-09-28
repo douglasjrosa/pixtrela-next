@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import {
   bulkArchiveAwards,
   bulkDeleteAwards,
+  bulkReactivateAwards,
   loadMoreAwards,
 } from "@/app/(app)/awards/actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
@@ -93,6 +94,8 @@ export function AwardsListTableFrame({
   const showArchiveAction =
     hasSelection && !allSelectedArchived && canDeactivate;
   const showDeleteAction = hasSelection && allSelectedArchived && canDelete;
+  const showRestoreAction =
+    hasSelection && allSelectedArchived && canDeactivate;
 
   function labelsFor(award: AwardRow) {
     return {
@@ -165,6 +168,20 @@ export function AwardsListTableFrame({
     });
   }
 
+  function handleRestoreSelected(): void {
+    startTransition(async () => {
+      try {
+        await bulkReactivateAwards(selectedIds);
+        showSuccessToast(tAwards("bulkReactivated"));
+        clearSelection();
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tAwards("error"));
+      }
+    });
+  }
+
   const selectionValue = bulkEnabled
     ? {
         selectedIds,
@@ -189,15 +206,19 @@ export function AwardsListTableFrame({
   return (
     <ListSelectionProvider value={selectionValue}>
       <div className="flex min-h-0 flex-1 flex-col">
-        {bulkEnabled && (showArchiveAction || showDeleteAction) ? (
+        {bulkEnabled &&
+        (showArchiveAction || showRestoreAction || showDeleteAction) ? (
           <ListPageActionsPortal>
             <BulkListToolbar
               showArchive={showArchiveAction}
+              showRestore={showRestoreAction}
               showDelete={showDeleteAction}
               archiveLabel={tAwards("archiveSelected")}
+              restoreLabel={tAwards("restoreSelected")}
               deleteLabel={tAwards("deleteSelected")}
               disabled={isPending}
               onArchive={() => setArchiveOpen(true)}
+              onRestore={handleRestoreSelected}
               onDelete={() => setDeleteOpen(true)}
             />
           </ListPageActionsPortal>

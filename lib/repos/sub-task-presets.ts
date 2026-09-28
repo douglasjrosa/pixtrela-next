@@ -260,6 +260,17 @@ export async function updateSubTaskPresetRepo(
     .where(eq(subTaskPresets.id, id));
 }
 
+export async function reactivateSubTaskPresets(
+  ids: string[],
+  db: Db = getDb(),
+): Promise<void> {
+  if (ids.length === 0) return;
+  await db
+    .update(subTaskPresets)
+    .set({ active: true, updatedAt: new Date() })
+    .where(inArray(subTaskPresets.id, ids));
+}
+
 export async function archiveSubTaskPresets(
   ids: string[],
   reason: string,

@@ -24,7 +24,7 @@ export default async function DocumentIdLayout({
   const branding = await loadBrandingForLayout();
   const menuLogo = branding.menu_logo;
 
-  if (role === "manager" || role === "leader") {
+  if (role === "manager") {
     return (
       <div className="relative flex min-h-dvh flex-col">
         <AppNav
@@ -40,9 +40,25 @@ export default async function DocumentIdLayout({
   }
 
   const themes = await loadRouteThemes();
+  const producerRole = role === "leader" || role === "colaborator";
+
+  if (!producerRole) {
+    return (
+      <div className="relative flex min-h-dvh flex-col">
+        <AppNav
+          logoUrl={menuLogo.mediaUrl}
+          menuLogoBackgroundColor={menuLogo.config.backgroundColor ?? null}
+          menuLogoBackgroundColorOpacity={
+            menuLogo.config.backgroundColorOpacity ?? 0
+          }
+        />
+        <main className="relative z-10 flex-1 px-4 py-6">{children}</main>
+      </div>
+    );
+  }
 
   return (
-    <ColaboratorSurface className="overflow-x-hidden">
+    <ColaboratorSurface>
       <div className="relative flex min-h-dvh flex-col">
         <RouteThemeBackground
           themes={themes}
@@ -50,7 +66,7 @@ export default async function DocumentIdLayout({
         />
         <div className="relative z-10 flex min-h-dvh flex-1 flex-col">
           <ColaboratorHeader
-            homeHref={homeHrefForRole(role ?? "colaborator", userId, {
+            homeHref={homeHrefForRole(role, userId, {
               totemMode,
             })}
             logoUrl={menuLogo.mediaUrl}

@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import {
   bulkArchiveTemplates,
   bulkDeleteTemplates,
+  bulkReactivateTemplates,
   loadMoreTemplates,
 } from "@/app/(app)/templates/template-task-actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
@@ -103,6 +104,8 @@ export function TemplatesListTableFrame({
   const showArchiveAction =
     hasSelection && !allSelectedArchived && canDeactivate;
   const showDeleteAction = hasSelection && allSelectedArchived && canDelete;
+  const showRestoreAction =
+    hasSelection && allSelectedArchived && canDeactivate;
 
   function handleLoadMore(): void {
     const nextPage = page + 1;
@@ -163,6 +166,20 @@ export function TemplatesListTableFrame({
     });
   }
 
+  function handleRestoreSelected(): void {
+    startTransition(async () => {
+      try {
+        await bulkReactivateTemplates(selectedIds);
+        showSuccessToast(tTemplates("bulkReactivated"));
+        clearSelection();
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tTemplates("error"));
+      }
+    });
+  }
+
   const selectionValue = bulkEnabled
     ? {
         selectedIds,
@@ -173,14 +190,17 @@ export function TemplatesListTableFrame({
     : null;
 
   const bulkActions =
-    showArchiveAction || showDeleteAction ? (
+    showArchiveAction || showRestoreAction || showDeleteAction ? (
       <BulkListToolbar
         showArchive={showArchiveAction}
+        showRestore={showRestoreAction}
         showDelete={showDeleteAction}
         archiveLabel={tTemplates("archiveSelected")}
+        restoreLabel={tTemplates("restoreSelected")}
         deleteLabel={tTemplates("deleteSelected")}
         disabled={isPending}
         onArchive={() => setArchiveOpen(true)}
+        onRestore={handleRestoreSelected}
         onDelete={() => setDeleteOpen(true)}
       />
     ) : null;

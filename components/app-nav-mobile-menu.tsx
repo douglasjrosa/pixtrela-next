@@ -7,9 +7,13 @@ import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
-import { isAppNavLinkActive } from "@/lib/auth/is-app-nav-link-active";
+import {
+  isAppNavLinkActive,
+  type AppNavLinkActiveOptions,
+} from "@/lib/auth/is-app-nav-link-active";
 import type { ResolvedNavItem } from "@/lib/auth/nav";
-import { appNavLinkClass } from "@/lib/ui/app-nav-link-styles";
+import { APP_NAV_LINK_SURFACE_CLASS } from "@/lib/ui/app-nav-link-styles";
+import { APP_MENU_FONT_CLASS } from "@/lib/ui/app-menu-typography";
 import { cn } from "@/lib/utils";
 
 export interface AppNavMobileMenuProps {
@@ -17,6 +21,17 @@ export interface AppNavMobileMenuProps {
   items: ResolvedNavItem[];
   onOpenChange: (open: boolean) => void;
   extras?: ReactNode;
+  linkActiveOptions?: AppNavLinkActiveOptions;
+}
+
+function mobileNavLinkClass(isActive: boolean): string {
+  return cn(
+    "inline-flex min-h-12 w-full max-w-xs items-center justify-center " +
+      `rounded-md px-4 py-3 font-medium transition-colors ${APP_MENU_FONT_CLASS}`,
+    isActive
+      ? APP_NAV_LINK_SURFACE_CLASS
+      : "text-foreground hover:bg-muted/60",
+  );
 }
 
 export function AppNavMobileMenu({
@@ -24,6 +39,7 @@ export function AppNavMobileMenu({
   items,
   onOpenChange,
   extras = null,
+  linkActiveOptions,
 }: AppNavMobileMenuProps) {
   const t = useTranslations();
   const pathname = usePathname();
@@ -54,9 +70,13 @@ export function AppNavMobileMenu({
     onOpenChange(false);
   }
 
+  function linkIsActive(href: string): boolean {
+    return isAppNavLinkActive(pathname, href, linkActiveOptions);
+  }
+
   return (
     <div
-      className="fixed inset-0 z-[60] flex justify-end bg-overlay/50"
+      className="fixed inset-0 z-[60] flex justify-start bg-overlay/50"
       role="presentation"
       onClick={close}
     >
@@ -65,50 +85,57 @@ export function AppNavMobileMenu({
         aria-modal="true"
         aria-labelledby={titleId}
         className={
-          "flex h-full w-full max-w-sm flex-col border-l bg-background " +
-          "shadow-lg"
+          "flex h-full w-full flex-col border-r bg-background shadow-lg " +
+          "sm:max-w-sm"
         }
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <h2 id={titleId} className="text-lg font-semibold">
-            {t("nav.menuTitle")}
-          </h2>
+        <div className="relative flex items-center justify-center border-b px-4 py-4">
           <Button
             ref={closeButtonRef}
             type="button"
             variant="ghost"
             size="icon"
+            className="absolute left-4 size-10"
             aria-label={t("nav.closeMenu")}
             onClick={close}
           >
-            <X aria-hidden />
+            <X className="size-6" aria-hidden />
           </Button>
+          <h2
+            id={titleId}
+            className={cn("font-semibold uppercase", APP_MENU_FONT_CLASS)}
+          >
+            {t("nav.menuTitle")}
+          </h2>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-2" aria-label={t("nav.menuTitle")}>
-          <ul className="flex flex-col gap-1">
-            {items.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  aria-current={
-                    isAppNavLinkActive(pathname, item.href)
-                      ? "page"
-                      : undefined
-                  }
-                  className={cn(
-                    appNavLinkClass(isAppNavLinkActive(pathname, item.href)),
-                    "min-h-11 text-base",
-                  )}
-                  onClick={close}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+        <nav
+          className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-6"
+          aria-label={t("nav.menuTitle")}
+        >
+          <ul className="flex w-full max-w-xs flex-col items-center gap-4">
+            {items.map((item) => {
+              const active = linkIsActive(item.href);
+              return (
+                <li key={item.href} className="flex w-full justify-center">
+                  <Link
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={mobileNavLinkClass(active)}
+                    onClick={close}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
-          {extras ? <div className="mt-3 border-t px-2 pt-3">{extras}</div> : null}
+          {extras ? (
+            <div className="mt-6 flex w-full max-w-xs justify-center border-t pt-6">
+              {extras}
+            </div>
+          ) : null}
         </nav>
       </div>
     </div>

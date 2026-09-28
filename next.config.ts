@@ -44,6 +44,11 @@ const nextConfig: NextConfig = {
         destination: "/settings/files",
         permanent: false,
       },
+      {
+        source: "/kiosk/staff/:userId/team-access",
+        destination: "/kiosk/staff/:userId/queues",
+        permanent: false,
+      },
     ];
   },
 };

@@ -24,6 +24,7 @@ import {
   deleteAward as deleteAwardRepo,
   findAwardById,
   hardDeleteAward,
+  reactivateAwards,
   replaceAwardPrices,
 } from "@/lib/repos/awards";
 import type { MediaAssetRecord } from "@/lib/repos/media";
@@ -224,6 +225,27 @@ export async function bulkArchiveAwards(
   await auditSuccess({
     route: "/awards",
     verb: "bulkArchived",
+    entity: "awards",
+    quantity: ids.length,
+  });
+  invalidateAwards();
+}
+
+export async function bulkReactivateAwards(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanDeactivate();
+  const ids = bulkAwardIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const award = await findAwardById(documentId);
+    if (!award) throw new Error("notFound");
+    if (award.active) throw new Error("activeAward");
+  }
+  await reactivateAwards(ids);
+  await auditSuccess({
+    route: "/awards",
+    verb: "bulkReactivated",
     entity: "awards",
     quantity: ids.length,
   });

@@ -172,6 +172,29 @@ export async function bulkDeactivateActivities(
   invalidateActivities();
 }
 
+export async function bulkReactivateActivities(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanDeactivate();
+  const ids = bulkDocumentIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const activity = await getActivityById(documentId);
+    if (!activity) throw new Error("notFound");
+    if (activity.active) throw new Error("activeActivity");
+  }
+  for (const documentId of ids) {
+    await reactivateActivityRepo(documentId);
+  }
+  await auditSuccess({
+    route: "/activities",
+    verb: "bulkReactivated",
+    entity: "activities",
+    quantity: ids.length,
+  });
+  invalidateActivities();
+}
+
 export async function bulkDeleteActivities(
   documentIds: string[],
 ): Promise<void> {

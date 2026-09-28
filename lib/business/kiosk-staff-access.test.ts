@@ -34,6 +34,12 @@ describe("kiosk-staff-access", () => {
     expect(canKioskSignOutDevice("colaborator")).toBe(false);
   });
 
+  it("showKioskStaffDeviceHeader matches device sign-out roles", async () => {
+    const { showKioskStaffDeviceHeader } = await import("./kiosk-staff-access");
+    expect(showKioskStaffDeviceHeader("manager")).toBe(true);
+    expect(showKioskStaffDeviceHeader("leader")).toBe(false);
+  });
+
   it("assertKioskStaffActor rejects non-kiosk session", async () => {
     auth.mockResolvedValue({ user: { role: "leader" } });
     const { assertKioskStaffActor } = await import("./kiosk-staff-access");

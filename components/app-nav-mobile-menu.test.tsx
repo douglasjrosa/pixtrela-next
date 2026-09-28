@@ -1,12 +1,18 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithIntl } from "@/test/test-utils";
 
-vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
+const navigationState = vi.hoisted(() => ({
+  pathname: "/",
 }));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => navigationState.pathname,
+}));
+
+import { APP_MENU_FONT_CLASS } from "@/lib/ui/app-menu-typography";
 
 import { AppNavMobileMenu } from "./app-nav-mobile-menu";
 
@@ -17,6 +23,10 @@ const items = [
 ];
 
 describe("AppNavMobileMenu", () => {
+  beforeEach(() => {
+    navigationState.pathname = "/";
+  });
+
   it("does not render dialog when closed", () => {
     renderWithIntl(
       <AppNavMobileMenu
@@ -36,10 +46,13 @@ describe("AppNavMobileMenu", () => {
 
     const dialog = screen.getByRole("dialog");
     expect(dialog).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Menu" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "MENU" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Painel" })).toHaveAttribute(
       "href",
       "/",
+    );
+    expect(screen.getByRole("link", { name: "Painel" })).toHaveClass(
+      APP_MENU_FONT_CLASS,
     );
     expect(screen.getByRole("link", { name: "Quadro" })).toHaveAttribute(
       "href",
@@ -59,6 +72,22 @@ describe("AppNavMobileMenu", () => {
     );
 
     expect(screen.getByText("Modo Totem")).toBeInTheDocument();
+  });
+
+  it("aligns a capped panel to the left with the close button first", () => {
+    renderWithIntl(
+      <AppNavMobileMenu open items={items} onOpenChange={vi.fn()} />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.parentElement).toHaveClass("justify-start");
+    expect(dialog).toHaveClass("w-full");
+    expect(dialog).toHaveClass("sm:max-w-sm");
+    const closeButton = screen.getByRole("button", { name: "Fechar menu" });
+    const title = screen.getByRole("heading", { name: "MENU" });
+    expect(closeButton.compareDocumentPosition(title)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 
   it("closes when pressing the close button", async () => {
@@ -83,6 +112,30 @@ describe("AppNavMobileMenu", () => {
 
     await user.click(screen.getByRole("link", { name: "Tarefas" }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("highlights only the active link on nested colaborator routes", () => {
+    navigationState.pathname = "/col-1/store";
+
+    renderWithIntl(
+      <AppNavMobileMenu
+        open
+        items={[
+          { href: "/col-1", label: "Painel" },
+          { href: "/col-1/store", label: "Loja" },
+        ]}
+        onOpenChange={vi.fn()}
+        linkActiveOptions={{ exactMatchHrefs: ["/col-1"] }}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Painel" })).not.toHaveAttribute(
+      "aria-current",
+    );
+    expect(screen.getByRole("link", { name: "Loja" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("closes when Escape is pressed", async () => {

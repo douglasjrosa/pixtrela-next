@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import { mediaAssets, teamMembers, teams, users } from "@/drizzle/schema";
 import type { KioskStaffRole } from "@/lib/business/kiosk-staff-access";
@@ -20,10 +21,16 @@ export type StaffQueueMember = {
   documentId: string;
   name: string;
   code: number | null;
+  avatarUrl?: string | null;
   facePhotoUrl?: string | null;
   lastActivity: StaffQueueMemberLastActivity | null;
   isLeader?: boolean;
 };
+
+const memberFaceMedia = alias(mediaAssets, "member_face_media");
+const memberAvatarMedia = alias(mediaAssets, "member_avatar_media");
+const leaderFaceMedia = alias(mediaAssets, "leader_face_media");
+const leaderAvatarMedia = alias(mediaAssets, "leader_avatar_media");
 
 export type StaffQueueTeam = {
   teamId: string;
@@ -116,6 +123,7 @@ type StaffTeamRow = {
   leaderName: string | null;
   leaderCode: number | null;
   leaderFacePhotoUrl: string | null;
+  leaderAvatarUrl: string | null;
   leaderActive: boolean | null;
   leaderBlocked: boolean | null;
 };
@@ -135,6 +143,7 @@ function toQueueLeaderMember(
     documentId: team.leaderId,
     name: team.leaderName,
     code: team.leaderCode,
+    avatarUrl: toBrowserMediaUrl(team.leaderAvatarUrl),
     facePhotoUrl: toBrowserMediaUrl(team.leaderFacePhotoUrl),
     lastActivity: null,
   };
@@ -158,13 +167,15 @@ async function loadStaffTeams(
       leaderId: teams.leaderId,
       leaderName: users.name,
       leaderCode: users.code,
-      leaderFacePhotoUrl: mediaAssets.url,
+      leaderFacePhotoUrl: leaderFaceMedia.url,
+      leaderAvatarUrl: leaderAvatarMedia.url,
       leaderActive: users.active,
       leaderBlocked: users.blocked,
     })
     .from(teams)
     .leftJoin(users, eq(teams.leaderId, users.id))
-    .leftJoin(mediaAssets, eq(users.facePhotoMediaId, mediaAssets.id))
+    .leftJoin(leaderFaceMedia, eq(users.facePhotoMediaId, leaderFaceMedia.id))
+    .leftJoin(leaderAvatarMedia, eq(users.avatarMediaId, leaderAvatarMedia.id))
     .where(where)
     .orderBy(asc(teams.name));
 }
@@ -179,11 +190,13 @@ async function loadColaboratorsByTeam(
       documentId: users.id,
       name: users.name,
       code: users.code,
-      facePhotoUrl: mediaAssets.url,
+      avatarUrl: memberAvatarMedia.url,
+      facePhotoUrl: memberFaceMedia.url,
     })
     .from(teamMembers)
     .innerJoin(users, eq(teamMembers.userId, users.id))
-    .leftJoin(mediaAssets, eq(users.facePhotoMediaId, mediaAssets.id))
+    .leftJoin(memberFaceMedia, eq(users.facePhotoMediaId, memberFaceMedia.id))
+    .leftJoin(memberAvatarMedia, eq(users.avatarMediaId, memberAvatarMedia.id))
     .where(
       and(
         inArray(teamMembers.teamId, teamIds),
@@ -201,6 +214,7 @@ async function loadColaboratorsByTeam(
       documentId: row.documentId,
       name: row.name,
       code: row.code,
+      avatarUrl: toBrowserMediaUrl(row.avatarUrl),
       facePhotoUrl: toBrowserMediaUrl(row.facePhotoUrl),
       lastActivity: null,
     });

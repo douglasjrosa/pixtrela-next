@@ -32,13 +32,24 @@ describe("EntryAccessForm", () => {
         onSave={vi.fn()}
       />,
     );
-    expect(screen.getByText("Formas de acesso")).toBeInTheDocument();
+    expect(screen.getByText("Formas de acesso ao APP")).toBeInTheDocument();
     expect(screen.getByText("No computador")).toBeInTheDocument();
     expect(screen.getByText("No celular")).toBeInTheDocument();
     expect(screen.getAllByText("Login e senha")).toHaveLength(2);
     expect(screen.getAllByText("Código e senha")).toHaveLength(2);
     expect(screen.getAllByText("Reconhecimento facial")).toHaveLength(2);
     expect(screen.getAllByText("Tag NFC")).toHaveLength(2);
+  });
+
+  it("renders totem heading when headingKey is entryAccessKioskHeading", () => {
+    renderWithIntl(
+      <EntryAccessForm
+        value={DEFAULT_KIOSK_ENTRY_ACCESS}
+        onSave={vi.fn()}
+        headingKey="entryAccessKioskHeading"
+      />,
+    );
+    expect(screen.getByText("Formas de acesso ao TOTEM")).toBeInTheDocument();
   });
 
   it("saves when a switch is toggled", async () => {

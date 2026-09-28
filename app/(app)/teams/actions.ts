@@ -15,6 +15,7 @@ import {
   deleteTeam as deleteTeamRepo,
   findTeamById,
   hardDeleteTeam,
+  reactivateTeams,
   updateTeam as updateTeamRepo,
 } from "@/lib/repos/teams";
 import { toCalendarDateKey } from "@/lib/business/datetime-timezone";
@@ -157,6 +158,27 @@ export async function bulkArchiveTeams(
   await auditSuccess({
     route: "/teams",
     verb: "bulkArchived",
+    entity: "teams",
+    quantity: ids.length,
+  });
+  invalidateTeams();
+}
+
+export async function bulkReactivateTeams(
+  documentIds: string[],
+): Promise<void> {
+  await assertCanDeactivate();
+  const ids = bulkTeamIdsSchema.parse(documentIds);
+
+  for (const documentId of ids) {
+    const team = await findTeamById(documentId);
+    if (!team) throw new Error("notFound");
+    if (team.active) throw new Error("activeTeam");
+  }
+  await reactivateTeams(ids);
+  await auditSuccess({
+    route: "/teams",
+    verb: "bulkReactivated",
     entity: "teams",
     quantity: ids.length,
   });

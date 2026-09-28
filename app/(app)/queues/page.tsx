@@ -1,7 +1,6 @@
 import { getAppSession } from "@/lib/auth/app-session";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { KioskStaffQueuesPanel } from "@/components/kiosk/kiosk-staff-queues-panel";
-import { APP_LIST_PAGE_SHELL_CLASS } from "@/components/layout/app-page-layout";
 import type { KioskStaffRole } from "@/lib/business/kiosk-staff-access";
 import { loadStaffQueuesGrouped } from "@/lib/kiosk/load-staff-queues-grouped";
 import type { Role } from "@/lib/auth/nav";
@@ -20,8 +19,6 @@ export default async function AppQueuesPage() {
   const { teams } = await loadStaffQueuesGrouped(userId, staffRole);
 
   return (
-    <section className={APP_LIST_PAGE_SHELL_CLASS}>
-      <KioskStaffQueuesPanel teams={teams} colaboratorLinkTarget="app" />
-    </section>
+    <KioskStaffQueuesPanel teams={teams} colaboratorLinkTarget="app" />
   );
 }

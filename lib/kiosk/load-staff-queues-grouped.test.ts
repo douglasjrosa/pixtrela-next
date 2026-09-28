@@ -44,6 +44,7 @@ describe("loadStaffQueuesGrouped", () => {
         documentId: "c1",
         name: "Ana",
         code: 1001,
+        avatarUrl: "/api/media/ana-avatar.jpg",
         facePhotoUrl: "/api/media/ana.jpg",
       },
       {
@@ -51,6 +52,7 @@ describe("loadStaffQueuesGrouped", () => {
         documentId: "c2",
         name: "Bruno",
         code: 1002,
+        avatarUrl: null,
         facePhotoUrl: null,
       },
     ];
@@ -81,6 +83,7 @@ describe("loadStaffQueuesGrouped", () => {
               documentId: "c1",
               name: "Ana",
               code: 1001,
+              avatarUrl: "/api/media/ana-avatar.jpg",
               facePhotoUrl: "/api/media/ana.jpg",
               lastActivity: {
                 action: "started",
@@ -102,6 +105,7 @@ describe("loadStaffQueuesGrouped", () => {
               documentId: "c2",
               name: "Bruno",
               code: 1002,
+              avatarUrl: null,
               facePhotoUrl: null,
               lastActivity: null,
             },
@@ -117,8 +121,22 @@ describe("loadStaffQueuesGrouped", () => {
       { id: "team-2", name: "Linha 2" },
     ];
     const memberRows = [
-      { teamId: "team-1", documentId: "c1", name: "Ana", code: 1, facePhotoUrl: null },
-      { teamId: "team-2", documentId: "c1", name: "Ana", code: 1, facePhotoUrl: null },
+      {
+        teamId: "team-1",
+        documentId: "c1",
+        name: "Ana",
+        code: 1,
+        avatarUrl: null,
+        facePhotoUrl: null,
+      },
+      {
+        teamId: "team-2",
+        documentId: "c1",
+        name: "Ana",
+        code: 1,
+        avatarUrl: null,
+        facePhotoUrl: null,
+      },
     ];
 
     const result = await load([teamRows, memberRows, []], "leader");
@@ -160,6 +178,7 @@ describe("loadStaffQueuesGrouped", () => {
         leaderName: "Lia",
         leaderCode: 9,
         leaderFacePhotoUrl: null,
+        leaderAvatarUrl: null,
         leaderActive: true,
         leaderBlocked: false,
       },
@@ -170,6 +189,7 @@ describe("loadStaffQueuesGrouped", () => {
         documentId: "c1",
         name: "Ana",
         code: 1,
+        avatarUrl: null,
         facePhotoUrl: null,
       },
     ];

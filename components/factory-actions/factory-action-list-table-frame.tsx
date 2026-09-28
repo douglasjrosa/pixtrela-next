@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import {
   bulkArchiveFactoryActions,
   bulkDeleteFactoryActions,
+  bulkReactivateFactoryActions,
   loadMoreFactoryActions,
 } from "@/app/(app)/factory-actions/actions";
 import { ListLoadMore } from "@/components/ui/load-more-button";
@@ -91,6 +92,8 @@ export function FactoryActionListTableFrame({
   const showArchiveAction =
     hasSelection && !allSelectedArchived && canDeactivate;
   const showDeleteAction = hasSelection && allSelectedArchived && canDelete;
+  const showRestoreAction =
+    hasSelection && allSelectedArchived && canDeactivate;
 
   function labelsFor(action: FactoryAction): FactoryActionListRowLabels {
     return {
@@ -161,6 +164,20 @@ export function FactoryActionListTableFrame({
     });
   }
 
+  function handleRestoreSelected(): void {
+    startTransition(async () => {
+      try {
+        await bulkReactivateFactoryActions(selectedIds);
+        showSuccessToast(tActions("bulkReactivated"));
+        clearSelection();
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        showErrorToast(tActions("error"));
+      }
+    });
+  }
+
   const selectionValue = bulkEnabled
     ? {
         selectedIds,
@@ -173,15 +190,19 @@ export function FactoryActionListTableFrame({
   return (
     <ListSelectionProvider value={selectionValue}>
       <div className="flex min-h-0 flex-1 flex-col">
-        {bulkEnabled && (showArchiveAction || showDeleteAction) ? (
+        {bulkEnabled &&
+        (showArchiveAction || showRestoreAction || showDeleteAction) ? (
           <ListPageActionsPortal>
             <BulkListToolbar
               showArchive={showArchiveAction}
+              showRestore={showRestoreAction}
               showDelete={showDeleteAction}
               archiveLabel={tActions("archiveSelected")}
+              restoreLabel={tActions("restoreSelected")}
               deleteLabel={tActions("deleteSelected")}
               disabled={isPending}
               onArchive={() => setArchiveOpen(true)}
+              onRestore={handleRestoreSelected}
               onDelete={() => setDeleteOpen(true)}
             />
           </ListPageActionsPortal>

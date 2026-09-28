@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTag = vi.fn();
+const revalidatePath = vi.fn();
 const createTaskRepo = vi.fn();
 const updateTaskFields = vi.fn();
 const setTaskActive = vi.fn();
@@ -17,6 +18,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("next/cache", () => ({
   revalidateTag: (...args: unknown[]) => revalidateTag(...args),
+  revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
 vi.mock("@/lib/repos/tasks", () => ({
@@ -46,6 +48,7 @@ describe("tasks/actions drizzle CRUD", () => {
   beforeEach(() => {
     vi.resetModules();
     revalidateTag.mockReset();
+    revalidatePath.mockReset();
     createTaskRepo.mockReset();
     updateTaskFields.mockReset();
     setTaskActive.mockReset();
@@ -153,6 +156,29 @@ describe("tasks/actions drizzle CRUD", () => {
     const { bulkDeleteTasks } = await import("./actions");
     await expect(bulkDeleteTasks(["task-1"])).rejects.toThrow("activeTask");
     expect(deleteTaskById).not.toHaveBeenCalled();
+  });
+
+  it("bulkReactivateTasks reactivates inactive tasks", async () => {
+    getTaskById.mockResolvedValue({ active: false });
+    const { bulkReactivateTasks } = await import("./actions");
+    await bulkReactivateTasks(["task-1", "task-2"]);
+    expect(setTaskActive).toHaveBeenCalledTimes(2);
+    expect(setTaskActive).toHaveBeenCalledWith("task-1", true);
+    expect(revalidatePath).toHaveBeenCalledWith("/tasks");
+  });
+
+  it("bulkReactivateTasks rejects active tasks", async () => {
+    getTaskById.mockResolvedValue({ active: true });
+    const { bulkReactivateTasks } = await import("./actions");
+    await expect(bulkReactivateTasks(["task-1"])).rejects.toThrow("activeTask");
+    expect(setTaskActive).not.toHaveBeenCalled();
+  });
+
+  it("bulkDeleteTasks revalidates tasks list path", async () => {
+    getTaskById.mockResolvedValue({ active: false });
+    const { bulkDeleteTasks } = await import("./actions");
+    await bulkDeleteTasks(["task-1"]);
+    expect(revalidatePath).toHaveBeenCalledWith("/tasks");
   });
 
   it("lookupTemplateNameByCode reads template repo", async () => {

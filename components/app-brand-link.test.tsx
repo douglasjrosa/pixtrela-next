@@ -12,10 +12,13 @@ describe("AppBrandLink", () => {
 
     const link = screen.getByRole("link");
     expect(link).toHaveAttribute("href", "/");
-    expect(link.querySelector("img")).toHaveAttribute(
-      "src",
-      "https://media.example/logo.png",
-    );
+    const img = link.querySelector("img");
+    expect(img).toHaveAttribute("src", "https://media.example/logo.png");
+    expect(img).toHaveAttribute("width", "55");
+    expect(img).toHaveAttribute("height", "55");
+    expect(link).toHaveClass("mr-[20px]");
+    expect(link).not.toHaveClass("mx-[20px]");
+    expect(link.querySelector("span")).toHaveClass("size-[55px]");
     expect(link.textContent?.length).toBeGreaterThan(0);
   });
 

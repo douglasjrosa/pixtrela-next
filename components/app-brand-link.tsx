@@ -5,6 +5,11 @@ import { useTranslations } from "next-intl";
 
 import { AppImage } from "@/components/media/app-image";
 import { resolveMenuLogoBackgroundStyle } from "@/lib/themes/menu-logo-background";
+import {
+  APP_MENU_LOGO_TRAILING_SPACING_CLASS,
+  APP_MENU_LOGO_SIZE_CLASS,
+  APP_MENU_LOGO_SIZE_PX,
+} from "@/lib/ui/menu-logo-dimensions";
 import { cn } from "@/lib/utils";
 
 export interface AppBrandLinkProps {
@@ -33,17 +38,27 @@ export function AppBrandLink({
   );
 
   return (
-    <Link href={href} className={cn("flex shrink-0 items-center gap-2", className)}>
+    <Link
+      href={href}
+      className={cn(
+        "flex max-h-full shrink-0 items-center gap-2",
+        logoUrl ? APP_MENU_LOGO_TRAILING_SPACING_CLASS : null,
+        className,
+      )}
+    >
       {logoUrl ? (
         <span
-          className="flex size-7 shrink-0 items-center justify-center rounded-sm p-0.5"
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-sm p-0.5",
+            APP_MENU_LOGO_SIZE_CLASS,
+          )}
           style={{ backgroundColor: logoBackground }}
         >
           <AppImage
             src={logoUrl}
-            width={28}
-            height={28}
-            className="size-full object-contain"
+            width={APP_MENU_LOGO_SIZE_PX}
+            height={APP_MENU_LOGO_SIZE_PX}
+            className="size-full max-h-full object-contain"
           />
         </span>
       ) : null}

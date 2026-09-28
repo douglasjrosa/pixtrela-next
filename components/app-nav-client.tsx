@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
@@ -12,12 +12,9 @@ import { AppNavMobileMenu } from "@/components/app-nav-mobile-menu";
 import { AppNavUserMenu } from "@/components/app-nav-user-menu";
 import { TotemModeSwitch } from "@/components/nav/totem-mode-switch";
 import { Button } from "@/components/ui/button";
+import { useMeasuredNavLayout } from "@/hooks/use-measured-nav-layout";
 import { isAppNavLinkActive } from "@/lib/auth/is-app-nav-link-active";
 import type { ResolvedNavItem } from "@/lib/auth/nav";
-import {
-  resolveNavLayoutMode,
-  type NavLayoutMode,
-} from "@/lib/auth/nav-layout";
 import {
   APP_NAV_LINK_BASE_CLASS,
   appNavLinkClass,
@@ -54,60 +51,17 @@ export function AppNavClient({
   const pathname = usePathname();
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [layoutMode, setLayoutMode] = useState<NavLayoutMode>("desktop");
-
-  const slotRef = useRef<HTMLDivElement>(null);
-  const measureRef = useRef<HTMLUListElement>(null);
-
-  const updateLayoutMode = useCallback((): void => {
-    const slot = slotRef.current;
-    const measure = measureRef.current;
-    if (!slot || !measure) return;
-
-    setLayoutMode(
-      resolveNavLayoutMode({
-        viewportWidth: window.innerWidth,
-        availableWidth: slot.clientWidth,
-        requiredWidth: measure.scrollWidth,
-      }),
-    );
-  }, []);
-
-  useLayoutEffect(() => {
-    updateLayoutMode();
-  }, [updateLayoutMode, items]);
-
-  useEffect(() => {
-    const slot = slotRef.current;
-    if (!slot) return;
-
-    window.addEventListener("resize", updateLayoutMode);
-
-    if (typeof ResizeObserver === "undefined") {
-      return () => {
-        window.removeEventListener("resize", updateLayoutMode);
-      };
-    }
-
-    const observer = new ResizeObserver(() => {
-      updateLayoutMode();
-    });
-    observer.observe(slot);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", updateLayoutMode);
-    };
-  }, [updateLayoutMode]);
-
-  const showHamburger = layoutMode !== "desktop" || showTotemSwitch;
+  const measureKey = items.map((item) => item.href).join("|");
+  const { slotRef, measureRef, layoutMode } = useMeasuredNavLayout(measureKey);
+  const navVisible = !totemMode && items.length > 0;
+  const showHamburger = navVisible && layoutMode !== "desktop";
   const effectiveMenuOpen = menuOpen && showHamburger;
 
   function handleSignOut(): void {
     void signOut({ callbackUrl: "/login" });
   }
 
-  const showDesktopLinks = layoutMode === "desktop" && items.length > 0;
+  const showDesktopLinks = navVisible && layoutMode === "desktop";
 
   return (
     <>
@@ -185,6 +139,9 @@ export function AppNavClient({
             userName={userName}
             avatarUrl={avatarUrl}
             profileHref={profileHref}
+            accountExtras={
+              showTotemSwitch ? <TotemModeSwitch enabled={totemMode} /> : null
+            }
             onSignOut={handleSignOut}
           />
         </nav>
@@ -196,9 +153,6 @@ export function AppNavClient({
         open={effectiveMenuOpen}
         items={items}
         onOpenChange={setMenuOpen}
-        extras={
-          showTotemSwitch ? <TotemModeSwitch enabled={totemMode} /> : null
-        }
       />
     </>
   );

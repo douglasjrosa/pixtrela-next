@@ -145,6 +145,9 @@ describe("PasswordInput", () => {
     renderWithIntl(<PasswordInput id="password" aria-label="Senha" />);
 
     const field = screen.getByLabelText("Senha");
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
     expect(field).toHaveAttribute("type", "password");
     fireEvent.change(field, { target: { value: "secret1" } });
     expect(field).toHaveValue("secret1");
