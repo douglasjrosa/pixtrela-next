@@ -26,6 +26,13 @@ describe("kioskActionErrorMessage", () => {
     expect(
       kioskActionErrorMessage(t, new Error("flagsRequired"), "exitFailed"),
     ).toBe("msg:flagsRequired");
+    expect(
+      kioskActionErrorMessage(
+        t,
+        new Error("chainStopAnswersRequired"),
+        "exitFailed",
+      ),
+    ).toBe("msg:chainStopAnswersRequired");
   });
 
   it("falls back when the error code is unknown", () => {

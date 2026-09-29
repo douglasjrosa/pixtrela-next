@@ -7,6 +7,10 @@ import {
   subTasks,
   tasks,
 } from "@/drizzle/schema";
+import {
+  CHAIN_STOP_ANSWERS_REQUIRED,
+  resolveGroupLeave,
+} from "@/lib/business/chain-stop-policy";
 import { formatQueueGroupLabel } from "@/lib/business/group-link";
 import {
   groupCapacity,
@@ -237,6 +241,101 @@ export async function listOpenSessionLive(
   }));
 }
 
+export async function listOpenUserIdsForSubTask(
+  subTaskId: string,
+  db: Db,
+): Promise<string[]> {
+  const rows = await db
+    .select({ userId: openSessions.userId })
+    .from(openSessions)
+    .where(
+      and(eq(openSessions.subTaskId, subTaskId), isNull(openSessions.leftAt)),
+    );
+  return [...new Set(rows.map((row) => row.userId))];
+}
+
+export async function listOpenSubTaskIdsForUser(
+  userId: string,
+  db: Db,
+): Promise<string[]> {
+  const rows = await db
+    .select({ subTaskId: openSessions.subTaskId })
+    .from(openSessions)
+    .where(and(eq(openSessions.userId, userId), isNull(openSessions.leftAt)));
+  return [...new Set(rows.map((row) => row.subTaskId))];
+}
+
+export async function findIsolatedOpenSession(
+  subTaskId: string,
+  userId: string,
+  db: Db,
+): Promise<{ joinedAt: Date } | null> {
+  const [row] = await db
+    .select({ joinedAt: openSessions.joinedAt })
+    .from(openSessions)
+    .where(
+      and(
+        eq(openSessions.subTaskId, subTaskId),
+        eq(openSessions.userId, userId),
+        isNull(openSessions.leftAt),
+        isNull(openSessions.chainRunId),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+export async function ensureChainRunForOpenSessions(input: {
+  colaboratorId: string;
+  taskId: string;
+  headSubTaskId: string;
+  openSubTaskIds: readonly string[];
+  capacity: number;
+  timestamp: Date;
+  db: Db;
+}): Promise<string> {
+  if (input.openSubTaskIds.length === 0) throw new Error("noOpenSession");
+  const rows = await input.db
+    .select({
+      id: openSessions.id,
+      chainRunId: openSessions.chainRunId,
+    })
+    .from(openSessions)
+    .where(
+      and(
+        eq(openSessions.userId, input.colaboratorId),
+        isNull(openSessions.leftAt),
+        inArray(openSessions.subTaskId, [...input.openSubTaskIds]),
+      ),
+    );
+  const existing = rows.find((row) => row.chainRunId)?.chainRunId;
+  if (existing) return existing;
+
+  const [created] = await input.db
+    .insert(chainRuns)
+    .values({
+      taskId: input.taskId,
+      headSubTaskId: input.headSubTaskId,
+      status: OPEN_STATUS,
+      startedAt: input.timestamp,
+      capacity: Math.max(1, input.capacity),
+    })
+    .returning({ id: chainRuns.id });
+  if (!created) throw new Error("notFound");
+  if (rows.length > 0) {
+    await input.db
+      .update(openSessions)
+      .set({ chainRunId: created.id })
+      .where(
+        inArray(
+          openSessions.id,
+          rows.map((row) => row.id),
+        ),
+      );
+  }
+  return created.id;
+}
+
 export async function insertIsolatedOpenSession(
   subTaskId: string,
   userId: string,
@@ -290,6 +389,25 @@ export async function leaveGroupRun(input: {
   const db = input.db ?? getDb();
   const run = await findOpenChainRunRow(input.chainRunId, db);
   if (!run) throw new Error("noOpenSession");
+
+  const openRows = await db
+    .select({ userId: openSessions.userId })
+    .from(openSessions)
+    .where(
+      and(
+        eq(openSessions.chainRunId, input.chainRunId),
+        isNull(openSessions.leftAt),
+      ),
+    );
+  const openUserIds = [...new Set(openRows.map((row) => row.userId))];
+  const decision = resolveGroupLeave({
+    openUserIds,
+    colaboratorId: input.colaboratorId,
+    answerCount: input.answers.length,
+  });
+  if (decision === "answersRequired") {
+    throw new Error(CHAIN_STOP_ANSWERS_REQUIRED);
+  }
 
   await db
     .update(openSessions)
@@ -393,7 +511,24 @@ async function closeGroupRun(
   await db.transaction(async (tx) => {
     const txDb = tx as unknown as Db;
     for (const member of ordered) {
-      const shares = planned.filter((row) => row.subTaskId === member.id);
+      const plannedShares = planned.filter((row) => row.subTaskId === member.id);
+      const presence = sessions.find(
+        (row) => row.subTaskId === member.id && row.userId === closingUserId,
+      );
+      const shares =
+        plannedShares.length > 0
+          ? plannedShares
+          : presence
+            ? [
+                {
+                  subTaskId: member.id,
+                  colaboratorId: closingUserId,
+                  startedAt: presence.joinedAt,
+                  stoppedAt: endedAt,
+                  timeSpentSeconds: 0,
+                },
+              ]
+            : [];
       const credits =
         member.sharingType === "qty"
           ? []

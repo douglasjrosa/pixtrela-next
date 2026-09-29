@@ -73,6 +73,114 @@ function activeGroupProps(members = groupUnit().members) {
 }
 
 describe("KioskChainGroupCard", () => {
+  it("leaves a duration chain without answers while a peer is still active", async () => {
+    const user = userEvent.setup();
+    const onConfirmChainStop = vi.fn();
+    const members = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Cortar",
+        status: "producing",
+        startedAt: "2026-08-16T12:00:00.000Z",
+        activeWorkerCount: 2,
+      }),
+      kioskSubTask({
+        documentId: "b",
+        name: "Embalar",
+        index: 1,
+        linkedToPrevious: true,
+        status: "producing",
+        activeWorkerCount: 2,
+      }),
+    ];
+    renderWithIntl(
+      <KioskChainGroupCard
+        unit={activeGroupProps(members)}
+        onConfirmChainStop={onConfirmChainStop}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Parar" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(onConfirmChainStop).toHaveBeenCalledWith("run-1", [], "a");
+  });
+
+  it("still asks qty when a peer is active on a quantity chain", async () => {
+    const user = userEvent.setup();
+    const onConfirmChainStop = vi.fn();
+    const members = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Chapas",
+        sharingType: "qty",
+        qty: 10,
+        targetQty: 10,
+        status: "producing",
+        startedAt: "2026-08-16T12:00:00.000Z",
+        activeWorkerCount: 2,
+        viewerWorkedThisRun: true,
+      }),
+      kioskSubTask({
+        documentId: "b",
+        name: "Adesivos",
+        index: 1,
+        linkedToPrevious: true,
+        sharingType: "qty",
+        qty: 10,
+        targetQty: 10,
+        status: "producing",
+        activeWorkerCount: 2,
+        dependencyIds: ["a"],
+        viewerWorkedThisRun: true,
+      }),
+    ];
+    renderWithIntl(
+      <KioskChainGroupCard
+        unit={activeGroupProps(members)}
+        onConfirmChainStop={onConfirmChainStop}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Parar" }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(onConfirmChainStop).not.toHaveBeenCalled();
+  });
+
+  it("asks the last person before closing a duration chain", async () => {
+    const user = userEvent.setup();
+    const onConfirmChainStop = vi.fn();
+    const members = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Cortar",
+        status: "producing",
+        startedAt: "2026-08-16T12:00:00.000Z",
+        activeWorkerCount: 1,
+      }),
+      kioskSubTask({
+        documentId: "b",
+        name: "Embalar",
+        index: 1,
+        linkedToPrevious: true,
+        status: "waiting",
+        activeWorkerCount: 0,
+      }),
+    ];
+    renderWithIntl(
+      <KioskChainGroupCard
+        unit={activeGroupProps(members)}
+        onConfirmChainStop={onConfirmChainStop}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Parar" }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(onConfirmChainStop).not.toHaveBeenCalled();
+  });
+
   it("starts the chain with one button at the bottom", async () => {
     const user = userEvent.setup();
     const onStartChain = vi.fn();

@@ -84,8 +84,11 @@ import {
 import { resolvePaymentCurrencyAt } from "@/lib/repos/payment-currency";
 import {
   deleteOpenSessionsForUser,
+  findIsolatedOpenSession,
   insertIsolatedOpenSession,
   listOpenSessionLive,
+  listOpenSubTaskIdsForUser,
+  listOpenUserIdsForSubTask,
 } from "@/lib/repos/group-runs";
 import {
   fetchUserNamesByIds,
@@ -354,7 +357,8 @@ async function fetchOpenStartedSubTaskIdsForColaborator(
       openIds.push(subTaskId);
     }
   }
-  return openIds;
+  const sessionIds = await listOpenSubTaskIdsForUser(colaboratorId, db);
+  return [...new Set([...openIds, ...sessionIds])];
 }
 
 async function fetchSubTaskRowsByIds(subTaskIds: string[], db: Db) {
@@ -1290,7 +1294,9 @@ async function fetchActiveColaboratorIdsForSubTask(
     timestamp: new Date(row.timestamp),
   }));
 
-  return listActiveColaboratorIdsFromActivities(activityRows);
+  const fromActivities = listActiveColaboratorIdsFromActivities(activityRows);
+  const fromSessions = await listOpenUserIdsForSubTask(subTaskId, db);
+  return [...new Set([...fromActivities, ...fromSessions])];
 }
 
 export async function startSubTask(
@@ -1351,17 +1357,12 @@ export async function startSubTask(
   }
 
   await db.transaction(async (tx) => {
-    const chainRunId = helperChainRunId;
-    await tx.insert(activities).values({
+    await insertIsolatedOpenSession(
       subTaskId,
       colaboratorId,
-      action: "started",
       timestamp,
-      qty: 0,
-      currencyAwarded: 0,
-      chainRunId: chainRunId ?? undefined,
-    });
-    await insertIsolatedOpenSession(subTaskId, colaboratorId, timestamp, tx as unknown as Db);
+      tx as unknown as Db,
+    );
 
     await tx
       .update(subTasks)
@@ -1499,6 +1500,11 @@ export async function stopSubTask(
     .limit(1);
   if (!task) throw new Error("notFound");
 
+  const isolatedSession = await findIsolatedOpenSession(
+    subTaskId,
+    colaboratorId,
+    db,
+  );
   const sessionActivities = await db
     .select({
       action: activities.action,
@@ -1516,7 +1522,8 @@ export async function stopSubTask(
     .orderBy(asc(activities.timestamp));
 
   const sessionActions = sessionActivities.map((row) => row.action);
-  if (!canAuthorizeKioskStop(hasOpenStartedSessionFromActions(sessionActions))) {
+  const activityOpen = hasOpenStartedSessionFromActions(sessionActions);
+  if (!isolatedSession && !canAuthorizeKioskStop(activityOpen)) {
     throw new Error("noOpenSession");
   }
 
@@ -1524,12 +1531,11 @@ export async function stopSubTask(
   const openStarted = [...sessionActivities]
     .reverse()
     .find((activity) => activity.action === "started");
+  const sessionStartedAt = isolatedSession?.joinedAt
+    ?? (openStarted ? new Date(openStarted.timestamp) : null);
 
-  const sessionSeconds = openStarted
-    ? calculateActivityDurationSeconds(
-        new Date(openStarted.timestamp),
-        timestamp,
-      )
+  const sessionSeconds = sessionStartedAt
+    ? calculateActivityDurationSeconds(sessionStartedAt, timestamp)
     : 0;
 
   const sharingType = sub.sharingType === "qty" ? "qty" : "duration";
@@ -1632,6 +1638,17 @@ export async function stopSubTask(
       tx as unknown as Db,
     );
 
+    if (isolatedSession && !activityOpen && sessionStartedAt) {
+      await tx.insert(activities).values({
+        subTaskId,
+        colaboratorId,
+        action: "started",
+        timestamp: sessionStartedAt,
+        qty: 0,
+        currencyAwarded: 0,
+        chainRunId: chainRunId ?? undefined,
+      });
+    }
     const [created] = await tx
       .insert(activities)
       .values({

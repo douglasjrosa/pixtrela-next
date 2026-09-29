@@ -15,6 +15,7 @@ export type ChainSubTask = {
   assignedToIds: string[];
   dependencyIds: string[];
   hasAssignedFlags?: boolean;
+  sharingType?: "qty" | "duration";
 };
 
 export type SubTaskChain = {
@@ -47,10 +48,18 @@ export function resolveChains(
   const sorted = sortChainSubTasks(items);
   const chains: SubTaskChain[] = [];
   let current: string[] = [];
+  let currentSharing: ChainSubTask["sharingType"];
 
   for (const item of sorted) {
+    const sharingBreak =
+      current.length > 0 &&
+      item.sharingType != null &&
+      currentSharing != null &&
+      item.sharingType !== currentSharing;
     const startsNew =
-      current.length === 0 || item.linkedToPrevious !== true;
+      current.length === 0 ||
+      item.linkedToPrevious !== true ||
+      sharingBreak;
     if (startsNew) {
       if (current.length > 0) {
         chains.push({
@@ -59,9 +68,11 @@ export function resolveChains(
         });
       }
       current = [item.documentId];
+      currentSharing = item.sharingType;
       continue;
     }
     current.push(item.documentId);
+    if (item.sharingType) currentSharing = item.sharingType;
   }
 
   if (current.length > 0) {

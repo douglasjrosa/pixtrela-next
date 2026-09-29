@@ -194,6 +194,20 @@ describe("kiosk/[colaboratorId]/actions drizzle", () => {
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:activities", "default");
   });
 
+  it("confirmChainStop forwards an empty peer leave", async () => {
+    confirmChainStopRepo.mockResolvedValue(undefined);
+    const { confirmChainStop } = await import("./actions");
+    await confirmChainStop("col-1", "run-1", [], undefined, "head-1");
+    expect(confirmChainStopRepo).toHaveBeenCalledWith(
+      "col-1",
+      "run-1",
+      [],
+      undefined,
+      undefined,
+      "head-1",
+    );
+  });
+
   it("confirmChainStop parses answers and delegates to repo", async () => {
     confirmChainStopRepo.mockResolvedValue(undefined);
     const { confirmChainStop } = await import("./actions");

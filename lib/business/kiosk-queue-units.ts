@@ -64,6 +64,7 @@ function toChainItem(
     assignedToIds: subTask.assignedToIds ?? [],
     dependencyIds: subTask.dependencyIds ?? [],
     hasAssignedFlags: (subTask.assignedFlagCodes?.length ?? 0) > 0,
+    sharingType: subTask.sharingType,
     taskDocumentId: subTask.taskDocumentId,
   };
 }

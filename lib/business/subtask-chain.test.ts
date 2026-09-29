@@ -48,6 +48,37 @@ describe("resolveChains", () => {
     ]);
   });
 
+  it("splits a stored link when sharing types differ", () => {
+    const items = [
+      item({ documentId: "a", index: 0, sharingType: "duration" }),
+      item({
+        documentId: "b",
+        index: 1,
+        sharingType: "qty",
+        linkedToPrevious: true,
+      }),
+    ];
+    expect(resolveChains(items).map((chain) => chain.memberIds)).toEqual([
+      ["a"],
+      ["b"],
+    ]);
+  });
+
+  it("keeps a chain when every member shares one type", () => {
+    const items = [
+      item({ documentId: "a", index: 0, sharingType: "qty" }),
+      item({
+        documentId: "b",
+        index: 1,
+        sharingType: "qty",
+        linkedToPrevious: true,
+      }),
+    ];
+    expect(resolveChains(items)).toEqual([
+      { headId: "a", memberIds: ["a", "b"] },
+    ]);
+  });
+
   it("starts a new chain when linkedToPrevious is false", () => {
     const items = [
       item({ documentId: "a", index: 0, linkedToPrevious: true }),

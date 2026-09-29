@@ -12,7 +12,7 @@ export const chainStopAnswerSchema = z.object({
   inferred: z.boolean().optional(),
 });
 
-export const chainStopAnswersSchema = z.array(chainStopAnswerSchema).min(1);
+export const chainStopAnswersSchema = z.array(chainStopAnswerSchema);
 
 export function parseChainStopAnswers(raw: unknown): ChainStopAnswer[] {
   return chainStopAnswersSchema.parse(raw);

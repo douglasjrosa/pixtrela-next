@@ -48,6 +48,25 @@ describe("buildKioskQueueUnits", () => {
     }),
   ];
 
+  it("renders mixed sharing links as separate cards", () => {
+    const units = buildKioskQueueUnits({
+      viewerId: "u1",
+      subTasks: [
+        subTask({ documentId: "a", name: "Cut", index: 0 }),
+        subTask({
+          documentId: "b",
+          name: "Pack",
+          index: 1,
+          sharingType: "qty",
+          qty: 10,
+          targetQty: 10,
+          linkedToPrevious: true,
+        }),
+      ],
+    });
+    expect(units.map((unit) => unit.type)).toEqual(["isolated", "isolated"]);
+  });
+
   it("renders a multi-member chain as one group card", () => {
     const units = buildKioskQueueUnits({
       viewerId: "u1",

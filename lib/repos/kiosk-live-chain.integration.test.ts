@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 
-import { activities, subTasks } from "@/drizzle/schema";
+import { activities, openSessions, subTasks } from "@/drizzle/schema";
 import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
 import { confirmChainStop, joinLiveChain } from "@/lib/repos/kiosk-chains";
@@ -80,21 +80,26 @@ describeWithDb("joinLiveChain", () => {
         .select({
           subTaskId: activities.subTaskId,
           action: activities.action,
-          chainRunId: activities.chainRunId,
         })
         .from(activities)
         .where(eq(activities.colaboratorId, worker.id));
-      const started = rows.filter((row) => row.action === "started");
-      expect(started).toHaveLength(1);
-      expect(started[0]?.subTaskId).toBe(first!.id);
-      expect(started[0]?.chainRunId).toBe(result.chainRunId);
-      expect(rows.some((row) => row.subTaskId === second!.id)).toBe(false);
+      expect(rows).toHaveLength(0);
+      const sessions = await db
+        .select({
+          subTaskId: openSessions.subTaskId,
+          chainRunId: openSessions.chainRunId,
+        })
+        .from(openSessions)
+        .where(eq(openSessions.userId, worker.id));
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0]?.subTaskId).toBe(first!.id);
+      expect(sessions[0]?.chainRunId).toBe(result.chainRunId);
     },
     45_000,
   );
 
   it(
-    "backfills a chain run id on confirm when the live session started without one",
+    "writes activities on the chain run when the live session closes",
     async () => {
       const suffix = String(Date.now());
       await upsertKioskSettings({
@@ -133,11 +138,16 @@ describeWithDb("joinLiveChain", () => {
       await assignColaboratorsToSubTask(second!.id, [worker.id]);
 
       await startSubTask(worker.id, first!.id);
-      await joinLiveChain(worker.id, second!.id);
+      const joined = await joinLiveChain(worker.id, second!.id);
+      const beforeClose = await getDb()
+        .select({ action: activities.action })
+        .from(activities)
+        .where(eq(activities.colaboratorId, worker.id));
+      expect(beforeClose).toHaveLength(0);
 
       await confirmChainStop(
         worker.id,
-        null,
+        joined.chainRunId,
         [
           { documentId: first!.id, completed: true },
           { documentId: second!.id, completed: true },

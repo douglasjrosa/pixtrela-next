@@ -1425,6 +1425,7 @@
     "flagsReleased": "Bandeira liberada.",
     "flagsRequired": "Selecione ao menos uma bandeira para finalizar.",
     "chainStopInconsistent": "As quantidades da cadeia não conferem. Revise as respostas.",
+    "chainStopAnswersRequired": "Informe o resultado da cadeia antes de encerrar a sessão.",
     "chainRunRecorded": "Já registrado: {summary}",
     "subTaskHasNoCategory": "Defina a categoria da subtarefa antes de finalizar.",
     "flagWrongCategory": "A bandeira selecionada não pertence à categoria desta subtarefa.",

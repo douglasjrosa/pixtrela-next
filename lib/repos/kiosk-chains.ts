@@ -3,8 +3,16 @@ import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
 import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 
-import { activities, subTasks, tasks } from "@/drizzle/schema";
-import { openOrJoinGroupRun, findOpenChainRunRow, leaveGroupRun, listOpenGroupRunsByHead } from "@/lib/repos/group-runs";
+import { activities, openSessions, subTasks, tasks } from "@/drizzle/schema";
+import { CHAIN_STOP_ANSWERS_REQUIRED } from "@/lib/business/chain-stop-policy";
+import {
+  ensureChainRunForOpenSessions,
+  findOpenChainRunRow,
+  insertIsolatedOpenSession,
+  leaveGroupRun,
+  listOpenGroupRunsByHead,
+  openOrJoinGroupRun,
+} from "@/lib/repos/group-runs";
 import { scheduleBoardInvalidate } from "@/lib/realtime/publish-board-invalidate";
 import {
   allocateChainTimeline,
@@ -121,6 +129,7 @@ function toChainItem(row: SubTaskWithAssignees): ChainSubTask {
     assignedToIds: row.assignedToIds,
     dependencyIds: row.dependencyIds,
     hasAssignedFlags: false,
+    sharingType: row.sharingType === "qty" ? "qty" : "duration",
   };
 }
 
@@ -667,20 +676,18 @@ export async function startChain(
 
   const chainRunId = randomUUID();
   await db.transaction(async (tx) => {
-    await tx.insert(activities).values({
-      subTaskId: startMember.documentId,
+    const txDb = tx as unknown as Db;
+    await insertIsolatedOpenSession(
+      startMember.documentId,
       colaboratorId,
-      action: "started",
       timestamp,
-      qty: 0,
-      currencyAwarded: 0,
-      chainRunId,
-    });
+      txDb,
+    );
     await tx
       .update(subTasks)
       .set({ status: PRODUCING_STATUS, updatedAt: timestamp })
       .where(eq(subTasks.id, startMember.documentId));
-    await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, timestamp);
+    await runTaskSubTaskSyncRoutine(sub.taskId, txDb, timestamp);
   });
   scheduleBoardInvalidate();
   return { chainRunId };
@@ -1366,6 +1373,19 @@ export async function confirmChainStop(
   timestamp: Date = new Date(),
   headId?: string,
 ): Promise<void> {
+  if (answers.length === 0) {
+    if (!chainRunId) throw new Error(CHAIN_STOP_ANSWERS_REQUIRED);
+    const emptyRun = await findOpenChainRunRow(chainRunId, db);
+    if (!emptyRun) throw new Error(CHAIN_STOP_ANSWERS_REQUIRED);
+    await leaveGroupRun({
+      chainRunId,
+      colaboratorId,
+      answers,
+      timestamp,
+      db,
+    });
+    return;
+  }
   if (chainRunId) {
     const tableRun = await findOpenChainRunRow(chainRunId, db);
     if (tableRun) {
@@ -1614,50 +1634,16 @@ async function findOpenStartedRowsForColaborator(
     chainRunId: string | null;
   }>
 > {
-  const rows = await db
+  return db
     .select({
-      id: activities.id,
-      subTaskId: activities.subTaskId,
-      action: activities.action,
-      timestamp: activities.timestamp,
-      chainRunId: activities.chainRunId,
+      id: openSessions.id,
+      subTaskId: openSessions.subTaskId,
+      chainRunId: openSessions.chainRunId,
     })
-    .from(activities)
+    .from(openSessions)
     .where(
-      and(
-        ACTIVE_ACTIVITY,
-        eq(activities.colaboratorId, colaboratorId),
-        inArray(activities.action, ["started", "stoped"]),
-      ),
-    )
-    .orderBy(asc(activities.timestamp));
-
-  const bySubTask = new Map<string, typeof rows>();
-  for (const row of rows) {
-    const list = bySubTask.get(row.subTaskId) ?? [];
-    list.push(row);
-    bySubTask.set(row.subTaskId, list);
-  }
-
-  const open: Array<{
-    id: string;
-    subTaskId: string;
-    chainRunId: string | null;
-  }> = [];
-  for (const [subTaskId, list] of bySubTask) {
-    const actions = list.map((row) => row.action);
-    if (!hasOpenStartedSessionFromActions(actions)) continue;
-    const lastStarted = [...list]
-      .reverse()
-      .find((row) => row.action === "started");
-    if (!lastStarted) continue;
-    open.push({
-      id: lastStarted.id,
-      subTaskId,
-      chainRunId: lastStarted.chainRunId,
-    });
-  }
-  return open;
+      and(eq(openSessions.userId, colaboratorId), isNull(openSessions.leftAt)),
+    );
 }
 
 export async function joinLiveChain(
@@ -1718,23 +1704,32 @@ export async function joinLiveChain(
   if (!next || next.documentId !== subTaskId) {
     throw new Error("chainNotJoinable");
   }
+  const openSibling = siblings.find(
+    (row) => row.id === openOnTask[0]?.subTaskId,
+  );
+  const openType = openSibling?.sharingType === "qty" ? "qty" : "duration";
+  const nextType = candidate.sharingType === "qty" ? "qty" : "duration";
+  if (openSibling && openType !== nextType) {
+    throw new Error("chainNotJoinable");
+  }
 
-  const memberIds = siblings.map((row) => row.id);
+  const headSubTaskId = openOnTask[0]!.subTaskId;
+  const capacity = siblings.reduce(
+    (max, row) => Math.max(max, row.maxSameTimeWorkers),
+    1,
+  );
   let chainRunId = "";
   await db.transaction(async (tx) => {
     const sessionDb = tx as unknown as Db;
-    const rows = await listChainActivitySessionRows(memberIds, sessionDb);
-    const open = resolveOpenChainRunFromActivityRows(rows);
-    chainRunId = open?.chainRunId ?? randomUUID();
-    const activityIds = collectOpenStartedActivityIdsMissingRunId(rows);
-    if (activityIds.length > 0) {
-      await tx
-        .update(activities)
-        .set({ chainRunId })
-        .where(
-          and(inArray(activities.id, activityIds), isNull(activities.chainRunId)),
-        );
-    }
+    chainRunId = await ensureChainRunForOpenSessions({
+      colaboratorId,
+      taskId: candidate.taskId,
+      headSubTaskId,
+      openSubTaskIds: openOnTask.map((row) => row.subTaskId),
+      capacity,
+      timestamp: new Date(),
+      db: sessionDb,
+    });
     await updateSubTaskLinkedToPrevious(subTaskId, true, sessionDb);
   });
 

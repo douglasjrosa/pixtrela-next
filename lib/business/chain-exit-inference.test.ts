@@ -87,60 +87,6 @@ describe("requiredSupplierSessionMin", () => {
 });
 
 describe("recomputeChainExitState", () => {
-  it("hides duration supplier when qty consumer finishes", () => {
-    const members = [
-      member({
-        documentId: "cortar",
-        index: 0,
-        sharingType: "duration",
-        targetQty: 1,
-      }),
-      member({
-        documentId: "montar",
-        index: 1,
-        targetQty: 10,
-        dependencyIds: ["cortar"],
-      }),
-    ];
-    const edges = dependencyEdgesWithinChain(members);
-    const state = recomputeChainExitState(members, edges, {
-      montar: { documentId: "montar", qty: 10 },
-    });
-    expect(state.steps.find((step) => step.documentId === "cortar")).toMatchObject(
-      { visible: false, reason: "inferred" },
-    );
-    expect(state.answers.cortar).toMatchObject({
-      completed: true,
-      inferred: true,
-      semBandeira: true,
-    });
-  });
-
-  it("keeps duration supplier visible when qty consumer is partial", () => {
-    const members = [
-      member({
-        documentId: "cortar",
-        index: 0,
-        sharingType: "duration",
-        targetQty: 1,
-      }),
-      member({
-        documentId: "montar",
-        index: 1,
-        targetQty: 10,
-        dependencyIds: ["cortar"],
-      }),
-    ];
-    const state = recomputeChainExitState(
-      members,
-      dependencyEdgesWithinChain(members),
-      { montar: { documentId: "montar", qty: 5 } },
-    );
-    expect(state.steps.find((step) => step.documentId === "cortar")?.visible)
-      .toBe(true);
-    expect(state.answers.cortar?.completed).toBeUndefined();
-  });
-
   it("sets qty min to the WIP gap when this peer is last", () => {
     const members = [
       member({ documentId: "cortar", index: 0, targetQty: 10 }),
@@ -219,29 +165,6 @@ describe("recomputeChainExitState", () => {
     );
     expect(partial.steps.find((step) => step.documentId === "cortar")?.visible)
       .toBe(true);
-  });
-
-  it("uses min 0 on qty supplier when duration consumer is not finished", () => {
-    const members = [
-      member({ documentId: "cortar", index: 0, targetQty: 10 }),
-      member({
-        documentId: "montar",
-        index: 1,
-        sharingType: "duration",
-        targetQty: 1,
-        dependencyIds: ["cortar"],
-      }),
-    ];
-    const state = recomputeChainExitState(
-      members,
-      dependencyEdgesWithinChain(members),
-      { montar: { documentId: "montar", completed: false } },
-    );
-    expect(state.fieldConstraints.cortar).toEqual({
-      min: 0,
-      max: 10,
-      defaultQty: 0,
-    });
   });
 
   it("applies the same consumer qty to parallel suppliers", () => {

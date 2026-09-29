@@ -4,6 +4,7 @@ export const KIOSK_ACTION_ERROR_CODES = [
   "flagWrongCategory",
   "flagOccupied",
   "chainStopInconsistent",
+  "chainStopAnswersRequired",
   "atWorkerCapacity",
   "alreadyActive",
   "subTaskLocked",
