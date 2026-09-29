@@ -38,6 +38,7 @@ export async function DELETE(request: Request): Promise<NextResponse> {
       route: "/api/tasks",
       operation: "crm.delete",
       error,
+      immediate: true,
       ids: { crmPedidoId },
     });
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
@@ -93,6 +94,11 @@ export async function POST(request: Request): Promise<NextResponse> {
       route: "/api/tasks",
       operation: "crm.upsert",
       error,
+      immediate: true,
+      ids: {
+        externalKey: parsed.data.externalKey,
+        templateTaskCode: parsed.data.templateTaskCode,
+      },
     });
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }

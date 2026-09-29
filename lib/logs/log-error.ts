@@ -68,6 +68,22 @@ export function isSkippableLogError(error: unknown): boolean {
   return false;
 }
 
+const SECRET_ASSIGNMENT =
+  /(password|token|secret|authorization|apikey)\s*[:=]\s*\S+/gi;
+
+const ERROR_SUMMARY_MAX_LENGTH = 240;
+
+/** Readable cause for operators. Secrets are redacted; stacks stay out. */
+export function logErrorSummary(error: unknown): string {
+  const raw = error instanceof Error ? error.message : "";
+  const text = raw.trim().length > 0 ? raw : "unknown_error";
+  return text
+    .replace(SECRET_ASSIGNMENT, "$1=[redacted]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, ERROR_SUMMARY_MAX_LENGTH);
+}
+
 /** Short stable code. Never the stack, body, or a secret. */
 export function logErrorCode(error: unknown): string {
   if (!(error instanceof Error)) return "unknown";
@@ -82,6 +98,7 @@ export function formatBugDetail(
   operation: string,
   code: string,
   ids?: Record<string, string | number | null | undefined>,
+  message?: string,
 ): string {
   const head = `${sanitizeToken(operation)}|${sanitizeToken(code)}`;
   const idPart = Object.entries(ids ?? {})
@@ -93,5 +110,7 @@ export function formatBugDetail(
     .filter((part) => part.length > 0)
     .join(",");
   const detail = idPart ? `${head}|${idPart}` : head;
-  return detail.slice(0, LOG_DETAIL_MAX_LENGTH);
+  const summary = message?.replace(/\s+/g, " ").trim() ?? "";
+  const withMessage = summary.length > 0 ? `${detail}|${summary}` : detail;
+  return withMessage.slice(0, LOG_DETAIL_MAX_LENGTH);
 }

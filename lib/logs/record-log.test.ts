@@ -136,6 +136,18 @@ describe("bug detail", () => {
     expect(detail).not.toContain("at ");
   });
 
+  it("keeps the exception message readable after the ids", () => {
+    const detail = formatBugDetail(
+      "crm.upsert",
+      "Error",
+      { externalKey: "123:0", templateTaskCode: "17426" },
+      "duplicate key value violates unique constraint",
+    );
+    expect(detail).toContain("externalKey=123:0");
+    expect(detail).toContain("templateTaskCode=17426");
+    expect(detail).toContain("duplicate key value violates unique constraint");
+  });
+
   it("skips validation, forbidden, and notFound", () => {
     expect(isSkippableLogError(new Error("forbidden"))).toBe(true);
     expect(isSkippableLogError(new Error("notFound"))).toBe(true);

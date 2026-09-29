@@ -12,10 +12,12 @@ import {
   formatBugDetail,
   isSkippableLogError,
   logErrorCode,
+  logErrorSummary,
   sanitizeToken,
 } from "@/lib/logs/log-error";
 import { drizzleLogStore } from "@/lib/logs/log-store";
 import {
+  persistLog,
   runScheduledLog,
   type PersistLogInput,
 } from "@/lib/logs/persist-log";
@@ -63,15 +65,38 @@ export async function auditBug(input: {
   operation: string;
   error: unknown;
   ids?: Record<string, string | number | null | undefined>;
+  /** Write the row before the HTTP response. CRM failures use this. */
+  immediate?: boolean;
 }): Promise<void> {
   if (isSkippableLogError(input.error)) return;
   const userId = await readActorId();
   const code = logErrorCode(input.error);
   const operation = sanitizeToken(input.operation);
+  const summary = input.immediate ? logErrorSummary(input.error) : undefined;
+  const detail = formatBugDetail(input.operation, code, input.ids, summary);
+  if (input.immediate) {
+    console.error(detail, input.error);
+    try {
+      await persistLog(
+        {
+          userId,
+          route: input.route,
+          detail,
+          dedupe: false,
+          refreshDescription: false,
+          describe: () => bugSentence(input.operation),
+        },
+        drizzleLogStore(),
+      );
+    } catch (persistError) {
+      console.error("audit log persist failed", persistError);
+    }
+    return;
+  }
   scheduleLog({
     userId,
     route: input.route,
-    detail: formatBugDetail(input.operation, code, input.ids),
+    detail,
     dedupe: true,
     dedupeKey: `${operation}|${code}`,
     refreshDescription: false,

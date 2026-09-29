@@ -47,6 +47,7 @@ describe("POST /api/tasks", () => {
     deleteTasksFromApiByCrmPedidoId.mockReset();
     revalidateTag.mockReset();
     revalidatePath.mockReset();
+    auditBug.mockReset();
     vi.resetModules();
   });
 
@@ -98,6 +99,53 @@ describe("POST /api/tasks", () => {
     expect(response.status).toBe(201);
     expect(upsertTaskFromApi).toHaveBeenCalledOnce();
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks", "default");
+  });
+
+  it("awaits an immediate bug log before the 500 response", async () => {
+    verifyCrmApiToken.mockResolvedValue({ ok: true });
+    const failure = new Error("duplicate key value violates unique constraint");
+    upsertTaskFromApi.mockRejectedValue(failure);
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    auditBug.mockReturnValue(gate);
+    const { POST } = await import("./route");
+    const pending = POST(
+      new Request("http://localhost/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Token: "secret" },
+        body: JSON.stringify({
+          name: "Cliente - Caixa",
+          qty: 10,
+          deliveryDate: "2026-07-15",
+          externalKey: "123:0",
+          templateTaskCode: "17426",
+        }),
+      }),
+    );
+    let settled = false;
+    void pending.then(() => {
+      settled = true;
+    });
+    await vi.waitFor(() => {
+      expect(auditBug).toHaveBeenCalled();
+    });
+    expect(settled).toBe(false);
+    expect(auditBug).toHaveBeenCalledWith({
+      route: "/api/tasks",
+      operation: "crm.upsert",
+      error: failure,
+      immediate: true,
+      ids: {
+        externalKey: "123:0",
+        templateTaskCode: "17426",
+      },
+    });
+    release();
+    const response = await pending;
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({ error: "internal_error" });
   });
 });
 
