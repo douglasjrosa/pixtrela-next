@@ -399,6 +399,7 @@ describe("board/actions drizzle", () => {
         maxSameTimeWorkers: 1,
         assignedToIds: ["u-head"],
         dependencyIds: [],
+        subTaskCategoryId: "cat-cut",
       },
       {
         id: "st-2",
@@ -414,6 +415,7 @@ describe("board/actions drizzle", () => {
         maxSameTimeWorkers: 2,
         assignedToIds: ["u-head", "u-helper"],
         dependencyIds: [],
+        subTaskCategoryId: "cat-pack",
       },
     ];
     listSubTasksWithRelationsForTask.mockResolvedValue(siblings);
@@ -429,7 +431,10 @@ describe("board/actions drizzle", () => {
       1,
       "st-1",
       "task-1",
-      expect.objectContaining({ assignedToIds: ["u-head", "u-new"] }),
+      expect.objectContaining({
+        assignedToIds: ["u-head", "u-new"],
+        subTaskCategoryId: "cat-cut",
+      }),
     );
     expect(updateSubTask).toHaveBeenNthCalledWith(
       2,
@@ -437,6 +442,7 @@ describe("board/actions drizzle", () => {
       "task-1",
       expect.objectContaining({
         assignedToIds: ["u-head", "u-new"],
+        subTaskCategoryId: "cat-pack",
       }),
     );
   });

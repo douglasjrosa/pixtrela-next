@@ -105,6 +105,7 @@ interface SubTaskEntity {
   activationStatus?: SubTaskFormInput["activationStatus"];
   dependencies?: unknown;
   assignedTo?: { documentId: string }[] | null;
+  subTaskCategoryId?: string | null;
 }
 
 async function resolveBoardActor(staffUserId?: string): Promise<BoardActor> {
@@ -319,6 +320,7 @@ async function fetchSubTaskForUpdate(
     activationStatus: fromDrizzleActivationStatus(row.activationStatus),
     dependencies: row.dependencyIds,
     assignedTo: row.assignedToIds.map((id) => ({ documentId: id })),
+    subTaskCategoryId: row.subTaskCategoryId ?? null,
   };
 }
 
@@ -336,6 +338,7 @@ function toSubTaskFormInput(
     activationStatus: subtask.activationStatus ?? "locked",
     dependencyIds: parseSubTaskDependencyIds(subtask.dependencies),
     assignedToIds,
+    subTaskCategoryId: subtask.subTaskCategoryId ?? null,
   };
 }
 
