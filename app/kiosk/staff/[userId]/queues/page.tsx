@@ -4,6 +4,7 @@ import { KioskContentSurface } from "@/components/kiosk/kiosk-content-surface";
 import { KioskStaffQueuesPanel } from "@/components/kiosk/kiosk-staff-queues-panel";
 import { loadKioskStaffActor } from "@/lib/business/kiosk-staff-access";
 import { loadStaffQueuesGrouped } from "@/lib/kiosk/load-staff-queues-grouped";
+import { loadTaskAutomationSetting } from "@/lib/settings/load-task-automation";
 
 interface PageProps {
   params: Promise<{ userId: string }>;
@@ -14,14 +15,18 @@ export default async function KioskStaffQueuesPage({ params }: PageProps) {
   const actor = await loadKioskStaffActor(userId);
   if (!actor) notFound();
 
-  const { teams } = await loadStaffQueuesGrouped(
-    actor.staffUserId,
-    actor.staffRole,
-  );
+  const [{ teams }, automation] = await Promise.all([
+    loadStaffQueuesGrouped(actor.staffUserId, actor.staffRole),
+    loadTaskAutomationSetting(),
+  ]);
 
   return (
     <KioskContentSurface>
-      <KioskStaffQueuesPanel userId={userId} teams={teams} />
+      <KioskStaffQueuesPanel
+        userId={userId}
+        teams={teams}
+        assignWarnMax={automation.assignWarnMax}
+      />
     </KioskContentSurface>
   );
 }

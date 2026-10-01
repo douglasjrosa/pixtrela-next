@@ -4,8 +4,11 @@ import Link from "next/link";
 import { User } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { KanbanFloatingCountBadge } from "@/components/kanban/kanban-floating-count-badge";
 import { AppImage } from "@/components/media/app-image";
 import { formatActivitySubtaskQueueBadges } from "@/lib/business/activity-subtask-label";
+import { shouldShowAssignWarn } from "@/lib/business/assign-warn";
+import { DEFAULT_ASSIGN_WARN_MAX } from "@/lib/business/assign-warn-max";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
 import { formatActivityDateTimePtBr } from "@/lib/format/datetime";
 import type { StaffQueueMember } from "@/lib/kiosk/load-staff-queues-grouped";
@@ -16,11 +19,17 @@ import { LeaderRoleBadge } from "@/components/ui/leader-role-badge";
 export interface StaffQueueMemberRowProps {
   member: StaffQueueMember;
   href: string;
+  assignWarnMax?: number;
 }
 
 /** Single colaborator row on staff queue lists (app /queues and kiosk staff). */
-export function StaffQueueMemberRow({ member, href }: StaffQueueMemberRowProps) {
+export function StaffQueueMemberRow({
+  member,
+  href,
+  assignWarnMax = DEFAULT_ASSIGN_WARN_MAX,
+}: StaffQueueMemberRowProps) {
   const tActivities = useTranslations("activities");
+  const tKanban = useTranslations("kanban");
 
   const activityBadges = member.lastActivity
     ? formatActivitySubtaskQueueBadges({
@@ -37,6 +46,10 @@ export function StaffQueueMemberRow({ member, href }: StaffQueueMemberRowProps) 
       : tActivities("action.stoped")
     : "";
 
+  const showAssignWarn = shouldShowAssignWarn(
+    member.assignedCount,
+    assignWarnMax,
+  );
   const identityLine = `${member.name} ${member.code ?? "—"}`;
   const avatarUrl = toBrowserMediaUrl(
     member.avatarUrl ?? member.facePhotoUrl ?? null,
@@ -51,17 +64,29 @@ export function StaffQueueMemberRow({ member, href }: StaffQueueMemberRowProps) 
       )}
     >
       <div className="flex shrink-0 self-stretch items-center">
-        <span
-          className={cn(
-            "relative flex size-12 shrink-0 items-center justify-center",
-            "overflow-hidden rounded-full border bg-background",
-          )}
-        >
-          {avatarUrl ? (
-            <AppImage src={avatarUrl} fill className="object-cover" alt="" />
-          ) : (
-            <User className="size-5 text-muted-foreground" aria-hidden />
-          )}
+        <span className="relative">
+          <span
+            className={cn(
+              "relative flex size-12 shrink-0 items-center justify-center",
+              "overflow-hidden rounded-full border bg-background",
+            )}
+          >
+            {avatarUrl ? (
+              <AppImage src={avatarUrl} fill className="object-cover" alt="" />
+            ) : (
+              <User className="size-5 text-muted-foreground" aria-hidden />
+            )}
+          </span>
+          {showAssignWarn ? (
+            <KanbanFloatingCountBadge
+              count={member.assignedCount}
+              display={String(member.assignedCount)}
+              ariaLabel={tKanban("assignWarnColaboratorBadge", {
+                name: member.name,
+                count: member.assignedCount,
+              })}
+            />
+          ) : null}
         </span>
       </div>
       <div className="min-w-0 flex-1">

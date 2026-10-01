@@ -305,6 +305,84 @@ describe("KioskPanelClient", () => {
     expect(showKioskSuccessToast).toHaveBeenCalledWith("Saída registrada.");
   });
 
+  it("unlocks the queue when the exit save finishes, before the reload", async () => {
+    const user = userEvent.setup();
+    let resolveExit!: (value: { remainingWorkerNames: string[] }) => void;
+    exitSubTask.mockImplementation(
+      () =>
+        new Promise<{ remainingWorkerNames: string[] }>((resolve) => {
+          resolveExit = resolve;
+        }),
+    );
+    let resolveSnapshot!: (pages: KioskQueueSectionPage[]) => void;
+    fetchSnapshot.mockImplementation(
+      () =>
+        new Promise<KioskQueueSectionPage[]>((resolve) => {
+          resolveSnapshot = resolve;
+        }),
+    );
+
+    const producing = {
+      ...waitingTask(),
+      status: "producing" as const,
+      startedAt: "2026-08-17T23:00:00.000Z",
+      activeWorkerCount: 1,
+      requiresMaterialFlagsOnFinish: false,
+      availableFlags: [],
+    };
+    const nextTask = {
+      ...waitingTask(),
+      documentId: "st-2",
+      name: "Embalar",
+      index: 1,
+    };
+    const page = liberadasPage(
+      [
+        {
+          type: "isolated",
+          subTask: nextTask,
+          helperMode: false,
+          showStart: true,
+        },
+      ],
+      [
+        {
+          type: "isolated",
+          subTask: producing,
+          helperMode: false,
+          showStart: false,
+        },
+      ],
+    );
+
+    renderWithIntl(
+      <KioskPanelClient
+        colaboratorId="u-1"
+        colaboratorName="Ana"
+        initialLiberadas={page}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Sair da subtarefa" }));
+    await user.click(screen.getByRole("button", { name: "Sim, concluí" }));
+
+    expect(screen.getByRole("button", { name: "Iniciar" })).toBeDisabled();
+
+    await act(async () => {
+      resolveExit({ remainingWorkerNames: [] });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Iniciar" })).toBeEnabled();
+    });
+    expect(fetchSnapshot).toHaveBeenCalled();
+    expect(showKioskErrorToast).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveSnapshot([page]);
+    });
+  });
+
   it("keeps chain stop enabled after background auto-advance", async () => {
     const user = userEvent.setup();
     const members = [

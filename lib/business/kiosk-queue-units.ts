@@ -123,7 +123,7 @@ export function chainHasOtherActiveWorkers(
     const viewerHere = Boolean(item.startedAt);
     const activeCount = item.activeWorkerCount ?? 0;
     if (viewerHere) return activeCount > 1;
-    return activeCount > 0 || item.status === "producing";
+    return activeCount > 0;
   });
 }
 

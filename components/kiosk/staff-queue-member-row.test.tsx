@@ -18,6 +18,7 @@ const memberWithActivity: StaffQueueMember = {
     taskCrmItemKey: null,
     taskDeliveryDate: null,
   },
+  assignedCount: 8,
 };
 
 describe("StaffQueueMemberRow", () => {
@@ -49,5 +50,31 @@ describe("StaffQueueMemberRow", () => {
     );
 
     expect(screen.getByText("Líder")).toBeInTheDocument();
+  });
+
+  it("shows the assign-warn badge on a low unfinished assignment count", () => {
+    renderWithIntl(
+      <StaffQueueMemberRow
+        member={{ ...memberWithActivity, assignedCount: 1 }}
+        href="/queues/c1"
+      />,
+    );
+
+    expect(
+      screen.getByLabelText("Alice: 1 subtarefa(s) atribuída(s)"),
+    ).toHaveTextContent("1");
+  });
+
+  it("hides the assign-warn badge when the assignment count is above the max", () => {
+    renderWithIntl(
+      <StaffQueueMemberRow
+        member={memberWithActivity}
+        href="/queues/c1"
+      />,
+    );
+
+    expect(
+      screen.queryByLabelText(/subtarefa\(s\) atribuída\(s\)/),
+    ).not.toBeInTheDocument();
   });
 });

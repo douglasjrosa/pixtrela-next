@@ -6,6 +6,7 @@ import { canAdjustColaboratorBalance } from "@/lib/auth/permissions";
 import type { BalanceAdjustmentResult } from "@/lib/dashboard/apply-balance-adjustment";
 import { loadColaboratorInsights } from "@/lib/dashboard/load-colaborator-insights";
 import { loadMonthlyRanking } from "@/lib/dashboard/load-monthly-ranking";
+import { monthlyRankingForViewer } from "@/lib/dashboard/ranking-podium";
 import { resolveDefaultColaboratorDocumentId } from "@/lib/dashboard/resolve-default-colaborator";
 import type {
   ColaboratorInsightsData,
@@ -47,7 +48,7 @@ export async function StaffDashboardView({
   onAdjustBalance,
 }: StaffDashboardViewProps) {
   const t = await getTranslations("app");
-  const ranking = await loadMonthlyRanking();
+  const ranking = monthlyRankingForViewer(await loadMonthlyRanking(), role);
 
   const selectedDocumentId = isStaffRole(role)
     ? resolveDefaultColaboratorDocumentId({

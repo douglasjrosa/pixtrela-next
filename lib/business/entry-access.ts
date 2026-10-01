@@ -68,3 +68,36 @@ export function entryDeviceFromMediaQuery(
 ): EntryAccessDevice {
   return matchesMobile ? "mobile" : "computer";
 }
+
+const SOLE_ENTRY_BUTTON_COUNT = 1;
+
+export type DirectEntryStep = "face1n" | "code" | "username";
+
+export function directEntryStep(
+  methods: EntryAccessMethods,
+): DirectEntryStep | null {
+  const steps: DirectEntryStep[] = [];
+  if (methods.face) steps.push("face1n");
+  if (methods.code) steps.push("code");
+  if (methods.username) steps.push("username");
+  if (steps.length !== SOLE_ENTRY_BUTTON_COUNT) return null;
+  return steps[0] ?? null;
+}
+
+export function resolveEntryStep<T extends string>(
+  step: T,
+  methods: EntryAccessMethods,
+): T | DirectEntryStep {
+  const direct = directEntryStep(methods);
+  if (direct && step === "choose") return direct;
+  return step;
+}
+
+export function entryNfcActive(
+  methods: EntryAccessMethods,
+  step: string,
+): boolean {
+  if (!methods.nfc) return false;
+  if (step === "choose") return true;
+  return directEntryStep(methods) === step;
+}

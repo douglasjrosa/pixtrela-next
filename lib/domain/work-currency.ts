@@ -168,17 +168,3 @@ export function shouldCreditDurationCurrency(
 ): boolean {
   return activity.action === "stoped" && activity.subTaskStatus === "finished";
 }
-
-export function shouldCreditCurrency(activity: CompletingActivity): boolean {
-  return shouldCreditDurationCurrency(activity);
-}
-
-/** Legacy dashboard fallback when currencyAwarded was not persisted. */
-export function calculateCurrencyAmount(
-  subTask: { expectedTime: number },
-  currency: WorkCurrencyRate,
-): number {
-  const seconds = Math.max(0, subTask.expectedTime ?? 0);
-  const rate = Math.max(0, currency.currencyPerSecond ?? 0);
-  return seconds * rate;
-}

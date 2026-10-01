@@ -410,13 +410,20 @@ export function KioskPanelClient({
 
   useKioskQueuePoll(refreshVisibleQueue, queuePollPaused);
 
+  const refreshQueueAfterMutation = useCallback((): void => {
+    void refreshVisibleQueue().catch((error) => {
+      rethrowIfNavigationError(error);
+      showKioskErrorToast(t("queueLoadFailed"));
+    });
+  }, [refreshVisibleQueue, t]);
+
   const runBackgroundAction = useCallback(
     (action: () => Promise<void>, onError?: (error: unknown) => void): void => {
       void (async () => {
         try {
           await action();
           setQueueBusy(null);
-          await refreshVisibleQueue();
+          refreshQueueAfterMutation();
         } catch (error) {
           rethrowIfNavigationError(error);
           setOptimisticStart(null);
@@ -426,7 +433,7 @@ export function KioskPanelClient({
         }
       })();
     },
-    [refreshVisibleQueue],
+    [refreshQueueAfterMutation],
   );
 
   const runExitAction = useCallback(
@@ -434,17 +441,18 @@ export function KioskPanelClient({
       void (async () => {
         try {
           await action();
-          await refreshVisibleQueue();
-        } catch (error) {
-          rethrowIfNavigationError(error);
-          onError?.(error);
-        } finally {
           exitFingerprintRef.current = null;
           setQueueBusy(null);
+          refreshQueueAfterMutation();
+        } catch (error) {
+          rethrowIfNavigationError(error);
+          exitFingerprintRef.current = null;
+          setQueueBusy(null);
+          onError?.(error);
         }
       })();
     },
-    [refreshVisibleQueue],
+    [refreshQueueAfterMutation],
   );
 
   const loadMoreSection = useCallback(

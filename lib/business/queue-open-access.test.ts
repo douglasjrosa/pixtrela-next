@@ -36,6 +36,31 @@ describe("canStaffOpenQueue", () => {
     ).toBe(true);
   });
 
+  it("lets manager+ open a manager production queue", () => {
+    const manager = {
+      id: "mgr-2",
+      role: "manager",
+      active: true,
+      blocked: false,
+    };
+    expect(
+      canStaffOpenQueue({
+        actorRole: "admin",
+        actorId: "admin-1",
+        target: manager,
+        leaderTeamColaboratorIds: new Set(),
+      }),
+    ).toBe(true);
+    expect(
+      canStaffOpenQueue({
+        actorRole: "manager",
+        actorId: "mgr-1",
+        target: manager,
+        leaderTeamColaboratorIds: new Set(),
+      }),
+    ).toBe(true);
+  });
+
   it("lets manager+ open a leader production queue", () => {
     expect(
       canStaffOpenQueue({
@@ -100,6 +125,22 @@ describe("canStaffOpenQueue", () => {
         actorId: "lead-1",
         target: colaborator,
         leaderTeamColaboratorIds: new Set(["c-other"]),
+      }),
+    ).toBe(false);
+  });
+
+  it("does not let a leader open a manager queue", () => {
+    expect(
+      canStaffOpenQueue({
+        actorRole: "leader",
+        actorId: "lead-1",
+        target: {
+          id: "mgr-1",
+          role: "manager",
+          active: true,
+          blocked: false,
+        },
+        leaderTeamColaboratorIds: new Set(["mgr-1"]),
       }),
     ).toBe(false);
   });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  activeUserIdsBySubTaskFromSessions,
   countActiveWorkersFromActivities,
   hasOpenStartedSessionFromActions,
   isSubTaskAtWorkerCapacity,
@@ -55,6 +56,27 @@ describe("countActiveWorkersFromActivities", () => {
     ]);
 
     expect(count).toBe(0);
+  });
+});
+
+describe("activeUserIdsBySubTaskFromSessions", () => {
+  it("counts only people in an open session", () => {
+    const presence = activeUserIdsBySubTaskFromSessions([
+      { subTaskId: "vigas", userId: "cassio" },
+      { subTaskId: "tabuas", userId: "cassio" },
+    ]);
+
+    expect(presence.get("vigas")).toEqual(["cassio"]);
+    expect(presence.get("tabuas")).toEqual(["cassio"]);
+  });
+
+  it("does not invent a worker who is absent from the session list", () => {
+    const presence = activeUserIdsBySubTaskFromSessions([
+      { subTaskId: "tabuas", userId: "cassio" },
+    ]);
+
+    expect(presence.get("tabuas")).toEqual(["cassio"]);
+    expect([...presence.values()].flat()).not.toContain("reuly");
   });
 });
 

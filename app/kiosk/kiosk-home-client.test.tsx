@@ -6,6 +6,7 @@ import { renderWithIntl } from "@/test/test-utils";
 import { KioskHomeClient } from "@/app/kiosk/kiosk-home-client";
 import { KioskIdleLockIndicator } from "@/components/kiosk/kiosk-idle-lock-indicator";
 import { KioskIdleProvider } from "@/components/kiosk/kiosk-idle-provider";
+import type { EntryAccessByDevice } from "@/lib/business/entry-access";
 
 vi.mock("@/components/kiosk/kiosk-face-1n-capture", () => ({
   KioskFace1nCapture: ({
@@ -76,10 +77,10 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/kiosk",
 }));
 
-function renderHome() {
+function renderHome(accessSettings?: EntryAccessByDevice) {
   return renderWithIntl(
     <KioskIdleProvider sessionIdleMs={60_000}>
-      <KioskHomeClient />
+      <KioskHomeClient accessSettings={accessSettings} />
       <KioskIdleLockIndicator />
     </KioskIdleProvider>,
   );
@@ -108,6 +109,43 @@ describe("KioskHomeClient", () => {
     expect(
       screen.getByRole("button", { name: "Código e senha" }),
     ).toBeInTheDocument();
+  });
+
+  it("opens code and password when that is the only button", () => {
+    const codeAndNfc = {
+      username: false,
+      code: true,
+      face: false,
+      nfc: true,
+    };
+    renderHome({ computer: codeAndNfc, mobile: codeAndNfc });
+    expect(
+      screen.queryByRole("button", { name: "Código e senha" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Voltar ao início" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Código")).toBeInTheDocument();
+    expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+    expect(
+      screen.getByText("Ou apenas aproxime sua Tag NFC."),
+    ).toBeInTheDocument();
+  });
+
+  it("opens face capture when that is the only button", () => {
+    const faceOnly = {
+      username: false,
+      code: false,
+      face: true,
+      nfc: false,
+    };
+    renderHome({ computer: faceOnly, mobile: faceOnly });
+    expect(
+      screen.getByRole("heading", { name: "Quem é você?" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Reconhecimento facial" }),
+    ).not.toBeInTheDocument();
   });
 
   it("opens camera and navigates on unique match", async () => {

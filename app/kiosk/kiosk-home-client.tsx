@@ -14,7 +14,10 @@ import { KioskFaceVerify } from "@/components/kiosk/kiosk-face-verify";
 import { KioskHomeChooser } from "@/components/kiosk/kiosk-home-chooser";
 import { useKioskIdleContext } from "@/components/kiosk/kiosk-idle-provider";
 import {
+  directEntryStep,
+  entryNfcActive,
   pickEntryAccessMethods,
+  resolveEntryStep,
   type EntryAccessByDevice,
   type EntryAccessMethods,
 } from "@/lib/business/entry-access";
@@ -124,8 +127,13 @@ export function KioskHomeClient({
   }, [methods.face]);
 
   useEffect(() => {
-    if (!methods.nfc) return;
-    if (step !== "choose") return;
+    const access = {
+      username: methods.username,
+      code: methods.code,
+      face: methods.face,
+      nfc: methods.nfc,
+    };
+    if (!entryNfcActive(access, resolveEntryStep(step, access))) return;
 
     let cancelled = false;
     const identifyingRef = { current: false };
@@ -167,6 +175,9 @@ export function KioskHomeClient({
       stopWatcher?.();
     };
   }, [
+    methods.username,
+    methods.code,
+    methods.face,
     methods.nfc,
     step,
     t,
@@ -277,7 +288,11 @@ export function KioskHomeClient({
     navigateWithWelcome(result.path, result.welcome);
   }
 
-  if (methods.username && step === "username") {
+  const visibleStep = resolveEntryStep(step, methods);
+  const nfcListening = entryNfcActive(methods, visibleStep);
+  const showChooserBack = directEntryStep(methods) === null;
+
+  if (methods.username && visibleStep === "username") {
     return (
       <div className="flex flex-col gap-4">
         <LoginForm />
@@ -289,21 +304,28 @@ export function KioskHomeClient({
             {tAuth("forgotPassword")}
           </Link>
         </div>
-        <div className="text-center">
-          <Button
-            type="button"
-            variant="link"
-            className="h-auto p-0"
-            onClick={goHome}
-          >
-            {t("homeBackToChooser")}
-          </Button>
-        </div>
+        {showChooserBack ? (
+          <div className="text-center">
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto p-0"
+              onClick={goHome}
+            >
+              {t("homeBackToChooser")}
+            </Button>
+          </div>
+        ) : null}
+        {nfcListening ? (
+          <p className="text-center text-sm leading-snug text-muted-foreground">
+            {t("homeChooserNfcFooter")}
+          </p>
+        ) : null}
       </div>
     );
   }
 
-  if (methods.face && step === "face1to1" && selectedMember) {
+  if (methods.face && visibleStep === "face1to1" && selectedMember) {
     return (
       <KioskFaceVerify
         colaboratorName={selectedMember.name}
@@ -316,7 +338,7 @@ export function KioskHomeClient({
     );
   }
 
-  if (methods.face && step === "ambiguous") {
+  if (methods.face && visibleStep === "ambiguous") {
     return (
       <KioskFaceAmbiguousList
         candidates={candidates}
@@ -328,18 +350,26 @@ export function KioskHomeClient({
     );
   }
 
-  if (methods.face && step === "face1n") {
+  if (methods.face && visibleStep === "face1n") {
     return (
-      <KioskFace1nCapture
-        disabled={pending}
-        unidentifiedMessage={unidentifiedMessage}
-        onProbeReady={(descriptor) => void handleProbeReady(descriptor)}
-        onCancel={goHome}
-      />
+      <>
+        <KioskFace1nCapture
+          disabled={pending}
+          unidentifiedMessage={unidentifiedMessage}
+          onProbeReady={(descriptor) => void handleProbeReady(descriptor)}
+          onCancel={goHome}
+          showCancel={showChooserBack}
+        />
+        {nfcListening ? (
+          <p className="text-center text-sm leading-snug text-muted-foreground">
+            {t("homeChooserNfcFooter")}
+          </p>
+        ) : null}
+      </>
     );
   }
 
-  if (methods.code && step === "code") {
+  if (methods.code && visibleStep === "code") {
     return (
       <div className="flex flex-col gap-6">
         {errorKey ? (
@@ -348,16 +378,23 @@ export function KioskHomeClient({
           </p>
         ) : null}
         <KioskColaboratorForm onSubmit={handleSubmit} pending={pending} />
-        <div className="text-center">
-          <Button
-            type="button"
-            variant="link"
-            className="h-auto p-0"
-            onClick={goHome}
-          >
-            {t("homeBackToChooser")}
-          </Button>
-        </div>
+        {showChooserBack ? (
+          <div className="text-center">
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto p-0"
+              onClick={goHome}
+            >
+              {t("homeBackToChooser")}
+            </Button>
+          </div>
+        ) : null}
+        {nfcListening ? (
+          <p className="text-center text-sm leading-snug text-muted-foreground">
+            {t("homeChooserNfcFooter")}
+          </p>
+        ) : null}
       </div>
     );
   }

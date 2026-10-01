@@ -33,7 +33,7 @@ import {
 } from "@/lib/repos/balances";
 import { resolvePaymentCurrencyAt } from "@/lib/repos/payment-currency";
 import { scheduleBoardInvalidate } from "@/lib/realtime/publish-board-invalidate";
-import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
+import { scheduleTaskSubTaskSync } from "@/lib/repos/schedule-task-sync";
 import type { SubTaskWithAssignees } from "@/lib/repos/tasks";
 
 const OPEN_STATUS = "open";
@@ -171,8 +171,8 @@ async function markMembersProducing(
       .update(subTasks)
       .set({ status: PRODUCING_STATUS, updatedAt: timestamp })
       .where(inArray(subTasks.id, [...memberIds]));
-    await runTaskSubTaskSyncRoutine(taskId, tx as unknown as Db, timestamp);
   });
+  await scheduleTaskSubTaskSync(taskId, timestamp);
 }
 
 export async function listOpenGroupRunsByHead(
@@ -456,7 +456,6 @@ async function pauseDurationGroupRun(
     .where(eq(openSessions.chainRunId, run.id));
   const memberIds = [...new Set(sessions.map((row) => row.subTaskId))];
   await db.transaction(async (tx) => {
-    const txDb = tx as unknown as Db;
     if (memberIds.length > 0) {
       await tx
         .update(subTasks)
@@ -465,8 +464,8 @@ async function pauseDurationGroupRun(
     }
     await tx.delete(openSessions).where(eq(openSessions.chainRunId, run.id));
     await tx.delete(chainRuns).where(eq(chainRuns.id, run.id));
-    await runTaskSubTaskSyncRoutine(run.taskId, txDb, timestamp);
   });
+  await scheduleTaskSubTaskSync(run.taskId, timestamp);
 }
 
 async function closeGroupRun(
@@ -618,8 +617,8 @@ async function closeGroupRun(
     }
     await tx.delete(openSessions).where(eq(openSessions.chainRunId, run.id));
     await tx.delete(chainRuns).where(eq(chainRuns.id, run.id));
-    await runTaskSubTaskSyncRoutine(run.taskId, txDb, endedAt);
   });
+  await scheduleTaskSubTaskSync(run.taskId, endedAt);
   scheduleBoardInvalidate();
 }
 

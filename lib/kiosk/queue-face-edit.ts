@@ -1,3 +1,5 @@
+import { isQueueProfileRole } from "@/lib/business/queue-open-access";
+
 /** Totem staff queue: who may open the facial photo form. */
 export function showQueueFaceEditForm(
   staffUserId: string | undefined,
@@ -7,5 +9,6 @@ export function showQueueFaceEditForm(
 ): boolean {
   if (!allowFaceEdit || !staffUserId) return false;
   if (staffUserId === queueUserId) return true;
-  return targetRole === "colaborator";
+  if (!targetRole) return false;
+  return isQueueProfileRole(targetRole);
 }

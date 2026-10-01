@@ -3,7 +3,10 @@
 import { auth } from "@/auth";
 import { storeMedia } from "@/lib/media/store-media";
 import { canEditOtherPersonCredentialsOnKiosk } from "@/lib/auth/kiosk-credentials-access";
-import { assertKioskStaffActor } from "@/lib/business/kiosk-staff-access";
+import {
+  assertKioskStaffActor,
+  assertKioskStaffCanOpenQueue,
+} from "@/lib/business/kiosk-staff-access";
 import { assertStaffColaboratorEditAccess } from "@/lib/kiosk/staff-colaborator-edit-access";
 import { assertStaffCanManageColaborator } from "@/lib/repos/kiosk";
 import { insertMediaAsset } from "@/lib/repos/media";
@@ -191,7 +194,7 @@ export async function saveKioskColaboratorFacePhoto(
     if (staffUserId === colaboratorDocumentId) {
       await assertKioskStaffActor(staffUserId);
     } else {
-      await assertStaffColaboratorEditAccess(staffUserId, colaboratorDocumentId);
+      await assertKioskStaffCanOpenQueue(staffUserId, colaboratorDocumentId);
     }
     const facePhotoUrl = await storeFacePhotoForColaborator(
       colaboratorDocumentId,

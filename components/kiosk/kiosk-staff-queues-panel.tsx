@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { APP_LIST_PAGE_SHELL_CLASS } from "@/components/layout/app-page-layout";
+import { DEFAULT_ASSIGN_WARN_MAX } from "@/lib/business/assign-warn-max";
 import { appQueueColaboratorPath } from "@/lib/business/app-queues-paths";
 import { staffQueueColaboratorPath } from "@/lib/business/kiosk-staff-paths";
 import type { StaffQueueTeam } from "@/lib/kiosk/load-staff-queues-grouped";
@@ -18,6 +19,7 @@ export interface KioskStaffQueuesPanelProps {
   colaboratorLinkTarget?: StaffQueuesColaboratorLinkTarget;
   /** Required when `colaboratorLinkTarget` is `"kiosk"` (default). */
   userId?: string;
+  assignWarnMax?: number;
 }
 
 function resolveColaboratorHref(
@@ -39,6 +41,7 @@ export function KioskStaffQueuesPanel({
   userId,
   teams,
   colaboratorLinkTarget = "kiosk",
+  assignWarnMax = DEFAULT_ASSIGN_WARN_MAX,
 }: KioskStaffQueuesPanelProps) {
   const t = useTranslations("kiosk");
 
@@ -73,6 +76,7 @@ export function KioskStaffQueuesPanel({
                 >
                   <StaffQueueMemberRow
                     member={member}
+                    assignWarnMax={assignWarnMax}
                     href={resolveColaboratorHref(
                       colaboratorLinkTarget,
                       userId,

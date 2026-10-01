@@ -26,6 +26,24 @@ function isColaboratorActiveFromSortedActivities(
   return hasOpenStartedSessionFromActions(sorted.map((row) => row.action));
 }
 
+export type OpenSessionPresence = {
+  subTaskId: string;
+  userId: string;
+};
+
+/** Live queue presence. A dangling started activity is not a person inside. */
+export function activeUserIdsBySubTaskFromSessions(
+  sessions: readonly OpenSessionPresence[],
+): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  for (const session of sessions) {
+    const ids = map.get(session.subTaskId) ?? [];
+    if (ids.includes(session.userId)) continue;
+    map.set(session.subTaskId, [...ids, session.userId]);
+  }
+  return map;
+}
+
 export function listActiveColaboratorIdsFromActivities(
   activityRows: ActivityTimeRow[],
 ): string[] {

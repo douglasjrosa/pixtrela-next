@@ -68,6 +68,35 @@ describe("LoginEntryClient", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens login and password when that is the only button", async () => {
+    isNfcReadSupported.mockReturnValue(true);
+    const usernameAndNfc = {
+      username: true,
+      code: false,
+      face: false,
+      nfc: true,
+    };
+    renderWithIntl(
+      <LoginEntryClient
+        accessSettings={{ computer: usernameAndNfc, mobile: usernameAndNfc }}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Login e senha" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Voltar ao início" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Login")).toBeInTheDocument();
+    expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+    expect(
+      screen.getByText("Ou apenas aproxime sua Tag NFC."),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(watchNfcSerialNumbers).toHaveBeenCalled();
+    });
+  });
+
   it("opens classic username form from the chooser", async () => {
     const user = userEvent.setup();
     renderWithIntl(<LoginEntryClient />);

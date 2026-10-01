@@ -1,7 +1,16 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-import { mediaAssets, teamMembers, teams, users } from "@/drizzle/schema";
+import {
+  mediaAssets,
+  subTaskAssignees,
+  subTasks,
+  tasks,
+  teamMembers,
+  teams,
+  users,
+} from "@/drizzle/schema";
+import { countAssignedSubTasksByColaborator } from "@/lib/business/assign-warn";
 import type { KioskStaffRole } from "@/lib/business/kiosk-staff-access";
 import { getDb, type Db } from "@/lib/db/client";
 import { toBrowserMediaUrl } from "@/lib/media/browser-media-url";
@@ -24,8 +33,12 @@ export type StaffQueueMember = {
   avatarUrl?: string | null;
   facePhotoUrl?: string | null;
   lastActivity: StaffQueueMemberLastActivity | null;
+  /** Unfinished assigned sub-tasks on active tasks (board warn badge). */
+  assignedCount: number;
   isLeader?: boolean;
 };
+
+const FINISHED_SUBTASK_STATUS = "finished";
 
 const memberFaceMedia = alias(mediaAssets, "member_face_media");
 const memberAvatarMedia = alias(mediaAssets, "member_avatar_media");
@@ -73,11 +86,11 @@ export async function loadStaffQueuesGrouped(
       ),
     ),
   ];
-  const latestActivities = await loadLatestActivitiesByColaboratorIds(
-    colaboratorIds,
-    db,
-  );
-  const openLabels = await listStaffOpenSessionLabels(colaboratorIds, db);
+  const [latestActivities, openLabels, assignedCounts] = await Promise.all([
+    loadLatestActivitiesByColaboratorIds(colaboratorIds, db),
+    listStaffOpenSessionLabels(colaboratorIds, db),
+    loadAssignedCounts(colaboratorIds, db),
+  ]);
 
   return {
     teams: teamRows.map((team) => ({
@@ -87,6 +100,7 @@ export async function loadStaffQueuesGrouped(
         ...member,
         lastActivity: openSessionActivity(openLabels.get(member.documentId))
           ?? toMemberLastActivity(latestActivities.get(member.documentId)),
+        assignedCount: assignedCounts[member.documentId] ?? 0,
       })),
     })),
   };
@@ -146,7 +160,39 @@ function toQueueLeaderMember(
     avatarUrl: toBrowserMediaUrl(team.leaderAvatarUrl),
     facePhotoUrl: toBrowserMediaUrl(team.leaderFacePhotoUrl),
     lastActivity: null,
+    assignedCount: 0,
   };
+}
+
+async function loadAssignedCounts(
+  colaboratorIds: string[],
+  db: Db,
+): Promise<Record<string, number>> {
+  if (colaboratorIds.length === 0) return {};
+  const rows = await db
+    .select({
+      subTaskId: subTaskAssignees.subTaskId,
+      userId: subTaskAssignees.userId,
+    })
+    .from(subTaskAssignees)
+    .innerJoin(subTasks, eq(subTaskAssignees.subTaskId, subTasks.id))
+    .innerJoin(tasks, eq(subTasks.taskId, tasks.id))
+    .where(
+      and(
+        inArray(subTaskAssignees.userId, colaboratorIds),
+        eq(tasks.active, true),
+        ne(subTasks.status, FINISHED_SUBTASK_STATUS),
+      ),
+    );
+  const bySubTask = new Map<string, string[]>();
+  for (const row of rows) {
+    const list = bySubTask.get(row.subTaskId) ?? [];
+    list.push(row.userId);
+    bySubTask.set(row.subTaskId, list);
+  }
+  return countAssignedSubTasksByColaborator(
+    [...bySubTask.values()].map((assignedToIds) => ({ assignedToIds })),
+  );
 }
 
 async function loadStaffTeams(
@@ -217,6 +263,7 @@ async function loadColaboratorsByTeam(
       avatarUrl: toBrowserMediaUrl(row.avatarUrl),
       facePhotoUrl: toBrowserMediaUrl(row.facePhotoUrl),
       lastActivity: null,
+      assignedCount: 0,
     });
     membersByTeam.set(row.teamId, list);
   }

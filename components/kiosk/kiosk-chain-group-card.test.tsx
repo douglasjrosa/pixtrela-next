@@ -181,6 +181,40 @@ describe("KioskChainGroupCard", () => {
     expect(onConfirmChainStop).not.toHaveBeenCalled();
   });
 
+  it("opens the duration wizard when the viewer is the only open session", async () => {
+    const user = userEvent.setup();
+    const onConfirmChainStop = vi.fn();
+    const members = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Cortar",
+        status: "producing",
+        startedAt: "2026-09-29T11:35:23.000Z",
+        activeWorkerCount: 1,
+      }),
+      kioskSubTask({
+        documentId: "b",
+        name: "Embalar",
+        index: 1,
+        linkedToPrevious: true,
+        status: "producing",
+        startedAt: "2026-09-29T11:35:23.000Z",
+        activeWorkerCount: 1,
+      }),
+    ];
+    renderWithIntl(
+      <KioskChainGroupCard
+        unit={activeGroupProps(members)}
+        onConfirmChainStop={onConfirmChainStop}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Parar" }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(onConfirmChainStop).not.toHaveBeenCalled();
+  });
+
   it("starts the chain with one button at the bottom", async () => {
     const user = userEvent.setup();
     const onStartChain = vi.fn();

@@ -16,7 +16,10 @@ import { KioskHomeChooser } from "@/components/kiosk/kiosk-home-chooser";
 import type { Role } from "@/lib/auth/nav";
 import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import {
+  directEntryStep,
+  entryNfcActive,
   pickEntryAccessMethods,
+  resolveEntryStep,
   type EntryAccessByDevice,
   type EntryAccessMethods,
 } from "@/lib/business/entry-access";
@@ -178,8 +181,13 @@ export function LoginEntryClient({
   }, [methods.face]);
 
   useEffect(() => {
-    if (!methods.nfc) return;
-    if (step !== "choose") return;
+    const access = {
+      username: methods.username,
+      code: methods.code,
+      face: methods.face,
+      nfc: methods.nfc,
+    };
+    if (!entryNfcActive(access, resolveEntryStep(step, access))) return;
 
     let cancelled = false;
     const identifyingRef = { current: false };
@@ -222,7 +230,16 @@ export function LoginEntryClient({
       cancelled = true;
       stopWatcher?.();
     };
-  }, [methods.nfc, step, t, clearNoneMessageTimer, finishWithSession]);
+  }, [
+    methods.username,
+    methods.code,
+    methods.face,
+    methods.nfc,
+    step,
+    t,
+    clearNoneMessageTimer,
+    finishWithSession,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -328,7 +345,11 @@ export function LoginEntryClient({
     });
   }
 
-  if (step === "username" && methods.username) {
+  const visibleStep = resolveEntryStep(step, methods);
+  const nfcListening = entryNfcActive(methods, visibleStep);
+  const showChooserBack = directEntryStep(methods) === null;
+
+  if (visibleStep === "username" && methods.username) {
     return (
       <div className="flex flex-col gap-4">
         <LoginForm />
@@ -340,21 +361,28 @@ export function LoginEntryClient({
             {t("forgotPassword")}
           </Link>
         </div>
-        <div className="text-center">
-          <Button
-            type="button"
-            variant="link"
-            className="h-auto p-0"
-            onClick={goHome}
-          >
-            {t("homeBackToChooser")}
-          </Button>
-        </div>
+        {showChooserBack ? (
+          <div className="text-center">
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto p-0"
+              onClick={goHome}
+            >
+              {t("homeBackToChooser")}
+            </Button>
+          </div>
+        ) : null}
+        {nfcListening ? (
+          <p className="text-center text-sm leading-snug text-muted-foreground">
+            {t("homeChooserNfcFooter")}
+          </p>
+        ) : null}
       </div>
     );
   }
 
-  if (methods.face && step === "face1to1" && selectedMember) {
+  if (methods.face && visibleStep === "face1to1" && selectedMember) {
     return (
       <KioskFaceVerify
         colaboratorName={selectedMember.name}
@@ -367,7 +395,7 @@ export function LoginEntryClient({
     );
   }
 
-  if (methods.face && step === "ambiguous") {
+  if (methods.face && visibleStep === "ambiguous") {
     return (
       <KioskFaceAmbiguousList
         candidates={candidates}
@@ -379,18 +407,26 @@ export function LoginEntryClient({
     );
   }
 
-  if (methods.face && step === "face1n") {
+  if (methods.face && visibleStep === "face1n") {
     return (
-      <KioskFace1nCapture
-        disabled={pending}
-        unidentifiedMessage={unidentifiedMessage}
-        onProbeReady={(descriptor) => void handleProbeReady(descriptor)}
-        onCancel={goHome}
-      />
+      <>
+        <KioskFace1nCapture
+          disabled={pending}
+          unidentifiedMessage={unidentifiedMessage}
+          onProbeReady={(descriptor) => void handleProbeReady(descriptor)}
+          onCancel={goHome}
+          showCancel={showChooserBack}
+        />
+        {nfcListening ? (
+          <p className="text-center text-sm leading-snug text-muted-foreground">
+            {t("homeChooserNfcFooter")}
+          </p>
+        ) : null}
+      </>
     );
   }
 
-  if (methods.code && step === "code") {
+  if (methods.code && visibleStep === "code") {
     return (
       <div className="flex flex-col gap-6">
         {errorKey ? (
@@ -403,16 +439,23 @@ export function LoginEntryClient({
           pending={pending}
           messagesNamespace="auth"
         />
-        <div className="text-center">
-          <Button
-            type="button"
-            variant="link"
-            className="h-auto p-0"
-            onClick={goHome}
-          >
-            {t("homeBackToChooser")}
-          </Button>
-        </div>
+        {showChooserBack ? (
+          <div className="text-center">
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto p-0"
+              onClick={goHome}
+            >
+              {t("homeBackToChooser")}
+            </Button>
+          </div>
+        ) : null}
+        {nfcListening ? (
+          <p className="text-center text-sm leading-snug text-muted-foreground">
+            {t("homeChooserNfcFooter")}
+          </p>
+        ) : null}
       </div>
     );
   }

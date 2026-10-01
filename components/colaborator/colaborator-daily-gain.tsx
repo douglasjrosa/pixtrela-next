@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 
+import { formatCompactDecimalPtBr } from "@/lib/format/decimal";
 import type {
   ColaboratorInsightsData,
   CurrencyRanking,
@@ -47,7 +48,7 @@ export function ColaboratorDailyGain({
         {t("todayGainTitle")}
       </h2>
       <p className="text-4xl font-bold tabular-nums text-foreground">
-        {todayGain}
+        {formatCompactDecimalPtBr(todayGain)}
       </p>
       <p className="text-sm text-muted-foreground">{currencyLabel}</p>
     </section>

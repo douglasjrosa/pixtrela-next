@@ -3,6 +3,7 @@ import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { KioskStaffQueuesPanel } from "@/components/kiosk/kiosk-staff-queues-panel";
 import type { KioskStaffRole } from "@/lib/business/kiosk-staff-access";
 import { loadStaffQueuesGrouped } from "@/lib/kiosk/load-staff-queues-grouped";
+import { loadTaskAutomationSetting } from "@/lib/settings/load-task-automation";
 import type { Role } from "@/lib/auth/nav";
 import { canViewQueues } from "@/lib/auth/permissions";
 
@@ -16,9 +17,16 @@ export default async function AppQueuesPage() {
   }
 
   const staffRole = role as KioskStaffRole;
-  const { teams } = await loadStaffQueuesGrouped(userId, staffRole);
+  const [{ teams }, automation] = await Promise.all([
+    loadStaffQueuesGrouped(userId, staffRole),
+    loadTaskAutomationSetting(),
+  ]);
 
   return (
-    <KioskStaffQueuesPanel teams={teams} colaboratorLinkTarget="app" />
+    <KioskStaffQueuesPanel
+      teams={teams}
+      colaboratorLinkTarget="app"
+      assignWarnMax={automation.assignWarnMax}
+    />
   );
 }

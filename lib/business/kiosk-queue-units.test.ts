@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildKioskQueueUnits, splitQueueUnitsBySection } from "./kiosk-queue-units";
+import {
+  buildKioskQueueUnits,
+  chainHasOtherActiveWorkers,
+  splitQueueUnitsBySection,
+} from "./kiosk-queue-units";
 import type { KioskSubTask } from "./subtask-queue";
 
 function subTask(
@@ -29,6 +33,47 @@ function subTask(
     ...partial,
   };
 }
+
+describe("chainHasOtherActiveWorkers", () => {
+  it("ignores a producing member who has no open session", () => {
+    const members = [
+      subTask({
+        documentId: "vigas",
+        name: "Vigas",
+        index: 0,
+        status: "producing",
+        startedAt: "2026-09-29T11:35:23.000Z",
+        activeWorkerCount: 1,
+      }),
+      subTask({
+        documentId: "tabuas",
+        name: "Tabuas",
+        index: 1,
+        linkedToPrevious: true,
+        status: "producing",
+        startedAt: null,
+        activeWorkerCount: 0,
+      }),
+    ];
+
+    expect(chainHasOtherActiveWorkers(members)).toBe(false);
+  });
+
+  it("sees a colleague when the open-session count is above the viewer", () => {
+    const members = [
+      subTask({
+        documentId: "vigas",
+        name: "Vigas",
+        index: 0,
+        status: "producing",
+        startedAt: "2026-09-29T11:35:23.000Z",
+        activeWorkerCount: 2,
+      }),
+    ];
+
+    expect(chainHasOtherActiveWorkers(members)).toBe(true);
+  });
+});
 
 describe("buildKioskQueueUnits", () => {
   const chained = [

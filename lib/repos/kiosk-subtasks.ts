@@ -40,12 +40,10 @@ import {
 import { buildKioskPeerAssignees } from "@/lib/business/kiosk-peer-assignees";
 import {
   buildFinishedAtBySubTaskId,
-  buildOpenStartedAtBySubTaskId,
   buildViewerStopStatsBySubTaskId,
   filterKioskVisibleSubTasks,
   mapSubTaskDbRow,
   sumStoppedQtyBySubTaskId,
-  type SessionActivityRef,
   type SubTaskDbRow,
 } from "@/lib/business/kiosk-subtask-map";
 import {
@@ -61,9 +59,9 @@ import {
 } from "@/lib/business/kiosk-stop";
 import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import {
+  activeUserIdsBySubTaskFromSessions,
   hasOpenStartedSessionFromActions,
   isSubTaskAtWorkerCapacity,
-  listActiveColaboratorIdsFromActivities,
   shouldHideSubTaskFromKioskQueue,
 } from "@/lib/business/subtask-active-workers";
 import type { ActivityTimeRow } from "@/lib/business/task-time-spent";
@@ -94,6 +92,7 @@ import {
   fetchUserNamesByIds,
   runTaskSubTaskSyncRoutine,
 } from "@/lib/repos/subtask-lifecycle";
+import { scheduleTaskSubTaskSync } from "@/lib/repos/schedule-task-sync";
 import {
   assignFlagsToSubTask,
   listAssignedFlagsForSubTasks,
@@ -328,37 +327,7 @@ async function fetchOpenStartedSubTaskIdsForColaborator(
   colaboratorId: string,
   db: Db,
 ): Promise<string[]> {
-  const rows = await db
-    .select({
-      subTaskId: activities.subTaskId,
-      action: activities.action,
-      timestamp: activities.timestamp,
-    })
-    .from(activities)
-    .where(
-      and(
-        ACTIVE_ACTIVITY,
-        eq(activities.colaboratorId, colaboratorId),
-        inArray(activities.action, ["started", "stoped"]),
-      ),
-    )
-    .orderBy(asc(activities.timestamp));
-
-  const bySubTask = new Map<string, Array<"started" | "stoped">>();
-  for (const row of rows) {
-    const list = bySubTask.get(row.subTaskId) ?? [];
-    list.push(row.action);
-    bySubTask.set(row.subTaskId, list);
-  }
-
-  const openIds: string[] = [];
-  for (const [subTaskId, actions] of bySubTask) {
-    if (hasOpenStartedSessionFromActions(actions)) {
-      openIds.push(subTaskId);
-    }
-  }
-  const sessionIds = await listOpenSubTaskIdsForUser(colaboratorId, db);
-  return [...new Set([...openIds, ...sessionIds])];
+  return listOpenSubTaskIdsForUser(colaboratorId, db);
 }
 
 async function fetchSubTaskRowsByIds(subTaskIds: string[], db: Db) {
@@ -423,7 +392,6 @@ async function loadActivityEnrichment(
     )
     .orderBy(asc(activities.timestamp));
 
-  const viewerActivities: SessionActivityRef[] = [];
   const viewerStopActivities: Array<{
     subTaskId: string;
     action: string;
@@ -435,15 +403,9 @@ async function loadActivityEnrichment(
     qty: number;
     timestamp: string;
   }> = [];
-  const activitiesBySubTask = new Map<string, ActivityTimeRow[]>();
 
   for (const row of allActivities) {
     if (row.colaboratorId === colaboratorId) {
-      viewerActivities.push({
-        subTaskId: row.subTaskId,
-        action: row.action,
-        timestamp: row.timestamp.toISOString(),
-      });
       viewerStopActivities.push({
         subTaskId: row.subTaskId,
         action: row.action,
@@ -458,37 +420,16 @@ async function loadActivityEnrichment(
         timestamp: row.timestamp.toISOString(),
       });
     }
-    const list = activitiesBySubTask.get(row.subTaskId) ?? [];
-    list.push({
-      action: row.action,
-      timestamp: new Date(row.timestamp),
-      colaboratorId: row.colaboratorId,
-    });
-    activitiesBySubTask.set(row.subTaskId, list);
   }
 
-  const openStartedAt = buildOpenStartedAtBySubTaskId(viewerActivities);
   const viewerStopStats = buildViewerStopStatsBySubTaskId(viewerStopActivities);
-  const activeColaboratorIdsBySubTaskId = new Map<string, string[]>();
-  for (const subTaskId of subTaskIds) {
-    const activeIds = listActiveColaboratorIdsFromActivities(
-      activitiesBySubTask.get(subTaskId) ?? [],
-    );
-    activeColaboratorIdsBySubTaskId.set(subTaskId, activeIds);
-  }
-
   const liveSessions = await listOpenSessionLive(subTaskIds, db);
+  const activeColaboratorIdsBySubTaskId =
+    activeUserIdsBySubTaskFromSessions(liveSessions);
+  const openStartedAt = new Map<string, string>();
   for (const session of liveSessions) {
-    const activeIds = activeColaboratorIdsBySubTaskId.get(session.subTaskId) ?? [];
-    if (!activeIds.includes(session.userId)) {
-      activeColaboratorIdsBySubTaskId.set(session.subTaskId, [
-        ...activeIds,
-        session.userId,
-      ]);
-    }
-    if (session.userId === colaboratorId) {
-      openStartedAt.set(session.subTaskId, session.startedAt.toISOString());
-    }
+    if (session.userId !== colaboratorId) continue;
+    openStartedAt.set(session.subTaskId, session.startedAt.toISOString());
   }
 
   return {
@@ -1272,31 +1213,7 @@ async function fetchActiveColaboratorIdsForSubTask(
   subTaskId: string,
   db: Db,
 ): Promise<string[]> {
-  const rows = await db
-    .select({
-      colaboratorId: activities.colaboratorId,
-      action: activities.action,
-      timestamp: activities.timestamp,
-    })
-    .from(activities)
-    .where(
-      and(
-        ACTIVE_ACTIVITY,
-        eq(activities.subTaskId, subTaskId),
-        inArray(activities.action, ["started", "stoped"]),
-      ),
-    )
-    .orderBy(asc(activities.timestamp));
-
-  const activityRows: ActivityTimeRow[] = rows.map((row) => ({
-    colaboratorId: row.colaboratorId,
-    action: row.action,
-    timestamp: new Date(row.timestamp),
-  }));
-
-  const fromActivities = listActiveColaboratorIdsFromActivities(activityRows);
-  const fromSessions = await listOpenUserIdsForSubTask(subTaskId, db);
-  return [...new Set([...fromActivities, ...fromSessions])];
+  return listOpenUserIdsForSubTask(subTaskId, db);
 }
 
 export async function startSubTask(
@@ -1368,9 +1285,8 @@ export async function startSubTask(
       .update(subTasks)
       .set({ status: PRODUCING_STATUS, updatedAt: timestamp })
       .where(eq(subTasks.id, subTaskId));
-
-    await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, timestamp);
   });
+  await scheduleTaskSubTaskSync(sub.taskId, timestamp);
   scheduleBoardInvalidate();
 }
 
@@ -1664,7 +1580,6 @@ export async function stopSubTask(
 
     activityId = created!.id;
 
-    await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, timestamp);
     await releaseProducerFlagsWhenConsumersFinished(
       sub.taskId,
       tx as unknown as Db,
@@ -1688,6 +1603,7 @@ export async function stopSubTask(
       );
     }
   });
+  await scheduleTaskSubTaskSync(sub.taskId, timestamp);
   scheduleBoardInvalidate();
 
   const stillOpen = chainRunId

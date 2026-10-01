@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { formatCompactDecimalPtBr } from "@/lib/format/decimal";
 import { formatDatePtBr } from "@/lib/format/datetime";
 import { TABLE_HEAD_CELL_CLASS } from "@/lib/ui/table-head-styles";
 import { cn } from "@/lib/utils";
@@ -65,7 +66,9 @@ export function DailyIncomeTable({
                     .map((day) => (
                       <tr key={day.date} className="border-b">
                         <td className="py-2 pr-4">{formatDatePtBr(day.date)}</td>
-                        <td className="py-2">{day.amount}</td>
+                        <td className="py-2">
+                          {formatCompactDecimalPtBr(day.amount)}
+                        </td>
                       </tr>
                     ))}
                 </tbody>

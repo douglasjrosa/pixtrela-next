@@ -24,6 +24,7 @@ export interface KioskFace1nCaptureProps {
   onCancel: () => void;
   disabled?: boolean;
   unidentifiedMessage?: string | null;
+  showCancel?: boolean;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -49,6 +50,7 @@ export function KioskFace1nCapture({
   onCancel,
   disabled = false,
   unidentifiedMessage = null,
+  showCancel = true,
 }: KioskFace1nCaptureProps) {
   const t = useTranslations("kiosk");
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -154,16 +156,18 @@ export function KioskFace1nCapture({
         {unidentifiedMessage ? unidentifiedMessage : t(statusKey)}
       </p>
 
-      <div className="flex flex-wrap justify-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          onClick={handleCancel}
-        >
-          {t("faceVerifyCancel")}
-        </Button>
-      </div>
+      {showCancel ? (
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={disabled}
+            onClick={handleCancel}
+          >
+            {t("faceVerifyCancel")}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

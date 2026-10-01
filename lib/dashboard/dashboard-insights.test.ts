@@ -60,9 +60,38 @@ describe("aggregateDailyIncomeFromActivities", () => {
     );
 
     const days = result[0].days;
-    expect(days.find((day) => day.date === "2026-07-05")?.amount).toBe(30);
+    expect(days.find((day) => day.date === "2026-07-05")?.amount).toBe(0);
     expect(days.find((day) => day.date === "2026-07-06")?.amount).toBe(0);
     expect(days.find((day) => day.date === "2026-07-01")?.amount).toBe(0);
+  });
+
+  it("sums persisted awards and does not invent stars from expected time", () => {
+    const result = aggregateDailyIncomeFromActivities(
+      [
+        {
+          timestamp: "2026-09-29T11:33:47Z",
+          action: "stoped",
+          subTaskStatus: "finished",
+          expectedTime: 280,
+          currencyAwarded: 0,
+          currencyId: 1,
+        },
+        {
+          timestamp: "2026-09-29T12:00:00Z",
+          action: "stoped",
+          subTaskStatus: "finished",
+          expectedTime: 10,
+          currencyAwarded: 4,
+          currencyId: 1,
+        },
+      ],
+      [{ id: 1, currencyPerSecond: 0.01 }],
+      new Date("2026-09-29T12:00:00Z"),
+    );
+
+    expect(
+      result[0].days.find((day) => day.date === "2026-09-29")?.amount,
+    ).toBe(4);
   });
 });
 

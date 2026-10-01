@@ -1,8 +1,4 @@
 import { firstDayOfMonth } from "@/lib/domain/balance";
-import {
-  calculateCurrencyAmount,
-  shouldCreditCurrency,
-} from "@/lib/domain/work-currency";
 
 export interface ActivityIncomeRow {
   timestamp: string;
@@ -89,20 +85,11 @@ export function aggregateDailyIncomeFromActivities(
 ): DailyIncomeByCurrency[] {
   const monthPrefix = firstDayOfMonth(referenceMonth).slice(0, 7);
   const dayKeys = buildMonthDayKeys(referenceMonth);
-  const rates = new Map(currencies.map((currency) => [currency.id, currency]));
 
   return currencies.map((currency) => {
     const amounts = new Map<string, number>();
     for (const day of dayKeys) {
       amounts.set(day, 0);
-    }
-
-    const rate = rates.get(currency.id);
-    if (!rate) {
-      return {
-        currencyId: currency.id,
-        days: dayKeys.map((date) => ({ date, amount: 0 })),
-      };
     }
 
     for (const activity of activities) {
@@ -111,19 +98,7 @@ export function aggregateDailyIncomeFromActivities(
       const dayKey = toUtcDateKey(activity.timestamp);
       if (!dayKey.startsWith(monthPrefix)) continue;
 
-      let amount = Math.max(0, Number(activity.currencyAwarded) || 0);
-      if (
-        amount <= 0 &&
-        shouldCreditCurrency({
-          action: activity.action,
-          subTaskStatus: activity.subTaskStatus,
-        })
-      ) {
-        amount = calculateCurrencyAmount(
-          { expectedTime: activity.expectedTime },
-          { currencyPerSecond: rate.currencyPerSecond },
-        );
-      }
+      const amount = Math.max(0, Number(activity.currencyAwarded) || 0);
       if (amount <= 0) continue;
 
       amounts.set(dayKey, (amounts.get(dayKey) ?? 0) + amount);

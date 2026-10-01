@@ -24,9 +24,18 @@ describe("showQueueFaceEditForm", () => {
     ).toBe(true);
   });
 
-  it("does not let staff edit another leader face", () => {
+  it("lets staff register a leader or manager face on their queue", () => {
     expect(
-      showQueueFaceEditForm("mgr-1", "lead-1", "leader", true),
+      showQueueFaceEditForm("admin-1", "lead-1", "leader", true),
+    ).toBe(true);
+    expect(
+      showQueueFaceEditForm("admin-1", "mgr-1", "manager", true),
+    ).toBe(true);
+  });
+
+  it("hides the face form for a kiosk device account", () => {
+    expect(
+      showQueueFaceEditForm("admin-1", "kiosk-1", "kiosk", true),
     ).toBe(false);
   });
 });

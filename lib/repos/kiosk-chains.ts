@@ -76,7 +76,7 @@ import {
   updateSubTaskLinkedToPrevious,
   type SubTaskWithAssignees,
 } from "@/lib/repos/tasks";
-import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
+import { scheduleTaskSubTaskSync } from "@/lib/repos/schedule-task-sync";
 import {
   assignFlagsToSubTask,
   listAvailableFlagsForCategory,
@@ -687,8 +687,8 @@ export async function startChain(
       .update(subTasks)
       .set({ status: PRODUCING_STATUS, updatedAt: timestamp })
       .where(eq(subTasks.id, startMember.documentId));
-    await runTaskSubTaskSyncRoutine(sub.taskId, txDb, timestamp);
   });
+  await scheduleTaskSubTaskSync(sub.taskId, timestamp);
   scheduleBoardInvalidate();
   return { chainRunId };
 }
@@ -1133,12 +1133,12 @@ async function reallocateChainRunInternal(
         tx as unknown as Db,
       );
     }
-    await runTaskSubTaskSyncRoutine(sub.taskId, tx as unknown as Db, stopAt);
     await releaseProducerFlagsWhenConsumersFinished(
       sub.taskId,
       tx as unknown as Db,
     );
   });
+  await scheduleTaskSubTaskSync(sub.taskId, stopAt);
   scheduleBoardInvalidate();
 }
 
@@ -1352,16 +1352,12 @@ async function recordPeerChainExit(input: {
       }
     }
 
-    await runTaskSubTaskSyncRoutine(
-      sub.taskId,
-      tx as unknown as Db,
-      input.timestamp,
-    );
     await releaseProducerFlagsWhenConsumersFinished(
       sub.taskId,
       tx as unknown as Db,
     );
   });
+  await scheduleTaskSubTaskSync(sub.taskId, input.timestamp);
   scheduleBoardInvalidate();
 }
 
