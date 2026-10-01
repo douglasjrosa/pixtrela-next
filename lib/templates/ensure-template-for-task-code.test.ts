@@ -7,6 +7,12 @@ const archiveActiveTemplateByCode = vi.fn();
 const createTemplateTask = vi.fn();
 const buildTemplateFromBoxPayload = vi.fn();
 const fetchBoxTemplateData = vi.fn();
+const withTemplateCodeLock = vi.fn(
+  async (
+    _code: string,
+    fn: (db: unknown) => Promise<unknown>,
+  ) => fn({}),
+);
 
 vi.mock("@/integrations/ribermax/rbx/rbx-client", () => ({
   fetchBoxTemplateData: (...args: unknown[]) => fetchBoxTemplateData(...args),
@@ -26,6 +32,13 @@ vi.mock("@/lib/repos/templates", () => ({
 vi.mock("@/lib/templates/build-template-from-box-payload", () => ({
   buildTemplateFromBoxPayload: (...args: unknown[]) =>
     buildTemplateFromBoxPayload(...args),
+}));
+
+vi.mock("@/lib/db/advisory-lock", () => ({
+  withTemplateCodeLock: (
+    code: string,
+    fn: (db: unknown) => Promise<unknown>,
+  ) => withTemplateCodeLock(code, fn),
 }));
 
 import {
@@ -50,6 +63,7 @@ describe("ensureTemplateForTaskCode", () => {
     cloneTemplateTaskByCode.mockReset();
     archiveActiveTemplateByCode.mockReset();
     archiveActiveTemplateByCode.mockResolvedValue(true);
+    withTemplateCodeLock.mockClear();
     createTemplateTask.mockReset();
     buildTemplateFromBoxPayload.mockReset();
     fetchBoxTemplateData.mockReset();
@@ -79,6 +93,7 @@ describe("ensureTemplateForTaskCode", () => {
       "20",
       "Modelo arquivado devido a atualização de versão. " +
         "Substituído pelo Modelo de código 30.",
+      expect.anything(),
     );
     expect(createTemplateTask).not.toHaveBeenCalled();
   });
@@ -103,15 +118,19 @@ describe("ensureTemplateForTaskCode", () => {
     });
 
     expect(result).toMatchObject({ templateId: "cloned", source: "legacy" });
-    expect(cloneTemplateTaskByCode).toHaveBeenCalledWith({
-      fromCode: "10",
-      toCode: "30",
-      name: "Box",
-    });
+    expect(cloneTemplateTaskByCode).toHaveBeenCalledWith(
+      {
+        fromCode: "10",
+        toCode: "30",
+        name: "Box",
+      },
+      expect.anything(),
+    );
     expect(archiveActiveTemplateByCode).toHaveBeenCalledWith(
       "10",
       "Modelo arquivado devido a atualização de versão. " +
         "Substituído pelo Modelo de código 30.",
+      expect.anything(),
     );
   });
 
@@ -213,5 +232,35 @@ describe("ensureTemplateForTaskCode", () => {
 
     expect(fetchBoxTemplateData).toHaveBeenCalledWith(30);
     expect(result).toMatchObject({ templateId: "rbx-new", source: "rbx" });
+  });
+
+  it("reuses the winner when create hits a unique violation", async () => {
+    findTemplateWithSubTasksByCode.mockResolvedValue(null);
+    findTemplateByCode
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "won", code: "30", active: true });
+    buildTemplateFromBoxPayload.mockResolvedValue({
+      name: "X - Box",
+      code: "30",
+      subTask: [],
+    });
+    createTemplateTask.mockRejectedValueOnce({
+      cause: { code: "23505" },
+    });
+
+    const result = await ensureTemplateForTaskCode({
+      code: "30",
+      fallbackName: "Box",
+      template: {
+        prodId: 30,
+        empresaNome: "X",
+        boxName: "Box",
+        subtasks: [],
+      },
+    });
+
+    expect(result).toMatchObject({ templateId: "won", source: "existing" });
+    expect(withTemplateCodeLock).toHaveBeenCalled();
   });
 });
