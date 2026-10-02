@@ -10,6 +10,7 @@ import {
   subTasks,
   tasks,
   users,
+  steps,
 } from "@/drizzle/schema";
 
 const ACTIVE_KIOSK_QUEUE_TASK = eq(tasks.active, true);
@@ -164,6 +165,7 @@ function toSubTaskDbRow(
     taskName: string;
     taskIndex: number;
     taskQty: number;
+    stepIndex?: number | null;
   },
 ): SubTaskDbRow {
   return {
@@ -180,6 +182,7 @@ function toSubTaskDbRow(
     taskName: row.taskName,
     taskIndex: row.taskIndex,
     taskQty: row.taskQty,
+    stepIndex: row.stepIndex ?? 0,
     maxSameTimeWorkers: row.maxSameTimeWorkers,
     linkedToPrevious: row.linkedToPrevious === true,
   };
@@ -313,10 +316,12 @@ async function fetchAssignedSubTaskRows(
       taskName: tasks.name,
       taskIndex: tasks.index,
       taskQty: tasks.qty,
+      stepIndex: steps.index,
     })
     .from(subTasks)
     .innerJoin(subTaskAssignees, eq(subTaskAssignees.subTaskId, subTasks.id))
     .innerJoin(tasks, eq(subTasks.taskId, tasks.id))
+    .leftJoin(steps, eq(tasks.stepId, steps.id))
     .where(
       and(eq(subTaskAssignees.userId, colaboratorId), ACTIVE_KIOSK_QUEUE_TASK),
     )
@@ -350,9 +355,11 @@ async function fetchSubTaskRowsByIds(subTaskIds: string[], db: Db) {
       taskName: tasks.name,
       taskIndex: tasks.index,
       taskQty: tasks.qty,
+      stepIndex: steps.index,
     })
     .from(subTasks)
     .innerJoin(tasks, eq(subTasks.taskId, tasks.id))
+    .leftJoin(steps, eq(tasks.stepId, steps.id))
     .where(and(inArray(subTasks.id, subTaskIds), ACTIVE_KIOSK_QUEUE_TASK))
     .orderBy(asc(subTasks.index));
 }
@@ -687,6 +694,7 @@ async function hydrateAssignedSubTaskRows(
     taskDocumentId: row.taskDocumentId,
     taskName: row.taskName,
     taskIndex: row.taskIndex,
+    stepIndex: row.stepIndex,
     finishedAt: row.finishedAt,
     viewerParticipated: row.viewerParticipated,
     viewerCurrencyAwarded: row.viewerCurrencyAwarded,

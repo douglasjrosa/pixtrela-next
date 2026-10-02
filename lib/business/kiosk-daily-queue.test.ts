@@ -19,6 +19,7 @@ function row(
     status: overrides.status ?? 'waiting',
     activationStatus: overrides.activationStatus ?? 'unlocked',
     taskIndex: overrides.taskIndex ?? 0,
+    stepIndex: overrides.stepIndex,
     finishedAt: overrides.finishedAt ?? null,
     viewerParticipated: overrides.viewerParticipated,
   };
@@ -167,5 +168,36 @@ describe('sortKioskDailyQueue', () => {
       }),
     ]);
     expect(sorted.map((item) => item.documentId)).toEqual(['a1', 'b1', 'b2']);
+  });
+
+  it('orders by step index descending, then task index ascending', () => {
+    const sorted = sortKioskDailyQueue([
+      row({
+        documentId: 'olidef',
+        taskIndex: 5,
+        stepIndex: 5,
+      }),
+      row({
+        documentId: 'dentemed',
+        taskIndex: 3,
+        stepIndex: 5,
+      }),
+      row({
+        documentId: 'alliage',
+        taskIndex: 4,
+        stepIndex: 25,
+      }),
+      row({
+        documentId: 'medpej',
+        taskIndex: 2,
+        stepIndex: 5,
+      }),
+    ]);
+    expect(sorted.map((item) => item.documentId)).toEqual([
+      'alliage',
+      'medpej',
+      'dentemed',
+      'olidef',
+    ]);
   });
 });

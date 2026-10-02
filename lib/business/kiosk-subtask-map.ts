@@ -18,6 +18,7 @@ export type KioskSubTaskRow = {
   taskDocumentId: string;
   taskName: string;
   taskIndex: number;
+  stepIndex?: number;
   finishedAt: string | null;
   activeWorkerCount: number;
   linkedToPrevious?: boolean;
@@ -40,6 +41,7 @@ export type SubTaskDbRow = {
   taskName: string;
   taskIndex: number;
   taskQty: number;
+  stepIndex?: number | null;
   maxSameTimeWorkers: number;
   linkedToPrevious: boolean;
 };
@@ -87,6 +89,7 @@ export function mapSubTaskDbRow(
     taskDocumentId: String(row.taskId ?? ""),
     taskName: String(row.taskName ?? ""),
     taskIndex: Number(row.taskIndex ?? 0),
+    stepIndex: Number(row.stepIndex ?? 0),
     finishedAt,
     activeWorkerCount: Math.max(0, activeWorkerCount),
     linkedToPrevious: row.linkedToPrevious === true,

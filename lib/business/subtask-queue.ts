@@ -42,6 +42,8 @@ export interface KioskSubTask extends QueuedSubTask {
   taskDocumentId: string;
   taskName: string;
   taskIndex: number;
+  /** Board column `steps.index`; missing step sorts last (0). */
+  stepIndex?: number;
   finishedAt: string | null;
   /** True when the kiosk viewer has a stop session on this subtask. */
   viewerParticipated?: boolean;

@@ -12,6 +12,7 @@ export type KioskQueueRow = {
   status: string;
   activationStatus: string;
   taskIndex: number;
+  stepIndex?: number;
   finishedAt: string | null;
   viewerParticipated?: boolean;
 };
@@ -49,11 +50,14 @@ export function filterKioskDailyQueue<T extends KioskQueueRow>(
 }
 
 /**
- * Stable kiosk queue order by board position only. Runtime state (producing,
- * waiting, paused) is handled when splitting UI sections — not here.
+ * Kiosk queue order: later board columns first (`steps.index` descending),
+ * then `tasks.index` ascending, then sub-task index.
  */
 export function sortKioskDailyQueue<T extends KioskQueueRow>(rows: T[]): T[] {
   return [...rows].sort((left, right) => {
+    const stepDiff = (right.stepIndex ?? 0) - (left.stepIndex ?? 0);
+    if (stepDiff !== 0) return stepDiff;
+
     const taskDiff = left.taskIndex - right.taskIndex;
     if (taskDiff !== 0) return taskDiff;
 
