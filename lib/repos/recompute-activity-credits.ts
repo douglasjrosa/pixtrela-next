@@ -211,6 +211,7 @@ async function recomputeIsolatedSubtask(
     shouldCreditDurationCurrency({
       action: "stoped",
       subTaskStatus: sub.status,
+      finishedWithoutPay: sub.finishedWithoutPay,
     });
   const credits = shouldCredit
     ? calculateDurationCurrencyCredits(

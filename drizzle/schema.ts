@@ -580,6 +580,7 @@ export const subTasks = pgTable("sub_tasks", {
     .notNull(),
   expectedTime: integer("expected_time").default(0).notNull(),
   timeSpent: integer("time_spent").default(0).notNull(),
+  finishedWithoutPay: boolean("finished_without_pay").default(false).notNull(),
   linkedToPrevious: boolean("linked_to_previous").default(false).notNull(),
   active: boolean("active").default(true).notNull(),
   subTaskCategoryId: uuid("sub_task_category_id").references(

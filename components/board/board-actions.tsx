@@ -54,6 +54,12 @@ import {
   subtaskDocumentIdsInOrder,
 } from "@/lib/business/board-pending-subtask-order";
 import { prepareBoardSubtasksForSave } from "@/lib/business/group-link";
+import {
+  applySkipFinishDraft,
+  eligibleSkipFinishIds,
+  expandSkipToChains,
+  uniqueSortedNames,
+} from "@/lib/business/board-admin-skip-finish";
 import { countUnassignedSubTasks } from "@/lib/business/kanban-card-badges";
 import { formatTaskDisplayTitle } from "@/lib/business/task-display-title";
 import type { ActivitySession } from "@/lib/business/task-progress";
@@ -71,6 +77,7 @@ import {
   PREFETCH_MAX_IN_FLIGHT,
 } from "@/lib/board/subtask-prefetch-queue";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
+import type { SkipFinishBoardSubtasksResult } from "@/lib/schemas/board-skip-finish";
 import type { SubtaskPaymentCurrency } from "@/lib/settings/currency-for-subtasks-types";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
@@ -175,6 +182,10 @@ export interface BoardActionsProps {
     subtaskDocumentId: string,
     linkedToPrevious: boolean,
   ) => Promise<BoardSubtaskLinkResult>;
+  skipFinishBoardSubtasks?: (
+    taskDocumentId: string,
+    subTaskDocumentIds: string[],
+  ) => Promise<SkipFinishBoardSubtasksResult>;
   assigneePeople?: { documentId: string; name: string }[];
   onSubtasksModalOpenChange?: (open: boolean) => void;
   onPersistingTaskDocumentIdsChange?: (ids: ReadonlySet<string>) => void;
@@ -198,6 +209,7 @@ export function BoardActions({
   createSubtask,
   reorderSubtasks,
   linkSubtask,
+  skipFinishBoardSubtasks,
   releaseSubtaskFlags,
   assigneePeople = [],
   onSubtasksModalOpenChange,
@@ -232,6 +244,7 @@ export function BoardActions({
     {},
   );
   const [orderBaseline, setOrderBaseline] = useState<string[]>([]);
+  const [skipDraftIds, setSkipDraftIds] = useState<string[]>([]);
   const [loadingSubtasks, setLoadingSubtasks] = useState(false);
   const [refreshingSubtasks, setRefreshingSubtasks] = useState(false);
   const [subtasksLoadedAt, setSubtasksLoadedAt] = useState<number | null>(null);
@@ -248,6 +261,10 @@ export function BoardActions({
   const assigneesBaselineRef = useRef(assigneesBaseline);
   const linksBaselineRef = useRef(linksBaseline);
   const orderBaselineRef = useRef(orderBaseline);
+  const skipDraftIdsRef = useRef(skipDraftIds);
+  const skipSnapshotsRef = useRef(
+    new Map<string, Pick<BoardSubTaskSummary, "status" | "assignedTo">>(),
+  );
   const lastMovedDocumentIdRef = useRef<string | null>(null);
   const subtaskCacheRef = useRef(new SubtaskListCache());
   const subtaskSaveFreshUntilRef = useRef(new Map<string, number>());
@@ -260,6 +277,7 @@ export function BoardActions({
   assigneesBaselineRef.current = assigneesBaseline;
   linksBaselineRef.current = linksBaseline;
   orderBaselineRef.current = orderBaseline;
+  skipDraftIdsRef.current = skipDraftIds;
   persistingTaskDocumentIdsRef.current = persistingTaskDocumentIds;
 
   useEffect(() => {
@@ -308,10 +326,17 @@ export function BoardActions({
     nextOrderBaseline: readonly string[],
   ): boolean {
     return (
+      skipDraftIdsRef.current.length > 0 ||
       hasAssigneeDraftChanges(items, assigneeBaseline) ||
       hasLinkDraftChanges(items, linkBaseline) ||
       hasOrderDraftChanges(items, nextOrderBaseline)
     );
+  }
+
+  function clearSkipFinishDraft(): void {
+    skipSnapshotsRef.current.clear();
+    skipDraftIdsRef.current = [];
+    setSkipDraftIds([]);
   }
 
   const assignedCountsForUi = useMemo(
@@ -368,6 +393,7 @@ export function BoardActions({
     );
     setOrderBaseline(subtaskDocumentIdsInOrder(loaded));
     lastMovedDocumentIdRef.current = null;
+    clearSkipFinishDraft();
   }
 
   function applyFetchedSubtasks(
@@ -390,10 +416,18 @@ export function BoardActions({
       );
 
     if (shouldMergeDraft) {
-      const merged = mergeLoadedSubtasksWithDraft(
+      const skipIds = new Set(skipDraftIdsRef.current);
+      const mergedDraft = mergeLoadedSubtasksWithDraft(
         loaded,
         subtasksRef.current,
       );
+      const merged =
+        skipIds.size === 0
+          ? mergedDraft
+          : applySkipFinishDraft(mergedDraft, skipIds, {
+              status: FINISHED_STATUS,
+              assignedTo: [],
+            });
       const nextAssigneeBaseline = mergeAssigneesBaseline(
         assigneesBaselineRef.current,
         loaded,
@@ -580,6 +614,7 @@ export function BoardActions({
     setLinksBaseline({});
     setOrderBaseline([]);
     lastMovedDocumentIdRef.current = null;
+    clearSkipFinishDraft();
     setLoadingSubtasks(false);
     setRefreshingSubtasks(false);
     setSubtasksLoadedAt(null);
@@ -779,6 +814,46 @@ export function BoardActions({
     });
   }
 
+  function handleSkipFinishApply(documentIds: string[]): void {
+    const chainItems = chainItemsFromBoard(subtasksRef.current);
+    const expanded = expandSkipToChains(chainItems, documentIds);
+    const eligible = eligibleSkipFinishIds(chainItems, expanded);
+    if (eligible.length === 0) return;
+    const skipSet = new Set([...skipDraftIdsRef.current, ...eligible]);
+    setSubtasks((current) => {
+      for (const item of current) {
+        if (!skipSet.has(item.documentId)) continue;
+        if (skipSnapshotsRef.current.has(item.documentId)) continue;
+        skipSnapshotsRef.current.set(item.documentId, {
+          status: item.status,
+          assignedTo: item.assignedTo,
+        });
+      }
+      return applySkipFinishDraft(current, skipSet, {
+        status: FINISHED_STATUS,
+        assignedTo: [],
+      });
+    });
+    skipDraftIdsRef.current = [...skipSet];
+    setSkipDraftIds([...skipSet]);
+  }
+
+  function handleSkipFinishRevert(): void {
+    const snapshots = skipSnapshotsRef.current;
+    setSubtasks((current) =>
+      current.map((item) => {
+        const previous = snapshots.get(item.documentId);
+        if (!previous) return item;
+        return {
+          ...item,
+          status: previous.status,
+          assignedTo: previous.assignedTo,
+        };
+      }),
+    );
+    clearSkipFinishDraft();
+  }
+
   function handleSaveAssignees(): void {
     if (!selectedTask) return;
 
@@ -804,10 +879,13 @@ export function BoardActions({
       dirtyLinkUpdates,
     );
     const orderChanged = hasOrderDraftChanges(snapshot, orderBaseline);
+    const skipIds = [...skipDraftIdsRef.current];
+    const skipSnapshots = new Map(skipSnapshotsRef.current);
     if (
       dirtyAssigneeUpdates.length === 0 &&
       dirtyLinkUpdates.length === 0 &&
-      !orderChanged
+      !orderChanged &&
+      skipIds.length === 0
     ) {
       return;
     }
@@ -841,7 +919,27 @@ export function BoardActions({
 
     void (async () => {
       try {
-        for (const update of ranked) {
+        let skipResult: SkipFinishBoardSubtasksResult = {
+          skippedIds: [],
+          blocked: [],
+        };
+        if (skipIds.length > 0 && skipFinishBoardSubtasks) {
+          skipResult = await skipFinishBoardSubtasks(taskDocumentId, skipIds);
+        }
+        const blockedIds = new Set(
+          skipResult.blocked.flatMap((row) => row.memberIds),
+        );
+        const skippedSet = new Set(skipResult.skippedIds);
+        const assigneeUpdates = ranked.filter(
+          (update) =>
+            !blockedIds.has(update.documentId) &&
+            !skippedSet.has(update.documentId),
+        );
+        const linkUpdates = dirtyLinkUpdates.filter(
+          (update) => !blockedIds.has(update.documentId),
+        );
+
+        for (const update of assigneeUpdates) {
           const chain = findChainContaining(chains, update.documentId);
           const current = chainItems.find(
             (item) => item.documentId === update.documentId,
@@ -861,7 +959,7 @@ export function BoardActions({
             update.assignedToIds,
           );
         }
-        for (const update of dirtyLinkUpdates) {
+        for (const update of linkUpdates) {
           await linkSubtask(
             taskDocumentId,
             update.documentId,
@@ -881,13 +979,44 @@ export function BoardActions({
             );
           }
         }
-        await commitSubtaskCacheAfterSave(taskDocumentId, snapshot);
+        const persistedSnapshot = snapshot.map((item) => {
+          if (!blockedIds.has(item.documentId)) return item;
+          const previous = skipSnapshots.get(item.documentId);
+          if (!previous) return item;
+          return {
+            ...item,
+            status: previous.status,
+            assignedTo: previous.assignedTo,
+          };
+        });
+        if (skipIds.length > 0) {
+          invalidateSubtaskCache(taskDocumentId);
+        }
+        await commitSubtaskCacheAfterSave(taskDocumentId, persistedSnapshot);
         setPersistingTaskDocumentIds((current) => {
           const next = new Set(current);
           next.delete(taskDocumentId);
           return next;
         });
-        showSuccessToast(tKanban("taskUpdated", { title: taskTitle }));
+        const didPersist =
+          skipResult.skippedIds.length > 0 ||
+          assigneeUpdates.length > 0 ||
+          linkUpdates.length > 0 ||
+          orderChanged;
+        if (didPersist) {
+          showSuccessToast(tKanban("taskUpdated", { title: taskTitle }));
+        }
+        if (skipResult.blocked.length > 0) {
+          const names = uniqueSortedNames(
+            skipResult.blocked.flatMap((row) => row.producerNames),
+          );
+          showErrorToast(
+            [
+              tKanban("skipBlockedStay", { names: names.join(", ") }),
+              tKanban("skipBlockedMayPause"),
+            ].join(" "),
+          );
+        }
       } catch {
         invalidateSubtaskCache(taskDocumentId);
         patchTaskInColumns(taskDocumentId, {
@@ -982,6 +1111,9 @@ export function BoardActions({
           linksBaseline,
           orderBaseline,
         )}
+        skipDraftIds={skipDraftIds}
+        onSkipFinishApply={handleSkipFinishApply}
+        onSkipFinishRevert={handleSkipFinishRevert}
         onClose={handleCloseSubtasksModal}
         onAssigneesChange={handleAssigneesChange}
         onSave={handleSaveAssignees}

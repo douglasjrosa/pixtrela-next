@@ -529,6 +529,17 @@ export async function findUserById(
   return row ? mapUserRow(row) : null;
 }
 
+export async function listUserNamesByIds(
+  ids: readonly string[],
+  db: Db = getDb(),
+): Promise<{ id: string; name: string }[]> {
+  if (ids.length === 0) return [];
+  return db
+    .select({ id: users.id, name: users.name })
+    .from(users)
+    .where(inArray(users.id, [...ids]));
+}
+
 export async function authenticateUser(
   username: string,
   password: string,

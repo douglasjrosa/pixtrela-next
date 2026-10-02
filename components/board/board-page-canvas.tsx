@@ -24,6 +24,7 @@ import {
   pollBoardProgress as appPollBoardProgress,
   releaseBoardSubTaskFlags as appReleaseBoardSubTaskFlags,
   reorderBoardSubtasks as appReorderBoardSubtasks,
+  skipFinishBoardSubtasks as appSkipFinishBoardSubtasks,
   syncBoardSteps as appSyncBoardSteps,
   updateBoardSubtaskAssignees as appUpdateBoardSubtaskAssignees,
   updateBoardSubtaskLink as appUpdateBoardSubtaskLink,
@@ -49,6 +50,9 @@ export interface BoardCanvasActions {
   reorderBoardSubtasks: BoardActionsProps["reorderSubtasks"];
   updateBoardSubtaskAssignees: BoardActionsProps["updateSubtaskAssignees"];
   updateBoardSubtaskLink: BoardActionsProps["linkSubtask"];
+  skipFinishBoardSubtasks: NonNullable<
+    BoardActionsProps["skipFinishBoardSubtasks"]
+  >;
   createBoardSubtask: BoardActionsProps["createSubtask"];
   releaseBoardSubTaskFlags: BoardActionsProps["releaseSubtaskFlags"];
 }
@@ -65,6 +69,7 @@ const DEFAULT_BOARD_ACTIONS: BoardCanvasActions = {
   loadBoardSubtaskSession: appLoadBoardSubtaskSession,
   reorderBoardSubtasks: appReorderBoardSubtasks,
   updateBoardSubtaskAssignees: appUpdateBoardSubtaskAssignees,
+  skipFinishBoardSubtasks: appSkipFinishBoardSubtasks,
   updateBoardSubtaskLink: appUpdateBoardSubtaskLink,
   createBoardSubtask: appCreateBoardSubtask,
   releaseBoardSubTaskFlags: appReleaseBoardSubTaskFlags,
@@ -115,6 +120,7 @@ export function BoardPageCanvas({
       loadSubtaskSession={actions.loadBoardSubtaskSession}
       reorderSubtasks={actions.reorderBoardSubtasks}
       updateSubtaskAssignees={actions.updateBoardSubtaskAssignees}
+      skipFinishBoardSubtasks={actions.skipFinishBoardSubtasks}
       linkSubtask={actions.updateBoardSubtaskLink}
       createSubtask={actions.createBoardSubtask}
       releaseSubtaskFlags={actions.releaseBoardSubTaskFlags}
