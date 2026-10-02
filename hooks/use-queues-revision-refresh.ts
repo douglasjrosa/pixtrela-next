@@ -54,6 +54,7 @@ async function fetchBoardRealtimeCredentials(): Promise<
 /**
  * Refreshes /queues when kiosk or board writers change work. Uses the board
  * SSE channel plus a cheap revision poll; falls back to 10s when SSE is down.
+ * Also refreshes on page enter (Next Link remount, back/forward, bfcache).
  */
 export function useQueuesRevisionRefresh(): void {
   const router = useRouter();
@@ -65,6 +66,11 @@ export function useQueuesRevisionRefresh(): void {
     let source: EventSource | null = null;
     let connecting = false;
     let pollMs = QUEUES_REVISION_POLL_MS;
+
+    function refreshRoute(): void {
+      if (cancelled || !isBrowserTabVisible()) return;
+      router.refresh();
+    }
 
     async function checkRevision(): Promise<void> {
       if (!isBrowserTabVisible()) return;
@@ -169,17 +175,22 @@ export function useQueuesRevisionRefresh(): void {
     }
 
     if (isBrowserTabVisible()) {
+      refreshRoute();
       void checkRevision();
       startInterval();
       void connectRealtime();
     }
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", refreshRoute);
+    window.addEventListener("popstate", refreshRoute);
 
     return () => {
       cancelled = true;
       closeSource();
       if (timerId !== undefined) window.clearInterval(timerId);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", refreshRoute);
+      window.removeEventListener("popstate", refreshRoute);
     };
   }, [router]);
 }

@@ -94,13 +94,35 @@ describe("useQueuesRevisionRefresh", () => {
     renderHook(() => useQueuesRevisionRefresh());
     await flushMount();
     expect(pollBoardRevision).toHaveBeenCalledTimes(1);
-    expect(refresh).not.toHaveBeenCalled();
+    expect(refresh).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(QUEUES_REVISION_POLL_MS);
     });
     expect(pollBoardRevision).toHaveBeenCalledTimes(2);
     expect(FakeEventSource.last).toBeNull();
+  });
+
+  it("refreshes the route when the user enters the page", async () => {
+    renderHook(() => useQueuesRevisionRefresh());
+    await flushMount();
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes the route on pageshow and popstate", async () => {
+    renderHook(() => useQueuesRevisionRefresh());
+    await flushMount();
+    refresh.mockClear();
+
+    await act(async () => {
+      window.dispatchEvent(new Event("pageshow"));
+    });
+    expect(refresh).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(refresh).toHaveBeenCalledTimes(2);
   });
 
   it("refreshes the route when the board revision changes", async () => {
@@ -110,12 +132,12 @@ describe("useQueuesRevisionRefresh", () => {
 
     renderHook(() => useQueuesRevisionRefresh());
     await flushMount();
-    expect(refresh).not.toHaveBeenCalled();
+    expect(refresh).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(QUEUES_REVISION_POLL_MS);
     });
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(refresh).toHaveBeenCalledTimes(2);
   });
 
   it("runs checkRevision when the hub emits board-invalidate", async () => {
