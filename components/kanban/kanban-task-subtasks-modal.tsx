@@ -961,13 +961,8 @@ export function KanbanTaskSubtasksModal({
     if (focusMode === "subtasks") {
       const chain = findChainContaining(chains, subtask.documentId);
       if (chain && isMultiMemberChain(chain)) {
-        const maxWorkers =
-          maxWorkersById.get(subtask.documentId) ??
-          subtask.maxSameTimeWorkers ??
-          1;
         const next = nextChainSubtaskClick({
           clickedId: subtask.documentId,
-          clickedMaxWorkers: maxWorkers,
           current: chainClickSelection,
         });
         setChainClickSelection(next);

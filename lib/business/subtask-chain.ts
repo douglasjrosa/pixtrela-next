@@ -185,28 +185,17 @@ export type ChainClickSelection = {
 export type AssigneeApplyScope = ChainClickScope;
 
 /**
- * Clicking max=1 selects the whole chain. Clicking max>1 starts on that row
- * only; a later click on the same row toggles self/group.
+ * One click selects the whole chain. A second click on the same row clears.
  */
 export function nextChainSubtaskClick(input: {
   clickedId: string;
-  clickedMaxWorkers: number;
   current: ChainClickSelection | null;
 }): ChainClickSelection | null {
-  const { clickedId, clickedMaxWorkers, current } = input;
-  if (clickedMaxWorkers <= 1) {
-    if (current?.selectedId === clickedId && current.scope === "group") {
-      return null;
-    }
-    return { selectedId: clickedId, scope: "group" };
+  const { clickedId, current } = input;
+  if (current?.selectedId === clickedId && current.scope === "group") {
+    return null;
   }
-  if (current?.selectedId === clickedId) {
-    return {
-      selectedId: clickedId,
-      scope: current.scope === "self" ? "group" : "self",
-    };
-  }
-  return { selectedId: clickedId, scope: "self" };
+  return { selectedId: clickedId, scope: "group" };
 }
 
 export function chainIdsForClickSelection(

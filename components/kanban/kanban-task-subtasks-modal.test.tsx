@@ -1241,11 +1241,6 @@ describe("KanbanTaskSubtasksModal", () => {
     );
     expect(screen.getByRole("button", { name: /Soldar/ })).toHaveAttribute(
       "aria-pressed",
-      "false",
-    );
-    await user.click(screen.getByRole("button", { name: /Pintar/ }));
-    expect(screen.getByRole("button", { name: /Soldar/ })).toHaveAttribute(
-      "aria-pressed",
       "true",
     );
     expect(screen.getByRole("button", { name: "Remover Ana" })).toBeEnabled();

@@ -170,56 +170,31 @@ describe("chainHasExternalDependencyBlock", () => {
 });
 
 describe("nextChainSubtaskClick", () => {
-  it("selects the whole chain when the clicked row is max=1", () => {
+  it("selects the whole chain on the first click", () => {
     expect(
       nextChainSubtaskClick({
         clickedId: "b",
-        clickedMaxWorkers: 1,
         current: null,
       }),
     ).toEqual({ selectedId: "b", scope: "group" });
   });
 
-  it("clears selection on a second click of the same max=1 row", () => {
+  it("clears selection on a second click of the same row", () => {
     expect(
       nextChainSubtaskClick({
         clickedId: "b",
-        clickedMaxWorkers: 1,
         current: { selectedId: "b", scope: "group" },
       }),
     ).toBeNull();
   });
 
-  it("starts max>1 on self and toggles to group then self", () => {
-    const first = nextChainSubtaskClick({
-      clickedId: "b",
-      clickedMaxWorkers: 2,
-      current: null,
-    });
-    expect(first).toEqual({ selectedId: "b", scope: "self" });
-    const second = nextChainSubtaskClick({
-      clickedId: "b",
-      clickedMaxWorkers: 2,
-      current: first,
-    });
-    expect(second).toEqual({ selectedId: "b", scope: "group" });
-    expect(
-      nextChainSubtaskClick({
-        clickedId: "b",
-        clickedMaxWorkers: 2,
-        current: second,
-      }),
-    ).toEqual({ selectedId: "b", scope: "self" });
-  });
-
-  it("starts a different max>1 row on self", () => {
+  it("keeps group scope when another member is clicked", () => {
     expect(
       nextChainSubtaskClick({
         clickedId: "c",
-        clickedMaxWorkers: 2,
         current: { selectedId: "b", scope: "group" },
       }),
-    ).toEqual({ selectedId: "c", scope: "self" });
+    ).toEqual({ selectedId: "c", scope: "group" });
   });
 
   it("lists every member id for group scope", () => {

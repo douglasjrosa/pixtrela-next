@@ -678,7 +678,7 @@ describe("BoardActions", () => {
     expect(screen.queryByText("Bia")).not.toBeInTheDocument();
   });
 
-  it("lets a max>1 member add extras but not drop head assignees", async () => {
+  it("applies assignee extras to the whole chain from a member click", async () => {
     const user = userEvent.setup();
     const loadSubtasks = vi.fn().mockResolvedValue([
       boardSubTaskSummaryStub({
@@ -714,7 +714,10 @@ describe("BoardActions", () => {
     });
     await user.click(screen.getByText("1 - Tarefa A"));
     await user.click(await screen.findByRole("button", { name: /Cortar/ }));
-    await user.click(screen.getByRole("button", { name: "Remover Ana" }));
+    expect(screen.getByRole("button", { name: /Soldar/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(screen.getByRole("button", { name: "Remover Ana" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Atribuir Bob" }));
@@ -726,7 +729,7 @@ describe("BoardActions", () => {
     expect(screen.getByRole("button", { name: "Remover Ana" })).toBeInTheDocument();
   });
 
-  it("assigns extras only to a max>1 head on the first click", async () => {
+  it("assigns extras to the whole chain on the first click", async () => {
     const user = userEvent.setup();
     const loadSubtasks = vi.fn().mockResolvedValue([
       boardSubTaskSummaryStub({
@@ -766,7 +769,7 @@ describe("BoardActions", () => {
     expect(screen.getByRole("button", { name: "Remover Bob" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Cortar/ }));
-    expect(screen.getByRole("button", { name: "Atribuir Bob" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remover Bob" })).toBeInTheDocument();
   });
 
   it("propagates removing a shared assignee from a max>1 head", async () => {
@@ -814,10 +817,10 @@ describe("BoardActions", () => {
 
     await user.click(screen.getByRole("button", { name: /Cortar/ }));
     expect(screen.getByRole("button", { name: "Atribuir Ana" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Atribuir Bob" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remover Bob" })).toBeInTheDocument();
   });
 
-  it("propagates head extras after toggling a max>1 head to the group", async () => {
+  it("propagates head extras to the group on the first click", async () => {
     const user = userEvent.setup();
     const loadSubtasks = vi.fn().mockResolvedValue([
       boardSubTaskSummaryStub({
@@ -853,7 +856,6 @@ describe("BoardActions", () => {
     });
     await user.click(screen.getByText("1 - Tarefa A"));
     await user.click(await screen.findByRole("button", { name: /Soldar/ }));
-    await user.click(screen.getByRole("button", { name: /Soldar/ }));
     await user.click(screen.getByRole("button", { name: "Atribuir Bob" }));
     await user.click(screen.getByRole("button", { name: /Cortar/ }));
     expect(screen.getByRole("button", { name: "Remover Bob" })).toBeInTheDocument();
