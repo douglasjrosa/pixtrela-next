@@ -8,6 +8,7 @@ import { CHAIN_STOP_ANSWERS_REQUIRED } from "@/lib/business/chain-stop-policy";
 import {
   ensureChainRunForOpenSessions,
   findOpenChainRunRow,
+  findOpenGroupRunForMembers,
   insertIsolatedOpenSession,
   leaveGroupRun,
   listOpenGroupRunsByHead,
@@ -530,12 +531,17 @@ export async function resolveOrBackfillChainRunIdForStop(
 ): Promise<string> {
   const trimmed = input.chainRunId?.trim();
   if (trimmed) {
+    const tableRun = await findOpenChainRunRow(trimmed, db);
+    if (tableRun) return trimmed;
     const runRows = await loadRunActivities(trimmed, db);
     if (runRows.length > 0) return trimmed;
   }
 
   const { chain } = await loadChainContext(input.headId, db);
   const memberIds = chain.memberIds;
+
+  const fromSessions = await findOpenGroupRunForMembers(memberIds, db);
+  if (fromSessions) return fromSessions.chainRunId;
 
   const open = await findOpenChainRunId({ subTaskIds: [...memberIds], db });
   if (open) return open.chainRunId;
@@ -594,10 +600,16 @@ export async function findOpenChainRunsForMemberGroups(
   }
   const missing = groups.filter((group) => !result.has(group.headId));
   if (missing.length === 0) return result;
-
-  const allIds = [...new Set(missing.flatMap((group) => group.memberIds))];
-  const rows = await listChainActivityLookupRows(allIds, db);
   for (const group of missing) {
+    const fromSessions = await findOpenGroupRunForMembers(group.memberIds, db);
+    if (fromSessions) result.set(group.headId, fromSessions);
+  }
+  const stillMissing = groups.filter((group) => !result.has(group.headId));
+  if (stillMissing.length === 0) return result;
+
+  const allIds = [...new Set(stillMissing.flatMap((group) => group.memberIds))];
+  const rows = await listChainActivityLookupRows(allIds, db);
+  for (const group of stillMissing) {
     const memberIds = new Set(group.memberIds);
     const open = resolveOpenChainRunFromActivityRows(
       rows.filter((row) => memberIds.has(row.subTaskId)),
@@ -1361,6 +1373,28 @@ async function recordPeerChainExit(input: {
   scheduleBoardInvalidate();
 }
 
+async function resolveOpenTableRunForStop(
+  chainRunId: string | null,
+  headId: string | undefined,
+  db: Db,
+): Promise<{ id: string; taskId: string; startedAt: Date } | null> {
+  const trimmed = chainRunId?.trim();
+  if (trimmed) {
+    const fromId = await findOpenChainRunRow(trimmed, db);
+    if (fromId) return fromId;
+  }
+  if (!headId) return null;
+  try {
+    const { chain } = await loadChainContext(headId, db);
+    const fromSessions = await findOpenGroupRunForMembers(chain.memberIds, db);
+    if (!fromSessions) return null;
+    return findOpenChainRunRow(fromSessions.chainRunId, db);
+  } catch (error) {
+    if (error instanceof Error && error.message === "notFound") return null;
+    throw error;
+  }
+}
+
 export async function confirmChainStop(
   colaboratorId: string,
   chainRunId: string | null,
@@ -1369,12 +1403,14 @@ export async function confirmChainStop(
   timestamp: Date = new Date(),
   headId?: string,
 ): Promise<void> {
-  if (answers.length === 0) {
-    if (!chainRunId) throw new Error(CHAIN_STOP_ANSWERS_REQUIRED);
-    const emptyRun = await findOpenChainRunRow(chainRunId, db);
-    if (!emptyRun) throw new Error(CHAIN_STOP_ANSWERS_REQUIRED);
+  const tableRun = await resolveOpenTableRunForStop(
+    chainRunId,
+    headId ?? answers[0]?.documentId,
+    db,
+  );
+  if (tableRun) {
     await leaveGroupRun({
-      chainRunId,
+      chainRunId: tableRun.id,
       colaboratorId,
       answers,
       timestamp,
@@ -1382,19 +1418,7 @@ export async function confirmChainStop(
     });
     return;
   }
-  if (chainRunId) {
-    const tableRun = await findOpenChainRunRow(chainRunId, db);
-    if (tableRun) {
-      await leaveGroupRun({
-        chainRunId,
-        colaboratorId,
-        answers,
-        timestamp,
-        db,
-      });
-      return;
-    }
-  }
+  if (answers.length === 0) throw new Error(CHAIN_STOP_ANSWERS_REQUIRED);
   const anchorHeadId = headId ?? answers[0]?.documentId;
   if (!anchorHeadId) throw new Error("notFound");
   const resolvedChainRunId = await resolveOrBackfillChainRunIdForStop(

@@ -81,6 +81,7 @@ import {
   mapBoardSubtaskSessionHistory,
   replaceSubTaskAssignees,
   updateSubTaskLinkedToPrevious,
+  updateSubTaskMaxSameTimeWorkers,
   updateTaskBoardFields,
 } from "@/lib/repos/tasks";
 import { listOpenSessionLive } from "@/lib/repos/group-runs";
@@ -93,6 +94,7 @@ import { scheduleBoardInvalidate } from "@/lib/realtime/publish-board-invalidate
 import { STEP_TASKS_PER_LOAD_DEFAULT } from "@/lib/schemas/step";
 
 const FINISHED_STATUS = "finished";
+const MIN_SAME_TIME_WORKERS = 1;
 
 interface SubTaskEntity {
   documentId: string;
@@ -381,6 +383,12 @@ async function persistChainAssigneeStates(
     if (!assigneeIdsEqual(previous.assignedToIds, row.assignedToIds)) {
       await replaceSubTaskAssignees(row.documentId, row.assignedToIds);
     }
+    if (previous.maxSameTimeWorkers !== row.maxSameTimeWorkers) {
+      await updateSubTaskMaxSameTimeWorkers(
+        row.documentId,
+        row.maxSameTimeWorkers,
+      );
+    }
   }
 }
 
@@ -570,13 +578,20 @@ export async function updateBoardSubtaskAssignees(
     chain.headId,
     assignedToIds,
   );
+  const chainMax = members.reduce(
+    (max, item) => Math.max(max, item.maxSameTimeWorkers),
+    MIN_SAME_TIME_WORKERS,
+  );
   for (const update of propagated) {
     const subtask = await fetchSubTaskForUpdate(update.documentId);
     if (!subtask) continue;
     await updateSubTask(
       update.documentId,
       taskDocumentId,
-      toSubTaskFormInput(subtask, update.assignedToIds),
+      {
+        ...toSubTaskFormInput(subtask, update.assignedToIds),
+        maxSameTimeWorkers: chainMax,
+      },
     );
   }
   invalidateBoardSubtaskReads(taskDocumentId);

@@ -141,6 +141,7 @@ export function prepareBoardSubtasksForSave(
   const assigneesById = new Map(
     effective.map((item) => [item.documentId, item.assignedTo]),
   );
+  const maxById = displayMaxSameTimeWorkers(effective);
   for (const chain of chains) {
     if (!isMultiMemberChain(chain)) continue;
     const head = effective.find((item) => item.documentId === chain.headId);
@@ -152,5 +153,7 @@ export function prepareBoardSubtasksForSave(
   return effective.map((item) => ({
     ...item,
     assignedTo: assigneesById.get(item.documentId) ?? item.assignedTo,
+    maxSameTimeWorkers:
+      maxById.get(item.documentId) ?? item.maxSameTimeWorkers,
   }));
 }

@@ -678,6 +678,49 @@ describe("BoardActions", () => {
     expect(screen.queryByText("Bia")).not.toBeInTheDocument();
   });
 
+  it("equalizes max workers and selects the chain on the first click after link", async () => {
+    const user = userEvent.setup();
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        index: 0,
+        maxSameTimeWorkers: 1,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "st-2",
+        name: "Cortar",
+        status: "waiting",
+        index: 1,
+        maxSameTimeWorkers: 2,
+        assignedTo: [{ documentId: "u-2", name: "Bia" }],
+      }),
+    ]);
+
+    renderBoard({ loadSubtasks });
+    await user.click(screen.getByText("1 - Tarefa A"));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Ligar à anterior" }),
+    );
+
+    const soldarCard = screen.getByRole("button", { name: /Soldar/ });
+    const cortarCard = screen.getByRole("button", { name: /Cortar/ });
+    expect(
+      within(soldarCard).getByLabelText("Máx. colaboradores simultâneos: 2"),
+    ).toBeInTheDocument();
+    expect(
+      within(cortarCard).getByLabelText("Máx. colaboradores simultâneos: 2"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Ana").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Bia")).not.toBeInTheDocument();
+
+    await user.click(cortarCard);
+    expect(soldarCard).toHaveAttribute("aria-pressed", "true");
+    expect(cortarCard).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("applies assignee extras to the whole chain from a member click", async () => {
     const user = userEvent.setup();
     const loadSubtasks = vi.fn().mockResolvedValue([

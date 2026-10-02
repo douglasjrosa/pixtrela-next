@@ -15,6 +15,7 @@ const getTaskById = vi.fn();
 const getSubTaskById = vi.fn();
 const listSubTasksWithRelationsForTask = vi.fn();
 const updateSubTaskLinkedToPrevious = vi.fn();
+const updateSubTaskMaxSameTimeWorkers = vi.fn();
 const replaceSubTaskAssignees = vi.fn();
 const applyAutoStepTaskOrderingAfterTaskChange = vi.fn();
 const createSubTask = vi.fn();
@@ -81,6 +82,8 @@ vi.mock("@/lib/repos/tasks", async (importOriginal) => {
       listSubTasksWithRelationsForTask(...args),
     updateSubTaskLinkedToPrevious: (...args: unknown[]) =>
       updateSubTaskLinkedToPrevious(...args),
+    updateSubTaskMaxSameTimeWorkers: (...args: unknown[]) =>
+      updateSubTaskMaxSameTimeWorkers(...args),
     replaceSubTaskAssignees: (...args: unknown[]) =>
       replaceSubTaskAssignees(...args),
   };
@@ -111,6 +114,7 @@ describe("board/actions drizzle", () => {
     getSubTaskById.mockReset();
     listSubTasksWithRelationsForTask.mockReset();
     updateSubTaskLinkedToPrevious.mockReset();
+    updateSubTaskMaxSameTimeWorkers.mockReset();
     replaceSubTaskAssignees.mockReset();
     updateSubTask.mockReset();
     applyAutoStepTaskOrderingAfterTaskChange.mockReset();
@@ -337,6 +341,7 @@ describe("board/actions drizzle", () => {
 
     expect(updateSubTaskLinkedToPrevious).toHaveBeenCalledWith("st-2", true);
     expect(replaceSubTaskAssignees).toHaveBeenCalledWith("st-2", ["u-head"]);
+    expect(updateSubTaskMaxSameTimeWorkers).not.toHaveBeenCalled();
     expect(result).toEqual({
       documentId: "st-2",
       linkedToPrevious: true,
@@ -347,6 +352,40 @@ describe("board/actions drizzle", () => {
       "board-subtasks:task-1",
       "default",
     );
+  });
+
+  it("updateBoardSubtaskLink equalizes maxSameTimeWorkers when linking", async () => {
+    listSubTasksWithRelationsForTask.mockResolvedValue([
+      {
+        id: "st-1",
+        index: 0,
+        status: "waiting",
+        activationStatus: "unlocked",
+        linkedToPrevious: false,
+        maxSameTimeWorkers: 1,
+        assignedToIds: ["u-head"],
+        dependencyIds: [],
+      },
+      {
+        id: "st-2",
+        index: 1,
+        status: "waiting",
+        activationStatus: "unlocked",
+        linkedToPrevious: false,
+        maxSameTimeWorkers: 2,
+        assignedToIds: ["u-old"],
+        dependencyIds: [],
+      },
+    ]);
+    listBoardSubtaskAssignees.mockResolvedValue([
+      { subTaskId: "st-2", userId: "u-head", name: "Head" },
+    ]);
+
+    const { updateBoardSubtaskLink } = await import("./actions");
+    await updateBoardSubtaskLink("task-1", "st-2", true);
+
+    expect(updateSubTaskMaxSameTimeWorkers).toHaveBeenCalledTimes(1);
+    expect(updateSubTaskMaxSameTimeWorkers).toHaveBeenCalledWith("st-1", 2);
   });
 
   it("updateBoardSubtaskLink unlinks without clearing assignees", async () => {
@@ -433,6 +472,7 @@ describe("board/actions drizzle", () => {
       "task-1",
       expect.objectContaining({
         assignedToIds: ["u-head", "u-new"],
+        maxSameTimeWorkers: 2,
         subTaskCategoryId: "cat-cut",
       }),
     );
@@ -442,6 +482,7 @@ describe("board/actions drizzle", () => {
       "task-1",
       expect.objectContaining({
         assignedToIds: ["u-head", "u-new"],
+        maxSameTimeWorkers: 2,
         subTaskCategoryId: "cat-pack",
       }),
     );

@@ -38,7 +38,6 @@ import {
 import {
   applyChainLinkToggle,
   applyHeadAssigneePropagation,
-  applyMaxWorkerSelfAssigneeChange,
   canEditAssignees,
   chainAssigneeStateFromBoard,
   chainItemsFromBoard,
@@ -76,6 +75,7 @@ import type { SubtaskPaymentCurrency } from "@/lib/settings/currency-for-subtask
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 const FINISHED_STATUS = "finished";
+const MIN_SAME_TIME_WORKERS = 1;
 const PREFETCH_DEBOUNCE_MS = 200;
 /** Skip a redundant refetch right after a successful background save sync. */
 const SUBTASK_POST_SAVE_SKIP_REFETCH_MS = 15_000;
@@ -649,6 +649,7 @@ export function BoardActions({
       return {
         ...item,
         linkedToPrevious: state.linkedToPrevious,
+        maxSameTimeWorkers: state.maxSameTimeWorkers,
         assignedTo: mergeAssigneesByIds(
           item.assignedTo,
           state.assignedToIds,
@@ -748,34 +749,8 @@ export function BoardActions({
         subtask.maxSameTimeWorkers,
         chain,
       );
-      const scope =
-        applyScope ??
-        (role === "head" ? "group" : role === "helper" ? "self" : undefined);
+      const scope = applyScope ?? (role === "none" ? undefined : "group");
       if (role === "none" && scope !== "group") return current;
-      if (scope === "self") {
-        const members = chain.memberIds
-          .map((id) => chainItems.find((item) => item.documentId === id))
-          .filter((item): item is NonNullable<typeof item> => Boolean(item));
-        const nextById = new Map(
-          applyMaxWorkerSelfAssigneeChange(
-            members,
-            subtask.documentId,
-            assignedToIds,
-          ).map((item) => [item.documentId, item.assignedToIds]),
-        );
-        return current.map((item) => {
-          const nextIds = nextById.get(item.documentId);
-          if (!nextIds) return item;
-          return {
-            ...item,
-            assignedTo: mergeAssigneesByIds(
-              item.assignedTo,
-              nextIds,
-              directory,
-            ),
-          };
-        });
-      }
 
       const members = chain.memberIds
         .map((id) => chainItems.find((item) => item.documentId === id))
@@ -788,11 +763,16 @@ export function BoardActions({
       const nextById = new Map(
         propagated.map((item) => [item.documentId, item.assignedToIds]),
       );
+      const chainMax = members.reduce(
+        (max, item) => Math.max(max, item.maxSameTimeWorkers),
+        MIN_SAME_TIME_WORKERS,
+      );
       return current.map((item) => {
         const nextIds = nextById.get(item.documentId);
         if (!nextIds) return item;
         return {
           ...item,
+          maxSameTimeWorkers: chainMax,
           assignedTo: mergeAssigneesByIds(item.assignedTo, nextIds, directory),
         };
       });

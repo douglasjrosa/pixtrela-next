@@ -52,7 +52,6 @@ import {
   canEditAssignees,
   chainIdsForClickSelection,
   chainItemsFromBoard,
-  constrainHelperAssignees,
   findChainContaining,
   isMultiMemberChain,
   nextChainSubtaskClick,
@@ -739,7 +738,7 @@ export function KanbanTaskSubtasksModal({
     : "solo";
   const selectedApplyScope: AssigneeApplyScope | undefined =
     chainClickSelection?.scope ??
-    (selectedAssigneeEditRole === "head" ? "group" : undefined);
+    (selectedAssigneeEditRole === "solo" ? undefined : "group");
   const selectedAssigneeLocked =
     selectedAssigneeEditRole === "none" && selectedApplyScope !== "group";
   const selectedHelperSelfLocked =
@@ -928,25 +927,9 @@ export function KanbanTaskSubtasksModal({
       onAssigneesChange(source, assignedToIds);
       return;
     }
-    const editRole = assigneeEditRoleFor(source.documentId);
-    const applyScope: AssigneeApplyScope =
-      chainClickSelection?.scope ??
-      (editRole === "head" ? "group" : "self");
-    let nextIds = assignedToIds;
-    if (editRole === "helper" && applyScope === "self") {
-      const head = pending.find((item) => item.documentId === chain.headId);
-      if (head) {
-        nextIds = constrainHelperAssignees(
-          getSubtaskAssigneeIds(head),
-          assignedToIds,
-        );
-      }
-    }
     const target =
-      applyScope === "group"
-        ? (pending.find((item) => item.documentId === chain.headId) ?? source)
-        : source;
-    onAssigneesChange(target, nextIds, applyScope);
+      pending.find((item) => item.documentId === chain.headId) ?? source;
+    onAssigneesChange(target, assignedToIds, "group");
   }
 
   function handlePendingSubtaskClick(subtask: BoardSubTaskSummary): void {

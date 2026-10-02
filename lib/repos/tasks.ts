@@ -1025,6 +1025,17 @@ export async function updateSubTaskLinkedToPrevious(
     .where(eq(subTasks.id, id));
 }
 
+export async function updateSubTaskMaxSameTimeWorkers(
+  id: string,
+  maxSameTimeWorkers: number,
+  db: Db = getDb(),
+): Promise<void> {
+  await db
+    .update(subTasks)
+    .set({ maxSameTimeWorkers, updatedAt: new Date() })
+    .where(eq(subTasks.id, id));
+}
+
 async function replaceSubTaskDependencies(
   subTaskId: string,
   dependsOnIds: string[],

@@ -196,12 +196,17 @@ export function mergeLoadedSubtasksWithDraft(
     if (!existing) return item;
     const linkChanged = existing.linkedToPrevious !== item.linkedToPrevious;
     if (!linkChanged) {
-      return { ...item, assignedTo: existing.assignedTo };
+      return {
+        ...item,
+        assignedTo: existing.assignedTo,
+        maxSameTimeWorkers: existing.maxSameTimeWorkers,
+      };
     }
     return {
       ...item,
       assignedTo: existing.assignedTo,
       linkedToPrevious: existing.linkedToPrevious,
+      maxSameTimeWorkers: existing.maxSameTimeWorkers,
     };
   });
   return applyPreferredSubtaskOrder(

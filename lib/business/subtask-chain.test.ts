@@ -293,12 +293,21 @@ describe("chain board rules", () => {
   it("1. linking inherits head assignees and discards later members", () => {
     const next = applyChainLinkToggle(
       [
-        state({ documentId: "a", assignedToIds: ["head"] }),
-        state({ documentId: "b", assignedToIds: ["old-b"] }),
+        state({
+          documentId: "a",
+          assignedToIds: ["head"],
+          maxSameTimeWorkers: 1,
+        }),
+        state({
+          documentId: "b",
+          assignedToIds: ["old-b"],
+          maxSameTimeWorkers: 3,
+        }),
         state({
           documentId: "c",
           linkedToPrevious: true,
           assignedToIds: ["old-c"],
+          maxSameTimeWorkers: 2,
         }),
       ],
       "b",
@@ -308,11 +317,14 @@ describe("chain board rules", () => {
     expect(byId(next, "b")).toMatchObject({
       linkedToPrevious: true,
       assignedToIds: ["head"],
+      maxSameTimeWorkers: 3,
     });
     expect(byId(next, "c")).toMatchObject({
       linkedToPrevious: true,
       assignedToIds: ["head"],
+      maxSameTimeWorkers: 3,
     });
+    expect(byId(next, "a").maxSameTimeWorkers).toBe(3);
   });
 
   it("2. head assignee changes propagate to every chain member", () => {

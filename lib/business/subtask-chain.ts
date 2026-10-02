@@ -4,6 +4,7 @@ import {
 
 const FINISHED_STATUS = "finished";
 const DISABLED_ACTIVATION = "disabled";
+const MIN_SAME_TIME_WORKERS = 1;
 
 export type ChainSubTask = {
   documentId: string;
@@ -342,6 +343,30 @@ function inheritHeadAssignees(
   }
 }
 
+function inheritChainMaxWorkers(
+  items: ChainAssigneeState[],
+  chain: SubTaskChain,
+): void {
+  const members = items.filter((item) =>
+    chain.memberIds.includes(item.documentId),
+  );
+  const capacity = members.reduce(
+    (max, item) => Math.max(max, item.maxSameTimeWorkers),
+    MIN_SAME_TIME_WORKERS,
+  );
+  for (const member of members) {
+    member.maxSameTimeWorkers = capacity;
+  }
+}
+
+function inheritChainParity(
+  items: ChainAssigneeState[],
+  chain: SubTaskChain,
+): void {
+  inheritHeadAssignees(items, chain);
+  inheritChainMaxWorkers(items, chain);
+}
+
 /**
  * Link copies the resulting head's assignees onto this row and every later
  * member. Unlink only clears the flag; assignees stay.
@@ -366,7 +391,7 @@ export function applyChainLinkToggle(
     documentId,
   );
   if (!chain || !isMultiMemberChain(chain)) return next;
-  inheritHeadAssignees(next, chain);
+  inheritChainParity(next, chain);
   return next;
 }
 
@@ -452,6 +477,13 @@ export function reconcileChainReorder(
       moved.assignedToIds = uniqueIds(head.assignedToIds);
     }
     setGroupLinks(next, [...chain.memberIds, movedId], chain.headId);
+    const joined = findChainContaining(
+      resolveChains(chainItemsFromAssigneeState(next)),
+      movedId,
+    );
+    if (joined && isMultiMemberChain(joined)) {
+      inheritChainParity(next, joined);
+    }
   }
 
   if (next[0]) next[0].linkedToPrevious = false;

@@ -23,6 +23,7 @@ import {
   collectKioskQueueCatalogScope,
   filterCatalogByScope,
 } from "@/lib/business/kiosk-queue-catalog-scope";
+import { openRunLookupGroupsFromCatalog } from "@/lib/business/kiosk-open-run-groups";
 import type { OpenChainRun } from "@/lib/business/kiosk-queue-units";
 import {
   buildKioskQueueUnits,
@@ -31,7 +32,6 @@ import {
   type KioskQueueSectionKey,
   type KioskQueueUnit,
 } from "@/lib/business/kiosk-queue-units";
-import { resolveChains } from "@/lib/business/subtask-chain";
 import { listSubTasksWithRelationsForTasks } from "@/lib/repos/tasks";
 import {
   filterKioskDailyQueue,
@@ -793,7 +793,7 @@ async function assembleKioskQueueData(
       ? catalog
       : await attachKioskFlagFields(catalog, db);
 
-  const chains = resolveChains(
+  const multiMemberChains = openRunLookupGroupsFromCatalog(
     catalogForChains.map((item) => ({
       documentId: item.documentId,
       index: item.index,
@@ -804,16 +804,11 @@ async function assembleKioskQueueData(
       assignedToIds: item.assignedToIds ?? [],
       dependencyIds: item.dependencyIds ?? [],
       hasAssignedFlags: (item.assignedFlagCodes?.length ?? 0) > 0,
+      taskDocumentId: item.taskDocumentId,
     })),
-  );
-  const multiMemberChains = chains.filter(
-    (chain) => chain.memberIds.length > 1,
   );
   const openByHead = await findOpenChainRunsForMemberGroups(
-    multiMemberChains.map((chain) => ({
-      headId: chain.headId,
-      memberIds: chain.memberIds,
-    })),
+    multiMemberChains,
     db,
   );
   const openRuns: OpenChainRun[] = [];

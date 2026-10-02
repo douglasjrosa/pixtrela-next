@@ -138,6 +138,28 @@ describe("prepareBoardSubtasksForSave", () => {
     ]);
     expect(saved[1]?.assignedTo.map((item) => item.documentId)).toEqual(["u-1"]);
   });
+
+  it("copies the highest maxSameTimeWorkers onto every valid member", () => {
+    const saved = prepareBoardSubtasksForSave([
+      boardSubTaskSummaryStub({
+        documentId: "a",
+        index: 0,
+        sharingType: "duration",
+        maxSameTimeWorkers: 1,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+      boardSubTaskSummaryStub({
+        documentId: "b",
+        index: 1,
+        sharingType: "duration",
+        linkedToPrevious: true,
+        maxSameTimeWorkers: 2,
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+    ]);
+    expect(saved[0]?.maxSameTimeWorkers).toBe(2);
+    expect(saved[1]?.maxSameTimeWorkers).toBe(2);
+  });
 });
 
 describe("formatQueueGroupLabel", () => {

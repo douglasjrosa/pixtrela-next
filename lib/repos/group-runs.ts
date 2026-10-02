@@ -175,6 +175,44 @@ async function markMembersProducing(
   await scheduleTaskSubTaskSync(taskId, timestamp);
 }
 
+export async function findOpenGroupRunForMembers(
+  memberIds: readonly string[],
+  db: Db = getDb(),
+): Promise<{
+  chainRunId: string;
+  principalId: string;
+  runStartedAt: Date;
+} | null> {
+  if (memberIds.length === 0) return null;
+  const [session] = await db
+    .select({
+      chainRunId: openSessions.chainRunId,
+      userId: openSessions.userId,
+    })
+    .from(openSessions)
+    .innerJoin(chainRuns, eq(chainRuns.id, openSessions.chainRunId))
+    .where(
+      and(
+        eq(chainRuns.status, OPEN_STATUS),
+        isNull(openSessions.leftAt),
+        inArray(openSessions.subTaskId, [...memberIds]),
+      ),
+    )
+    .limit(1);
+  if (!session?.chainRunId) return null;
+  const [run] = await db
+    .select({ startedAt: chainRuns.startedAt })
+    .from(chainRuns)
+    .where(eq(chainRuns.id, session.chainRunId))
+    .limit(1);
+  if (!run) return null;
+  return {
+    chainRunId: session.chainRunId,
+    principalId: session.userId,
+    runStartedAt: run.startedAt,
+  };
+}
+
 export async function listOpenGroupRunsByHead(
   headIds: readonly string[],
   db: Db = getDb(),

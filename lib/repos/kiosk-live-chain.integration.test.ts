@@ -4,7 +4,11 @@ import { eq } from "drizzle-orm";
 import { activities, openSessions, subTasks } from "@/drizzle/schema";
 import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
-import { confirmChainStop, joinLiveChain } from "@/lib/repos/kiosk-chains";
+import {
+  confirmChainStop,
+  joinLiveChain,
+  startChain,
+} from "@/lib/repos/kiosk-chains";
 import { startSubTask } from "@/lib/repos/kiosk-subtasks";
 import { upsertKioskSettings } from "@/lib/repos/settings";
 import { createStep } from "@/lib/repos/steps";
@@ -169,6 +173,72 @@ describeWithDb("joinLiveChain", () => {
       expect(
         rows.every((row) => row.chainRunId === rows[0]?.chainRunId),
       ).toBe(true);
+    },
+    45_000,
+  );
+
+  it(
+    "closes a table group run when the client omits chainRunId",
+    async () => {
+      const suffix = String(Date.now());
+      const worker = await createUser({
+        username: `null-run-${suffix}`,
+        password: "Secret123!",
+        name: "Null Run Worker",
+        role: "colaborator",
+        code: Number(suffix.slice(-5)),
+      });
+      await createTemplateTask({
+        code: `N${suffix.slice(-7)}`,
+        name: "Null run template",
+        subTasks: [
+          { name: "Cut", expectedTime: 10, index: 0 },
+          {
+            name: "Pack",
+            expectedTime: 10,
+            index: 1,
+            linkedToPrevious: true,
+          },
+        ],
+      });
+      const step = await createStep({ name: `Null run ${suffix}`, index: 0 });
+      const task = await createTask({
+        name: `Null run task ${suffix}`,
+        qty: 1,
+        stepId: step.id,
+        templateTaskCode: `N${suffix.slice(-7)}`,
+      });
+      const subs = await listSubTasksForTask(task.id);
+      const [first, second] = subs;
+      expect(first).toBeTruthy();
+      expect(second).toBeTruthy();
+      await assignColaboratorsToSubTask(first!.id, [worker.id]);
+      await assignColaboratorsToSubTask(second!.id, [worker.id]);
+
+      await startChain(worker.id, first!.id);
+      const before = await getDb()
+        .select({ id: openSessions.id })
+        .from(openSessions)
+        .where(eq(openSessions.userId, worker.id));
+      expect(before.length).toBeGreaterThan(0);
+
+      await confirmChainStop(
+        worker.id,
+        null,
+        [
+          { documentId: first!.id, completed: true },
+          { documentId: second!.id, completed: true },
+        ],
+        undefined,
+        undefined,
+        first!.id,
+      );
+
+      const after = await getDb()
+        .select({ id: openSessions.id })
+        .from(openSessions)
+        .where(eq(openSessions.userId, worker.id));
+      expect(after).toHaveLength(0);
     },
     45_000,
   );
