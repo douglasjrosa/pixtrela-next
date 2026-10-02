@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# Bootstrap for Cursor Cloud Agents (and local) against VPS postgres-dev.
-# Requires secrets: DATABASE_URL, AUTH_SECRET, MEDIA_DRIVER/S3_* as needed.
+# Bootstrap for laptop / Cloud Agents against local Postgres on 127.0.0.1.
+# Requires DATABASE_URL (and AUTH_SECRET for the app). Start Compose first:
+#   docker compose --env-file .env.local.db up -d
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
-  echo "DATABASE_URL is required (VPS postgres-dev connection string)." >&2
+  echo "DATABASE_URL is required (local Postgres on 127.0.0.1:5432)." >&2
   exit 1
 fi
 

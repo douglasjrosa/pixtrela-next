@@ -1,7 +1,8 @@
 name: Deploy prod DB
 
-# Runs Drizzle migrations against VPS postgres-prod after push to master.
-# App deploy is handled by Vercel GitHub integration.
+# Migrations now run on the VPS during scripts/deploy-app-vps.sh, on the
+# Docker network. This workflow stays as a no-op so older branch protection
+# still sees a green check.
 
 on:
   push:
@@ -13,22 +14,7 @@ jobs:
   migrate:
     name: drizzle migrate (prod)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          # Match local/Vercel Node; npm ci fails when lock lags peer resolves.
-          node-version: "22"
-          cache: npm
-
-      - name: Install
-        run: npm install --no-audit --no-fund
-
-      - name: Migrate production
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
-        run: npm run db:migrate
+      - name: Skip remote migrate
+        run: echo "Prod schema is applied on the VPS by deploy-app-vps.sh."

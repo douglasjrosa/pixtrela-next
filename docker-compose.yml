@@ -1,0 +1,31 @@
+# Laptop / Cloud Agent development Postgres.
+# Usage:
+#   cp env.local.db.example .env.local.db
+#   docker compose --env-file .env.local.db up -d
+#   DATABASE_URL=postgresql://pixtrela:PASSWORD@127.0.0.1:5432/pixtrela
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pixtrela-postgres-local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${LOCAL_PG_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${LOCAL_PG_USER:-pixtrela}
+      POSTGRES_PASSWORD: ${LOCAL_PG_PASSWORD:?set LOCAL_PG_PASSWORD in .env.local.db}
+      POSTGRES_DB: ${LOCAL_PG_DB:-pixtrela}
+    volumes:
+      - pixtrela_pg_local:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pixtrela_pg_local:

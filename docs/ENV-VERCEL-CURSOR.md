@@ -1,66 +1,50 @@
-# Environment: Vercel (prod) vs Cursor Cloud (dev)
+# Environment: VPS production vs local development
 
 ## Topology
 
 | Layer | Where | Database |
 |-------|--------|----------|
-| Next.js production | Vercel | `postgres-prod` on VPS (`:5432` / DB `pixtrela`) |
-| Next.js development | Cursor Cloud / laptop | `postgres-dev` on VPS (`:5433` / DB `pixtrela_dev`) — **no tunnel** |
-| Browser preview | Your laptop | Cursor **port forward 3000** → `npm run dev` |
+| Next.js production | Docker on the VPS (`127.0.0.1:3000` behind Nginx) | `pixtrela-postgres-prod` on the Docker network |
+| Next.js development | Laptop / Cloud Agent | local Docker `127.0.0.1:5432` / DB `pixtrela` |
+| Browser preview | Laptop | `npm run dev` on port 3000 |
 
 Templates:
 
-- App secrets: [`.env.example`](../.env.example) → `.env.local` / Vercel / Cursor Secrets
+- App secrets: [`.env.example`](../.env.example) → `.env.local`
+- Laptop Postgres: [`env.local.db.example`](../env.local.db.example) → `.env.local.db`
 - VPS Postgres: [`env.db.example`](../env.db.example) → `.env.db` on the VPS
 - Cloud Agents: [`CLOUD-AGENT.md`](CLOUD-AGENT.md), [`AGENTS.md`](../AGENTS.md)
 
-## Vercel (Production / Preview)
+## Production (VPS `/var/www/pixtrela/app/.env`)
 
-| Variable | Production value |
-|----------|------------------|
-| `DATABASE_URL` | `postgresql://USER:PASS@VPS_HOST:5432/pixtrela` (+ `sslmode=require` when TLS is on) |
-| `AUTH_SECRET` | Strong secret |
-| `AUTH_URL` | Canonical site URL |
-| `AUTH_TRUST_HOST` | `true` |
-| `CRON_SECRET` | Bearer token for Vercel Cron (`/api/cron/*`); required in production |
-| `MEDIA_DRIVER` / `S3_*` / `MEDIA_PUBLIC_BASE_URL` | Cloudflare R2 (`pixtrela-media`) |
+Written by `scripts/write-vps-app-env.sh` from `.env.production.local` plus
+the VPS Postgres and realtime secret files. `DATABASE_URL` uses hostname
+`pixtrela-postgres-prod`. `CRON_SECRET` stays unset until provided.
 
-Push to `master` → Vercel deploys the app. GitHub Action **Deploy prod DB** runs
-`drizzle-kit migrate` using secret `DATABASE_URL_PROD`.
-
-Ribermax URL/token and the CRM webhook secret live in the database
-(`/settings/integrations`), not in environment variables. See
+Ribermax URL/token and the CRM webhook secret also live in the database
+(`/settings/integrations`). See
 [`integrations/ribermax/README.md`](../integrations/ribermax/README.md).
 
-## Cursor Cloud (development)
-
-Cursor **My Secrets** (All repositories or this repo):
+## Local development
 
 ```env
 AUTH_SECRET=...
 AUTH_TRUST_HOST=true
 AUTH_URL=http://localhost:3000
-DATABASE_URL=postgresql://pixtrela:DEV_PASS@179.0.179.210:5433/pixtrela_dev
-MEDIA_DRIVER=s3
-S3_BUCKET=pixtrela-media
-S3_REGION=auto
-S3_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com
-S3_ACCESS_KEY_ID=...
-S3_SECRET_ACCESS_KEY=...
-MEDIA_PUBLIC_BASE_URL=https://media.pixtrela.ribermax.com.br
-S3_FORCE_PATH_STYLE=true
+DATABASE_URL=postgresql://pixtrela:PASSWORD@127.0.0.1:5432/pixtrela
 ```
 
-Bootstrap (agent does this — see `AGENTS.md`):
-
 ```bash
-./scripts/cloud-agent-bootstrap.sh
+docker compose --env-file .env.local.db up -d
+npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 
-Forward port **3000**. Never point the Cloud Agent at **prod** Postgres (`:5432`).
+Never point the Cloud Agent at **prod** Postgres.
 
-## GitHub Actions
+## Deploy
 
-Repo secret `DATABASE_URL_PROD` = production connection string (`:5432` / `pixtrela`).
-Workflow: [`.github/workflows/deploy-prod-db.yml`](../.github/workflows/deploy-prod-db.yml).
+`./scripts/deploy-app-vps.sh` rsyncs the standalone build and runs
+`drizzle-kit migrate` on the VPS Docker network. GitHub Action
+`Deploy prod DB` is a no-op.

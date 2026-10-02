@@ -51,3 +51,4 @@ next-env.d.ts
 # Local test/run logs
 *.log
 .env.db
+.env.local.db

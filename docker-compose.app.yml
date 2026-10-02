@@ -1,0 +1,44 @@
+# Production Next on the VPS. Shares the existing postgres_default network
+# so DATABASE_URL can use hostname pixtrela-postgres-prod.
+# Secrets stay in /var/www/pixtrela/app/.env (chmod 600).
+#
+# Usage (on the VPS):
+#   docker compose -f docker-compose.app.yml up -d --force-recreate
+
+name: pixtrela-app
+
+services:
+  app:
+    image: node:22-bookworm-slim
+    container_name: pixtrela-next
+    restart: unless-stopped
+    working_dir: /app
+    command: ["node", "server.js"]
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./standalone:/app
+    networks:
+      - postgres_default
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000/login').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+
+networks:
+  postgres_default:
+    external: true

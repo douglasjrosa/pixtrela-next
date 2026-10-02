@@ -6,32 +6,23 @@ legacy source database (one-time cutover).
 ## Quick start (laptop)
 
 ```bash
-# repo root — single local Postgres on 5432
-docker compose up -d
+cp env.local.db.example .env.local.db
+# set LOCAL_PG_PASSWORD
+docker compose --env-file .env.local.db up -d
 
-# next/
 cp .env.example .env.local
-npm run db:push
+# DATABASE_URL=postgresql://pixtrela:PASSWORD@127.0.0.1:5432/pixtrela
+npm run db:migrate
 npm run db:seed
 npm run dev
 ```
 
 Default admin (seed): `admin` / `PixtrelaAdmin1`
 
-## Cursor Cloud + VPS Postgres + Vercel
+## Production
 
-Target topology:
-
-| Role | Runtime | Database |
-|------|---------|----------|
-| Production Next | Vercel | `postgres-prod` on the VPS |
-| Development Next | Cursor Cloud VM | `postgres-dev` on `:5433` (direct, no tunnel) |
-| Browser | Laptop | Cursor port-forward **3000** |
-
-- VPS containers: [`docker-compose.db.yml`](docker-compose.db.yml) + [`env.db.example`](env.db.example)
-- Deploy / firewall / SSL: [`docs/VPS-POSTGRES.md`](docs/VPS-POSTGRES.md)
-- Env tables + daily loop: [`docs/ENV-VERCEL-CURSOR.md`](docs/ENV-VERCEL-CURSOR.md)
-- SSH tunnel helper: [`scripts/dev-db-tunnel.sh`](scripts/dev-db-tunnel.sh) (legacy)
+Next and Postgres run on the VPS. See [`docs/VPS-POSTGRES.md`](docs/VPS-POSTGRES.md)
+and `scripts/deploy-app-vps.sh`.
 
 ## Scripts
 

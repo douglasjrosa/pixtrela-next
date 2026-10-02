@@ -1,4 +1,7 @@
-import "dotenv/config";
+import { config } from "dotenv";
+
+config({ path: ".env.local" });
+config();
 
 import { eq, isNull } from "drizzle-orm";
 import bcrypt from "bcryptjs";

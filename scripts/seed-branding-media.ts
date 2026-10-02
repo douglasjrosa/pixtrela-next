@@ -1,7 +1,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { config } from "dotenv";
 import { eq } from "drizzle-orm";
+
+config({ path: ".env.local" });
+config();
 
 import { mediaAssets } from "../drizzle/schema";
 import { closeDb, getDb } from "../lib/db/client";

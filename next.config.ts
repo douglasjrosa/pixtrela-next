@@ -7,6 +7,7 @@ import { buildNextImageRemotePatterns } from "./lib/media/next-image-remote-patt
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   // pdfkit reads AFM font files from its package dir; bundling remaps that
   // path to /ROOT/... and the route 500s. Keep it as a Node external.
   serverExternalPackages: ["pdfkit", "fontkit"],
