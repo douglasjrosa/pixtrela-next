@@ -28,16 +28,26 @@ describe("material flag ref", () => {
 });
 
 describe("sortMaterialFlagOptionsByCode", () => {
-  it("sorts flag badges by code ascending without mutating the input", () => {
+  it("sorts by prefix then numeric suffix without mutating the input", () => {
     const flags = [
       { id: "c", code: "MAD-2" },
       { id: "a", code: "ALM-10" },
       { id: "b", code: "ALM-2" },
+      { id: "d", code: "A-10" },
+      { id: "e", code: "A-2" },
+      { id: "f", code: "A-1" },
     ];
 
     expect(sortMaterialFlagOptionsByCode(flags).map((flag) => flag.code)).toEqual(
-      ["ALM-10", "ALM-2", "MAD-2"],
+      ["A-1", "A-2", "A-10", "ALM-2", "ALM-10", "MAD-2"],
     );
-    expect(flags.map((flag) => flag.code)).toEqual(["MAD-2", "ALM-10", "ALM-2"]);
+    expect(flags.map((flag) => flag.code)).toEqual([
+      "MAD-2",
+      "ALM-10",
+      "ALM-2",
+      "A-10",
+      "A-2",
+      "A-1",
+    ]);
   });
 });
