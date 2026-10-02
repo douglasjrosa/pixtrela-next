@@ -38,11 +38,11 @@ When the user asks to **commit and push**:
 
 1. Commit only intentional source/docs (never secrets).
 2. `git push` to `origin` (usually `master`).
-3. Production Next runs on the VPS. Deploy with
-   `./scripts/deploy-app-vps.sh` after `npm run build`. That script applies
-   drizzle migrations on the Docker network.
-4. GitHub Action `Deploy prod DB` is a no-op (migrations no longer open
-   `:5432` from the internet).
+3. GitHub Action **Deploy VPS** builds the standalone app and runs
+   `scripts/deploy-app-vps.sh` over SSH. Do not also deploy from the laptop
+   unless the user asks or that workflow is failing.
+4. GitHub Action `Deploy prod DB` is a no-op (migrations run inside Deploy
+   VPS on the Docker network).
 
 If migrate fails on the VPS, fix and deploy again; do not leave prod schema
 behind the app.

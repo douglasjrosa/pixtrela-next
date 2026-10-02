@@ -1,8 +1,8 @@
 name: Deploy prod DB
 
-# Migrations now run on the VPS during scripts/deploy-app-vps.sh, on the
-# Docker network. This workflow stays as a no-op so older branch protection
-# still sees a green check.
+# Schema migrations run on the VPS during Deploy VPS
+# (.github/workflows/deploy-vps.yml). This workflow stays as a no-op so
+# older branch protection still sees a green check.
 
 on:
   push:

@@ -1,0 +1,73 @@
+name: Deploy VPS
+
+# Builds the standalone Next app and publishes it with scripts/deploy-app-vps.sh.
+# Secrets stay on the VPS (.env). Runtime SSH uses PIXTRELA_VPS_SSH_KEY.
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: build and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PIXTRELA_VPS_SSH: pixtrela-vps
+      VPS_HOST: 179.0.179.210
+      APP_HOST: pixtrela.ribermax.com.br
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Build standalone
+        env:
+          AUTH_SECRET: ci-build-placeholder
+          AUTH_TRUST_HOST: "true"
+          AUTH_URL: https://pixtrela.ribermax.com.br
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+          NEXT_PUBLIC_APP_URL: https://pixtrela.ribermax.com.br
+          NEXT_PUBLIC_REALTIME_SSE_URL: https://sse.pixtrela.ribermax.com.br
+          NEXT_PUBLIC_BUILD_ID: ${{ github.sha }}
+        run: npm run build
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.PIXTRELA_VPS_SSH_KEY }}
+
+      - name: Trust VPS host key
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H "${VPS_HOST}" >> ~/.ssh/known_hosts
+          cat >> ~/.ssh/config <<EOF
+          Host pixtrela-vps
+            HostName ${VPS_HOST}
+            User root
+          EOF
+          chmod 600 ~/.ssh/config ~/.ssh/known_hosts
+
+      - name: Deploy app
+        run: bash ./scripts/deploy-app-vps.sh
+
+      - name: Check public login
+        run: curl -fsS -o /dev/null "https://${APP_HOST}/login"

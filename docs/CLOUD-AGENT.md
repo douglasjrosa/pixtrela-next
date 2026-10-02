@@ -28,8 +28,8 @@ migrations run on the VPS (`scripts/deploy-app-vps.sh`).
 
 ### 3. Production
 
-Push to `master` does not publish the Next app. Deploy with
-`./scripts/deploy-app-vps.sh` after `npm run build`.
+Push to `master` publishes Next via GitHub Action **Deploy VPS**. Manual
+fallback: `./scripts/deploy-app-vps.sh` after `npm run build`.
 
 ## Every new agent session
 

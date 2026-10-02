@@ -45,6 +45,10 @@ Never point the Cloud Agent at **prod** Postgres.
 
 ## Deploy
 
-`./scripts/deploy-app-vps.sh` rsyncs the standalone build and runs
-`drizzle-kit migrate` on the VPS Docker network. GitHub Action
+Push to `master` runs GitHub Action **Deploy VPS**: it builds the standalone
+app on the runner and publishes with `scripts/deploy-app-vps.sh` (including
+`drizzle-kit migrate` on the VPS Docker network). GitHub Action
 `Deploy prod DB` is a no-op.
+
+Manual fallback from a laptop: `npm run build` then
+`./scripts/deploy-app-vps.sh`.
