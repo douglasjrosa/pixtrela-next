@@ -8,8 +8,6 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { DependencyFlagHint } from "@/lib/business/subtask-queue";
 import { cn } from "@/lib/utils";
 
-import { SemBandeiraInfoBadge } from "./sem-bandeira-info-badge";
-
 const FLAG_BADGE_CLASS =
   "inline-flex items-center gap-2 rounded-md bg-slate-800 px-3 py-1.5 " +
   "text-white shadow-sm";
@@ -82,9 +80,7 @@ export function MaterialFlagHintList({
   const releaseAllowed =
     canReleaseFlags ?? Boolean(onReleaseFlag || onReleaseAll);
   const showRelease = releaseAllowed && !releaseDisabled;
-  const hasHints = hints.some(
-    (hint) => hint.semBandeira || hint.codes.length > 0,
-  );
+  const hasHints = hints.some((hint) => hint.codes.length > 0);
   if (!hasHints && assigned.length === 0) return null;
 
   function confirmRelease(): void {
@@ -98,26 +94,7 @@ export function MaterialFlagHintList({
       <div className="space-y-2">
         {hints.map((hint) => {
           const key = hint.predecessorId ?? hint.predecessorName;
-          if (hint.semBandeira) {
-            return (
-              <p
-                key={key}
-                className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground"
-              >
-                <span>
-                  {t("dependencyFlags")}: {hint.predecessorName} ·
-                </span>
-                {hint.missingCategory ? (
-                  <SemBandeiraInfoBadge />
-                ) : (
-                  <span className="rounded-md bg-slate-800 px-3 py-1.5 text-xs text-white">
-                    {t("semBandeira")}
-                  </span>
-                )}
-              </p>
-            );
-          }
-          if (hint.codes.length === 0) return null;
+          if (hint.semBandeira || hint.codes.length === 0) return null;
           const flagEntries =
             hint.flags && hint.flags.length > 0
               ? hint.flags

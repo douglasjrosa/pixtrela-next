@@ -42,24 +42,32 @@ describe("MaterialFlagHintList", () => {
     expect(screen.queryByRole("button", { name: "C-3" })).not.toBeInTheDocument();
   });
 
-  it("shows info icon when predecessor has no flag category", () => {
+  it("hides predecessors that have no flag to locate", () => {
     render(
       <MaterialFlagHintList
         dependencyFlags={[
           {
-            predecessorName: "Corte",
+            predecessorName: "Fixação das chapas da tampa",
             codes: [],
             semBandeira: true,
             missingCategory: true,
+          },
+          {
+            predecessorName: "Fixação das chapas das cabeceiras",
+            codes: ["C-4"],
+            flags: [{ id: "flag-4", code: "C-4" }],
           },
         ]}
       />,
     );
 
     expect(
-      screen.getByRole("button", {
-        name: "Esta subtarefa ainda não possui categoria de bandeiras vinculada a ela.",
-      }),
+      screen.queryByText(/Fixação das chapas da tampa/),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Sem bandeira")).not.toBeInTheDocument();
+    expect(screen.getByText("C-4")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Fixação das chapas das cabeceiras/),
     ).toBeInTheDocument();
   });
 
