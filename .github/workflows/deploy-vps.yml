@@ -25,6 +25,21 @@ jobs:
       PIXTRELA_VPS_SSH: pixtrela-vps
       VPS_HOST: 179.0.179.210
       APP_HOST: pixtrela.ribermax.com.br
+      DATABASE_URL: postgresql://pixtrela:ci@127.0.0.1:5432/pixtrela
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pixtrela
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: pixtrela
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pixtrela -d pixtrela"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,12 +53,14 @@ jobs:
       - name: Install
         run: npm ci --no-audit --no-fund
 
+      - name: Migrate build database
+        run: npm run db:migrate
+
       - name: Build standalone
         env:
           AUTH_SECRET: ci-build-placeholder
           AUTH_TRUST_HOST: "true"
           AUTH_URL: https://pixtrela.ribermax.com.br
-          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
           NEXT_PUBLIC_APP_URL: https://pixtrela.ribermax.com.br
           NEXT_PUBLIC_REALTIME_SSE_URL: https://sse.pixtrela.ribermax.com.br
           NEXT_PUBLIC_BUILD_ID: ${{ github.sha }}
