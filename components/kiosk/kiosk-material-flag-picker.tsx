@@ -4,6 +4,7 @@ import { FlagTriangleRight, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { sortMaterialFlagOptionsByCode } from "@/lib/business/material-flag-code";
 import type { MaterialFlagOption } from "@/lib/business/subtask-queue";
 import { cn } from "@/lib/utils";
 
@@ -134,6 +135,7 @@ export function KioskMaterialFlagPicker({
   }
 
   const selected = new Set(selectedIds);
+  const orderedFlags = sortMaterialFlagOptionsByCode(flags);
 
   function toggle(id: string): void {
     onSemBandeiraChange?.(false);
@@ -155,7 +157,7 @@ export function KioskMaterialFlagPicker({
         )}
       >
         <div className="flex flex-wrap gap-2">
-        {flags.map((flag) => {
+        {orderedFlags.map((flag) => {
           const isOn = selected.has(flag.id);
           return (
             <button

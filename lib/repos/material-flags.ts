@@ -7,7 +7,10 @@ import {
   subTaskFlags,
   subTasks,
 } from "@/drizzle/schema";
-import { formatMaterialFlagCode } from "@/lib/business/material-flag-code";
+import {
+  formatMaterialFlagCode,
+  sortMaterialFlagOptionsByCode,
+} from "@/lib/business/material-flag-code";
 import { resolveSubTaskFlagCategory } from "@/lib/business/subtask-material-flags";
 import { getDb, type Db } from "@/lib/db/client";
 import type { MaterialFlagFormInput, MaterialFlagListFilters } from "@/lib/schemas/material-flag";
@@ -393,9 +396,7 @@ export async function resolveKioskMaterialFlagOptions(
     }
   }
 
-  const flags = [...byId.values()].sort((left, right) =>
-    left.code.localeCompare(right.code),
-  );
+  const flags = sortMaterialFlagOptionsByCode([...byId.values()]);
 
   return {
     categoryId: resolvedCategory,
