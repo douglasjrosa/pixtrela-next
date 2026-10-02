@@ -17,7 +17,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Loader2, User, Users } from "lucide-react";
+import {
+  Check,
+  GripVertical,
+  Loader2,
+  User,
+  Users,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { CurrencyMediaIcon } from "@/components/currency/currency-media-icon";
@@ -47,6 +53,7 @@ import {
   toggleCollaboratorOnSubtask,
   toggleTeamOnSubtask,
 } from "@/lib/business/board-assign-focus";
+import { isSkipFinishDraftActive } from "@/lib/business/board-admin-skip-finish";
 import { getSubtaskAssigneeIds } from "@/lib/business/board-assignee-draft";
 import {
   canEditAssignees,
@@ -211,6 +218,9 @@ export interface KanbanTaskSubtasksModalProps {
     subTaskDocumentId: string,
   ) => Promise<ActivitySession[]>;
   onReleaseFlags?: (subTaskDocumentId: string) => void | Promise<void>;
+  skipDraftIds?: readonly string[];
+  onSkipFinishApply?: (documentIds: string[]) => void;
+  onSkipFinishRevert?: () => void;
 }
 
 function getTeamMemberIds(team: TeamAssignmentOption): string[] {
@@ -547,6 +557,9 @@ export function KanbanTaskSubtasksModal({
   onLoadSessions,
   loadSubtaskSession,
   onReleaseFlags,
+  skipDraftIds = [],
+  onSkipFinishApply,
+  onSkipFinishRevert,
 }: KanbanTaskSubtasksModalProps) {
   const tCommon = useTranslations("common");
   const tKanban = useTranslations("kanban");
@@ -1086,6 +1099,25 @@ export function KanbanTaskSubtasksModal({
     clearMultiState();
   }
 
+  const canSkipFinish = Boolean(onSkipFinishApply && onSkipFinishRevert);
+  const markAsReadyPressed = isSkipFinishDraftActive(
+    skipDraftIds,
+    selectedSubtaskIds,
+  );
+  const showMarkAsReady =
+    multiEnabled &&
+    canSkipFinish &&
+    (selectedSubtaskIds.length > 0 || skipDraftIds.length > 0);
+
+  function handleMarkAsReadyClick(): void {
+    if (markAsReadyPressed) {
+      onSkipFinishRevert?.();
+      return;
+    }
+    if (selectedSubtaskIds.length === 0) return;
+    onSkipFinishApply?.(selectedSubtaskIds);
+  }
+
   function isPendingSubtaskHighlighted(subtask: BoardSubTaskSummary): boolean {
     if (multiEnabled) {
       return selectedSubtaskIds.includes(subtask.documentId);
@@ -1153,17 +1185,22 @@ export function KanbanTaskSubtasksModal({
           )
         }
         footerEnd={
-          multiEnabled && showMultiAssignSwitch ? (
-            <KanbanMultiAssignSubmitButton
-              canApply={canApply}
-              disabled={isPersistingAny}
-              onAssign={handleMultiAssign}
-            />
-          ) : (
-            <Button type="button" disabled={!dirty || isPersistingAny} onClick={onSave}>
+          <div className="flex flex-wrap items-center gap-2">
+            {multiEnabled && showMultiAssignSwitch ? (
+              <KanbanMultiAssignSubmitButton
+                canApply={canApply}
+                disabled={isPersistingAny}
+                onAssign={handleMultiAssign}
+              />
+            ) : null}
+            <Button
+              type="button"
+              disabled={!dirty || isPersistingAny}
+              onClick={onSave}
+            >
               {tCommon("save")}
             </Button>
-          )
+          </div>
         }
       >
         <p className="text-sm text-muted-foreground">{taskName}</p>
@@ -1324,9 +1361,26 @@ export function KanbanTaskSubtasksModal({
             <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[7fr_3fr] gap-4">
               <section className="flex min-h-0 min-w-0 flex-col gap-2">
                 {multiEnabled ? (
-                  <p className="text-sm font-semibold text-foreground">
-                    {tKanban("subtasksColumn")}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-foreground">
+                      {tKanban("subtasksColumn")}
+                    </p>
+                    {showMarkAsReady ? (
+                      <button
+                        type="button"
+                        aria-label={tKanban("markAsReady")}
+                        aria-pressed={markAsReadyPressed}
+                        className={cn(
+                          "rounded-md p-1 text-muted-foreground",
+                          "hover:bg-muted hover:text-foreground",
+                          markAsReadyPressed && "text-foreground",
+                        )}
+                        onClick={handleMarkAsReadyClick}
+                      >
+                        <Check className="size-4" aria-hidden />
+                      </button>
+                    ) : null}
+                  </div>
                 ) : (
                   <button
                     type="button"

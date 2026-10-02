@@ -1299,6 +1299,7 @@ async function creditStopCurrency(
     colaboratorId: string;
     activityId: string;
     subTaskStatus: string;
+    finishedWithoutPay?: boolean;
     sharingType: string;
     expectedTime: number;
     subTaskQty: number;
@@ -1329,6 +1330,7 @@ async function creditStopCurrency(
     shouldCreditDurationCurrency({
       action: "stoped",
       subTaskStatus: input.subTaskStatus,
+      finishedWithoutPay: input.finishedWithoutPay,
     })
   ) {
     const activityRows = await db
@@ -1595,6 +1597,7 @@ export async function stopSubTask(
           colaboratorId,
           activityId,
           subTaskStatus: stopResult.subTaskStatus,
+          finishedWithoutPay: sub.finishedWithoutPay,
           sharingType,
           expectedTime: sub.expectedTime,
           subTaskQty: sub.qty,

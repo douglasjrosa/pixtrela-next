@@ -238,6 +238,47 @@ describe("BoardActions", () => {
     expect(screen.getByRole("button", { name: "Remover Ana" })).toBeInTheDocument();
   });
 
+  it("saves mark-as-ready skip without turning assign into skip", async () => {
+    const user = userEvent.setup();
+    const loadSubtasks = vi.fn().mockResolvedValue([
+      boardSubTaskSummaryStub({
+        documentId: "st-1",
+        name: "Soldar",
+        status: "waiting",
+        assignedTo: [{ documentId: "u-1", name: "Ana" }],
+      }),
+    ]);
+    const skipFinishBoardSubtasks = vi.fn().mockResolvedValue({
+      skippedIds: ["st-1"],
+      blocked: [],
+    });
+    const updateSubtaskAssignees = vi.fn();
+
+    renderBoard({
+      loadSubtasks,
+      skipFinishBoardSubtasks,
+      updateSubtaskAssignees,
+    });
+
+    await user.click(screen.getByText("1 - Tarefa A"));
+    await user.click(screen.getByRole("switch", { name: "Multi-seleção" }));
+    await user.click(await screen.findByRole("button", { name: /Soldar/ }));
+    await user.click(screen.getByRole("button", { name: "Marcar como Pronto" }));
+    expect(skipFinishBoardSubtasks).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await vi.waitFor(() => {
+      expect(skipFinishBoardSubtasks).toHaveBeenCalledWith("task-10", ["st-1"]);
+    });
+    expect(updateSubtaskAssignees).not.toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(showSuccessToast).toHaveBeenCalledWith(
+        "A tarefa 1 - Tarefa A foi atualizada com sucesso.",
+      );
+    });
+  });
+
   it("closes the modal and blocks only the saving task card while save runs", async () => {
     const user = userEvent.setup();
     let resolveSave!: () => void;

@@ -150,6 +150,16 @@ describe("shouldCreditDurationCurrency", () => {
       }),
     ).toBe(false);
   });
+
+  it("does not credit when finished without pay", () => {
+    expect(
+      shouldCreditDurationCurrency({
+        action: "stoped",
+        subTaskStatus: "finished",
+        finishedWithoutPay: true,
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("calculateDurationSecondsCurrency", () => {

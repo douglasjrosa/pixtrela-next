@@ -17,11 +17,26 @@ const listSubTasksWithRelationsForTask = vi.fn();
 const updateSubTaskLinkedToPrevious = vi.fn();
 const updateSubTaskMaxSameTimeWorkers = vi.fn();
 const replaceSubTaskAssignees = vi.fn();
+const skipFinishSubTasks = vi.fn();
 const applyAutoStepTaskOrderingAfterTaskChange = vi.fn();
 const createSubTask = vi.fn();
 const updateSubTask = vi.fn();
+const listOpenUserIdsBySubTaskIds = vi.fn();
+const listUserNamesByIds = vi.fn();
+const runTaskSubTaskSyncRoutine = vi.fn();
 vi.mock("@/lib/repos/group-runs", () => ({
   listOpenSessionLive: vi.fn(async () => []),
+  listOpenUserIdsBySubTaskIds: (...args: unknown[]) =>
+    listOpenUserIdsBySubTaskIds(...args),
+}));
+
+vi.mock("@/lib/repos/users", () => ({
+  listUserNamesByIds: (...args: unknown[]) => listUserNamesByIds(...args),
+}));
+
+vi.mock("@/lib/repos/subtask-lifecycle", () => ({
+  runTaskSubTaskSyncRoutine: (...args: unknown[]) =>
+    runTaskSubTaskSyncRoutine(...args),
 }));
 
 vi.mock("@/auth", () => ({
@@ -86,6 +101,7 @@ vi.mock("@/lib/repos/tasks", async (importOriginal) => {
       updateSubTaskMaxSameTimeWorkers(...args),
     replaceSubTaskAssignees: (...args: unknown[]) =>
       replaceSubTaskAssignees(...args),
+    skipFinishSubTasks: (...args: unknown[]) => skipFinishSubTasks(...args),
   };
 });
 
@@ -116,6 +132,14 @@ describe("board/actions drizzle", () => {
     updateSubTaskLinkedToPrevious.mockReset();
     updateSubTaskMaxSameTimeWorkers.mockReset();
     replaceSubTaskAssignees.mockReset();
+    skipFinishSubTasks.mockReset();
+    skipFinishSubTasks.mockResolvedValue(undefined);
+    listOpenUserIdsBySubTaskIds.mockReset();
+    listOpenUserIdsBySubTaskIds.mockResolvedValue(new Map());
+    listUserNamesByIds.mockReset();
+    listUserNamesByIds.mockResolvedValue([]);
+    runTaskSubTaskSyncRoutine.mockReset();
+    runTaskSubTaskSyncRoutine.mockResolvedValue(undefined);
     updateSubTask.mockReset();
     applyAutoStepTaskOrderingAfterTaskChange.mockReset();
     listStepsRepo.mockResolvedValue([
@@ -705,5 +729,67 @@ describe("board/actions drizzle", () => {
       "task-1",
       expect.objectContaining({ assignedToIds: ["u-head", "u-extra"] }),
     );
+  });
+
+  it("skipFinishBoardSubtasks finishes idle chains without pay", async () => {
+    listSubTasksWithRelationsForTask.mockResolvedValue([
+      {
+        id: "st-1",
+        index: 0,
+        status: "waiting",
+        activationStatus: "unlocked",
+        linkedToPrevious: false,
+        maxSameTimeWorkers: 1,
+        assignedToIds: ["u-1"],
+        dependencyIds: [],
+        sharingType: "duration",
+      },
+      {
+        id: "st-2",
+        index: 1,
+        status: "waiting",
+        activationStatus: "unlocked",
+        linkedToPrevious: true,
+        maxSameTimeWorkers: 1,
+        assignedToIds: ["u-1"],
+        dependencyIds: [],
+        sharingType: "duration",
+      },
+    ]);
+
+    const { skipFinishBoardSubtasks } = await import("./actions");
+    const result = await skipFinishBoardSubtasks("task-1", ["st-2"]);
+
+    expect(skipFinishSubTasks).toHaveBeenCalledWith(["st-1", "st-2"]);
+    expect(runTaskSubTaskSyncRoutine).toHaveBeenCalledWith("task-1");
+    expect(result).toEqual({ skippedIds: ["st-1", "st-2"], blocked: [] });
+  });
+
+  it("skipFinishBoardSubtasks leaves open-session chains untouched", async () => {
+    listSubTasksWithRelationsForTask.mockResolvedValue([
+      {
+        id: "st-1",
+        index: 0,
+        status: "producing",
+        activationStatus: "unlocked",
+        linkedToPrevious: false,
+        maxSameTimeWorkers: 1,
+        assignedToIds: ["u-1"],
+        dependencyIds: [],
+        sharingType: "duration",
+      },
+    ]);
+    listOpenUserIdsBySubTaskIds.mockResolvedValue(new Map([["st-1", ["u-1"]]]));
+    listUserNamesByIds.mockResolvedValue([{ id: "u-1", name: "Ana" }]);
+
+    const { skipFinishBoardSubtasks } = await import("./actions");
+    const result = await skipFinishBoardSubtasks("task-1", ["st-1"]);
+
+    expect(skipFinishSubTasks).not.toHaveBeenCalled();
+    expect(runTaskSubTaskSyncRoutine).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      skippedIds: [],
+      blocked: [{ memberIds: ["st-1"], producerNames: ["Ana"] }],
+    });
   });
 });

@@ -161,10 +161,12 @@ export function calculateDurationSecondsCurrency(input: {
 export interface CompletingActivity {
   action: "started" | "stoped";
   subTaskStatus: string;
+  finishedWithoutPay?: boolean;
 }
 
 export function shouldCreditDurationCurrency(
   activity: CompletingActivity,
 ): boolean {
+  if (activity.finishedWithoutPay) return false;
   return activity.action === "stoped" && activity.subTaskStatus === "finished";
 }
