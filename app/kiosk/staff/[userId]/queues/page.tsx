@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { KioskContentSurface } from "@/components/kiosk/kiosk-content-surface";
 import { KioskStaffQueuesPanel } from "@/components/kiosk/kiosk-staff-queues-panel";
+import { QueuesRevisionRefresh } from "@/components/queues/queues-revision-refresh";
 import { loadKioskStaffActor } from "@/lib/business/kiosk-staff-access";
 import { loadStaffQueuesGrouped } from "@/lib/kiosk/load-staff-queues-grouped";
 import { loadTaskAutomationSetting } from "@/lib/settings/load-task-automation";
@@ -22,6 +23,7 @@ export default async function KioskStaffQueuesPage({ params }: PageProps) {
 
   return (
     <KioskContentSurface>
+      <QueuesRevisionRefresh />
       <KioskStaffQueuesPanel
         userId={userId}
         teams={teams}

@@ -1,6 +1,7 @@
 import { getAppSession } from "@/lib/auth/app-session";
 import { ForbiddenMessage } from "@/components/auth/forbidden-message";
 import { KioskStaffQueuesPanel } from "@/components/kiosk/kiosk-staff-queues-panel";
+import { QueuesRevisionRefresh } from "@/components/queues/queues-revision-refresh";
 import type { KioskStaffRole } from "@/lib/business/kiosk-staff-access";
 import { loadStaffQueuesGrouped } from "@/lib/kiosk/load-staff-queues-grouped";
 import { loadTaskAutomationSetting } from "@/lib/settings/load-task-automation";
@@ -23,10 +24,13 @@ export default async function AppQueuesPage() {
   ]);
 
   return (
-    <KioskStaffQueuesPanel
-      teams={teams}
-      colaboratorLinkTarget="app"
-      assignWarnMax={automation.assignWarnMax}
-    />
+    <>
+      <QueuesRevisionRefresh />
+      <KioskStaffQueuesPanel
+        teams={teams}
+        colaboratorLinkTarget="app"
+        assignWarnMax={automation.assignWarnMax}
+      />
+    </>
   );
 }
