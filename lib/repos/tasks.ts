@@ -1014,6 +1014,29 @@ export async function replaceSubTaskAssignees(
   );
 }
 
+const SKIP_FINISH_STATUS = "finished" as const;
+
+export async function skipFinishSubTasks(
+  ids: readonly string[],
+  db: Db = getDb(),
+): Promise<void> {
+  if (ids.length === 0) return;
+  const uniqueIds = [...new Set(ids)];
+  await db.transaction(async (tx) => {
+    await tx
+      .update(subTasks)
+      .set({
+        status: SKIP_FINISH_STATUS,
+        finishedWithoutPay: true,
+        updatedAt: new Date(),
+      })
+      .where(inArray(subTasks.id, uniqueIds));
+    await tx
+      .delete(subTaskAssignees)
+      .where(inArray(subTaskAssignees.subTaskId, uniqueIds));
+  });
+}
+
 export async function updateSubTaskLinkedToPrevious(
   id: string,
   linkedToPrevious: boolean,

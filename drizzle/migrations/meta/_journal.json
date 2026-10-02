@@ -295,6 +295,13 @@
       "when": 1788750000000,
       "tag": "0041_leader_exchange_window",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1788800000000,
+      "tag": "0042_sub_tasks_finished_without_pay",
+      "breakpoints": true
     }
   ]
 }

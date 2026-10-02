@@ -76,6 +76,7 @@ type BoardLiveProgressProps = BoardLiveProgressDataProps & {
   loadSubtaskSession?: BoardActionsProps["loadSubtaskSession"];
   reorderSubtasks: BoardActionsProps["reorderSubtasks"];
   updateSubtaskAssignees: BoardActionsProps["updateSubtaskAssignees"];
+  skipFinishBoardSubtasks?: BoardActionsProps["skipFinishBoardSubtasks"];
   linkSubtask: BoardActionsProps["linkSubtask"];
   createSubtask: BoardActionsProps["createSubtask"];
   releaseSubtaskFlags?: BoardActionsProps["releaseSubtaskFlags"];
@@ -101,6 +102,7 @@ export function BoardLiveProgress({
   loadSubtaskSession,
   reorderSubtasks,
   updateSubtaskAssignees,
+  skipFinishBoardSubtasks,
   linkSubtask,
   createSubtask,
   releaseSubtaskFlags,
@@ -215,6 +217,7 @@ export function BoardLiveProgress({
           loadSubtaskSession={loadSubtaskSession}
           reorderSubtasks={reorderSubtasks}
           updateSubtaskAssignees={updateSubtaskAssignees}
+          skipFinishBoardSubtasks={skipFinishBoardSubtasks}
           linkSubtask={linkSubtask}
           createSubtask={createSubtask}
           releaseSubtaskFlags={releaseSubtaskFlags}

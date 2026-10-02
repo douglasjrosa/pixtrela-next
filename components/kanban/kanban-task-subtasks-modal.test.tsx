@@ -776,6 +776,87 @@ describe("KanbanTaskSubtasksModal", () => {
     ).toBeEnabled();
   });
 
+  it("hides mark-as-ready until a subtask is selected", async () => {
+    const user = userEvent.setup();
+    renderModal({
+      onSkipFinishApply: vi.fn(),
+      onSkipFinishRevert: vi.fn(),
+    });
+
+    await user.click(screen.getByRole("switch", { name: "Multi-seleção" }));
+
+    expect(
+      screen.queryByRole("button", { name: "Marcar como Pronto" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Soldar/ }));
+
+    expect(
+      screen.getByRole("button", { name: "Marcar como Pronto" }),
+    ).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("applies skip draft on mark as ready and does not assign", async () => {
+    const user = userEvent.setup();
+    const onSkipFinishApply = vi.fn();
+    const onAssigneesChange = vi.fn();
+
+    renderModal({ onSkipFinishApply, onAssigneesChange, onSkipFinishRevert: vi.fn() });
+
+    await user.click(screen.getByRole("switch", { name: "Multi-seleção" }));
+    await user.click(screen.getByRole("button", { name: /Soldar/ }));
+    await user.click(screen.getByRole("button", { name: "Ana" }));
+    await user.click(screen.getByRole("button", { name: "Marcar como Pronto" }));
+
+    expect(onSkipFinishApply).toHaveBeenCalledWith(["st-1"]);
+    expect(onAssigneesChange).not.toHaveBeenCalled();
+  });
+
+  it("keeps assign as assign-only while skip draft is available", async () => {
+    const user = userEvent.setup();
+    const onSkipFinishApply = vi.fn();
+    const onAssigneesChange = vi.fn();
+
+    renderModal({ onSkipFinishApply, onAssigneesChange, onSkipFinishRevert: vi.fn() });
+
+    await user.click(screen.getByRole("switch", { name: "Multi-seleção" }));
+    await user.click(screen.getByRole("button", { name: /Soldar/ }));
+    await user.click(screen.getByRole("button", { name: "Ana" }));
+    await user.click(screen.getByRole("button", { name: "Atribuir" }));
+
+    expect(onSkipFinishApply).not.toHaveBeenCalled();
+    expect(onAssigneesChange).toHaveBeenCalledWith(subtasks[0], ["u-1"]);
+  });
+
+  it("reverts skip draft when mark as ready is pressed again", async () => {
+    const user = userEvent.setup();
+    const onSkipFinishRevert = vi.fn();
+
+    renderModal({
+      skipDraftIds: ["st-1"],
+      onSkipFinishApply: vi.fn(),
+      onSkipFinishRevert,
+      subtasks: [
+        boardSubTaskSummaryStub({
+          documentId: "st-1",
+          name: "Soldar",
+          status: "finished",
+          assignedTo: [],
+        }),
+        subtasks[1],
+        subtasks[2],
+      ],
+    });
+
+    await user.click(screen.getByRole("switch", { name: "Multi-seleção" }));
+
+    const markReady = screen.getByRole("button", { name: "Marcar como Pronto" });
+    expect(markReady).toHaveAttribute("aria-pressed", "true");
+    await user.click(markReady);
+
+    expect(onSkipFinishRevert).toHaveBeenCalledOnce();
+  });
+
   it("disables multi actions until both sides have a selection", async () => {
     const user = userEvent.setup();
     renderModal();

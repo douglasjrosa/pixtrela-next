@@ -24,6 +24,12 @@ import {
   previousByIndex,
 } from "@/lib/business/group-link";
 import {
+  eligibleSkipFinishIds,
+  expandSkipToChains,
+  partitionSkipByOpenSessions,
+  uniqueSortedNames,
+} from "@/lib/business/board-admin-skip-finish";
+import {
   assertBoardActorCanManageSubtasks,
   assertBoardActorCanMove,
   requireAppBoardActor,
@@ -80,14 +86,20 @@ import {
   listSubTasksWithRelationsForTask,
   mapBoardSubtaskSessionHistory,
   replaceSubTaskAssignees,
+  skipFinishSubTasks,
   updateSubTaskLinkedToPrevious,
   updateSubTaskMaxSameTimeWorkers,
   updateTaskBoardFields,
 } from "@/lib/repos/tasks";
-import { listOpenSessionLive } from "@/lib/repos/group-runs";
+import { listOpenSessionLive, listOpenUserIdsBySubTaskIds } from "@/lib/repos/group-runs";
+import { listUserNamesByIds } from "@/lib/repos/users";
 import { releaseFlagsForSubTask } from "@/lib/repos/material-flags";
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
+import {
+  skipFinishBoardSubtasksInputSchema,
+  type SkipFinishBoardSubtasksResult,
+} from "@/lib/schemas/board-skip-finish";
 import type { KanbanTask } from "@/components/kanban/types";
 import { isAutoStepTaskOrder } from "@/lib/schemas/step-task-order-by";
 import { scheduleBoardInvalidate } from "@/lib/realtime/publish-board-invalidate";
@@ -420,6 +432,7 @@ function toChainSubTask(row: {
   maxSameTimeWorkers: number;
   assignedToIds: string[];
   dependencyIds: string[];
+  sharingType?: string | null;
 }): ChainSubTask {
   return {
     documentId: row.id,
@@ -430,6 +443,10 @@ function toChainSubTask(row: {
     maxSameTimeWorkers: row.maxSameTimeWorkers,
     assignedToIds: row.assignedToIds,
     dependencyIds: row.dependencyIds,
+    sharingType:
+      row.sharingType === "qty" || row.sharingType === "duration"
+        ? row.sharingType
+        : undefined,
   };
 }
 
@@ -595,6 +612,51 @@ export async function updateBoardSubtaskAssignees(
     );
   }
   invalidateBoardSubtaskReads(taskDocumentId);
+}
+
+export async function skipFinishBoardSubtasks(
+  taskDocumentId: string,
+  subTaskDocumentIds: string[],
+  staffUserId?: string,
+): Promise<SkipFinishBoardSubtasksResult> {
+  await assertCanManageBoardSubtasks(staffUserId);
+  const parsed = skipFinishBoardSubtasksInputSchema.parse({
+    taskDocumentId,
+    subTaskDocumentIds,
+  });
+  const siblings = await listSubTasksWithRelationsForTask(parsed.taskDocumentId);
+  if (siblings.length === 0) throw new Error("notFound");
+
+  const chainItems = effectiveChainItems(siblings);
+  const expandedIds = expandSkipToChains(chainItems, parsed.subTaskDocumentIds);
+  const selected = new Set(expandedIds);
+  const chains = resolveChains(chainItems).filter((chain) =>
+    chain.memberIds.some((id) => selected.has(id)),
+  );
+  const openById = await listOpenUserIdsBySubTaskIds(expandedIds);
+  const partition = partitionSkipByOpenSessions(chains, openById);
+  const skippedIds = eligibleSkipFinishIds(chainItems, partition.allowedIds);
+
+  if (skippedIds.length > 0) {
+    await skipFinishSubTasks(skippedIds);
+    await runTaskSubTaskSyncRoutine(parsed.taskDocumentId);
+  }
+
+  const openUserIds = [
+    ...new Set(partition.blocked.flatMap((row) => row.openUserIds)),
+  ];
+  const nameRows = await listUserNamesByIds(openUserIds);
+  const nameById = new Map(nameRows.map((row) => [row.id, row.name]));
+  const blocked = partition.blocked.map((row) => ({
+    memberIds: row.memberIds,
+    producerNames: uniqueSortedNames(
+      row.openUserIds.map((id) => nameById.get(id) ?? id),
+    ),
+  }));
+
+  invalidateBoardSubtaskReads(parsed.taskDocumentId);
+  if (skippedIds.length > 0) invalidateBoardTasks();
+  return { skippedIds, blocked };
 }
 
 export async function applyBoardTaskOrder(

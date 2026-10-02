@@ -292,6 +292,32 @@ export async function listOpenUserIdsForSubTask(
   return [...new Set(rows.map((row) => row.userId))];
 }
 
+export async function listOpenUserIdsBySubTaskIds(
+  subTaskIds: readonly string[],
+  db: Db = getDb(),
+): Promise<Map<string, string[]>> {
+  const bySubTask = new Map<string, string[]>();
+  if (subTaskIds.length === 0) return bySubTask;
+  const rows = await db
+    .select({
+      subTaskId: openSessions.subTaskId,
+      userId: openSessions.userId,
+    })
+    .from(openSessions)
+    .where(
+      and(
+        inArray(openSessions.subTaskId, [...subTaskIds]),
+        isNull(openSessions.leftAt),
+      ),
+    );
+  for (const row of rows) {
+    const list = bySubTask.get(row.subTaskId) ?? [];
+    if (!list.includes(row.userId)) list.push(row.userId);
+    bySubTask.set(row.subTaskId, list);
+  }
+  return bySubTask;
+}
+
 export async function listOpenSubTaskIdsForUser(
   userId: string,
   db: Db,
