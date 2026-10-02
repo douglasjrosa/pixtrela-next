@@ -247,23 +247,23 @@ export function KioskPanelClient({
 
   const displaySubTasks = useMemo(
     () =>
-      applyOptimisticKioskExitToSubTasks(
-        applyOptimisticChainStopToSubTasks(
-          applyOptimisticKioskStartToSubTasks(subTasks, optimisticStart),
-          optimisticChainStop,
+      applyOptimisticKioskStartToSubTasks(
+        applyOptimisticKioskExitToSubTasks(
+          applyOptimisticChainStopToSubTasks(subTasks, optimisticChainStop),
+          optimisticExit,
         ),
-        optimisticExit,
+        optimisticStart,
       ),
     [optimisticChainStop, optimisticExit, optimisticStart, subTasks],
   );
   const displayCatalog = useMemo(
     () =>
-      applyOptimisticKioskExitToSubTasks(
-        applyOptimisticChainStopToSubTasks(
-          applyOptimisticKioskStartToSubTasks(catalog, optimisticStart),
-          optimisticChainStop,
+      applyOptimisticKioskStartToSubTasks(
+        applyOptimisticKioskExitToSubTasks(
+          applyOptimisticChainStopToSubTasks(catalog, optimisticChainStop),
+          optimisticExit,
         ),
-        optimisticExit,
+        optimisticStart,
       ),
     [catalog, optimisticChainStop, optimisticExit, optimisticStart],
   );
@@ -580,7 +580,7 @@ export function KioskPanelClient({
   }, [colaboratorId, finalizadas.expanded, finalizadas.loadedOnce, staffUserId, t]);
 
   function handleStart(documentId: string): void {
-    if (queueBusy) return;
+    if (queueBusy === "start") return;
     setFlashDocumentId(documentId);
     window.setTimeout(() => setFlashDocumentId(null), START_FLASH_MS);
     const startedAt = new Date().toISOString();
@@ -589,6 +589,8 @@ export function KioskPanelClient({
       ? "join"
       : "solo";
     const optimistic: OptimisticKioskStart = { documentId, startedAt, mode };
+    setOptimisticExit(null);
+    setOptimisticChainStop(null);
     setOptimisticStart(optimistic);
     setQueueBusy("start");
     runBackgroundAction(async () => {
@@ -602,7 +604,7 @@ export function KioskPanelClient({
   }
 
   function handleStartChain(headId: string): void {
-    if (queueBusy) return;
+    if (queueBusy === "start") return;
     setFlashDocumentId(headId);
     window.setTimeout(() => setFlashDocumentId(null), START_FLASH_MS);
     const startedAt = new Date().toISOString();
@@ -612,6 +614,8 @@ export function KioskPanelClient({
       mode: "chain" as const,
       chainHeadId: headId,
     };
+    setOptimisticExit(null);
+    setOptimisticChainStop(null);
     setOptimisticStart(optimistic);
     setQueueBusy("start");
     runBackgroundAction(async () => {

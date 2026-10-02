@@ -144,20 +144,13 @@ export function applyOptimisticChainStopToOpenRuns(
 
 export function isOptimisticChainStopSettled(
   subTasks: readonly KioskSubTask[],
-  openRuns: readonly OpenChainRun[] | undefined,
+  _openRuns: readonly OpenChainRun[] | undefined,
   stop: OptimisticKioskChainStop,
 ): boolean {
-  const stillOpen = (openRuns ?? []).some(
-    (run) =>
-      run.chainRunId === stop.chainRunId ||
-      run.chainHeadId === stop.chainHeadId,
-  );
-  if (stillOpen) return false;
-
   const memberIds = new Set(stop.memberIds);
   return subTasks
     .filter((item) => memberIds.has(item.documentId))
-    .every((item) => item.status !== "producing");
+    .every((item) => !item.startedAt);
 }
 
 export type OptimisticKioskExit = {
@@ -168,13 +161,18 @@ export type OptimisticKioskExit = {
 function resolveOptimisticExitStatus(
   item: KioskSubTask,
   exit: KioskExitInput,
+  remainingWorkers: number,
 ): KioskSubTask["status"] {
   if (exit.sharingType === "duration") {
-    return exit.isCompleted ? "finished" : "waiting";
+    if (exit.isCompleted) return "finished";
+    return remainingWorkers > 0 ? "producing" : "waiting";
   }
   const qty = Math.max(0, Math.floor(exit.qtyCompleted));
-  return item.completedQty + qty >= item.targetQty ? "finished" : "waiting";
+  if (item.completedQty + qty >= item.targetQty) return "finished";
+  return remainingWorkers > 0 ? "producing" : "waiting";
 }
+
+const VIEWER_LEAVE_WORKER_DELTA = 1;
 
 export function applyOptimisticKioskExitToSubTasks(
   items: readonly KioskSubTask[],
@@ -183,7 +181,15 @@ export function applyOptimisticKioskExitToSubTasks(
   if (!exit) return [...items];
   return items.map((item) => {
     if (item.documentId !== exit.documentId) return item;
-    const status = resolveOptimisticExitStatus(item, exit.exit);
+    const remainingWorkers = Math.max(
+      0,
+      (item.activeWorkerCount ?? 0) - VIEWER_LEAVE_WORKER_DELTA,
+    );
+    const status = resolveOptimisticExitStatus(
+      item,
+      exit.exit,
+      remainingWorkers,
+    );
     const completedQty =
       exit.exit.sharingType === "qty"
         ? item.completedQty + Math.max(0, Math.floor(exit.exit.qtyCompleted))
@@ -193,7 +199,7 @@ export function applyOptimisticKioskExitToSubTasks(
       status,
       completedQty,
       startedAt: null,
-      activeWorkerCount: 0,
+      activeWorkerCount: remainingWorkers,
     };
   });
 }
@@ -204,7 +210,7 @@ export function isOptimisticKioskExitSettled(
 ): boolean {
   const row = subTasks.find((item) => item.documentId === exit.documentId);
   if (!row) return true;
-  return row.status !== "producing" && !row.startedAt;
+  return !row.startedAt;
 }
 
 export type LiberadasSectionSnapshot = {

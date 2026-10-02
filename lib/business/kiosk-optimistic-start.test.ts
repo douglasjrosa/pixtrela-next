@@ -5,10 +5,12 @@ import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import {
   applyOptimisticChainStopToOpenRuns,
   applyOptimisticChainStopToSubTasks,
+  applyOptimisticKioskExitToSubTasks,
   applyOptimisticKioskStartToSubTasks,
   applyOptimisticStateToLiberadasSection,
   earlierSessionStartedAt,
   isOptimisticChainStopSettled,
+  isOptimisticKioskExitSettled,
   isOptimisticKioskStartSettled,
   pinEarlierSessionStart,
 } from "./kiosk-optimistic-start";
@@ -293,10 +295,120 @@ describe("kiosk optimistic start", () => {
     ).toBe(true);
     expect(
       isOptimisticChainStopSettled(
-        [stub({ documentId: "st-1", status: "producing" })],
+        [
+          stub({
+            documentId: "st-1",
+            status: "producing",
+            startedAt: "2026-08-17T23:00:00.000Z",
+          }),
+        ],
         [],
         stop,
       ),
     ).toBe(false);
+  });
+
+  it("settles a partial exit when the viewer left and peers keep producing", () => {
+    const exit = {
+      documentId: "st-1",
+      exit: {
+        sharingType: "duration" as const,
+        isCompleted: false,
+      },
+    };
+    expect(
+      isOptimisticKioskExitSettled(
+        [
+          stub({
+            status: "producing",
+            startedAt: null,
+            activeWorkerCount: 1,
+          }),
+        ],
+        exit,
+      ),
+    ).toBe(true);
+    expect(
+      isOptimisticKioskExitSettled(
+        [
+          stub({
+            status: "producing",
+            startedAt: "2026-08-17T23:00:00.000Z",
+          }),
+        ],
+        exit,
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps peer occupancy after a partial optimistic exit", () => {
+    const next = applyOptimisticKioskExitToSubTasks(
+      [
+        stub({
+          status: "producing",
+          startedAt: "2026-08-17T23:00:00.000Z",
+          activeWorkerCount: 2,
+        }),
+      ],
+      {
+        documentId: "st-1",
+        exit: { sharingType: "duration", isCompleted: false },
+      },
+    );
+    expect(next[0]).toMatchObject({
+      status: "producing",
+      startedAt: null,
+      activeWorkerCount: 1,
+    });
+  });
+
+  it("lets a new start overlay a lingering partial exit", () => {
+    const afterExit = applyOptimisticKioskExitToSubTasks(
+      [
+        stub({
+          status: "producing",
+          startedAt: "2026-08-17T23:00:00.000Z",
+          activeWorkerCount: 2,
+        }),
+      ],
+      {
+        documentId: "st-1",
+        exit: { sharingType: "duration", isCompleted: false },
+      },
+    );
+    const startedAt = "2026-08-17T23:05:00.000Z";
+    const afterStart = applyOptimisticKioskStartToSubTasks(afterExit, {
+      documentId: "st-1",
+      startedAt,
+      mode: "join",
+    });
+    expect(afterStart[0]).toMatchObject({
+      status: "producing",
+      startedAt,
+      activeWorkerCount: 2,
+    });
+  });
+
+  it("settles chain stop when the viewer left even if the run stays open", () => {
+    const stop = {
+      chainRunId: "run-1",
+      chainHeadId: "st-1",
+      memberIds: ["st-1"],
+      answers: [{ documentId: "st-1", completed: false }],
+    };
+    expect(
+      isOptimisticChainStopSettled(
+        [stub({ documentId: "st-1", status: "producing", startedAt: null })],
+        [
+          {
+            chainHeadId: "st-1",
+            chainRunId: "run-1",
+            principalId: "user-2",
+            runStartedAt: "2026-08-17T23:00:00.000Z",
+          },
+        ],
+        stop,
+      ),
+    ).toBe(true);
   });
 });
