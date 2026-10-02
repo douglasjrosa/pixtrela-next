@@ -12,6 +12,7 @@ const getTaskById = vi.fn();
 const findTemplateByCode = vi.fn();
 const loadTaskListPage = vi.fn();
 const applyAutoStepTaskOrderingAfterTaskChange = vi.fn();
+const persistAutomatedTaskStep = vi.fn();
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { role: "admin" } })),
 }));
@@ -44,6 +45,11 @@ vi.mock("@/lib/business/apply-step-task-order", () => ({
     applyAutoStepTaskOrderingAfterTaskChange(...args),
 }));
 
+vi.mock("@/lib/repos/task-automation-step", () => ({
+  persistAutomatedTaskStep: (...args: unknown[]) =>
+    persistAutomatedTaskStep(...args),
+}));
+
 describe("tasks/actions drizzle CRUD", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -59,6 +65,10 @@ describe("tasks/actions drizzle CRUD", () => {
     findTemplateByCode.mockReset();
     loadTaskListPage.mockReset();
     applyAutoStepTaskOrderingAfterTaskChange.mockReset();
+    persistAutomatedTaskStep.mockReset();
+    persistAutomatedTaskStep.mockImplementation(
+      async (input: { currentStepId: string | null }) => input.currentStepId,
+    );
   });
 
   const form = {
@@ -111,7 +121,31 @@ describe("tasks/actions drizzle CRUD", () => {
       status: "producing",
       templateTaskCode: null,
     });
+    expect(persistAutomatedTaskStep).toHaveBeenCalledWith({
+      taskId: "task-1",
+      status: "producing",
+      currentStepId: "step-1",
+    });
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:tasks", "default");
+  });
+
+  it("updateTask reorders after moving to the mapped automation step", async () => {
+    getTaskById.mockResolvedValue({
+      index: 3,
+      stepId: "fila",
+      deliveryDate: "2026-07-18",
+      name: "Montagem",
+      status: "waiting",
+    });
+    persistAutomatedTaskStep.mockResolvedValue("producao");
+
+    const { updateTask } = await import("./actions");
+    await updateTask("task-1", { ...form, status: "producing" });
+
+    expect(applyAutoStepTaskOrderingAfterTaskChange).toHaveBeenCalledWith({
+      before: { stepId: "fila", deliveryDate: "2026-07-18" },
+      after: { stepId: "producao", deliveryDate: "2026-07-18" },
+    });
   });
 
   it("deactivateTask archives via shared reason table", async () => {

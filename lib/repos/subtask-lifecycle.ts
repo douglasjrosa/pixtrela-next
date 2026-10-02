@@ -20,6 +20,10 @@ import type { ActivityTimeRow } from "@/lib/business/task-time-spent";
 import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 import { getDb, type Db } from "@/lib/db/client";
 import { loadHasAssignedFlagsBySubTaskId } from "@/lib/repos/material-flags";
+import {
+  loadNextAutomatedTaskStepId,
+  reorderTasksAfterStepMove,
+} from "@/lib/repos/task-automation-step";
 
 async function loadTaskSubTaskContext(
   taskId: string,
@@ -107,8 +111,8 @@ async function loadTaskSubTaskContext(
 }
 
 /**
- * Recomputes activation statuses, parent task status, and total time spent
- * for all sub-tasks of a task (activation + parent task rollup).
+ * Recomputes activation statuses, parent task status, board step, and total
+ * time spent for all sub-tasks of a task (activation + parent task rollup).
  */
 export async function runTaskSubTaskSyncRoutine(
   taskId: string,
@@ -164,12 +168,20 @@ export async function runTaskSubTaskSyncRoutine(
   );
   const totalTimeSpent = calculateTaskTotalTimeSpent(timeSpentInputs, now);
 
+  const nextStatus = parentUpdate?.status ?? task.status;
+  const nextStepId = await loadNextAutomatedTaskStepId(
+    nextStatus,
+    task.stepId,
+    db,
+  );
+
   const taskPatch: {
     totalTimeSpent: number;
     updatedAt: Date;
     status?: typeof task.status;
     startedAt?: Date | null;
     endedAt?: Date | null;
+    stepId?: string | null;
   } = {
     totalTimeSpent,
     updatedAt: now,
@@ -181,7 +193,21 @@ export async function runTaskSubTaskSyncRoutine(
     taskPatch.endedAt = parentUpdate.endedAt;
   }
 
+  const stepMoved = nextStepId !== task.stepId;
+  if (stepMoved) {
+    taskPatch.stepId = nextStepId;
+  }
+
   await db.update(tasks).set(taskPatch).where(eq(tasks.id, taskId));
+
+  if (stepMoved) {
+    await reorderTasksAfterStepMove({
+      previousStepId: task.stepId,
+      nextStepId,
+      deliveryDate: task.deliveryDate,
+      db,
+    });
+  }
 }
 
 export async function fetchUserNamesByIds(

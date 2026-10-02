@@ -12,6 +12,7 @@ import {
 import { getNextTaskIndex } from "@/lib/business/task-order";
 import { auditSuccess } from "@/lib/logs/record-log";
 import { applyAutoStepTaskOrderingAfterTaskChange } from "@/lib/business/apply-step-task-order";
+import { persistAutomatedTaskStep } from "@/lib/repos/task-automation-step";
 import { findTemplateByCode } from "@/lib/repos/templates";
 import {
   archiveTasks,
@@ -126,6 +127,13 @@ export async function updateTask(
     status: data.status,
     templateTaskCode: data.templateTaskCode || null,
   });
+  const nextStepId = before
+    ? await persistAutomatedTaskStep({
+        taskId: documentId,
+        status: data.status,
+        currentStepId: before.stepId,
+      })
+    : null;
   if (before) {
     await applyAutoStepTaskOrderingAfterTaskChange({
       before: {
@@ -133,7 +141,7 @@ export async function updateTask(
         deliveryDate: before.deliveryDate,
       },
       after: {
-        stepId: before.stepId,
+        stepId: nextStepId,
         deliveryDate: data.deliveryDate || null,
       },
     });

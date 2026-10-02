@@ -132,6 +132,7 @@ export async function upsertTaskAutomationSettings(
   db: Db = getDb(),
 ) {
   const patch = {
+    enabled: true,
     waitingStepId: toStepId(values.waitingStepDocumentId),
     producingStepId: toStepId(values.producingStepDocumentId),
     pausedStepId: toStepId(values.pausedStepDocumentId),
