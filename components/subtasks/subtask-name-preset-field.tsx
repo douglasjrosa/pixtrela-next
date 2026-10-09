@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { translateSubTaskNameError } from "@/lib/business/subtask-name-error";
 import {
   shouldSearchSubTaskPresets,
   type SubTaskPreset,
@@ -42,31 +43,48 @@ export function SubTaskNamePresetField({
   onApplyPreset,
 }: SubTaskNamePresetFieldProps) {
   const tSubtasks = useTranslations("subtasks");
+  const nameError = translateSubTaskNameError(
+    errorMessage ?? undefined,
+    tSubtasks,
+  );
   const [presets, setPresets] = useState<SubTaskPreset[]>([]);
-  const [isSearching, startSearch] = useTransition();
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 
   const canSearch =
     enabled && !disabled && shouldSearchSubTaskPresets(value);
-  const visiblePresets = canSearch ? presets : [];
+  const showSuggestions = suggestionsOpen && canSearch && presets.length > 0;
 
   useEffect(() => {
-    if (!canSearch) return;
+    if (!canSearch || !suggestionsOpen) return;
 
+    let cancelled = false;
     const handle = window.setTimeout(() => {
-      startSearch(async () => {
+      void (async () => {
         try {
           const results = await searchPresets(value);
-          setPresets(results);
+          if (!cancelled) setPresets(results);
         } catch {
-          setPresets([]);
+          if (!cancelled) setPresets([]);
         }
-      });
+      })();
     }, PRESET_SEARCH_DEBOUNCE_MS);
 
-    return () => window.clearTimeout(handle);
-  }, [value, canSearch]);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [value, canSearch, suggestionsOpen]);
 
-  const showSuggestions = canSearch;
+  function handleNameChange(next: string): void {
+    setSuggestionsOpen(true);
+    onChange(next);
+  }
+
+  function handleApplyPresetOption(preset: SubTaskPreset): void {
+    setSuggestionsOpen(false);
+    setPresets([]);
+    onApplyPreset(preset);
+  }
 
   return (
     <div className="relative space-y-2">
@@ -76,10 +94,10 @@ export function SubTaskNamePresetField({
         value={value}
         disabled={disabled}
         autoComplete="off"
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => handleNameChange(event.target.value)}
       />
-      {errorMessage ? (
-        <p className="text-sm text-destructive">{errorMessage}</p>
+      {nameError ? (
+        <p className="text-sm text-destructive">{nameError}</p>
       ) : null}
 
       {showSuggestions ? (
@@ -91,17 +109,7 @@ export function SubTaskNamePresetField({
             "bg-background shadow-md",
           )}
         >
-          {isSearching && visiblePresets.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-muted-foreground" role="status">
-              {tSubtasks("presetsLoading")}
-            </p>
-          ) : null}
-          {!isSearching && visiblePresets.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-muted-foreground" role="status">
-              {tSubtasks("presetsEmpty")}
-            </p>
-          ) : null}
-          {visiblePresets.map((preset) => (
+          {presets.map((preset) => (
             <button
               key={preset.documentId}
               type="button"
@@ -111,10 +119,7 @@ export function SubTaskNamePresetField({
                 "flex w-full px-3 py-2 text-left text-sm",
                 "hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
               )}
-              onClick={() => {
-                onApplyPreset(preset);
-                setPresets([]);
-              }}
+              onClick={() => handleApplyPresetOption(preset)}
             >
               {preset.name}
             </button>

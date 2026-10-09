@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { translateSubTaskNameError } from "@/lib/business/subtask-name-error";
 import {
   applySubTaskPreset,
   type SubTaskPreset,
@@ -170,7 +171,9 @@ export function TemplateSubTaskInlineForm({
             {...register("name")}
           />
           {errors.name ? (
-            <p className="text-sm text-destructive">{errors.name.message}</p>
+            <p className="text-sm text-destructive">
+              {translateSubTaskNameError(errors.name.message, tSubtasks)}
+            </p>
           ) : null}
         </div>
       )}

@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-import { SHARING_TYPES } from "./sub-task";
+import { SHARING_TYPES, SUB_TASK_NAME_REQUIRED_KEY } from "./sub-task";
 
 export const templateSubTaskFormSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1, { message: SUB_TASK_NAME_REQUIRED_KEY }),
   qty: z.number().int().min(1),
   expectedTime: z.number().int().min(0),
   sharingType: z.enum(SHARING_TYPES),

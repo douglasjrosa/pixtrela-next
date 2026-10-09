@@ -1,6 +1,6 @@
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 
@@ -591,6 +591,68 @@ describe("SubTaskManager", () => {
 
     await user.click(screen.getByRole("button", { name: "Fechar" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("inserts a local draft row when confirming a new subtask with OK", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn();
+    const managerRef = createRef<SubTaskManagerHandle>();
+
+    renderWithIntl(
+      <SubTaskManager
+        ref={managerRef}
+        subtasks={subtasks}
+        taskName="Tarefa A"
+        taskQty={1}
+        teams={teams}
+        onCreate={onCreate}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Nova subtarefa" }));
+    const dialog = screen.getByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Nome"), "Corte da base");
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByText("Corte da base")).toBeInTheDocument();
+    expect(onCreate).not.toHaveBeenCalled();
+
+    await managerRef.current?.flushChanges();
+    expect(onCreate).toHaveBeenCalledTimes(1);
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Corte da base" }),
+      expect.objectContaining({ insertAtIndex: expect.any(Number) }),
+    );
+  });
+
+  it("keeps the modal open when OK is clicked with an empty name", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn();
+
+    renderWithIntl(
+      <SubTaskManager
+        subtasks={subtasks}
+        taskName="Tarefa A"
+        taskQty={1}
+        teams={teams}
+        onCreate={onCreate}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Nova subtarefa" }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(dialog).getByText("Informe o nome.")).toBeInTheDocument();
+    });
+    expect(onCreate).not.toHaveBeenCalled();
   });
 
   it("closes the form modal when clicking the OK button", async () => {

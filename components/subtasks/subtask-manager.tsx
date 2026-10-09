@@ -35,6 +35,7 @@ import {
   reorderSubTasksByDrag,
 } from "@/lib/business/subtask-order";
 import {
+  appendDraftSubTaskFromValues,
   insertDraftSubTaskCloneAt,
   isDraftSubTaskId,
   mergeServerSubtasksWithDrafts,
@@ -314,6 +315,7 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
     const [editingKey, setEditingKey] = useState<string | null>(null);
     const [newSubtaskDraft, setNewSubtaskDraft] =
       useState<SubTaskFormInput>(EMPTY_FORM);
+    const [createValidationNonce, setCreateValidationNonce] = useState(0);
     const [message, setMessage] = useState<string | null>(null);
 
     const sensors = useSensors(
@@ -347,6 +349,24 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
       setEditingKey(null);
     }
 
+    function confirmModal(): void {
+      if (editingKey === NEW_SUBTASK_KEY) {
+        if (!newSubtaskDraft.name.trim()) {
+          setCreateValidationNonce((nonce) => nonce + 1);
+          return;
+        }
+        const values = applyAutomaticCreateFields(
+          newSubtaskDraft,
+          orderedSubtasks,
+        );
+        setOrderedSubtasks((current) =>
+          appendDraftSubTaskFromValues(current, values),
+        );
+        setNewSubtaskDraft(EMPTY_FORM);
+      }
+      setEditingKey(null);
+    }
+
     function cancelRow(documentId: string): void {
       if (isDraftSubTaskId(documentId)) {
         setOrderedSubtasks((current) =>
@@ -367,6 +387,7 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
 
     function startCreate(): void {
       setNewSubtaskDraft(EMPTY_FORM);
+      setCreateValidationNonce(0);
       setEditingKey(NEW_SUBTASK_KEY);
       setMessage(null);
     }
@@ -607,6 +628,7 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
           subtitle={taskDisplayTitle}
           disabled={isBusy}
           onClose={closeModal}
+          onConfirm={confirmModal}
           onClone={
             editingSubtask
               ? () => handleClone(editingSubtask.documentId)
@@ -631,6 +653,7 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
               hideAssignees
               plain
               disabled={isBusy}
+              validationNonce={createValidationNonce}
               onChange={(values) =>
                 setNewSubtaskDraft(
                   applyAutomaticCreateFields(values, orderedSubtasks),

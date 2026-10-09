@@ -11,8 +11,10 @@ export const SHARING_TYPES = ["qty", "duration"] as const;
 
 export const ACTIVATION_STATUSES = ["locked", "unlocked", "disabled"] as const;
 
+export const SUB_TASK_NAME_REQUIRED_KEY = "nameRequired";
+
 const subTaskFormBaseSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1, { message: SUB_TASK_NAME_REQUIRED_KEY }),
   qty: z.number().int().min(1),
   expectedTime: z.number().int().min(0),
   sharingType: z.enum(SHARING_TYPES),
