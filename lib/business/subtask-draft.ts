@@ -43,12 +43,14 @@ export function createDraftSubTaskRowFromValues(
   };
 }
 
-export function appendDraftSubTaskFromValues<T extends DraftableSubTask>(
-  items: T[],
+export function appendDraftSubTaskFromValues(
+  items: DraftableSubTask[],
   values: SubTaskFormInput,
-): T[] {
-  const draft = createDraftSubTaskRowFromValues(values, items.length) as T;
-  return applySequentialSubTaskIndices([...items, draft]);
+): Array<DraftableSubTask | ReturnType<typeof createDraftSubTaskRowFromValues>> {
+  return applySequentialSubTaskIndices([
+    ...items,
+    createDraftSubTaskRowFromValues(values, items.length),
+  ]);
 }
 
 export function insertDraftSubTaskCloneAt<T extends DraftableSubTask>(

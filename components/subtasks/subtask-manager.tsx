@@ -35,7 +35,7 @@ import {
   reorderSubTasksByDrag,
 } from "@/lib/business/subtask-order";
 import {
-  appendDraftSubTaskFromValues,
+  createDraftSubTaskRowFromValues,
   insertDraftSubTaskCloneAt,
   isDraftSubTaskId,
   mergeServerSubtasksWithDrafts,
@@ -360,7 +360,10 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
           orderedSubtasks,
         );
         setOrderedSubtasks((current) =>
-          appendDraftSubTaskFromValues(current, values),
+          applySequentialSubTaskIndices([
+            ...current,
+            createDraftSubTaskRowFromValues(values, current.length),
+          ]),
         );
         setNewSubtaskDraft(EMPTY_FORM);
       }
