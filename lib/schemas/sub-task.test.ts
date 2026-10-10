@@ -42,6 +42,22 @@ describe("subTaskFormSchema", () => {
     expect(data.activationStatus).toBe("unlocked");
   });
 
+  it("accepts a non-negative timeSpent", () => {
+    const data = subTaskFormSchema.parse({
+      ...validBase,
+      timeSpent: 45,
+    });
+    expect(data.timeSpent).toBe(45);
+  });
+
+  it("rejects a negative timeSpent", () => {
+    const parsed = subTaskFormSchema.safeParse({
+      ...validBase,
+      timeSpent: -1,
+    });
+    expect(parsed.success).toBe(false);
+  });
+
   it("uses an i18n key when the name is empty", () => {
     const parsed = subTaskFormSchema.safeParse({
       ...validBase,

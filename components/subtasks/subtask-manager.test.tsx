@@ -218,6 +218,32 @@ describe("SubTaskManager", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows time spent and workflow status when canEditProgress", async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <SubTaskManager
+        subtasks={subtasks}
+        taskName="Tarefa A"
+        taskQty={1}
+        teams={teams}
+        canEditProgress
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByText("Soldar"));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByLabelText("Status")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Tempo gasto (s)")).toBeInTheDocument();
+    expect(
+      within(dialog).getByLabelText("Status de ativação"),
+    ).toBeInTheDocument();
+  });
+
   it("hides workflow status but shows activation when editing", async () => {
     const user = userEvent.setup();
 
@@ -237,6 +263,9 @@ describe("SubTaskManager", () => {
 
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).queryByLabelText("Status")).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByLabelText("Tempo gasto (s)"),
+    ).not.toBeInTheDocument();
     expect(
       within(dialog).getByLabelText("Status de ativação"),
     ).toBeInTheDocument();

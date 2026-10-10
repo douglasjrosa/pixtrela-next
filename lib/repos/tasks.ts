@@ -1204,6 +1204,7 @@ export async function updateSubTaskFields(
         sharingType: input.sharingType,
         maxSameTimeWorkers: input.maxSameTimeWorkers,
         status: input.status,
+        ...(input.timeSpent !== undefined ? { timeSpent: input.timeSpent } : {}),
         activationStatus: toDrizzleActivationStatus(input.activationStatus),
         subTaskCategoryId: input.subTaskCategoryId || null,
         updatedAt: new Date(),

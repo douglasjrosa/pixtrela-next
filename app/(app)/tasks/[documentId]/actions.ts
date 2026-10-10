@@ -6,7 +6,12 @@ import { auth } from "@/auth";
 import { normalizeSubTaskCreateValues } from "@/lib/business/subtask-create-fields";
 import { getNextSubTaskIndex, buildSubTaskIndexUpdates } from "@/lib/business/subtask-order";
 import type { Role } from "@/lib/auth/nav";
-import { canManageTasks } from "@/lib/auth/permissions";
+import {
+  canEditSubTaskProgress,
+  canManageTasks,
+} from "@/lib/auth/permissions";
+import { applySubTaskProgressForRole } from "@/lib/business/subtask-progress-edit";
+import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import { auditSuccess } from "@/lib/logs/record-log";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import {
@@ -79,12 +84,6 @@ async function fetchSubTasksForTask(
   return rows.map(mapDrizzleSubTaskToEntity);
 }
 
-async function fetchSubTaskIndex(documentId: string): Promise<number> {
-  const subtask = await getSubTaskById(documentId);
-  if (!subtask) throw new Error("notFound");
-  return subtask.index;
-}
-
 async function fetchSubTaskIds(taskDocumentId: string): Promise<string[]> {
   return listSubTaskIdsForTask(taskDocumentId);
 }
@@ -139,17 +138,30 @@ export async function updateSubTask(
   taskDocumentId: string,
   raw: SubTaskFormInput,
 ): Promise<void> {
-  await assertCanManage();
-  const data = subTaskFormSchema.parse(raw);
-  const currentIndex = await fetchSubTaskIndex(documentId);
+  const session = await auth();
+  if (!canManageTasks(session?.user?.role as Role | undefined)) {
+    throw new Error("forbidden");
+  }
+  const parsed = subTaskFormSchema.parse(raw);
   const current = await getSubTaskById(documentId);
-  await updateSubTaskFields(documentId, taskDocumentId, data, currentIndex);
+  if (!current) throw new Error("notFound");
+  const data = applySubTaskProgressForRole(
+    parsed,
+    { status: current.status, timeSpent: current.timeSpent ?? 0 },
+    canEditSubTaskProgress(session?.user?.role as Role | undefined),
+  );
+  await updateSubTaskFields(documentId, taskDocumentId, data, current.index);
+  const progressChanged =
+    data.status !== current.status || data.timeSpent !== current.timeSpent;
+  if (progressChanged) {
+    await runTaskSubTaskSyncRoutine(taskDocumentId);
+  }
   await auditSuccess({
     route: "/tasks",
     verb: "updated",
     entity: "subtask",
     name: data.name,
-    before: current?.name ?? null,
+    before: current.name ?? null,
     after: data.name,
   });
   invalidateSubTasks();

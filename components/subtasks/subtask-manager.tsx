@@ -90,6 +90,7 @@ export interface SubTaskManagerProps {
   taskName: string;
   taskQty: number;
   teams: TeamAssignmentOption[];
+  canEditProgress?: boolean;
   disabled?: boolean;
   loadSessions?: (
     subTaskDocumentId: string,
@@ -138,6 +139,7 @@ function subTaskToFormValues(subtask: SubTaskRow): SubTaskFormInput {
     name: subtask.name,
     qty: subtask.qty,
     expectedTime: subtask.expectedTime,
+    timeSpent: subtask.timeSpent,
     sharingType: subtask.sharingType,
     maxSameTimeWorkers: subtask.maxSameTimeWorkers,
     status: subtask.status,
@@ -157,6 +159,7 @@ function applyFormValuesToRow(
     name: values.name,
     qty: values.qty,
     expectedTime: values.expectedTime,
+    timeSpent: values.timeSpent ?? row.timeSpent,
     sharingType: values.sharingType,
     maxSameTimeWorkers: values.maxSameTimeWorkers,
     status: values.status,
@@ -292,6 +295,7 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
       taskName,
       taskQty,
       teams,
+      canEditProgress = false,
       disabled = false,
       loadSessions,
       onCreate,
@@ -679,7 +683,12 @@ export const SubTaskManager = forwardRef<SubTaskManagerHandle, SubTaskManagerPro
                 }
                 isCreate={editingSubtask.isDraft === true}
                 hideHeading
-                hideStatus
+                hideStatus={
+                  !canEditProgress || editingSubtask.isDraft === true
+                }
+                hideTimeSpent={
+                  !canEditProgress || editingSubtask.isDraft === true
+                }
                 hideActivationStatus={editingSubtask.isDraft === true}
                 hideAssignees
                 plain

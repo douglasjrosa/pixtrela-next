@@ -20,6 +20,7 @@ const subTaskFormBaseSchema = z.object({
   sharingType: z.enum(SHARING_TYPES),
   maxSameTimeWorkers: z.number().int().min(1),
   status: z.enum(SUB_TASK_STATUSES),
+  timeSpent: z.number().int().min(0).optional(),
   assignedToIds: z.array(z.string()).optional(),
   dependencyIds: z.array(z.string()).default([]),
   activationStatus: z.enum(ACTIVATION_STATUSES).default("locked"),

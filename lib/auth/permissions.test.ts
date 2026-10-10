@@ -9,6 +9,7 @@ import {
   canSetUserPassword,
   canDeactivateTasks,
   canDeleteTasks,
+  canEditSubTaskProgress,
   canExchange,
   canAdjustColaboratorBalance,
   canDeactivateAwards,
@@ -220,6 +221,16 @@ describe("canSetUserPassword", () => {
     expect(canSetUserPassword("leader")).toBe(false);
     expect(canSetUserPassword("colaborator")).toBe(false);
     expect(canSetUserPassword("kiosk")).toBe(false);
+  });
+});
+
+describe("canEditSubTaskProgress", () => {
+  it("allows admin only", () => {
+    expect(canEditSubTaskProgress("admin")).toBe(true);
+    expect(canEditSubTaskProgress("manager")).toBe(false);
+    expect(canEditSubTaskProgress("leader")).toBe(false);
+    expect(canEditSubTaskProgress("colaborator")).toBe(false);
+    expect(canEditSubTaskProgress("kiosk")).toBe(false);
   });
 });
 

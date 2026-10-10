@@ -46,6 +46,7 @@ export interface SubTaskInlineFormProps {
   disabled?: boolean;
   hideHeading?: boolean;
   hideStatus?: boolean;
+  hideTimeSpent?: boolean;
   hideActivationStatus?: boolean;
   hideAssignees?: boolean;
   plain?: boolean;
@@ -76,6 +77,7 @@ export function SubTaskInlineForm({
   disabled = false,
   hideHeading = false,
   hideStatus = false,
+  hideTimeSpent = true,
   hideActivationStatus = false,
   hideAssignees = false,
   plain = false,
@@ -219,6 +221,18 @@ export function SubTaskInlineForm({
           {...register("expectedTime", { valueAsNumber: true })}
         />
       </div>
+
+      {hideTimeSpent ? null : (
+        <div className="space-y-2">
+          <Label htmlFor={fieldId("timeSpent")}>{tSubtasks("timeSpent")}</Label>
+          <NumberInput
+            id={fieldId("timeSpent")}
+            min={0}
+            disabled={disabled}
+            {...register("timeSpent", { valueAsNumber: true })}
+          />
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor={fieldId("maxSameTimeWorkers")}>

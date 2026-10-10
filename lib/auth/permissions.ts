@@ -52,6 +52,11 @@ export function canDeleteTasks(role: Role | undefined): boolean {
   return role === "admin";
 }
 
+/** Edit persisted subtask timeSpent and workflow status: admin only. */
+export function canEditSubTaskProgress(role: Role | undefined): boolean {
+  return role === "admin";
+}
+
 /** Team CRUD: admin and manager. */
 export function canManageTeams(role: Role | undefined): boolean {
   return role === "admin" || role === "manager";

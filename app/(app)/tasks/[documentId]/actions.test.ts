@@ -9,8 +9,14 @@ const deleteSubTaskById = vi.fn();
 const listSubTasksWithRelationsForTask = vi.fn();
 const listSubTaskIdsForTask = vi.fn();
 const getSubTaskById = vi.fn();
+const runTaskSubTaskSyncRoutine = vi.fn();
+const auth = vi.fn(async () => ({ user: { role: "admin" } }));
 vi.mock("@/auth", () => ({
-  auth: vi.fn(async () => ({ user: { role: "admin" } })),
+  auth: (...args: unknown[]) => auth(...args),
+}));
+vi.mock("@/lib/repos/subtask-lifecycle", () => ({
+  runTaskSubTaskSyncRoutine: (...args: unknown[]) =>
+    runTaskSubTaskSyncRoutine(...args),
 }));
 
 vi.mock("@/lib/logs/record-log", () => ({
@@ -46,6 +52,9 @@ describe("tasks/[documentId]/actions drizzle subtasks", () => {
     listSubTasksWithRelationsForTask.mockReset();
     listSubTaskIdsForTask.mockReset();
     getSubTaskById.mockReset();
+    runTaskSubTaskSyncRoutine.mockReset();
+    auth.mockReset();
+    auth.mockResolvedValue({ user: { role: "admin" } });
   });
 
   const values = {
@@ -76,7 +85,11 @@ describe("tasks/[documentId]/actions drizzle subtasks", () => {
   });
 
   it("updateSubTask persists via repo", async () => {
-    getSubTaskById.mockResolvedValue({ index: 2 });
+    getSubTaskById.mockResolvedValue({
+      index: 2,
+      status: "waiting",
+      timeSpent: 10,
+    });
 
     const { updateSubTask } = await import("./actions");
     await updateSubTask("sub-1", "task-1", values);
@@ -87,6 +100,53 @@ describe("tasks/[documentId]/actions drizzle subtasks", () => {
       expect.objectContaining({ name: "Corte" }),
       2,
     );
+  });
+
+  it("lets admin persist timeSpent and status then sync the parent", async () => {
+    getSubTaskById.mockResolvedValue({
+      index: 2,
+      status: "waiting",
+      timeSpent: 10,
+    });
+
+    const { updateSubTask } = await import("./actions");
+    await updateSubTask("sub-1", "task-1", {
+      ...values,
+      status: "finished",
+      timeSpent: 90,
+    });
+
+    expect(updateSubTaskFields).toHaveBeenCalledWith(
+      "sub-1",
+      "task-1",
+      expect.objectContaining({ status: "finished", timeSpent: 90 }),
+      2,
+    );
+    expect(runTaskSubTaskSyncRoutine).toHaveBeenCalledWith("task-1");
+  });
+
+  it("ignores timeSpent and status changes from non-admin", async () => {
+    auth.mockResolvedValue({ user: { role: "manager" } });
+    getSubTaskById.mockResolvedValue({
+      index: 2,
+      status: "producing",
+      timeSpent: 40,
+    });
+
+    const { updateSubTask } = await import("./actions");
+    await updateSubTask("sub-1", "task-1", {
+      ...values,
+      status: "finished",
+      timeSpent: 90,
+    });
+
+    expect(updateSubTaskFields).toHaveBeenCalledWith(
+      "sub-1",
+      "task-1",
+      expect.objectContaining({ status: "producing", timeSpent: 40 }),
+      2,
+    );
+    expect(runTaskSubTaskSyncRoutine).not.toHaveBeenCalled();
   });
 
   it("reorderSubTasks updates indexes via repo", async () => {
