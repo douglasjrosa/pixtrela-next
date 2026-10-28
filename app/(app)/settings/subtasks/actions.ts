@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { auth } from "@/auth";
 import type { Role } from "@/lib/auth/nav";
@@ -9,6 +9,8 @@ import {
   canManageTasks,
   canManageTemplates,
 } from "@/lib/auth/permissions";
+import { assertMaterialFlagsEnabled } from "@/lib/business/material-flags-feature";
+import { MATERIAL_FLAGS_SETTINGS_CACHE_TAG } from "@/lib/material-flags/load-material-flags-settings";
 import {
   createMaterialFlag,
   createMaterialFlagsInRange,
@@ -16,8 +18,14 @@ import {
   findMaterialFlagById,
   listMaterialFlags,
   nextFlagIndexForCategory,
+  reconcileMaterialFlagAssignments,
   updateMaterialFlag,
 } from "@/lib/repos/material-flags";
+import {
+  getMaterialFlagsSettings,
+  setMaterialFlagsEnabled,
+} from "@/lib/repos/material-flags-settings";
+import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import {
   createSubTaskCategory,
   deleteSubTaskCategory,
@@ -46,6 +54,32 @@ async function assertCanManage(): Promise<void> {
 
 function invalidate(): void {
   revalidatePath("/settings/subtasks", "layout");
+}
+
+async function assertMaterialFlagsFeatureOn(): Promise<void> {
+  const settings = await getMaterialFlagsSettings();
+  assertMaterialFlagsEnabled(settings.enabled);
+}
+
+function invalidateMaterialFlagsSettings(): void {
+  revalidateTag(MATERIAL_FLAGS_SETTINGS_CACHE_TAG, "default");
+  revalidateTag("drizzle:subTasks", "default");
+  invalidate();
+}
+
+export async function setMaterialFlagsFeatureEnabled(
+  enabled: boolean,
+): Promise<void> {
+  await assertCanManage();
+  const current = await getMaterialFlagsSettings();
+  if (enabled && !current.enabled) {
+    const taskIds = await reconcileMaterialFlagAssignments();
+    for (const taskId of taskIds) {
+      await runTaskSubTaskSyncRoutine(taskId);
+    }
+  }
+  await setMaterialFlagsEnabled(enabled);
+  invalidateMaterialFlagsSettings();
 }
 
 export async function loadMoreCategories(
@@ -91,6 +125,7 @@ export async function saveFlag(
   documentId?: string,
 ): Promise<void> {
   await assertCanManage();
+  await assertMaterialFlagsFeatureOn();
   const data = materialFlagFormSchema.parse(raw);
   if (documentId) {
     await updateMaterialFlag(documentId, data);
@@ -102,6 +137,7 @@ export async function saveFlag(
 
 export async function createFlags(raw: unknown): Promise<number> {
   await assertCanManage();
+  await assertMaterialFlagsFeatureOn();
   const data = materialFlagBulkCreateSchema.parse(raw);
   const created = await createMaterialFlagsInRange(data);
   invalidate();
@@ -110,6 +146,7 @@ export async function createFlags(raw: unknown): Promise<number> {
 
 export async function removeFlag(documentId: string): Promise<void> {
   await assertCanManage();
+  await assertMaterialFlagsFeatureOn();
   await deleteMaterialFlag(documentId);
   invalidate();
 }
@@ -130,6 +167,7 @@ export async function bulkDeleteCategories(
 
 export async function bulkDeleteFlags(documentIds: string[]): Promise<void> {
   await assertCanManage();
+  await assertMaterialFlagsFeatureOn();
   const ids = bulkDocumentIdsSchema.parse(documentIds);
 
   for (const documentId of ids) {
@@ -142,6 +180,7 @@ export async function bulkDeleteFlags(documentIds: string[]): Promise<void> {
 
 export async function nextIndexForCategory(categoryId: string): Promise<number> {
   await assertCanManage();
+  await assertMaterialFlagsFeatureOn();
   return nextFlagIndexForCategory(categoryId);
 }
 

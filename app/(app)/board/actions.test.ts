@@ -39,6 +39,14 @@ vi.mock("@/lib/repos/subtask-lifecycle", () => ({
     runTaskSubTaskSyncRoutine(...args),
 }));
 
+vi.mock("@/lib/repos/material-flags-settings", () => ({
+  getMaterialFlagsSettings: vi.fn(async () => ({ id: "s1", enabled: true })),
+}));
+
+vi.mock("@/lib/repos/material-flags", () => ({
+  releaseFlagsForSubTask: vi.fn(),
+}));
+
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({
     user: { id: "mgr-1", role: "manager" },

@@ -56,6 +56,7 @@ import { kioskActionErrorMessage } from "@/lib/business/kiosk-action-error";
 import { mergeKioskCatalog } from "@/lib/business/kiosk-queue-catalog-scope";
 import { KioskQueueBootstrapProvider } from "@/components/kiosk/kiosk-queue-bootstrap-context";
 import { KioskQueuePanelActionsProvider } from "@/components/kiosk/kiosk-queue-panel-actions-context";
+import { useMaterialFlagsEnabled } from "@/components/material-flags/material-flags-settings-provider";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import type { KioskQueueSectionPage } from "@/lib/repos/kiosk-subtasks";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
@@ -198,6 +199,7 @@ export function KioskPanelClient({
 }: KioskPanelClientProps) {
   const t = useTranslations("kiosk");
   const tCommon = useTranslations("common");
+  const materialFlagsEnabled = useMaterialFlagsEnabled();
   const [editOpen, setEditOpen] = useState(false);
   const [editPending, setEditPending] = useState(false);
   const [profileName, setProfileName] = useState(colaboratorName);
@@ -704,7 +706,12 @@ export function KioskPanelClient({
     if (queueBusy) return;
     setQueueBusy("exit");
     runBackgroundAction(async () => {
-      await releaseMaterialFlag(flagId, colaboratorId, staffUserId);
+      const result = await releaseMaterialFlag(
+        flagId,
+        colaboratorId,
+        staffUserId,
+      );
+      if (result?.errorCode) throw new Error(result.errorCode);
       showKioskSuccessToast(t("flagsReleased"));
       setQueueBusy(null);
     }, (error) => {
@@ -717,7 +724,13 @@ export function KioskPanelClient({
     categoryId: string | null;
     requiresMaterialFlagsOnFinish: boolean;
   }> {
-    return refreshMaterialFlags(subTaskId, colaboratorId, staffUserId);
+    const result = await refreshMaterialFlags(
+      subTaskId,
+      colaboratorId,
+      staffUserId,
+    );
+    if (result.errorCode) throw new Error(result.errorCode);
+    return result;
   }
 
   async function handleSaveEditPassword(input: {
@@ -807,8 +820,14 @@ export function KioskPanelClient({
     onExit: readOnly ? undefined : handleExit,
     onStartChain: readOnly ? undefined : handleStartChain,
     onConfirmChainStop: readOnly ? undefined : handleConfirmChainStop,
-    onReleaseMaterialFlag: readOnly ? undefined : handleReleaseMaterialFlag,
-    onRefreshMaterialFlags: readOnly ? undefined : handleRefreshMaterialFlags,
+    onReleaseMaterialFlag:
+      readOnly || !materialFlagsEnabled
+        ? undefined
+        : handleReleaseMaterialFlag,
+    onRefreshMaterialFlags:
+      readOnly || !materialFlagsEnabled
+        ? undefined
+        : handleRefreshMaterialFlags,
   };
 
   const bootstrapApi = useMemo(

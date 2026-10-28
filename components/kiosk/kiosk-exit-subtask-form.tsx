@@ -3,12 +3,15 @@
 import { useEffect, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
+import { useMaterialFlagsEnabled } from "@/components/material-flags/material-flags-settings-provider";
 import { Label } from "@/components/ui/label";
+import { kioskActionErrorMessage } from "@/lib/business/kiosk-action-error";
 import { canConfirmFinishWithFlags } from "@/lib/business/subtask-material-flags";
 import type { MaterialFlagOption } from "@/lib/business/subtask-queue";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import { resolveInitialMaterialFlagIds } from "@/lib/business/subtask-chain-allocation";
+import { showErrorToast } from "@/lib/ui/app-toast";
 
 import { KioskActionButton } from "./kiosk-action-button";
 import { KioskMaterialFlagPicker } from "./kiosk-material-flag-picker";
@@ -54,6 +57,7 @@ export function KioskExitSubtaskForm({
   onConfirm,
 }: KioskExitSubtaskFormProps) {
   const t = useTranslations("kiosk");
+  const materialFlagsEnabled = useMaterialFlagsEnabled();
   const safeMaxQty = Math.max(0, maxQty);
   const [qtyCompleted, setQtyCompleted] = useState(safeMaxQty);
   const [qtyError, setQtyError] = useState<string | null>(null);
@@ -99,7 +103,7 @@ export function KioskExitSubtaskForm({
   }
 
   useEffect(() => {
-    if (!onRefreshFlags) return;
+    if (!materialFlagsEnabled || !onRefreshFlags) return;
     if (initialFlags.length > 0) return;
     let cancelled = false;
     startRefresh(async () => {
@@ -126,13 +130,18 @@ export function KioskExitSubtaskForm({
       selectedFlagCount: flagIds.length,
       availableFlagCount: availableFlags.length,
       semBandeiraSelected,
+      materialFlagsEnabled,
     });
   }
 
   function handleRefresh(): void {
-    if (!onRefreshFlags) return;
+    if (!materialFlagsEnabled || !onRefreshFlags) return;
     startRefresh(async () => {
-      applyFlagRefresh(await onRefreshFlags());
+      try {
+        applyFlagRefresh(await onRefreshFlags());
+      } catch (error) {
+        showErrorToast(kioskActionErrorMessage(t, error, "exitFailed"));
+      }
     });
   }
 
@@ -146,7 +155,9 @@ export function KioskExitSubtaskForm({
       allowSemBandeiraOption={allowSemBandeiraOption}
       semBandeiraSelected={semBandeiraSelected}
       onSemBandeiraChange={setSemBandeiraSelected}
-      onRefresh={onRefreshFlags ? handleRefresh : undefined}
+      onRefresh={
+        materialFlagsEnabled && onRefreshFlags ? handleRefresh : undefined
+      }
       refreshing={refreshPending}
       scrollableFlags={variant === "modal"}
       onChange={setFlagIds}

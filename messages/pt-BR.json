@@ -1118,6 +1118,11 @@
     "flagsBulkDeleteTitle": "Excluir bandeiras",
     "flagsBulkDeleteConfirm":
       "Excluir permanentemente as bandeiras selecionadas?",
+    "flagsFeature": "Bandeiras",
+    "flagsFeatureOn": "Bandeiras ativadas.",
+    "flagsFeatureOff": "Bandeiras desativadas.",
+    "materialFlagsDisabled":
+      "Bandeiras de material estão desativadas. Informe à TI o código: materialFlagsDisabled.",
     "subTaskCategory": "Categoria",
     "noCategory": "Sem categoria",
     "allCategories": "Todas",
@@ -1428,6 +1433,8 @@
     "releaseFlags": "Liberar bandeiras",
     "flagsReleased": "Bandeira liberada.",
     "flagsRequired": "Selecione ao menos uma bandeira para finalizar.",
+    "materialFlagsDisabled":
+      "Bandeiras de material estão desativadas. Informe à TI o código: materialFlagsDisabled.",
     "chainStopInconsistent": "As quantidades da cadeia não conferem. Revise as respostas.",
     "chainStopAnswersRequired": "Informe o resultado da cadeia antes de encerrar a sessão.",
     "chainRunRecorded": "Já registrado: {summary}",

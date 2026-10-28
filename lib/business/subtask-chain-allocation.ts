@@ -38,6 +38,7 @@ export type ChainMemberFlagGate = {
   semBandeiraSelected?: boolean;
   targetQty?: number;
   completedQty?: number;
+  materialFlagsEnabled?: boolean;
 };
 
 export function isChainMemberAnswerComplete(
@@ -55,6 +56,7 @@ export function isChainMemberAnswerComplete(
   if (!baseOk) return false;
   if (answer.inferred === true) return true;
 
+  if (flagGate?.materialFlagsEnabled === false) return true;
   if (!flagGate?.requiresMaterialFlagsOnFinish) return true;
 
   const willFinish =

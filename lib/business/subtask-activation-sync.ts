@@ -25,10 +25,14 @@ export function areAllDependencySubTasksFinished(
     string,
     Pick<SubTaskDependencyRow, "status" | "hasAssignedFlags">
   >,
+  materialFlagsEnabled = true,
 ): boolean {
   if (dependencyIds.length === 0) return true;
   return dependencyIds.every((documentId) =>
-    isPredecessorSatisfied(siblingsById.get(documentId)),
+    isPredecessorSatisfied(
+      siblingsById.get(documentId),
+      materialFlagsEnabled,
+    ),
   );
 }
 
@@ -42,6 +46,7 @@ export function computeAutomaticActivationStatus(
     string,
     Pick<SubTaskDependencyRow, "status" | "hasAssignedFlags">
   >,
+  materialFlagsEnabled = true,
 ): AutomaticActivationStatus | null {
   const currentActivation = subtask.activationStatus ?? LOCKED_ACTIVATION_STATUS;
   if (currentActivation === DISABLED_ACTIVATION_STATUS) return null;
@@ -61,6 +66,7 @@ export function computeAutomaticActivationStatus(
   const dependenciesFinished = areAllDependencySubTasksFinished(
     dependencyIds,
     siblingsById,
+    materialFlagsEnabled,
   );
   const ownNotFinished = subtask.status !== FINISHED_STATUS;
 
@@ -70,6 +76,7 @@ export function computeAutomaticActivationStatus(
 
 export function resolveSubTaskActivationStatusUpdates(
   siblings: SubTaskActivationSyncRow[],
+  materialFlagsEnabled = true,
 ): Map<string, AutomaticActivationStatus> {
   const siblingsById = new Map(
     siblings.map((sibling) => [sibling.documentId, sibling]),
@@ -77,7 +84,11 @@ export function resolveSubTaskActivationStatusUpdates(
   const updates = new Map<string, AutomaticActivationStatus>();
 
   for (const sibling of siblings) {
-    const nextStatus = computeAutomaticActivationStatus(sibling, siblingsById);
+    const nextStatus = computeAutomaticActivationStatus(
+      sibling,
+      siblingsById,
+      materialFlagsEnabled,
+    );
     if (nextStatus === null) continue;
 
     const currentStatus = sibling.activationStatus ?? LOCKED_ACTIVATION_STATUS;

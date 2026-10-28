@@ -234,11 +234,25 @@ export async function refreshMaterialFlags(
   categoryId: string | null;
   flags: Array<{ id: string; code: string }>;
   requiresMaterialFlagsOnFinish: boolean;
+  errorCode?: string;
 }> {
   await assertQueueStaffMutation(colaboratorId, staffUserId);
-  const result = await refreshKioskMaterialFlags(subTaskDocumentId);
-  invalidateActivityData();
-  return result;
+  try {
+    const result = await refreshKioskMaterialFlags(subTaskDocumentId);
+    invalidateActivityData();
+    return result;
+  } catch (error) {
+    const refusal = refusalResult(error);
+    if (refusal?.errorCode) {
+      return {
+        categoryId: null,
+        flags: [],
+        requiresMaterialFlagsOnFinish: false,
+        errorCode: refusal.errorCode,
+      };
+    }
+    throw error;
+  }
 }
 
 /** Release one material flag (consumer frees a predecessor flag). */
@@ -246,8 +260,7 @@ export async function releaseMaterialFlag(
   flagId: string,
   colaboratorId: string,
   staffUserId?: string,
-): Promise<void> {
+): Promise<KioskMutationResult> {
   await assertQueueStaffMutation(colaboratorId, staffUserId);
-  await releaseMaterialFlagRepo(flagId);
-  invalidateActivityData();
+  return runKioskMutation(() => releaseMaterialFlagRepo(flagId));
 }

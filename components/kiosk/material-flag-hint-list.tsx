@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FlagTriangleRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { useMaterialFlagsEnabled } from "@/components/material-flags/material-flags-settings-provider";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { DependencyFlagHint } from "@/lib/business/subtask-queue";
 import { cn } from "@/lib/utils";
@@ -69,6 +70,7 @@ export function MaterialFlagHintList({
   /** Kiosk: pass false when the sub-task is not producing. */
   canReleaseFlags?: boolean;
 }) {
+  const materialFlagsEnabled = useMaterialFlagsEnabled();
   const t = useTranslations("kiosk");
   const tCommon = useTranslations("common");
   const [pendingRelease, setPendingRelease] = useState<{
@@ -81,6 +83,7 @@ export function MaterialFlagHintList({
     canReleaseFlags ?? Boolean(onReleaseFlag || onReleaseAll);
   const showRelease = releaseAllowed && !releaseDisabled;
   const hasHints = hints.some((hint) => hint.codes.length > 0);
+  if (!materialFlagsEnabled) return null;
   if (!hasHints && assigned.length === 0) return null;
 
   function confirmRelease(): void {

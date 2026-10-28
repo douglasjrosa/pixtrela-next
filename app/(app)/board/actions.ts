@@ -93,7 +93,9 @@ import {
 } from "@/lib/repos/tasks";
 import { listOpenSessionLive, listOpenUserIdsBySubTaskIds } from "@/lib/repos/group-runs";
 import { listUserNamesByIds } from "@/lib/repos/users";
+import { assertMaterialFlagsEnabled } from "@/lib/business/material-flags-feature";
 import { releaseFlagsForSubTask } from "@/lib/repos/material-flags";
+import { getMaterialFlagsSettings } from "@/lib/repos/material-flags-settings";
 import { runTaskSubTaskSyncRoutine } from "@/lib/repos/subtask-lifecycle";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import {
@@ -1009,6 +1011,8 @@ export async function releaseBoardSubTaskFlags(
   staffUserId?: string,
 ): Promise<void> {
   await assertCanManageBoardSubtasks(staffUserId);
+  const flagsSettings = await getMaterialFlagsSettings();
+  assertMaterialFlagsEnabled(flagsSettings.enabled);
   const subtask = await getSubTaskById(subTaskDocumentId);
   if (!subtask) throw new Error("notFound");
   await releaseFlagsForSubTask(subTaskDocumentId);
