@@ -120,7 +120,7 @@ export function KioskIdleProvider({
     [clearController, pathname, setPhaseSafe],
   );
 
-  const startAuthCountdown = useCallback((_onExpire: () => void) => {
+  const startAuthCountdown = useCallback(() => {
     // Home identify steps must not start the idle gauge or turn the lock green.
   }, []);
 

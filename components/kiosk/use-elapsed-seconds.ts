@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { elapsedSecondsSince } from "@/lib/format/datetime";
 
@@ -18,10 +18,17 @@ export function useElapsedSeconds(
   paused = false,
 ): number | null {
   const [nowMs, setNowMs] = useState<number | null>(null);
-  const anchoredStartMs = useRef<number | null>(null);
+  const [anchoredStartMs, setAnchoredStartMs] = useState<number | null>(null);
+  const [prevStartedAt, setPrevStartedAt] = useState(startedAt);
+  const [prevPaused, setPrevPaused] = useState(paused);
+
+  if (startedAt !== prevStartedAt || paused !== prevPaused) {
+    setPrevStartedAt(startedAt);
+    setPrevPaused(paused);
+    setAnchoredStartMs(null);
+  }
 
   useEffect(() => {
-    anchoredStartMs.current = null;
     const syncNow = () => setNowMs(Date.now());
     syncNow();
     if (!startedAt || paused) return undefined;
@@ -34,15 +41,13 @@ export function useElapsedSeconds(
 
   const startedMs = usableStartMs(startedAt, nowMs);
   if (startedMs === null) {
-    if (anchoredStartMs.current === null) {
-      anchoredStartMs.current = nowMs;
+    const anchorMs = anchoredStartMs ?? nowMs;
+    if (anchoredStartMs === null) {
+      setAnchoredStartMs(nowMs);
     }
     return (
       baseSeconds +
-      elapsedSecondsSince(
-        new Date(anchoredStartMs.current).toISOString(),
-        nowMs,
-      )
+      elapsedSecondsSince(new Date(anchorMs).toISOString(), nowMs)
     );
   }
 

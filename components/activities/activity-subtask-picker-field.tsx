@@ -47,24 +47,29 @@ export function ActivitySubtaskPickerField({
   const [selection, setSelection] = useState<ActivitySubtaskOption | null>(
     selectedSubtask,
   );
+  const [prevSelectedSubtask, setPrevSelectedSubtask] =
+    useState(selectedSubtask);
   const [isSearching, startSearch] = useTransition();
 
-  useEffect(() => {
+  if (selectedSubtask !== prevSelectedSubtask) {
+    setPrevSelectedSubtask(selectedSubtask);
     setSelection(selectedSubtask);
-  }, [selectedSubtask]);
+  }
+  if (!pickerOpen && results.length > 0) {
+    setResults([]);
+  }
+
+  const trimmedQuery = query.trim();
+  const pickerSearchReady = isActivitySubtaskPickerSearchReady(trimmedQuery);
+  if (pickerOpen && !pickerSearchReady && results.length > 0) {
+    setResults([]);
+  }
 
   useEffect(() => {
-    if (!pickerOpen) {
-      setResults([]);
-      return;
-    }
+    if (!pickerOpen) return;
+    if (!isActivitySubtaskPickerSearchReady(query.trim())) return;
 
     const trimmed = query.trim();
-    if (!isActivitySubtaskPickerSearchReady(trimmed)) {
-      setResults([]);
-      return;
-    }
-
     const timer = window.setTimeout(() => {
       startSearch(async () => {
         try {
