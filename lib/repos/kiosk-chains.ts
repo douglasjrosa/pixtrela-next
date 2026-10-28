@@ -78,14 +78,17 @@ import {
   type SubTaskWithAssignees,
 } from "@/lib/repos/tasks";
 import { scheduleTaskSubTaskSync } from "@/lib/repos/schedule-task-sync";
+import { areMaterialFlagsEnabled } from "@/lib/business/material-flags-feature";
 import {
   assignFlagsToSubTask,
   listAvailableFlagsForCategory,
   listFlagIdsForSubTask,
   loadHasAssignedFlagsBySubTaskId,
+  releaseInconsistentMaterialFlagAssignments,
   releaseProducerFlagsWhenConsumersFinished,
   subTaskHasDependents,
 } from "@/lib/repos/material-flags";
+import { getMaterialFlagsSettings } from "@/lib/repos/material-flags-settings";
 import {
   assertFinishFlagsAllowed,
   mergeFlagIds,
@@ -146,10 +149,15 @@ async function loadChainContext(subTaskId: string, db: Db) {
     .limit(1);
   if (!sub) throw new Error("notFound");
   const siblings = await listSubTasksWithRelationsForTask(sub.taskId, db);
-  const flagSet = await loadHasAssignedFlagsBySubTaskId(
-    siblings.map((row) => row.id),
-    db,
-  );
+  const settings = await getMaterialFlagsSettings(db);
+  const materialFlagsEnabled = areMaterialFlagsEnabled(settings.enabled);
+  const siblingIds = siblings.map((row) => row.id);
+  if (materialFlagsEnabled) {
+    await releaseInconsistentMaterialFlagAssignments(siblingIds, db);
+  }
+  const flagSet = materialFlagsEnabled
+    ? await loadHasAssignedFlagsBySubTaskId(siblingIds, db)
+    : new Set<string>();
   const items = siblings.map((row) => ({
     ...toChainItem(row),
     hasAssignedFlags: flagSet.has(row.id),
@@ -158,7 +166,7 @@ async function loadChainContext(subTaskId: string, db: Db) {
   const chain = findChainContaining(chains, subTaskId);
   if (!chain) throw new Error("notFound");
   const byId = new Map(items.map((item) => [item.documentId, item]));
-  return { sub, siblings, items, chain, byId };
+  return { sub, siblings, items, chain, byId, materialFlagsEnabled };
 }
 
 async function loadRunActivities(
@@ -223,6 +231,7 @@ type ChainRunScope = {
   siblings: Awaited<ReturnType<typeof loadChainContext>>["siblings"];
   chain: Awaited<ReturnType<typeof loadChainContext>>["chain"];
   byId: Awaited<ReturnType<typeof loadChainContext>>["byId"];
+  materialFlagsEnabled: boolean;
   memberIds: Set<string>;
   scopedRows: ChainActivityRow[];
   principalId: string;
@@ -648,7 +657,8 @@ export async function startChain(
   db: Db = getDb(),
   timestamp: Date = new Date(),
 ): Promise<{ chainRunId: string }> {
-  const { sub, items, chain, byId, siblings } = await loadChainContext(headId, db);
+  const { sub, items, chain, byId, siblings, materialFlagsEnabled } =
+    await loadChainContext(headId, db);
   const remaining = remainingExecutableMembers(chain, byId);
   if (remaining.length === 0) throw new Error("chainComplete");
   const assignedRemaining = remaining.filter((item) =>
@@ -666,6 +676,7 @@ export async function startChain(
       new Set(chain.memberIds),
       remaining,
       new Map(items.map((item) => [item.documentId, item])),
+      materialFlagsEnabled,
     )
   ) {
     throw new Error("chainBlocked");
@@ -979,20 +990,27 @@ async function reallocateChainRunInternal(
   const creditDeltas = diffChainRunCredits(nextAwards, previousAwards);
 
   const finishFlagIdsByMember = new Map<string, string[]>();
+  const materialFlagsEnabled = scope.materialFlagsEnabled;
 
   for (const member of formMembers) {
     const sibling = siblingById.get(member.documentId);
     if (!sibling) continue;
-    const flagIds = answersById.get(member.documentId)?.flagIds ?? [];
-    const existingFlagIds = await listFlagIdsForSubTask(member.documentId, db);
+    const flagIds = materialFlagsEnabled
+      ? (answersById.get(member.documentId)?.flagIds ?? [])
+      : [];
+    const existingFlagIds = materialFlagsEnabled
+      ? await listFlagIdsForSubTask(member.documentId, db)
+      : [];
     const mergedFlagIds = mergeFlagIds(existingFlagIds, flagIds);
-    const hasDependents = await subTaskHasDependents(member.documentId, db);
+    const hasDependents = materialFlagsEnabled
+      ? await subTaskHasDependents(member.documentId, db)
+      : false;
     const categoryForFinish = sibling.subTaskCategoryId ?? null;
     const willFinish =
       !pendingIds.has(member.documentId) &&
       !helperOpenBySubTask.has(member.documentId);
     let availableCount = 0;
-    if (categoryForFinish) {
+    if (materialFlagsEnabled && categoryForFinish) {
       const available = await listAvailableFlagsForCategory(
         categoryForFinish,
         member.documentId,
@@ -1012,6 +1030,7 @@ async function reallocateChainRunInternal(
         availableCount,
         inferred: answer?.inferred,
         semBandeira: answer?.semBandeira,
+        materialFlagsEnabled,
       });
     }
   }
@@ -1098,7 +1117,7 @@ async function reallocateChainRunInternal(
           .where(eq(subTasks.id, member.documentId));
         const pendingFlagIds =
           finishFlagIdsByMember.get(member.documentId) ?? [];
-        if (pendingFlagIds.length > 0) {
+        if (materialFlagsEnabled && pendingFlagIds.length > 0) {
           await assignFlagsToSubTask(
             member.documentId,
             pendingFlagIds,
@@ -1126,7 +1145,7 @@ async function reallocateChainRunInternal(
         })
         .where(eq(subTasks.id, member.documentId));
       const finishFlagIds = finishFlagIdsByMember.get(member.documentId) ?? [];
-      if (finishFlagIds.length > 0) {
+      if (materialFlagsEnabled && finishFlagIds.length > 0) {
         await assignFlagsToSubTask(
           member.documentId,
           finishFlagIds,
@@ -1283,19 +1302,24 @@ async function recordPeerChainExit(input: {
       const sessionSeconds = openStart
         ? elapsedSecondsBetween(openStart.timestamp, input.timestamp)
         : 0;
-      const flagIds = answer?.flagIds ?? [];
-      const existingFlagIds = await listFlagIdsForSubTask(
-        member.documentId,
-        tx as unknown as Db,
-      );
+      const materialFlagsEnabled = input.scope.materialFlagsEnabled;
+      const flagIds = materialFlagsEnabled ? (answer?.flagIds ?? []) : [];
+      const existingFlagIds = materialFlagsEnabled
+        ? await listFlagIdsForSubTask(
+            member.documentId,
+            tx as unknown as Db,
+          )
+        : [];
       const mergedFlagIds = mergeFlagIds(existingFlagIds, flagIds);
-      const hasDependents = await subTaskHasDependents(
-        member.documentId,
-        tx as unknown as Db,
-      );
+      const hasDependents = materialFlagsEnabled
+        ? await subTaskHasDependents(
+            member.documentId,
+            tx as unknown as Db,
+          )
+        : false;
       let availableCount = 0;
       const categoryForFinish = row.subTaskCategoryId ?? null;
-      if (categoryForFinish) {
+      if (materialFlagsEnabled && categoryForFinish) {
         const available = await listAvailableFlagsForCategory(
           categoryForFinish,
           member.documentId,
@@ -1311,6 +1335,7 @@ async function recordPeerChainExit(input: {
         availableCount,
         inferred: answer?.inferred,
         semBandeira: answer?.semBandeira,
+        materialFlagsEnabled,
       });
 
       let currencyAwarded = 0;
@@ -1348,7 +1373,7 @@ async function recordPeerChainExit(input: {
           updatedAt: input.timestamp,
         })
         .where(eq(subTasks.id, member.documentId));
-      if (flagIds.length > 0) {
+      if (materialFlagsEnabled && flagIds.length > 0) {
         await assignFlagsToSubTask(
           member.documentId,
           flagIds,

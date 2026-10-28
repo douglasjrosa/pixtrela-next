@@ -1,4 +1,5 @@
 export const KIOSK_ACTION_ERROR_CODES = [
+  "materialFlagsDisabled",
   "flagsRequired",
   "subTaskHasNoCategory",
   "flagWrongCategory",

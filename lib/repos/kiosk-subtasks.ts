@@ -94,15 +94,18 @@ import {
   runTaskSubTaskSyncRoutine,
 } from "@/lib/repos/subtask-lifecycle";
 import { scheduleTaskSubTaskSync } from "@/lib/repos/schedule-task-sync";
+import { areMaterialFlagsEnabled } from "@/lib/business/material-flags-feature";
 import {
   assignFlagsToSubTask,
   listAssignedFlagsForSubTasks,
   listAvailableFlagsForCategory,
   listFlagIdsForSubTask,
+  releaseInconsistentMaterialFlagAssignments,
   releaseProducerFlagsWhenConsumersFinished,
   resolveKioskMaterialFlagOptions,
   subTaskHasDependents,
 } from "@/lib/repos/material-flags";
+import { getMaterialFlagsSettings } from "@/lib/repos/material-flags-settings";
 import { getKioskSettings } from "@/lib/repos/settings";
 import {
   DEFAULT_KIOSK_QUEUE_PAGE_SIZE,
@@ -188,11 +191,25 @@ function toSubTaskDbRow(
   };
 }
 
+function withoutMaterialFlagFields(item: KioskSubTask): KioskSubTask {
+  return {
+    ...item,
+    assignedFlagCodes: [],
+    dependencyFlags: [],
+    availableFlags: [],
+    requiresMaterialFlagsOnFinish: false,
+  };
+}
+
 async function attachKioskListingFlagFields(
   items: KioskSubTask[],
   db: Db,
 ): Promise<KioskSubTask[]> {
   if (items.length === 0) return items;
+  const settings = await getMaterialFlagsSettings(db);
+  if (!areMaterialFlagsEnabled(settings.enabled)) {
+    return items.map(withoutMaterialFlagFields);
+  }
   const ids = items.map((item) => item.documentId);
   const dependencyIds = [
     ...new Set(items.flatMap((item) => item.dependencyIds ?? [])),
@@ -1489,12 +1506,21 @@ export async function stopSubTask(
   const wouldComplete =
     remainingActiveIds.length === 0 &&
     shouldFinalizeSubTaskOnStop(baseStopResult, qtyTargetMet);
-  const flagIds = body.flagIds ?? [];
-  const existingFlagIds = await listFlagIdsForSubTask(subTaskId, db);
+  const flagSettings = await getMaterialFlagsSettings(db);
+  const materialFlagsEnabled = areMaterialFlagsEnabled(flagSettings.enabled);
+  const flagIds = materialFlagsEnabled ? (body.flagIds ?? []) : [];
+  if (materialFlagsEnabled) {
+    await releaseInconsistentMaterialFlagAssignments([subTaskId], db);
+  }
+  const existingFlagIds = materialFlagsEnabled
+    ? await listFlagIdsForSubTask(subTaskId, db)
+    : [];
   const mergedFlagIds = mergeFlagIds(existingFlagIds, flagIds);
-  const hasDependents = await subTaskHasDependents(subTaskId, db);
+  const hasDependents = materialFlagsEnabled
+    ? await subTaskHasDependents(subTaskId, db)
+    : false;
   let categoryForFinish = sub.subTaskCategoryId ?? null;
-  if (!categoryForFinish && flagIds.length > 0) {
+  if (materialFlagsEnabled && !categoryForFinish && flagIds.length > 0) {
     const flagRows = await db
       .select({ categoryId: flags.subTaskCategoryId })
       .from(flags)
@@ -1505,7 +1531,7 @@ export async function stopSubTask(
     );
   }
   let availableCount = 0;
-  if (categoryForFinish) {
+  if (materialFlagsEnabled && categoryForFinish) {
     const available = await listAvailableFlagsForCategory(
       categoryForFinish,
       subTaskId,
@@ -1521,6 +1547,7 @@ export async function stopSubTask(
       categoryId: categoryForFinish,
       totalFlagCount: mergedFlagIds.length,
       availableCount,
+      materialFlagsEnabled,
     });
   }
 
@@ -1550,7 +1577,7 @@ export async function stopSubTask(
       })
       .where(eq(subTasks.id, subTaskId));
 
-    if (flagIds.length > 0) {
+    if (materialFlagsEnabled && flagIds.length > 0) {
       await assignFlagsToSubTask(subTaskId, flagIds, tx as unknown as Db);
     }
     await deleteOpenSessionsForUser(

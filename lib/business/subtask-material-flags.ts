@@ -6,7 +6,9 @@ export function assertFinishFlagsAllowed(input: {
   availableCount: number;
   inferred?: boolean;
   semBandeira?: boolean;
+  materialFlagsEnabled?: boolean;
 }): void {
+  if (input.materialFlagsEnabled === false) return;
   if (!input.willFinish || !input.hasDependents) return;
   if (input.inferred === true || input.semBandeira === true) return;
   if (!input.categoryId) return;
@@ -22,7 +24,9 @@ export function canConfirmFinishWithFlags(input: {
   selectedFlagCount: number;
   availableFlagCount: number;
   semBandeiraSelected: boolean;
+  materialFlagsEnabled?: boolean;
 }): boolean {
+  if (input.materialFlagsEnabled === false) return true;
   if (!input.willFinish || !input.hasDependents) return true;
   if (!input.categoryId) return true;
   if (input.availableFlagCount > 0) return input.selectedFlagCount >= 1;

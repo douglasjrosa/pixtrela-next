@@ -136,11 +136,19 @@ export function chainHasExternalDependencyBlock(
     string,
     Pick<ChainSubTask, "status" | "hasAssignedFlags">
   >,
+  materialFlagsEnabled = true,
 ): boolean {
   for (const member of membersToCheck) {
     for (const depId of member.dependencyIds) {
       if (chainMemberIds.has(depId)) continue;
-      if (!isPredecessorSatisfied(siblingsById.get(depId))) return true;
+      if (
+        !isPredecessorSatisfied(
+          siblingsById.get(depId),
+          materialFlagsEnabled,
+        )
+      ) {
+        return true;
+      }
     }
   }
   return false;

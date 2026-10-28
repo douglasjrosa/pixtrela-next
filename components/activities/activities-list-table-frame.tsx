@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useState, useTransition, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -126,28 +132,22 @@ export function ActivitiesListTableFrame({
 
   const listResetKey = `${filterKey}:${initialPage}:${initialHasMore}`;
   const [prevListResetKey, setPrevListResetKey] = useState(listResetKey);
+  const [prevInitialActivities, setPrevInitialActivities] =
+    useState(initialActivities);
   if (listResetKey !== prevListResetKey) {
     setPrevListResetKey(listResetKey);
+    setPrevInitialActivities(initialActivities);
     setBaseActivities(initialActivities);
     setExtraActivities([]);
     setPage(initialPage);
     setHasMore(initialHasMore);
     setSelectedIds([]);
+  } else if (initialActivities !== prevInitialActivities) {
+    setPrevInitialActivities(initialActivities);
+    setBaseActivities(initialActivities);
   }
 
-  useEffect(() => {
-    setBaseActivities(initialActivities);
-  }, [initialActivities]);
-
-  useEffect(() => {
-    function onListMutated(): void {
-      syncListFromServer();
-    }
-    window.addEventListener(ACTIVITIES_LIST_MUTATED_EVENT, onListMutated);
-    return () => {
-      window.removeEventListener(ACTIVITIES_LIST_MUTATED_EVENT, onListMutated);
-    };
-  }, [filterKey]);
+  const syncListFromServerRef = useRef<() => void>(() => {});
 
   const activities = [...baseActivities, ...extraActivities];
 
@@ -175,6 +175,20 @@ export function ActivitiesListTableFrame({
       }
     });
   }
+
+  useEffect(() => {
+    syncListFromServerRef.current = syncListFromServer;
+  });
+
+  useEffect(() => {
+    function onListMutated(): void {
+      syncListFromServerRef.current();
+    }
+    window.addEventListener(ACTIVITIES_LIST_MUTATED_EVENT, onListMutated);
+    return () => {
+      window.removeEventListener(ACTIVITIES_LIST_MUTATED_EVENT, onListMutated);
+    };
+  }, [filterKey]);
   const selected = selectedRowsFromList(activities, selectedIds);
   const hasSelection = selected.length > 0;
   const allSelectedArchived = areAllSelectedRowsInactive(

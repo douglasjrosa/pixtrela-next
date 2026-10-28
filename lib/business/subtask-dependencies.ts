@@ -22,12 +22,12 @@ export function isPredecessorSatisfied(
   predecessor:
     | Pick<SubTaskDependencyRow, "status" | "hasAssignedFlags">
     | undefined,
+  materialFlagsEnabled = true,
 ): boolean {
   if (!predecessor) return false;
-  return (
-    predecessor.status === FINISHED_STATUS ||
-    predecessor.hasAssignedFlags === true
-  );
+  if (predecessor.status === FINISHED_STATUS) return true;
+  if (!materialFlagsEnabled) return false;
+  return predecessor.hasAssignedFlags === true;
 }
 
 export function areSubTaskDependenciesSatisfied(
@@ -36,10 +36,11 @@ export function areSubTaskDependenciesSatisfied(
     string,
     Pick<SubTaskDependencyRow, "status" | "hasAssignedFlags">
   >,
+  materialFlagsEnabled = true,
 ): boolean {
   if (dependencyIds.length === 0) return false;
   return dependencyIds.every((id) =>
-    isPredecessorSatisfied(siblingsById.get(id)),
+    isPredecessorSatisfied(siblingsById.get(id), materialFlagsEnabled),
   );
 }
 
@@ -60,7 +61,10 @@ export function findLockedSubTasksToUnlock(
     .filter((sibling) => isLockedForDependencyUnlock(sibling.activationStatus))
     .filter((sibling) => {
       const dependencyIds = parseSubTaskDependencyIds(sibling.dependencies);
-      return areSubTaskDependenciesSatisfied(dependencyIds, siblingsById);
+      return areSubTaskDependenciesSatisfied(
+        dependencyIds,
+        siblingsById,
+      );
     })
     .map((sibling) => sibling.documentId);
 }

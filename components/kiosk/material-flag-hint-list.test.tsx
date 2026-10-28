@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { MaterialFlagsSettingsProvider } from "@/components/material-flags/material-flags-settings-provider";
+
 import { MaterialFlagHintList } from "./material-flag-hint-list";
 
 vi.mock("next-intl", () => ({
@@ -116,5 +118,24 @@ describe("MaterialFlagHintList", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(onReleaseFlag).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("hides all flag UI when the feature is off", () => {
+    render(
+      <MaterialFlagsSettingsProvider enabled={false}>
+        <MaterialFlagHintList
+          assignedFlagCodes={["C-3"]}
+          dependencyFlags={[
+            {
+              predecessorName: "Corte",
+              codes: ["C-3"],
+              flags: [{ id: "flag-1", code: "C-3" }],
+            },
+          ]}
+        />
+      </MaterialFlagsSettingsProvider>,
+    );
+
+    expect(screen.queryByText("C-3")).not.toBeInTheDocument();
   });
 });

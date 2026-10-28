@@ -16,7 +16,6 @@ import {
   updateActivityFields,
 } from "@/lib/repos/activities";
 import { confirmChainStop, startChain } from "@/lib/repos/kiosk-chains";
-import { startSubTask } from "@/lib/repos/kiosk-subtasks";
 import { createStep } from "@/lib/repos/steps";
 import {
   assignColaboratorsToSubTask,

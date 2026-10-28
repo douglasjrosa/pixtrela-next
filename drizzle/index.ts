@@ -9,6 +9,7 @@ export {
   routeThemes,
   semanticThemeSettings,
   kioskSettings,
+  materialFlagsSettings,
   entryAccessSettings,
   taskAutomationSettings,
   factoryActions,

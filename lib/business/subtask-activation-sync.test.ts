@@ -157,6 +157,12 @@ describe('computeAutomaticActivationStatus', () => {
 
     expect(areAllDependencySubTasksFinished(['cut-open'], graph)).toBe(true);
     expect(computeAutomaticActivationStatus(consumer, graph)).toBe('unlocked');
+    expect(
+      areAllDependencySubTasksFinished(['cut-open'], graph, false),
+    ).toBe(false);
+    expect(computeAutomaticActivationStatus(consumer, graph, false)).toBe(
+      'locked',
+    );
   });
 
   it('re-locks waiting consumers when flags are released and producer is not finished', () => {

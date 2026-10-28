@@ -8,6 +8,7 @@ import { saveFlag } from "@/app/(app)/settings/subtasks/actions";
 import { Button } from "@/components/ui/button";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
+import { isMaterialFlagsDisabledError } from "@/lib/business/material-flags-feature";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
@@ -44,7 +45,11 @@ export function FlagEditForm({
         router.refresh();
       } catch (error) {
         rethrowIfNavigationError(error);
-        showErrorToast(t("error"));
+        showErrorToast(
+          isMaterialFlagsDisabledError(error)
+            ? t("materialFlagsDisabled")
+            : t("error"),
+        );
       }
     });
   }
