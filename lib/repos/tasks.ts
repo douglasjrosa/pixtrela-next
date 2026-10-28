@@ -27,7 +27,9 @@ import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 import type { TasksRevision } from "@/lib/tasks/tasks-revision";
 import { archiveRecords } from "@/lib/repos/deactivation-reasons";
 import { recordActivityViaKiosk, reconcileProducingStatusFromOpenSessions } from "@/lib/repos/kiosk-subtasks";
+import { areMaterialFlagsEnabled } from "@/lib/business/material-flags-feature";
 import { listAssignedFlagsForSubTasks } from "@/lib/repos/material-flags";
+import { getMaterialFlagsSettings } from "@/lib/repos/material-flags-settings";
 import { formatMaterialFlagCode } from "@/lib/business/material-flag-code";
 import type { TaskListFilters } from "@/lib/schemas/task-list-filters";
 import type { TaskListSort } from "@/lib/schemas/task-list-sort";
@@ -587,10 +589,14 @@ export async function listBoardSubtaskCore(
   }
 
   const ids = rows.map((row) => row.id);
+  const flagsSettings = await getMaterialFlagsSettings(db);
+  const materialFlagsEnabled = areMaterialFlagsEnabled(flagsSettings.enabled);
   const [assigneeRows, assignedFlags, dependencyRows, openActivities] =
     await Promise.all([
     listBoardSubtaskAssignees(ids, db),
-    listAssignedFlagsForSubTasks(ids, db),
+    materialFlagsEnabled
+      ? listAssignedFlagsForSubTasks(ids, db)
+      : Promise.resolve([]),
     db
       .select({
         consumerId: subTaskDependencies.subTaskId,

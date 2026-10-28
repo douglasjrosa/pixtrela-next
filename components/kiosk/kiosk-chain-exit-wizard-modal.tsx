@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
+import { useMaterialFlagsEnabled } from "@/components/material-flags/material-flags-settings-provider";
 import type { KioskSubTask } from "@/lib/business/subtask-queue";
 import type { ChainExitFieldConstraints } from "@/lib/business/chain-exit-inference";
 import {
@@ -51,6 +52,7 @@ export function KioskChainExitWizardModal({
 }: KioskChainExitWizardModalProps) {
   const t = useTranslations("kiosk");
   const tCommon = useTranslations("common");
+  const materialFlagsEnabled = useMaterialFlagsEnabled();
   const member = members[stepIndex];
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === members.length - 1;
@@ -70,6 +72,7 @@ export function KioskChainExitWizardModal({
       semBandeiraSelected: currentAnswer?.semBandeira,
       targetQty: member.targetQty,
       completedQty: member.completedQty,
+      materialFlagsEnabled,
     },
   );
 
@@ -152,7 +155,9 @@ export function KioskChainExitWizardModal({
         value={currentAnswer}
         disabled={actionsDisabled}
         onRefreshFlags={
-          onRefreshFlags ? () => onRefreshFlags(member.documentId) : undefined
+          materialFlagsEnabled && onRefreshFlags
+            ? () => onRefreshFlags(member.documentId)
+            : undefined
         }
         onChange={(answer) => onAnswerChange(member.documentId, answer)}
       />

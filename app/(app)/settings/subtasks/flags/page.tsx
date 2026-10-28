@@ -6,6 +6,7 @@ import { FlagPageHeader } from "@/components/settings/subtasks/flag-page-header"
 import { ListPageChrome } from "@/components/ui/list-page-chrome";
 import { ListPageToolbar } from "@/components/ui/list-page-toolbar";
 import { ListEmptyMessage } from "@/components/ui/list-empty-message";
+import { loadMaterialFlagsSettings } from "@/lib/material-flags/load-material-flags-settings";
 import { listMaterialFlags } from "@/lib/repos/material-flags";
 import { listAllSubTaskCategories } from "@/lib/repos/sub-task-categories";
 import { SETTINGS_ENTITY_LIST_PAGE_SIZE } from "@/lib/schemas/sub-task-category";
@@ -21,7 +22,7 @@ export default async function SettingsSubtaskFlagsPage({
 }: PageProps) {
   const t = await getTranslations("settings");
   const filters = parseFlagListSearchParams(await searchParams);
-  const [pageResult, categories] = await Promise.all([
+  const [pageResult, categories, flagsSettings] = await Promise.all([
     listMaterialFlags(filters, 1).catch((error) => {
       rethrowIfNavigationError(error);
       return { items: [], total: 0 };
@@ -30,19 +31,28 @@ export default async function SettingsSubtaskFlagsPage({
       rethrowIfNavigationError(error);
       return [];
     }),
+    loadMaterialFlagsSettings(),
   ]);
+  const flagsEnabled = flagsSettings.enabled;
   const hasMore = SETTINGS_ENTITY_LIST_PAGE_SIZE < pageResult.total;
 
   return (
     <ListPageChrome
       toolbar={
         <ListPageToolbar
-          search={<FlagNameSearch categories={categories} />}
-          trailingActions={<FlagPageHeader categories={categories} />}
+          search={
+            flagsEnabled ? <FlagNameSearch categories={categories} /> : undefined
+          }
+          trailingActions={
+            <FlagPageHeader
+              categories={categories}
+              flagsEnabled={flagsEnabled}
+            />
+          }
         />
       }
     >
-      {pageResult.items.length === 0 ? (
+      {!flagsEnabled ? null : pageResult.items.length === 0 ? (
         <ListEmptyMessage>{t("flagsEmpty")}</ListEmptyMessage>
       ) : (
         <FlagListTableFrame

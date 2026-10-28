@@ -167,6 +167,28 @@ describe("chainHasExternalDependencyBlock", () => {
       ),
     ).toBe(true);
   });
+
+  it("does not treat assigned flags as unlocking when flags are off", () => {
+    const siblings = new Map([
+      ["out", { status: "producing", hasAssignedFlags: true }],
+    ]);
+    expect(
+      chainHasExternalDependencyBlock(
+        new Set(["a"]),
+        [{ dependencyIds: ["out"] }],
+        siblings,
+        true,
+      ),
+    ).toBe(false);
+    expect(
+      chainHasExternalDependencyBlock(
+        new Set(["a"]),
+        [{ dependencyIds: ["out"] }],
+        siblings,
+        false,
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("nextChainSubtaskClick", () => {

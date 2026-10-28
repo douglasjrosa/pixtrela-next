@@ -77,6 +77,18 @@ describe("isChainMemberAnswerComplete", () => {
     expect(
       isChainMemberAnswerComplete(
         "duration",
+        { documentId: "a", completed: true },
+        {
+          requiresMaterialFlagsOnFinish: true,
+          categoryId,
+          availableFlagCount: 2,
+          materialFlagsEnabled: false,
+        },
+      ),
+    ).toBe(true);
+    expect(
+      isChainMemberAnswerComplete(
+        "duration",
         { documentId: "a", completed: true, inferred: true },
         {
           requiresMaterialFlagsOnFinish: true,

@@ -302,6 +302,13 @@
       "when": 1788800000000,
       "tag": "0042_sub_tasks_finished_without_pay",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1788850000000,
+      "tag": "0043_material_flags_settings",
+      "breakpoints": true
     }
   ]
 }

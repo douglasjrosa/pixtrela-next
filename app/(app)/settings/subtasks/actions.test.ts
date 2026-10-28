@@ -13,6 +13,7 @@ vi.mock("@/auth", () => ({
 vi.mock("next/cache", () => ({
   revalidatePath: (...args: unknown[]) => revalidatePath(...args),
   revalidateTag: vi.fn(),
+  unstable_cache: (fn: () => unknown) => fn,
 }));
 
 vi.mock("@/lib/repos/sub-task-categories", () => ({
@@ -26,6 +27,11 @@ vi.mock("@/lib/repos/sub-task-categories", () => ({
   listAllSubTaskCategories: vi.fn(),
 }));
 
+const getMaterialFlagsSettings = vi.fn();
+const setMaterialFlagsEnabled = vi.fn();
+const reconcileMaterialFlagAssignments = vi.fn();
+const runTaskSubTaskSyncRoutine = vi.fn();
+
 vi.mock("@/lib/repos/material-flags", () => ({
   findMaterialFlagById: (...args: unknown[]) => findMaterialFlagById(...args),
   deleteMaterialFlag: (...args: unknown[]) => deleteMaterialFlag(...args),
@@ -34,6 +40,20 @@ vi.mock("@/lib/repos/material-flags", () => ({
   listMaterialFlags: vi.fn(),
   nextFlagIndexForCategory: vi.fn(),
   updateMaterialFlag: vi.fn(),
+  reconcileMaterialFlagAssignments: (...args: unknown[]) =>
+    reconcileMaterialFlagAssignments(...args),
+}));
+
+vi.mock("@/lib/repos/material-flags-settings", () => ({
+  getMaterialFlagsSettings: (...args: unknown[]) =>
+    getMaterialFlagsSettings(...args),
+  setMaterialFlagsEnabled: (...args: unknown[]) =>
+    setMaterialFlagsEnabled(...args),
+}));
+
+vi.mock("@/lib/repos/subtask-lifecycle", () => ({
+  runTaskSubTaskSyncRoutine: (...args: unknown[]) =>
+    runTaskSubTaskSyncRoutine(...args),
 }));
 
 vi.mock("@/lib/subtasks/category-options", () => ({
@@ -48,6 +68,11 @@ describe("settings/subtasks bulk delete", () => {
     deleteSubTaskCategory.mockReset();
     findMaterialFlagById.mockReset();
     deleteMaterialFlag.mockReset();
+    getMaterialFlagsSettings.mockReset();
+    getMaterialFlagsSettings.mockResolvedValue({ id: "s1", enabled: true });
+    setMaterialFlagsEnabled.mockReset();
+    reconcileMaterialFlagAssignments.mockReset();
+    runTaskSubTaskSyncRoutine.mockReset();
   });
 
   it("bulkDeleteCategories hard-deletes each selected category", async () => {
@@ -106,5 +131,39 @@ describe("settings/subtasks bulk delete", () => {
     const { bulkDeleteFlags } = await import("./actions");
     await expect(bulkDeleteFlags(["missing"])).rejects.toThrow("notFound");
     expect(deleteMaterialFlag).not.toHaveBeenCalled();
+  });
+
+  it("bulkDeleteFlags does not block on flagsRequired when feature is off", async () => {
+    getMaterialFlagsSettings.mockResolvedValue({ id: "s1", enabled: false });
+
+    const { bulkDeleteFlags } = await import("./actions");
+    await expect(bulkDeleteFlags(["f1"])).rejects.toThrow(
+      "materialFlagsDisabled",
+    );
+    expect(deleteMaterialFlag).not.toHaveBeenCalled();
+  });
+
+  it("setMaterialFlagsFeatureEnabled reconciles assignments when turning on", async () => {
+    getMaterialFlagsSettings.mockResolvedValue({ id: "s1", enabled: false });
+    reconcileMaterialFlagAssignments.mockResolvedValue(["task-1"]);
+    setMaterialFlagsEnabled.mockResolvedValue({ id: "s1", enabled: true });
+
+    const { setMaterialFlagsFeatureEnabled } = await import("./actions");
+    await setMaterialFlagsFeatureEnabled(true);
+
+    expect(reconcileMaterialFlagAssignments).toHaveBeenCalled();
+    expect(runTaskSubTaskSyncRoutine).toHaveBeenCalledWith("task-1");
+    expect(setMaterialFlagsEnabled).toHaveBeenCalledWith(true);
+  });
+
+  it("setMaterialFlagsFeatureEnabled skips reconcile when turning off", async () => {
+    getMaterialFlagsSettings.mockResolvedValue({ id: "s1", enabled: true });
+    setMaterialFlagsEnabled.mockResolvedValue({ id: "s1", enabled: false });
+
+    const { setMaterialFlagsFeatureEnabled } = await import("./actions");
+    await setMaterialFlagsFeatureEnabled(false);
+
+    expect(reconcileMaterialFlagAssignments).not.toHaveBeenCalled();
+    expect(setMaterialFlagsEnabled).toHaveBeenCalledWith(false);
   });
 });

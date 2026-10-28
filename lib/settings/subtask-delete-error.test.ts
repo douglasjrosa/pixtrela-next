@@ -13,6 +13,9 @@ describe("settingsSubtaskDeleteErrorKey", () => {
     expect(settingsSubtaskDeleteErrorKey(new Error("flagOccupied"))).toBe(
       "flagOccupiedError",
     );
+    expect(
+      settingsSubtaskDeleteErrorKey(new Error("materialFlagsDisabled")),
+    ).toBe("materialFlagsDisabled");
     expect(settingsSubtaskDeleteErrorKey(new Error("other"))).toBe("error");
   });
 });

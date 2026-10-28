@@ -7,14 +7,25 @@ import {
   subTaskFlags,
   subTasks,
 } from "@/drizzle/schema";
+import { isInconsistentMaterialFlagAssignment } from "@/lib/business/material-flag-assignment-consistency";
 import {
   formatMaterialFlagCode,
   sortMaterialFlagOptionsByCode,
 } from "@/lib/business/material-flag-code";
+import {
+  areMaterialFlagsEnabled,
+  assertMaterialFlagsEnabled,
+} from "@/lib/business/material-flags-feature";
 import { resolveSubTaskFlagCategory } from "@/lib/business/subtask-material-flags";
 import { getDb, type Db } from "@/lib/db/client";
+import { getMaterialFlagsSettings } from "@/lib/repos/material-flags-settings";
 import type { MaterialFlagFormInput, MaterialFlagListFilters } from "@/lib/schemas/material-flag";
 import { SETTINGS_ENTITY_LIST_PAGE_SIZE } from "@/lib/schemas/sub-task-category";
+
+async function requireMaterialFlagsFeature(db: Db): Promise<void> {
+  const settings = await getMaterialFlagsSettings(db);
+  assertMaterialFlagsEnabled(settings.enabled);
+}
 
 export type MaterialFlagListItem = {
   id: string;
@@ -272,6 +283,7 @@ export async function assignFlagsToSubTask(
 ): Promise<void> {
   const uniqueIds = [...new Set(flagIds.filter((id) => id.trim().length > 0))];
   if (uniqueIds.length === 0) return;
+  await requireMaterialFlagsFeature(db);
 
   const [sub] = await db
     .select({
@@ -438,6 +450,7 @@ export async function refreshKioskMaterialFlags(
   flags: KioskMaterialFlagOption[];
   requiresMaterialFlagsOnFinish: boolean;
 }> {
+  await requireMaterialFlagsFeature(db);
   await releaseFlagsOnFinishedConsumerSubTasks(db);
   const [sub] = await db
     .select({
@@ -455,6 +468,7 @@ export async function releaseFlagsForSubTask(
   subTaskId: string,
   db: Db = getDb(),
 ): Promise<void> {
+  await requireMaterialFlagsFeature(db);
   await db.delete(subTaskFlags).where(eq(subTaskFlags.subTaskId, subTaskId));
 }
 
@@ -463,6 +477,7 @@ export async function releaseMaterialFlag(
   flagId: string,
   db: Db = getDb(),
 ): Promise<void> {
+  await requireMaterialFlagsFeature(db);
   const trimmed = flagId.trim();
   if (!trimmed) throw new Error("flagNotFound");
   await db.delete(subTaskFlags).where(eq(subTaskFlags.flagId, trimmed));
@@ -484,6 +499,8 @@ export async function releaseProducerFlagsWhenConsumersFinished(
   taskId: string,
   db: Db = getDb(),
 ): Promise<void> {
+  const settings = await getMaterialFlagsSettings(db);
+  if (!areMaterialFlagsEnabled(settings.enabled)) return;
   const siblings = await db
     .select({
       id: subTasks.id,
@@ -533,4 +550,54 @@ export async function loadHasAssignedFlagsBySubTaskId(
     .from(subTaskFlags)
     .where(inArray(subTaskFlags.subTaskId, subTaskIds));
   return new Set(rows.map((row) => row.subTaskId));
+}
+
+export async function releaseInconsistentMaterialFlagAssignments(
+  subTaskIds: string[],
+  db: Db = getDb(),
+): Promise<string[]> {
+  if (subTaskIds.length === 0) return [];
+  const rows = await db
+    .select({
+      flagId: subTaskFlags.flagId,
+      subTaskStatus: subTasks.status,
+      subTaskCategoryId: subTasks.subTaskCategoryId,
+      flagCategoryId: flags.subTaskCategoryId,
+      taskId: subTasks.taskId,
+    })
+    .from(subTaskFlags)
+    .innerJoin(subTasks, eq(subTaskFlags.subTaskId, subTasks.id))
+    .leftJoin(flags, eq(subTaskFlags.flagId, flags.id))
+    .where(inArray(subTaskFlags.subTaskId, subTaskIds));
+
+  const flagIdsToRelease: string[] = [];
+  const taskIds = new Set<string>();
+  for (const row of rows) {
+    if (
+      !isInconsistentMaterialFlagAssignment({
+        subTaskStatus: row.subTaskStatus,
+        subTaskCategoryId: row.subTaskCategoryId,
+        flagCategoryId: row.flagCategoryId,
+      })
+    ) {
+      continue;
+    }
+    flagIdsToRelease.push(row.flagId);
+    taskIds.add(row.taskId);
+  }
+  if (flagIdsToRelease.length === 0) return [];
+  await db
+    .delete(subTaskFlags)
+    .where(inArray(subTaskFlags.flagId, flagIdsToRelease));
+  return [...taskIds];
+}
+
+export async function reconcileMaterialFlagAssignments(
+  db: Db = getDb(),
+): Promise<string[]> {
+  const rows = await db
+    .select({ subTaskId: subTaskFlags.subTaskId })
+    .from(subTaskFlags);
+  const subTaskIds = [...new Set(rows.map((row) => row.subTaskId))];
+  return releaseInconsistentMaterialFlagAssignments(subTaskIds, db);
 }

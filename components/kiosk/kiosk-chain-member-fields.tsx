@@ -3,11 +3,14 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
+import { useMaterialFlagsEnabled } from "@/components/material-flags/material-flags-settings-provider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { kioskActionErrorMessage } from "@/lib/business/kiosk-action-error";
 import type { ChainStopAnswer } from "@/lib/business/subtask-chain-allocation";
 import type { MaterialFlagOption } from "@/lib/business/subtask-queue";
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
+import { showErrorToast } from "@/lib/ui/app-toast";
 import { cn } from "@/lib/utils";
 
 import { KioskActionButton } from "./kiosk-action-button";
@@ -60,6 +63,7 @@ export function KioskChainMemberFields({
   onRefreshFlags,
 }: KioskChainMemberFieldsProps) {
   const t = useTranslations("kiosk");
+  const materialFlagsEnabled = useMaterialFlagsEnabled();
   const qtyInputRef = useRef<HTMLInputElement>(null);
   const safeMaxQty = Math.max(0, maxQty);
   const safeMinQty = Math.min(safeMaxQty, Math.max(0, minQty));
@@ -101,23 +105,27 @@ export function KioskChainMemberFields({
   }
 
   function handleRefresh(): void {
-    if (!onRefreshFlags) return;
+    if (!materialFlagsEnabled || !onRefreshFlags) return;
     startRefresh(async () => {
-      const result = await onRefreshFlags();
-      const nextAllowSemBandeira =
-        result.flags.length === 0 && Boolean(result.categoryId);
-      setRefreshByMemberId((current) => ({
-        ...current,
-        [documentId]: {
-          flags: result.flags,
-          categoryId: result.categoryId,
-          allowSemBandeiraOption: nextAllowSemBandeira,
-        },
-      }));
-      patch({
-        availableFlagCount: result.flags.length,
-        semBandeira: false,
-      });
+      try {
+        const result = await onRefreshFlags();
+        const nextAllowSemBandeira =
+          result.flags.length === 0 && Boolean(result.categoryId);
+        setRefreshByMemberId((current) => ({
+          ...current,
+          [documentId]: {
+            flags: result.flags,
+            categoryId: result.categoryId,
+            allowSemBandeiraOption: nextAllowSemBandeira,
+          },
+        }));
+        patch({
+          availableFlagCount: result.flags.length,
+          semBandeira: false,
+        });
+      } catch (error) {
+        showErrorToast(kioskActionErrorMessage(t, error, "exitFailed"));
+      }
     });
   }
 
@@ -260,7 +268,9 @@ export function KioskChainMemberFields({
               flagIds: selected ? [] : value?.flagIds,
             })
           }
-          onRefresh={onRefreshFlags ? handleRefresh : undefined}
+          onRefresh={
+            materialFlagsEnabled && onRefreshFlags ? handleRefresh : undefined
+          }
           refreshing={refreshPending}
           onChange={(flagIds) => patch({ flagIds, semBandeira: false })}
         />

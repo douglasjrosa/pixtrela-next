@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { KanbanBoard } from "@/components/kanban/kanban-board";
 import { KanbanSubtaskCreateModal } from "@/components/kanban/kanban-subtask-create-modal";
 import { KanbanTaskSubtasksModal } from "@/components/kanban/kanban-task-subtasks-modal";
+import { useMaterialFlagsEnabled } from "@/components/material-flags/material-flags-settings-provider";
 import type {
   BoardSubTaskSummary,
   KanbanStep,
@@ -79,6 +80,7 @@ import {
 import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 import type { SkipFinishBoardSubtasksResult } from "@/lib/schemas/board-skip-finish";
 import type { SubtaskPaymentCurrency } from "@/lib/settings/currency-for-subtasks-types";
+import { isMaterialFlagsDisabledError } from "@/lib/business/material-flags-feature";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 
 const FINISHED_STATUS = "finished";
@@ -217,6 +219,7 @@ export function BoardActions({
 }: BoardActionsProps) {
   const tKanban = useTranslations("kanban");
   const tKiosk = useTranslations("kiosk");
+  const materialFlagsEnabled = useMaterialFlagsEnabled();
   const [, startTransition] = useTransition();
   const columnsRef = useRef(columns);
   columnsRef.current = columns;
@@ -653,8 +656,12 @@ export function BoardActions({
       const loaded = await loadSubtasks(taskDocumentId);
       applyFetchedSubtasks(loaded, { taskDocumentId });
       showSuccessToast(tKiosk("flagsReleased"));
-    } catch {
-      showErrorToast(tKiosk("exitFailed"));
+    } catch (error) {
+      showErrorToast(
+        isMaterialFlagsDisabledError(error)
+          ? tKiosk("materialFlagsDisabled")
+          : tKiosk("exitFailed"),
+      );
     }
   }
 
@@ -1122,7 +1129,9 @@ export function BoardActions({
         onAddSubtask={() => setCreateOpen(true)}
         onLoadSessions={loadSubtaskSessions ? handleLoadSessions : undefined}
         loadSubtaskSession={loadSubtaskSession}
-        onReleaseFlags={handleReleaseFlags}
+        onReleaseFlags={
+          materialFlagsEnabled ? handleReleaseFlags : undefined
+        }
       />
 
       {selectedTask ? (

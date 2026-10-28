@@ -29,6 +29,13 @@ describe("kioskActionErrorMessage", () => {
     expect(
       kioskActionErrorMessage(
         t,
+        new Error("materialFlagsDisabled"),
+        "exitFailed",
+      ),
+    ).toBe("msg:materialFlagsDisabled");
+    expect(
+      kioskActionErrorMessage(
+        t,
         new Error("chainStopAnswersRequired"),
         "exitFailed",
       ),

@@ -319,6 +319,14 @@ export const kioskSettings = pgTable("kiosk_settings", {
     .notNull(),
 });
 
+export const materialFlagsSettings = pgTable("material_flags_settings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  enabled: boolean("enabled").default(true).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 export const entryAccessSettings = pgTable("entry_access_settings", {
   id: uuid("id").defaultRandom().primaryKey(),
   surface: varchar("surface", { length: 16 }).notNull().unique(),

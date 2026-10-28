@@ -19,7 +19,12 @@ import { calculateTaskTotalTimeSpent } from "@/lib/business/task-time-spent";
 import type { ActivityTimeRow } from "@/lib/business/task-time-spent";
 import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 import { getDb, type Db } from "@/lib/db/client";
-import { loadHasAssignedFlagsBySubTaskId } from "@/lib/repos/material-flags";
+import { areMaterialFlagsEnabled } from "@/lib/business/material-flags-feature";
+import {
+  loadHasAssignedFlagsBySubTaskId,
+  releaseInconsistentMaterialFlagAssignments,
+} from "@/lib/repos/material-flags";
+import { getMaterialFlagsSettings } from "@/lib/repos/material-flags-settings";
 import {
   loadNextAutomatedTaskStepId,
   reorderTasksAfterStepMove,
@@ -28,6 +33,7 @@ import {
 async function loadTaskSubTaskContext(
   taskId: string,
   tx: Db,
+  materialFlagsEnabled: boolean,
 ): Promise<{
   siblings: Array<{
     id: string;
@@ -51,6 +57,9 @@ async function loadTaskSubTaskContext(
   }
 
   const subTaskIds = siblingRows.map((row) => row.id);
+  if (materialFlagsEnabled) {
+    await releaseInconsistentMaterialFlagAssignments(subTaskIds, tx);
+  }
   const [dependencyRows, flagSet] = await Promise.all([
     tx
       .select({
@@ -59,7 +68,9 @@ async function loadTaskSubTaskContext(
       })
       .from(subTaskDependencies)
       .where(inArray(subTaskDependencies.subTaskId, subTaskIds)),
-    loadHasAssignedFlagsBySubTaskId(subTaskIds, tx),
+    materialFlagsEnabled
+      ? loadHasAssignedFlagsBySubTaskId(subTaskIds, tx)
+      : Promise.resolve(new Set<string>()),
   ]);
 
   const depsBySubTask = new Map<string, string[]>();
@@ -126,14 +137,20 @@ export async function runTaskSubTaskSyncRoutine(
     .limit(1);
   if (!task) return;
 
+  const settings = await getMaterialFlagsSettings(db);
+  const materialFlagsEnabled = areMaterialFlagsEnabled(settings.enabled);
   const { siblings, activitiesBySubTaskId } = await loadTaskSubTaskContext(
     taskId,
     db,
+    materialFlagsEnabled,
   );
   if (siblings.length === 0) return;
 
   const activationRows = buildActivationSyncRows(siblings, activitiesBySubTaskId);
-  const activationUpdates = resolveSubTaskActivationStatusUpdates(activationRows);
+  const activationUpdates = resolveSubTaskActivationStatusUpdates(
+    activationRows,
+    materialFlagsEnabled,
+  );
 
   await Promise.all(
     Array.from(activationUpdates.entries()).map(([subTaskId, nextActivation]) =>

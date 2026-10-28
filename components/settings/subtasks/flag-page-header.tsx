@@ -7,12 +7,15 @@ import { useTranslations } from "next-intl";
 import {
   createFlags,
   nextIndexForCategory,
+  setMaterialFlagsFeatureEnabled,
 } from "@/app/(app)/settings/subtasks/actions";
 import { AddNewButton } from "@/components/ui/add-new-button";
 import { Button } from "@/components/ui/button";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
+import { SwitchField } from "@/components/ui/switch-field";
+import { isMaterialFlagsDisabledError } from "@/lib/business/material-flags-feature";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
 import { NATIVE_SELECT_CLASS_NAME } from "@/lib/ui/native-select";
@@ -21,13 +24,16 @@ const FORM_ID = "create-flag-form";
 
 export function FlagPageHeader({
   categories,
+  flagsEnabled,
 }: {
   categories: { id: string; name: string }[];
+  flagsEnabled: boolean;
 }) {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [enabled, setEnabled] = useState(flagsEnabled);
   const [isPending, startTransition] = useTransition();
   const [categoryId, setCategoryId] = useState("");
   const [indexFrom, setIndexFrom] = useState(1);
@@ -54,6 +60,24 @@ export function FlagPageHeader({
     });
   }
 
+  function handleEnabledChange(nextEnabled: boolean): void {
+    const previous = enabled;
+    setEnabled(nextEnabled);
+    startTransition(async () => {
+      try {
+        await setMaterialFlagsFeatureEnabled(nextEnabled);
+        showSuccessToast(
+          nextEnabled ? t("flagsFeatureOn") : t("flagsFeatureOff"),
+        );
+        router.refresh();
+      } catch (error) {
+        rethrowIfNavigationError(error);
+        setEnabled(previous);
+        showErrorToast(t("error"));
+      }
+    });
+  }
+
   function handleSubmit(): void {
     if (indexTo < indexFrom) {
       showErrorToast(t("flagIndexRangeInvalid"));
@@ -74,8 +98,9 @@ export function FlagPageHeader({
         router.refresh();
       } catch (error) {
         rethrowIfNavigationError(error);
-        const message =
-          error instanceof Error && error.message === "flagIndexExists"
+        const message = isMaterialFlagsDisabledError(error)
+          ? t("materialFlagsDisabled")
+          : error instanceof Error && error.message === "flagIndexExists"
             ? t("flagIndexExists")
             : t("error");
         showErrorToast(message);
@@ -85,7 +110,20 @@ export function FlagPageHeader({
 
   return (
     <>
-      <AddNewButton label={t("newFlag")} onClick={() => setOpen(true)} />
+      <div className="flex h-10 items-center gap-2">
+        <SwitchField
+          id="material-flags-enabled"
+          label={t("flagsFeature")}
+          checked={enabled}
+          disabled={isPending}
+          size="lg"
+          className="h-10"
+          onCheckedChange={handleEnabledChange}
+        />
+        {enabled ? (
+          <AddNewButton label={t("newFlag")} onClick={() => setOpen(true)} />
+        ) : null}
+      </div>
       {open ? (
         <FormModalShell
           open

@@ -3,6 +3,7 @@
 import { FlagTriangleRight, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { useMaterialFlagsEnabled } from "@/components/material-flags/material-flags-settings-provider";
 import { Button } from "@/components/ui/button";
 import { sortMaterialFlagOptionsByCode } from "@/lib/business/material-flag-code";
 import type { MaterialFlagOption } from "@/lib/business/subtask-queue";
@@ -76,6 +77,7 @@ export function KioskMaterialFlagPicker({
   refreshing?: boolean;
 }) {
   const t = useTranslations("kiosk");
+  const materialFlagsEnabled = useMaterialFlagsEnabled();
   const lockedSemBandeira =
     requiresMaterialFlagsOnFinish && !categoryId;
   const showRefreshEmpty =
@@ -85,6 +87,7 @@ export function KioskMaterialFlagPicker({
   const showOptionalEmpty =
     !requiresMaterialFlagsOnFinish && flags.length === 0;
 
+  if (!materialFlagsEnabled) return null;
   if (showOptionalEmpty) return null;
 
   const fieldsetHeader = (

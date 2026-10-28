@@ -60,6 +60,19 @@ describe("assertFinishFlagsAllowed", () => {
     ).toThrow("flagsRequired");
   });
 
+  it("does not block finish when material flags are disabled", () => {
+    expect(() =>
+      assertFinishFlagsAllowed({
+        willFinish: true,
+        hasDependents: true,
+        categoryId: CATEGORY_ID,
+        totalFlagCount: 0,
+        availableCount: 2,
+        materialFlagsEnabled: false,
+      }),
+    ).not.toThrow();
+  });
+
   it("allows inferred or Sem bandeira finish without selected flags", () => {
     expect(() =>
       assertFinishFlagsAllowed({
@@ -156,6 +169,17 @@ describe("canConfirmFinishWithFlags", () => {
         semBandeiraSelected: false,
       }),
     ).toBe(false);
+    expect(
+      canConfirmFinishWithFlags({
+        willFinish: true,
+        hasDependents: true,
+        categoryId: CATEGORY_ID,
+        selectedFlagCount: 0,
+        availableFlagCount: 1,
+        semBandeiraSelected: false,
+        materialFlagsEnabled: false,
+      }),
+    ).toBe(true);
     expect(
       canConfirmFinishWithFlags({
         willFinish: true,
