@@ -13,6 +13,7 @@ import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { normalizeSubTaskDependencyIds } from "@/lib/business/subtask-dependencies";
+import { translateSubTaskNameError } from "@/lib/business/subtask-name-error";
 import {
   applySubTaskPreset,
   type SubTaskPreset,
@@ -45,9 +46,11 @@ export interface SubTaskInlineFormProps {
   disabled?: boolean;
   hideHeading?: boolean;
   hideStatus?: boolean;
+  hideTimeSpent?: boolean;
   hideActivationStatus?: boolean;
   hideAssignees?: boolean;
   plain?: boolean;
+  validationNonce?: number;
   onChange: (values: SubTaskFormInput) => void;
 }
 
@@ -74,9 +77,11 @@ export function SubTaskInlineForm({
   disabled = false,
   hideHeading = false,
   hideStatus = false,
+  hideTimeSpent = true,
   hideActivationStatus = false,
   hideAssignees = false,
   plain = false,
+  validationNonce = 0,
   onChange,
 }: SubTaskInlineFormProps) {
   const [dependenciesOpen, setDependenciesOpen] = useState(false);
@@ -97,6 +102,7 @@ export function SubTaskInlineForm({
     watch,
     getValues,
     setValue,
+    trigger,
     formState: { errors },
   } = useForm<SubTaskFormInput>({
     resolver: zodResolver(subTaskFormSchema) as Resolver<SubTaskFormInput>,
@@ -136,6 +142,11 @@ export function SubTaskInlineForm({
     // Reset only when switching rows, not on every parent-driven value sync.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formKey, reset]);
+
+  useEffect(() => {
+    if (!validationNonce) return;
+    void trigger();
+  }, [validationNonce, trigger]);
 
   useEffect(() => {
     // React Hook Form watch() is the supported subscription API for form sync.
@@ -184,7 +195,9 @@ export function SubTaskInlineForm({
             {...register("name")}
           />
           {errors.name ? (
-            <p className="text-sm text-destructive">{errors.name.message}</p>
+            <p className="text-sm text-destructive">
+              {translateSubTaskNameError(errors.name.message, tSubtasks)}
+            </p>
           ) : null}
         </div>
       )}
@@ -208,6 +221,18 @@ export function SubTaskInlineForm({
           {...register("expectedTime", { valueAsNumber: true })}
         />
       </div>
+
+      {hideTimeSpent ? null : (
+        <div className="space-y-2">
+          <Label htmlFor={fieldId("timeSpent")}>{tSubtasks("timeSpent")}</Label>
+          <NumberInput
+            id={fieldId("timeSpent")}
+            min={0}
+            disabled={disabled}
+            {...register("timeSpent", { valueAsNumber: true })}
+          />
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor={fieldId("maxSameTimeWorkers")}>

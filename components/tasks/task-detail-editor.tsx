@@ -29,6 +29,7 @@ export interface TaskDetailEditorProps {
   steps: StepOption[];
   subtasks: SubTaskRow[];
   teams: TeamAssignmentOption[];
+  canEditProgress?: boolean;
   loadSessions?: (
     subTaskDocumentId: string,
   ) => Promise<import("@/lib/business/task-progress").ActivitySession[]>;
@@ -66,6 +67,7 @@ export function TaskDetailEditor({
   steps,
   subtasks,
   teams,
+  canEditProgress = false,
   loadSessions,
   onCreateSubTask,
   onUpdateSubTask,
@@ -119,6 +121,7 @@ export function TaskDetailEditor({
         taskName={task.name}
         taskQty={task.qty}
         teams={teams}
+        canEditProgress={canEditProgress}
         disabled={isPending}
         loadSessions={loadSessions}
         onCreate={onCreateSubTask}

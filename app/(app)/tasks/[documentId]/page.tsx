@@ -14,6 +14,7 @@ import { loadSubTaskCategoryOptions } from "@/lib/subtasks/category-options";
 import type { StepOption, TaskRow } from "@/components/tasks/task-manager";
 import type { Role } from "@/lib/auth/nav";
 import {
+  canEditSubTaskProgress,
   canManageTasks,
 } from "@/lib/auth/permissions";
 import { countFinishedSubTasksForTask } from "@/lib/business/task-subtask-completion-count";
@@ -198,6 +199,7 @@ export default async function TaskDetailPage({ params }: PageProps) {
           steps={steps}
           subtasks={subtasks}
           teams={teams}
+          canEditProgress={canEditSubTaskProgress(role)}
           loadSessions={loadSubTaskSessionsAction}
           onCreateSubTask={handleCreate}
           onUpdateSubTask={handleUpdateSubTask}

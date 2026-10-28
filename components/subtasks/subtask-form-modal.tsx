@@ -18,6 +18,7 @@ export interface SubTaskFormModalProps {
   titleId?: string;
   disabled?: boolean;
   onClose: () => void;
+  onConfirm?: () => void;
   onClone?: () => void;
   onRemove?: () => void;
   children: ReactNode;
@@ -30,6 +31,7 @@ export function SubTaskFormModal({
   titleId = "subtask-form-modal-title",
   disabled = false,
   onClose,
+  onConfirm,
   onClone,
   onRemove,
   children,
@@ -90,7 +92,11 @@ export function SubTaskFormModal({
           </div>
           {children}
           <div className="flex justify-end border-t pt-4">
-            <Button type="button" disabled={disabled} onClick={onClose}>
+            <Button
+              type="button"
+              disabled={disabled}
+              onClick={onConfirm ?? onClose}
+            >
               {tCommon("ok")}
             </Button>
           </div>

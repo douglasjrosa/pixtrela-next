@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { subTaskFormSchema } from "./sub-task";
+import { SUB_TASK_NAME_REQUIRED_KEY, subTaskFormSchema } from "./sub-task";
 
 const validBase = {
   name: "Soldar",
@@ -40,5 +40,35 @@ describe("subTaskFormSchema", () => {
       activationStatus: "unlocked",
     });
     expect(data.activationStatus).toBe("unlocked");
+  });
+
+  it("accepts a non-negative timeSpent", () => {
+    const data = subTaskFormSchema.parse({
+      ...validBase,
+      timeSpent: 45,
+    });
+    expect(data.timeSpent).toBe(45);
+  });
+
+  it("rejects a negative timeSpent", () => {
+    const parsed = subTaskFormSchema.safeParse({
+      ...validBase,
+      timeSpent: -1,
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("uses an i18n key when the name is empty", () => {
+    const parsed = subTaskFormSchema.safeParse({
+      ...validBase,
+      name: "",
+    });
+    expect(parsed.success).toBe(false);
+    if (parsed.success) return;
+    expect(
+      parsed.error.issues.some(
+        (issue) => issue.message === SUB_TASK_NAME_REQUIRED_KEY,
+      ),
+    ).toBe(true);
   });
 });

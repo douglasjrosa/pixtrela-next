@@ -1,4 +1,5 @@
 import { applySequentialSubTaskIndices } from "@/lib/business/subtask-order";
+import type { SubTaskFormInput } from "@/lib/schemas/sub-task";
 
 import { buildClonedSubTaskName } from "./subtask-clone";
 
@@ -19,6 +20,38 @@ type DraftableSubTask = {
   timeSpent: number;
   isDraft?: boolean;
 };
+
+export function createDraftSubTaskRowFromValues(
+  values: SubTaskFormInput,
+  index: number,
+) {
+  return {
+    documentId: createDraftSubTaskId(),
+    isDraft: true as const,
+    name: values.name,
+    qty: values.qty,
+    index,
+    expectedTime: values.expectedTime,
+    timeSpent: 0,
+    sharingType: values.sharingType,
+    maxSameTimeWorkers: values.maxSameTimeWorkers,
+    status: values.status,
+    activationStatus: values.activationStatus,
+    dependencyIds: values.dependencyIds ?? [],
+    assignedToIds: values.assignedToIds ?? [],
+    subTaskCategoryId: values.subTaskCategoryId ?? null,
+  };
+}
+
+export function appendDraftSubTaskFromValues(
+  items: DraftableSubTask[],
+  values: SubTaskFormInput,
+): Array<DraftableSubTask | ReturnType<typeof createDraftSubTaskRowFromValues>> {
+  return applySequentialSubTaskIndices([
+    ...items,
+    createDraftSubTaskRowFromValues(values, items.length),
+  ]);
+}
 
 export function insertDraftSubTaskCloneAt<T extends DraftableSubTask>(
   items: T[],

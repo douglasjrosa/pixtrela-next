@@ -102,6 +102,28 @@ describe("SubTaskFormModal", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("calls onConfirm from OK when the handler is provided", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onConfirm = vi.fn();
+
+    renderWithIntl(
+      <SubTaskFormModal
+        open
+        title="Nova subtarefa"
+        onClose={onClose}
+        onConfirm={onConfirm}
+      >
+        <p>Form body</p>
+      </SubTaskFormModal>,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("renders optional subtitle under the title", () => {
     renderWithIntl(
       <SubTaskFormModal

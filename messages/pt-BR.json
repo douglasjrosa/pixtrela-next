@@ -714,6 +714,7 @@
     "newSubtask": "Nova subtarefa",
     "editSubtask": "Editar subtarefa",
     "name": "Nome",
+    "nameRequired": "Informe o nome.",
     "action": "Ação",
     "expectedTime": "Tempo previsto (s)",
     "timeSpent": "Tempo gasto (s)",

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  appendDraftSubTaskFromValues,
   insertDraftSubTaskCloneAt,
   isDraftSubTaskId,
   mergeServerSubtasksWithDrafts,
@@ -40,6 +41,37 @@ describe("insertDraftSubTaskCloneAt", () => {
       "B - CÓPIA",
       "B - CÓPIA - CÓPIA",
     ]);
+  });
+});
+
+describe("appendDraftSubTaskFromValues", () => {
+  const formValues = {
+    name: "Corte das chapas da base",
+    qty: 1,
+    expectedTime: 60,
+    sharingType: "duration" as const,
+    maxSameTimeWorkers: 1,
+    status: "waiting" as const,
+    activationStatus: "unlocked" as const,
+    dependencyIds: [],
+    assignedToIds: [],
+    subTaskCategoryId: null,
+  };
+
+  it("appends an unsaved draft at the end of the list", () => {
+    const items = [
+      { documentId: "a", name: "A", index: 0, timeSpent: 10 },
+    ];
+    const next = appendDraftSubTaskFromValues(items, formValues);
+
+    expect(next.map((item) => item.name)).toEqual([
+      "A",
+      "Corte das chapas da base",
+    ]);
+    expect(next[1]?.isDraft).toBe(true);
+    expect(next[1]?.timeSpent).toBe(0);
+    expect(isDraftSubTaskId(next[1]?.documentId ?? "")).toBe(true);
+    expect(next[1]?.index).toBe(1);
   });
 });
 
