@@ -3,11 +3,65 @@ import { describe, expect, it } from "vitest";
 import {
   groupCapacity,
   planGroupCloseActivities,
+  resolveGroupCloseMemberStatus,
 } from "@/lib/business/group-session";
 
 describe("groupCapacity", () => {
   it("uses the highest member capacity", () => {
     expect(groupCapacity([1, 3, 2])).toBe(3);
+  });
+});
+
+describe("resolveGroupCloseMemberStatus", () => {
+  it("keeps qty members waiting when declared pieces are below target", () => {
+    expect(
+      resolveGroupCloseMemberStatus({
+        sharingType: "qty",
+        targetQty: 20,
+        priorCompletedQty: 0,
+        sessionQty: 5,
+      }),
+    ).toBe("waiting");
+    expect(
+      resolveGroupCloseMemberStatus({
+        sharingType: "qty",
+        targetQty: 10,
+        priorCompletedQty: 0,
+        sessionQty: 2,
+      }),
+    ).toBe("waiting");
+  });
+
+  it("finishes a qty member when this session completes the target", () => {
+    expect(
+      resolveGroupCloseMemberStatus({
+        sharingType: "qty",
+        targetQty: 20,
+        priorCompletedQty: 15,
+        sessionQty: 5,
+      }),
+    ).toBe("finished");
+  });
+
+  it("finishes duration only when the worker marked completed", () => {
+    expect(
+      resolveGroupCloseMemberStatus({
+        sharingType: "duration",
+        targetQty: 1,
+        priorCompletedQty: 0,
+        sessionQty: 0,
+        completed: false,
+      }),
+    ).toBe("waiting");
+    expect(
+      resolveGroupCloseMemberStatus({
+        sharingType: "duration",
+        targetQty: 1,
+        priorCompletedQty: 0,
+        sessionQty: 1,
+        completed: true,
+      }),
+    ).toBe("finished");
   });
 });
 

@@ -1,3 +1,8 @@
+import {
+  resolveDurationStop,
+  resolveQtyStop,
+  type SubTaskStatus,
+} from "@/lib/business/kiosk-stop";
 import { allocateChainTimeline } from "@/lib/business/subtask-chain-allocation";
 
 const MS_PER_SECOND = 1000;
@@ -16,6 +21,24 @@ export type GroupCloseActivity = {
   stoppedAt: Date;
   timeSpentSeconds: number;
 };
+
+/** Group-table close must use the same finish rule as a normal qty/duration stop. */
+export function resolveGroupCloseMemberStatus(input: {
+  sharingType: "qty" | "duration";
+  targetQty: number;
+  priorCompletedQty: number;
+  sessionQty: number;
+  completed?: boolean;
+}): SubTaskStatus {
+  if (input.sharingType === "duration") {
+    return resolveDurationStop(input.completed === true).subTaskStatus;
+  }
+  return resolveQtyStop(
+    input.targetQty,
+    input.priorCompletedQty,
+    input.sessionQty,
+  ).subTaskStatus;
+}
 
 export function groupCapacity(maxSameTimeWorkers: readonly number[]): number {
   return maxSameTimeWorkers.reduce(
