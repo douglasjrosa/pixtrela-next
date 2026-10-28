@@ -15,6 +15,7 @@ import { formatQueueGroupLabel } from "@/lib/business/group-link";
 import {
   groupCapacity,
   planGroupCloseActivities,
+  resolveGroupCloseMemberStatus,
   type GroupPresence,
 } from "@/lib/business/group-session";
 import {
@@ -22,9 +23,11 @@ import {
   type ChainStopAnswer,
 } from "@/lib/business/subtask-chain-allocation";
 import { getDb, type Db } from "@/lib/db/client";
+import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 import {
   calculateDurationCurrencyCredits,
   calculateQtySessionCurrency,
+  resolveSubTaskTargetQty,
   toActivityCurrencyAward,
 } from "@/lib/domain/work-currency";
 import {
@@ -38,7 +41,6 @@ import type { SubTaskWithAssignees } from "@/lib/repos/tasks";
 
 const OPEN_STATUS = "open";
 const PRODUCING_STATUS = "producing";
-const FINISHED_STATUS = "finished";
 
 export type OpenSessionLiveRow = {
   subTaskId: string;
@@ -570,9 +572,35 @@ async function closeGroupRun(
   const qtyByMember = new Map(
     answers.map((answer) => [answer.documentId, Math.max(0, answer.qty ?? 0)]),
   );
+  const answerById = new Map(
+    answers.map((answer) => [answer.documentId, answer]),
+  );
 
   await db.transaction(async (tx) => {
     const txDb = tx as unknown as Db;
+    const priorStopRows =
+      memberIds.length === 0
+        ? []
+        : await tx
+            .select({
+              subTaskId: activities.subTaskId,
+              qty: activities.qty,
+            })
+            .from(activities)
+            .where(
+              and(
+                ACTIVE_ACTIVITY,
+                inArray(activities.subTaskId, memberIds),
+                eq(activities.action, "stoped"),
+              ),
+            );
+    const priorQtyByMember = new Map<string, number>();
+    for (const row of priorStopRows) {
+      priorQtyByMember.set(
+        row.subTaskId,
+        (priorQtyByMember.get(row.subTaskId) ?? 0) + Math.max(0, row.qty),
+      );
+    }
     for (const member of ordered) {
       const plannedShares = planned.filter((row) => row.subTaskId === member.id);
       const presence = sessions.find(
@@ -670,10 +698,18 @@ async function closeGroupRun(
         }
       }
       const wall = wallByMember.get(member.id) ?? 0;
+      const answer = answerById.get(member.id);
+      const nextStatus = resolveGroupCloseMemberStatus({
+        sharingType: member.sharingType === "qty" ? "qty" : "duration",
+        targetQty: resolveSubTaskTargetQty(member.qty),
+        priorCompletedQty: priorQtyByMember.get(member.id) ?? 0,
+        sessionQty: qtyByMember.get(member.id) ?? 0,
+        completed: answer?.completed,
+      });
       await tx
         .update(subTasks)
         .set({
-          status: FINISHED_STATUS,
+          status: nextStatus,
           timeSpent: member.timeSpent + wall,
           updatedAt: endedAt,
         })
