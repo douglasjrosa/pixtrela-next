@@ -134,38 +134,7 @@ describe('computeAutomaticActivationStatus', () => {
     expect(computeAutomaticActivationStatus(dualWorker, siblings)).toBe('unlocked');
   });
 
-  it('unlocks when a producing predecessor already has flags', () => {
-    const producer: SubTaskActivationSyncRow = {
-      documentId: 'cut-open',
-      status: 'producing',
-      activationStatus: 'unlocked',
-      dependencies: [],
-      hasAssignedFlags: true,
-      ...NO_ACTIVE_WORKERS,
-    };
-    const consumer: SubTaskActivationSyncRow = {
-      documentId: 'assembly-open',
-      status: 'waiting',
-      activationStatus: 'locked',
-      dependencies: ['cut-open'],
-      ...NO_ACTIVE_WORKERS,
-    };
-    const graph = new Map([
-      ['cut-open', producer],
-      ['assembly-open', consumer],
-    ]);
-
-    expect(areAllDependencySubTasksFinished(['cut-open'], graph)).toBe(true);
-    expect(computeAutomaticActivationStatus(consumer, graph)).toBe('unlocked');
-    expect(
-      areAllDependencySubTasksFinished(['cut-open'], graph, false),
-    ).toBe(false);
-    expect(computeAutomaticActivationStatus(consumer, graph, false)).toBe(
-      'locked',
-    );
-  });
-
-  it('re-locks waiting consumers when flags are released and producer is not finished', () => {
+  it('unlocks when a predecessor has left waiting, with or without flags', () => {
     const producer: SubTaskActivationSyncRow = {
       documentId: 'cut-open',
       status: 'producing',
@@ -174,19 +143,42 @@ describe('computeAutomaticActivationStatus', () => {
       hasAssignedFlags: false,
       ...NO_ACTIVE_WORKERS,
     };
+    const pausedProducer: SubTaskActivationSyncRow = {
+      ...producer,
+      documentId: 'cut-paused',
+      status: 'paused',
+    };
     const consumer: SubTaskActivationSyncRow = {
       documentId: 'assembly-open',
       status: 'waiting',
-      activationStatus: 'unlocked',
+      activationStatus: 'locked',
       dependencies: ['cut-open'],
       ...NO_ACTIVE_WORKERS,
     };
+    const pausedConsumer: SubTaskActivationSyncRow = {
+      ...consumer,
+      dependencies: ['cut-paused'],
+    };
     const graph = new Map([
       ['cut-open', producer],
+      ['cut-paused', pausedProducer],
       ['assembly-open', consumer],
     ]);
 
-    expect(computeAutomaticActivationStatus(consumer, graph)).toBe('locked');
+    expect(areAllDependencySubTasksFinished(['cut-open'], graph)).toBe(true);
+    expect(computeAutomaticActivationStatus(consumer, graph)).toBe('unlocked');
+    expect(
+      areAllDependencySubTasksFinished(['cut-open'], graph, false),
+    ).toBe(true);
+    expect(computeAutomaticActivationStatus(consumer, graph, false)).toBe(
+      'unlocked',
+    );
+    expect(
+      computeAutomaticActivationStatus(
+        pausedConsumer,
+        new Map([...graph, ['assembly-open', pausedConsumer]]),
+      ),
+    ).toBe('unlocked');
   });
 });
 

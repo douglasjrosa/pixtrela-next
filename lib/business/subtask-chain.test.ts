@@ -168,9 +168,9 @@ describe("chainHasExternalDependencyBlock", () => {
     ).toBe(true);
   });
 
-  it("does not treat assigned flags as unlocking when flags are off", () => {
+  it("does not block on a producing predecessor when flags are off", () => {
     const siblings = new Map([
-      ["out", { status: "producing", hasAssignedFlags: true }],
+      ["out", { status: "producing", hasAssignedFlags: false }],
     ]);
     expect(
       chainHasExternalDependencyBlock(
@@ -187,7 +187,7 @@ describe("chainHasExternalDependencyBlock", () => {
         siblings,
         false,
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 });
 
