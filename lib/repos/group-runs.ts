@@ -525,7 +525,7 @@ async function pauseDurationGroupRun(
     if (memberIds.length > 0) {
       await tx
         .update(subTasks)
-        .set({ status: "waiting", updatedAt: timestamp })
+        .set({ status: "paused", updatedAt: timestamp })
         .where(inArray(subTasks.id, memberIds));
     }
     await tx.delete(openSessions).where(eq(openSessions.chainRunId, run.id));

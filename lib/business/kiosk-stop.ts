@@ -1,6 +1,10 @@
 export type SharingType = "qty" | "duration";
 
-export type SubTaskStatus = "finished" | "waiting" | "producing";
+export type SubTaskStatus = "finished" | "waiting" | "producing" | "paused";
+
+const PAUSED_STATUS = "paused" as const satisfies SubTaskStatus;
+const FINISHED_STATUS = "finished" as const satisfies SubTaskStatus;
+const PRODUCING_STATUS = "producing" as const satisfies SubTaskStatus;
 
 export interface KioskStopBody {
   completed?: boolean;
@@ -33,7 +37,7 @@ export function parseQtyStopBody(body: KioskStopBody): number {
 export function resolveDurationStop(reportedCompleted: boolean): KioskStopResult {
   return {
     qty: 0,
-    subTaskStatus: reportedCompleted ? "finished" : "waiting",
+    subTaskStatus: reportedCompleted ? FINISHED_STATUS : PAUSED_STATUS,
   };
 }
 
@@ -56,7 +60,7 @@ export function resolveQtyStop(
     }
     return {
       qty: 0,
-      subTaskStatus: totalCompletedQty >= targetQty ? "finished" : "waiting",
+      subTaskStatus: totalCompletedQty >= targetQty ? FINISHED_STATUS : PAUSED_STATUS,
     };
   }
 
@@ -67,7 +71,7 @@ export function resolveQtyStop(
   const totalCompleted = totalCompletedQty + sessionQty;
   return {
     qty: sessionQty,
-    subTaskStatus: totalCompleted >= targetQty ? "finished" : "waiting",
+    subTaskStatus: totalCompleted >= targetQty ? FINISHED_STATUS : PAUSED_STATUS,
   };
 }
 
@@ -82,10 +86,10 @@ export function shouldFinalizeSubTaskOnStop(
   baseStopResult: KioskStopResult,
   qtyTargetMet: boolean,
 ): boolean {
-  return qtyTargetMet || baseStopResult.subTaskStatus === "finished";
+  return qtyTargetMet || baseStopResult.subTaskStatus === FINISHED_STATUS;
 }
 
-export type KioskOperationalStatus = SubTaskStatus | "paused";
+export type KioskOperationalStatus = SubTaskStatus;
 
 export function resolveKioskStopNextStatus(input: {
   baseStopResult: KioskStopResult;
@@ -99,22 +103,22 @@ export function resolveKioskStopNextStatus(input: {
   const helperSafeBase =
     input.isHelper &&
     input.hasOpenRun &&
-    input.baseStopResult.subTaskStatus === "finished" &&
+    input.baseStopResult.subTaskStatus === FINISHED_STATUS &&
     !shouldFinalize
-      ? { ...input.baseStopResult, subTaskStatus: "waiting" as const }
+      ? { ...input.baseStopResult, subTaskStatus: PAUSED_STATUS }
       : input.baseStopResult;
 
   const stopResult = shouldFinalize
-    ? { ...helperSafeBase, subTaskStatus: "finished" as const }
+    ? { ...helperSafeBase, subTaskStatus: FINISHED_STATUS }
     : resolveStopStatusWithPeers(helperSafeBase, input.remainingPeerCount);
 
   const nextStatus: KioskOperationalStatus = shouldFinalize
-    ? "finished"
+    ? FINISHED_STATUS
     : input.isHelper &&
         input.remainingPeerCount === 0 &&
-        stopResult.subTaskStatus !== "finished"
+        stopResult.subTaskStatus !== FINISHED_STATUS
       ? input.hasOpenRun
-        ? "paused"
+        ? PAUSED_STATUS
         : stopResult.subTaskStatus
       : stopResult.subTaskStatus;
 
@@ -132,7 +136,7 @@ export function resolveStopStatusWithPeers(
   if (remainingActiveWorkerCount <= 0) return base;
   return {
     qty: base.qty,
-    subTaskStatus: "producing",
+    subTaskStatus: PRODUCING_STATUS,
   };
 }
 

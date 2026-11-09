@@ -70,10 +70,8 @@ export function mergeBoardSubtaskLiveState(
   return subtasks.map((subtask) => {
     const live = liveBySubTaskId[subtask.documentId];
     const hasLiveProducers = (live?.producingColaboratorIds?.length ?? 0) > 0;
-    const status =
-      hasLiveProducers && subtask.status === "waiting"
-        ? "producing"
-        : subtask.status;
+    const isIdle = subtask.status === "waiting" || subtask.status === "paused";
+    const status = hasLiveProducers && isIdle ? "producing" : subtask.status;
     return {
       ...subtask,
       status,

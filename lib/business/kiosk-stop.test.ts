@@ -31,7 +31,7 @@ describe('parseQtyStopBody', () => {
 describe('resolveQtyStop', () => {
   it('finishes when global cumulative qty reaches sub-task qty', () => {
     expect(resolveQtyStop(10, 7, 3)).toEqual({ qty: 3, subTaskStatus: 'finished' });
-    expect(resolveQtyStop(10, 7, 2)).toEqual({ qty: 2, subTaskStatus: 'waiting' });
+    expect(resolveQtyStop(10, 7, 2)).toEqual({ qty: 2, subTaskStatus: 'paused' });
   });
 
   it('counts qty from every colaborator toward completion', () => {
@@ -44,7 +44,7 @@ describe('resolveQtyStop', () => {
   });
 
   it('allows zero completed pieces in a session', () => {
-    expect(resolveQtyStop(10, 7, 0)).toEqual({ qty: 0, subTaskStatus: 'waiting' });
+    expect(resolveQtyStop(10, 7, 0)).toEqual({ qty: 0, subTaskStatus: 'paused' });
   });
 
   it('allows closing session with zero qty when target is already met', () => {
@@ -86,7 +86,7 @@ describe('resolveKioskStopNextStatus', () => {
 
   it('pauses helper when qty target is not met and chain run is open', () => {
     const result = resolveKioskStopNextStatus({
-      baseStopResult: { qty: 0, subTaskStatus: 'waiting' },
+      baseStopResult: { qty: 0, subTaskStatus: 'paused' },
       shouldFinalize: false,
       isHelper: true,
       hasOpenRun: true,
@@ -94,7 +94,7 @@ describe('resolveKioskStopNextStatus', () => {
     });
     expect(result).toEqual({
       qty: 0,
-      subTaskStatus: 'waiting',
+      subTaskStatus: 'paused',
       nextStatus: 'paused',
     });
   });
@@ -103,7 +103,7 @@ describe('resolveKioskStopNextStatus', () => {
 describe('resolveDurationStop', () => {
   it('returns finished or queued based on reported completion', () => {
     expect(resolveDurationStop(true)).toEqual({ qty: 0, subTaskStatus: 'finished' });
-    expect(resolveDurationStop(false)).toEqual({ qty: 0, subTaskStatus: 'waiting' });
+    expect(resolveDurationStop(false)).toEqual({ qty: 0, subTaskStatus: 'paused' });
   });
 });
 

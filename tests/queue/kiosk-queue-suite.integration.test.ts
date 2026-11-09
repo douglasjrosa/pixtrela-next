@@ -89,7 +89,7 @@ describeWithDb("kiosk queue suite — sessions", () => {
       const qtyAfterHalf = (await listSubTasksForTask(seed.taskId)).find(
         (row) => row.id === qty!.id,
       );
-      expect(qtyAfterHalf?.status).toBe("waiting");
+      expect(qtyAfterHalf?.status).toBe("paused");
 
       await startSubTask(workerId, qty!.id);
       await stopSubTask(workerId, qty!.id, { qty: 5 });

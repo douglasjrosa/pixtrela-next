@@ -1,4 +1,4 @@
-const FINISHED_STATUS = "finished";
+const WAITING_STATUS = "waiting";
 const LOCKED_ACTIVATION_STATUS = "locked";
 
 export type SubTaskDependencyRow = {
@@ -24,10 +24,9 @@ export function isPredecessorSatisfied(
     | undefined,
   materialFlagsEnabled = true,
 ): boolean {
+  void materialFlagsEnabled;
   if (!predecessor) return false;
-  if (predecessor.status === FINISHED_STATUS) return true;
-  if (!materialFlagsEnabled) return false;
-  return predecessor.hasAssignedFlags === true;
+  return predecessor.status !== WAITING_STATUS;
 }
 
 export function areSubTaskDependenciesSatisfied(

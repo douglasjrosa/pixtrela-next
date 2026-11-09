@@ -21,26 +21,30 @@ describe("parseSubTaskDependencyIds", () => {
 });
 
 describe("isPredecessorSatisfied", () => {
-  const producingWithFlags = {
-    status: "producing",
-    hasAssignedFlags: true,
-  };
-
-  it("treats a producing predecessor with flags as satisfied when flags are on", () => {
-    expect(isPredecessorSatisfied(producingWithFlags)).toBe(true);
-    expect(isPredecessorSatisfied(producingWithFlags, true)).toBe(true);
+  it("treats any non-waiting predecessor as satisfied", () => {
+    expect(isPredecessorSatisfied({ status: "producing" })).toBe(true);
+    expect(isPredecessorSatisfied({ status: "paused" })).toBe(true);
+    expect(isPredecessorSatisfied({ status: "finished" })).toBe(true);
   });
 
-  it("ignores assigned flags when the feature is off", () => {
-    expect(isPredecessorSatisfied(producingWithFlags, false)).toBe(false);
-  });
-
-  it("still treats a finished predecessor as satisfied when flags are off", () => {
+  it("keeps a waiting predecessor unsatisfied even when flags are assigned", () => {
+    expect(
+      isPredecessorSatisfied({ status: "waiting", hasAssignedFlags: true }),
+    ).toBe(false);
     expect(
       isPredecessorSatisfied(
-        { status: "finished", hasAssignedFlags: false },
+        { status: "waiting", hasAssignedFlags: true },
         false,
       ),
+    ).toBe(false);
+  });
+
+  it("ignores the flags toggle once a session has started", () => {
+    expect(
+      isPredecessorSatisfied({ status: "producing", hasAssignedFlags: false }, false),
+    ).toBe(true);
+    expect(
+      isPredecessorSatisfied({ status: "paused", hasAssignedFlags: false }, true),
     ).toBe(true);
   });
 });
