@@ -155,6 +155,33 @@ describe("kiosk optimistic start", () => {
     ).toEqual([]);
   });
 
+  it("pauses chain members that stop short of the qty target", () => {
+    const next = applyOptimisticChainStopToSubTasks(
+      [
+        stub({
+          documentId: "st-1",
+          status: "producing",
+          startedAt: "2026-08-17T23:00:00.000Z",
+          sharingType: "qty",
+          targetQty: 10,
+          completedQty: 0,
+        }),
+      ],
+      {
+        chainRunId: "run-1",
+        chainHeadId: "st-1",
+        memberIds: ["st-1"],
+        answers: [{ documentId: "st-1", qty: 3 }],
+      },
+    );
+
+    expect(next[0]).toMatchObject({
+      status: "paused",
+      startedAt: null,
+      completedQty: 3,
+    });
+  });
+
   it("moves a started card into producingUnits before the server refresh", () => {
     const startedAt = "2026-08-17T23:00:00.000Z";
     const waiting = stub();

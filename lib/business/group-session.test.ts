@@ -13,7 +13,7 @@ describe("groupCapacity", () => {
 });
 
 describe("resolveGroupCloseMemberStatus", () => {
-  it("keeps qty members waiting when declared pieces are below target", () => {
+  it("pauses qty members when declared pieces are below target", () => {
     expect(
       resolveGroupCloseMemberStatus({
         sharingType: "qty",
@@ -21,7 +21,7 @@ describe("resolveGroupCloseMemberStatus", () => {
         priorCompletedQty: 0,
         sessionQty: 5,
       }),
-    ).toBe("waiting");
+    ).toBe("paused");
     expect(
       resolveGroupCloseMemberStatus({
         sharingType: "qty",
@@ -29,7 +29,7 @@ describe("resolveGroupCloseMemberStatus", () => {
         priorCompletedQty: 0,
         sessionQty: 2,
       }),
-    ).toBe("waiting");
+    ).toBe("paused");
   });
 
   it("finishes a qty member when this session completes the target", () => {
@@ -52,7 +52,7 @@ describe("resolveGroupCloseMemberStatus", () => {
         sessionQty: 0,
         completed: false,
       }),
-    ).toBe("waiting");
+    ).toBe("paused");
     expect(
       resolveGroupCloseMemberStatus({
         sharingType: "duration",

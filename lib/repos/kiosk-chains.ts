@@ -21,6 +21,7 @@ import {
   elapsedSecondsBetween,
   isFinishedThisRun,
   planPrincipalSegmentActivities,
+  statusAfterChainTimeAdvance,
   type AllocationMember,
   type AllocationSharingType,
   type ChainStopAnswer,
@@ -96,7 +97,6 @@ import {
 import { resolvePaymentCurrencyAt } from "@/lib/repos/payment-currency";
 
 const PRODUCING_STATUS = "producing";
-const WAITING_STATUS = "waiting";
 const FINISHED_STATUS = "finished";
 
 export type ChainStopMemberAnswer = ChainStopAnswer;
@@ -1111,7 +1111,7 @@ async function reallocateChainRunInternal(
         await tx
           .update(subTasks)
           .set({
-            status: helperOpen ? PRODUCING_STATUS : WAITING_STATUS,
+            status: statusAfterChainTimeAdvance(helperOpen),
             updatedAt: stopAt,
           })
           .where(eq(subTasks.id, member.documentId));

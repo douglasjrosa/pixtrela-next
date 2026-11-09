@@ -95,12 +95,12 @@ function resolveOptimisticChainStopStatus(
   item: KioskSubTask,
   answer: ChainStopAnswer | undefined,
 ): KioskSubTask["status"] {
-  if (!answer) return "waiting";
+  if (!answer) return "paused";
   if (item.sharingType === "duration") {
-    return answer.completed === true ? "finished" : "waiting";
+    return answer.completed === true ? "finished" : "paused";
   }
   const qty = Math.max(0, Math.floor(Number(answer.qty) || 0));
-  return item.completedQty + qty >= item.targetQty ? "finished" : "waiting";
+  return item.completedQty + qty >= item.targetQty ? "finished" : "paused";
 }
 
 export function applyOptimisticChainStopToSubTasks(
@@ -165,11 +165,11 @@ function resolveOptimisticExitStatus(
 ): KioskSubTask["status"] {
   if (exit.sharingType === "duration") {
     if (exit.isCompleted) return "finished";
-    return remainingWorkers > 0 ? "producing" : "waiting";
+    return remainingWorkers > 0 ? "producing" : "paused";
   }
   const qty = Math.max(0, Math.floor(exit.qtyCompleted));
   if (item.completedQty + qty >= item.targetQty) return "finished";
-  return remainingWorkers > 0 ? "producing" : "waiting";
+  return remainingWorkers > 0 ? "producing" : "paused";
 }
 
 const VIEWER_LEAVE_WORKER_DELTA = 1;
