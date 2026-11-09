@@ -2,9 +2,9 @@ export type SharingType = "qty" | "duration";
 
 export type SubTaskStatus = "finished" | "waiting" | "producing" | "paused";
 
-const PAUSED_STATUS = "paused";
-const FINISHED_STATUS = "finished";
-const PRODUCING_STATUS = "producing";
+const PAUSED_STATUS = "paused" as const satisfies SubTaskStatus;
+const FINISHED_STATUS = "finished" as const satisfies SubTaskStatus;
+const PRODUCING_STATUS = "producing" as const satisfies SubTaskStatus;
 
 export interface KioskStopBody {
   completed?: boolean;

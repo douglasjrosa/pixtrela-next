@@ -22,8 +22,9 @@ export function isPredecessorSatisfied(
   predecessor:
     | Pick<SubTaskDependencyRow, "status" | "hasAssignedFlags">
     | undefined,
-  _materialFlagsEnabled = true,
+  materialFlagsEnabled = true,
 ): boolean {
+  void materialFlagsEnabled;
   if (!predecessor) return false;
   return predecessor.status !== WAITING_STATUS;
 }
