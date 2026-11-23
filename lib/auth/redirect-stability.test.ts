@@ -120,6 +120,7 @@ const PATHS = [
   "/other/profile",
   "/users",
   "/activities",
+  "/workdays",
   "/settings/logs",
   "/settings/files",
   "/settings/steps",

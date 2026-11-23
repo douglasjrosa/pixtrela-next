@@ -21,6 +21,7 @@ describe("isColaboratorPrivatePath", () => {
     expect(isColaboratorPrivatePath("/board")).toBe(false);
     expect(isColaboratorPrivatePath("/queues")).toBe(false);
     expect(isColaboratorPrivatePath("/kiosk")).toBe(false);
+    expect(isColaboratorPrivatePath("/workdays")).toBe(false);
     expect(isColaboratorPrivatePath("/tasks/abc")).toBe(false);
   });
 });
@@ -245,6 +246,24 @@ describe("resolveRouteAccess", () => {
     expect(
       resolveRouteAccess("/board", { isAuthenticated: false }),
     ).toEqual({ action: "redirect", destination: LOGIN_PATH });
+  });
+
+  it("allows admin and manager to open workdays", () => {
+    expect(
+      resolveRouteAccess("/workdays", {
+        isAuthenticated: true,
+        role: "admin",
+        userId: "admin-1",
+      }),
+    ).toEqual({ action: "allow" });
+
+    expect(
+      resolveRouteAccess("/workdays", {
+        isAuthenticated: true,
+        role: "manager",
+        userId: "mgr-1",
+      }),
+    ).toEqual({ action: "allow" });
   });
 
   it("allows leader on staff routes when authenticated", () => {

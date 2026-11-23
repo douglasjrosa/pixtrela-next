@@ -41,6 +41,7 @@ const RESERVED_ROOT_SEGMENTS = new Set([
   "teams",
   "users",
   "activities",
+  "workdays",
   "awards",
   "settings",
   "profile",
