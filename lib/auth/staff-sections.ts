@@ -3,6 +3,7 @@ import {
   canManageTasks,
   canManageTemplates,
   canManageTeams,
+  canManageWorkdays,
   canViewAwards,
   canViewExchanges,
   canViewQueues,
@@ -23,6 +24,7 @@ export interface StaffSectionLabels {
   teams: string;
   users: string;
   activities: string;
+  workdays: string;
   awards: string;
   exchanges: string;
 }
@@ -37,6 +39,7 @@ export interface TeamsSectionPaths {
   teams: string;
   users: string;
   activities: string;
+  workdays: string;
 }
 
 export interface AwardsSectionPaths {
@@ -99,6 +102,13 @@ export function teamsSectionTabs(
       href: paths.activities,
       label: labels.activities,
       activePrefix: paths.activities,
+    });
+  }
+  if (canManageWorkdays(role)) {
+    tabs.push({
+      href: paths.workdays,
+      label: labels.workdays,
+      activePrefix: paths.workdays,
     });
   }
   return tabs;

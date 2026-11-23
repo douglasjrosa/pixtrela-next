@@ -23,6 +23,9 @@ import {
   canDeleteTemplates,
   canManageTemplates,
   canManageTeams,
+  canManageWorkdays,
+  canDeactivateWorkdays,
+  canDeleteWorkdays,
   canViewBalance,
   canViewUsers,
   canViewActivities,
@@ -211,6 +214,34 @@ describe("canAccessRoute activities", () => {
     expect(canAccessRoute("admin", "/activities")).toBe(true);
     expect(canAccessRoute("manager", "/activities")).toBe(false);
     expect(canAccessRoute("leader", "/activities")).toBe(false);
+  });
+});
+
+describe("workdays permissions", () => {
+  it("allows manage and deactivate for manager and admin only", () => {
+    expect(canManageWorkdays("admin")).toBe(true);
+    expect(canManageWorkdays("manager")).toBe(true);
+    expect(canManageWorkdays("leader")).toBe(false);
+    expect(canManageWorkdays("colaborator")).toBe(false);
+    expect(canManageWorkdays("kiosk")).toBe(false);
+
+    expect(canDeactivateWorkdays("admin")).toBe(true);
+    expect(canDeactivateWorkdays("manager")).toBe(true);
+    expect(canDeactivateWorkdays("leader")).toBe(false);
+  });
+
+  it("allows hard delete for admin only", () => {
+    expect(canDeleteWorkdays("admin")).toBe(true);
+    expect(canDeleteWorkdays("manager")).toBe(false);
+    expect(canDeleteWorkdays("leader")).toBe(false);
+  });
+
+  it("guards /workdays route for manager and above", () => {
+    expect(canAccessRoute("admin", "/workdays")).toBe(true);
+    expect(canAccessRoute("manager", "/workdays")).toBe(true);
+    expect(canAccessRoute("leader", "/workdays")).toBe(false);
+    expect(canAccessRoute("colaborator", "/workdays", "col-1")).toBe(false);
+    expect(canAccessRoute("kiosk", "/workdays")).toBe(false);
   });
 });
 

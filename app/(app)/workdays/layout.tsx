@@ -1,0 +1,39 @@
+import type { ReactNode } from "react";
+import { getTranslations } from "next-intl/server";
+
+import { ForbiddenMessage } from "@/components/auth/forbidden-message";
+import { StaffSectionTabsBar } from "@/components/navigation/staff-section-tabs-bar";
+import { getAppSession } from "@/lib/auth/app-session";
+import { loadTeamsSectionTabs } from "@/lib/auth/load-staff-section-tabs";
+import type { Role } from "@/lib/auth/nav";
+import { canManageWorkdays } from "@/lib/auth/permissions";
+
+export default async function WorkdaysSectionLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const session = await getAppSession();
+  const role = session?.user?.role as Role | undefined;
+
+  if (!canManageWorkdays(role)) {
+    return <ForbiddenMessage />;
+  }
+
+  const [tabs, tNav] = await Promise.all([
+    loadTeamsSectionTabs(role, {
+      queues: "/queues",
+      teams: "/teams",
+      users: "/users",
+      activities: "/activities",
+      workdays: "/workdays",
+    }),
+    getTranslations("nav"),
+  ]);
+
+  return (
+    <StaffSectionTabsBar tabs={tabs} ariaLabel={tNav("teams")}>
+      {children}
+    </StaffSectionTabsBar>
+  );
+}

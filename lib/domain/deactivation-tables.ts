@@ -9,6 +9,7 @@ export const DEACTIVATION_TABLE_NAMES = [
   "currencies",
   "teams",
   "activities",
+  "workdays",
 ] as const;
 
 export type DeactivationTableName = (typeof DEACTIVATION_TABLE_NAMES)[number];
@@ -23,4 +24,5 @@ export const DEACTIVATION_TABLE = {
   currencies: "currencies",
   teams: "teams",
   activities: "activities",
+  workdays: "workdays",
 } as const satisfies Record<string, DeactivationTableName>;

@@ -34,6 +34,10 @@ export function staffActivitiesPath(staffUserId: string): string {
   return `/kiosk/staff/${staffUserId}/activities`;
 }
 
+export function staffWorkdaysPath(staffUserId: string): string {
+  return `/kiosk/staff/${staffUserId}/workdays`;
+}
+
 export function staffAwardsPath(staffUserId: string): string {
   return `/kiosk/staff/${staffUserId}/awards`;
 }
