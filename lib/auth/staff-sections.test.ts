@@ -13,6 +13,7 @@ const labels = {
   teams: "Equipes",
   users: "Usuários",
   activities: "Atividades",
+  workdays: "Expediente",
   awards: "Prêmios",
   exchanges: "Trocas",
 };
@@ -47,32 +48,35 @@ describe("teamsSectionTabs", () => {
         teams: "/teams",
         users: "/users",
         activities: "/activities",
+        workdays: "/workdays",
       }),
     ).toEqual([
       { href: "/queues", label: "Filas", activePrefix: "/queues" },
     ]);
   });
 
-  it("shows all team section tabs for manager", () => {
+  it("shows queues, teams, users and workdays for manager", () => {
     expect(
       teamsSectionTabs("manager", labels, {
         queues: "/queues",
         teams: "/teams",
         users: "/users",
         activities: "/activities",
+        workdays: "/workdays",
       }).map((tab) => tab.href),
-    ).toEqual(["/queues", "/teams", "/users"]);
+    ).toEqual(["/queues", "/teams", "/users", "/workdays"]);
   });
 
-  it("appends activities after users for admin", () => {
+  it("appends workdays right after activities for admin", () => {
     expect(
       teamsSectionTabs("admin", labels, {
         queues: "/queues",
         teams: "/teams",
         users: "/users",
         activities: "/activities",
+        workdays: "/workdays",
       }).map((tab) => tab.href),
-    ).toEqual(["/queues", "/teams", "/users", "/activities"]);
+    ).toEqual(["/queues", "/teams", "/users", "/activities", "/workdays"]);
   });
 });
 

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   doublePrecision,
   index,
@@ -10,6 +11,7 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
   unique,
@@ -102,6 +104,14 @@ export const mediaSensitivityEnum = pgEnum("media_sensitivity", [
   "public",
   "internal",
   "biometric",
+]);
+
+export const workdayActionEnum = pgEnum("workday_action", ["work", "off"]);
+
+export const workdayScopeEnum = pgEnum("workday_scope", [
+  "global",
+  "team",
+  "user",
 ]);
 
 export const mediaAssets = pgTable(
@@ -916,5 +926,110 @@ export const reasonForDeactivation = pgTable(
   },
   (table) => [
     index("reason_for_deactivation_table_name_idx").on(table.tableName),
+  ],
+);
+
+export const workdays = pgTable(
+  "workdays",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: varchar("name", { length: 128 }).notNull(),
+    description: text("description"),
+    action: workdayActionEnum("action").default("work").notNull(),
+    scope: workdayScopeEnum("scope").default("global").notNull(),
+    timezone: varchar("timezone", { length: 64 })
+      .default("America/Sao_Paulo")
+      .notNull(),
+    validFrom: date("valid_from"),
+    validUntil: date("valid_until"),
+    active: boolean("active").default(true).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("workdays_active_scope_idx").on(table.active, table.scope),
+    check(
+      "workdays_validity_range_check",
+      sql`${table.validFrom} IS NULL
+        OR ${table.validUntil} IS NULL
+        OR ${table.validUntil} >= ${table.validFrom}`,
+    ),
+  ],
+);
+
+export const workdayTeams = pgTable(
+  "workday_teams",
+  {
+    workdayId: uuid("workday_id")
+      .references(() => workdays.id, { onDelete: "cascade" })
+      .notNull(),
+    teamId: uuid("team_id")
+      .references(() => teams.id, { onDelete: "cascade" })
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workdayId, table.teamId] }),
+    index("workday_teams_team_id_idx").on(table.teamId),
+  ],
+);
+
+export const workdayUsers = pgTable(
+  "workday_users",
+  {
+    workdayId: uuid("workday_id")
+      .references(() => workdays.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: uuid("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workdayId, table.userId] }),
+    index("workday_users_user_id_idx").on(table.userId),
+  ],
+);
+
+export const workdaySlots = pgTable(
+  "workday_slots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workdayId: uuid("workday_id")
+      .references(() => workdays.id, { onDelete: "cascade" })
+      .notNull(),
+    isRecurrent: boolean("is_recurrent").default(false).notNull(),
+    dayOfWeek: smallint("day_of_week"),
+    date: date("date"),
+    allDay: boolean("all_day").default(false).notNull(),
+    startMinute: integer("start_minute"),
+    endMinute: integer("end_minute"),
+  },
+  (table) => [
+    index("workday_slots_workday_id_idx").on(table.workdayId),
+    index("workday_slots_date_idx").on(table.date),
+    check(
+      "workday_slots_recurrence_check",
+      sql`(${table.isRecurrent} = true
+        AND ${table.dayOfWeek} BETWEEN 0 AND 6
+        AND ${table.date} IS NULL)
+        OR (${table.isRecurrent} = false
+        AND ${table.date} IS NOT NULL
+        AND ${table.dayOfWeek} IS NULL)`,
+    ),
+    check(
+      "workday_slots_time_check",
+      sql`(${table.allDay} = true
+        AND ${table.startMinute} IS NULL
+        AND ${table.endMinute} IS NULL)
+        OR (${table.allDay} = false
+        AND ${table.startMinute} IS NOT NULL
+        AND ${table.endMinute} IS NOT NULL
+        AND ${table.startMinute} >= 0
+        AND ${table.endMinute} <= 1440
+        AND ${table.endMinute} > ${table.startMinute})`,
+    ),
   ],
 );

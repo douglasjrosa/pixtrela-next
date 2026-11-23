@@ -26,6 +26,7 @@ export default async function ActivitiesSectionLayout({
       teams: "/teams",
       users: "/users",
       activities: "/activities",
+      workdays: "/workdays",
     }),
     getTranslations("nav"),
   ]);
