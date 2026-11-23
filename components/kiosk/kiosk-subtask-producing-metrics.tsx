@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
+import type { ProductiveWindowDto } from "@/lib/domain/workday-coverage";
 import { formatDateTimePtBr } from "@/lib/format/datetime";
 import { formatDurationHms } from "@/lib/format/duration";
 
@@ -13,6 +14,7 @@ export interface KioskSubtaskProducingMetricsProps {
   timeSpent: number;
   expectedTime: number;
   timerPaused?: boolean;
+  productiveWindows?: readonly ProductiveWindowDto[];
 }
 
 export function KioskSubtaskProducingMetrics({
@@ -20,6 +22,7 @@ export function KioskSubtaskProducingMetrics({
   timeSpent,
   expectedTime,
   timerPaused = false,
+  productiveWindows,
 }: KioskSubtaskProducingMetricsProps) {
   const t = useTranslations("kiosk");
   const tDuration = useTranslations("duration");
@@ -40,6 +43,7 @@ export function KioskSubtaskProducingMetrics({
           baseSeconds={timeSpent}
           expectedTime={expectedTime}
           paused={timerPaused}
+          productiveWindows={productiveWindows}
         />
       </KioskSubtaskMetricBlock>
     </div>

@@ -68,6 +68,24 @@ describe("SubtaskElapsedTimer", () => {
     expect(screen.getByText("2s")).toBeInTheDocument();
   });
 
+  it("stays on base seconds when productive windows are empty", () => {
+    renderWithIntl(
+      <SubtaskElapsedTimer
+        startedAt="2026-06-05T10:00:00.000Z"
+        baseSeconds={12}
+        productiveWindows={[]}
+      />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.getByText("12s")).toBeInTheDocument();
+  });
+
   it("pauses the live counter while paused is true", () => {
     renderWithIntl(
       <SubtaskElapsedTimer

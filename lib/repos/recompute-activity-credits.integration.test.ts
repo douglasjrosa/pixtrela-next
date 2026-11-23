@@ -5,6 +5,7 @@ import { activities, balances, currencyForSubtasks } from "@/drizzle/schema";
 import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
 import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
+import { createGlobalAllDayWorkday } from "@/lib/db/test-workday";
 import { createCurrency } from "@/lib/repos/awards";
 import {
   cascadeMonthlyBalances,
@@ -246,6 +247,7 @@ describeWithDb("admin activity credit replay", () => {
       const subs = await listSubTasksForTask(task.id);
       await assignColaboratorsToSubTask(subs[0]!.id, [worker.id, helper.id]);
       await assignColaboratorsToSubTask(subs[1]!.id, [worker.id, helper.id]);
+      await createGlobalAllDayWorkday(suffix);
 
       const { chainRunId } = await startChain(
         worker.id,

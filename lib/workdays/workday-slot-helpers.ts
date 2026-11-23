@@ -2,6 +2,7 @@ import type { WorkdaySlotInput } from "@/lib/schemas/workday";
 
 export const MAX_DATE_RANGE_DAYS = 366;
 export const WEEKDAY_MONDAY_TO_FRIDAY = [1, 2, 3, 4, 5] as const;
+export const ALL_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
 
 const MS_PER_DAY = 86_400_000;
 
@@ -45,6 +46,15 @@ function compareSlots(a: WorkdaySlotInput, b: WorkdaySlotInput): number {
   const startDiff = (a.startMinute ?? 0) - (b.startMinute ?? 0);
   if (startDiff !== 0) return startDiff;
   return (a.endMinute ?? 0) - (b.endMinute ?? 0);
+}
+
+export function allDayWeekSlots(): WorkdaySlotInput[] {
+  return expandRecurrentSlots({
+    daysOfWeek: ALL_WEEKDAYS,
+    allDay: true,
+    startMinute: null,
+    endMinute: null,
+  });
 }
 
 export function expandRecurrentSlots(input: {

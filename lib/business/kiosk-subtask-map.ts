@@ -1,3 +1,4 @@
+import type { ProductiveWindowDto } from "@/lib/domain/workday-coverage";
 import { resolveSubTaskTargetQty } from "@/lib/domain/work-currency";
 
 const DISABLED_ACTIVATION_STATUS = "disabled";
@@ -14,6 +15,7 @@ export type KioskSubTaskRow = {
   sharingType: "qty" | "duration";
   timeSpent: number;
   startedAt: string | null;
+  productiveWindows?: ProductiveWindowDto[];
   expectedTime: number;
   taskDocumentId: string;
   taskName: string;

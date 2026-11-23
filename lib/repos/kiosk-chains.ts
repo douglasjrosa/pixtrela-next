@@ -67,6 +67,8 @@ import {
   resolveSubTaskTargetQty,
   toActivityCurrencyAward,
 } from "@/lib/domain/work-currency";
+import type { SessionSecondsMeasurer } from "@/lib/domain/workday-coverage";
+import { loadSessionSecondsMeasurer } from "@/lib/repos/workday-coverage";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { getDb, type Db } from "@/lib/db/client";
 import {
@@ -732,6 +734,7 @@ function principalPairSeconds(
   rows: ChainActivityRow[],
   principalId: string,
   subTaskId: string,
+  measure?: SessionSecondsMeasurer,
 ): number {
   const list = rows.filter(
     (row) => row.colaboratorId === principalId && row.subTaskId === subTaskId,
@@ -744,7 +747,9 @@ function principalPairSeconds(
       continue;
     }
     if (started) {
-      total += elapsedSecondsBetween(started, row.timestamp);
+      total += measure
+        ? measure(started, row.timestamp, principalId)
+        : elapsedSecondsBetween(started, row.timestamp);
       started = null;
     }
   }
@@ -811,6 +816,7 @@ type ReallocateChainRunHints = {
   skipFinishFlagAssertion?: boolean;
   requireOpenPrincipal?: boolean;
   skipCreditApply?: boolean;
+  helperColaboratorId?: string;
 };
 
 async function reallocateChainRunInternal(
@@ -895,10 +901,26 @@ async function reallocateChainRunInternal(
       .map((member) => member.documentId),
   );
 
+  const userIds = [
+    ...new Set(runRows.map((row) => row.colaboratorId)),
+    ...(hints?.helperColaboratorId ? [hints.helperColaboratorId] : []),
+  ];
+  const helperEnd =
+    extraHelperSeconds > 0
+      ? new Date(stopAt.getTime() + extraHelperSeconds * 1000)
+      : stopAt;
+  const { measure } = await loadSessionSecondsMeasurer(
+    { userIds, from: runStartedAt, to: helperEnd },
+    db,
+  );
+  const extraProductive = hints?.helperColaboratorId
+    ? measure(stopAt, helperEnd, hints.helperColaboratorId)
+    : 0;
+  const principalElapsed = measure(runStartedAt, stopAt, principalId);
   const timeline = allocateChainTimeline({
     runStartedAt,
     stopAt,
-    extraHelperSeconds,
+    elapsedSeconds: principalElapsed + extraProductive,
     finishedThisRun,
   });
   const qtyBySubTaskId: Record<string, number> = {};
@@ -952,6 +974,7 @@ async function reallocateChainRunInternal(
       subTaskId: segment.documentId,
       segmentSeconds: segment.timeSpent,
       closeOpenAt: stopAt,
+      measure,
     });
     return shares.map((share) => ({
       colaboratorId: share.colaboratorId,
@@ -1134,7 +1157,12 @@ async function reallocateChainRunInternal(
       const baseSpent = Math.max(
         0,
         row.timeSpent -
-          principalPairSeconds(runRows, principalId, member.documentId),
+          principalPairSeconds(
+            runRows,
+            principalId,
+            member.documentId,
+            measure,
+          ),
       );
       await tx
         .update(subTasks)
@@ -1248,6 +1276,23 @@ async function recordPeerChainExit(input: {
     hasOpenSession(input.runRows, input.colaboratorId, member.documentId),
   );
   const currency = await resolvePaymentCurrency(input.db);
+  const peerStarts = input.runRows.filter(
+    (row) =>
+      row.colaboratorId === input.colaboratorId && row.action === "started",
+  );
+  const peerFrom = peerStarts.reduce(
+    (earliest, row) =>
+      row.timestamp < earliest ? row.timestamp : earliest,
+    input.timestamp,
+  );
+  const { measure: peerMeasure } = await loadSessionSecondsMeasurer(
+    {
+      userIds: [input.colaboratorId],
+      from: peerFrom,
+      to: input.timestamp,
+    },
+    input.db,
+  );
 
   await input.db.transaction(async (tx) => {
     for (const member of membersToClose) {
@@ -1300,7 +1345,11 @@ async function recordPeerChainExit(input: {
             activity.action === "started",
         );
       const sessionSeconds = openStart
-        ? elapsedSecondsBetween(openStart.timestamp, input.timestamp)
+        ? peerMeasure(
+            openStart.timestamp,
+            input.timestamp,
+            input.colaboratorId,
+          )
         : 0;
       const materialFlagsEnabled = input.scope.materialFlagsEnabled;
       const flagIds = materialFlagsEnabled ? (answer?.flagIds ?? []) : [];
@@ -1517,6 +1566,7 @@ export async function reallocateChainRunAfterHelperStop(
   chainRunId: string,
   helperStoppedAt: Date,
   db: Db = getDb(),
+  helperColaboratorId?: string,
 ): Promise<void> {
   const runRows = await loadRunActivities(chainRunId, db);
   const scope = await resolveChainRunScope(runRows, db);
@@ -1543,6 +1593,7 @@ export async function reallocateChainRunAfterHelperStop(
     preferredAnchorSubTaskId: answers[0]?.documentId,
     principalId,
     skipFinishFlagAssertion: true,
+    helperColaboratorId,
   });
 }
 

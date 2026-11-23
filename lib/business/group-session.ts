@@ -4,6 +4,7 @@ import {
   type SubTaskStatus,
 } from "@/lib/business/kiosk-stop";
 import { allocateChainTimeline } from "@/lib/business/subtask-chain-allocation";
+import type { SessionSecondsMeasurer } from "@/lib/domain/workday-coverage";
 
 const MS_PER_SECOND = 1000;
 const MIN_SAME_TIME_WORKERS = 1;
@@ -80,23 +81,35 @@ export function planGroupCloseActivities(input: {
   endedAt: Date;
   members: readonly { documentId: string; expectedTime: number }[];
   presences: readonly GroupPresence[];
+  elapsedSeconds?: number;
+  measure?: SessionSecondsMeasurer;
 }): GroupCloseActivity[] {
   const timeline = allocateChainTimeline({
     runStartedAt: input.runStartedAt,
     stopAt: input.endedAt,
+    elapsedSeconds: input.elapsedSeconds,
     finishedThisRun: input.members,
   });
   const planned: GroupCloseActivity[] = [];
+  const productiveWeights = input.measure
+    ? input.presences.map((presence) =>
+        input.measure!(
+          presence.joinedAt,
+          presence.leftAt ?? input.endedAt,
+          presence.userId,
+        ),
+      )
+    : null;
 
   for (const segment of timeline.segments) {
-    const overlaps = input.presences.map((presence) =>
-      overlapSeconds(
+    const overlaps = productiveWeights ?? input.presences.map((presence) => {
+      return overlapSeconds(
         segment.startedAt,
         segment.stoppedAt,
         presence.joinedAt,
         presence.leftAt ?? input.endedAt,
-      ),
-    );
+      );
+    });
     const shares = splitByWeights(segment.timeSpent, overlaps);
     input.presences.forEach((presence, index) => {
       const timeSpentSeconds = shares[index] ?? 0;

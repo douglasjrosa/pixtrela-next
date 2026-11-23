@@ -1,3 +1,5 @@
+import type { SessionSecondsMeasurer } from "@/lib/domain/workday-coverage";
+
 const MS_PER_SECOND = 1000;
 
 export type AllocationSharingType = "qty" | "duration";
@@ -158,12 +160,23 @@ export type PresenceActivity = {
   timestamp: Date;
 };
 
+function pairSeconds(
+  startedAt: Date,
+  endedAt: Date,
+  colaboratorId: string,
+  measure?: SessionSecondsMeasurer,
+): number {
+  if (measure) return measure(startedAt, endedAt, colaboratorId);
+  return elapsedSecondsBetween(startedAt, endedAt);
+}
+
 /** Seconds this worker actually spent on the subtask, closing an open session at closeOpenAt. */
 export function presenceSecondsOnSubTask(
   rows: readonly PresenceActivity[],
   colaboratorId: string,
   subTaskId: string,
   closeOpenAt: Date,
+  measure?: SessionSecondsMeasurer,
 ): number {
   const scoped = rows
     .filter(
@@ -181,11 +194,11 @@ export function presenceSecondsOnSubTask(
       continue;
     }
     if (!openStart) continue;
-    total += elapsedSecondsBetween(openStart, row.timestamp);
+    total += pairSeconds(openStart, row.timestamp, colaboratorId, measure);
     openStart = null;
   }
   if (openStart) {
-    total += elapsedSecondsBetween(openStart, closeOpenAt);
+    total += pairSeconds(openStart, closeOpenAt, colaboratorId, measure);
   }
   return total;
 }
@@ -196,6 +209,7 @@ export function allocateSegmentPresenceShares(input: {
   subTaskId: string;
   segmentSeconds: number;
   closeOpenAt: Date;
+  measure?: SessionSecondsMeasurer;
 }): Array<{ colaboratorId: string; timeSpentSeconds: number }> {
   const workerIds = [
     ...new Set(
@@ -212,6 +226,7 @@ export function allocateSegmentPresenceShares(input: {
         colaboratorId,
         input.subTaskId,
         input.closeOpenAt,
+        input.measure,
       ),
     }))
     .filter((row) => row.wall > 0);
@@ -257,6 +272,7 @@ export function allocateChainTimeline(input: {
   runStartedAt: Date;
   stopAt: Date;
   extraHelperSeconds?: number;
+  elapsedSeconds?: number;
   finishedThisRun: readonly Pick<AllocationMember, "documentId" | "expectedTime">[];
 }): {
   elapsedSeconds: number;
@@ -265,7 +281,7 @@ export function allocateChainTimeline(input: {
 } {
   const extra = Math.max(0, Math.floor(input.extraHelperSeconds ?? 0));
   const wall = elapsedSecondsBetween(input.runStartedAt, input.stopAt);
-  const elapsedSeconds = wall + extra;
+  const elapsedSeconds = input.elapsedSeconds ?? wall + extra;
   const expectedTimes = input.finishedThisRun.map((item) =>
     Math.max(0, item.expectedTime),
   );

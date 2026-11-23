@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
+import type { ProductiveWindowDto } from "@/lib/domain/workday-coverage";
 import { formatDurationHms } from "@/lib/format/duration";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ export interface SubtaskElapsedTimerProps {
   baseSeconds?: number;
   expectedTime?: number;
   paused?: boolean;
+  productiveWindows?: readonly ProductiveWindowDto[];
 }
 
 export function SubtaskElapsedTimer({
@@ -19,9 +21,15 @@ export function SubtaskElapsedTimer({
   baseSeconds = 0,
   expectedTime = 0,
   paused = false,
+  productiveWindows,
 }: SubtaskElapsedTimerProps) {
   const t = useTranslations("duration");
-  const elapsedSeconds = useElapsedSeconds(startedAt, baseSeconds, paused);
+  const elapsedSeconds = useElapsedSeconds(
+    startedAt,
+    baseSeconds,
+    paused,
+    productiveWindows,
+  );
   if (elapsedSeconds === null) return null;
 
   const isOverExpected =

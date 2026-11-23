@@ -19,7 +19,14 @@ import {
   selectRowsForProducingReconcile,
   selectRowsForQtyCompleteReconcile,
 } from "@/lib/business/subtask-producing-reconcile";
-import { calculateActivityDurationSeconds } from "@/lib/business/activity-duration";
+import {
+  collectSessionMeasureRange,
+  resolveProductiveWindows,
+  timerHorizonEnd,
+  toProductiveWindowDtos,
+  type ProductiveWindowDto,
+} from "@/lib/domain/workday-coverage";
+import { loadSessionSecondsMeasurer } from "@/lib/repos/workday-coverage";
 import {
   collectKioskQueueCatalogScope,
   filterCatalogByScope,
@@ -350,6 +357,38 @@ async function fetchOpenStartedSubTaskIdsForColaborator(
   db: Db,
 ): Promise<string[]> {
   return listOpenSubTaskIdsForUser(colaboratorId, db);
+}
+
+async function attachProductiveWindows<
+  T extends { startedAt: string | null },
+>(
+  items: T[],
+  colaboratorId: string,
+  now: Date,
+  db: Db,
+): Promise<Array<T & { productiveWindows: ProductiveWindowDto[] }>> {
+  const startedMs = items
+    .map((item) => (item.startedAt ? Date.parse(item.startedAt) : NaN))
+    .filter((value) => Number.isFinite(value));
+  if (startedMs.length === 0) {
+    return items.map((item) => ({ ...item, productiveWindows: [] }));
+  }
+  const from = new Date(Math.min(...startedMs));
+  const to = timerHorizonEnd(now);
+  const { rulesByUserId } = await loadSessionSecondsMeasurer(
+    { userIds: [colaboratorId], from, to },
+    db,
+  );
+  const rules = rulesByUserId.get(colaboratorId) ?? [];
+  return items.map((item) => {
+    if (!item.startedAt) return { ...item, productiveWindows: [] };
+    const windows = resolveProductiveWindows(
+      new Date(item.startedAt),
+      to,
+      rules,
+    );
+    return { ...item, productiveWindows: toProductiveWindowDtos(windows) };
+  });
 }
 
 async function fetchSubTaskRowsByIds(subTaskIds: string[], db: Db) {
@@ -691,11 +730,17 @@ async function hydrateAssignedSubTaskRows(
   );
 
   const sorted = sortKioskDailyQueue(filterKioskDailyQueue(mapped, now));
+  const withWindows = await attachProductiveWindows(
+    sorted,
+    colaboratorId,
+    now,
+    db,
+  );
   const categoryById = new Map(
     rows.map((row) => [row.id, row.subTaskCategoryId ?? null]),
   );
 
-  return sorted.map((row) => ({
+  return withWindows.map((row) => ({
     documentId: row.documentId,
     name: row.name,
     index: row.index,
@@ -707,6 +752,7 @@ async function hydrateAssignedSubTaskRows(
     sharingType: row.sharingType,
     timeSpent: row.timeSpent,
     startedAt: row.startedAt,
+    productiveWindows: row.productiveWindows,
     expectedTime: row.expectedTime,
     taskDocumentId: row.taskDocumentId,
     taskName: row.taskName,
@@ -1372,7 +1418,20 @@ async function creditStopCurrency(
       timestamp: new Date(row.timestamp),
     }));
 
-    const participations = listTimeSpentByColaborator(rows, input.timestamp);
+    const range = collectSessionMeasureRange(rows, input.timestamp);
+    const { measure } = await loadSessionSecondsMeasurer(
+      {
+        userIds: range.userIds,
+        from: range.from,
+        to: input.timestamp,
+      },
+      db,
+    );
+    const participations = listTimeSpentByColaborator(
+      rows,
+      input.timestamp,
+      measure,
+    );
     const credits = calculateDurationCurrencyCredits(
       {
         expectedTime: input.expectedTime,
@@ -1472,8 +1531,18 @@ export async function stopSubTask(
   const sessionStartedAt = isolatedSession?.joinedAt
     ?? (openStarted ? new Date(openStarted.timestamp) : null);
 
-  const sessionSeconds = sessionStartedAt
-    ? calculateActivityDurationSeconds(sessionStartedAt, timestamp)
+  const { measure } = sessionStartedAt
+    ? await loadSessionSecondsMeasurer(
+        {
+          userIds: [colaboratorId],
+          from: sessionStartedAt,
+          to: timestamp,
+        },
+        db,
+      )
+    : { measure: undefined };
+  const sessionSeconds = sessionStartedAt && measure
+    ? measure(sessionStartedAt, timestamp, colaboratorId)
     : 0;
 
   const sharingType = sub.sharingType === "qty" ? "qty" : "duration";
@@ -1648,7 +1717,12 @@ export async function stopSubTask(
     remainingActiveIds.length === 0 &&
     !stillOpen
   ) {
-    await reallocateChainRunAfterHelperStop(chainRunId, timestamp, db);
+    await reallocateChainRunAfterHelperStop(
+      chainRunId,
+      timestamp,
+      db,
+      colaboratorId,
+    );
   }
 
   void activityId;

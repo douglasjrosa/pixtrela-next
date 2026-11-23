@@ -120,4 +120,22 @@ describe("planGroupCloseActivities", () => {
     expect(ana?.timeSpentSeconds).toBe(80);
     expect(bob?.timeSpentSeconds).toBe(40);
   });
+
+  it("splits a ready productive pool instead of wall clock", () => {
+    const startedAt = new Date("2026-09-26T16:00:00.000Z");
+    const endedAt = new Date("2026-09-26T16:03:00.000Z");
+    const planned = planGroupCloseActivities({
+      runStartedAt: startedAt,
+      endedAt,
+      elapsedSeconds: 90,
+      members: [
+        { documentId: "cut", expectedTime: 60 },
+        { documentId: "pack", expectedTime: 30 },
+      ],
+      presences: [
+        { userId: "ana", joinedAt: startedAt, leftAt: null },
+      ],
+    });
+    expect(planned.map((row) => row.timeSpentSeconds)).toEqual([60, 30]);
+  });
 });

@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 
 import { elapsedSecondsSince } from "@/lib/format/datetime";
+import {
+  fromProductiveWindowDtos,
+  productiveSecondsFromWindows,
+  type ProductiveWindowDto,
+} from "@/lib/domain/workday-coverage";
 
 const TICK_MS = 1000;
 
@@ -12,10 +17,24 @@ function usableStartMs(startedAt: string, nowMs: number): number | null {
   return startedMs;
 }
 
+function liveSeconds(
+  startedIso: string,
+  nowMs: number,
+  windows?: readonly ProductiveWindowDto[],
+): number {
+  if (!windows) return elapsedSecondsSince(startedIso, nowMs);
+  return productiveSecondsFromWindows(
+    Date.parse(startedIso),
+    nowMs,
+    fromProductiveWindowDtos(windows),
+  );
+}
+
 export function useElapsedSeconds(
   startedAt: string | null,
   baseSeconds = 0,
   paused = false,
+  windows?: readonly ProductiveWindowDto[],
 ): number | null {
   const [nowMs, setNowMs] = useState<number | null>(null);
   const [anchoredStartMs, setAnchoredStartMs] = useState<number | null>(null);
@@ -47,9 +66,9 @@ export function useElapsedSeconds(
     }
     return (
       baseSeconds +
-      elapsedSecondsSince(new Date(anchorMs).toISOString(), nowMs)
+      liveSeconds(new Date(anchorMs).toISOString(), nowMs, windows)
     );
   }
 
-  return baseSeconds + elapsedSecondsSince(startedAt, nowMs);
+  return baseSeconds + liveSeconds(startedAt, nowMs, windows);
 }

@@ -200,6 +200,20 @@ describe("allocateChainTimeline", () => {
     expect(result.elapsedSeconds).toBe(40);
     expect(result.segments.map((row) => row.timeSpent)).toEqual([13, 27]);
   });
+
+  it("uses a ready elapsed pool instead of wall clock", () => {
+    const result = allocateChainTimeline({
+      runStartedAt: T0,
+      stopAt: secondsLater(30),
+      elapsedSeconds: 12,
+      finishedThisRun: [
+        { documentId: "a", expectedTime: 10 },
+        { documentId: "b", expectedTime: 20 },
+      ],
+    });
+    expect(result.elapsedSeconds).toBe(12);
+    expect(result.segments.map((row) => row.timeSpent)).toEqual([4, 8]);
+  });
 });
 
 describe("resolveChainAutoAdvance", () => {

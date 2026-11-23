@@ -23,6 +23,8 @@ import {
   type ChainStopAnswer,
 } from "@/lib/business/subtask-chain-allocation";
 import { getDb, type Db } from "@/lib/db/client";
+import { unionProductiveSeconds } from "@/lib/domain/workday-coverage";
+import { loadSessionSecondsMeasurer } from "@/lib/repos/workday-coverage";
 import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 import {
   calculateDurationCurrencyCredits,
@@ -555,16 +557,33 @@ async function closeGroupRun(
     documentId: row.id,
     expectedTime: row.expectedTime,
   }));
+  const userIds = [...new Set(presences.map((presence) => presence.userId))];
+  const { measure, rulesByUserId } = await loadSessionSecondsMeasurer(
+    { userIds, from: run.startedAt, to: endedAt },
+    db,
+  );
+  const elapsedSeconds = unionProductiveSeconds({
+    startedAt: run.startedAt,
+    endedAt,
+    participants: presences.map((presence) => ({
+      from: presence.joinedAt,
+      to: presence.leftAt ?? endedAt,
+      rules: rulesByUserId.get(presence.userId) ?? [],
+    })),
+  });
   const planned = planGroupCloseActivities({
     runStartedAt: run.startedAt,
     endedAt,
     members: memberClocks,
     presences,
+    elapsedSeconds,
+    measure,
   });
   const wallByMember = new Map(
     allocateChainTimeline({
       runStartedAt: run.startedAt,
       stopAt: endedAt,
+      elapsedSeconds,
       finishedThisRun: memberClocks,
     }).segments.map((segment) => [segment.documentId, segment.timeSpent]),
   );

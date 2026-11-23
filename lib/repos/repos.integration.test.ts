@@ -4,6 +4,7 @@ import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map
 import { resolveCurrencyPluralTitle } from "@/lib/domain/currency-display";
 import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
+import { createGlobalAllDayWorkday } from "@/lib/db/test-workday";
 import { createAward, createCurrency, deleteAward, findAwardById, hardDeleteAward } from "@/lib/repos/awards";
 import {
   creditBalanceIncome,
@@ -345,6 +346,7 @@ describeWithDb("drizzle repos integration", () => {
 
       await assignColaboratorsToSubTask(subs[0]!.id, [colaborator.id]);
       await assignFlagsToSubTask(subs[0]!.id, [flag.id]);
+      await createGlobalAllDayWorkday(suffix);
 
       const startedAt = new Date("2026-08-09T10:00:00Z");
       const stoppedAt = new Date("2026-08-09T10:00:30Z");

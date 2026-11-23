@@ -287,6 +287,7 @@ export function KioskChainGroupCard({
                     timeSpent={member.timeSpent}
                     expectedTime={member.expectedTime}
                     timerPaused={timerPaused === true}
+                    productiveWindows={member.productiveWindows}
                   />
                 ) : null}
                 {member.status === "finished" && !compactFinishedCards ? (

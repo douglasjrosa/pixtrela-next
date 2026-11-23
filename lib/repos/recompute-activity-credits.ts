@@ -11,6 +11,8 @@ import {
   listTimeSpentByColaborator,
   type ActivityTimeRow,
 } from "@/lib/business/task-time-spent";
+import { collectSessionMeasureRange } from "@/lib/domain/workday-coverage";
+import { loadSessionSecondsMeasurer } from "@/lib/repos/workday-coverage";
 import type { Db } from "@/lib/db/client";
 import { applyActivityIncomeDelta } from "@/lib/repos/activity-credits";
 import { cascadeMonthlyBalances } from "@/lib/repos/balances";
@@ -213,21 +215,33 @@ async function recomputeIsolatedSubtask(
       subTaskStatus: sub.status,
       finishedWithoutPay: sub.finishedWithoutPay,
     });
-  const credits = shouldCredit
-    ? calculateDurationCurrencyCredits(
-        {
-          expectedTime: sub.expectedTime,
-          qty: sub.qty,
-          taskQty: task.qty,
-          sharingType: "duration",
-        },
-        listTimeSpentByColaborator(timeRows, lastStop!.timestamp).map((row) => ({
+  let credits: ReturnType<typeof calculateDurationCurrencyCredits> = [];
+  if (shouldCredit && lastStop && currency) {
+    const range = collectSessionMeasureRange(timeRows, lastStop.timestamp);
+    const { measure } = await loadSessionSecondsMeasurer(
+      {
+        userIds: range.userIds,
+        from: range.from,
+        to: lastStop.timestamp,
+      },
+      db,
+    );
+    credits = calculateDurationCurrencyCredits(
+      {
+        expectedTime: sub.expectedTime,
+        qty: sub.qty,
+        taskQty: task.qty,
+        sharingType: "duration",
+      },
+      listTimeSpentByColaborator(timeRows, lastStop.timestamp, measure).map(
+        (row) => ({
           colaboratorId: row.colaboratorId,
           timeSpentSeconds: row.timeSpentSeconds,
-        })),
-        { currencyPerSecond: currency!.currencyPerSecond },
-      )
-    : [];
+        }),
+      ),
+      { currencyPerSecond: currency.currencyPerSecond },
+    );
+  }
   const byColaborator = new Map(
     credits.map((row) => [row.colaboratorId, row.amount]),
   );

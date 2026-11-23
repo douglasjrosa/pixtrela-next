@@ -1,4 +1,5 @@
 import { calculateActivityDurationSeconds } from "@/lib/business/activity-duration";
+import type { SessionSecondsMeasurer } from "@/lib/domain/workday-coverage";
 
 const PRODUCING_STATUS = "producing";
 
@@ -30,9 +31,21 @@ function groupByColaborator(
   return map;
 }
 
+function sessionSeconds(
+  startedAt: Date,
+  endedAt: Date,
+  colaboratorId: string,
+  measure?: SessionSecondsMeasurer,
+): number {
+  if (measure) return measure(startedAt, endedAt, colaboratorId);
+  return calculateActivityDurationSeconds(startedAt, endedAt);
+}
+
 function sumColaboratorSessionSeconds(
   rows: ActivityTimeRow[],
   now: Date,
+  colaboratorId: string,
+  measure?: SessionSecondsMeasurer,
 ): number {
   const sorted = sortByTimestamp(rows);
   let openStart: Date | null = null;
@@ -45,13 +58,18 @@ function sumColaboratorSessionSeconds(
     }
 
     if (activity.action === "stoped" && openStart) {
-      total += calculateActivityDurationSeconds(openStart, activity.timestamp);
+      total += sessionSeconds(
+        openStart,
+        activity.timestamp,
+        colaboratorId,
+        measure,
+      );
       openStart = null;
     }
   }
 
   if (openStart) {
-    total += calculateActivityDurationSeconds(openStart, now);
+    total += sessionSeconds(openStart, now, colaboratorId, measure);
   }
 
   return total;
@@ -60,12 +78,18 @@ function sumColaboratorSessionSeconds(
 export function calculateTimeSpentFromActivities(
   activities: ActivityTimeRow[],
   now: Date,
+  measure?: SessionSecondsMeasurer,
 ): number {
   const byColaborator = groupByColaborator(activities);
   let total = 0;
 
-  for (const colaboratorActivities of byColaborator.values()) {
-    total += sumColaboratorSessionSeconds(colaboratorActivities, now);
+  for (const [colaboratorId, colaboratorActivities] of byColaborator) {
+    total += sumColaboratorSessionSeconds(
+      colaboratorActivities,
+      now,
+      colaboratorId,
+      measure,
+    );
   }
 
   return total;
@@ -74,12 +98,18 @@ export function calculateTimeSpentFromActivities(
 export function listTimeSpentByColaborator(
   activities: ActivityTimeRow[],
   now: Date,
+  measure?: SessionSecondsMeasurer,
 ): Array<{ colaboratorId: string; timeSpentSeconds: number }> {
   const byColaborator = groupByColaborator(activities);
   const result: Array<{ colaboratorId: string; timeSpentSeconds: number }> = [];
 
   for (const [colaboratorId, rows] of byColaborator.entries()) {
-    const timeSpentSeconds = sumColaboratorSessionSeconds(rows, now);
+    const timeSpentSeconds = sumColaboratorSessionSeconds(
+      rows,
+      now,
+      colaboratorId,
+      measure,
+    );
     if (timeSpentSeconds > 0) {
       result.push({ colaboratorId, timeSpentSeconds });
     }
@@ -91,9 +121,10 @@ export function listTimeSpentByColaborator(
 export function calculateSubTaskLiveTimeSpent(
   input: SubTaskTimeSpentInput,
   now: Date,
+  measure?: SessionSecondsMeasurer,
 ): number {
   if (input.status === PRODUCING_STATUS) {
-    return calculateTimeSpentFromActivities(input.activities, now);
+    return calculateTimeSpentFromActivities(input.activities, now, measure);
   }
   return Math.max(0, input.timeSpent);
 }
@@ -101,9 +132,11 @@ export function calculateSubTaskLiveTimeSpent(
 export function calculateTaskTotalTimeSpent(
   subTaskInputs: SubTaskTimeSpentInput[],
   now: Date,
+  measure?: SessionSecondsMeasurer,
 ): number {
   return subTaskInputs.reduce(
-    (total, subTask) => total + calculateSubTaskLiveTimeSpent(subTask, now),
+    (total, subTask) =>
+      total + calculateSubTaskLiveTimeSpent(subTask, now, measure),
     0,
   );
 }

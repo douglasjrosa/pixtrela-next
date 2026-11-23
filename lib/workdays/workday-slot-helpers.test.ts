@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  allDayWeekSlots,
   expandDateRangeSlots,
   expandRecurrentSlots,
   mergeAndSortWorkdaySlots,
 } from "./workday-slot-helpers";
+
+describe("allDayWeekSlots", () => {
+  it("covers every weekday as an all-day recurrent slot", () => {
+    const slots = allDayWeekSlots();
+    expect(slots).toHaveLength(7);
+    expect(slots.every((slot) => slot.allDay && slot.isRecurrent)).toBe(true);
+    expect(slots.map((slot) => slot.dayOfWeek)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+});
 
 describe("expandRecurrentSlots", () => {
   it("creates one normalized slot per selected weekday", () => {

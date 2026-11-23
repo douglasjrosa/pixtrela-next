@@ -16,6 +16,8 @@ import {
 import { resolveSubTaskActivationStatusUpdates } from "@/lib/business/subtask-activation-sync";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { calculateTaskTotalTimeSpent } from "@/lib/business/task-time-spent";
+import { collectSessionMeasureRange } from "@/lib/domain/workday-coverage";
+import { loadSessionSecondsMeasurer } from "@/lib/repos/workday-coverage";
 import type { ActivityTimeRow } from "@/lib/business/task-time-spent";
 import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
 import { getDb, type Db } from "@/lib/db/client";
@@ -183,7 +185,21 @@ export async function runTaskSubTaskSyncRoutine(
     siblings,
     activitiesBySubTaskId,
   );
-  const totalTimeSpent = calculateTaskTotalTimeSpent(timeSpentInputs, now);
+  const activityRows = [...activitiesBySubTaskId.values()].flat();
+  const range = collectSessionMeasureRange(activityRows, now);
+  const { measure } = await loadSessionSecondsMeasurer(
+    {
+      userIds: range.userIds,
+      from: range.from,
+      to: now,
+    },
+    db,
+  );
+  const totalTimeSpent = calculateTaskTotalTimeSpent(
+    timeSpentInputs,
+    now,
+    measure,
+  );
 
   const nextStatus = parentUpdate?.status ?? task.status;
   const nextStepId = await loadNextAutomatedTaskStepId(

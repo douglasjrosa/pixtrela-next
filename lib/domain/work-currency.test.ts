@@ -79,6 +79,18 @@ describe("calculateQtySessionCurrency", () => {
     ).toBe(155);
   });
 
+  it("keeps qty credits independent of elapsed session time", () => {
+    const context = {
+      expectedTime: 60,
+      qty: 1,
+      taskQty: 1,
+      sharingType: "qty" as const,
+    };
+    expect(
+      calculateQtySessionCurrency(context, { sessionQty: 1 }, currency),
+    ).toBe(60);
+  });
+
   it("returns 0 for duration sharing", () => {
     expect(
       calculateQtySessionCurrency(

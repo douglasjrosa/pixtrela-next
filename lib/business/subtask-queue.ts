@@ -1,3 +1,5 @@
+import type { ProductiveWindowDto } from "@/lib/domain/workday-coverage";
+
 export type SubTaskStatus = "waiting" | "producing" | "paused" | "finished";
 
 export type ActivationStatus = "locked" | "unlocked" | "disabled";
@@ -38,6 +40,8 @@ export interface KioskSubTask extends QueuedSubTask {
   sharingType: "qty" | "duration";
   timeSpent: number;
   startedAt: string | null;
+  /** Resolved work windows for the live kiosk timer. Missing keeps wall clock. */
+  productiveWindows?: ProductiveWindowDto[];
   expectedTime: number;
   taskDocumentId: string;
   taskName: string;
