@@ -309,6 +309,13 @@
       "when": 1788850000000,
       "tag": "0043_material_flags_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1788900000000,
+      "tag": "0044_workdays",
+      "breakpoints": true
     }
   ]
 }

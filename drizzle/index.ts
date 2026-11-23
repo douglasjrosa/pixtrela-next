@@ -35,4 +35,8 @@ export {
   exchangeOrders,
   exchangeOrderItems,
   exchanges,
+  workdays,
+  workdayTeams,
+  workdayUsers,
+  workdaySlots,
 } from "./schema";

@@ -26,6 +26,7 @@ export default async function QueuesSectionLayout({
       teams: "/teams",
       users: "/users",
       activities: "/activities",
+      workdays: "/workdays",
     }),
     getTranslations("nav"),
   ]);
