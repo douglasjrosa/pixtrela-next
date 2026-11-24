@@ -26,7 +26,12 @@ import {
   toProductiveWindowDtos,
   type ProductiveWindowDto,
 } from "@/lib/domain/workday-coverage";
-import { loadSessionSecondsMeasurer } from "@/lib/repos/workday-coverage";
+import {
+  assertColaboratorWorkdayOpen,
+  loadColaboratorWorkdayGate,
+  loadSessionSecondsMeasurer,
+  workdayGateToPageFields,
+} from "@/lib/repos/workday-coverage";
 import {
   collectKioskQueueCatalogScope,
   filterCatalogByScope,
@@ -1039,6 +1044,8 @@ export type KioskQueueSectionPage = {
   catalog: KioskSubTask[];
   queuePageSize: number;
   catalogTruncated?: boolean;
+  workdayAllowed?: boolean;
+  nextWorkStartAt?: string | null;
 };
 
 export function emptyKioskQueueSectionPage(
@@ -1056,6 +1063,15 @@ export function emptyKioskQueueSectionPage(
     queuePageSize,
     catalogTruncated: true,
   };
+}
+
+async function attachWorkdayGate(
+  page: KioskQueueSectionPage,
+  colaboratorId: string,
+  db: Db,
+): Promise<KioskQueueSectionPage> {
+  const gate = await loadColaboratorWorkdayGate(colaboratorId, new Date(), db);
+  return { ...page, ...workdayGateToPageFields(gate) };
 }
 
 export async function listKioskQueueSectionPage(
@@ -1146,18 +1162,22 @@ export async function listKioskQueueSectionPage(
   const pageSubTasks = flattenUnitsToSubTasks(visibleUnits);
   const catalogTruncated = scopedCatalog.length < queue.catalog.length;
 
-  return {
-    section: input.section,
-    producingUnits,
-    units: page.units,
-    nextCursor: page.nextCursor,
-    hasMore: page.hasMore,
-    openRuns: queue.openRuns,
-    subTasks: pageSubTasks,
-    catalog: catalogMode === "full" ? queue.catalog : scopedCatalog,
-    queuePageSize,
-    catalogTruncated: catalogMode === "slim" ? catalogTruncated : false,
-  };
+  return attachWorkdayGate(
+    {
+      section: input.section,
+      producingUnits,
+      units: page.units,
+      nextCursor: page.nextCursor,
+      hasMore: page.hasMore,
+      openRuns: queue.openRuns,
+      subTasks: pageSubTasks,
+      catalog: catalogMode === "full" ? queue.catalog : scopedCatalog,
+      queuePageSize,
+      catalogTruncated: catalogMode === "slim" ? catalogTruncated : false,
+    },
+    input.colaboratorId,
+    db,
+  );
 }
 
 export async function listKioskQueueSnapshot(
@@ -1211,7 +1231,9 @@ export async function listKioskProducingSnapshot(
     colaboratorId,
     db,
   );
-  if (openSessionIds.length === 0) return empty;
+  if (openSessionIds.length === 0) {
+    return attachWorkdayGate(empty, colaboratorId, db);
+  }
 
   const rows = await fetchSubTaskRowsByIds(openSessionIds, db);
   const subTasks = await hydrateAssignedSubTaskRows(
@@ -1220,7 +1242,9 @@ export async function listKioskProducingSnapshot(
     openSessionIds,
     db,
   );
-  if (subTasks.length === 0) return empty;
+  if (subTasks.length === 0) {
+    return attachWorkdayGate(empty, colaboratorId, db);
+  }
 
   const liveChainIntervalSeconds = options?.liveChainIntervalSeconds ?? 0;
   const queue = await assembleKioskQueueData(subTasks, colaboratorId, db, {
@@ -1247,18 +1271,22 @@ export async function listKioskProducingSnapshot(
   });
   const scopedCatalog = filterCatalogByScope(queue.catalog, scope);
 
-  return {
-    section: "liberadas",
-    producingUnits,
-    units: [],
-    nextCursor: null,
-    hasMore: true,
-    openRuns: queue.openRuns,
-    subTasks: pageSubTasks,
-    catalog: scopedCatalog,
-    queuePageSize,
-    catalogTruncated: true,
-  };
+  return attachWorkdayGate(
+    {
+      section: "liberadas",
+      producingUnits,
+      units: [],
+      nextCursor: null,
+      hasMore: true,
+      openRuns: queue.openRuns,
+      subTasks: pageSubTasks,
+      catalog: scopedCatalog,
+      queuePageSize,
+      catalogTruncated: true,
+    },
+    colaboratorId,
+    db,
+  );
 }
 
 async function sumStoppedQty(subTaskId: string, db: Db): Promise<number> {
@@ -1288,6 +1316,7 @@ export async function startSubTask(
   db: Db = getDb(),
   timestamp: Date = new Date(),
 ): Promise<void> {
+  await assertColaboratorWorkdayOpen(colaboratorId, timestamp, db);
   await assertSubTaskAssigned(colaboratorId, subTaskId, db);
 
   const [sub] = await db

@@ -23,7 +23,6 @@ describe("loadWorkdayListPage", () => {
       items: [
         {
           id: "wd-1",
-          name: "Expediente padrão",
           description: null,
           action: "work",
           scope: "global",
@@ -31,6 +30,10 @@ describe("loadWorkdayListPage", () => {
           validFrom: null,
           validUntil: null,
           active: true,
+          createdBy: null,
+          updatedBy: null,
+          createdAt: new Date("2026-11-24T00:00:00.000Z"),
+          updatedAt: new Date("2026-11-24T00:00:00.000Z"),
           teams: [],
           users: [],
           slots: [
@@ -40,7 +43,6 @@ describe("loadWorkdayListPage", () => {
               isRecurrent: true,
               dayOfWeek: 1,
               date: null,
-              allDay: false,
               startMinute: 480,
               endMinute: 720,
             },

@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm";
 
 import {
+  teamMembers,
   teams,
   users,
   workdays,
@@ -20,6 +21,7 @@ import {
   workdayUsers,
 } from "@/drizzle/schema";
 import { DEACTIVATION_TABLE } from "@/lib/domain/deactivation-tables";
+import type { WorkdayPolicySnapshot } from "@/lib/domain/workday-write-policy";
 import { getDb, type Db } from "@/lib/db/client";
 import { archiveRecords } from "@/lib/repos/deactivation-reasons";
 import type {
@@ -40,14 +42,12 @@ export type WorkdaySlotRecord = {
   isRecurrent: boolean;
   dayOfWeek: number | null;
   date: string | null;
-  allDay: boolean;
-  startMinute: number | null;
-  endMinute: number | null;
+  startMinute: number;
+  endMinute: number;
 };
 
 export type WorkdayRecord = {
   id: string;
-  name: string;
   description: string | null;
   action: WorkdayAction;
   scope: WorkdayScope;
@@ -55,6 +55,10 @@ export type WorkdayRecord = {
   validFrom: string | null;
   validUntil: string | null;
   active: boolean;
+  createdBy: string | null;
+  updatedBy: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type WorkdayWithRelations = WorkdayRecord & {
@@ -63,9 +67,15 @@ export type WorkdayWithRelations = WorkdayRecord & {
   slots: WorkdaySlotRecord[];
 };
 
+export type WorkdayListViewer = {
+  role: "admin" | "manager" | "leader";
+  userId: string;
+  teamIds: string[];
+  userIds: string[];
+};
+
 const WORKDAY_COLUMNS = {
   id: workdays.id,
-  name: workdays.name,
   description: workdays.description,
   action: workdays.action,
   scope: workdays.scope,
@@ -73,6 +83,10 @@ const WORKDAY_COLUMNS = {
   validFrom: workdays.validFrom,
   validUntil: workdays.validUntil,
   active: workdays.active,
+  createdBy: workdays.createdBy,
+  updatedBy: workdays.updatedBy,
+  createdAt: workdays.createdAt,
+  updatedAt: workdays.updatedAt,
 } as const;
 
 const WORKDAY_SLOT_COLUMNS = {
@@ -81,17 +95,23 @@ const WORKDAY_SLOT_COLUMNS = {
   isRecurrent: workdaySlots.isRecurrent,
   dayOfWeek: workdaySlots.dayOfWeek,
   date: workdaySlots.date,
-  allDay: workdaySlots.allDay,
   startMinute: workdaySlots.startMinute,
   endMinute: workdaySlots.endMinute,
 } as const;
 
 const WORKDAY_SLOT_COUNT = sql<number>`
-  (select count(*)::int from ${workdaySlots} where ${workdaySlots.workdayId} = ${workdays.id})
+  (select count(*)::int from ${workdaySlots}
+    where ${workdaySlots.workdayId} = ${workdays.id})
+`;
+
+const IS_RECURRENT_ROW = sql<boolean>`
+  exists (
+    select 1 from ${workdaySlots} s
+    where s.workday_id = ${workdays.id} and s.is_recurrent = true
+  )
 `;
 
 type WriteWorkdayInput = {
-  name: string;
   description: string | null;
   action: WorkdayAction;
   scope: WorkdayScope;
@@ -101,6 +121,7 @@ type WriteWorkdayInput = {
   teamIds: string[];
   userIds: string[];
   slots: WorkdaySlotInput[];
+  actorUserId?: string | null;
 };
 
 async function replaceWorkdayRelations(
@@ -131,9 +152,8 @@ async function replaceWorkdayRelations(
         isRecurrent: slot.isRecurrent,
         dayOfWeek: slot.isRecurrent ? slot.dayOfWeek : null,
         date: slot.isRecurrent ? null : slot.date,
-        allDay: slot.allDay,
-        startMinute: slot.allDay ? null : slot.startMinute,
-        endMinute: slot.allDay ? null : slot.endMinute,
+        startMinute: slot.startMinute,
+        endMinute: slot.endMinute,
       })),
     );
   }
@@ -147,13 +167,14 @@ export async function createWorkday(
     const [row] = await tx
       .insert(workdays)
       .values({
-        name: input.name.trim(),
         description: input.description,
         action: input.action,
         scope: input.scope,
         timezone: input.timezone,
         validFrom: input.validFrom,
         validUntil: input.validUntil,
+        createdBy: input.actorUserId ?? null,
+        updatedBy: input.actorUserId ?? null,
       })
       .returning(WORKDAY_COLUMNS);
 
@@ -171,13 +192,13 @@ export async function updateWorkday(
     const [row] = await tx
       .update(workdays)
       .set({
-        name: input.name.trim(),
         description: input.description,
         action: input.action,
         scope: input.scope,
         timezone: input.timezone,
         validFrom: input.validFrom,
         validUntil: input.validUntil,
+        updatedBy: input.actorUserId ?? null,
         updatedAt: new Date(),
       })
       .where(eq(workdays.id, id))
@@ -268,26 +289,115 @@ async function loadSlotsByWorkdayIds(
   return byWorkday;
 }
 
-function workdayListOrderBy(sort: WorkdayListSort) {
+async function attachRelations(
+  rows: WorkdayRecord[],
+  db: Db,
+): Promise<WorkdayWithRelations[]> {
+  const ids = rows.map((row) => row.id);
+  const [teamsById, usersById, slotsById] = await Promise.all([
+    loadTeamsByWorkdayIds(ids, db),
+    loadUsersByWorkdayIds(ids, db),
+    loadSlotsByWorkdayIds(ids, db),
+  ]);
+  return rows.map((row) => ({
+    ...row,
+    teams: teamsById.get(row.id) ?? [],
+    users: usersById.get(row.id) ?? [],
+    slots: slotsById.get(row.id) ?? [],
+  }));
+}
+
+function workdayAvulsoOrderBy(sort: WorkdayListSort) {
   const dir = sort.direction === "desc" ? desc : asc;
   if (sort.column === "action") {
-    return [dir(workdays.action), asc(workdays.name), asc(workdays.id)];
+    return [dir(workdays.action), desc(workdays.createdAt), asc(workdays.id)];
   }
   if (sort.column === "scope") {
-    return [dir(workdays.scope), asc(workdays.name), asc(workdays.id)];
+    return [dir(workdays.scope), desc(workdays.createdAt), asc(workdays.id)];
   }
   if (sort.column === "validity") {
     return [
       dir(workdays.validFrom),
       dir(workdays.validUntil),
-      asc(workdays.name),
+      desc(workdays.createdAt),
       asc(workdays.id),
     ];
   }
   if (sort.column === "slots") {
-    return [dir(WORKDAY_SLOT_COUNT), asc(workdays.name), asc(workdays.id)];
+    return [dir(WORKDAY_SLOT_COUNT), desc(workdays.createdAt), asc(workdays.id)];
   }
-  return [dir(workdays.name), asc(workdays.id)];
+  return [dir(workdays.createdAt), asc(workdays.id)];
+}
+
+function searchClause(q: string) {
+  const pattern = `%${q}%`;
+  return or(
+    ilike(workdays.description, pattern),
+    sql`exists (
+      select 1 from ${workdayUsers}
+      inner join ${users} on ${users.id} = ${workdayUsers.userId}
+      where ${workdayUsers.workdayId} = ${workdays.id}
+        and ${users.name} ilike ${pattern}
+    )`,
+    sql`exists (
+      select 1 from ${workdayTeams}
+      inner join ${teams} on ${teams.id} = ${workdayTeams.teamId}
+      where ${workdayTeams.workdayId} = ${workdays.id}
+        and ${teams.name} ilike ${pattern}
+    )`,
+  );
+}
+
+function slotDateClause(dateFrom?: string, dateTo?: string) {
+  if (!dateFrom && !dateTo) return undefined;
+  const fromBound = dateFrom
+    ? sql`and s.date >= ${dateFrom}`
+    : sql``;
+  const toBound = dateTo ? sql`and s.date <= ${dateTo}` : sql``;
+  return sql`(
+    exists (
+      select 1 from ${workdaySlots} s
+      where s.workday_id = ${workdays.id} and s.is_recurrent = true
+    )
+    or exists (
+      select 1 from ${workdaySlots} s
+      where s.workday_id = ${workdays.id}
+        and s.is_recurrent = false
+        ${fromBound}
+        ${toBound}
+    )
+  )`;
+}
+
+function sqlUuidInList(columnSql: ReturnType<typeof sql>, ids: string[]) {
+  return sql`${columnSql} in (${sql.join(
+    ids.map((id) => sql`${id}`),
+    sql`, `,
+  )})`;
+}
+
+function leaderVisibilityClause(viewer: WorkdayListViewer) {
+  const teamFilter =
+    viewer.teamIds.length > 0
+      ? sql`exists (
+          select 1 from ${workdayTeams} wt
+          where wt.workday_id = ${workdays.id}
+            and ${sqlUuidInList(sql`wt.team_id`, viewer.teamIds)}
+        )`
+      : sql`false`;
+  const userFilter =
+    viewer.userIds.length > 0
+      ? sql`exists (
+          select 1 from ${workdayUsers} wu
+          where wu.workday_id = ${workdays.id}
+            and ${sqlUuidInList(sql`wu.user_id`, viewer.userIds)}
+        )`
+      : sql`false`;
+  return sql`(
+    ${workdays.scope} = 'global'
+    or (${workdays.scope} = 'team' and ${teamFilter})
+    or (${workdays.scope} = 'user' and ${userFilter})
+  )`;
 }
 
 export async function listWorkdaysPage(
@@ -295,10 +405,13 @@ export async function listWorkdaysPage(
     q?: string;
     action?: WorkdayAction;
     scope?: WorkdayScope;
+    dateFrom?: string;
+    dateTo?: string;
     page?: number;
     pageSize?: number;
     sort?: WorkdayListSort;
     showArchived?: boolean;
+    viewer?: WorkdayListViewer;
   } = {},
   db: Db = getDb(),
 ): Promise<{ items: WorkdayWithRelations[]; total: number }> {
@@ -306,20 +419,30 @@ export async function listWorkdaysPage(
   const pageSize = Math.max(1, options.pageSize ?? 10);
   const offset = (page - 1) * pageSize;
   const q = options.q?.trim();
-  const sort = options.sort ?? { column: "name", direction: "asc" };
+  const sort = options.sort ?? { column: "createdAt", direction: "desc" };
 
   const activeClause = eq(workdays.active, !options.showArchived);
-  const searchClause = q
-    ? or(ilike(workdays.name, `%${q}%`), ilike(workdays.description, `%${q}%`))
-    : undefined;
+  const qClause = q ? searchClause(q) : undefined;
   const actionClause = options.action
     ? eq(workdays.action, options.action)
     : undefined;
   const scopeClause = options.scope
     ? eq(workdays.scope, options.scope)
     : undefined;
+  const datesClause = slotDateClause(options.dateFrom, options.dateTo);
+  const viewerClause =
+    options.viewer?.role === "leader"
+      ? leaderVisibilityClause(options.viewer)
+      : undefined;
 
-  const where = and(activeClause, searchClause, actionClause, scopeClause);
+  const where = and(
+    activeClause,
+    qClause,
+    actionClause,
+    scopeClause,
+    datesClause,
+    viewerClause,
+  );
 
   const [totalRow] = await db
     .select({ total: count() })
@@ -330,24 +453,12 @@ export async function listWorkdaysPage(
     .select(WORKDAY_COLUMNS)
     .from(workdays)
     .where(where)
-    .orderBy(...workdayListOrderBy(sort))
+    .orderBy(desc(IS_RECURRENT_ROW), ...workdayAvulsoOrderBy(sort))
     .limit(pageSize)
     .offset(offset);
 
-  const ids = rows.map((row) => row.id);
-  const [teamsById, usersById, slotsById] = await Promise.all([
-    loadTeamsByWorkdayIds(ids, db),
-    loadUsersByWorkdayIds(ids, db),
-    loadSlotsByWorkdayIds(ids, db),
-  ]);
-
   return {
-    items: rows.map((row) => ({
-      ...row,
-      teams: teamsById.get(row.id) ?? [],
-      users: usersById.get(row.id) ?? [],
-      slots: slotsById.get(row.id) ?? [],
-    })),
+    items: await attachRelations(rows, db),
     total: totalRow?.total ?? 0,
   };
 }
@@ -362,6 +473,37 @@ export async function findWorkdayById(
     .where(eq(workdays.id, id))
     .limit(1);
   return row ?? null;
+}
+
+export async function findWorkdayWithRelations(
+  id: string,
+  db: Db = getDb(),
+): Promise<WorkdayWithRelations | null> {
+  const row = await findWorkdayById(id, db);
+  if (!row) return null;
+  const [withRelations] = await attachRelations([row], db);
+  return withRelations ?? null;
+}
+
+export function toWorkdayPolicySnapshot(
+  row: WorkdayWithRelations,
+): WorkdayPolicySnapshot {
+  return {
+    action: row.action,
+    scope: row.scope,
+    timezone: row.timezone,
+    validFrom: row.validFrom,
+    validUntil: row.validUntil,
+    description: row.description,
+    userIds: row.users.map((user) => user.documentId),
+    teamIds: row.teams.map((team) => team.documentId),
+    slots: row.slots.map((slot) => ({
+      isRecurrent: slot.isRecurrent,
+      date: slot.date,
+      startMinute: slot.startMinute,
+      endMinute: slot.endMinute,
+    })),
+  };
 }
 
 export async function archiveWorkdays(
@@ -403,25 +545,62 @@ export async function hardDeleteWorkday(
   await db.delete(workdays).where(eq(workdays.id, id));
 }
 
+export async function listLeaderWorkdayScope(
+  leaderUserId: string,
+  db: Db = getDb(),
+): Promise<{ teamIds: string[]; userIds: string[] }> {
+  const leaderTeams = await db
+    .select({ id: teams.id })
+    .from(teams)
+    .where(and(eq(teams.leaderId, leaderUserId), eq(teams.active, true)));
+  const teamIds = leaderTeams.map((team) => team.id);
+  if (teamIds.length === 0) return { teamIds: [], userIds: [] };
+
+  const members = await db
+    .select({ userId: teamMembers.userId })
+    .from(teamMembers)
+    .where(inArray(teamMembers.teamId, teamIds));
+
+  return {
+    teamIds,
+    userIds: [...new Set(members.map((member) => member.userId))],
+  };
+}
+
 export async function listWorkdayFormOptions(
+  options: { leaderUserId?: string } = {},
   db: Db = getDb(),
 ): Promise<{ teams: WorkdayTargetRef[]; users: WorkdayTargetRef[] }> {
+  const leaderScope = options.leaderUserId
+    ? await listLeaderWorkdayScope(options.leaderUserId, db)
+    : null;
+
+  const teamFilter = leaderScope
+    ? leaderScope.teamIds.length > 0
+      ? inArray(teams.id, leaderScope.teamIds)
+      : sql`false`
+    : eq(teams.active, true);
+
+  const userFilter = leaderScope
+    ? leaderScope.userIds.length > 0
+      ? inArray(users.id, leaderScope.userIds)
+      : sql`false`
+    : and(
+        eq(users.active, true),
+        eq(users.blocked, false),
+        ne(users.role, "kiosk"),
+      );
+
   const [teamRows, userRows] = await Promise.all([
     db
       .select({ id: teams.id, name: teams.name })
       .from(teams)
-      .where(eq(teams.active, true))
+      .where(and(eq(teams.active, true), teamFilter))
       .orderBy(asc(teams.name)),
     db
       .select({ id: users.id, name: users.name })
       .from(users)
-      .where(
-        and(
-          eq(users.active, true),
-          eq(users.blocked, false),
-          ne(users.role, "kiosk"),
-        ),
-      )
+      .where(and(eq(users.active, true), eq(users.blocked, false), userFilter))
       .orderBy(asc(users.name)),
   ]);
 

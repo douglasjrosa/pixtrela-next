@@ -6,11 +6,18 @@ import { workdayListSortSchema } from "./workday-list-sort";
 export const WORKDAY_LIST_PAGE_SIZE = 10;
 export const WORKDAY_LIST_SEARCH_MIN_CHARS = 1;
 
+const optionalIsoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .optional();
+
 export const workdayListFiltersSchema = z
   .object({
     q: z.string().optional(),
     action: z.enum(WORKDAY_ACTIONS).optional(),
     scope: z.enum(WORKDAY_SCOPES).optional(),
+    dateFrom: optionalIsoDate,
+    dateTo: optionalIsoDate,
     showArchived: z.boolean().default(false),
   })
   .merge(workdayListSortSchema)
@@ -26,6 +33,13 @@ export const workdayListFiltersSchema = z
         path: ["q"],
       });
     }
+    if (data.dateFrom && data.dateTo && data.dateTo < data.dateFrom) {
+      ctx.addIssue({
+        code: "custom",
+        message: "dateOrder",
+        path: ["dateTo"],
+      });
+    }
   })
   .transform((data) => {
     const trimmedQ = data.q?.trim() ?? "";
@@ -36,6 +50,8 @@ export const workdayListFiltersSchema = z
           : undefined,
       action: data.action,
       scope: data.scope,
+      dateFrom: data.dateFrom,
+      dateTo: data.dateTo,
       showArchived: data.showArchived,
       column: data.column,
       direction: data.direction,

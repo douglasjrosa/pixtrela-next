@@ -72,14 +72,19 @@ export function canDeleteTeams(role: Role | undefined): boolean {
   return role === "admin";
 }
 
-/** Workdays CRUD: manager and admin. */
-export function canManageWorkdays(role: Role | undefined): boolean {
-  return isAtLeast(role, "manager");
+/** Workdays screen: leader and above. */
+export function canAccessWorkdays(role: Role | undefined): boolean {
+  return isAtLeast(role, "leader");
 }
 
-/** Soft-archive workdays: manager and admin. */
+/** Workdays CRUD: leader (avulsos) and manager/admin (all types). */
+export function canManageWorkdays(role: Role | undefined): boolean {
+  return canAccessWorkdays(role);
+}
+
+/** Soft-archive workdays: leader and above (row policy still applies). */
 export function canDeactivateWorkdays(role: Role | undefined): boolean {
-  return canManageWorkdays(role);
+  return canAccessWorkdays(role);
 }
 
 /** Hard delete workdays: admin only. */
@@ -207,7 +212,7 @@ const ROUTE_GUARDS: { prefix: string; check: (role: Role | undefined) => boolean
   { prefix: "/settings", check: canManageSettings },
   { prefix: "/users", check: canViewUsers },
   { prefix: "/activities", check: canViewActivities },
-  { prefix: "/workdays", check: canManageWorkdays },
+  { prefix: "/workdays", check: canAccessWorkdays },
 ];
 
 /** Whether role may access a route prefix (logged-in routes only). */

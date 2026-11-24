@@ -1,4 +1,8 @@
-import type { WorkdaySlotInput } from "@/lib/schemas/workday";
+import {
+  MAX_MINUTE_OF_DAY,
+  MIN_MINUTE_OF_DAY,
+  type WorkdaySlotInput,
+} from "@/lib/schemas/workday";
 
 export const MAX_DATE_RANGE_DAYS = 366;
 export const WEEKDAY_MONDAY_TO_FRIDAY = [1, 2, 3, 4, 5] as const;
@@ -23,9 +27,8 @@ export function slotIdentityKey(slot: WorkdaySlotInput): string {
     slot.isRecurrent ? "R" : "D",
     slot.dayOfWeek ?? "",
     slot.date ?? "",
-    slot.allDay ? "A" : "T",
-    slot.startMinute ?? "",
-    slot.endMinute ?? "",
+    slot.startMinute,
+    slot.endMinute,
   ].join("|");
 }
 
@@ -40,46 +43,48 @@ function compareSlots(a: WorkdaySlotInput, b: WorkdaySlotInput): number {
     const dateDiff = (a.date ?? "").localeCompare(b.date ?? "");
     if (dateDiff !== 0) return dateDiff;
   }
-  if (a.allDay !== b.allDay) {
-    return a.allDay ? -1 : 1;
-  }
-  const startDiff = (a.startMinute ?? 0) - (b.startMinute ?? 0);
+  const startDiff = a.startMinute - b.startMinute;
   if (startDiff !== 0) return startDiff;
-  return (a.endMinute ?? 0) - (b.endMinute ?? 0);
+  return a.endMinute - b.endMinute;
 }
 
-export function allDayWeekSlots(): WorkdaySlotInput[] {
+export function civilDayMinutes(): {
+  startMinute: number;
+  endMinute: number;
+} {
+  return {
+    startMinute: MIN_MINUTE_OF_DAY,
+    endMinute: MAX_MINUTE_OF_DAY,
+  };
+}
+
+export function civilDayWeekSlots(): WorkdaySlotInput[] {
   return expandRecurrentSlots({
     daysOfWeek: ALL_WEEKDAYS,
-    allDay: true,
-    startMinute: null,
-    endMinute: null,
+    ...civilDayMinutes(),
   });
 }
 
 export function expandRecurrentSlots(input: {
   daysOfWeek: readonly number[];
-  allDay: boolean;
-  startMinute: number | null;
-  endMinute: number | null;
+  startMinute: number;
+  endMinute: number;
 }): WorkdaySlotInput[] {
   const uniqueDays = [...new Set(input.daysOfWeek)].sort((a, b) => a - b);
   return uniqueDays.map((dayOfWeek) => ({
     isRecurrent: true,
     dayOfWeek,
     date: null,
-    allDay: input.allDay,
-    startMinute: input.allDay ? null : input.startMinute,
-    endMinute: input.allDay ? null : input.endMinute,
+    startMinute: input.startMinute,
+    endMinute: input.endMinute,
   }));
 }
 
 export function expandDateRangeSlots(input: {
   startDate: string;
   endDate?: string;
-  allDay: boolean;
-  startMinute: number | null;
-  endMinute: number | null;
+  startMinute: number;
+  endMinute: number;
 }): WorkdaySlotInput[] {
   const start = toUtcDate(input.startDate);
   const end = toUtcDate(input.endDate?.trim() || input.startDate);
@@ -96,9 +101,8 @@ export function expandDateRangeSlots(input: {
       isRecurrent: false,
       dayOfWeek: null,
       date: fromUtcDate(current),
-      allDay: input.allDay,
-      startMinute: input.allDay ? null : input.startMinute,
-      endMinute: input.allDay ? null : input.endMinute,
+      startMinute: input.startMinute,
+      endMinute: input.endMinute,
     });
   }
   return slots;
@@ -113,4 +117,15 @@ export function mergeAndSortWorkdaySlots(
     byKey.set(slotIdentityKey(slot), slot);
   }
   return [...byKey.values()].sort(compareSlots);
+}
+
+export function weekdayOfSlot(slot: {
+  isRecurrent: boolean;
+  dayOfWeek: number | null;
+  date: string | null;
+}): number {
+  if (slot.isRecurrent) return slot.dayOfWeek ?? 0;
+  if (!slot.date) return 0;
+  const [year, month, day] = slot.date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }

@@ -41,7 +41,7 @@ describe("tasksSectionTabs", () => {
 });
 
 describe("teamsSectionTabs", () => {
-  it("shows only queues for leader", () => {
+  it("shows queues and workdays for leader", () => {
     expect(
       teamsSectionTabs("leader", labels, {
         queues: "/queues",
@@ -49,10 +49,8 @@ describe("teamsSectionTabs", () => {
         users: "/users",
         activities: "/activities",
         workdays: "/workdays",
-      }),
-    ).toEqual([
-      { href: "/queues", label: "Filas", activePrefix: "/queues" },
-    ]);
+      }).map((tab) => tab.href),
+    ).toEqual(["/queues", "/workdays"]);
   });
 
   it("shows queues, teams, users and workdays for manager", () => {

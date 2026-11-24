@@ -16,9 +16,16 @@ const VALID_RECURRENT_SLOT = {
   isRecurrent: true,
   dayOfWeek: 1,
   date: null,
-  allDay: false,
   startMinute: 480,
   endMinute: 720,
+};
+
+const CIVIL_DAY_SLOT = {
+  isRecurrent: false,
+  dayOfWeek: null,
+  date: "2026-11-20",
+  startMinute: 0,
+  endMinute: 1440,
 };
 
 describe("time helpers", () => {
@@ -45,16 +52,10 @@ describe("workdaySlotInputSchema", () => {
     expect(parsed.date).toBeNull();
   });
 
-  it("accepts a specific-date all-day slot", () => {
-    const parsed = workdaySlotInputSchema.parse({
-      isRecurrent: false,
-      dayOfWeek: null,
-      date: "2026-11-20",
-      allDay: true,
-      startMinute: null,
-      endMinute: null,
-    });
-    expect(parsed.allDay).toBe(true);
+  it("accepts a specific-date civil-day slot", () => {
+    const parsed = workdaySlotInputSchema.parse(CIVIL_DAY_SLOT);
+    expect(parsed.startMinute).toBe(0);
+    expect(parsed.endMinute).toBe(1440);
     expect(parsed.date).toBe("2026-11-20");
   });
 
@@ -88,9 +89,8 @@ describe("workdaySlotInputSchema", () => {
         isRecurrent: false,
         dayOfWeek: null,
         date: null,
-        allDay: true,
-        startMinute: null,
-        endMinute: null,
+        startMinute: 0,
+        endMinute: 1440,
       }).success,
     ).toBe(false);
     expect(
@@ -98,16 +98,14 @@ describe("workdaySlotInputSchema", () => {
         isRecurrent: false,
         dayOfWeek: 2,
         date: "2026-11-20",
-        allDay: true,
-        startMinute: null,
-        endMinute: null,
+        startMinute: 0,
+        endMinute: 1440,
       }).success,
     ).toBe(false);
   });
 });
 
 const BASE_FORM = {
-  name: "Expediente padrão",
   description: "",
   action: "work" as const,
   scope: "global" as const,
@@ -120,7 +118,7 @@ const BASE_FORM = {
 };
 
 describe("workdayFormSchema", () => {
-  it("accepts and normalizes a global workday", () => {
+  it("accepts and normalizes a global work scale", () => {
     const parsed = normalizeWorkdayFormValues(
       workdayFormSchema.parse(BASE_FORM),
     );
@@ -136,7 +134,6 @@ describe("workdayFormSchema", () => {
     expect(
       workdayFormSchema.safeParse({
         ...BASE_FORM,
-        name: "Turno A",
         scope: "team",
         teamIds: [],
       }).success,
@@ -145,7 +142,6 @@ describe("workdayFormSchema", () => {
     const parsed = normalizeWorkdayFormValues(
       workdayFormSchema.parse({
         ...BASE_FORM,
-        name: "Turno A",
         scope: "team",
         teamIds: [TEAM_ID],
         userIds: [USER_ID],
@@ -159,21 +155,39 @@ describe("workdayFormSchema", () => {
     expect(
       workdayFormSchema.safeParse({
         ...BASE_FORM,
-        name: "Folga João",
         action: "off",
         scope: "user",
         userIds: [],
+        slots: [
+          {
+            isRecurrent: false,
+            dayOfWeek: null,
+            date: "2026-11-24",
+            startMinute: 480,
+            endMinute: 720,
+          },
+        ],
       }).success,
     ).toBe(false);
 
     const parsed = normalizeWorkdayFormValues(
       workdayFormSchema.parse({
         ...BASE_FORM,
-        name: "Folga João",
         action: "off",
         scope: "user",
         teamIds: [TEAM_ID],
         userIds: [USER_ID],
+        validFrom: "",
+        validUntil: "",
+        slots: [
+          {
+            isRecurrent: false,
+            dayOfWeek: null,
+            date: "2026-11-24",
+            startMinute: 480,
+            endMinute: 720,
+          },
+        ],
       }),
     );
     expect(parsed.userIds).toEqual([USER_ID]);
@@ -183,7 +197,6 @@ describe("workdayFormSchema", () => {
   it("rejects validUntil earlier than validFrom", () => {
     const res = workdayFormSchema.safeParse({
       ...BASE_FORM,
-      name: "Verão",
       validFrom: "2026-12-10",
       validUntil: "2026-12-01",
     });
@@ -193,9 +206,53 @@ describe("workdayFormSchema", () => {
   it("requires at least one slot", () => {
     const res = workdayFormSchema.safeParse({
       ...BASE_FORM,
-      name: "Sem horários",
       slots: [],
     });
     expect(res.success).toBe(false);
+  });
+
+  it("requires a civil-day holiday to be global with 00:00-24:00", () => {
+    expect(
+      workdayFormSchema.safeParse({
+        ...BASE_FORM,
+        action: "holiday",
+        scope: "user",
+        userIds: [USER_ID],
+        slots: [CIVIL_DAY_SLOT],
+      }).success,
+    ).toBe(false);
+
+    const parsed = workdayFormSchema.parse({
+      ...BASE_FORM,
+      action: "holiday",
+      scope: "global",
+      slots: [CIVIL_DAY_SLOT],
+    });
+    expect(parsed.slots[0]?.startMinute).toBe(0);
+    expect(parsed.slots[0]?.endMinute).toBe(1440);
+  });
+
+  it("requires a 15-character description for excused absence", () => {
+    expect(
+      workdayFormSchema.safeParse({
+        ...BASE_FORM,
+        action: "excused_absence",
+        scope: "user",
+        userIds: [USER_ID],
+        description: "curto demais",
+        slots: [CIVIL_DAY_SLOT],
+      }).success,
+    ).toBe(false);
+
+    expect(
+      workdayFormSchema.safeParse({
+        ...BASE_FORM,
+        action: "excused_absence",
+        scope: "user",
+        userIds: [USER_ID],
+        description: "Atestado entregue na portaria.",
+        slots: [CIVIL_DAY_SLOT],
+      }).success,
+    ).toBe(true);
   });
 });

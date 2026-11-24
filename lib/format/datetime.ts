@@ -146,6 +146,36 @@ export function formatActivityDateTimePtBr(
   return `${day}/${month}/${year} - ${hour}h${minute}`;
 }
 
+const WORK_RESUME_PART_OPTIONS: Intl.DateTimeFormatOptions = {
+  day: "2-digit",
+  month: "2-digit",
+  year: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: DEFAULT_TIME_ZONE,
+};
+
+/** Resume toast parts: `dd/mm/yy` + `HH:mm` in the app time zone. */
+export function formatWorkResumePartsPtBr(
+  value: string | Date | null | undefined,
+): { date: string; time: string } | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat(
+    "pt-BR",
+    WORK_RESUME_PART_OPTIONS,
+  ).formatToParts(date);
+  const day = activityPart(parts, "day");
+  const month = activityPart(parts, "month");
+  const year = activityPart(parts, "year");
+  const hour = activityPart(parts, "hour");
+  const minute = activityPart(parts, "minute");
+  if (!day || !month || !year || !hour || !minute) return null;
+  return { date: `${day}/${month}/${year}`, time: `${hour}:${minute}` };
+}
+
 /** Formats time as hh:mm for pt-BR UI. */
 export function formatTimePtBr(value: string | null | undefined): string {
   if (!value) return "—";

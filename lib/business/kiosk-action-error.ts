@@ -18,6 +18,7 @@ export const KIOSK_ACTION_ERROR_CODES = [
   "chainNotJoinable",
   "notStartable",
   "notFound",
+  "outsideWorkday",
 ] as const;
 
 export type KioskActionErrorFallback = "startFailed" | "exitFailed";
@@ -34,6 +35,7 @@ export function kioskActionErrorMessage(
   fallback: KioskActionErrorFallback,
 ): string {
   const code = readErrorCode(error);
+  if (code === "outsideWorkday") return t("outsideWorkdayUnknown");
   if ((KIOSK_ACTION_ERROR_CODES as readonly string[]).includes(code)) {
     return t(code);
   }

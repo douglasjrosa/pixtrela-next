@@ -33,14 +33,13 @@ vi.mock("next/navigation", () => ({
 }));
 
 const filters = {
-  column: "name" as const,
-  direction: "asc" as const,
+  column: "createdAt" as const,
+  direction: "desc" as const,
   showArchived: false,
 };
 
 const activeRow: WorkdayRow = {
   documentId: "wd-1",
-  name: "Expediente padrão",
   description: null,
   action: "work",
   scope: "global",
@@ -51,16 +50,18 @@ const activeRow: WorkdayRow = {
   teams: [],
   users: [],
   slots: [],
+  editable: true,
+  archivable: true,
 };
 
 const labels = {
-  actionLabel: "Trabalho",
+  actionLabel: "Expediente",
   scopeLabel: "Global (todos)",
   validityLabel: "Contínua",
-  slotsSummary: [],
+  slotGroups: [],
   slotsCountLabel: "0 horários",
   inactiveLabel: "Inativo",
-  selectRowLabel: "Selecionar Expediente padrão",
+  selectRowLabel: "Selecionar Expediente",
 };
 
 describe("WorkdaysListTableFrame", () => {
@@ -79,8 +80,7 @@ describe("WorkdaysListTableFrame", () => {
         {
           ...activeRow,
           documentId: "wd-2",
-          name: "Feriado",
-          action: "off",
+          action: "holiday",
         },
       ],
       page: 2,

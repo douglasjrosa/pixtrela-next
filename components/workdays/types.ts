@@ -15,7 +15,6 @@ export interface WorkdaySlotRow extends WorkdaySlotInput {
 
 export interface WorkdayRow {
   documentId: string;
-  name: string;
   description: string | null;
   action: WorkdayAction;
   scope: WorkdayScope;
@@ -26,4 +25,6 @@ export interface WorkdayRow {
   teams: TargetOption[];
   users: TargetOption[];
   slots: WorkdaySlotRow[];
+  editable: boolean;
+  archivable: boolean;
 }

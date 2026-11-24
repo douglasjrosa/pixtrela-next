@@ -10,10 +10,22 @@ import { AddNewButton } from "@/components/ui/add-new-button";
 import { Button } from "@/components/ui/button";
 import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { FormModalShell } from "@/components/ui/form-modal-shell";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ListPageActionsProvider } from "@/components/ui/list-page-actions-slot";
 import { Textarea } from "@/components/ui/textarea";
+import type { Role } from "@/lib/auth/nav";
+import { toCalendarDateKey } from "@/lib/business/datetime-timezone";
+import {
+  defaultWorkdayActionForRole,
+  defaultWorkdayScope,
+  isCivilDayWorkdayAction,
+  isRecurrentWorkdayAction,
+  LEADER_WORKDAY_ACTIONS,
+  leaderPastFlipTarget,
+  requiresWorkdayDescription,
+  WORKDAY_ACTIONS,
+  type WorkdayAction,
+} from "@/lib/domain/workday-actions";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import {
   DEFAULT_WORKDAY_TIMEZONE,
@@ -22,6 +34,7 @@ import {
   type WorkdayFormInput,
 } from "@/lib/schemas/workday";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/app-toast";
+import { WORKDAY_ACTION_MESSAGE_KEYS } from "@/lib/workdays/workday-action-labels";
 
 import type { TargetOption, WorkdayRow } from "./types";
 import { WorkdayListProvider } from "./workday-list-context";
@@ -37,6 +50,7 @@ const SELECT_CLASS =
 export interface WorkdayManagerProps {
   teams: TargetOption[];
   users: TargetOption[];
+  actorRole: Role;
   children: ReactNode;
   onCreate: (values: WorkdayFormInput) => void | Promise<void>;
   onUpdate: (
@@ -45,18 +59,20 @@ export interface WorkdayManagerProps {
   ) => void | Promise<void>;
 }
 
-const EMPTY_FORM: WorkdayFormInput = {
-  name: "",
-  description: "",
-  action: "work",
-  scope: "global",
-  timezone: DEFAULT_WORKDAY_TIMEZONE,
-  validFrom: "",
-  validUntil: "",
-  teamIds: [],
-  userIds: [],
-  slots: [],
-};
+function emptyForm(role: Role): WorkdayFormInput {
+  const action = defaultWorkdayActionForRole(role);
+  return {
+    description: "",
+    action,
+    scope: role === "leader" ? "user" : defaultWorkdayScope(action),
+    timezone: DEFAULT_WORKDAY_TIMEZONE,
+    validFrom: "",
+    validUntil: "",
+    teamIds: [],
+    userIds: [],
+    slots: [],
+  };
+}
 
 function toDateInputValue(value: string | null | undefined): string {
   if (!value) return "";
@@ -65,7 +81,6 @@ function toDateInputValue(value: string | null | undefined): string {
 
 function toFormValues(workday: WorkdayRow): WorkdayFormInput {
   return {
-    name: workday.name,
     description: workday.description ?? "",
     action: workday.action,
     scope: workday.scope,
@@ -78,7 +93,6 @@ function toFormValues(workday: WorkdayRow): WorkdayFormInput {
       isRecurrent: slot.isRecurrent,
       dayOfWeek: slot.dayOfWeek,
       date: slot.date,
-      allDay: slot.allDay,
       startMinute: slot.startMinute,
       endMinute: slot.endMinute,
     })),
@@ -90,18 +104,29 @@ function resolveErrorMessage(
   t: ReturnType<typeof useTranslations<"workdays">>,
 ): string | undefined {
   if (!code) return undefined;
-  if (code === "nameRequired") return t("validationNameRequired");
   if (code === "teamsRequired") return t("validationTeamsRequired");
   if (code === "usersRequired") return t("validationUsersRequired");
   if (code === "slotsRequired") return t("validationSlotsRequired");
   if (code === "validityOrder") return t("validationValidityOrder");
+  if (code === "descriptionRequired") return t("validationDescriptionRequired");
+  if (code === "invalidScopeForAction") return t("validationScopeForAction");
+  if (code === "recurrentSlotsRequired") return t("validationRecurrentSlots");
+  if (code === "datedSingleSlotRequired") return t("validationDatedSingleSlot");
+  if (code === "civilDayRequired") return t("validationCivilDay");
+  if (code === "validityNotAllowed") return t("validationValidityNotAllowed");
   return code;
+}
+
+function actionOptionsForRole(role: Role): WorkdayAction[] {
+  if (role === "leader") return [...LEADER_WORKDAY_ACTIONS];
+  return [...WORKDAY_ACTIONS];
 }
 
 interface WorkdayFormDialogProps {
   editingWorkday: WorkdayRow | null;
   teams: TargetOption[];
   users: TargetOption[];
+  actorRole: Role;
   isPending: boolean;
   onClose: () => void;
   onSubmit: (values: WorkdayFormInput) => void;
@@ -111,6 +136,7 @@ function WorkdayFormDialog({
   editingWorkday,
   teams,
   users,
+  actorRole,
   isPending,
   onClose,
   onSubmit,
@@ -118,25 +144,62 @@ function WorkdayFormDialog({
   const tCommon = useTranslations("common");
   const t = useTranslations("workdays");
   const isEditing = editingWorkday !== null;
+  const isLeader = actorRole === "leader";
   const formId = "workday-form";
+  const pastFlipTarget =
+    isLeader && editingWorkday
+      ? leaderPastFlipTarget(editingWorkday.action)
+      : null;
+  const existingDate = editingWorkday?.slots.find((slot) => slot.date)?.date;
+  const todayIso = toCalendarDateKey(new Date(), DEFAULT_WORKDAY_TIMEZONE);
+  const isPastFlip =
+    pastFlipTarget !== null &&
+    existingDate !== undefined &&
+    existingDate < todayIso;
 
   const {
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors },
   } = useForm<WorkdayFormInput>({
     resolver: zodResolver(workdayFormSchema),
-    defaultValues: isEditing ? toFormValues(editingWorkday) : EMPTY_FORM,
+    defaultValues: isEditing ? toFormValues(editingWorkday) : emptyForm(actorRole),
   });
 
+  const action = (useWatch({ control, name: "action" }) ??
+    defaultWorkdayActionForRole(actorRole)) as WorkdayAction;
   const scope = useWatch({ control, name: "scope" }) ?? "global";
-  const timezone = useWatch({ control, name: "timezone" }) ?? DEFAULT_WORKDAY_TIMEZONE;
+  const timezone =
+    useWatch({ control, name: "timezone" }) ?? DEFAULT_WORKDAY_TIMEZONE;
   const timezoneList = WORKDAY_TIMEZONE_OPTIONS.includes(
     timezone as (typeof WORKDAY_TIMEZONE_OPTIONS)[number],
   )
     ? WORKDAY_TIMEZONE_OPTIONS
     : ([timezone, ...WORKDAY_TIMEZONE_OPTIONS] as const);
+
+  const recurrent = isRecurrentWorkdayAction(action);
+  const civilDay = isCivilDayWorkdayAction(action);
+  const showScope = !isLeader && (action === "work" || action === "off");
+  const showValidity = recurrent && !isLeader;
+  const showTimezone = !isLeader;
+  const lockFields = isPastFlip;
+  const visibleActions = isPastFlip && pastFlipTarget && editingWorkday
+    ? [editingWorkday.action, pastFlipTarget]
+    : actionOptionsForRole(actorRole);
+
+  function handleActionChange(next: WorkdayAction): void {
+    setValue("action", next);
+    if (lockFields) return;
+    setValue("scope", isLeader ? "user" : defaultWorkdayScope(next));
+    setValue("teamIds", []);
+    if (!isLeader) setValue("userIds", []);
+    setValue("validFrom", "");
+    setValue("validUntil", "");
+    setValue("slots", []);
+    if (isLeader) setValue("timezone", DEFAULT_WORKDAY_TIMEZONE);
+  }
 
   return (
     <FormModalShell
@@ -157,116 +220,126 @@ function WorkdayFormDialog({
         onSubmit={handleSubmit(onSubmit)}
         className="grid gap-4 sm:grid-cols-2"
       >
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="workday-name">{t("name")}</Label>
-          <Input
-            id="workday-name"
-            placeholder={t("namePlaceholder")}
-            disabled={isPending}
-            {...register("name")}
-          />
-          {errors.name ? (
-            <p className="text-sm text-destructive">
-              {resolveErrorMessage(errors.name.message, t)}
-            </p>
-          ) : null}
+        <div className="space-y-2">
+          <Label htmlFor="workday-action">{t("action")}</Label>
+          <select
+            id="workday-action"
+            disabled={isPending || (lockFields && !pastFlipTarget)}
+            className={SELECT_CLASS}
+            value={action}
+            onChange={(event) =>
+              handleActionChange(event.target.value as WorkdayAction)
+            }
+          >
+            {visibleActions.map((item) => (
+              <option key={item} value={item}>
+                {t(WORKDAY_ACTION_MESSAGE_KEYS[item])}
+              </option>
+            ))}
+          </select>
         </div>
+
+        {showScope ? (
+          <div className="space-y-2">
+            <Label htmlFor="workday-scope">{t("scope")}</Label>
+            <select
+              id="workday-scope"
+              disabled={isPending || lockFields}
+              className={SELECT_CLASS}
+              {...register("scope")}
+            >
+              <option value="global">{t("scopeGlobal")}</option>
+              <option value="team">{t("scopeTeam")}</option>
+              <option value="user">{t("scopeUser")}</option>
+            </select>
+          </div>
+        ) : (
+          <input type="hidden" {...register("scope")} />
+        )}
 
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="workday-description">{t("description")}</Label>
           <Textarea
             id="workday-description"
             rows={2}
-            placeholder={t("descriptionPlaceholder")}
+            placeholder={
+              requiresWorkdayDescription(action)
+                ? t("descriptionRequiredPlaceholder")
+                : t("descriptionPlaceholder")
+            }
             disabled={isPending}
             {...register("description")}
           />
+          {errors.description ? (
+            <p className="text-sm text-destructive">
+              {resolveErrorMessage(errors.description.message, t)}
+            </p>
+          ) : null}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="workday-action">{t("action")}</Label>
-          <select
-            id="workday-action"
-            disabled={isPending}
-            className={SELECT_CLASS}
-            {...register("action")}
-          >
-            <option value="work">{t("actionWork")}</option>
-            <option value="off">{t("actionOff")}</option>
-          </select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="workday-scope">{t("scope")}</Label>
-          <select
-            id="workday-scope"
-            disabled={isPending}
-            className={SELECT_CLASS}
-            {...register("scope")}
-          >
-            <option value="global">{t("scopeGlobal")}</option>
-            <option value="team">{t("scopeTeam")}</option>
-            <option value="user">{t("scopeUser")}</option>
-          </select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="workday-timezone">{t("timezone")}</Label>
-          <select
-            id="workday-timezone"
-            disabled={isPending}
-            className={SELECT_CLASS}
-            {...register("timezone")}
-          >
-            {timezoneList.map((tz) => (
-              <option key={tz} value={tz}>
-                {tz}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
+        {showTimezone ? (
           <div className="space-y-2">
-            <Label htmlFor="workday-valid-from">{t("validFrom")}</Label>
-            <Controller
-              name="validFrom"
-              control={control}
-              render={({ field }) => (
-                <DatePtBrInput
-                  id="workday-valid-from"
-                  value={field.value ?? ""}
-                  disabled={isPending}
-                  allowEmpty
-                  onChange={field.onChange}
-                />
-              )}
-            />
+            <Label htmlFor="workday-timezone">{t("timezone")}</Label>
+            <select
+              id="workday-timezone"
+              disabled={isPending || lockFields}
+              className={SELECT_CLASS}
+              {...register("timezone")}
+            >
+              {timezoneList.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="workday-valid-until">{t("validUntil")}</Label>
-            <Controller
-              name="validUntil"
-              control={control}
-              render={({ field }) => (
-                <DatePtBrInput
-                  id="workday-valid-until"
-                  value={field.value ?? ""}
-                  disabled={isPending}
-                  allowEmpty
-                  onChange={field.onChange}
-                />
-              )}
-            />
-            {errors.validUntil ? (
-              <p className="text-sm text-destructive">
-                {resolveErrorMessage(errors.validUntil.message, t)}
-              </p>
-            ) : null}
-          </div>
-        </div>
+        ) : (
+          <input type="hidden" {...register("timezone")} />
+        )}
 
-        {scope === "team" ? (
+        {showValidity ? (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="workday-valid-from">{t("validFrom")}</Label>
+              <Controller
+                name="validFrom"
+                control={control}
+                render={({ field }) => (
+                  <DatePtBrInput
+                    id="workday-valid-from"
+                    value={field.value ?? ""}
+                    disabled={isPending}
+                    allowEmpty
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="workday-valid-until">{t("validUntil")}</Label>
+              <Controller
+                name="validUntil"
+                control={control}
+                render={({ field }) => (
+                  <DatePtBrInput
+                    id="workday-valid-until"
+                    value={field.value ?? ""}
+                    disabled={isPending}
+                    allowEmpty
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+              {errors.validUntil ? (
+                <p className="text-sm text-destructive">
+                  {resolveErrorMessage(errors.validUntil.message, t)}
+                </p>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+
+        {scope === "team" && !isLeader ? (
           <div className="sm:col-span-2">
             <Controller
               name="teamIds"
@@ -278,7 +351,7 @@ function WorkdayFormDialog({
                   emptyLabel={t("noTeamsAvailable")}
                   options={teams}
                   value={field.value ?? []}
-                  disabled={isPending}
+                  disabled={isPending || lockFields}
                   error={resolveErrorMessage(errors.teamIds?.message, t)}
                   onChange={field.onChange}
                 />
@@ -299,7 +372,7 @@ function WorkdayFormDialog({
                   emptyLabel={t("noUsersAvailable")}
                   options={users}
                   value={field.value ?? []}
-                  disabled={isPending}
+                  disabled={isPending || lockFields}
                   error={resolveErrorMessage(errors.userIds?.message, t)}
                   onChange={field.onChange}
                 />
@@ -315,7 +388,10 @@ function WorkdayFormDialog({
             render={({ field }) => (
               <WorkdaySlotsEditor
                 value={field.value ?? []}
-                disabled={isPending}
+                disabled={isPending || lockFields}
+                recurrent={recurrent}
+                civilDay={civilDay}
+                singleDatedSlot={!recurrent}
                 error={resolveErrorMessage(errors.slots?.message, t)}
                 onChange={field.onChange}
               />
@@ -330,6 +406,7 @@ function WorkdayFormDialog({
 export function WorkdayManager({
   teams,
   users,
+  actorRole,
   children,
   onCreate,
   onUpdate,
@@ -351,6 +428,7 @@ export function WorkdayManager({
   }
 
   function startEdit(workday: WorkdayRow): void {
+    if (!workday.editable) return;
     setEditingWorkday(workday);
     setFormOpen(true);
   }
@@ -400,6 +478,7 @@ export function WorkdayManager({
             editingWorkday={editingWorkday}
             teams={teams}
             users={users}
+            actorRole={actorRole}
             isPending={isPending}
             onClose={closeForm}
             onSubmit={onSubmit}

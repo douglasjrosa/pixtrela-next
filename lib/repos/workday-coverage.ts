@@ -12,11 +12,16 @@ import { getDb, type Db } from "@/lib/db/client";
 import {
   assignWorkdayRulesToUsers,
   createSessionSecondsMeasurer,
+  resolveWorkdayActionGate,
+  WORKDAY_GATE_LOOKAHEAD_DAYS,
   type SessionSecondsMeasurer,
+  type WorkdayActionGate,
   type WorkdayCoverageRule,
   type WorkdayCoverageSlot,
   type WorkdayRuleAssignment,
 } from "@/lib/domain/workday-coverage";
+
+const MS_PER_DAY = 86_400_000;
 
 const ISO_DATE_LENGTH = 10;
 
@@ -34,15 +39,13 @@ function toCoverageSlot(row: {
   isRecurrent: boolean;
   dayOfWeek: number | null;
   date: string | Date | null;
-  allDay: boolean;
-  startMinute: number | null;
-  endMinute: number | null;
+  startMinute: number;
+  endMinute: number;
 }): WorkdayCoverageSlot {
   return {
     isRecurrent: row.isRecurrent,
     dayOfWeek: row.dayOfWeek,
     date: asIsoDate(row.date),
-    allDay: row.allDay,
     startMinute: row.startMinute,
     endMinute: row.endMinute,
   };
@@ -119,7 +122,6 @@ export async function loadWorkdayRulesForUsers(
         isRecurrent: workdaySlots.isRecurrent,
         dayOfWeek: workdaySlots.dayOfWeek,
         date: workdaySlots.date,
-        allDay: workdaySlots.allDay,
         startMinute: workdaySlots.startMinute,
         endMinute: workdaySlots.endMinute,
       })
@@ -191,4 +193,43 @@ export async function loadSessionSecondsMeasurer(
     measure: createSessionSecondsMeasurer(rulesByUserId),
     rulesByUserId,
   };
+}
+
+export async function loadColaboratorWorkdayGate(
+  colaboratorId: string,
+  now: Date = new Date(),
+  db: Db = getDb(),
+): Promise<WorkdayActionGate> {
+  const horizonEnd = timerHorizonEndForGate(now);
+  const rulesByUserId = await loadWorkdayRulesForUsers(
+    { userIds: [colaboratorId], from: now, to: horizonEnd },
+    db,
+  );
+  return resolveWorkdayActionGate(
+    now,
+    rulesByUserId.get(colaboratorId) ?? [],
+  );
+}
+
+export function workdayGateToPageFields(gate: WorkdayActionGate): {
+  workdayAllowed: boolean;
+  nextWorkStartAt: string | null;
+} {
+  return {
+    workdayAllowed: gate.allowed,
+    nextWorkStartAt: gate.nextStartAt?.toISOString() ?? null,
+  };
+}
+
+export async function assertColaboratorWorkdayOpen(
+  colaboratorId: string,
+  now: Date = new Date(),
+  db: Db = getDb(),
+): Promise<void> {
+  const gate = await loadColaboratorWorkdayGate(colaboratorId, now, db);
+  if (!gate.allowed) throw new Error("outsideWorkday");
+}
+
+function timerHorizonEndForGate(now: Date): Date {
+  return new Date(now.getTime() + WORKDAY_GATE_LOOKAHEAD_DAYS * MS_PER_DAY);
 }

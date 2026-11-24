@@ -247,7 +247,7 @@ describeWithDb("admin activity credit replay", () => {
       const subs = await listSubTasksForTask(task.id);
       await assignColaboratorsToSubTask(subs[0]!.id, [worker.id, helper.id]);
       await assignColaboratorsToSubTask(subs[1]!.id, [worker.id, helper.id]);
-      await createGlobalAllDayWorkday(suffix);
+      await createGlobalAllDayWorkday();
 
       const { chainRunId } = await startChain(
         worker.id,

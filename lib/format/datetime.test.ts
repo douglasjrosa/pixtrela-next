@@ -8,6 +8,7 @@ import {
   formatMonthYear,
   formatMonthYearPtBr,
   formatTimePtBr,
+  formatWorkResumePartsPtBr,
   parsePtBrInputToIsoDate,
   splitDateTimePtBr,
 } from "./datetime";
@@ -51,6 +52,20 @@ describe("formatDateTimePtBr", () => {
     expect(formatDateTimePtBr("2026-06-05T10:00:00.000Z")).toBe(
       "05/06/2026, 07:00",
     );
+  });
+});
+
+describe("formatWorkResumePartsPtBr", () => {
+  it("formats resume date as dd/mm/yy and time as HH:mm in Sao Paulo", () => {
+    expect(formatWorkResumePartsPtBr("2026-06-08T11:00:00.000Z")).toEqual({
+      date: "08/06/26",
+      time: "08:00",
+    });
+  });
+
+  it("returns null for empty values", () => {
+    expect(formatWorkResumePartsPtBr(null)).toBeNull();
+    expect(formatWorkResumePartsPtBr("")).toBeNull();
   });
 });
 

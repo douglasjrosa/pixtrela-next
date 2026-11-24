@@ -37,13 +37,6 @@ export async function WorkdaysListTableHeader({
           </th>
         ) : null}
         <WorkdayListSortHeaderLink
-          column="name"
-          label={t("name")}
-          sort={sort}
-          filters={filters}
-          align="left"
-        />
-        <WorkdayListSortHeaderLink
           column="action"
           label={t("action")}
           sort={sort}

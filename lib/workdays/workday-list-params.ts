@@ -24,6 +24,13 @@ function firstParam(
   return value;
 }
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function findIsoDate(raw: string | undefined): string | undefined {
+  if (!raw?.trim() || !ISO_DATE_RE.test(raw.trim())) return undefined;
+  return raw.trim();
+}
+
 export function defaultWorkdayListFilters(): WorkdayListFilters {
   return workdayListFiltersSchema.parse({});
 }
@@ -51,12 +58,16 @@ export function parseWorkdayListSearchParams(
     firstParam(params.dir),
   );
   const showArchived = firstParam(params.archived) === "1";
+  const dateFrom = findIsoDate(firstParam(params.from));
+  const dateTo = findIsoDate(firstParam(params.to));
 
   const result = workdayListFiltersSchema.safeParse({
     q:
       qRaw && qRaw.length >= WORKDAY_LIST_SEARCH_MIN_CHARS ? qRaw : undefined,
     action,
     scope,
+    dateFrom,
+    dateTo,
     showArchived,
     column: sortColumn ?? WORKDAY_LIST_DEFAULT_SORT_COLUMN,
     direction: sortDirection ?? WORKDAY_LIST_DEFAULT_SORT_DIRECTION,
@@ -81,6 +92,12 @@ export function serializeWorkdayListSearchParams(
   if (filters.scope) {
     params.set("scope", filters.scope);
   }
+  if (filters.dateFrom) {
+    params.set("from", filters.dateFrom);
+  }
+  if (filters.dateTo) {
+    params.set("to", filters.dateTo);
+  }
   if (
     !isDefaultWorkdayListSort({
       column: filters.column,
@@ -101,6 +118,8 @@ export function workdayListFilterKey(filters: WorkdayListFilters): string {
     filters.q ?? "",
     filters.action ?? "",
     filters.scope ?? "",
+    filters.dateFrom ?? "",
+    filters.dateTo ?? "",
     filters.column,
     filters.direction,
     filters.showArchived ? "1" : "0",

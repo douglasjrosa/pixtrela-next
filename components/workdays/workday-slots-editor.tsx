@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -9,20 +9,25 @@ import { CardBadge } from "@/components/ui/card";
 import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SwitchField } from "@/components/ui/switch-field";
 import {
   parseTimeToMinutes,
   type WorkdaySlotInput,
 } from "@/lib/schemas/workday";
 import { cn } from "@/lib/utils";
-import { formatWorkdaySlotLabel } from "@/lib/workdays/format-workday-row-labels";
 import {
+  formatWorkdaySlotTime,
+  groupWorkdaySlotsByWeekday,
+} from "@/lib/workdays/group-workday-slots";
+import {
+  civilDayMinutes,
   expandDateRangeSlots,
   expandRecurrentSlots,
   mergeAndSortWorkdaySlots,
-  slotIdentityKey,
+  weekdayOfSlot,
   WEEKDAY_MONDAY_TO_FRIDAY,
 } from "@/lib/workdays/workday-slot-helpers";
+
+import { WorkdaySlotBadgeGroups } from "./workday-slot-badge-groups";
 
 const ALL_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
 const DEFAULT_START_TIME = "08:00";
@@ -33,6 +38,9 @@ export interface WorkdaySlotsEditorProps {
   onChange: (next: WorkdaySlotInput[]) => void;
   disabled?: boolean;
   error?: string;
+  recurrent?: boolean;
+  civilDay?: boolean;
+  singleDatedSlot?: boolean;
 }
 
 function toggleWeekday(selected: number[], day: number): number[] {
@@ -47,24 +55,25 @@ export function WorkdaySlotsEditor({
   onChange,
   disabled = false,
   error,
+  recurrent = false,
+  civilDay = false,
+  singleDatedSlot = true,
 }: WorkdaySlotsEditorProps) {
   const t = useTranslations("workdays");
-  const [isRecurrent, setIsRecurrent] = useState(true);
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([
     ...WEEKDAY_MONDAY_TO_FRIDAY,
   ]);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [allDay, setAllDay] = useState(false);
   const [startTime, setStartTime] = useState(DEFAULT_START_TIME);
   const [endTime, setEndTime] = useState(DEFAULT_END_TIME);
   const [draftError, setDraftError] = useState<string | null>(null);
 
   function resolveMinutes(): {
-    startMinute: number | null;
-    endMinute: number | null;
+    startMinute: number;
+    endMinute: number;
   } | null {
-    if (allDay) return { startMinute: null, endMinute: null };
+    if (civilDay) return civilDayMinutes();
     const startMinute = parseTimeToMinutes(startTime);
     const endMinute = parseTimeToMinutes(endTime);
     if (startMinute === null || endMinute === null || endMinute <= startMinute) {
@@ -79,14 +88,13 @@ export function WorkdaySlotsEditor({
     const minutes = resolveMinutes();
     if (!minutes) return;
 
-    if (isRecurrent) {
+    if (recurrent) {
       if (daysOfWeek.length === 0) {
         setDraftError(t("slotValidationPickDay"));
         return;
       }
       const added = expandRecurrentSlots({
         daysOfWeek,
-        allDay,
         ...minutes,
       });
       onChange(mergeAndSortWorkdaySlots(value, added));
@@ -97,60 +105,52 @@ export function WorkdaySlotsEditor({
       setDraftError(t("slotValidationPickDate"));
       return;
     }
-    if (endDate.trim() && endDate.trim() < startDate.trim()) {
+    if (
+      !singleDatedSlot &&
+      endDate.trim() &&
+      endDate.trim() < startDate.trim()
+    ) {
       setDraftError(t("slotValidationDateOrder"));
       return;
     }
     const added = expandDateRangeSlots({
       startDate: startDate.trim(),
-      endDate: endDate.trim(),
-      allDay,
+      endDate: singleDatedSlot ? startDate.trim() : endDate.trim(),
       ...minutes,
     });
     if (added.length === 0) {
       setDraftError(t("slotValidationRangeLimit"));
       return;
     }
-    onChange(mergeAndSortWorkdaySlots(value, added));
+    onChange(
+      singleDatedSlot
+        ? added.slice(0, 1)
+        : mergeAndSortWorkdaySlots(value, added),
+    );
   }
 
-  function handleRemoveSlot(slotKey: string): void {
-    onChange(value.filter((slot) => slotIdentityKey(slot) !== slotKey));
+  function handleRemoveGroup(weekday: number, time: string): void {
+    onChange(
+      value.filter((slot) => {
+        const matchesWeekday = weekdayOfSlot(slot) === weekday;
+        return !(matchesWeekday && formatWorkdaySlotTime(slot) === time);
+      }),
+    );
   }
+
+  const groups = groupWorkdaySlotsByWeekday(value).map((group) => ({
+    weekday: group.weekday,
+    weekdayLabel: t(`weekdayShort${group.weekday}`),
+    times: group.times,
+  }));
 
   return (
     <div className="space-y-3 rounded-md border p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Label>{t("slots")}</Label>
-        <div className="flex gap-1.5">
-          <Button
-            type="button"
-            size="sm"
-            variant={isRecurrent ? "default" : "outline"}
-            disabled={disabled}
-            onClick={() => {
-              setIsRecurrent(true);
-              setDraftError(null);
-            }}
-          >
-            {t("slotModeRecurrent")}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={!isRecurrent ? "default" : "outline"}
-            disabled={disabled}
-            onClick={() => {
-              setIsRecurrent(false);
-              setDraftError(null);
-            }}
-          >
-            {t("slotModeDate")}
-          </Button>
-        </div>
       </div>
 
-      {isRecurrent ? (
+      {recurrent ? (
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <Label className="text-xs text-muted-foreground">
@@ -193,7 +193,7 @@ export function WorkdaySlotsEditor({
           </div>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className={cn("grid gap-3", !singleDatedSlot && "sm:grid-cols-2")}>
           <div className="space-y-1.5">
             <Label htmlFor="slot-date-start">{t("dateStart")}</Label>
             <DatePtBrInput
@@ -204,28 +204,22 @@ export function WorkdaySlotsEditor({
               onChange={setStartDate}
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="slot-date-end">{t("dateEnd")}</Label>
-            <DatePtBrInput
-              id="slot-date-end"
-              value={endDate}
-              disabled={disabled}
-              allowEmpty
-              onChange={setEndDate}
-            />
-          </div>
+          {!singleDatedSlot ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="slot-date-end">{t("dateEnd")}</Label>
+              <DatePtBrInput
+                id="slot-date-end"
+                value={endDate}
+                disabled={disabled}
+                allowEmpty
+                onChange={setEndDate}
+              />
+            </div>
+          ) : null}
         </div>
       )}
 
-      <SwitchField
-        id="slot-all-day"
-        label={t("allDay")}
-        checked={allDay}
-        disabled={disabled}
-        onCheckedChange={setAllDay}
-      />
-
-      {!allDay ? (
+      {!civilDay ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="slot-start-time">{t("startTime")}</Label>
@@ -272,32 +266,15 @@ export function WorkdaySlotsEditor({
         {value.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("noSlotsYet")}</p>
         ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {value.map((slot) => {
-              const key = slotIdentityKey(slot);
-              const label = formatWorkdaySlotLabel(
-                { ...slot, id: key },
-                (msgKey, values) => t(msgKey, values),
-              );
-              return (
-                <CardBadge
-                  key={key}
-                  className="inline-flex items-center gap-1 pr-1"
-                >
-                  <span>{label}</span>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    aria-label={`${t("removeSlot")} ${label}`}
-                    className="rounded p-0.5 hover:bg-muted"
-                    onClick={() => handleRemoveSlot(key)}
-                  >
-                    <X className="size-3" aria-hidden />
-                  </button>
-                </CardBadge>
-              );
-            })}
-          </div>
+          <WorkdaySlotBadgeGroups
+            groups={groups}
+            align="start"
+            disabled={disabled}
+            onRemove={handleRemoveGroup}
+            removeLabel={(weekdayLabel, time) =>
+              `${t("removeSlot")} ${weekdayLabel} ${time}`
+            }
+          />
         )}
       </div>
 

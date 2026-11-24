@@ -1,35 +1,46 @@
 import { z } from "zod";
 
-export const WORKDAY_ACTIONS = ["work", "off"] as const;
-export type WorkdayAction = (typeof WORKDAY_ACTIONS)[number];
+import {
+  allowedWorkdayScopes,
+  isCivilDayWorkdayAction,
+  isRecurrentWorkdayAction,
+  requiresWorkdayDescription,
+  WORKDAY_ACTIONS,
+  type WorkdayAction,
+} from "@/lib/domain/workday-actions";
+
+import {
+  DEFAULT_WORKDAY_TIMEZONE,
+  MAX_DAY_OF_WEEK,
+  MAX_HOUR_OF_DAY,
+  MAX_MINUTE_OF_DAY,
+  MIN_DAY_OF_WEEK,
+  MIN_MINUTE_OF_DAY,
+  MINUTES_PER_HOUR,
+  WORKDAY_DESCRIPTION_MAX_LENGTH,
+  WORKDAY_DESCRIPTION_MIN_REQUIRED,
+  WORKDAY_TIMEZONE_MAX_LENGTH,
+  WORKDAY_TIMEZONE_OPTIONS,
+} from "./workday-constants";
+
+export {
+  DEFAULT_WORKDAY_TIMEZONE,
+  MAX_DAY_OF_WEEK,
+  MAX_HOUR_OF_DAY,
+  MAX_MINUTE_OF_DAY,
+  MIN_DAY_OF_WEEK,
+  MIN_MINUTE_OF_DAY,
+  MINUTES_PER_HOUR,
+  WORKDAY_DESCRIPTION_MAX_LENGTH,
+  WORKDAY_DESCRIPTION_MIN_REQUIRED,
+  WORKDAY_TIMEZONE_MAX_LENGTH,
+  WORKDAY_TIMEZONE_OPTIONS,
+};
+
+export { WORKDAY_ACTIONS, type WorkdayAction };
 
 export const WORKDAY_SCOPES = ["global", "team", "user"] as const;
 export type WorkdayScope = (typeof WORKDAY_SCOPES)[number];
-
-export const DEFAULT_WORKDAY_TIMEZONE = "America/Sao_Paulo";
-export const WORKDAY_NAME_MAX_LENGTH = 128;
-export const WORKDAY_DESCRIPTION_MAX_LENGTH = 1000;
-export const WORKDAY_TIMEZONE_MAX_LENGTH = 64;
-export const MIN_DAY_OF_WEEK = 0;
-export const MAX_DAY_OF_WEEK = 6;
-export const MIN_MINUTE_OF_DAY = 0;
-export const MAX_MINUTE_OF_DAY = 1440;
-export const MINUTES_PER_HOUR = 60;
-export const MAX_HOUR_OF_DAY = 24;
-
-export const WORKDAY_TIMEZONE_OPTIONS = [
-  "America/Sao_Paulo",
-  "America/Manaus",
-  "America/Cuiaba",
-  "America/Campo_Grande",
-  "America/Fortaleza",
-  "America/Recife",
-  "America/Belem",
-  "America/Porto_Velho",
-  "America/Rio_Branco",
-  "America/Noronha",
-  "UTC",
-] as const;
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_HM_RE = /^(\d{2}):(\d{2})$/;
@@ -58,14 +69,23 @@ export function formatMinutesToTime(totalMinutes: number): string {
 export const workdaySlotInputSchema = z
   .object({
     isRecurrent: z.boolean(),
-    dayOfWeek: z.number().int().min(MIN_DAY_OF_WEEK).max(MAX_DAY_OF_WEEK).nullable(),
-    date: z
-      .string()
-      .regex(ISO_DATE_RE, "invalidDate")
+    dayOfWeek: z
+      .number()
+      .int()
+      .min(MIN_DAY_OF_WEEK)
+      .max(MAX_DAY_OF_WEEK)
       .nullable(),
-    allDay: z.boolean(),
-    startMinute: z.number().int().min(MIN_MINUTE_OF_DAY).max(MAX_MINUTE_OF_DAY - 1).nullable(),
-    endMinute: z.number().int().min(MIN_MINUTE_OF_DAY + 1).max(MAX_MINUTE_OF_DAY).nullable(),
+    date: z.string().regex(ISO_DATE_RE, "invalidDate").nullable(),
+    startMinute: z
+      .number()
+      .int()
+      .min(MIN_MINUTE_OF_DAY)
+      .max(MAX_MINUTE_OF_DAY - 1),
+    endMinute: z
+      .number()
+      .int()
+      .min(MIN_MINUTE_OF_DAY + 1)
+      .max(MAX_MINUTE_OF_DAY),
   })
   .superRefine((slot, ctx) => {
     if (slot.isRecurrent) {
@@ -84,22 +104,7 @@ export const workdaySlotInputSchema = z
       });
     }
 
-    if (slot.allDay) {
-      if (slot.startMinute !== null || slot.endMinute !== null) {
-        ctx.addIssue({
-          code: "custom",
-          message: "invalidAllDay",
-          path: ["allDay"],
-        });
-      }
-      return;
-    }
-
-    if (
-      slot.startMinute === null ||
-      slot.endMinute === null ||
-      slot.endMinute <= slot.startMinute
-    ) {
+    if (slot.endMinute <= slot.startMinute) {
       ctx.addIssue({
         code: "custom",
         message: "invalidTimeRange",
@@ -118,7 +123,6 @@ const optionalIsoDateSchema = z
 
 export const workdayFormSchema = z
   .object({
-    name: z.string().trim().min(1, "nameRequired").max(WORKDAY_NAME_MAX_LENGTH),
     description: z
       .string()
       .trim()
@@ -126,11 +130,7 @@ export const workdayFormSchema = z
       .optional(),
     action: z.enum(WORKDAY_ACTIONS),
     scope: z.enum(WORKDAY_SCOPES),
-    timezone: z
-      .string()
-      .trim()
-      .min(1)
-      .max(WORKDAY_TIMEZONE_MAX_LENGTH),
+    timezone: z.string().trim().min(1).max(WORKDAY_TIMEZONE_MAX_LENGTH),
     validFrom: optionalIsoDateSchema,
     validUntil: optionalIsoDateSchema,
     teamIds: z.array(z.string().uuid()),
@@ -138,6 +138,15 @@ export const workdayFormSchema = z
     slots: z.array(workdaySlotInputSchema).min(1, "slotsRequired"),
   })
   .superRefine((data, ctx) => {
+    const scopes = allowedWorkdayScopes(data.action);
+    if (!scopes.includes(data.scope)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "invalidScopeForAction",
+        path: ["scope"],
+      });
+    }
+
     if (data.scope === "team" && data.teamIds.length === 0) {
       ctx.addIssue({
         code: "custom",
@@ -152,6 +161,7 @@ export const workdayFormSchema = z
         path: ["userIds"],
       });
     }
+
     if (data.validFrom && data.validUntil && data.validUntil < data.validFrom) {
       ctx.addIssue({
         code: "custom",
@@ -159,12 +169,65 @@ export const workdayFormSchema = z
         path: ["validUntil"],
       });
     }
+
+    if (requiresWorkdayDescription(data.action)) {
+      const description = data.description?.trim() ?? "";
+      if (description.length < WORKDAY_DESCRIPTION_MIN_REQUIRED) {
+        ctx.addIssue({
+          code: "custom",
+          message: "descriptionRequired",
+          path: ["description"],
+        });
+      }
+    }
+
+    const recurrentAction = isRecurrentWorkdayAction(data.action);
+    const civilDay = isCivilDayWorkdayAction(data.action);
+
+    if (recurrentAction) {
+      if (data.slots.some((slot) => !slot.isRecurrent)) {
+        ctx.addIssue({
+          code: "custom",
+          message: "recurrentSlotsRequired",
+          path: ["slots"],
+        });
+      }
+    } else {
+      if (data.validFrom || data.validUntil) {
+        ctx.addIssue({
+          code: "custom",
+          message: "validityNotAllowed",
+          path: ["validFrom"],
+        });
+      }
+      if (data.slots.length !== 1 || data.slots[0]?.isRecurrent) {
+        ctx.addIssue({
+          code: "custom",
+          message: "datedSingleSlotRequired",
+          path: ["slots"],
+        });
+      }
+    }
+
+    if (civilDay) {
+      const invalidCivil = data.slots.some(
+        (slot) =>
+          slot.startMinute !== MIN_MINUTE_OF_DAY ||
+          slot.endMinute !== MAX_MINUTE_OF_DAY,
+      );
+      if (invalidCivil) {
+        ctx.addIssue({
+          code: "custom",
+          message: "civilDayRequired",
+          path: ["slots"],
+        });
+      }
+    }
   });
 
 export type WorkdayFormInput = z.infer<typeof workdayFormSchema>;
 
 export type NormalizedWorkdayInput = {
-  name: string;
   description: string | null;
   action: WorkdayAction;
   scope: WorkdayScope;
@@ -180,7 +243,6 @@ export function normalizeWorkdayFormValues(
   data: WorkdayFormInput,
 ): NormalizedWorkdayInput {
   return {
-    name: data.name.trim(),
     description: data.description?.trim() ? data.description.trim() : null,
     action: data.action,
     scope: data.scope,
