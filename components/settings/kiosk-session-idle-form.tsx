@@ -3,9 +3,13 @@ import { getTranslations } from "next-intl/server";
 import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { KioskProducingCardMetricSwitches } from "@/components/settings/kiosk-producing-card-metric-switches";
 import {
   DEFAULT_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS,
   DEFAULT_KIOSK_QUEUE_PAGE_SIZE,
+  DEFAULT_SHOW_PRODUCING_ELAPSED,
+  DEFAULT_SHOW_PRODUCING_EXPECTED_TIME,
+  DEFAULT_SHOW_PRODUCING_STARTED_AT,
   MAX_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS,
   MAX_KIOSK_QUEUE_PAGE_SIZE,
   MAX_KIOSK_SESSION_IDLE_SECONDS,
@@ -18,6 +22,9 @@ export interface KioskSessionIdleFormProps {
   sessionIdleSeconds: number;
   maxSimultaneousSubtaskIntervalSeconds?: number;
   queuePageSize?: number;
+  showProducingStartedAt?: boolean;
+  showProducingExpectedTime?: boolean;
+  showProducingElapsed?: boolean;
   action: (formData: FormData) => void | Promise<void>;
 }
 
@@ -26,6 +33,9 @@ export async function KioskSessionIdleForm({
   maxSimultaneousSubtaskIntervalSeconds =
     DEFAULT_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS,
   queuePageSize = DEFAULT_KIOSK_QUEUE_PAGE_SIZE,
+  showProducingStartedAt = DEFAULT_SHOW_PRODUCING_STARTED_AT,
+  showProducingExpectedTime = DEFAULT_SHOW_PRODUCING_EXPECTED_TIME,
+  showProducingElapsed = DEFAULT_SHOW_PRODUCING_ELAPSED,
   action,
 }: KioskSessionIdleFormProps) {
   const tCommon = await getTranslations("common");
@@ -35,6 +45,9 @@ export async function KioskSessionIdleForm({
     sessionIdleSeconds,
     maxSimultaneousSubtaskIntervalSeconds,
     queuePageSize,
+    showProducingStartedAt,
+    showProducingExpectedTime,
+    showProducingElapsed,
   ].join(":");
 
   return (
@@ -90,6 +103,12 @@ export async function KioskSessionIdleForm({
           required
         />
       </div>
+
+      <KioskProducingCardMetricSwitches
+        showProducingStartedAt={showProducingStartedAt}
+        showProducingExpectedTime={showProducingExpectedTime}
+        showProducingElapsed={showProducingElapsed}
+      />
 
       <FormSubmitButton label={tCommon("save")} />
     </form>

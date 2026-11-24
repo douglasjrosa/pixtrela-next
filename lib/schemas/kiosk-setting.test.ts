@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   kioskSessionIdleSchema,
   normalizeKioskQueuePageSize,
+  parseFormBoolean,
 } from "./kiosk-setting";
 
 describe("kioskSessionIdleSchema", () => {
@@ -10,10 +11,24 @@ describe("kioskSessionIdleSchema", () => {
     sessionIdleSeconds: 7,
     maxSimultaneousSubtaskIntervalSeconds: 300,
     queuePageSize: 15,
+    showProducingStartedAt: true,
+    showProducingExpectedTime: true,
+    showProducingElapsed: true,
   };
 
   it("accepts values within the allowed range", () => {
     expect(kioskSessionIdleSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("accepts producing-card visibility switches", () => {
+    expect(
+      kioskSessionIdleSchema.safeParse({
+        ...valid,
+        showProducingStartedAt: false,
+        showProducingExpectedTime: false,
+        showProducingElapsed: true,
+      }).success,
+    ).toBe(true);
   });
 
   it("rejects idle values below 1 second", () => {
@@ -68,6 +83,15 @@ describe("kioskSessionIdleSchema", () => {
     expect(
       kioskSessionIdleSchema.safeParse({ ...valid, queuePageSize: 51 }).success,
     ).toBe(false);
+  });
+});
+
+describe("parseFormBoolean", () => {
+  it("reads true and false form values", () => {
+    expect(parseFormBoolean("true", false)).toBe(true);
+    expect(parseFormBoolean("false", true)).toBe(false);
+    expect(parseFormBoolean(undefined, true)).toBe(true);
+    expect(parseFormBoolean(undefined, false)).toBe(false);
   });
 });
 

@@ -53,6 +53,7 @@ export interface KioskSubtaskPanelProps {
     requiresMaterialFlagsOnFinish?: boolean;
   }>;
   blockingUi?: boolean;
+  workdayLocked?: boolean;
   timerPaused?: boolean;
   exitBusy?: boolean;
   compactFinishedCards?: boolean;
@@ -81,11 +82,13 @@ export function KioskSubtaskPanel({
   onReleaseMaterialFlag,
   onRefreshMaterialFlags,
   blockingUi = false,
+  workdayLocked = false,
   timerPaused,
   exitBusy = false,
   compactFinishedCards = false,
 }: KioskSubtaskPanelProps) {
   const t = useTranslations("kiosk");
+  const startStopLocked = blockingUi || workdayLocked;
   const [exitingId, setExitingId] = useState<string | null>(null);
   const [collectingChainRunId, setCollectingChainRunId] = useState<string | null>(
     null,
@@ -124,6 +127,7 @@ export function KioskSubtaskPanel({
               unit={unit}
               readOnly={readOnly}
               blockingUi={blockingUi}
+              workdayLocked={workdayLocked}
               timerPaused={timerPaused}
               exitBusy={exitBusy}
               compactFinishedCards={compactFinishedCards}
@@ -238,7 +242,7 @@ export function KioskSubtaskPanel({
                   {showStart ? (
                     <KioskActionButton
                       actionVariant="produce"
-                      disabled={blockingUi}
+                      disabled={startStopLocked}
                       onClick={() => onStart?.(subTask.documentId)}
                     >
                       {t("start")}
@@ -247,7 +251,7 @@ export function KioskSubtaskPanel({
                   {showExit ? (
                     <KioskActionButton
                       actionVariant="outline"
-                      disabled={blockingUi}
+                      disabled={startStopLocked}
                       onClick={() => setExitingId(subTask.documentId)}
                     >
                       {t("exitSubtask")}

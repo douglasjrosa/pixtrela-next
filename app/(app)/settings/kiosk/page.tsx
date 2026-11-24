@@ -13,6 +13,9 @@ export default async function SettingsKioskPage() {
         settings.maxSimultaneousSubtaskIntervalSeconds
       }
       queuePageSize={settings.queuePageSize}
+      showProducingStartedAt={settings.showProducingStartedAt}
+      showProducingExpectedTime={settings.showProducingExpectedTime}
+      showProducingElapsed={settings.showProducingElapsed}
       action={updateKioskSessionIdleSeconds}
     />
   );

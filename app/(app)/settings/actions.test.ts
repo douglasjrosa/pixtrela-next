@@ -64,11 +64,17 @@ describe("settings/actions drizzle paths", () => {
     formData.set("sessionIdleSeconds", "90");
     formData.set("maxSimultaneousSubtaskIntervalSeconds", "300");
     formData.set("queuePageSize", "15");
+    formData.set("showProducingStartedAt", "false");
+    formData.set("showProducingExpectedTime", "true");
+    formData.set("showProducingElapsed", "false");
     await updateKioskSessionIdleSeconds(formData);
     expect(upsertKioskSettings).toHaveBeenCalledWith({
       sessionIdleSeconds: 90,
       maxSimultaneousSubtaskIntervalSeconds: 300,
       queuePageSize: 15,
+      showProducingStartedAt: false,
+      showProducingExpectedTime: true,
+      showProducingElapsed: false,
     });
     expect(revalidateTag).toHaveBeenCalledWith("drizzle:kiosk-setting", "default");
     expect(revalidatePath).toHaveBeenCalledWith("/settings/kiosk");

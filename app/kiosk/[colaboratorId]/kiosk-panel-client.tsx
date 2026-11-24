@@ -53,8 +53,14 @@ import { showQueueCredentialPasswordForm } from "@/lib/kiosk/queue-credential-ed
 import { showQueueFaceEditForm } from "@/lib/kiosk/queue-face-edit";
 import { buildKioskQueueFingerprint } from "@/lib/kiosk/queue-fingerprint";
 import { kioskActionErrorMessage } from "@/lib/business/kiosk-action-error";
+import { formatWorkResumePartsPtBr } from "@/lib/format/datetime";
 import { mergeKioskCatalog } from "@/lib/business/kiosk-queue-catalog-scope";
 import { KioskQueueBootstrapProvider } from "@/components/kiosk/kiosk-queue-bootstrap-context";
+import {
+  DEFAULT_PRODUCING_CARD_METRICS_VISIBILITY,
+  KioskProducingCardMetricsProvider,
+  type ProducingCardMetricsVisibility,
+} from "@/components/kiosk/kiosk-producing-card-metrics-provider";
 import { KioskQueuePanelActionsProvider } from "@/components/kiosk/kiosk-queue-panel-actions-context";
 import { useMaterialFlagsEnabled } from "@/components/material-flags/material-flags-settings-provider";
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
@@ -62,6 +68,7 @@ import type { KioskQueueSectionPage } from "@/lib/repos/kiosk-subtasks";
 import type { KioskExitInput } from "@/lib/schemas/kiosk-exit";
 import {
   showKioskErrorToast,
+  showKioskInfoToast,
   showKioskSuccessToast,
 } from "@/lib/kiosk/kiosk-toast";
 import { useKioskQueuePoll } from "@/hooks/use-kiosk-queue-poll";
@@ -178,6 +185,7 @@ export interface KioskPanelClientProps {
   children?: ReactNode;
   bootstrapPending?: boolean;
   profileSlot?: ReactNode;
+  producingCardMetrics?: ProducingCardMetricsVisibility;
 }
 
 export function KioskPanelClient({
@@ -196,6 +204,7 @@ export function KioskPanelClient({
   children,
   bootstrapPending = false,
   profileSlot,
+  producingCardMetrics = DEFAULT_PRODUCING_CARD_METRICS_VISIBILITY,
 }: KioskPanelClientProps) {
   const t = useTranslations("kiosk");
   const tCommon = useTranslations("common");
@@ -208,6 +217,13 @@ export function KioskPanelClient({
     string | null | undefined
   >(facePhotoUrl);
   const [queueBusy, setQueueBusy] = useState<"start" | "exit" | null>(null);
+  const [workdayAllowed, setWorkdayAllowed] = useState(
+    () => initialLiberadas.workdayAllowed !== false,
+  );
+  const [nextWorkStartAt, setNextWorkStartAt] = useState<string | null>(
+    () => initialLiberadas.nextWorkStartAt ?? null,
+  );
+  const workdayToastShownRef = useRef(false);
   const [optimisticStart, setOptimisticStart] =
     useState<OptimisticKioskStart | null>(null);
   const [optimisticChainStop, setOptimisticChainStop] =
@@ -338,14 +354,22 @@ export function KioskPanelClient({
     }
   }, [openRuns, queueBusy, subTasks]);
 
+  const applyWorkdayFromPage = useCallback((page: KioskQueueSectionPage) => {
+    if (page.workdayAllowed === undefined) return;
+    setWorkdayAllowed(page.workdayAllowed);
+    setNextWorkStartAt(page.nextWorkStartAt ?? null);
+  }, []);
+
   const applyPageToLiberadas = useCallback((page: KioskQueueSectionPage) => {
+    applyWorkdayFromPage(page);
     setLiberadas(sectionFromPage(page, true));
     setOpenRuns(page.openRuns);
     setSubTasks(page.subTasks);
     setCatalog(page.catalog);
-  }, []);
+  }, [applyWorkdayFromPage]);
 
   const applyProducingSnapshot = useCallback((page: KioskQueueSectionPage) => {
+    applyWorkdayFromPage(page);
     setLiberadas((current) => {
       if (current.loadedOnce) return current;
       return { ...current, producingUnits: page.producingUnits };
@@ -353,7 +377,7 @@ export function KioskPanelClient({
     setOpenRuns((current) => (current.length > 0 ? current : page.openRuns));
     setSubTasks((current) => mergeKioskCatalog(current, page.subTasks));
     setCatalog((current) => mergeKioskCatalog(current, page.catalog));
-  }, []);
+  }, [applyWorkdayFromPage]);
 
   const applyProfile = useCallback(
     (profile: { name: string; avatarUrl: string | null }) => {
@@ -362,6 +386,18 @@ export function KioskPanelClient({
     },
     [],
   );
+
+  useEffect(() => {
+    if (workdayAllowed) return;
+    if (workdayToastShownRef.current) return;
+    workdayToastShownRef.current = true;
+    const parts = formatWorkResumePartsPtBr(nextWorkStartAt);
+    if (parts) {
+      showKioskInfoToast(t("outsideWorkday", parts));
+      return;
+    }
+    showKioskInfoToast(t("outsideWorkdayUnknown"));
+  }, [nextWorkStartAt, t, workdayAllowed]);
 
   useEffect(() => {
     if (!editOpen || currentFacePhotoUrl !== undefined) return;
@@ -401,7 +437,10 @@ export function KioskPanelClient({
     setSubTasks(mergeKioskCatalog([], pages.flatMap((page) => page.subTasks)));
     setCatalog(mergeKioskCatalog([], pages.flatMap((page) => page.catalog)));
     setOpenRuns(liberadasPage?.openRuns ?? pages[0]?.openRuns ?? []);
+    const gatePage = pages.find((page) => page.workdayAllowed !== undefined);
+    if (gatePage) applyWorkdayFromPage(gatePage);
   }, [
+    applyWorkdayFromPage,
     bloqueadas.expanded,
     colaboratorId,
     finalizadas.expanded,
@@ -582,7 +621,7 @@ export function KioskPanelClient({
   }, [colaboratorId, finalizadas.expanded, finalizadas.loadedOnce, staffUserId, t]);
 
   function handleStart(documentId: string): void {
-    if (queueBusy === "start") return;
+    if (!workdayAllowed || queueBusy === "start") return;
     setFlashDocumentId(documentId);
     window.setTimeout(() => setFlashDocumentId(null), START_FLASH_MS);
     const startedAt = new Date().toISOString();
@@ -606,7 +645,7 @@ export function KioskPanelClient({
   }
 
   function handleStartChain(headId: string): void {
-    if (queueBusy === "start") return;
+    if (!workdayAllowed || queueBusy === "start") return;
     setFlashDocumentId(headId);
     window.setTimeout(() => setFlashDocumentId(null), START_FLASH_MS);
     const startedAt = new Date().toISOString();
@@ -813,6 +852,7 @@ export function KioskPanelClient({
   const panelActions = {
     readOnly,
     blockingUi: queueBusy !== null,
+    workdayLocked: !workdayAllowed,
     timerPaused: queueBusy === "exit",
     exitBusy: queueBusy === "exit",
     flashDocumentId,
@@ -872,6 +912,7 @@ export function KioskPanelClient({
   );
 
   return (
+    <KioskProducingCardMetricsProvider value={producingCardMetrics}>
     <KioskQueueBootstrapProvider value={bootstrapApi}>
       <KioskQueuePanelActionsProvider value={panelActions}>
     <div className="flex min-h-0 flex-1 flex-col">
@@ -929,6 +970,7 @@ export function KioskPanelClient({
           allSubTasks={allSubTasksForPanel}
           readOnly={readOnly}
           blockingUi={queueBusy !== null}
+          workdayLocked={!workdayAllowed}
           timerPaused={queueBusy === "exit"}
           exitBusy={queueBusy === "exit"}
           flashDocumentId={flashDocumentId}
@@ -955,5 +997,6 @@ export function KioskPanelClient({
     </div>
       </KioskQueuePanelActionsProvider>
     </KioskQueueBootstrapProvider>
+    </KioskProducingCardMetricsProvider>
   );
 }

@@ -9,6 +9,7 @@ import {
 } from "@/lib/repos/tasks";
 import { createTemplateTask } from "@/lib/repos/templates";
 import { createUser } from "@/lib/repos/users";
+import { createGlobalAllDayWorkday } from "@/lib/db/test-workday";
 import type { TemplateSubTaskInput } from "@/lib/repos/templates";
 
 export type QueueSeedSubTaskSpec = TemplateSubTaskInput;
@@ -112,6 +113,8 @@ export async function seedQueueScenario(input: {
   for (const sub of subTasks) {
     await assignColaboratorsToSubTask(sub.id, workerIds);
   }
+
+  await createGlobalAllDayWorkday();
 
   return { workers, subTasks, taskId: task.id, label: stamp };
 }

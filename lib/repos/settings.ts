@@ -20,6 +20,11 @@ import {
   DEFAULT_EXCHANGES_LAST_DAY,
 } from "@/lib/schemas/team";
 import {
+  DEFAULT_SHOW_PRODUCING_ELAPSED,
+  DEFAULT_SHOW_PRODUCING_EXPECTED_TIME,
+  DEFAULT_SHOW_PRODUCING_STARTED_AT,
+} from "@/lib/schemas/kiosk-setting";
+import {
   DEFAULT_PAGE_MARGIN_DESKTOP,
   DEFAULT_PAGE_MARGIN_MOBILE,
   ROUTE_THEME_KEYS,
@@ -44,29 +49,36 @@ export async function upsertKioskSettings(
     sessionIdleSeconds: number;
     maxSimultaneousSubtaskIntervalSeconds: number;
     queuePageSize: number;
+    showProducingStartedAt?: boolean;
+    showProducingExpectedTime?: boolean;
+    showProducingElapsed?: boolean;
   },
   db: Db = getDb(),
 ) {
+  const patch = {
+    sessionIdleSeconds: input.sessionIdleSeconds,
+    maxSimultaneousSubtaskIntervalSeconds:
+      input.maxSimultaneousSubtaskIntervalSeconds,
+    queuePageSize: input.queuePageSize,
+    showProducingStartedAt:
+      input.showProducingStartedAt ?? DEFAULT_SHOW_PRODUCING_STARTED_AT,
+    showProducingExpectedTime:
+      input.showProducingExpectedTime ?? DEFAULT_SHOW_PRODUCING_EXPECTED_TIME,
+    showProducingElapsed:
+      input.showProducingElapsed ?? DEFAULT_SHOW_PRODUCING_ELAPSED,
+  };
   const existing = await getKioskSettings(db);
   if (!existing) {
     const [created] = await db
       .insert(kioskSettings)
-      .values({
-        sessionIdleSeconds: input.sessionIdleSeconds,
-        maxSimultaneousSubtaskIntervalSeconds:
-          input.maxSimultaneousSubtaskIntervalSeconds,
-        queuePageSize: input.queuePageSize,
-      })
+      .values(patch)
       .returning();
     return created;
   }
   const [updated] = await db
     .update(kioskSettings)
     .set({
-      sessionIdleSeconds: input.sessionIdleSeconds,
-      maxSimultaneousSubtaskIntervalSeconds:
-        input.maxSimultaneousSubtaskIntervalSeconds,
-      queuePageSize: input.queuePageSize,
+      ...patch,
       updatedAt: new Date(),
     })
     .where(eq(kioskSettings.id, existing.id))

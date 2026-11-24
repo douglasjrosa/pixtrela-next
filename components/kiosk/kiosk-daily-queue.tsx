@@ -32,6 +32,7 @@ export interface KioskDailyQueueProps {
   readOnly?: boolean;
   flashDocumentId?: string | null;
   blockingUi?: boolean;
+  workdayLocked?: boolean;
   timerPaused?: boolean;
   exitBusy?: boolean;
   onLoadMoreLiberadas: () => void;
@@ -75,6 +76,7 @@ export function KioskDailyQueue({
   allSubTasks,
   readOnly = false,
   blockingUi = false,
+  workdayLocked = false,
   timerPaused,
   exitBusy = false,
   flashDocumentId,
@@ -112,6 +114,7 @@ export function KioskDailyQueue({
                 allSubTasks={allSubTasks}
                 readOnly={readOnly}
                 blockingUi={blockingUi}
+                workdayLocked={workdayLocked}
                 timerPaused={timerPaused}
                 exitBusy={exitBusy}
                 flashDocumentId={flashDocumentId}
@@ -156,6 +159,7 @@ export function KioskDailyQueue({
                 allSubTasks={allSubTasks}
                 readOnly={readOnly}
                 blockingUi={blockingUi}
+                workdayLocked={workdayLocked}
                 timerPaused={timerPaused}
                 exitBusy={exitBusy}
                 flashDocumentId={flashDocumentId}
@@ -196,6 +200,7 @@ export function KioskDailyQueue({
                 allSubTasks={allSubTasks}
                 readOnly={readOnly}
                 blockingUi={blockingUi}
+                workdayLocked={workdayLocked}
                 compactFinishedCards
                 flashDocumentId={flashDocumentId}
                 onStart={onStart}

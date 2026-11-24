@@ -10,13 +10,20 @@ import { getKioskSettings } from "@/lib/repos/settings";
 import {
   DEFAULT_KIOSK_LIVE_CHAIN_INTERVAL_SECONDS,
   DEFAULT_KIOSK_QUEUE_PAGE_SIZE,
+  DEFAULT_SHOW_PRODUCING_ELAPSED,
+  DEFAULT_SHOW_PRODUCING_EXPECTED_TIME,
+  DEFAULT_SHOW_PRODUCING_STARTED_AT,
   normalizeKioskQueuePageSize,
+  parseFormBoolean,
 } from "@/lib/schemas/kiosk-setting";
 
 export type KioskSettingsView = {
   sessionIdleSeconds: number;
   maxSimultaneousSubtaskIntervalSeconds: number;
   queuePageSize: number;
+  showProducingStartedAt: boolean;
+  showProducingExpectedTime: boolean;
+  showProducingElapsed: boolean;
 };
 
 export const loadKioskSettings = cache(async (): Promise<KioskSettingsView> => {
@@ -33,6 +40,18 @@ export const loadKioskSettings = cache(async (): Promise<KioskSettingsView> => {
     ),
     queuePageSize: normalizeKioskQueuePageSize(
       Number(row?.queuePageSize ?? DEFAULT_KIOSK_QUEUE_PAGE_SIZE),
+    ),
+    showProducingStartedAt: parseFormBoolean(
+      row?.showProducingStartedAt,
+      DEFAULT_SHOW_PRODUCING_STARTED_AT,
+    ),
+    showProducingExpectedTime: parseFormBoolean(
+      row?.showProducingExpectedTime,
+      DEFAULT_SHOW_PRODUCING_EXPECTED_TIME,
+    ),
+    showProducingElapsed: parseFormBoolean(
+      row?.showProducingElapsed,
+      DEFAULT_SHOW_PRODUCING_ELAPSED,
     ),
   };
 });

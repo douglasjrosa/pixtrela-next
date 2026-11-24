@@ -34,6 +34,7 @@ export interface KioskChainGroupCardProps {
   unit: KioskGroupUnit;
   readOnly?: boolean;
   blockingUi?: boolean;
+  workdayLocked?: boolean;
   timerPaused?: boolean;
   exitBusy?: boolean;
   compactFinishedCards?: boolean;
@@ -61,6 +62,7 @@ export function KioskChainGroupCard({
   unit,
   readOnly = false,
   blockingUi = false,
+  workdayLocked = false,
   timerPaused,
   exitBusy = false,
   compactFinishedCards = false,
@@ -74,6 +76,7 @@ export function KioskChainGroupCard({
   onRefreshMaterialFlags,
 }: KioskChainGroupCardProps) {
   const t = useTranslations("kiosk");
+  const startStopLocked = blockingUi || workdayLocked;
   const [collectingInternal, setCollectingInternal] = useState(false);
   const collecting = collectingProp ?? collectingInternal;
   const [chainStepIndex, setChainStepIndex] = useState(0);
@@ -202,6 +205,7 @@ export function KioskChainGroupCard({
   }
 
   function handleStopClick(): void {
+    if (startStopLocked) return;
     const initial = buildInitialChainStopAnswers(unit.members);
     const next = recomputeChainExitState(
       exitMembers,
@@ -312,7 +316,7 @@ export function KioskChainGroupCard({
             {showStart ? (
               <KioskActionButton
                 actionVariant="produce"
-                disabled={blockingUi}
+                disabled={startStopLocked}
                 onClick={() => onStartChain?.(unit.headId)}
               >
                 {t("start")}
@@ -321,7 +325,7 @@ export function KioskChainGroupCard({
             {showStop ? (
               <KioskActionButton
                 actionVariant="outline"
-                disabled={blockingUi}
+                disabled={startStopLocked}
                 onClick={handleStopClick}
               >
                 {t("stop")}
