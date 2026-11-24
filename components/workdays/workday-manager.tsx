@@ -154,7 +154,7 @@ function WorkdayFormDialog({
   const todayIso = toCalendarDateKey(new Date(), DEFAULT_WORKDAY_TIMEZONE);
   const isPastFlip =
     pastFlipTarget !== null &&
-    existingDate !== undefined &&
+    existingDate != null &&
     existingDate < todayIso;
 
   const {
