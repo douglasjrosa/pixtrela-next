@@ -8,6 +8,7 @@ const ROLES = new Set<Role>([
   "leader",
   "colaborator",
   "kiosk",
+  "panel",
 ]);
 
 export function resolveRoleFromStoredUser(user: {

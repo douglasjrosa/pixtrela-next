@@ -26,4 +26,8 @@ describe("smokeShellHrefsForRole", () => {
   it("returns kiosk home for kiosk role", () => {
     expect(smokeShellHrefsForRole("kiosk")).toEqual(["/kiosk"]);
   });
+
+  it("returns production TV home for panel role", () => {
+    expect(smokeShellHrefsForRole("panel")).toEqual(["/panel"]);
+  });
 });

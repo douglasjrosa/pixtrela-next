@@ -124,7 +124,14 @@ export function defaultWorkdayScope(
 }
 
 export function defaultWorkdayActionForRole(
-  role: "admin" | "manager" | "leader" | "colaborator" | "kiosk" | undefined,
+  role:
+    | "admin"
+    | "manager"
+    | "leader"
+    | "colaborator"
+    | "kiosk"
+    | "panel"
+    | undefined,
 ): WorkdayAction {
   if (role === "leader") return "absence";
   return "work";

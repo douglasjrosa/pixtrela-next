@@ -7,7 +7,7 @@ import type { ColaboratorOption } from "./types";
 export async function loadColaboratorOptions(
   role: Role | undefined,
 ): Promise<ColaboratorOption[]> {
-  if (!role || role === "colaborator" || role === "kiosk") {
+  if (!role || role === "colaborator" || role === "kiosk" || role === "panel") {
     return [];
   }
 

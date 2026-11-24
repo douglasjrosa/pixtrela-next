@@ -20,6 +20,7 @@ export const USER_ROLES = [
   "leader",
   "colaborator",
   "kiosk",
+  "panel",
 ] as const;
 
 export const GREETING_GENDERS = ["masculine", "feminine"] as const;

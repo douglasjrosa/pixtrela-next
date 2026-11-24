@@ -7,6 +7,7 @@ export type SettingsTabDef = {
     | "tabs.currency"
     | "tabs.automations"
     | "tabs.kiosk"
+    | "tabs.panel"
     | "tabs.login"
     | "tabs.integrations"
     | "tabs.themes"
@@ -22,6 +23,7 @@ export const SETTINGS_TAB_DEFS: SettingsTabDef[] = [
   { href: "/settings/currency", labelKey: "tabs.currency" },
   { href: "/settings/automations", labelKey: "tabs.automations" },
   { href: "/settings/kiosk", labelKey: "tabs.kiosk" },
+  { href: "/settings/panel", labelKey: "tabs.panel" },
   { href: "/settings/login", labelKey: "tabs.login" },
   {
     href: "/settings/integrations/ribermax",

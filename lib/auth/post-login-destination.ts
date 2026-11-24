@@ -1,6 +1,7 @@
 import {
   KIOSK_HOME_PATH,
   LOGIN_PATH,
+  PANEL_HOME_PATH,
   resolveRouteAccess,
 } from "@/lib/auth/colaborator-routes";
 import type { Role } from "@/lib/auth/nav";
@@ -22,6 +23,7 @@ export function defaultHomeForRole(
     return buildUserKioskPath(userId);
   }
   if (role === "kiosk") return KIOSK_HOME_PATH;
+  if (role === "panel") return PANEL_HOME_PATH;
   if (role === "colaborator" && userId) return `/${userId}`;
   return "/";
 }

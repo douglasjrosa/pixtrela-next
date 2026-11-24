@@ -1,11 +1,12 @@
 import type { Role } from "@/lib/auth/nav";
 
 const MANAGEABLE_ROLES: Record<Role, Role[]> = {
-  admin: ["admin", "manager", "leader", "colaborator", "kiosk"],
+  admin: ["admin", "manager", "leader", "colaborator", "kiosk", "panel"],
   manager: ["leader", "colaborator"],
   leader: ["colaborator"],
   colaborator: [],
   kiosk: [],
+  panel: [],
 };
 
 /** Roles the actor may assign when creating users (serializable for client props). */

@@ -13,6 +13,10 @@ import {
   DEFAULT_ASSIGN_WARN_MAX,
   normalizeAssignWarnMax,
 } from "@/lib/business/assign-warn-max";
+import {
+  DEFAULT_PRODUCTION_GAP_TOLERANCE_MINUTES,
+  normalizeProductionGapToleranceMinutes,
+} from "@/lib/business/production-gap-tolerance";
 import { getDb, type Db } from "@/lib/db/client";
 import type { TaskAutomationFormInput } from "@/lib/schemas/task-automation";
 import {
@@ -110,6 +114,7 @@ export async function loadTaskAutomationFormValues(
       assignWarnMax: DEFAULT_ASSIGN_WARN_MAX,
       leaderExchangesFirstDay: DEFAULT_EXCHANGES_FIRST_DAY,
       leaderExchangesLastDay: DEFAULT_EXCHANGES_LAST_DAY,
+      productionGapToleranceMinutes: DEFAULT_PRODUCTION_GAP_TOLERANCE_MINUTES,
     };
   }
   return {
@@ -124,6 +129,9 @@ export async function loadTaskAutomationFormValues(
       row.leaderExchangesFirstDay ?? DEFAULT_EXCHANGES_FIRST_DAY,
     leaderExchangesLastDay:
       row.leaderExchangesLastDay ?? DEFAULT_EXCHANGES_LAST_DAY,
+    productionGapToleranceMinutes: normalizeProductionGapToleranceMinutes(
+      row.productionGapToleranceMinutes,
+    ),
   };
 }
 
@@ -154,6 +162,9 @@ export async function upsertTaskAutomationSettings(
     assignWarnMax: normalizeAssignWarnMax(values.assignWarnMax),
     leaderExchangesFirstDay: values.leaderExchangesFirstDay,
     leaderExchangesLastDay: values.leaderExchangesLastDay,
+    productionGapToleranceMinutes: normalizeProductionGapToleranceMinutes(
+      values.productionGapToleranceMinutes,
+    ),
   };
 
   const existing = await getTaskAutomationSettings(db);

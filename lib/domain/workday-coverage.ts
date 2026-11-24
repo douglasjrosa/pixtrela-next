@@ -316,6 +316,25 @@ export function resolveProductiveWindows(
   return sweepWorkWindows(startedAt, endedAt, rules);
 }
 
+/** Inclusive civil-day start and exclusive next-day start in `timeZone`. */
+export function civilDayRangeMs(
+  isoDate: string,
+  timeZone: string,
+): { startMs: number; endMs: number } {
+  const { year, month, day } = parseIsoDate(isoDate);
+  const startMs = zonedLocalToUtcMs(year, month, day, 0, timeZone);
+  const next = addIsoDays(isoDate, 1);
+  const nextParts = parseIsoDate(next);
+  const endMs = zonedLocalToUtcMs(
+    nextParts.year,
+    nextParts.month,
+    nextParts.day,
+    0,
+    timeZone,
+  );
+  return { startMs, endMs };
+}
+
 export function productiveSecondsFromWindows(
   startedAtMs: number,
   endedAtMs: number,

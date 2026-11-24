@@ -9,6 +9,10 @@ import {
   MIN_ASSIGN_WARN_MAX,
 } from "@/lib/business/assign-warn-max";
 import {
+  MAX_PRODUCTION_GAP_TOLERANCE_MINUTES,
+  MIN_PRODUCTION_GAP_TOLERANCE_MINUTES,
+} from "@/lib/business/production-gap-tolerance";
+import {
   TASK_AUTOMATION_STATUS_FIELDS,
   type TaskAutomationFormInput,
 } from "@/lib/schemas/task-automation";
@@ -40,6 +44,7 @@ export async function TaskAutomationForm({
     defaultValues.assignWarnMax,
     defaultValues.leaderExchangesFirstDay,
     defaultValues.leaderExchangesLastDay,
+    defaultValues.productionGapToleranceMinutes,
   ].join(":");
 
   return (
@@ -133,7 +138,6 @@ export async function TaskAutomationForm({
             {tSettings("assignWarnDescription")}
           </p>
         </div>
-
         <div className="flex items-center gap-3">
           <Label htmlFor="assignWarnMax" className="shrink-0">
             {tSettings("assignWarnMax")}
@@ -148,6 +152,32 @@ export async function TaskAutomationForm({
             step={1}
             key={`assignWarnMax-${defaultValues.assignWarnMax}`}
             defaultValue={defaultValues.assignWarnMax}
+            required
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold">
+            {tSettings("preferencesHeading")}
+          </h2>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="productionGapToleranceMinutes">
+            {tSettings("productionGapToleranceMinutes")}
+          </Label>
+          <NumberInput
+            id="productionGapToleranceMinutes"
+            name="productionGapToleranceMinutes"
+            min={MIN_PRODUCTION_GAP_TOLERANCE_MINUTES}
+            max={MAX_PRODUCTION_GAP_TOLERANCE_MINUTES}
+            step={1}
+            key={
+              "productionGapToleranceMinutes-" +
+              String(defaultValues.productionGapToleranceMinutes)
+            }
+            defaultValue={defaultValues.productionGapToleranceMinutes}
             required
           />
         </div>

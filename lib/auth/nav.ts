@@ -6,7 +6,13 @@ import {
   canViewQueues,
 } from "./permissions";
 
-export type Role = "admin" | "manager" | "leader" | "colaborator" | "kiosk";
+export type Role =
+  | "admin"
+  | "manager"
+  | "leader"
+  | "colaborator"
+  | "kiosk"
+  | "panel";
 
 export interface NavItem {
   href: string;
@@ -42,7 +48,7 @@ interface NavRule {
 }
 
 function isStaffRole(role: Role): boolean {
-  return role !== "colaborator" && role !== "kiosk";
+  return role !== "colaborator" && role !== "kiosk" && role !== "panel";
 }
 
 function staffNavRules(paths: StaffNavPaths): NavRule[] {
@@ -89,6 +95,7 @@ export function homeHrefForRole(
   options: { totemMode?: boolean } = {},
 ): string {
   if (role === "kiosk") return "/kiosk";
+  if (role === "panel") return "/panel";
   const usesPersonalTotem =
     options.totemMode &&
     Boolean(userId) &&
@@ -107,7 +114,7 @@ export function navItemsForRole(
   role: Role,
   options: NavItemsOptions = {},
 ): NavItem[] {
-  if (role === "kiosk") return [];
+  if (role === "kiosk" || role === "panel") return [];
 
   if (options.totemMode && (role === "colaborator" || role === "leader")) {
     return [];

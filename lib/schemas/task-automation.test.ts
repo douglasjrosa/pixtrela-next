@@ -24,6 +24,7 @@ describe("taskAutomationFormSchema", () => {
       assignWarnMax: 4,
       leaderExchangesFirstDay: 3,
       leaderExchangesLastDay: 15,
+      productionGapToleranceMinutes: 30,
     });
   });
 

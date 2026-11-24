@@ -9,6 +9,7 @@ import {
   isUserStorePath,
   KIOSK_HOME_PATH,
   LOGIN_PATH,
+  PANEL_HOME_PATH,
   resolveRouteAccess,
 } from "./colaborator-routes";
 
@@ -21,6 +22,7 @@ describe("isColaboratorPrivatePath", () => {
     expect(isColaboratorPrivatePath("/board")).toBe(false);
     expect(isColaboratorPrivatePath("/queues")).toBe(false);
     expect(isColaboratorPrivatePath("/kiosk")).toBe(false);
+    expect(isColaboratorPrivatePath("/panel")).toBe(false);
     expect(isColaboratorPrivatePath("/workdays")).toBe(false);
     expect(isColaboratorPrivatePath("/tasks/abc")).toBe(false);
   });
@@ -50,6 +52,44 @@ describe("resolveRouteAccess", () => {
       action: "redirect",
       destination: `${LOGIN_PATH}?callbackUrl=%2Fkiosk`,
     });
+  });
+
+  it("allows panel role on production TV routes", () => {
+    expect(
+      resolveRouteAccess("/panel", {
+        isAuthenticated: true,
+        role: "panel",
+        userId: "panel-1",
+      }),
+    ).toEqual({ action: "allow" });
+    expect(
+      resolveRouteAccess("/panel/montagem", {
+        isAuthenticated: true,
+        role: "panel",
+        userId: "panel-1",
+      }),
+    ).toEqual({ action: "allow" });
+    expect(
+      resolveRouteAccess("/panel/montagem", {
+        isAuthenticated: true,
+        role: "admin",
+        userId: "admin-1",
+      }),
+    ).toEqual({ action: "allow" });
+    expect(
+      resolveRouteAccess("/panel", {
+        isAuthenticated: true,
+        role: "manager",
+        userId: "mgr-1",
+      }),
+    ).toEqual({ action: "redirect", destination: "/" });
+    expect(
+      resolveRouteAccess("/board", {
+        isAuthenticated: true,
+        role: "panel",
+        userId: "panel-1",
+      }),
+    ).toEqual({ action: "redirect", destination: PANEL_HOME_PATH });
   });
 
   it("allows kiosk role on kiosk routes", () => {

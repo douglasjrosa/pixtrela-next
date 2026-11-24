@@ -20,6 +20,7 @@ import {
 } from "./user-kiosk-path";
 
 export const KIOSK_HOME_PATH = "/kiosk";
+export const PANEL_HOME_PATH = "/panel";
 export const LOGIN_PATH = "/login";
 
 export function buildLoginRedirect(callbackPath?: string): string {
@@ -32,6 +33,7 @@ export function buildLoginRedirect(callbackPath?: string): string {
 const RESERVED_ROOT_SEGMENTS = new Set([
   "login",
   "kiosk",
+  "panel",
   "board",
   "balance",
   "exchange",
@@ -69,6 +71,21 @@ export function isKioskPanelPath(pathname: string): boolean {
 
 export function isKioskPath(pathname: string): boolean {
   return isKioskHomePath(pathname) || isKioskPanelPath(pathname);
+}
+
+export function isPanelHomePath(pathname: string): boolean {
+  return pathname === PANEL_HOME_PATH;
+}
+
+export function isPanelTvPath(pathname: string): boolean {
+  return (
+    pathname.startsWith(`${PANEL_HOME_PATH}/`) &&
+    pathname !== PANEL_HOME_PATH
+  );
+}
+
+export function isPanelPath(pathname: string): boolean {
+  return isPanelHomePath(pathname) || isPanelTvPath(pathname);
 }
 
 /** True for `/{documentId}` (single dynamic segment, not a reserved app path). */
@@ -143,6 +160,7 @@ export function resolveRouteAccess(
   const isColaborator = role === "colaborator";
   const isProducer = canAccessOwnProfile(role);
   const isKiosk = role === "kiosk";
+  const isPanel = role === "panel";
 
   if (pathname.startsWith(LOGIN_PATH)) {
     return { action: "allow" };
@@ -164,6 +182,9 @@ export function resolveRouteAccess(
     if (isKiosk) {
       return redirectTo(KIOSK_HOME_PATH, pathname);
     }
+    if (isPanel) {
+      return redirectTo(PANEL_HOME_PATH, pathname);
+    }
     if (!isProducer) {
       return redirectTo("/", pathname);
     }
@@ -173,12 +194,31 @@ export function resolveRouteAccess(
     return { action: "allow" };
   }
 
+  if (isPanelPath(pathname)) {
+    if (!isAuthenticated) {
+      return redirectTo(buildLoginRedirect(pathname), pathname);
+    }
+    if (isPanel) {
+      return { action: "allow" };
+    }
+    if (role === "admin") {
+      return { action: "allow" };
+    }
+    if (isKiosk) {
+      return redirectTo(KIOSK_HOME_PATH, pathname);
+    }
+    return redirectTo("/", pathname);
+  }
+
   if (isKioskPath(pathname)) {
     if (!isAuthenticated) {
       return redirectTo(buildLoginRedirect(KIOSK_HOME_PATH), pathname);
     }
     if (isKiosk) {
       return { action: "allow" };
+    }
+    if (isPanel) {
+      return redirectTo(PANEL_HOME_PATH, pathname);
     }
     if (role === "admin" && isKioskPanelPath(pathname)) {
       return { action: "allow" };
@@ -196,6 +236,9 @@ export function resolveRouteAccess(
     if (isKiosk) {
       return redirectTo(KIOSK_HOME_PATH, pathname);
     }
+    if (isPanel) {
+      return redirectTo(PANEL_HOME_PATH, pathname);
+    }
     if (!isProducer) {
       return redirectTo("/", pathname);
     }
@@ -211,6 +254,9 @@ export function resolveRouteAccess(
     }
     if (isKiosk) {
       return redirectTo(KIOSK_HOME_PATH, pathname);
+    }
+    if (isPanel) {
+      return redirectTo(PANEL_HOME_PATH, pathname);
     }
     if (!isProducer) {
       return redirectTo("/", pathname);
@@ -228,6 +274,9 @@ export function resolveRouteAccess(
     }
     if (isKiosk) {
       return redirectTo(KIOSK_HOME_PATH, pathname);
+    }
+    if (isPanel) {
+      return redirectTo(PANEL_HOME_PATH, pathname);
     }
     if (!isProducer) {
       return redirectTo("/", pathname);
@@ -250,6 +299,9 @@ export function resolveRouteAccess(
     if (isKiosk) {
       return redirectTo(KIOSK_HOME_PATH, pathname);
     }
+    if (isPanel) {
+      return redirectTo(PANEL_HOME_PATH, pathname);
+    }
     if (isProducer && userId && pathname !== `/${userId}`) {
       return redirectTo(`/${userId}`, pathname);
     }
@@ -261,6 +313,9 @@ export function resolveRouteAccess(
 
   if (isKiosk) {
     return redirectTo(KIOSK_HOME_PATH, pathname);
+  }
+  if (isPanel) {
+    return redirectTo(PANEL_HOME_PATH, pathname);
   }
 
   if (isColaborator) {
