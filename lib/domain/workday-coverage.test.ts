@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { WorkdayCoverageRule } from "./workday-coverage";
 import {
   assignWorkdayRulesToUsers,
+  civilDayRangeMs,
   createSessionSecondsMeasurer,
   PRODUCTIVE_TIMER_HORIZON_DAYS,
   productiveSecondsBetween,
@@ -233,6 +234,18 @@ describe("resolveProductiveWindows", () => {
     expect(windows).toEqual([
       { startMs: atUtc(8).getTime(), endMs: atUtc(12).getTime() },
     ]);
+  });
+});
+
+describe("civilDayRangeMs", () => {
+  it("uses America/Sao_Paulo midnight bounds", () => {
+    const range = civilDayRangeMs("2026-11-24", "America/Sao_Paulo");
+    expect(new Date(range.startMs).toISOString()).toBe(
+      "2026-11-24T03:00:00.000Z",
+    );
+    expect(new Date(range.endMs).toISOString()).toBe(
+      "2026-11-25T03:00:00.000Z",
+    );
   });
 });
 

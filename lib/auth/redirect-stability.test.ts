@@ -101,6 +101,7 @@ const ROLES: Array<{ role: Role; userId: string }> = [
   { role: "leader", userId: "lead-1" },
   { role: "colaborator", userId: "col-1" },
   { role: "kiosk", userId: "kiosk-1" },
+  { role: "panel", userId: "panel-1" },
 ];
 
 const PATHS = [
@@ -109,6 +110,8 @@ const PATHS = [
   "/board",
   "/kiosk",
   "/kiosk/col-1",
+  "/panel",
+  "/panel/montagem",
   "/col-1",
   "/col-1/kiosk",
   "/lead-1/kiosk",

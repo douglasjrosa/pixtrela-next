@@ -110,6 +110,10 @@ export async function updateTaskAutomationSetting(
     assignWarnMax: formNumber(formData, "assignWarnMax"),
     leaderExchangesFirstDay: formNumber(formData, "leaderExchangesFirstDay"),
     leaderExchangesLastDay: formNumber(formData, "leaderExchangesLastDay"),
+    productionGapToleranceMinutes: formNumber(
+      formData,
+      "productionGapToleranceMinutes",
+    ),
   });
   await upsertTaskAutomationSettings(values);
   await auditSuccess({

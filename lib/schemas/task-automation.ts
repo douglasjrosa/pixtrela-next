@@ -6,6 +6,11 @@ import {
   MIN_ASSIGN_WARN_MAX,
 } from "@/lib/business/assign-warn-max";
 import {
+  DEFAULT_PRODUCTION_GAP_TOLERANCE_MINUTES,
+  MAX_PRODUCTION_GAP_TOLERANCE_MINUTES,
+  MIN_PRODUCTION_GAP_TOLERANCE_MINUTES,
+} from "@/lib/business/production-gap-tolerance";
+import {
   DEFAULT_EXCHANGES_FIRST_DAY,
   DEFAULT_EXCHANGES_LAST_DAY,
 } from "@/lib/schemas/team";
@@ -34,6 +39,12 @@ export const taskAutomationFormSchema = z.object({
     DEFAULT_EXCHANGES_FIRST_DAY,
   ),
   leaderExchangesLastDay: exchangeDayOfMonth.default(DEFAULT_EXCHANGES_LAST_DAY),
+  productionGapToleranceMinutes: z
+    .number()
+    .int()
+    .min(MIN_PRODUCTION_GAP_TOLERANCE_MINUTES)
+    .max(MAX_PRODUCTION_GAP_TOLERANCE_MINUTES)
+    .default(DEFAULT_PRODUCTION_GAP_TOLERANCE_MINUTES),
 });
 
 export type TaskAutomationFormInput = z.infer<typeof taskAutomationFormSchema>;

@@ -330,6 +330,20 @@
       "when": 1789000000000,
       "tag": "0046_workday_types",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1789050000000,
+      "tag": "0047_production_gap_tolerance",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1789100000000,
+      "tag": "0048_panels",
+      "breakpoints": true
     }
   ]
 }

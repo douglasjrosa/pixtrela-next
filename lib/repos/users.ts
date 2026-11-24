@@ -28,7 +28,8 @@ export type UserRole =
   | "manager"
   | "leader"
   | "colaborator"
-  | "kiosk";
+  | "kiosk"
+  | "panel";
 
 export type GreetingGender = "masculine" | "feminine" | "neutral" | null;
 

@@ -6,7 +6,7 @@ import {
   eq,
   ilike,
   inArray,
-  ne,
+  notInArray,
   or,
   sql,
 } from "drizzle-orm";
@@ -588,7 +588,7 @@ export async function listWorkdayFormOptions(
     : and(
         eq(users.active, true),
         eq(users.blocked, false),
-        ne(users.role, "kiosk"),
+        notInArray(users.role, ["kiosk", "panel"]),
       );
 
   const [teamRows, userRows] = await Promise.all([

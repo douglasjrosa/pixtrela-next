@@ -24,6 +24,13 @@ describe("resolvePostLoginDestination", () => {
     expect(resolvePostLoginDestination("kiosk", "k1", "/board")).toBe("/kiosk");
   });
 
+  it("sends panel role to the production TV home", () => {
+    expect(resolvePostLoginDestination("panel", "p1", "/board")).toBe("/panel");
+    expect(
+      resolvePostLoginDestination("panel", "p1", "/panel/montagem"),
+    ).toBe("/panel/montagem");
+  });
+
   it("sends colaborator to their private path", () => {
     expect(resolvePostLoginDestination("colaborator", "c1", null)).toBe("/c1");
     expect(resolvePostLoginDestination("colaborator", "c1", "/kiosk")).toBe(

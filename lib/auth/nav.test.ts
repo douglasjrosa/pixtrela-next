@@ -220,6 +220,7 @@ describe("homeHrefForRole", () => {
     expect(homeHrefForRole("colaborator", "col-1")).toBe("/col-1");
 
     expect(homeHrefForRole("kiosk")).toBe("/kiosk");
+    expect(homeHrefForRole("panel")).toBe("/panel");
 
     expect(homeHrefForRole("manager")).toBe("/");
 

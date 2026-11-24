@@ -11,6 +11,7 @@ describe("manageableTargetRoles", () => {
       "leader",
       "colaborator",
       "kiosk",
+      "panel",
     ]);
   });
 });
@@ -21,10 +22,12 @@ describe("canManageRole", () => {
     expect(canManageRole("admin", "manager")).toBe(true);
     expect(canManageRole("admin", "colaborator")).toBe(true);
     expect(canManageRole("admin", "kiosk")).toBe(true);
+    expect(canManageRole("admin", "panel")).toBe(true);
   });
 
   it("denies manager from managing kiosk", () => {
     expect(canManageRole("manager", "kiosk")).toBe(false);
+    expect(canManageRole("manager", "panel")).toBe(false);
   });
 
   it("allows manager to manage leader and colaborator", () => {

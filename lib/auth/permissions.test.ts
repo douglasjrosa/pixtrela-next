@@ -318,6 +318,14 @@ describe("canAccessRoute", () => {
     expect(canAccessRoute("kiosk", "/col-1")).toBe(false);
   });
 
+  it("allows panel only on production TV paths", () => {
+    expect(canAccessRoute("panel", "/panel")).toBe(true);
+    expect(canAccessRoute("panel", "/panel/montagem")).toBe(true);
+    expect(canAccessRoute("panel", "/board")).toBe(false);
+    expect(canAccessRoute("admin", "/panel/montagem")).toBe(true);
+    expect(canAccessRoute("manager", "/panel")).toBe(false);
+  });
+
   it("allows board for staff roles", () => {
     expect(canAccessRoute("leader", "/board")).toBe(true);
   });

@@ -26,6 +26,7 @@ export const userRoleEnum = pgEnum("user_role", [
   "leader",
   "colaborator",
   "kiosk",
+  "panel",
 ]);
 
 export const greetingGenderEnum = pgEnum("greeting_gender", [
@@ -403,6 +404,9 @@ export const taskAutomationSettings = pgTable("task_automation_settings", {
     .notNull(),
   leaderExchangesLastDay: integer("leader_exchanges_last_day")
     .default(15)
+    .notNull(),
+  productionGapToleranceMinutes: integer("production_gap_tolerance_minutes")
+    .default(30)
     .notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
@@ -1048,5 +1052,69 @@ export const workdaySlots = pgTable(
         AND ${table.endMinute} <= 1440
         AND ${table.endMinute} > ${table.startMinute}`,
     ),
+  ],
+);
+
+export const panels = pgTable("panels", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(),
+  slug: varchar("slug", { length: 64 }).notNull().unique(),
+  stepId: uuid("step_id")
+    .references(() => steps.id, { onDelete: "restrict" })
+    .notNull(),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const panelTeams = pgTable(
+  "panel_teams",
+  {
+    panelId: uuid("panel_id")
+      .references(() => panels.id, { onDelete: "cascade" })
+      .notNull(),
+    teamId: uuid("team_id")
+      .references(() => teams.id, { onDelete: "cascade" })
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.panelId, table.teamId] }),
+    index("panel_teams_team_id_idx").on(table.teamId),
+  ],
+);
+
+export const panelShiftSnapshots = pgTable(
+  "panel_shift_snapshots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    panelId: uuid("panel_id")
+      .references(() => panels.id, { onDelete: "cascade" })
+      .notNull(),
+    businessDate: date("business_date").notNull(),
+    packedAt: timestamp("packed_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    todayTaskIds: jsonb("today_task_ids").$type<string[]>().default([]).notNull(),
+    tomorrowTaskIds: jsonb("tomorrow_task_ids")
+      .$type<string[]>()
+      .default([])
+      .notNull(),
+    overrunTaskId: uuid("overrun_task_id"),
+    nextBusinessDate: date("next_business_date"),
+    usableTodayBySubTask: jsonb("usable_today_by_sub_task")
+      .$type<Record<string, number>>()
+      .default({})
+      .notNull(),
+  },
+  (table) => [
+    unique("panel_shift_snapshots_panel_date_unique").on(
+      table.panelId,
+      table.businessDate,
+    ),
+    index("panel_shift_snapshots_panel_id_idx").on(table.panelId),
   ],
 );

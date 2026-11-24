@@ -2,6 +2,7 @@ import {
   canColaboratorAccessPath,
   isColaboratorPrivatePath,
   isKioskPath,
+  isPanelPath,
   isUserProfilePath,
   isUserOrdersPath,
   isUserStorePath,
@@ -13,6 +14,7 @@ export { canAccessOwnProfile } from "./profile-access";
 
 const RANK: Record<Role, number> = {
   kiosk: 0,
+  panel: 0,
   colaborator: 1,
   leader: 2,
   manager: 3,
@@ -139,6 +141,16 @@ export function canManageSettings(role: Role | undefined): boolean {
   return role === "admin";
 }
 
+/** Shop-floor TV: device account or admin preview. */
+export function canAccessProductionTv(role: Role | undefined): boolean {
+  return role === "panel" || role === "admin";
+}
+
+/** Production panel CRUD in settings: admin only. */
+export function canManageProductionPanels(role: Role | undefined): boolean {
+  return role === "admin";
+}
+
 /** Exchange Stars for awards: own cart for colaborator and leader. */
 export function canExchange(role: Role | undefined): boolean {
   return role === "colaborator" || role === "leader";
@@ -213,6 +225,7 @@ const ROUTE_GUARDS: { prefix: string; check: (role: Role | undefined) => boolean
   { prefix: "/users", check: canViewUsers },
   { prefix: "/activities", check: canViewActivities },
   { prefix: "/workdays", check: canAccessWorkdays },
+  { prefix: "/panel", check: canAccessProductionTv },
 ];
 
 /** Whether role may access a route prefix (logged-in routes only). */
@@ -223,6 +236,9 @@ export function canAccessRoute(
 ): boolean {
   if (role === "kiosk") {
     return isKioskPath(pathname);
+  }
+  if (role === "panel") {
+    return isPanelPath(pathname);
   }
 
   if (role === "colaborator") {

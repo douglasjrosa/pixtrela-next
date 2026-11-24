@@ -39,4 +39,7 @@ export {
   workdayTeams,
   workdayUsers,
   workdaySlots,
+  panels,
+  panelTeams,
+  panelShiftSnapshots,
 } from "./schema";

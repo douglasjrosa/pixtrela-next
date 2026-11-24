@@ -93,6 +93,7 @@ describe("settings/actions drizzle paths", () => {
     formData.set("assignWarnMax", "4");
     formData.set("leaderExchangesFirstDay", "5");
     formData.set("leaderExchangesLastDay", "20");
+    formData.set("productionGapToleranceMinutes", "30");
     const values = {
       waitingStepDocumentId: "s1",
       producingStepDocumentId: "",
@@ -103,6 +104,7 @@ describe("settings/actions drizzle paths", () => {
       assignWarnMax: 4,
       leaderExchangesFirstDay: 5,
       leaderExchangesLastDay: 20,
+      productionGapToleranceMinutes: 30,
     };
     await updateTaskAutomationSetting(formData);
     expect(upsertTaskAutomationSettings).toHaveBeenCalledWith(values);

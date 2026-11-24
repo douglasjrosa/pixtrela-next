@@ -11,6 +11,7 @@ export function smokeShellHrefsForRole(
   userId?: string,
 ): string[] {
   if (role === "kiosk") return ["/kiosk"];
+  if (role === "panel") return ["/panel"];
   const hrefs = navItemsForRole(role, { userId }).map(
     (item) => item.href.split("#")[0] ?? item.href,
   );
