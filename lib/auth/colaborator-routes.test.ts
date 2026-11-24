@@ -248,7 +248,7 @@ describe("resolveRouteAccess", () => {
     ).toEqual({ action: "redirect", destination: LOGIN_PATH });
   });
 
-  it("allows admin and manager to open workdays", () => {
+  it("allows admin, manager, and leader to open workdays", () => {
     expect(
       resolveRouteAccess("/workdays", {
         isAuthenticated: true,
@@ -262,6 +262,14 @@ describe("resolveRouteAccess", () => {
         isAuthenticated: true,
         role: "manager",
         userId: "mgr-1",
+      }),
+    ).toEqual({ action: "allow" });
+
+    expect(
+      resolveRouteAccess("/workdays", {
+        isAuthenticated: true,
+        role: "leader",
+        userId: "lead-1",
       }),
     ).toEqual({ action: "allow" });
   });

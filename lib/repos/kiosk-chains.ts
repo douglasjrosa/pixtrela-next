@@ -68,7 +68,10 @@ import {
   toActivityCurrencyAward,
 } from "@/lib/domain/work-currency";
 import type { SessionSecondsMeasurer } from "@/lib/domain/workday-coverage";
-import { loadSessionSecondsMeasurer } from "@/lib/repos/workday-coverage";
+import {
+  assertColaboratorWorkdayOpen,
+  loadSessionSecondsMeasurer,
+} from "@/lib/repos/workday-coverage";
 import { fromDrizzleActivationStatus } from "@/lib/domain/subtask-activation-map";
 import { getDb, type Db } from "@/lib/db/client";
 import {
@@ -659,6 +662,7 @@ export async function startChain(
   db: Db = getDb(),
   timestamp: Date = new Date(),
 ): Promise<{ chainRunId: string }> {
+  await assertColaboratorWorkdayOpen(colaboratorId, timestamp, db);
   const { sub, items, chain, byId, siblings, materialFlagsEnabled } =
     await loadChainContext(headId, db);
   const remaining = remainingExecutableMembers(chain, byId);
@@ -1747,6 +1751,7 @@ export async function joinLiveChain(
   subTaskId: string,
   db: Db = getDb(),
 ): Promise<{ chainRunId: string }> {
+  await assertColaboratorWorkdayOpen(colaboratorId, new Date(), db);
   const [candidate] = await db
     .select()
     .from(subTasks)

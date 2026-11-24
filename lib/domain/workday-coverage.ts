@@ -1,3 +1,8 @@
+import {
+  workdayActionClassRank,
+  workdayPolarity,
+  type WorkdayAction,
+} from "@/lib/domain/workday-actions";
 import { DEFAULT_WORKDAY_TIMEZONE } from "@/lib/schemas/workday";
 
 function calendarDateKey(date: Date, timeZone: string): string {
@@ -20,19 +25,24 @@ const SCOPE_RANK = {
 } as const;
 
 export const PRODUCTIVE_TIMER_HORIZON_DAYS = 7;
+export const WORKDAY_GATE_LOOKAHEAD_DAYS = 31;
+
+export type WorkdayActionGate = {
+  allowed: boolean;
+  nextStartAt: Date | null;
+};
 
 export type WorkdayCoverageSlot = {
   isRecurrent: boolean;
   dayOfWeek: number | null;
   date: string | null;
-  allDay: boolean;
-  startMinute: number | null;
-  endMinute: number | null;
+  startMinute: number;
+  endMinute: number;
 };
 
 export type WorkdayCoverageRule = {
   scope: "global" | "team" | "user";
-  action: "work" | "off";
+  action: WorkdayAction;
   timezone: string;
   validFrom: string | null;
   validUntil: string | null;
@@ -65,9 +75,8 @@ type CoveringInterval = {
   startMs: number;
   endMs: number;
   scopeRank: number;
-  datedRank: number;
-  offRank: number;
-  action: "work" | "off";
+  classRank: number;
+  polarity: "work" | "off";
 };
 
 const dtfCache = new Map<string, Intl.DateTimeFormat>();
@@ -167,10 +176,9 @@ function isIsoDateInValidity(
 }
 
 function slotMinutes(slot: WorkdayCoverageSlot): { start: number; end: number } {
-  if (slot.allDay) return { start: 0, end: MINUTE_END_OF_DAY };
   return {
-    start: Math.max(0, slot.startMinute ?? 0),
-    end: Math.min(MINUTE_END_OF_DAY, slot.endMinute ?? 0),
+    start: Math.max(0, slot.startMinute),
+    end: Math.min(MINUTE_END_OF_DAY, slot.endMinute),
   };
 }
 
@@ -192,7 +200,8 @@ function coveringIntervalsForRule(
   const endKey = addIsoDays(calendarDateKey(endedAt, timeZone), 1);
   const intervals: CoveringInterval[] = [];
   const scopeRank = SCOPE_RANK[rule.scope];
-  const offRank = rule.action === "off" ? 1 : 0;
+  const classRank = workdayActionClassRank(rule.action);
+  const polarity = workdayPolarity(rule.action);
 
   for (
     let isoDate = startKey;
@@ -220,9 +229,8 @@ function coveringIntervalsForRule(
         startMs,
         endMs,
         scopeRank,
-        datedRank: slot.isRecurrent ? 0 : 1,
-        offRank,
-        action: rule.action,
+        classRank,
+        polarity,
       });
     }
   }
@@ -230,9 +238,8 @@ function coveringIntervalsForRule(
 }
 
 function compareCover(left: CoveringInterval, right: CoveringInterval): number {
-  if (left.scopeRank !== right.scopeRank) return right.scopeRank - left.scopeRank;
-  if (left.datedRank !== right.datedRank) return right.datedRank - left.datedRank;
-  return right.offRank - left.offRank;
+  if (left.classRank !== right.classRank) return right.classRank - left.classRank;
+  return right.scopeRank - left.scopeRank;
 }
 
 function winnerAt(
@@ -294,7 +301,7 @@ function sweepWorkWindows(
     const sliceEnd = points[index + 1]!;
     if (sliceEnd <= sliceStart) continue;
     const winner = winnerAt((sliceStart + sliceEnd) / 2, intervals);
-    if (!winner || winner.action !== "work") continue;
+    if (!winner || winner.polarity !== "work") continue;
     windows.push({ startMs: sliceStart, endMs: sliceEnd });
   }
 
@@ -443,6 +450,29 @@ export function timerHorizonEnd(now: Date): Date {
   return new Date(
     now.getTime() + PRODUCTIVE_TIMER_HORIZON_DAYS * MS_PER_DAY,
   );
+}
+
+export function resolveWorkdayActionGate(
+  now: Date,
+  rules: readonly WorkdayCoverageRule[],
+  lookaheadDays = WORKDAY_GATE_LOOKAHEAD_DAYS,
+): WorkdayActionGate {
+  const horizonEnd = new Date(
+    now.getTime() + lookaheadDays * MS_PER_DAY,
+  );
+  const windows = resolveProductiveWindows(now, horizonEnd, rules);
+  const nowMs = now.getTime();
+  const current = windows.find(
+    (window) => nowMs >= window.startMs && nowMs < window.endMs,
+  );
+  if (current) {
+    return { allowed: true, nextStartAt: null };
+  }
+  const future = windows.find((window) => window.startMs > nowMs);
+  return {
+    allowed: false,
+    nextStartAt: future ? new Date(future.startMs) : null,
+  };
 }
 
 export function collectSessionMeasureRange(

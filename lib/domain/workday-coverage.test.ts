@@ -8,6 +8,7 @@ import {
   productiveSecondsBetween,
   productiveSecondsFromWindows,
   resolveProductiveWindows,
+  resolveWorkdayActionGate,
   timerHorizonEnd,
 } from "./workday-coverage";
 
@@ -35,7 +36,6 @@ function weekSlots(
     isRecurrent: true,
     dayOfWeek,
     date: null,
-    allDay: false,
     startMinute,
     endMinute,
   }));
@@ -132,7 +132,6 @@ describe("productiveSecondsBetween", () => {
             isRecurrent: false,
             dayOfWeek: null,
             date: "2026-06-05",
-            allDay: false,
             startMinute: 8 * 60,
             endMinute: 12 * 60,
           },
@@ -140,6 +139,32 @@ describe("productiveSecondsBetween", () => {
       },
     ]);
     expect(seconds).toBe(5 * 3600);
+  });
+
+  it("lets user overtime count on a global holiday", () => {
+    const seconds = productiveSecondsBetween(atUtc(8), atUtc(12), [
+      rule({ action: "holiday", startMinute: 0, endMinute: 1440 }),
+      rule({
+        scope: "user",
+        action: "overtime",
+        startMinute: 8 * 60,
+        endMinute: 12 * 60,
+      }),
+    ]);
+    expect(seconds).toBe(4 * 3600);
+  });
+
+  it("lets a global holiday beat a user work scale", () => {
+    const seconds = productiveSecondsBetween(atUtc(8), atUtc(12), [
+      rule({ action: "holiday", startMinute: 0, endMinute: 1440 }),
+      rule({
+        scope: "user",
+        action: "work",
+        startMinute: 8 * 60,
+        endMinute: 17 * 60,
+      }),
+    ]);
+    expect(seconds).toBe(0);
   });
 
   it("lets team off beat team work at the same instant", () => {
@@ -264,6 +289,25 @@ describe("assignWorkdayRulesToUsers", () => {
     expect(assigned.get("u1")).toHaveLength(2);
     expect(assigned.get("u2")).toHaveLength(2);
     expect(assigned.get("u2")?.some((row) => row.scope === "user")).toBe(true);
+  });
+});
+
+describe("resolveWorkdayActionGate", () => {
+  it("allows actions inside a work window", () => {
+    expect(resolveWorkdayActionGate(atUtc(8), [rule()]).allowed).toBe(true);
+  });
+
+  it("blocks actions before the next work window and reports that start", () => {
+    const gate = resolveWorkdayActionGate(atUtc(7), [rule()]);
+    expect(gate.allowed).toBe(false);
+    expect(gate.nextStartAt?.toISOString()).toBe(atUtc(8).toISOString());
+  });
+
+  it("blocks actions with no resume when no work rule exists", () => {
+    expect(resolveWorkdayActionGate(atUtc(8), [])).toEqual({
+      allowed: false,
+      nextStartAt: null,
+    });
   });
 });
 

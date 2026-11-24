@@ -17,6 +17,9 @@ describe("kioskActionErrorMessage", () => {
     expect(
       kioskActionErrorMessage(t, new Error("chainNotJoinable"), "startFailed"),
     ).toBe("msg:chainNotJoinable");
+    expect(
+      kioskActionErrorMessage(t, new Error("outsideWorkday"), "startFailed"),
+    ).toBe("msg:outsideWorkdayUnknown");
   });
 
   it("maps known exit codes instead of the generic fallback", () => {

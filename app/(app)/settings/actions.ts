@@ -15,7 +15,13 @@ import {
 } from "@/lib/repos/settings";
 import { currencyForSubtasksSchema } from "@/lib/schemas/currency-for-subtasks";
 import { entryAccessSettingsSchema } from "@/lib/schemas/entry-access";
-import { kioskSessionIdleSchema } from "@/lib/schemas/kiosk-setting";
+import {
+  DEFAULT_SHOW_PRODUCING_ELAPSED,
+  DEFAULT_SHOW_PRODUCING_EXPECTED_TIME,
+  DEFAULT_SHOW_PRODUCING_STARTED_AT,
+  kioskSessionIdleSchema,
+  parseFormBoolean,
+} from "@/lib/schemas/kiosk-setting";
 import { taskAutomationFormSchema } from "@/lib/schemas/task-automation";
 
 async function assertCanManage(): Promise<void> {
@@ -65,6 +71,18 @@ export async function updateKioskSessionIdleSeconds(
       "maxSimultaneousSubtaskIntervalSeconds",
     ),
     queuePageSize: formNumber(formData, "queuePageSize"),
+    showProducingStartedAt: parseFormBoolean(
+      formData.get("showProducingStartedAt"),
+      DEFAULT_SHOW_PRODUCING_STARTED_AT,
+    ),
+    showProducingExpectedTime: parseFormBoolean(
+      formData.get("showProducingExpectedTime"),
+      DEFAULT_SHOW_PRODUCING_EXPECTED_TIME,
+    ),
+    showProducingElapsed: parseFormBoolean(
+      formData.get("showProducingElapsed"),
+      DEFAULT_SHOW_PRODUCING_ELAPSED,
+    ),
   });
   await upsertKioskSettings(values);
   await auditSuccess({

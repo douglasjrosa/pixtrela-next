@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 
 import { activities, subTasks, tasks } from "@/drizzle/schema";
 import { ACTIVE_ACTIVITY } from "@/lib/domain/active-activity";
@@ -346,4 +346,43 @@ export async function recomputeActivityCreditsAfterAdminChange(
   }
   const next = await recalculateAwards(resolved, db);
   await applyAwardDiffs([...previousById.values()], next, db);
+}
+
+export async function recomputeDurationCreditsForUsersInRange(
+  input: {
+    userIds?: readonly string[];
+    from: Date;
+    to: Date;
+  },
+  db: Db,
+): Promise<void> {
+  const filters = [
+    ACTIVE_ACTIVITY,
+    gte(activities.timestamp, input.from),
+    lte(activities.timestamp, input.to),
+  ];
+  if (input.userIds && input.userIds.length > 0) {
+    filters.push(inArray(activities.colaboratorId, [...input.userIds]));
+  }
+  if (input.userIds && input.userIds.length === 0) return;
+
+  const rows = await db
+    .select({
+      subTaskId: activities.subTaskId,
+      chainRunId: activities.chainRunId,
+    })
+    .from(activities)
+    .where(and(...filters));
+  if (rows.length === 0) return;
+
+  const subTaskIds = rows.map((row) => row.subTaskId);
+  const chainRunIds = rows.map((row) => row.chainRunId);
+  const previous = await loadActiveCreditSnapshots(
+    { subTaskIds, chainRunIds },
+    db,
+  );
+  await recomputeActivityCreditsAfterAdminChange(
+    { subTaskIds, chainRunIds, previous },
+    db,
+  );
 }

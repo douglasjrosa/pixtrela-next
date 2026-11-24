@@ -4,9 +4,12 @@ import { defaultWorkdayListFilters } from "./workday-list-params";
 import { buildWorkdayListSortHref } from "./workday-list-sort-url";
 
 describe("buildWorkdayListSortHref", () => {
-  it("toggles direction when clicking active sort column", () => {
-    const href = buildWorkdayListSortHref(defaultWorkdayListFilters(), "name");
-    expect(href).toBe("/workdays?sort=name&dir=desc");
+  it("toggles direction when clicking the default createdAt sort", () => {
+    const href = buildWorkdayListSortHref(
+      defaultWorkdayListFilters(),
+      "createdAt",
+    );
+    expect(href).toBe("/workdays?sort=createdAt&dir=asc");
   });
 
   it("preserves filters when switching sort column", () => {

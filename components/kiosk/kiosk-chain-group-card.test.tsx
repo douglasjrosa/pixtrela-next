@@ -228,6 +228,41 @@ describe("KioskChainGroupCard", () => {
     expect(onStartChain).toHaveBeenCalledWith("a");
   });
 
+  it("disables start when the workday is closed", () => {
+    renderWithIntl(
+      <KioskChainGroupCard unit={groupUnit()} workdayLocked onStartChain={vi.fn()} />,
+    );
+
+    expect(screen.getByRole("button", { name: "Iniciar" })).toBeDisabled();
+  });
+
+  it("disables stop when the workday is closed", () => {
+    const members = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Cortar",
+        status: "producing",
+        startedAt: "2026-08-16T12:00:00.000Z",
+      }),
+      kioskSubTask({
+        documentId: "b",
+        name: "Embalar",
+        index: 1,
+        linkedToPrevious: true,
+        status: "waiting",
+      }),
+    ];
+    renderWithIntl(
+      <KioskChainGroupCard
+        unit={activeGroupProps(members)}
+        workdayLocked
+        onConfirmChainStop={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Parar" })).toBeDisabled();
+  });
+
   it("keeps stop enabled while the card is active", () => {
     const members = [
       kioskSubTask({

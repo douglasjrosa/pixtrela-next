@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { activities, openSessions, subTasks } from "@/drizzle/schema";
 import { closeDb, getDb } from "@/lib/db/client";
 import { describeWithDb } from "@/lib/db/test-utils";
+import { createGlobalAllDayWorkday } from "@/lib/db/test-workday";
 import {
   confirmChainStop,
   joinLiveChain,
@@ -21,8 +22,9 @@ import { createTemplateTask } from "@/lib/repos/templates";
 import { createUser } from "@/lib/repos/users";
 
 describeWithDb("joinLiveChain", () => {
-  beforeAll(() => {
+  beforeAll(async () => {
     getDb();
+    await createGlobalAllDayWorkday();
   });
 
   afterAll(async () => {

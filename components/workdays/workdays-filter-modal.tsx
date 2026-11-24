@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { DatePtBrInput } from "@/components/ui/date-ptbr-input";
 import { Label } from "@/components/ui/label";
 import { ListFilterModalShell } from "@/components/ui/list-filter-modal-shell";
 import { SwitchField } from "@/components/ui/switch-field";
@@ -14,6 +15,8 @@ import {
   defaultWorkdayListFilters,
   serializeWorkdayListSearchParams,
 } from "@/lib/workdays/workday-list-params";
+import { WORKDAY_ACTION_MESSAGE_KEYS } from "@/lib/workdays/workday-action-labels";
+import { WORKDAY_ACTIONS } from "@/lib/domain/workday-actions";
 import { WORKDAYS_LIST_PATH } from "@/lib/workdays/workday-list-sort-url";
 
 const SELECT_CLASS =
@@ -95,8 +98,11 @@ export function WorkdaysFilterModal({
             }}
           >
             <option value="">{t("allOptions")}</option>
-            <option value="work">{t("actionWork")}</option>
-            <option value="off">{t("actionOff")}</option>
+            {WORKDAY_ACTIONS.map((action) => (
+              <option key={action} value={action}>
+                {t(WORKDAY_ACTION_MESSAGE_KEYS[action])}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -120,6 +126,39 @@ export function WorkdaysFilterModal({
             <option value="team">{t("scopeTeam")}</option>
             <option value="user">{t("scopeUser")}</option>
           </select>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="workdays-filter-from">{t("dateFrom")}</Label>
+            <DatePtBrInput
+              id="workdays-filter-from"
+              value={draft.dateFrom ?? ""}
+              disabled={isPending}
+              allowEmpty
+              onChange={(value) =>
+                setDraft((current) => ({
+                  ...current,
+                  dateFrom: value || undefined,
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="workdays-filter-to">{t("dateTo")}</Label>
+            <DatePtBrInput
+              id="workdays-filter-to"
+              value={draft.dateTo ?? ""}
+              disabled={isPending}
+              allowEmpty
+              onChange={(value) =>
+                setDraft((current) => ({
+                  ...current,
+                  dateTo: value || undefined,
+                }))
+              }
+            />
+          </div>
         </div>
 
         <SwitchField

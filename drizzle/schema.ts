@@ -106,7 +106,17 @@ export const mediaSensitivityEnum = pgEnum("media_sensitivity", [
   "biometric",
 ]);
 
-export const workdayActionEnum = pgEnum("workday_action", ["work", "off"]);
+export const workdayActionEnum = pgEnum("workday_action", [
+  "absence",
+  "excused_absence",
+  "partial_absence",
+  "partial_excused_absence",
+  "off",
+  "holiday",
+  "work",
+  "overtime",
+  "make_up",
+]);
 
 export const workdayScopeEnum = pgEnum("workday_scope", [
   "global",
@@ -324,6 +334,15 @@ export const kioskSettings = pgTable("kiosk_settings", {
     .default(300)
     .notNull(),
   queuePageSize: integer("queue_page_size").default(15).notNull(),
+  showProducingStartedAt: boolean("show_producing_started_at")
+    .default(true)
+    .notNull(),
+  showProducingExpectedTime: boolean("show_producing_expected_time")
+    .default(true)
+    .notNull(),
+  showProducingElapsed: boolean("show_producing_elapsed")
+    .default(true)
+    .notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -933,7 +952,6 @@ export const workdays = pgTable(
   "workdays",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    name: varchar("name", { length: 128 }).notNull(),
     description: text("description"),
     action: workdayActionEnum("action").default("work").notNull(),
     scope: workdayScopeEnum("scope").default("global").notNull(),
@@ -943,6 +961,12 @@ export const workdays = pgTable(
     validFrom: date("valid_from"),
     validUntil: date("valid_until"),
     active: boolean("active").default(true).notNull(),
+    createdBy: uuid("created_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    updatedBy: uuid("updated_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -1003,9 +1027,8 @@ export const workdaySlots = pgTable(
     isRecurrent: boolean("is_recurrent").default(false).notNull(),
     dayOfWeek: smallint("day_of_week"),
     date: date("date"),
-    allDay: boolean("all_day").default(false).notNull(),
-    startMinute: integer("start_minute"),
-    endMinute: integer("end_minute"),
+    startMinute: integer("start_minute").notNull(),
+    endMinute: integer("end_minute").notNull(),
   },
   (table) => [
     index("workday_slots_workday_id_idx").on(table.workdayId),
@@ -1021,15 +1044,9 @@ export const workdaySlots = pgTable(
     ),
     check(
       "workday_slots_time_check",
-      sql`(${table.allDay} = true
-        AND ${table.startMinute} IS NULL
-        AND ${table.endMinute} IS NULL)
-        OR (${table.allDay} = false
-        AND ${table.startMinute} IS NOT NULL
-        AND ${table.endMinute} IS NOT NULL
-        AND ${table.startMinute} >= 0
+      sql`${table.startMinute} >= 0
         AND ${table.endMinute} <= 1440
-        AND ${table.endMinute} > ${table.startMinute})`,
+        AND ${table.endMinute} > ${table.startMinute}`,
     ),
   ],
 );

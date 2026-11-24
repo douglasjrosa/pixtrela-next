@@ -27,7 +27,6 @@ const users = [{ documentId: USER_ID, name: "Ana" }];
 
 const existingWorkday: WorkdayRow = {
   documentId: "wd-1",
-  name: "Expediente padrão",
   description: "Horário comercial",
   action: "work",
   scope: "global",
@@ -43,21 +42,22 @@ const existingWorkday: WorkdayRow = {
       isRecurrent: true,
       dayOfWeek: 1,
       date: null,
-      allDay: false,
       startMinute: 480,
       endMinute: 720,
     },
   ],
+  editable: true,
+  archivable: true,
 };
 
 const rowLabels = {
-  actionLabel: "Trabalho",
+  actionLabel: "Expediente",
   scopeLabel: "Global (todos)",
   validityLabel: "Contínua",
-  slotsSummary: ["Seg 08:00–12:00"],
+  slotGroups: [{ weekday: 1, weekdayLabel: "Seg", times: ["08:00–12:00"] }],
   slotsCountLabel: "1 horário",
   inactiveLabel: "Inativo",
-  selectRowLabel: "Selecionar Expediente padrão",
+  selectRowLabel: "Selecionar Expediente",
 };
 
 describe("WorkdayManager", () => {
@@ -73,6 +73,7 @@ describe("WorkdayManager", () => {
       <WorkdayManager
         teams={teams}
         users={users}
+        actorRole="manager"
         onCreate={onCreate}
         onUpdate={vi.fn()}
       >
@@ -89,14 +90,12 @@ describe("WorkdayManager", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Novo expediente" }));
-    await user.type(screen.getByLabelText("Nome"), "Turno Manhã");
     await user.click(screen.getByRole("button", { name: "Adicionar horário" }));
     await user.click(screen.getByRole("button", { name: "Criar" }));
 
     await waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
     expect(onCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: "Turno Manhã",
         action: "work",
         scope: "global",
         slots: expect.arrayContaining([
@@ -120,6 +119,7 @@ describe("WorkdayManager", () => {
       <WorkdayManager
         teams={teams}
         users={users}
+        actorRole="manager"
         onCreate={vi.fn()}
         onUpdate={onUpdate}
       >
@@ -135,7 +135,7 @@ describe("WorkdayManager", () => {
       </WorkdayManager>,
     );
 
-    await user.click(screen.getByRole("button", { name: "Expediente padrão" }));
+    await user.click(screen.getByRole("button", { name: "Expediente" }));
     expect(screen.getByText("Editar expediente")).toBeInTheDocument();
 
     await user.selectOptions(screen.getByLabelText("Abrangência"), "team");

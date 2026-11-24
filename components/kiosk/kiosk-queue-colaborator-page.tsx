@@ -74,6 +74,11 @@ export async function KioskQueueColaboratorPage({
       backHref={backHref}
       toolbarTopRadiusClass={toolbarTopRadiusClass}
       bootstrapPending
+      producingCardMetrics={{
+        showStartedAt: settings.showProducingStartedAt,
+        showExpectedTime: settings.showProducingExpectedTime,
+        showElapsed: settings.showProducingElapsed,
+      }}
       profileSlot={
         <Suspense fallback={<HeaderChipSkeleton />}>
           <KioskQueueProfileBlock

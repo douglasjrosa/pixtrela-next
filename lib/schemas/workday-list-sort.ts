@@ -1,17 +1,17 @@
 import { z } from "zod";
 
 export const WORKDAY_LIST_SORT_COLUMNS = [
-  "name",
   "action",
   "scope",
   "validity",
   "slots",
+  "createdAt",
 ] as const;
 
 export const WORKDAY_LIST_SORT_DIRECTIONS = ["asc", "desc"] as const;
 
-export const WORKDAY_LIST_DEFAULT_SORT_COLUMN = "name" as const;
-export const WORKDAY_LIST_DEFAULT_SORT_DIRECTION = "asc" as const;
+export const WORKDAY_LIST_DEFAULT_SORT_COLUMN = "createdAt" as const;
+export const WORKDAY_LIST_DEFAULT_SORT_DIRECTION = "desc" as const;
 
 export const workdayListSortSchema = z.object({
   column: z

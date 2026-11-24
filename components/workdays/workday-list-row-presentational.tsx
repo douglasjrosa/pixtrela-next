@@ -6,7 +6,10 @@ import { CardBadge } from "@/components/ui/card";
 import { ListRowCheckbox } from "@/components/ui/list-row-checkbox";
 import { cn } from "@/lib/utils";
 import type { WorkdayRowLabels } from "@/lib/workdays/format-workday-row-labels";
+import { workdayPolarity } from "@/lib/domain/workday-actions";
 
+import { WorkdayDescriptionBalloon } from "./workday-description-balloon";
+import { WorkdaySlotBadgeGroups } from "./workday-slot-badge-groups";
 import { useWorkdayList } from "./workday-list-context";
 import type { WorkdayRow } from "./types";
 
@@ -45,7 +48,9 @@ export function WorkdayListRowPresentational({
 }: WorkdayListRowPresentationalProps) {
   const { openEdit } = useWorkdayList();
   const archived = !workday.active;
-  const activate = () => openEdit(workday);
+  const activate = () => {
+    if (workday.editable) openEdit(workday);
+  };
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -53,30 +58,20 @@ export function WorkdayListRowPresentational({
     }
   };
 
-  const nameCell = (
-    <div className="flex flex-col gap-0.5">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="font-medium">{workday.name}</span>
-        {archived ? <CardBadge>{labels.inactiveLabel}</CardBadge> : null}
-      </div>
-      {workday.description ? (
-        <span className="line-clamp-1 text-xs text-muted-foreground">
-          {workday.description}
-        </span>
-      ) : null}
-    </div>
-  );
-
+  const polarity = workdayPolarity(workday.action);
   const actionBadge = (
-    <CardBadge
-      className={cn(
-        workday.action === "work"
-          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-          : "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-      )}
-    >
-      {labels.actionLabel}
-    </CardBadge>
+    <div className="flex flex-wrap items-center justify-center gap-1">
+      <CardBadge
+        className={cn(
+          polarity === "work"
+            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+            : "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+        )}
+      >
+        {labels.actionLabel}
+      </CardBadge>
+      {archived ? <CardBadge>{labels.inactiveLabel}</CardBadge> : null}
+    </div>
   );
 
   const targets = targetChips(workday);
@@ -97,82 +92,96 @@ export function WorkdayListRowPresentational({
   );
 
   const slotsCell = (
-    <div className="flex flex-wrap items-center justify-center gap-1">
-      {labels.slotsSummary.map((summary) => (
-        <CardBadge key={summary}>{summary}</CardBadge>
-      ))}
-    </div>
+    <WorkdaySlotBadgeGroups groups={labels.slotGroups} align="center" />
   );
 
   const rowClassName = cn(
-    "cursor-pointer border-b hover:bg-muted/40",
+    workday.editable && "cursor-pointer hover:bg-muted/40",
+    "border-b",
     archived && "text-muted-foreground",
   );
-  const rowProps = {
-    onClick: activate,
-    onKeyDown,
-    role: "button" as const,
-    tabIndex: 0,
-    "aria-label": workday.name,
-  };
-
-  if (variant === "table") {
-    return (
-      <tr className={rowClassName} {...rowProps}>
-        {showCheckboxColumn ? (
-          <ListRowCheckbox
-            documentId={workday.documentId}
-            variant="table"
-            ariaLabel={labels.selectRowLabel}
-          />
-        ) : null}
-        <td className={CELL_CLASS}>{nameCell}</td>
-        <td className={CENTER_CELL_CLASS}>{actionBadge}</td>
-        <td className={CENTER_CELL_CLASS}>{scopeCell}</td>
-        <td className={CENTER_CELL_CLASS}>{labels.validityLabel}</td>
-        <td className={CENTER_CELL_CLASS}>{slotsCell}</td>
-      </tr>
-    );
-  }
+  const interactiveProps = workday.editable
+    ? {
+        onClick: activate,
+        onKeyDown,
+        role: "button" as const,
+        tabIndex: 0,
+        "aria-label": labels.actionLabel,
+      }
+    : {
+        "aria-label": labels.actionLabel,
+      };
 
   return (
-    <li className={cn("list-none py-3", rowClassName)} {...rowProps}>
-      <div className="flex items-start gap-3">
-        {showCheckboxColumn ? (
-          <ListRowCheckbox
-            documentId={workday.documentId}
-            variant="mobile"
-            ariaLabel={labels.selectRowLabel}
-          />
-        ) : null}
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <div className="text-base">{nameCell}</div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {actionBadge}
-            <CardBadge>{labels.scopeLabel}</CardBadge>
-            {targets.visible.map((name) => (
-              <CardBadge key={name} className="bg-muted text-muted-foreground">
-                {name}
-              </CardBadge>
-            ))}
-            {targets.extra > 0 ? (
-              <CardBadge className="bg-muted text-muted-foreground">
-                +{targets.extra}
-              </CardBadge>
-            ) : null}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {labels.validityLabel} · {labels.slotsCountLabel}
-          </div>
-          {labels.slotsSummary.length > 0 ? (
-            <div className="flex flex-wrap gap-1">
-              {labels.slotsSummary.map((summary) => (
-                <CardBadge key={summary}>{summary}</CardBadge>
-              ))}
+    <WorkdayDescriptionBalloon description={workday.description}>
+      {({ onMouseMove, onMouseLeave }) => {
+        if (variant === "table") {
+          return (
+            <tr
+              className={rowClassName}
+              onMouseMove={onMouseMove}
+              onMouseLeave={onMouseLeave}
+              {...interactiveProps}
+            >
+              {showCheckboxColumn ? (
+                workday.archivable ? (
+                  <ListRowCheckbox
+                    documentId={workday.documentId}
+                    variant="table"
+                    ariaLabel={labels.selectRowLabel}
+                  />
+                ) : (
+                  <td className={CENTER_CELL_CLASS} />
+                )
+              ) : null}
+              <td className={CENTER_CELL_CLASS}>{actionBadge}</td>
+              <td className={CENTER_CELL_CLASS}>{scopeCell}</td>
+              <td className={CENTER_CELL_CLASS}>{labels.validityLabel}</td>
+              <td className={CENTER_CELL_CLASS}>{slotsCell}</td>
+            </tr>
+          );
+        }
+
+        return (
+          <li
+            className={cn("list-none py-3", rowClassName)}
+            onMouseMove={onMouseMove}
+            onMouseLeave={onMouseLeave}
+            {...interactiveProps}
+          >
+            <div className="flex items-start gap-3">
+              {showCheckboxColumn && workday.archivable ? (
+                <ListRowCheckbox
+                  documentId={workday.documentId}
+                  variant="mobile"
+                  ariaLabel={labels.selectRowLabel}
+                />
+              ) : null}
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {actionBadge}
+                  <CardBadge>{labels.scopeLabel}</CardBadge>
+                  {targets.visible.map((name) => (
+                    <CardBadge
+                      key={name}
+                      className="bg-muted text-muted-foreground"
+                    >
+                      {name}
+                    </CardBadge>
+                  ))}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {labels.validityLabel} · {labels.slotsCountLabel}
+                </div>
+                <WorkdaySlotBadgeGroups
+                  groups={labels.slotGroups}
+                  align="start"
+                />
+              </div>
             </div>
-          ) : null}
-        </div>
-      </div>
-    </li>
+          </li>
+        );
+      }}
+    </WorkdayDescriptionBalloon>
   );
 }

@@ -1,10 +1,15 @@
 import type { WorkdayRow } from "@/components/workdays/types";
 import type { WorkdayWithRelations } from "@/lib/repos/workdays";
 
-export function mapWorkdayToRow(item: WorkdayWithRelations): WorkdayRow {
+export function mapWorkdayToRow(
+  item: WorkdayWithRelations,
+  permissions: { editable: boolean; archivable: boolean } = {
+    editable: true,
+    archivable: true,
+  },
+): WorkdayRow {
   return {
     documentId: item.id,
-    name: item.name,
     description: item.description,
     action: item.action,
     scope: item.scope,
@@ -19,9 +24,10 @@ export function mapWorkdayToRow(item: WorkdayWithRelations): WorkdayRow {
       isRecurrent: slot.isRecurrent,
       dayOfWeek: slot.dayOfWeek,
       date: slot.date,
-      allDay: slot.allDay,
       startMinute: slot.startMinute,
       endMinute: slot.endMinute,
     })),
+    editable: permissions.editable,
+    archivable: permissions.archivable,
   };
 }

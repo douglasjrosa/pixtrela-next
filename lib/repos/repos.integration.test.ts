@@ -67,6 +67,7 @@ async function createCategoryWithFlag(prefix: string, suffix: string) {
 describeWithDb("drizzle repos integration", () => {
   beforeAll(async () => {
     getDb();
+    await createGlobalAllDayWorkday();
   });
 
   afterAll(async () => {
@@ -346,7 +347,7 @@ describeWithDb("drizzle repos integration", () => {
 
       await assignColaboratorsToSubTask(subs[0]!.id, [colaborator.id]);
       await assignFlagsToSubTask(subs[0]!.id, [flag.id]);
-      await createGlobalAllDayWorkday(suffix);
+      await createGlobalAllDayWorkday();
 
       const startedAt = new Date("2026-08-09T10:00:00Z");
       const stoppedAt = new Date("2026-08-09T10:00:30Z");

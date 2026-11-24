@@ -41,7 +41,7 @@ export function WorkdaysToolbar({
             parseFilters={parseWorkdayListSearchParams}
             serializeFilters={serializeWorkdayListSearchParams}
             minChars={WORKDAY_LIST_SEARCH_MIN_CHARS}
-            label={t("searchByName")}
+            label={t("searchPlaceholder")}
             className={LIST_PAGE_SEARCH_INPUT_CLASS}
           />
         }

@@ -18,6 +18,7 @@ import {
 import { rethrowIfNavigationError } from "@/lib/navigation/rethrow";
 import { listWorkdayFormOptions } from "@/lib/repos/workdays";
 import { loadWorkdayListPage } from "@/lib/workdays/load-workday-list-page";
+import { resolveWorkdayViewerContext } from "@/lib/workdays/resolve-workday-viewer";
 import {
   parseWorkdayListSearchParams,
   type SearchParamsRecord,
@@ -34,8 +35,9 @@ export default async function WorkdaysPage({
 }: WorkdaysPageProps) {
   const session = await getAppSession();
   const role = session?.user?.role as Role | undefined;
+  const userId = session?.user?.id;
 
-  if (!canManageWorkdays(role)) {
+  if (!role || !canManageWorkdays(role) || !userId) {
     return <ForbiddenMessage />;
   }
 
@@ -46,9 +48,10 @@ export default async function WorkdaysPage({
   const canDeactivate = canDeactivateWorkdays(role);
   const canDelete = canDeleteWorkdays(role);
   const showCheckboxColumn = canDeactivate || canDelete;
+  const viewerContext = await resolveWorkdayViewerContext({ role, userId });
 
   const [pageResult, formOptions] = await Promise.all([
-    loadWorkdayListPage(filters, 1).catch((error) => {
+    loadWorkdayListPage(filters, 1, viewerContext).catch((error) => {
       rethrowIfNavigationError(error);
       return {
         workdays: [],
@@ -57,7 +60,9 @@ export default async function WorkdaysPage({
         hasMore: false,
       };
     }),
-    listWorkdayFormOptions().catch((error) => {
+    listWorkdayFormOptions(
+      role === "leader" ? { leaderUserId: userId } : {},
+    ).catch((error) => {
       rethrowIfNavigationError(error);
       return { teams: [], users: [] };
     }),
@@ -103,6 +108,7 @@ export default async function WorkdaysPage({
       <WorkdayManager
         teams={formOptions.teams}
         users={formOptions.users}
+        actorRole={role}
         onCreate={createWorkday}
         onUpdate={updateWorkday}
       >

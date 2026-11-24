@@ -8,6 +8,7 @@ export type KioskQueuePanelActions = Pick<
   KioskDailyQueueProps,
   | "readOnly"
   | "blockingUi"
+  | "workdayLocked"
   | "timerPaused"
   | "exitBusy"
   | "flashDocumentId"

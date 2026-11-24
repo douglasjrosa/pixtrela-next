@@ -14,11 +14,13 @@ describe("workday-list-params", () => {
     );
   });
 
-  it("parses q, action, scope, archived, and sort", () => {
+  it("parses q, action, scope, dates, archived, and sort", () => {
     const parsed = parseWorkdayListSearchParams({
       q: "feriado",
-      action: "off",
+      action: "holiday",
       scope: "team",
+      from: "2026-11-01",
+      to: "2026-11-30",
       archived: "1",
       sort: "scope",
       dir: "desc",
@@ -26,8 +28,10 @@ describe("workday-list-params", () => {
 
     expect(parsed).toEqual({
       q: "feriado",
-      action: "off",
+      action: "holiday",
       scope: "team",
+      dateFrom: "2026-11-01",
+      dateTo: "2026-11-30",
       showArchived: true,
       column: "scope",
       direction: "desc",
@@ -46,6 +50,8 @@ describe("workday-list-params", () => {
       q: "turno",
       action: "work",
       scope: "user",
+      dateFrom: "2026-11-01",
+      dateTo: undefined,
       showArchived: true,
       column: "action",
       direction: "desc",
@@ -53,6 +59,7 @@ describe("workday-list-params", () => {
     expect(params.get("q")).toBe("turno");
     expect(params.get("action")).toBe("work");
     expect(params.get("scope")).toBe("user");
+    expect(params.get("from")).toBe("2026-11-01");
     expect(params.get("archived")).toBe("1");
     expect(params.get("sort")).toBe("action");
     expect(params.get("dir")).toBe("desc");

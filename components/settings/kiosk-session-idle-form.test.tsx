@@ -29,5 +29,17 @@ describe("KioskSessionIdleForm", () => {
         "Intervalo máximo para permitir subtarefas simultâneas (s)",
       ),
     ).toHaveValue(300);
+    expect(
+      screen.getByRole("group", { name: "No card em execução:" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: "Mostrar data/hora de início" }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("switch", { name: "Mostrar Tempo previsto" }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("switch", { name: "Mostrar Tempo decorrido" }),
+    ).toBeChecked();
   });
 });

@@ -15,6 +15,7 @@ vi.mock("@/lib/kiosk/kiosk-queue-poll-interval", () => ({
 vi.mock("@/lib/kiosk/kiosk-toast", () => ({
   showKioskSuccessToast: vi.fn(),
   showKioskErrorToast: vi.fn(),
+  showKioskInfoToast: vi.fn(),
 }));
 
 vi.mock("@/lib/welcome/kiosk-welcome-ready", () => ({

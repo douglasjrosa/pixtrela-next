@@ -1,10 +1,9 @@
 import { createWorkday } from "@/lib/repos/workdays";
-import { allDayWeekSlots } from "@/lib/workdays/workday-slot-helpers";
+import { civilDayWeekSlots } from "@/lib/workdays/workday-slot-helpers";
 
-/** All-day global work rule so duration credits match wall clock in tests. */
-export async function createGlobalAllDayWorkday(suffix: string) {
+/** Civil-day global work rule so duration credits match wall clock in tests. */
+export async function createGlobalAllDayWorkday() {
   return createWorkday({
-    name: `All-day ${suffix}`,
     description: null,
     action: "work",
     scope: "global",
@@ -13,6 +12,6 @@ export async function createGlobalAllDayWorkday(suffix: string) {
     validUntil: null,
     teamIds: [],
     userIds: [],
-    slots: allDayWeekSlots(),
+    slots: civilDayWeekSlots(),
   });
 }

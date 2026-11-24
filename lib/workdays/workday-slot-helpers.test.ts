@@ -1,17 +1,25 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  allDayWeekSlots,
+  civilDayWeekSlots,
   expandDateRangeSlots,
   expandRecurrentSlots,
   mergeAndSortWorkdaySlots,
+  weekdayOfSlot,
 } from "./workday-slot-helpers";
 
-describe("allDayWeekSlots", () => {
-  it("covers every weekday as an all-day recurrent slot", () => {
-    const slots = allDayWeekSlots();
+describe("civilDayWeekSlots", () => {
+  it("covers every weekday as 00:00-24:00 recurrent slots", () => {
+    const slots = civilDayWeekSlots();
     expect(slots).toHaveLength(7);
-    expect(slots.every((slot) => slot.allDay && slot.isRecurrent)).toBe(true);
+    expect(
+      slots.every(
+        (slot) =>
+          slot.isRecurrent &&
+          slot.startMinute === 0 &&
+          slot.endMinute === 1440,
+      ),
+    ).toBe(true);
     expect(slots.map((slot) => slot.dayOfWeek)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 });
@@ -20,7 +28,6 @@ describe("expandRecurrentSlots", () => {
   it("creates one normalized slot per selected weekday", () => {
     const slots = expandRecurrentSlots({
       daysOfWeek: [3, 1, 1, 2],
-      allDay: false,
       startMinute: 480,
       endMinute: 720,
     });
@@ -29,7 +36,6 @@ describe("expandRecurrentSlots", () => {
         isRecurrent: true,
         dayOfWeek: 1,
         date: null,
-        allDay: false,
         startMinute: 480,
         endMinute: 720,
       },
@@ -37,7 +43,6 @@ describe("expandRecurrentSlots", () => {
         isRecurrent: true,
         dayOfWeek: 2,
         date: null,
-        allDay: false,
         startMinute: 480,
         endMinute: 720,
       },
@@ -45,26 +50,10 @@ describe("expandRecurrentSlots", () => {
         isRecurrent: true,
         dayOfWeek: 3,
         date: null,
-        allDay: false,
         startMinute: 480,
         endMinute: 720,
       },
     ]);
-  });
-
-  it("nulls start/end minutes when allDay is true", () => {
-    const slots = expandRecurrentSlots({
-      daysOfWeek: [0],
-      allDay: true,
-      startMinute: 480,
-      endMinute: 720,
-    });
-    expect(slots[0]).toMatchObject({
-      dayOfWeek: 0,
-      allDay: true,
-      startMinute: null,
-      endMinute: null,
-    });
   });
 });
 
@@ -73,18 +62,16 @@ describe("expandDateRangeSlots", () => {
     const slots = expandDateRangeSlots({
       startDate: "2026-11-20",
       endDate: "",
-      allDay: true,
-      startMinute: null,
-      endMinute: null,
+      startMinute: 0,
+      endMinute: 1440,
     });
     expect(slots).toEqual([
       {
         isRecurrent: false,
         dayOfWeek: null,
         date: "2026-11-20",
-        allDay: true,
-        startMinute: null,
-        endMinute: null,
+        startMinute: 0,
+        endMinute: 1440,
       },
     ]);
   });
@@ -93,7 +80,6 @@ describe("expandDateRangeSlots", () => {
     const slots = expandDateRangeSlots({
       startDate: "2026-11-29",
       endDate: "2026-12-02",
-      allDay: false,
       startMinute: 480,
       endMinute: 1020,
     });
@@ -114,9 +100,8 @@ describe("mergeAndSortWorkdaySlots", () => {
           isRecurrent: false,
           dayOfWeek: null,
           date: "2026-11-20",
-          allDay: true,
-          startMinute: null,
-          endMinute: null,
+          startMinute: 0,
+          endMinute: 1440,
         },
       ],
       [
@@ -124,7 +109,6 @@ describe("mergeAndSortWorkdaySlots", () => {
           isRecurrent: true,
           dayOfWeek: 1,
           date: null,
-          allDay: false,
           startMinute: 780,
           endMinute: 1020,
         },
@@ -132,7 +116,6 @@ describe("mergeAndSortWorkdaySlots", () => {
           isRecurrent: true,
           dayOfWeek: 1,
           date: null,
-          allDay: false,
           startMinute: 480,
           endMinute: 720,
         },
@@ -140,9 +123,8 @@ describe("mergeAndSortWorkdaySlots", () => {
           isRecurrent: false,
           dayOfWeek: null,
           date: "2026-11-20",
-          allDay: true,
-          startMinute: null,
-          endMinute: null,
+          startMinute: 0,
+          endMinute: 1440,
         },
       ],
     );
@@ -151,5 +133,20 @@ describe("mergeAndSortWorkdaySlots", () => {
     expect(merged[0]).toMatchObject({ isRecurrent: true, startMinute: 480 });
     expect(merged[1]).toMatchObject({ isRecurrent: true, startMinute: 780 });
     expect(merged[2]).toMatchObject({ isRecurrent: false, date: "2026-11-20" });
+  });
+});
+
+describe("weekdayOfSlot", () => {
+  it("uses dayOfWeek for recurrent slots and UTC weekday for dates", () => {
+    expect(
+      weekdayOfSlot({ isRecurrent: true, dayOfWeek: 3, date: null }),
+    ).toBe(3);
+    expect(
+      weekdayOfSlot({
+        isRecurrent: false,
+        dayOfWeek: null,
+        date: "2026-11-20",
+      }),
+    ).toBe(5);
   });
 });

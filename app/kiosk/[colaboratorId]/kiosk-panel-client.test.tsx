@@ -18,10 +18,12 @@ const advanceChainRun = vi.fn();
 const confirmChainStop = vi.fn();
 const showKioskSuccessToast = vi.fn();
 const showKioskErrorToast = vi.fn();
+const showKioskInfoToast = vi.fn();
 
 vi.mock("@/lib/kiosk/kiosk-toast", () => ({
   showKioskSuccessToast: (...args: unknown[]) => showKioskSuccessToast(...args),
   showKioskErrorToast: (...args: unknown[]) => showKioskErrorToast(...args),
+  showKioskInfoToast: (...args: unknown[]) => showKioskInfoToast(...args),
 }));
 
 vi.mock("@/lib/welcome/kiosk-welcome-ready", () => ({
@@ -125,6 +127,34 @@ describe("KioskPanelClient", () => {
     confirmChainStop.mockResolvedValue(undefined);
     showKioskSuccessToast.mockReset();
     showKioskErrorToast.mockReset();
+    showKioskInfoToast.mockReset();
+  });
+
+  it("toasts and locks start when the queue opens outside a workday", () => {
+    renderWithIntl(
+      <KioskPanelClient
+        colaboratorId="u-1"
+        colaboratorName="Ana"
+        initialLiberadas={{
+          ...liberadasPage([
+            {
+              type: "isolated",
+              subTask: waitingTask(),
+              helperMode: false,
+              showStart: true,
+            },
+          ]),
+          workdayAllowed: false,
+          nextWorkStartAt: "2026-06-08T11:00:00.000Z",
+        }}
+      />,
+    );
+
+    expect(showKioskInfoToast).toHaveBeenCalledTimes(1);
+    expect(showKioskInfoToast).toHaveBeenCalledWith(
+      "Sem expediente no momento. Seu horário de trabalho recomeça em 08/06/26 - 08:00 hs.",
+    );
+    expect(screen.getByRole("button", { name: "Iniciar" })).toBeDisabled();
   });
 
   it("shows the producing card immediately while start is in flight", async () => {

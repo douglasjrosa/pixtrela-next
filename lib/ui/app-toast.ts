@@ -1,6 +1,7 @@
 import { toast, type ExternalToast } from "sonner";
 
 export const HINT_TOAST_DURATION_MS = 2000;
+export const INFO_TOAST_DURATION_MS = 8000;
 export const BOTTOM_CENTER_TOAST_POSITION = "bottom-center" as const;
 
 export type AppToastPosition = ExternalToast["position"];
@@ -8,6 +9,7 @@ export type AppToastPosition = ExternalToast["position"];
 export interface AppToastOptions {
   toastId?: string | number;
   position?: AppToastPosition;
+  duration?: number;
 }
 
 export function showLoadingToast(
@@ -46,6 +48,17 @@ export function showErrorToast(message: string, options?: AppToastOptions): void
 
 export function showHintToast(message: string): void {
   toast(message, { duration: HINT_TOAST_DURATION_MS });
+}
+
+export function showInfoToast(
+  message: string,
+  options?: AppToastOptions,
+): void {
+  toast(message, {
+    id: options?.toastId,
+    position: resolveToastPosition(options),
+    duration: options?.duration ?? INFO_TOAST_DURATION_MS,
+  });
 }
 
 export interface ConfirmToastOptions {

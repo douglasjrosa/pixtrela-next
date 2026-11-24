@@ -450,6 +450,44 @@ describe("KioskSubtaskPanel", () => {
     expect(onStart).toHaveBeenCalledWith("a");
   });
 
+  it("disables start and exit when the workday is closed", () => {
+    const producing = [
+      kioskSubTask({
+        documentId: "a",
+        name: "Tarefa A",
+        status: "producing",
+        startedAt: "2026-06-05T10:00:00.000Z",
+        activeWorkerCount: 1,
+      }),
+    ];
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={producing}
+        allSubTasks={producing}
+        workdayLocked
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Sair da subtarefa" }),
+    ).toBeDisabled();
+  });
+
+  it("disables start when the workday is closed", () => {
+    renderWithIntl(
+      <KioskSubtaskPanel
+        subTasks={subTasks}
+        workdayLocked
+        onStart={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByRole("button", { name: "Iniciar" })[0]).toBeDisabled();
+  });
+
   it("hides mark-complete when other workers are still active", async () => {
     const user = userEvent.setup();
     const onExit = vi.fn();
