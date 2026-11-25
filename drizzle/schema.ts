@@ -587,6 +587,7 @@ export const tasks = pgTable(
     totalExpectedTime: integer("total_expected_time").default(0).notNull(),
     totalTimeSpent: integer("total_time_spent").default(0).notNull(),
     templateTaskCode: varchar("template_task_code", { length: 64 }),
+    lotNumber: integer("lot_number"),
     crmPedidoId: integer("crm_pedido_id"),
     crmItemKey: varchar("crm_item_key", { length: 128 }),
     createdAt: timestamp("created_at", { withTimezone: true })

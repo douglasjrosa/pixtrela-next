@@ -50,6 +50,7 @@ export type CreateTaskInput = {
   index?: number;
   crmPedidoId?: number | null;
   crmItemKey?: string | null;
+  lotNumber?: number | null;
 };
 
 export async function createTask(
@@ -71,6 +72,7 @@ export async function createTask(
         index: input.index ?? 0,
         crmPedidoId: input.crmPedidoId ?? null,
         crmItemKey: input.crmItemKey ?? null,
+        lotNumber: input.lotNumber ?? null,
       })
       .returning();
 
@@ -789,6 +791,7 @@ export type CrmPedidoTaskRecord = {
   name: string;
   qty: number;
   deliveryDate: string | null;
+  lotNumber: number | null;
 };
 
 export async function findTaskByCrmItemKey(
@@ -801,6 +804,7 @@ export async function findTaskByCrmItemKey(
       name: tasks.name,
       qty: tasks.qty,
       deliveryDate: tasks.deliveryDate,
+      lotNumber: tasks.lotNumber,
     })
     .from(tasks)
     .where(eq(tasks.crmItemKey, crmItemKey))
@@ -818,7 +822,12 @@ export async function findTaskByExternalKey(
 
 export async function updateCrmPedidoTaskFields(
   id: string,
-  input: { name: string; qty: number; deliveryDate?: string | null },
+  input: {
+    name: string;
+    qty: number;
+    deliveryDate?: string | null;
+    lotNumber?: number | null;
+  },
   db: Db = getDb(),
 ) {
   const [row] = await db
@@ -827,6 +836,7 @@ export async function updateCrmPedidoTaskFields(
       name: input.name.trim(),
       qty: Math.max(1, input.qty),
       deliveryDate: input.deliveryDate ?? null,
+      ...(input.lotNumber !== undefined ? { lotNumber: input.lotNumber } : {}),
       updatedAt: new Date(),
     })
     .where(eq(tasks.id, id))

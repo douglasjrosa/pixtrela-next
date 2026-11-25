@@ -24,6 +24,7 @@ export const apiTaskUpsertSchema = z.object({
   deliveryDate: z.string().trim().min(1).nullable().optional(),
   externalKey: z.string().trim().min(1),
   templateTaskCode: z.string().trim().min(1),
+  lotNumber: z.coerce.number().int().positive(),
   versions: z.array(z.union([z.string(), z.number()])).optional().default([]),
   template: boxTemplateDataSchema.optional().nullable(),
 });

@@ -41,6 +41,7 @@ const baseInput = {
   deliveryDate: "2026-07-15",
   externalKey: "123:0",
   templateTaskCode: "16378",
+  lotNumber: 45210,
   versions: ["16377"],
   template: {
     prodId: 16378,
@@ -68,6 +69,7 @@ describe("upsertTaskFromApi", () => {
       name: "Old",
       qty: 1,
       deliveryDate: null,
+      lotNumber: null,
     });
     getTaskById
       .mockResolvedValueOnce({
@@ -90,6 +92,7 @@ describe("upsertTaskFromApi", () => {
       name: baseInput.name,
       qty: 10,
       deliveryDate: "2026-07-15",
+      lotNumber: 45210,
     });
   });
 
@@ -122,6 +125,7 @@ describe("upsertTaskFromApi", () => {
         crmItemKey: "123:0",
         crmPedidoId: 123,
         templateTaskCode: "16378",
+        lotNumber: 45210,
         stepId: "s1",
         index: 1,
       }),
@@ -134,6 +138,7 @@ describe("upsertTaskFromApi", () => {
       name: baseInput.name,
       qty: baseInput.qty,
       deliveryDate: baseInput.deliveryDate,
+      lotNumber: baseInput.lotNumber,
     });
 
     const result = await upsertTaskFromApi(baseInput);

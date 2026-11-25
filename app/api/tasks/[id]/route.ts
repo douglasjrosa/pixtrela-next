@@ -32,6 +32,7 @@ export async function GET(
     deliveryDate: task.deliveryDate,
     status: task.status,
     templateTaskCode: task.templateTaskCode,
+    lotNumber: task.lotNumber,
     crmItemKey: task.crmItemKey,
     crmPedidoId: task.crmPedidoId,
   });

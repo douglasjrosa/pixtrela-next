@@ -33,14 +33,20 @@ async function loadDefaultStepId(): Promise<string> {
 }
 
 function taskNeedsUpdate(
-  existing: { name: string; qty: number; deliveryDate: string | null },
+  existing: {
+    name: string;
+    qty: number;
+    deliveryDate: string | null;
+    lotNumber: number | null;
+  },
   input: ApiTaskUpsertInput,
 ): boolean {
   const nextDelivery = input.deliveryDate ?? null;
   return (
     existing.name !== input.name ||
     existing.qty !== input.qty ||
-    (existing.deliveryDate ?? null) !== nextDelivery
+    (existing.deliveryDate ?? null) !== nextDelivery ||
+    (existing.lotNumber ?? null) !== input.lotNumber
   );
 }
 
@@ -61,6 +67,7 @@ export async function upsertTaskFromApi(
       name: input.name,
       qty: input.qty,
       deliveryDate: input.deliveryDate ?? null,
+      lotNumber: input.lotNumber,
     });
     const after = await getTaskById(existing.id);
     if (before && after) {
@@ -100,6 +107,7 @@ export async function upsertTaskFromApi(
     stepId: defaultStepId,
     crmPedidoId,
     crmItemKey: input.externalKey,
+    lotNumber: input.lotNumber,
   });
 
   return {

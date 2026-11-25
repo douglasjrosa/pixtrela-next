@@ -86,6 +86,7 @@ describe("POST /api/tasks", () => {
           deliveryDate: "2026-07-15",
           externalKey: "123:0",
           templateTaskCode: "16378",
+          lotNumber: 45210,
           versions: ["16377"],
           template: {
             prodId: 16378,
@@ -121,6 +122,7 @@ describe("POST /api/tasks", () => {
           deliveryDate: "2026-07-15",
           externalKey: "123:0",
           templateTaskCode: "17426",
+          lotNumber: 45211,
         }),
       }),
     );
