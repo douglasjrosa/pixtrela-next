@@ -47,4 +47,30 @@ describe("fetchBoxTemplateData", () => {
       }),
     );
   });
+
+  it("recovers JSON when PHP warnings prepend the body", async () => {
+    getRibermaxConnection.mockResolvedValue({
+      baseUrl: "https://rbx.example/",
+      token: "db-token",
+    });
+    const payload = {
+      prodId: 12,
+      empresaNome: "Max",
+      boxName: "Caixa",
+      subtasks: [{ presetName: "Corte", qty: 1, actionUnits: 10 }],
+    };
+    const dirty =
+      "<br />\n<b>Warning</b>: preg_match(): Allocation of JIT memory failed\n" +
+      JSON.stringify(payload);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        text: async () => dirty,
+      })),
+    );
+
+    const { fetchBoxTemplateData } = await import("./rbx-client");
+    await expect(fetchBoxTemplateData(12)).resolves.toEqual(payload);
+  });
 });

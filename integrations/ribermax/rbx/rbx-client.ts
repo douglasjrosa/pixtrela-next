@@ -2,7 +2,7 @@ import type { BoxTemplateData } from "./rbx-types";
 import { isLegacyErrorResponse } from "./rbx-types";
 import { getRibermaxConnection } from "@/integrations/ribermax/settings/connection-repo";
 
-const DEFAULT_TIMEOUT_MS = 55_000;
+const DEFAULT_TIMEOUT_MS = 120_000;
 
 function isBoxTemplateData(value: unknown): value is BoxTemplateData {
   if (typeof value !== "object" || value === null) return false;
@@ -13,6 +13,43 @@ function isBoxTemplateData(value: unknown): value is BoxTemplateData {
     typeof record.boxName === "string" &&
     Array.isArray(record.subtasks)
   );
+}
+
+/** Recovers JSON when PHP warnings are prepended to the body. */
+function parseLegacyJsonPayload(responseText: string): unknown {
+  const trimmed = responseText.trim();
+  if (!trimmed) return null;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    /* Fall through and recover embedded JSON. */
+  }
+  const objectStart = trimmed.indexOf("{");
+  const arrayStart = trimmed.indexOf("[");
+  let start = -1;
+  if (objectStart >= 0 && arrayStart >= 0) {
+    start = Math.min(objectStart, arrayStart);
+  } else {
+    start = Math.max(objectStart, arrayStart);
+  }
+  if (start < 0) {
+    throw new Error("No JSON payload found in legacy response");
+  }
+  const lastObjectEnd = trimmed.lastIndexOf("}");
+  const lastArrayEnd = trimmed.lastIndexOf("]");
+  const end = Math.max(lastObjectEnd, lastArrayEnd);
+  const candidates =
+    end > start
+      ? [trimmed.slice(start, end + 1), trimmed.slice(start)]
+      : [trimmed.slice(start)];
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      /* try next candidate */
+    }
+  }
+  throw new Error("Unable to parse JSON from legacy response");
 }
 
 /**
@@ -50,7 +87,7 @@ export async function fetchBoxTemplateData(
   const text = await response.text();
   let data: unknown;
   try {
-    data = text ? JSON.parse(text) : null;
+    data = text ? parseLegacyJsonPayload(text) : null;
   } catch {
     throw new Error("Invalid JSON response from the legacy RBX system.");
   }

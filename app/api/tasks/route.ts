@@ -9,7 +9,7 @@ import { auditBug, scheduleCrmTasksLog } from "@/lib/logs/record-log";
 import { apiTaskUpsertSchema } from "@/lib/schemas/api-task";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function DELETE(request: Request): Promise<NextResponse> {
   const auth = await verifyCrmApiToken(request);
